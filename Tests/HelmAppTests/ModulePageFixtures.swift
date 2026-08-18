@@ -318,7 +318,7 @@ extension ModulePageRender {
             defaultName: connectedTunnel,
             lastAutomation: nil,
             lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused, verb: .connect),
-            facts: tunnel)
+            tunnels: [tunnel])
     }
 
     /// The tunnel carrying the default route — **all four tiles filled, and the

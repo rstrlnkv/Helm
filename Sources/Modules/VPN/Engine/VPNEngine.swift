@@ -12,18 +12,19 @@ import HelmRuntime
 /// on `VPNWorkQueue`, which says why it exists.
 ///
 /// **This file is over `file_length` and `type_body_length`, and stays over,
-/// deliberately.** It stood at 681 lines against the 700 `.swiftlint.yml` warns
-/// at, so the tile strip's hundred-odd lines put both counts past — and a
-/// warning nobody has explained is a warning the next person silences. The obvious extraction, moving the strip's
-/// half into an `extension VPNEngine` in a second file, is worse than the
-/// warning: `private` in Swift is file-scoped, so it would turn `raisedAt`,
-/// `lastRegion`, `lastSpeed`, `lock`, `_lastEmitted`, `interfaces`, `speed`,
-/// `work` and `emitState` internal — trading the invariant this class is built
-/// on («touched only from the work queue», enforced today by nothing else being
-/// able to see them) for a line count. The real answer is to decompose the
-/// engine itself — the connect path with its secret handling is one subject, the
-/// auto-connect book another, the strip a third — and that is a change to
-/// somebody's live tunnels, not a tidy-up to be done in passing.
+/// deliberately** — a warning nobody has explained is a warning the next person
+/// silences. The obvious extraction, moving the strip's half into an
+/// `extension VPNEngine` in a second file, is worse: `private` in Swift is
+/// file-scoped, so it would turn `raisedAt`, `lastRegion`, `lastSpeed`, `lock`,
+/// `_lastEmitted`, `interfaces`, `speed`, `work` and `emitState` internal —
+/// trading the invariant this class is built on («touched only from the work
+/// queue», enforced today by nothing else being able to see them) for a line
+/// count. The real answer is to decompose the engine — the connect path with
+/// its secret handling is one subject, the auto-connect book another, the strip
+/// a third — and that is a change to somebody's live tunnels.
+///
+/// It sits one line under the `file_length` **error**, which is not deliberate:
+/// the next feature in this file has nowhere to go but that decomposition.
 public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -137,10 +138,16 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// one field that separates «this tunnel is down» from «nobody has looked».
     /// Touched only from the work queue, like `raisedAt` above.
     private var hasReadTheList = false
-    /// The last two answers about the tunnel that is up, and they belong to
-    /// *that* tunnel: both are dropped with its stamp when it goes.
+    /// Where this Mac appears to be, from outside. **A fact about the machine's
+    /// exit, not about a tunnel**, so it stays one value however many are up: it
+    /// decorates whichever holds the route, and is dropped when one falls,
+    /// because the route may have moved with it.
     private var lastRegion: String?
-    private var lastSpeed: VPNSpeedReading?
+    /// The last measurement taken **on each tunnel**, keyed by service id: a
+    /// figure belongs to whichever held the route when it was taken and is kept
+    /// when the route moves (`VPNExitVerdict.carriesTheDefaultRoute`). What
+    /// drops it is that tunnel going, below.
+    private var lastSpeed: [String: VPNSpeedReading] = [:]
     /// Which interface each connected tunnel is on, and what the tool said about
     /// its routing — read once per tunnel and dropped when it goes.
     ///
@@ -154,10 +161,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// up: macOS raises the next one on a new interface, which is exactly why
     /// the entry is dropped the moment the tunnel is not connected.
     private var interfaceOf: [String: VPNStatusParser.Reading] = [:]
-    /// Whether a measurement is in flight. The engine's own fact, on the wire in
-    /// every payload — `VPNTunnelState.measuring` says what a page inferring it
-    /// from a press gets wrong. Written on the work queue at both ends of a run.
-    private var measuringSpeed = false
+    /// **Which tunnel** a measurement is in flight for, by name, or nil — the
+    /// engine's own fact, on the wire in every payload, because
+    /// `VPNTunnelState.measuring` says what a page inferring it from a press
+    /// gets wrong. Written on the work queue at both ends of a run. A name and
+    /// not a `Bool`: the flag is per tunnel, and one boolean set every entry of
+    /// the list, turning a spinner over tunnels nobody was measuring.
+    private var measuringSpeed: String?
     /// Under the lock, like the four above it and unlike the rest of this
     /// group.
     ///
@@ -750,14 +760,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - What the strip is told
 
-    /// Notes the moment a tunnel came up, and forgets everything about one that
+    /// Notes the moment a tunnel came up, and forgets what belonged to one that
     /// has gone.
     ///
     /// **`scutil` cannot answer «since when».** The list says `Connected` and
     /// nothing more, so the only honest stamp is Helm's own observation: a
-    /// service that was down at the last reading and is up at this one. Which
-    /// also means a tunnel that was already up when the process started carries
-    /// no stamp at all — see `wasDown`.
+    /// service down at the last reading and up at this one. Which also means one
+    /// already up when the process started carries no stamp — see `wasDown`.
     private func stampWhatCameUp(_ parsed: [VPNConnection]) {
         for connection in parsed where connection.status.isConnected {
             guard raisedAt[connection.id] == nil, wasDown(connection.id) else { continue }
@@ -767,13 +776,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             checkExit()
         }
         let up = Set(parsed.filter(\.status.isConnected).map(\.id))
+        // **Against what is up, not against `raisedAt`.** Keyed off the stamps
+        // this misses every tunnel already up at launch — exactly the ones
+        // carrying none (`wasDown`) — which then drew, dropped and raised again,
+        // its predecessor's throughput on a new `utunN`.
+        for id in lastSpeed.keys where !up.contains(id) { lastSpeed[id] = nil }
         let fallen = raisedAt.keys.filter { !up.contains($0) }
         guard !fallen.isEmpty else { return }
         for id in fallen { raisedAt[id] = nil }
-        // The country and the measurement were true of the tunnel that has
-        // gone. Kept, they would be drawn beside the next one.
+        // The country is about the machine's exit rather than about a tunnel,
+        // and a tunnel falling can move the route, so it is dropped outright
+        // and asked again when something comes up.
         lastRegion = nil
-        lastSpeed = nil
     }
 
     /// Asks the tool which interface each tunnel that is up came up on, once per
@@ -812,29 +826,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         return !before.status.isConnected
     }
 
-    /// The tunnel the strip is about: the one carrying the default route. On a
-    /// Mac with two tunnels up that is the one the person is on the internet
-    /// through, which is the only one «this tunnel» can honestly mean — and when
-    /// none of them holds the route, the first that is up, with `exit` saying so.
-    private func tunnelFacts() -> VPNTunnelState? {
+    /// Every tunnel the strip can be about: the connected ones the tool has
+    /// named an interface for, ordered by `VPNTunnelChoice.primaryFirst`, which
+    /// says what that order is for. One with no reading is coming up and is left
+    /// out rather than drawn empty — the next refresh asks.
+    ///
+    /// **One `sysctl` per tunnel per emission is what makes a list affordable.**
+    /// `VPNInterfaceCounters.bytes` is a single `net.link.generic.ifdata` read
+    /// measured 0.03 ms here, against the 16 ms subprocess `interfaceOf` caches.
+    private func tunnelStates() -> [VPNTunnelState] {
         let primary = interfaces.primaryInterface()
-        let tunnels = connections.filter(\.status.isConnected)
-            .compactMap { connection in interfaceOf[connection.id].map { (connection, $0) } }
-        guard let (connection, reading) = tunnels.first(where: { $0.1.interface == primary })
-            ?? tunnels.first
-        else { return nil }
-        let carried = interfaces.bytes(on: reading.interface)
-        return VPNTunnelState(name: connection.name,
-                              interface: reading.interface,
-                              since: raisedAt[connection.id],
-                              bytesIn: carried.map { VPNInterfaceCounters.onTheWire($0.in) },
-                              bytesOut: carried.map { VPNInterfaceCounters.onTheWire($0.out) },
-                              exit: VPNExitVerdict.of(tunnelInterface: reading.interface,
-                                                      primaryInterface: primary,
-                                                      tunnelIsPrimary: reading.isPrimaryInterface,
-                                                      countryCode: lastRegion),
-                              speed: lastSpeed,
-                              measuring: measuringSpeed)
+        return VPNTunnelChoice.primaryFirst(connections.filter(\.status.isConnected)
+            .compactMap { connection in
+                interfaceOf[connection.id].map {
+                    VPNTunnelState(connection, on: $0, primary: primary,
+                                   since: raisedAt[connection.id],
+                                   carried: interfaces.bytes(on: $0.interface),
+                                   speed: lastSpeed[connection.id], region: lastRegion,
+                                   measuring: measuringSpeed == connection.name)
+                }
+            })
     }
 
     /// Asks the outside world where this Mac appears to be. **Only when a tunnel
@@ -869,51 +880,40 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// reads the connections: nothing up is nothing to measure.
     ///
     /// See `NetworkQualitySpeed` for why the run is not bound to the tunnel's
-    /// own interface: `-I utunN` answers -1009 and no throughput at all on this
-    /// build of macOS, while the same tool unbound answers normally. The strip
-    /// exists only for the tunnel carrying the default route, so an unbound run
-    /// follows that route and its figure *is* that tunnel's — whenever there is
-    /// a strip on screen to draw it in.
+    /// own interface, and `VPNExitVerdict.carriesTheDefaultRoute` for why that
+    /// makes this take a name and refuse every tunnel but one — here as well as
+    /// in the view, a refusal living in a `body` being one a command goes round.
     ///
     /// The phase is the port's to name (`vpn.speed`), not this caller's.
-    private func measureSpeed() {
+    private func measureSpeed(_ name: String) {
         work.run { [weak self] in
             guard let self else { return }
-            // **Nothing to measure is an answer, and it is published.** The page
-            // set its own «measuring» on the press, because the command has a
-            // queue to cross, and by the time it gets here the tunnel can be
-            // gone. A silent return would leave a spinner nobody can clear: the
-            // strip draws it instead of the button, so there is no second press,
-            // and every later refresh over a quiet tunnel is withheld by the
-            // dedup.
-            //
-            // Belt and braces, and said plainly rather than claimed: the refresh
-            // that noticed the drop has already published it, because it is the
-            // same refresh that drops the cached interface. What this covers is
-            // a path reaching here without one — the rule `connectNow` states
-            // for its own early return, that a path skipping publication leaves
-            // the screen holding whatever it had.
-            guard self.tunnelFacts() != nil else {
+            // **The refusal, and it is published.** Two things answer here: a
+            // tunnel not carrying the traffic, and one gone between the press
+            // and this queue, which the page's optimistic «measuring» races. A
+            // silent return leaves the second with a spinner and no button under
+            // it, a refresh over a quiet tunnel being withheld by the dedup —
+            // `connectNow`'s rule for its own early return.
+            guard let target = self.tunnelStates().first(where: { $0.name == name }),
+                  target.exit.carriesTheDefaultRoute else {
                 self.emitState()
                 return
             }
             // One run at a time, and this one **is** silent: the run already
-            // going will say «not measuring» when it ends, and nothing about the
-            // state has changed in the meantime. A second press would otherwise
-            // spend another fifteen seconds of somebody's traffic to answer the
-            // question already being asked, and the first ending would say the
-            // run had stopped while the second was still going.
-            guard !self.measuringSpeed else { return }
-            self.measuringSpeed = true
-            // Said before the waiting starts, so the page draws «measuring»
-            // whether or not it was the page that asked — and so the run has two
-            // ends on the wire rather than one.
+            // going will say «not measuring» when it ends and nothing has
+            // changed meanwhile. A second press would spend another fifteen
+            // seconds answering the question already being asked, and the first
+            // ending would say the run had stopped while the second still ran.
+            guard self.measuringSpeed == nil else { return }
+            self.measuringSpeed = name
+            // Before the waiting starts, so the page draws «measuring» whether
+            // or not it asked — and the run has two ends on the wire, not one.
             self.emitState()
-            self.startMeasuring()
+            self.startMeasuring(for: name)
         }
     }
 
-    private func startMeasuring() {
+    private func startMeasuring(for name: String) {
         let task = Task { [weak self] in
             // Weakly inside the pool closure too: the engine is not held for the
             // fifteen seconds the tool takes, and a module switched off in the
@@ -928,8 +928,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 // tool killed at its deadline — and over a quiet tunnel not one
                 // other field of the payload will have moved. What makes the end
                 // of a run news is the run's own state changing here.
-                self.measuringSpeed = false
-                self.lastSpeed = reading ?? nil
+                self.measuringSpeed = nil
+                // Filed under the tunnel it was taken on; a run whose tunnel
+                // went mid-flight finds no id and keeps nothing.
+                if let id = self.connections.first(where: { $0.name == name })?.id {
+                    self.lastSpeed[id] = reading ?? nil
+                }
                 self.emitState()
             }
         }
@@ -947,22 +951,25 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             case .toggle:
                 self.toggleDefault()
             case .connect:
-                if let payload = EngineReply.decode(VPNConnectionRef.self, from: cmd) {
-                    self.connect(payload.name)
-                }
+                self.named(cmd) { self.connect($0) }
             case .disconnect:
-                if let payload = EngineReply.decode(VPNConnectionRef.self, from: cmd) {
-                    self.disconnect(payload.name)
-                }
+                self.named(cmd) { self.disconnect($0) }
             case .refresh:
                 self.refresh()
             case .reloadRules:
                 self.reloadRules()
             case .measureSpeed:
-                self.measureSpeed()
+                self.named(cmd, self.measureSpeed)
             }
             return Data()
         }
+    }
+
+    /// The three commands that are **about a connection**, decoded one way —
+    /// each did it at its own case until the third arrived.
+    private func named(_ cmd: EngineCommand, _ act: (String) -> Void) {
+        guard let ref = EngineReply.decode(VPNConnectionRef.self, from: cmd) else { return }
+        act(ref.name)
     }
 
     /// What `emitState` last put on the wire — under the class's one lock.
@@ -984,7 +991,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt,
-                                    facts: tunnelFacts())
+                                    tunnels: tunnelStates())
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
         guard !isDuplicate else { return }

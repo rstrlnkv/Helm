@@ -27,6 +27,28 @@ public enum VPNExitVerdict: Codable, Equatable, Sendable {
     /// answer above.
     case unknown
 
+    /// Whether this verdict **establishes** that the tunnel holds the default
+    /// route.
+    ///
+    /// One predicate for two readers a target apart: the engine refuses a speed
+    /// command naming a tunnel this is false of, and the page draws a sentence
+    /// where the button would be for the same tunnel. Spelled twice they can
+    /// disagree, and the disagreement is a fifteen-second subprocess measuring
+    /// one tunnel and reporting its figure under another's name — `networkQuality`
+    /// cannot be bound to an interface (`NetworkQualitySpeed`), so an unbound run
+    /// follows the default route whatever the switcher is showing.
+    ///
+    /// `.unknown` is false, and that is the safe direction rather than an
+    /// oversight: a routing reading that could not be made is not permission to
+    /// attribute a measurement. Exhaustive, with no `default:` — a fourth answer
+    /// is a build error here rather than a silent refusal.
+    public var carriesTheDefaultRoute: Bool {
+        switch self {
+        case .throughTunnel: true
+        case .besideTunnel, .unknown: false
+        }
+    }
+
     /// Two sources for the routing half, asked in order.
     ///
     /// `primaryInterface` is `State:/Network/Global/IPv4` — the routing table's

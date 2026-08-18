@@ -911,6 +911,7 @@
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "seit dem Aufbau des Tunnels";
 "about 15 s, spends traffic" = "etwa 15 s, verbraucht Datenvolumen";
+"Speed is measured on the tunnel that carries the traffic" = "Die Geschwindigkeit wird an dem Tunnel gemessen, durch den der Datenverkehr läuft";
 "Measure speed" = "Geschwindigkeit messen";
 "Measure again" = "Erneut messen";
 "Measuring…" = "Messung läuft…";

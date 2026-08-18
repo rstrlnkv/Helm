@@ -45,15 +45,21 @@ struct VPNTunnelStrip {
         }
     }
 
-    /// What sits at the right of the verdict line — the offer, or the run that
-    /// is already going.
+    /// What sits at the right of the verdict line — the offer, the run that is
+    /// already going, or the sentence that stands where neither belongs.
     ///
-    /// One value, because the two are exclusive and a pair of optionals can be
-    /// both or neither: a button drawn beside its own spinner is a second
-    /// fifteen seconds of somebody's traffic one press away.
+    /// One value, because the three are exclusive and a set of optionals can be
+    /// several at once or none: a button drawn beside its own spinner is a
+    /// second fifteen seconds of somebody's traffic one press away, and a button
+    /// drawn beside the sentence explaining why there is no button is worse.
     enum Action: Equatable {
         case offer(String)
         case running(String)
+        /// A tunnel that is not carrying the default route. The sentence, not a
+        /// disabled button: nothing about *this* card can enable it, and a
+        /// control that never becomes pressable is a control that has to be
+        /// explained anyway.
+        case notOffered(String)
     }
 
     /// Which reading a tile holds — the identity `ForEach` needs, and what a
@@ -116,7 +122,8 @@ struct VPNTunnelStrip {
             tiles.append(Tile(kind: .up, label: VPNStr.tileUp,
                               value: Bytes(Int(clamping: bytesOut)), note: VPNStr.bytesSince))
         }
-        tiles.append(Self.speedTile(facts, now: now))
+        tiles.append(Self.speedTile(facts, now: now,
+                                    offered: state.exit.carriesTheDefaultRoute))
         self.tiles = tiles
 
         switch state.exit {
@@ -138,13 +145,20 @@ struct VPNTunnelStrip {
             mark = .neutral
         }
 
+        // **The offer belongs to the tunnel holding the default route, and to
+        // no other.** One predicate, read here and by the engine that refuses
+        // the same command (`VPNExitVerdict.carriesTheDefaultRoute`) — the view
+        // is not the only thing that can send one, and a rule spelled twice is
+        // a rule two targets can disagree about.
         if measuring {
             action = .running(VPNStr.measuring)
-        } else {
+        } else if state.exit.carriesTheDefaultRoute {
             // «Measure again» rather than «Measure speed» once a figure sits in
             // the tile: the press replaces a stale number, it does not produce
             // the first one.
             action = .offer(facts.speed == nil ? VPNStr.measureSpeed : VPNStr.measureAgain)
+        } else {
+            action = .notOffered(VPNStr.speedIsTheRoutedTunnels)
         }
     }
 
@@ -159,10 +173,15 @@ struct VPNTunnelStrip {
     /// comment and this is its only reader; a fresh reading keeps the unit
     /// alone. Written the other way round (an age under every reading) the
     /// property would be a promise with nothing keeping it.
-    private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
+    private static func speedTile(_ facts: VPNTunnelFacts, now: Date,
+                                  offered: Bool) -> Tile {
         guard let speed = facts.speed else {
-            return Tile(kind: .speed, label: VPNStr.tileSpeed,
-                        value: noReading, note: VPNStr.speedNote(VPNStr.speedNotYet))
+            // `speedNotYet` is the **button's price tag** — fifteen seconds and
+            // some traffic — so it is quoted only where there is a button to
+            // pay it. On a tunnel that is not carrying the route the note is the
+            // unit alone, and the sentence on the verdict line says why.
+            return Tile(kind: .speed, label: VPNStr.tileSpeed, value: noReading,
+                        note: VPNStr.speedNote(offered ? VPNStr.speedNotYet : nil))
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
                     // `Count`, not `Decimal`: the figure is a whole number of
@@ -199,17 +218,46 @@ struct VPNTunnelStrip {
 /// read as fragments rather than as structure. The horizontal `Divider()`
 /// below stays, because that one separates two different kinds of thing.
 struct VPNTunnelSection: View {
-    private let strip: VPNTunnelStrip
-    private let measure: () -> Void
+    private let tunnels: [VPNTunnelState]
+    @Binding private var selected: String?
+    private let now: Date
+    /// The name of the tunnel a run is in flight for, or nil. A name rather
+    /// than a flag, so a spinner turns over the tunnel being measured and not
+    /// over whichever one the switcher happens to be showing.
+    private let measuring: String?
+    private let measure: (String) -> Void
 
-    init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool? = nil,
-         measure: @escaping () -> Void) {
-        self.strip = VPNTunnelStrip(state, now: now, measuring: measuring)
+    init(_ tunnels: [VPNTunnelState], selected: Binding<String?>, now: Date = Date(),
+         measuring: String? = nil, measure: @escaping (String) -> Void) {
+        self.tunnels = tunnels
+        _selected = selected
+        self.now = now
+        self.measuring = measuring
         self.measure = measure
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s5) {
+        // Resolved here rather than in `init`, because the choice depends on a
+        // binding: the page holds the selection and the engine rewrites the
+        // list under it, and a value computed once at construction would be the
+        // answer to a question asked before either could move.
+        let switcher = VPNTunnelSwitcher(tunnels, selected: selected)
+        return Group {
+            if let chosen = switcher.chosen {
+                card(switcher, chosen)
+            }
+        }
+    }
+
+    private func card(_ switcher: VPNTunnelSwitcher, _ chosen: VPNTunnelState) -> some View {
+        let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
+        return VStack(alignment: .leading, spacing: HelmSpace.s5) {
+            // Above the columns and inside the card: the segments say which
+            // tunnel every figure below is about, so they read as that row's
+            // heading rather than as a control belonging to the page.
+            if !switcher.segments.isEmpty {
+                VPNTunnelSwitcherRow(switcher, selected: $selected)
+            }
             HStack(alignment: .top, spacing: HelmSpace.s4) {
                 ForEach(strip.tiles) { column(_: $0) }
             }
@@ -219,7 +267,7 @@ struct VPNTunnelSection: View {
             // empty fill under the figures.
             .fixedSize(horizontal: false, vertical: true)
             Divider()
-            verdictLine
+            verdictLine(strip, chosen)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -250,7 +298,8 @@ struct VPNTunnelSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var verdictLine: some View {
+    private func verdictLine(_ strip: VPNTunnelStrip,
+                             _ chosen: VPNTunnelState) -> some View {
         HStack(spacing: HelmSpace.s3) {
             Image(systemName: strip.mark.symbol)
                 .foregroundStyle(strip.mark.tint)
@@ -263,7 +312,7 @@ struct VPNTunnelSection: View {
             Spacer(minLength: HelmSpace.s5)
             switch strip.action {
             case .offer(let word):
-                Button(word, action: measure)
+                Button(word) { measure(chosen.name) }
             case .running(let word):
                 HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
@@ -271,6 +320,16 @@ struct VPNTunnelSection: View {
                         .font(HelmText.rowDetail)
                         .foregroundStyle(HelmText.quiet)
                 }
+            case .notOffered(let sentence):
+                Text(sentence)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+                    // Wrapping, and trailing-aligned where the button was: it
+                    // is a sentence rather than a word, and at the narrow pane
+                    // it takes two lines beside a verdict that takes two of
+                    // its own.
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

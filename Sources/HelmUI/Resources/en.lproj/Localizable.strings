@@ -911,6 +911,7 @@
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "since the tunnel came up";
 "about 15 s, spends traffic" = "about 15 s, spends traffic";
+"Speed is measured on the tunnel that carries the traffic" = "Speed is measured on the tunnel that carries the traffic";
 "Measure speed" = "Measure speed";
 "Measure again" = "Measure again";
 "Measuring…" = "Measuring…";

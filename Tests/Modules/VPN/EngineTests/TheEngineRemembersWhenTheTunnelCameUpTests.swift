@@ -34,6 +34,15 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         "(\(status)) \(id ?? uuid) IPSec \"\(name)\""
     }
 
+    /// A speed command **names its tunnel**, the way connect and disconnect
+    /// already do: an unbound run follows the default route, so which tunnel a
+    /// figure belongs to is the command's to say and the engine's to check
+    /// (`VPNExitVerdict.carriesTheDefaultRoute`).
+    private func measureCommand(_ name: String) throws -> EngineCommand {
+        EngineCommand(name: VPNCommand.measureSpeed.rawValue,
+                      payload: try JSONEncoder().encode(VPNConnectionRef(name: name)))
+    }
+
     private func makeSettings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn",
                                            backing: InMemoryKeyValueStore()))
@@ -97,7 +106,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertNotNil(facts, "the strip is about a tunnel that is up, and this one is")
         XCTAssertNil(facts?.since,
                      "Helm was launched after this tunnel came up and stamped it anyway — "
@@ -148,7 +157,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         engine.connect("A", auto: true)
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.since, at,
                        "Helm raised this tunnel and stamped nothing, so the strip draws no "
                        + "uptime for the tunnel every rule on this Mac brings up")
@@ -171,7 +180,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         engine.connect("A", auto: true)
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertNotNil(facts, "precondition: no strip at all, so the absence below is free")
         XCTAssertNil(facts?.since,
                      "the tunnel was up before Helm asked for it and was stamped anyway — the "
@@ -189,7 +198,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         runner.listOutput = list("Connected")
         engine.refresh()                     // and now up
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.since, at,
                        "the one moment Helm can honestly report is the one it watched")
     }
@@ -210,7 +219,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         engine.refresh()                     // and dropped
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertNil(facts, "nothing is up, so there is no tunnel to draw a strip about")
     }
 
@@ -233,7 +242,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.name, "Full")
         XCTAssertEqual(facts?.interface, "utun5")
         XCTAssertEqual(facts?.bytesIn, 2_000, "the counters are the named tunnel's own")
@@ -255,7 +264,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.exit, .besideTunnel,
                        "the tunnel is up and the traffic is going round it — the one state "
                        + "this check exists for")
@@ -276,7 +285,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         let arrived = expectation(description: "the country reached the page")
         let watcher = watchState(transport,
-                                 until: { $0.facts?.exit == .throughTunnel(countryCode: "NL") },
+                                 until: { $0.tunnels.first?.exit == .throughTunnel(countryCode: "NL") },
                                  then: arrived)
         engine.refresh()
         runner.listOutput = list("Connected")
@@ -313,9 +322,9 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // The run happens off the module's queue now, so the figure arrives when
         // it arrives: awaited on the payload, never on a count of yields.
         let landed = expectation(description: "the reading reached the page")
-        let watcher = watchState(transport, until: { $0.facts?.speed == reading }, then: landed)
+        let watcher = watchState(transport, until: { $0.tunnels.first?.speed == reading }, then: landed)
 
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        _ = try await engine.transport.send(measureCommand("A"))
 
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
@@ -353,12 +362,12 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                transport: transport, interfaces: tunnelIsTheDefaultRoute(),
                                exit: FakeExit(), speed: speed, work: .background)
         let ready = expectation(description: "the engine has read the list once")
-        let watcher = watchState(transport, until: { $0.facts != nil }, then: ready)
+        let watcher = watchState(transport, until: { $0.tunnels.first != nil }, then: ready)
         engine.refresh()
         await fulfillment(of: [ready], timeout: 5)
         watcher.cancel()
 
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        _ = try await engine.transport.send(measureCommand("A"))
         await fulfillment(of: [measuring], timeout: 5)
         engine.connect("A")
 
@@ -377,7 +386,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
 
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        _ = try await engine.transport.send(measureCommand("A"))
 
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
@@ -402,7 +411,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
-        let onScreen = await lastState(on: transport)?.facts
+        let onScreen = await lastState(on: transport)?.tunnels.first
         XCTAssertNotNil(onScreen, "precondition: the strip was never on screen, so the press "
                         + "this test is about could not have been made")
 
@@ -410,12 +419,12 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // what happens in the app, and what the press is racing.
         runner.listOutput = list("Disconnected")
         engine.refresh()
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        _ = try await engine.transport.send(measureCommand("A"))
 
         XCTAssertTrue(speed.askedFor.isEmpty,
                       "fifteen seconds of somebody's traffic spent measuring a tunnel that "
                       + "is not there")
-        let after = await lastState(on: transport)?.facts
+        let after = await lastState(on: transport)?.tunnels.first
         XCTAssertNil(after, "the page keeps a strip for a tunnel that has gone")
     }
 
@@ -452,14 +461,14 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                exit: FakeExit(), speed: speed, work: .background)
 
         let ready = expectation(description: "the engine has read the list once")
-        let first = watchState(transport, until: { $0.facts != nil }, then: ready)
+        let first = watchState(transport, until: { $0.tunnels.first != nil }, then: ready)
         engine.refresh()
         await fulfillment(of: [ready], timeout: 5)
         first.cancel()
 
         let started = expectation(description: "the page was told a run is in flight")
-        let running = watchState(transport, until: { $0.facts?.measuring == true }, then: started)
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        let running = watchState(transport, until: { $0.tunnels.first?.measuring == true }, then: started)
+        _ = try await engine.transport.send(measureCommand("A"))
         await fulfillment(of: [started], timeout: 5)
         running.cancel()
 
@@ -467,12 +476,12 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // says «measuring», so nothing here can be satisfied by the state that
         // is already on the wire.
         let stopped = expectation(description: "the page was told the run has ended")
-        let ended = watchState(transport, until: { $0.facts?.measuring == false }, then: stopped)
+        let ended = watchState(transport, until: { $0.tunnels.first?.measuring == false }, then: stopped)
         speed.release()
 
         await fulfillment(of: [stopped], timeout: 5)
         ended.cancel()
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertNil(facts?.speed, "precondition: this is the run that answered nothing")
     }
 
@@ -547,6 +556,6 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)
 
-        XCTAssertNil(payload.facts)
+        XCTAssertNil(payload.tunnels.first)
     }
 }

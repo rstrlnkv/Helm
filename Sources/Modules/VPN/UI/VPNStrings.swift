@@ -598,6 +598,19 @@ enum VPNStr {
         left + " · " + right
     }
 
+    /// **Where the button would be, on a tunnel that is not carrying the
+    /// traffic.**
+    ///
+    /// `networkQuality` cannot be bound to an interface on this build of macOS
+    /// (`NetworkQualitySpeed`), so a run follows the default route whatever the
+    /// switcher is showing — a measurement offered here would be taken on
+    /// another tunnel and drawn under this one's name. The sentence says which
+    /// tunnel gets measured rather than that this one cannot be: the reader is
+    /// one press of a segment away from the one that can.
+    static var speedIsTheRoutedTunnels: String {
+        L("Speed is measured on the tunnel that carries the traffic")
+    }
+
     /// The button's first press.
     static var measureSpeed: String { L("Measure speed") }
     /// The same button once a reading already sits in the tile — the label

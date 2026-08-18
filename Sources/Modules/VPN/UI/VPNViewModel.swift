@@ -24,11 +24,12 @@ import Module_VPN_Engine
     /// somebody presses Connect once, and the engine stops attempting a
     /// `--nc start` it knows cannot work (`VPNSecretBook`).
     @Published private(set) var secretsBehindAPrompt: [String] = []
-    /// The tunnel carrying the default route, and what is known about it. Nil
-    /// when nothing is up — the strip is absent then, rather than empty.
-    @Published private(set) var facts: VPNTunnelState?
-    /// True while a measurement is in flight — **the engine's answer, not this
-    /// object's memory of a press.**
+    /// Every connected tunnel that has an interface reading, the one carrying
+    /// the default route first. Empty when nothing is up — the strip is absent
+    /// then, rather than empty.
+    @Published private(set) var tunnels: [VPNTunnelState] = []
+    /// **Which tunnel** a measurement is in flight for, or nil — the engine's
+    /// answer, not this object's memory of a press.
     ///
     /// The press still sets it, because the command has a queue to cross and a
     /// button that does nothing for a moment reads as a button that did not
@@ -39,7 +40,11 @@ import Module_VPN_Engine
     /// spinning, and a run the tool refused over a quiet tunnel changed no other
     /// field — so the engine withheld the payload as a duplicate and the arrival
     /// that was meant to clear the spinner never came.
-    @Published private(set) var measuring = false
+    ///
+    /// A name rather than a `Bool` because the flag is per tunnel on the wire:
+    /// one boolean turned a spinner over every tunnel in the list while a single
+    /// run was going.
+    @Published private(set) var measuring: String?
 
     private let transport: EngineTransport
     private let settings: VPNSettings?
@@ -292,7 +297,7 @@ import Module_VPN_Engine
         defaultName = p.defaultName
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
-        facts = p.facts
+        tunnels = p.tunnels
         // **The engine says whether a run is going; this only repeats it.**
         // Comparing the reading against the last one is true of neither awkward
         // ending: a run that answers the same numbers as before would leave the
@@ -302,7 +307,7 @@ import Module_VPN_Engine
         // over a quiet tunnel a refused run leaves every field of the payload
         // as it was, and `emitState` withholds a duplicate. So the run's own
         // state travels with the rest, and both ends of it are a change.
-        measuring = p.facts?.measuring ?? false
+        measuring = p.tunnels.first(where: \.measuring)?.name
         // Stale firings are dropped here rather than downstream. The engine
         // keeps its last one for good and repeats it in every state payload, so
         // the first refresh after launch would otherwise spin the ring for
@@ -361,11 +366,15 @@ import Module_VPN_Engine
                                                         payload: payload))
         }
     }
-    /// Asks for one measurement. It spends real traffic and takes about 15 s,
-    /// which is why nothing calls this but a press.
-    func measureSpeed() {
-        measuring = true
-        send(VPNCommand.measureSpeed)
+    /// Asks for one measurement, **on a named tunnel**. It spends real traffic
+    /// and takes about 15 s, which is why nothing calls this but a press.
+    ///
+    /// The engine refuses a name that is not the tunnel carrying the default
+    /// route and publishes when it does, so the optimistic flag below is cleared
+    /// by that refusal exactly the way it is cleared by a run that finished.
+    func measureSpeed(_ name: String) {
+        measuring = name
+        send(VPNCommand.measureSpeed, payload: nameData(name))
     }
     func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
     func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }

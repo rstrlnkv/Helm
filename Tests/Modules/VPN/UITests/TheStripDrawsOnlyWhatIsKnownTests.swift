@@ -92,7 +92,8 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     private func mount(_ state: VPNTunnelState, measuring: Bool = false) -> MountedRender {
         let page = ZStack {
             Color(nsColor: .windowBackgroundColor)
-            VPNTunnelSection(state, now: now, measuring: measuring, measure: {})
+            VPNTunnelSection([state], selected: .constant(nil), now: now,
+                             measuring: measuring ? state.name : nil, measure: { _ in })
                 .padding(HelmSpace.s5)
         }
         let render = MountedRender(page, width: 720, height: 220, appearance: .darkAqua)
@@ -454,23 +455,24 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         let transport = LocalTransport()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let vm = VPNViewModel(transport: transport, settings: VPNSettings(store: store))
-        vm.measureSpeed()
-        XCTAssertTrue(vm.measuring, "precondition: the press never started a run")
+        vm.measureSpeed("incy")
+        XCTAssertEqual(vm.measuring, "incy", "precondition: the press never started a run")
 
         // What the engine writes when the tool answered nothing: the state it
         // already had, with `speed` still nil.
         let payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "incy", status: .connected, kind: "IKEv2")],
             autoConnected: [], defaultName: "incy", lastAutomation: nil,
-            facts: tunnel(since: stamped))
+            tunnels: [tunnel(since: stamped)])
         transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
                                    payload: try! JSONEncoder().encode(payload)))
-        for _ in 0..<80 where vm.facts == nil {
+        for _ in 0..<80 where vm.tunnels.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
-        XCTAssertNotNil(vm.facts, "the wire did not deliver: the reading below would be of nothing")
-        XCTAssertNil(vm.facts?.speed, "precondition: this is the run that answered nothing")
-        XCTAssertFalse(vm.measuring, """
+        XCTAssertFalse(vm.tunnels.isEmpty,
+                       "the wire did not deliver: the reading below would be of nothing")
+        XCTAssertNil(vm.tunnels.first?.speed, "precondition: this is the run that answered nothing")
+        XCTAssertNil(vm.measuring, """
             a refused run left the spinner turning: nothing about the state \
             changed, so a rule that watches the figure never fires
             """)

@@ -25,6 +25,13 @@ struct VPNSettingsPage: View {
     /// stored: it is a state of this visit to the page, and a person who left
     /// it expanded three weeks ago is not asking for a screenful of cards now.
     @State private var showAllConnections = false
+    /// Which tunnel the strip is about, by name. **Not stored**, for the reason
+    /// the flag above is not: it is a state of this visit, and somebody who left
+    /// it on a tunnel three weeks ago is not asking for that tunnel now. Nil
+    /// means «the first», which is the one carrying the traffic — and a name
+    /// whose tunnel has dropped means the same, because the list is rewritten
+    /// under this whenever the network moves (`VPNTunnelChoice.chosen`).
+    @State private var selectedTunnel: String?
     /// The per-connection overrides, seeded from the store and written through
     /// on every change — the same shape the rules have, for the same reason.
     @State private var noticeBook: VPNNoticeBook
@@ -142,19 +149,20 @@ struct VPNSettingsPage: View {
                 connectionsAndTitle
             } footer: {
                 // Only when this *is* the last section — see `closingNotes`.
-                if hasConnections, vm.facts == nil { closingNotes }
+                if hasConnections, vm.tunnels.isEmpty { closingNotes }
             }
             // **Only when there is a tunnel to be about.** With nothing up the
             // section is absent rather than empty: a card of dashes is not an
             // empty state, and the page below already says what to do about
             // having no VPN.
-            if let facts = vm.facts {
+            if !vm.tunnels.isEmpty {
                 Section {
                     // The strip draws no card of its own — this row *is* the
                     // section's card. The insets go because the strip pays for
                     // its own padding, so its columns sit at the card's inset
                     // rather than at a row's.
-                    VPNTunnelSection(facts, measuring: vm.measuring) { vm.measureSpeed() }
+                    VPNTunnelSection(vm.tunnels, selected: $selectedTunnel,
+                                     measuring: vm.measuring) { vm.measureSpeed($0) }
                         .padding(HelmSpace.s5)
                         .listRowInsets(EdgeInsets())
                 } header: {

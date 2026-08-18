@@ -911,6 +911,7 @@
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "自隧道建立以来";
 "about 15 s, spends traffic" = "约15秒，消耗流量";
+"Speed is measured on the tunnel that carries the traffic" = "速度是在承载流量的隧道上测量的";
 "Measure speed" = "测量速度";
 "Measure again" = "再次测量";
 "Measuring…" = "测量中…";

@@ -173,7 +173,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.interface, "utun8", """
             the strip is absent on a Mac with a tunnel up: the interface question \
             was asked of something that cannot answer it
@@ -230,7 +230,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
                                                                            with: "utun9")]
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.facts
+        let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.interface, "utun9", """
             the strip drew the interface of a tunnel that is gone — macOS raises \
             the next one on a new utunN, and the counters under that name are \

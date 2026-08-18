@@ -911,6 +911,7 @@
 "Mbit/s" = "Мбит/с";
 "since the tunnel came up" = "с подъёма туннеля";
 "about 15 s, spends traffic" = "около 15 с, потратит трафик";
+"Speed is measured on the tunnel that carries the traffic" = "Скорость измеряется у туннеля, через который идёт трафик";
 "Measure speed" = "Измерить скорость";
 "Measure again" = "Измерить ещё раз";
 "Measuring…" = "Измеряю…";
