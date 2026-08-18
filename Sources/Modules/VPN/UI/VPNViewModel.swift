@@ -24,6 +24,12 @@ import Module_VPN_Engine
     /// somebody presses Connect once, and the engine stops attempting a
     /// `--nc start` it knows cannot work (`VPNSecretBook`).
     @Published private(set) var secretsBehindAPrompt: [String] = []
+    /// The tunnel carrying the default route, and what is known about it. Nil
+    /// when nothing is up — the strip is absent then, rather than empty.
+    @Published private(set) var facts: VPNTunnelState?
+    /// True while a measurement is in flight. Cleared by the state that carries
+    /// its result, so the spinner cannot outlive the run.
+    @Published private(set) var measuring = false
 
     private let transport: EngineTransport
     private let settings: VPNSettings?
@@ -276,6 +282,15 @@ import Module_VPN_Engine
         defaultName = p.defaultName
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
+        facts = p.facts
+        // **The arrival ends the run, not the figure.** Comparing the reading
+        // against the last one is true of neither awkward ending: a run that
+        // answers the same numbers as before would leave the spinner turning
+        // for ever, and a run the port refused — a `-1009`, a tool killed at
+        // its deadline — never touches `speed` at all. The engine writes the
+        // result of every ending and emits, so the arrival is the one signal
+        // that is there whatever happened.
+        measuring = false
         // Stale firings are dropped here rather than downstream. The engine
         // keeps its last one for good and repeats it in every state payload, so
         // the first refresh after launch would otherwise spin the ring for
@@ -333,6 +348,12 @@ import Module_VPN_Engine
             _ = try? await transport.send(EngineCommand(name: command.rawValue,
                                                         payload: payload))
         }
+    }
+    /// Asks for one measurement. It spends real traffic and takes about 15 s,
+    /// which is why nothing calls this but a press.
+    func measureSpeed() {
+        measuring = true
+        send(VPNCommand.measureSpeed)
     }
     func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
     func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }

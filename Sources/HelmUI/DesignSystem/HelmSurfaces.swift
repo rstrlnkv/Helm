@@ -335,6 +335,17 @@ public enum HelmText {
     /// from, one step under body.
     public static let figureFont = Font.system(size: 11, design: .monospaced)
 
+    /// The same instrument voice one step up: the **headline** figure of a
+    /// metric or a tile, rather than one in a row of them. 16 is the scale's
+    /// step above body, and the face is `figureFont`'s for the same reason —
+    /// a number and its unit at one rhythm.
+    ///
+    /// A token because it was spelled twice: the metric strip that rides every
+    /// module page, and VPN's tile strip. Both also cap the line and let it
+    /// shrink, which is why the whole treatment is `helmMetricFigure()` rather
+    /// than this size alone.
+    public static let metricFont = Font.system(size: 16, weight: .medium, design: .monospaced)
+
     // MARK: - The settings type scale
     //
     // **Four sizes, because the window had six.** Counted across the settings
@@ -375,6 +386,18 @@ public extension View {
             // Digits that change in place must not shift the ones beside them:
             // a size in a list is refreshed while the pointer is over it.
             .monospacedDigit()
+    }
+
+    /// A headline figure in a metric or a tile. See `HelmText.metricFont`.
+    ///
+    /// The cap and the floor travel with the face: these figures sit in a
+    /// column that a language widens — «1,2 ГБ» against "1.2 GB" — and one
+    /// that wrapped instead of shrinking would take the tile beside it down
+    /// with it.
+    func helmMetricFigure() -> some View {
+        font(HelmText.metricFont)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 }
 
@@ -600,7 +623,7 @@ public struct HelmMetricStrip: View {
                 }
                 VStack(spacing: HelmSpace.s1) {
                     Text(metric.value)
-                        .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        .helmMetricFigure()
                         // Figures roll rather than cut. The ring already did
                         // this; every other live number in the app did not,
                         // and Keep Awake's is a countdown at 1 Hz.
@@ -612,8 +635,6 @@ public struct HelmMetricStrip: View {
                         // in both, rather than legible in one — see `legible`
                         // for how far, and for what it measures after.
                         .foregroundStyle(metric.tint.map { Self.legible($0, in: colorScheme) } ?? .primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
                     Text(metric.label)
                         // 10, the scale's bottom step. It was 9 — a size on no
                         // step, under a figure that is on one, in the strip

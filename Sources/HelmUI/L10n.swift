@@ -217,6 +217,27 @@ public enum HelmDates {
         cache.relative(language: language).localizedString(for: date, relativeTo: now)
     }
 
+    /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
+    ///
+    /// Beside `relative` rather than in the module that wanted it first: how a
+    /// language writes a length of time is `HelmUI`'s business, the same as how
+    /// it writes a size or a date, and the second module to draw an uptime
+    /// would otherwise write this again with its own idea of which units to
+    /// show. A `DateComponentsFormatter` built with no locale answers in the
+    /// *system's* language, which is the defect every member of this enum is
+    /// keyed by language to avoid.
+    ///
+    /// Two unit sets, because one cannot serve both ends: hours and minutes
+    /// above the hour is what somebody wants from a tunnel that has been up all
+    /// morning, and minutes and seconds is the only thing that moves in the
+    /// first minute of one.
+    public static func span(_ seconds: TimeInterval,
+                            language: String = AppLanguage.current.rawValue) -> String {
+        let seconds = max(0, seconds)
+        return cache.span(language: language, hours: seconds >= 3600)
+            .string(from: seconds) ?? ""
+    }
+
     /// A log line's clock, to the second, in the app's own language-independent
     /// form: the file writes `HH:mm:ss.SSS` and the live view must agree with it
     /// digit for digit, or the same event reads as two.
@@ -306,6 +327,7 @@ public enum HelmDates {
         private var absolutes: [String: DateFormatter] = [:]
         private var days: [String: DateFormatter] = [:]
         private var clocks: [String: DateFormatter] = [:]
+        private var spans: [String: DateComponentsFormatter] = [:]
 
         /// Reads the stored form and nothing else: fixed format, fixed locale.
         /// `en_US_POSIX` because a fixed-format formatter on any other locale
@@ -340,6 +362,30 @@ public enum HelmDates {
             formatter.timeStyle = .short
             formatter.locale = Locale(identifier: language)
             clocks[language] = formatter
+            return formatter
+        }
+
+        /// Keyed by the language *and* the unit set: two formatters per
+        /// language, built once each, since a `DateComponentsFormatter` is not
+        /// safe to reconfigure under a reader.
+        func span(language: String, hours: Bool) -> DateComponentsFormatter {
+            let key = "\(language)|\(hours)"
+            lock.lock(); defer { lock.unlock() }
+            if let existing = spans[key] { return existing }
+            let formatter = DateComponentsFormatter()
+            // The locale rides on the calendar: `DateComponentsFormatter` has
+            // no locale of its own, and one with no calendar answers in the
+            // system's language.
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.locale = Locale(identifier: language)
+            formatter.calendar = calendar
+            formatter.unitsStyle = .abbreviated
+            formatter.allowedUnits = hours ? [.hour, .minute] : [.minute, .second]
+            // `dropLeading`, never `dropAll`: a tunnel up for four seconds has
+            // no minutes to show and must still say «4 с» rather than nothing
+            // at all, which is what dropping every zero leaves.
+            formatter.zeroFormattingBehavior = .dropLeading
+            spans[key] = formatter
             return formatter
         }
 

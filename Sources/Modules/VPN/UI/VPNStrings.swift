@@ -546,6 +546,18 @@ enum VPNStr {
     /// up front — a real transfer, not a ping — because a person reads this
     /// before deciding whether the number is worth the megabytes.
     static var speedNotYet: String { L("about 15 s, spends traffic") }
+    /// Under the figure once one exists: how old it is, so nobody reads a
+    /// three-minute-old number as the link's speed now. Interpolated, so it
+    /// keeps its table here — the lookup would happen after the substitution.
+    static func speedMeasured(_ ago: String,
+                              language: AppLanguage = AppLanguage.current) -> String {
+        L("measured \(ago)",
+          [.ru: "измерено \(ago)", .es: "medido \(ago)", .fr: "mesuré \(ago)",
+           .de: "gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于\(ago)",
+           .pt: "medido \(ago)"],
+          language: language)
+    }
+
     /// The button's first press.
     static var measureSpeed: String { L("Measure speed") }
     /// The same button once a reading already sits in the tile — the label

@@ -134,6 +134,22 @@ struct VPNSettingsPage: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            // **Only when there is a tunnel to be about.** With nothing up the
+            // section is absent rather than empty: a card of dashes is not an
+            // empty state, and the page below already says what to do about
+            // having no VPN.
+            if let facts = vm.facts {
+                Section {
+                    // The strip draws no card of its own — this row *is* the
+                    // section's card, and the tiles are wells inside it. The
+                    // insets go because the strip pays for its own padding: it
+                    // opens with a heading, which sits at the card's own inset
+                    // rather than at a row's.
+                    VPNTunnelSection(facts, measuring: vm.measuring) { vm.measureSpeed() }
+                        .padding(HelmSpace.s5)
+                        .listRowInsets(EdgeInsets())
+                }
+            }
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
