@@ -245,4 +245,52 @@ public enum SSHConfigFile {
             return field.indent + field.keyword + field.separator + field.value + field.trailing
         }
     }
+
+    // MARK: - Editing
+
+    /// Rewrites one field of one host block, and answers whether it did.
+    ///
+    /// **The value is checked here and nowhere else**, which is why the stored
+    /// properties are `public internal(set)` and a caller outside the engine
+    /// cannot assign one. A directive's value is a line fragment, and three
+    /// kinds of fragment stop being one:
+    ///
+    /// - **A line break** makes it two directives. `IdentityFile ~/.ssh/id` and
+    ///   a second line reading `ProxyCommand nc somewhere 22` is a command
+    ///   `ssh` runs on the person's behalf, written by whoever typed into a
+    ///   text field. This is the `/etc/hosts` hazard one file over, arriving
+    ///   through the door marked «it is only your own file».
+    /// - **A `#`** opens a comment, so everything after it on that line —
+    ///   including the comment the person had already written there — stops
+    ///   being read.
+    /// - **Nothing at all.** `ssh` treats a keyword with no argument as a parse
+    ///   error and stops reading the file at that line, so an empty value does
+    ///   not clear a setting: it silently drops every block below it.
+    ///
+    /// Adding a directive the block does not have is a different act — it has a
+    /// place in the file to argue about — and this refuses it rather than
+    /// guessing where a new line goes.
+    @discardableResult
+    public static func set(_ value: String, of name: Field.Name, ofHost host: Int,
+                           in document: inout Document) -> Bool {
+        guard isWritable(value) else { return false }
+        guard let position = document.lines.firstIndex(where: { line in
+            if case .field(let field) = line, field.name == name, field.host == host {
+                return true
+            }
+            return false
+        }) else { return false }
+        guard case .field(var field) = document.lines[position] else { return false }
+        field.value = value
+        document.lines[position] = .field(field)
+        return true
+    }
+
+    /// What may become a value. Internal rather than private so the refusal has
+    /// a test of its own that does not have to build a document to ask.
+    static func isWritable(_ value: String) -> Bool {
+        guard !value.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        guard !value.contains("#") else { return false }
+        return !value.contains(where: \.isNewline)
+    }
 }
