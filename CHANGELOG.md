@@ -5,6 +5,23 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.11] — 2026-08-18
+
+### Fixed
+- **The VPN page's tunnel strip appeared on no Mac at all.** It asks which
+  interface a configuration is on, and it asked the dynamic store by the
+  identifier `scutil --nc list` prints — two different identifier spaces for
+  anything built on NetworkExtension: measured on the owner's Mac, the tool
+  named `02196763-…` for a connected tunnel and the store held that tunnel under
+  `B8689BB0-…`, so the lookup answered nothing, the readings were never built,
+  and the page drew exactly what it drew before. The interface is asked of
+  `scutil --nc status "<name>"` now — by the name the module already has, through
+  the runner it already speaks the tool with. Its answer carries seven
+  `InterfaceName : en0` lines inside excluded routes before the tunnel's own, so
+  the reading takes the shallowest indentation rather than the first match: a
+  first-match parser reports the wrong interface and the page then says traffic
+  is leaving the tunnel on a Mac where it is not.
+
 ## [0.10.0-dev.10] — 2026-08-18
 
 > `dev.9` was built and installed at the owner's at 15:23 (build 1072); this
