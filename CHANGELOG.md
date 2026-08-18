@@ -5,7 +5,7 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
-## [0.10.0-dev.10] — 2026-08-16
+## [0.10.0-dev.10] — 2026-08-18
 
 > `dev.9` was built and installed at the owner's at 15:23 (build 1072); this
 > section covers what landed on main after it. Two entries below were first
