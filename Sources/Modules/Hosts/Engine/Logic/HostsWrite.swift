@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The one command this module ever asks root to run.
 ///
@@ -58,6 +59,54 @@ public enum HostsWrite {
 
     private static let alphabet = Set(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+
+    /// Whether the sentence carrying `text` would survive its own `execve`.
+    ///
+    /// **The ceiling is accepted and made legible, not lifted.** `do shell
+    /// script` execs `/bin/sh -c <the whole string>`, `ARG_MAX` is 1 048 576 on
+    /// macOS, base64 costs 4 bytes for every 3 — and the count guard spells the
+    /// payload *twice*, checked then written. That leaves ≈390 KB of hosts
+    /// file. Ad-blocking hosts files run 1–4 MB and cannot be written at all.
+    ///
+    /// Exceeding it is *safe*: the exec itself refuses, nothing runs, the file
+    /// is untouched. What was missing was words, and the caller asks this
+    /// **before the encode** so that «too large» never arrives as the `nil`
+    /// from `command(base64:)`, which already means «not base64». Two different
+    /// refusals must not arrive as one outcome.
+    ///
+    /// The arithmetic lives here because the ceiling is a fact about the
+    /// *sentence*, and only this file knows the sentence's shape — a caller
+    /// computing it would be re-deriving the command.
+    static func fits(_ text: String) -> Bool {
+        let bytes = text.utf8.count
+        // Base64 is 4 characters per 3 bytes, rounded up to a whole group.
+        let payload = 4 * ((bytes + 2) / 3)
+        return sentenceOverhead + 2 * payload + String(bytes).utf8.count <= budget
+    }
+
+    /// Everything in the AppleScript but the payload and the count — measured
+    /// off the real sentence rather than counted by hand, so that editing the
+    /// command or the wrapper moves the ceiling with it.
+    ///
+    /// `.max` if the sample is somehow refused, which makes `fits` answer false
+    /// for everything: a ceiling that cannot be computed refuses in the safe
+    /// direction, the way a broken seal does.
+    private static let sentenceOverhead: Int = {
+        let sample = "QUJD"  // three bytes, so the count substitutes one digit
+        guard let shell = command(base64: sample) else { return .max }
+        let script = AppleScript.administratorShellScript(shell)
+        return script.utf8.count - 2 * sample.utf8.count - 1
+    }()
+
+    /// `ARG_MAX` less room for the environment, which `execve` weighs beside
+    /// the arguments. Asked of the kernel rather than copied from a man page —
+    /// it is a fact about the machine, and a number in the source would be a
+    /// claim nothing keeps true.
+    ///
+    /// The headroom is generous on purpose. Being too cautious costs a person
+    /// nothing but a sentence they can read; being too bold costs an `E2BIG` at
+    /// the dialog, after they have typed their password.
+    private static let budget = Int(sysconf(_SC_ARG_MAX)) - 64 * 1024
 
     /// The file's bytes as base64, for `command(base64:)`.
     public static func encode(_ text: String) -> String {

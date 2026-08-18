@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Hosts_Engine
 
 /// What root is asked to do, and what may reach the sentence that asks.
@@ -98,5 +99,72 @@ final class HostsWriteCommandTests: XCTestCase {
     func testTheOrdinaryPayloadMeetsItsOwnGuard() throws {
         let command = try XCTUnwrap(HostsWrite.command(base64: "abcXYZ0189+/=="))
         XCTAssertEqual(expectedCount(in: command), 9)
+    }
+
+    // MARK: - The ceiling
+
+    /// The kernel's own answer, asked here rather than copied from the source
+    /// under test — the two sides of this check must not be one constant.
+    private var argMax: Int { Int(sysconf(_SC_ARG_MAX)) }
+
+    /// The largest file `fits` accepts, found by bisection rather than by
+    /// re-deriving the formula the subject uses.
+    private func largestFittingSize() -> Int {
+        var low = 0, high = 4 * argMax
+        XCTAssertTrue(HostsWrite.fits(text(of: low)))
+        XCTAssertFalse(HostsWrite.fits(text(of: high)))
+        while high - low > 1 {
+            let middle = (low + high) / 2
+            if HostsWrite.fits(text(of: middle)) { low = middle } else { high = middle }
+        }
+        return low
+    }
+
+    private func text(of bytes: Int) -> String { String(repeating: "a", count: bytes) }
+
+    func testAnOrdinaryHostsFileFits() {
+        XCTAssertTrue(HostsWrite.fits("127.0.0.1\tlocalhost\n::1\tlocalhost\n"))
+        XCTAssertTrue(HostsWrite.fits(""), "an empty file is not a large one")
+    }
+
+    /// Ad-blocking hosts files run 1–4 MB. They cannot be written at all, and
+    /// this is where that is said rather than discovered at the exec.
+    func testAnAdBlockingHostsFileDoesNotFit() {
+        XCTAssertFalse(HostsWrite.fits(String(repeating: "0.0.0.0\tads.example.com\n",
+                                              count: 50_000)))
+    }
+
+    /// **The promise, measured against the real sentence.** Whatever `fits`
+    /// accepts, `/bin/sh -c` must be able to carry — so the AppleScript this
+    /// module actually builds for the largest accepted file is weighed against
+    /// the kernel's `ARG_MAX`. An arithmetic that spelled the payload once
+    /// instead of twice fails here and nowhere else.
+    func testWhatFitsIsSomethingTheExecCanCarry() throws {
+        let biggest = text(of: largestFittingSize())
+        let shell = try XCTUnwrap(HostsWrite.command(base64: HostsWrite.encode(biggest)))
+        let script = AppleScript.administratorShellScript(shell)
+        XCTAssertLessThanOrEqual(script.utf8.count, argMax,
+                                 "a file this module says it can write cannot be exec'd")
+    }
+
+    /// The other side, without which a `fits` that always answered false would
+    /// pass the one above. The ceiling is ≈390 KB because the count guard
+    /// spells the payload twice; it must not have quietly become 4 KB.
+    func testTheCeilingIsNotFarBelowWhatTheExecAllows() throws {
+        let biggest = text(of: largestFittingSize())
+        let shell = try XCTUnwrap(HostsWrite.command(base64: HostsWrite.encode(biggest)))
+        let script = AppleScript.administratorShellScript(shell)
+        XCTAssertGreaterThan(script.utf8.count, argMax * 9 / 10,
+                             "the ceiling gives away more of ARG_MAX than the environment needs")
+    }
+
+    /// A refusal from the ceiling and a refusal from the alphabet must not be
+    /// the same answer: the engine reads them as `.tooLarge` and `.failed`, and
+    /// somebody with a 2 MB file is told which one happened.
+    func testTheCeilingIsAskedOfTheTextAndTheAlphabetOfThePayload() {
+        let overSized = text(of: largestFittingSize() + 1)
+        XCTAssertFalse(HostsWrite.fits(overSized))
+        XCTAssertNotNil(HostsWrite.command(base64: HostsWrite.encode(overSized)),
+                        "the gate refused it too, so the two refusals cannot be told apart")
     }
 }
