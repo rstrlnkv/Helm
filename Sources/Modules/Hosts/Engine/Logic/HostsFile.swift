@@ -330,6 +330,187 @@ public enum HostsFile {
             .contains { $0.count > 1 && $0.hasPrefix("0") }
     }
 
+    // MARK: - Editing
+    //
+    // Every editor is addressed by the *entry's* position, not the line's: the
+    // table shows entries and the document holds comments between them.
+    // Rewriting the whole document on each edit was rejected — it is exactly
+    // the reformat this type exists to prevent.
+    //
+    // **This is where the file's grammar is gated, and there is no other
+    // gate.** The privileged write carries the file as base64, and that
+    // alphabet is about the shell sentence, not about what the sentence says:
+    // a newline inside an edited name produces a perfectly well-formed hosts
+    // file with a second, live mapping in it that nobody typed, and it lands
+    // in `/etc/hosts` with administrator rights. So an editor that cannot
+    // write what it was handed **refuses** — it says why and leaves the
+    // document alone. Never a quiet repair: a field editor that strips the
+    // newline has changed the mapping a person confirmed without telling them,
+    // which is the same defect in tidier clothes.
+
+    /// What an editor did.
+    ///
+    /// Deliberately not `@discardableResult`: an editor can decline, and a
+    /// caller that drops the answer has swallowed somebody's edit and shown
+    /// them nothing.
+    public enum Edit: Equatable, Sendable {
+        case applied
+        case refused(Refusal)
+    }
+
+    /// Why an editor left the document alone.
+    ///
+    /// Carries no text. A refusal is the sort of thing a caller logs, and the
+    /// log carries no names — the caller still holds what was typed and can
+    /// put it in front of the person who typed it.
+    public enum Refusal: Equatable, Sendable {
+        /// No entry sits at that position. Asked before anything else: a row
+        /// that is not there cannot have a bad address.
+        case noSuchEntry
+        /// `isWritableAddress` refuses it — including every address carrying a
+        /// space or a newline, which are two mappings rather than one.
+        case unwritableAddress
+        /// A mapping with no names is a line that stays in the file and leaves
+        /// the table: a mapping nobody can reach to switch off.
+        case noNames
+        /// A name that would not read back as itself.
+        case unwritableName
+    }
+
+    private static func lineIndex(ofEntry entry: Int, in document: Document) -> Int? {
+        var seen = 0
+        for (i, line) in document.lines.enumerated() {
+            if case .entry = line {
+                if seen == entry { return i }
+                seen += 1
+            }
+        }
+        return nil
+    }
+
+    /// Finds the entry, offers it to `change`, and writes it back **only** if
+    /// `change` accepted. One place decides that a refusal touches nothing, so
+    /// no editor can half-apply one on its own.
+    private static func mutate(entry: Int, in document: inout Document,
+                               _ change: (inout Entry) -> Edit) -> Edit {
+        guard let i = lineIndex(ofEntry: entry, in: document),
+              case .entry(var candidate) = document.lines[i] else { return .refused(.noSuchEntry) }
+        let outcome = change(&candidate)
+        guard outcome == .applied else { return outcome }
+        document.lines[i] = .entry(candidate)
+        return outcome
+    }
+
+    /// Whether Helm may write this name — the field-editor question for the
+    /// half of the line `isWritableAddress` does not answer.
+    ///
+    /// A name is a field, and this grammar ends a field four ways: whitespace,
+    /// a `#`, the end of the line, and — for every C program that reads the
+    /// file, this machine's resolver included — a NUL. A name carrying any of
+    /// them is written as one thing and read back as another: `build local` as
+    /// two names, `build#local` as `build` and a comment, and a newline as a
+    /// second mapping, live, that nobody asked for.
+    ///
+    /// A line ending answers both of the first two clauses — it is whitespace
+    /// and a control character — so narrowing either one alone leaves the
+    /// refusal standing. Worth knowing before planting a mutant here: two were
+    /// inert for exactly that reason on 2026-08-18.
+    private static func isWritableName(_ name: String) -> Bool {
+        guard !name.isEmpty else { return false }
+        return !name.contains { character in
+            character.isWhitespace || character == "#"
+                || character.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+        }
+    }
+
+    private static func refusal(forNames names: [String]) -> Refusal? {
+        guard !names.isEmpty else { return .noNames }
+        return names.allSatisfy(isWritableName) ? nil : .unwritableName
+    }
+
+    /// The **strict** predicate, not the generous one. `isAddress` decides
+    /// whether a line somebody else wrote is a row, and is generous on purpose
+    /// — a mapping Helm will not show is a mapping nobody can switch off.
+    /// This decides what Helm itself may put in the file.
+    ///
+    /// Every editor that takes an address asks this one question, so `append`
+    /// and `setAddress` cannot come to differ about what an address is.
+    private static func refusal(forAddress address: String) -> Refusal? {
+        isWritableAddress(address) ? nil : .unwritableAddress
+    }
+
+    /// **One field, one fact.** `enabled` is the whole of whether a line is
+    /// live: `render` asks it through `Entry.mark`, and *how* a disabled line
+    /// is spelled lives separately in `disabledMark`, so a file that wrote
+    /// `#\t10.0.0.6` gets its own spelling back and an entry switched off by a
+    /// person gets `# `, the way macOS writes its own.
+    ///
+    /// So this is an assignment and nothing else. It does not slice `leading`,
+    /// which is indentation and would be somebody's tabs.
+    public static func setEnabled(_ enabled: Bool, at entry: Int, in document: inout Document) -> Edit {
+        mutate(entry: entry, in: &document) { $0.enabled = enabled; return .applied }
+    }
+
+    public static func setAddress(_ address: String, at entry: Int, in document: inout Document) -> Edit {
+        mutate(entry: entry, in: &document) { line in
+            if let why = refusal(forAddress: address) { return .refused(why) }
+            line.address = address
+            return .applied
+        }
+    }
+
+    public static func setNames(_ names: [String], at entry: Int, in document: inout Document) -> Edit {
+        mutate(entry: entry, in: &document) { line in
+            if let why = refusal(forNames: names) { return .refused(why) }
+            line.names = names
+            return .applied
+        }
+    }
+
+    public static func remove(at entry: Int, in document: inout Document) -> Edit {
+        guard let i = lineIndex(ofEntry: entry, in: document) else { return .refused(.noSuchEntry) }
+        document.lines.remove(at: i)
+        reindex(&document)
+        return .applied
+    }
+
+    /// A new entry goes at the end, with a tab, which is how macOS writes its
+    /// own. If the file did not end in a newline, one is added first — the
+    /// alternative is a new entry glued to the last line, which is a line
+    /// neither of them.
+    ///
+    /// Both gates run before anything is touched, so a refused append leaves
+    /// even that newline unwritten.
+    public static func append(address: String, names: [String], in document: inout Document) -> Edit {
+        if let why = refusal(forAddress: address) ?? refusal(forNames: names) { return .refused(why) }
+        if case .verbatim(let text)? = document.lines.last, !text.hasSuffix("\n") {
+            document.lines[document.lines.count - 1] = .verbatim(text + "\n")
+        } else if case .entry(var last)? = document.lines.last, last.ending.isEmpty {
+            last.ending = "\n"
+            document.lines[document.lines.count - 1] = .entry(last)
+        }
+        // The public initializer takes only what a caller may decide — `index`,
+        // `address`, `names`, `trailing`, `enabled`. Spacing, separators and
+        // the disabled spelling belong to the parser.
+        document.lines.append(.entry(Entry(index: 0, address: address, names: names)))
+        reindex(&document)
+        return .applied
+    }
+
+    /// `index` is the row's id, so an insert or a remove that does not
+    /// renumber leaves two rows answering to one id — and a `ForEach` then
+    /// rebuilds somebody else's row, taking the caret with it.
+    private static func reindex(_ document: inout Document) {
+        var next = 0
+        for (i, line) in document.lines.enumerated() {
+            if case .entry(var entry) = line {
+                entry.index = next
+                document.lines[i] = .entry(entry)
+                next += 1
+            }
+        }
+    }
+
     // MARK: - Writing
 
     public static func render(_ document: Document) -> String {
