@@ -69,8 +69,17 @@ final class TheGreenIsOnTheOneThatIsUpTests: XCTestCase {
         // test that passes for the wrong reason half the year. Both are far
         // greener than they are red or blue; the accent is blue-dominant and
         // `HelmText.quiet` is neither.
+        // **Every row, and only the button's columns.**
+        //
+        // The band used to be 30…110, which was the card for as long as the
+        // connections were the first thing on the page. They are not — the hero
+        // stands above them — and a typed band then measures whatever the page
+        // has moved into it: this one answered 0 green pixels and reported the
+        // connected card as drawing no signal colour at all. What separates the
+        // button from the *other* green mark on the card is the column it is in,
+        // not the row: the dot sits 300 pt to its left.
         var count = 0
-        for y in 30..<110 {
+        for y in 0..<(rep.pixelsHigh / 2) {
             for x in 330..<430 {
                 let p = y * 2 * row + x * 2 * 4
                 let r = Int(data[p]), g = Int(data[p + 1]), b = Int(data[p + 2])

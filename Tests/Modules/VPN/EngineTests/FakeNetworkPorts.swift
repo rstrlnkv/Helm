@@ -66,11 +66,39 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     private var _answer: String?
     private var _hangs = false
     private var _asks = 0
+    private var _queued: [String?] = []
+    private var _holdsFirst = false
+    private var _released = false
 
     var answer: String? {
         get { lock.lock(); defer { lock.unlock() }; return _answer }
         set { lock.lock(); _answer = newValue; lock.unlock() }
     }
+    /// Answers handed out in order, one per call, before `answer` is used.
+    ///
+    /// **Two requests do not have to say the same thing**, and the real ones
+    /// cannot be relied on to: a tunnel coming up while a request is out is
+    /// asked about a different exit from the one already in flight, which is
+    /// the whole reason the engine has to tell the two answers apart. With one
+    /// fixed answer that state is unrepresentable, and any test of it passes
+    /// against an engine that keeps the wrong one (CLAUDE.md § A fake simpler
+    /// than the thing it stands for).
+    var queued: [String?] {
+        get { lock.lock(); defer { lock.unlock() }; return _queued }
+        set { lock.lock(); _queued = newValue; lock.unlock() }
+    }
+    /// The **first** call waits for `release()` while later ones answer at once.
+    ///
+    /// Different from `hangs`, which stops every call for ever: this is a
+    /// request that is still out when the next one is made — the eight seconds
+    /// the real port may take, with a tunnel coming up inside them.
+    var holdsFirstUntilReleased: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _holdsFirst }
+        set { lock.lock(); _holdsFirst = newValue; lock.unlock() }
+    }
+
+    /// Lets the held first call finish.
+    func release() { lock.lock(); _released = true; lock.unlock() }
     /// The service that accepted the connection and never replied. Without this
     /// the fake finishes before the caller can observe that it was waiting.
     var hangs: Bool {
@@ -91,13 +119,23 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
         // taken on one side of a field guards nothing).
         let asked = enter()
         if asked.hangs { try? await Task.sleep(nanoseconds: .max) }
+        // Polled rather than parked on a semaphore: this is an `async` function
+        // and blocking its thread would hold a cooperative-pool thread the way
+        // the tool this stands in for must never be allowed to.
+        while asked.holds, !isReleased { try? await Task.sleep(nanoseconds: 1_000_000) }
         return asked.answer
     }
 
-    private func enter() -> (hangs: Bool, answer: String?) {
+    private var isReleased: Bool {
+        lock.lock(); defer { lock.unlock() }; return _released
+    }
+
+    private func enter() -> (hangs: Bool, holds: Bool, answer: String?) {
         lock.lock(); defer { lock.unlock() }
         _asks += 1
-        return (_hangs, _answer)
+        let holds = _holdsFirst && _asks == 1
+        let answer = _queued.isEmpty ? _answer : _queued.removeFirst()
+        return (_hangs, holds, answer)
     }
 }
 

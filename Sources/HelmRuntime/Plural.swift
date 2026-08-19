@@ -25,7 +25,8 @@ public enum Plural {
         }
     }
 
-    /// "3 записи", "1 entry" — the lines of `/etc/hosts` the panel tile counts.
+    /// "3 записи", "1 entry" — the lines of `/etc/hosts`, kept against the day
+    /// that file has an editor on the Hosts page again.
     ///
     /// An inline table rather than eight `.strings` keys, for the reason every
     /// counted noun in this file has one: the interpolation runs before the
@@ -41,36 +42,6 @@ public enum Plural {
         case "ja": return "\(digits)件"
         case "zh": return "\(digits)条"
         default: return digits + " " + (count == 1 ? "entry" : "entries")
-        }
-    }
-
-    /// "3 хоста", "1 host" — the trusted hosts the tile counts.
-    public static func hosts(_ count: Int, language: String) -> String {
-        let digits = HelmBytes.grouped(count, language: language)
-        switch language {
-        case "ru": return digits + " " + russian(count, "хост", "хоста", "хостов")
-        case "es": return digits + " " + (count == 1 ? "host" : "hosts")
-        case "fr": return digits + " " + (count <= 1 ? "hôte" : "hôtes")
-        case "de": return digits + " " + (count == 1 ? "Host" : "Hosts")
-        case "pt": return digits + " " + (count == 1 ? "host" : "hosts")
-        case "ja": return "\(digits)台のホスト"
-        case "zh": return "\(digits)台主机"
-        default: return digits + " " + (count == 1 ? "host" : "hosts")
-        }
-    }
-
-    /// "3 ключа", "1 key" — what the tile says about `~/.ssh`.
-    public static func keys(_ count: Int, language: String) -> String {
-        let digits = HelmBytes.grouped(count, language: language)
-        switch language {
-        case "ru": return digits + " " + russian(count, "ключ", "ключа", "ключей")
-        case "es": return digits + " " + (count == 1 ? "clave" : "claves")
-        case "fr": return digits + " " + (count <= 1 ? "clé" : "clés")
-        case "de": return digits + " " + (count == 1 ? "Schlüssel" : "Schlüssel")
-        case "pt": return digits + " " + (count == 1 ? "chave" : "chaves")
-        case "ja": return "\(digits)個の鍵"
-        case "zh": return "\(digits)个密钥"
-        default: return digits + " " + (count == 1 ? "key" : "keys")
         }
     }
 

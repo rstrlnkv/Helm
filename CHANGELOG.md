@@ -5,6 +5,212 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.11.0-dev.1] — 2026-08-19
+
+> The version number is written here; cutting the release is a separate step,
+> and the ordinal is the one to check first if this section is still sitting
+> above an uncut `0.10.0-dev.13`.
+
+### Changed
+- **Hosts & Keys is a utility, so the panel lists it and does not draw it.**
+  `HostsDescriptor.menuBar` answers `.utility`; `HostsPanelTile` is gone, and
+  with it `Plural.hosts`, `Plural.keys` and `HostsStr.agentHolds`, which had no
+  other reader. The tile shipped in `0.10.0` and was three counts with nothing
+  to press, which is the shape `MenuBarContribution.isUtility` exists to name —
+  a widget's worth of the panel's glass spent saying «open Settings». The
+  reason it carried no control stands and is why none is coming back: a hosts
+  toggle in the panel is a macOS password dialog raised from the menu bar, and
+  a password dialog needs a gesture that asked for it.
+
+- **The tunnel is the first thing on the VPN page, and it was the last.**
+  `VPNTunnelSection` is `VPNTunnelHero`, riding on the first section's header
+  with `.helmSettingsColumn()` — `KeepAwakeSettingsPage.sessionHero`'s
+  construction, for the same reason: a grouped `Form` draws a section's header
+  outside its card, and a hero is not a row. The verdict is the headline at
+  26 pt with the country on a line of its own under it, then the segments, the
+  four columns and the button. What a person opens this page to find out — is my
+  traffic really in the tunnel, and where does it come out — was a 13 pt line at
+  the bottom of the page's last section, under a grid that hides connections
+  after six.
+
+  **The country is the country's own name and nothing else.** It was drawn
+  «leaving from the Netherlands» for one commit, and Russian read «выход из
+  Нидерланды»: the preposition governs the genitive and
+  `Locale.localizedString(forRegionCode:)` answers the nominative. Every
+  inflecting language of the eight has that fault and none of them can be fixed
+  from a region code — which is why `trafficThroughTunnel(country:)` had put the
+  name after a dash. A bare name declines nowhere.
+
+  `VPNTunnelStrip.Place` is the second line as a value of three cases, because
+  «no country» is two states that must not be drawn alike: in the tunnel with
+  the exit unanswered, which is worth a sentence, against a verdict that is not
+  about an exit at all, where a line saying the country is unknown answers a
+  question nobody asked. And the slot answers with nothing up — the section used
+  to be absent, which is right for a block low on a page and wrong for the first
+  one on it.
+
+  Guards: `TheHeroStandsAtTheTopOfThePageTests` photographs the page and fails
+  if the hero is not above the connection cards, in both states.
+
+- **The hero takes `KeepAwakeHero`'s shape, and the shape was measured rather
+  than remembered.** Rendered and looked at first, because the name misleads:
+  the figure on that page is a *sentence* at 40 pt light, centred, in
+  `HelmText.quiet`, with a 13 pt caption and a centred row of capsule verbs
+  under it — and no glyph. So the verdict takes the 40 pt slot, the country and
+  the exclusions join into one caption, the segments and the measure button
+  share one capsule row, and the four readings sit in a well with full-height
+  hairlines between them. The empty state is the argument for taking the shape
+  whole: «no tunnel is up» is this page's «the Mac sleeps as usual», in the same
+  slot at the same size.
+
+  The mark stays, against the model. `KeepAwakeHero` can do without one because
+  none of its states is alarming; this block exists for the state that is, and
+  «traffic is not going through the tunnel» carried by colour alone is said too
+  quietly.
+
+  **The readings are four cards** on `HelmSurface.wellFill` at
+  `HelmRadius.card` — the connection cards' own surface, so the page is one card
+  system from top to bottom. They were one well with hairlines between them
+  first; both were drawn at full size and the owner chose the cards. The trade
+  is recorded rather than argued: a well says «four readings of one tunnel»,
+  which is the truer sentence, and four cards say «four independent things».
+
+  Three sizes for one thought became one: the country was 16 pt, the exclusions
+  11, under a 22 pt heading — two of the page's five measured heights.
+  `VPNTunnelSwitcherRow` now contributes its capsules to the row around it
+  instead of wrapping them itself, because a wrapping row inside a wrapping row
+  lays its children out against the wrong width.
+
+- **A probe that counts columns has to be told what the background is.**
+  `TheStripDrawsOnlyWhatIsKnownTests` counted clusters of ink against the pane,
+  which was right while the columns sat on bare page. The well made every pixel
+  of those rows a departure, the whole strip counted as one cluster, and a
+  four-column drawing measured 3 — the probe reporting the page as broken rather
+  than the page being broken. It reads the modal colour of each row now, so one
+  probe answers for the page and for the well alike; the mutation that drops a
+  column still fails it.
+
+- **A single tunnel gets a segment too.** The row was hidden below two, on the
+  reasoning that a control offering one choice is noise — true of a control, and
+  this one is also a label: it names the tunnel every figure below is about and
+  marks whether that tunnel carries the traffic. Hidden at one, the switching was
+  invisible to everybody who had never had two tunnels up at once, and was
+  reported as missing rather than as unnecessary.
+
+- **The price of a measurement is quoted once.** `speedNotYet` — fifteen seconds
+  and some traffic — was the speed column's note *and* is now beside the button
+  in the hero, so it stood on the screen twice 40 pt apart and wrapped that
+  column to two lines against its three neighbours' one. It belongs beside the
+  thing it is paid for.
+
+### Fixed
+- **Starting a tool could kill the app outright, and the guard around it could
+  not have worked.** `HelmProcess.runData` wrapped its launch in
+  `do { try process.run() } catch { return (-1, Data()) }` — which reads like a
+  guard and is not one for this class of refusal: `NSTask` raises an
+  Objective-C exception on some launch paths, and such an exception has nothing
+  to land on in a Swift frame, so the runtime reaches `std::terminate` and the
+  process aborts. A shipped build died with SIGABRT inside
+  `-[NSConcreteTask launchWithDictionary:error:]`.
+
+  Measured here on macOS 27 before anything was written: a NUL byte in an
+  argument or in an environment value raises, while a missing file, a bad
+  working directory, `EMFILE`, `EAGAIN` and `E2BIG` all come back as an
+  `NSError` the Swift call already handled. The crash in the field came from a
+  third path — the report names an offset, not a cause — which is the argument
+  against checking the inputs we know about: the throwing paths are neither
+  enumerable nor rare enough for that.
+
+  So the `@try` goes where it has to be. `HelmLaunch` is the package's first
+  and only Objective-C target, and it exists for one call: it takes the
+  `NSTask` and runs `-launchAndReturnError:` inside `@try/@catch`, with **no
+  Swift frame between the raise and the handler** — an ObjC exception unwinding
+  through Swift frames is not something Swift promises to survive, which rules
+  out the usual shape of passing a block in from Swift. The error carries the
+  exception's *name* and nothing else, because a reason string holds whatever
+  `NSTask` was given and this log carries no names.
+
+  A refusal is logged rather than swallowed: `-1` was already the answer for a
+  failed spawn and stays it, but a launch refused for Helm's own arguments is a
+  defect in Helm and the log is the only place it could be seen.
+
+  `AStartedToolCannotKillTheAppTests` holds it, and its own comment records what
+  it cannot show: XCTest installs an Objective-C exception handler around every
+  test case, so inside the harness the raise is caught by the harness. The
+  evidence for the abort is a standalone binary and the crash report.
+
+- **No screen can have twenty tools out at once.** `HelmProcess.launchCeiling`
+  is eight, held by a semaphore around the whole run. Nothing bounded this, and
+  nothing in the app had asked to — the bound existed because no screen had ever
+  started more than a few. Homebrew's search field put every press of Return on
+  its own unbounded `Task`, and one press is two `brew search` runs of about
+  nine seconds followed by a `brew desc` per kind: the crash report shows ten
+  threads inside one `brew` call, nine more parked on a pipe, and the
+  twenty-first launch is the one that raised. A caller may still ask for more
+  than eight; what it gets is a queue, and
+  `NoScreenCanHaveTwentyToolsOutTests` proves both halves — the cap holds under
+  twice its own number, and nothing asked for is dropped.
+
+- **A Homebrew search that has been typed over stops drawing itself.**
+  `HomebrewViewModel` takes the `LatestRequest` that Duplicates and Leftovers
+  already had, so an older answer is dropped rather than landing on a newer one
+  — the page used to show whichever `brew` finished last — and the abandoned
+  search stops paying for its descriptions. The page holds its search task and
+  cancels the previous one, which is the smallest of the three: cancelling does
+  not stop the tool, and nothing there pretends it does.
+
+- **The drop notice fired on a tunnel that was back three seconds later.** It is
+  this module's only interrupting signal, and its own comment says why — «the
+  person is now sending everything in clear having last been told they were
+  behind a tunnel». It was fired on the first `scutil --nc list` read that showed
+  a watched tunnel not up, and a NetworkExtension tunnel re-handshaking on a
+  Wi-Fi change or a wake does exactly that. Measured in the owner's log against
+  the tool in the same breath: `automatic connection dropped` at 14:57:19,
+  `LastStatusChangeTime : 14:57:22`. Twice in the two days of log there was.
+
+  A fall is recorded now and the verdict asked at each refresh
+  (`VPNDropSettle`): up again at any age is `healed` and says nothing, still down
+  past five seconds is the drop the notice exists for. A clock, not a timer —
+  `VPNWorkQueue.inline` runs a delayed block at once, so a test of the wait would
+  be over before it began, and the engine already takes its own `now`.
+
+  One wake-up is scheduled per fall so a quiet Mac reaches the verdict at all.
+  Scheduled from inside the verdict instead, it recursed without end under the
+  inline queue: refresh → still waiting → schedule → refresh. The test hung
+  rather than failing, which is how it said so.
+
+- **The exit country was tied to an event, and the state it is about is a
+  state.** `checkExit()` ran only from `stampWhatCameUp`, on a service seen
+  down at one reading and up at the next — so a tunnel already up when the
+  process started was never asked about, `lastRegion` stayed nil for the life
+  of the app, and the verdict line drew «Traffic goes through the tunnel» with
+  the half that names a place simply missing. That is the ordinary Mac: a VPN
+  raised at login, a menu bar app started after it. The same hole swallowed a
+  probe that timed out — one failure and the country was gone until a tunnel
+  happened to come up again.
+
+  The question is asked of the state now (`VPNExitAsk.should`): a tunnel is up,
+  no country is on record, no request is out, and no unanswered attempt is
+  inside its quiet period. Three refusals rather than one, because each is a
+  different kind of no — and the gate is not decoration, since every path into
+  `refreshNow` reaches it and `poll` re-reads up to 26 times behind a single
+  connect. An answer clears the quiet period outright; only an empty one leaves
+  a mark, or the re-read after a route move would be refused for a minute.
+
+  And the country now belongs to the route rather than to a tunnel
+  (`VPNExitAsk.routeMoved`). It was dropped when a tunnel *fell*, which is one
+  way the exit moves and not the rest: Wi-Fi to Ethernet, a second tunnel
+  taking the route, a captive network arriving. A country left standing through
+  that is worse than none — absent reads as «not known», stale reads as an
+  answer. A nil reading is not a move: `VPNInterfacePort.primaryInterface`
+  answers nil both for a Mac with no network and for a store that could not be
+  read, and taking that for a move would cost a good answer and buy a request
+  every time the dynamic store stuttered.
+
+  Guards: `TheCountryIsAskedForWheneverItIsMissingTests` on the rule,
+  `ATunnelUpBeforeHelmStillNamesItsCountryTests` on the engine — the second
+  drives the wire and fails on all five cases with the gate removed.
+
 ## [0.10.0-dev.13] — 2026-08-19
 
 > Plan 3 of the Hosts & Keys design: the keys tab, the pty behind it, and the

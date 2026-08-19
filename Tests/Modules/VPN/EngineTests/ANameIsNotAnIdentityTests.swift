@@ -20,19 +20,33 @@ import HelmRuntime
 /// parser silently changes so that two configurations become one.
 final class ANameIsNotAnIdentityTests: XCTestCase {
 
-    private let at = Date(timeIntervalSince1970: 1_000_000)
+    /// **A clock the test can move**, because a drop is now held for
+    /// `VPNDropSettle.window` before it is announced: a tunnel seen down once is
+    /// a re-handshake until the clock says otherwise. Fixed, this fixture left
+    /// every drop `waiting` for ever.
+    private final class Clock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _now = Date(timeIntervalSince1970: 1_000_000)
+        var now: Date { lock.lock(); defer { lock.unlock() }; return _now }
+        func advance(_ seconds: TimeInterval) {
+            lock.lock(); _now = _now.addingTimeInterval(seconds); lock.unlock()
+        }
+    }
+    private let clock = Clock()
+
+    private var at: Date { clock.now }
 
     private func row(_ status: String, _ id: String, _ name: String) -> String {
         "* (\(status)) \(id) IPSec \"\(name)\" [IPSec:1]"
     }
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        let at = self.at
+        let clock = self.clock
         return VPNEngine(settings: VPNSettings(store: NamespacedStore(
                             namespace: "vpn", backing: InMemoryKeyValueStore())),
                          runner: runner, apps: FakeApps(),
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                         now: { at }, work: .inline)
+                         now: { clock.now }, work: .inline)
     }
 
     private let a = "11111111-1111-1111-1111-111111111111"
@@ -72,6 +86,10 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
                              row("Disconnected", a, "Office"),
                              row("Connected", b, "Office")].joined(separator: "\n")
         e.refresh()
+        // The drop is held for the settle window now; a namesake being up must
+        // not shorten or cancel it, which is what this test is about.
+        clock.advance(VPNDropSettle.window)
+        e.refresh()
 
         XCTAssertEqual(e.lastAutomation?.kind, .dropped,
                        "the tunnel a rule was holding fell over and the module said nothing, "
@@ -91,6 +109,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
         e.refresh()
         e.clearLastAutomationForTesting()
         runner.listOutput = [header, row("Disconnected", a, "Office")].joined(separator: "\n")
+        e.refresh()
+        clock.advance(VPNDropSettle.window)
         e.refresh()
 
         XCTAssertEqual(e.lastAutomation?.kind, .dropped, "precondition: a drop is reported at all")

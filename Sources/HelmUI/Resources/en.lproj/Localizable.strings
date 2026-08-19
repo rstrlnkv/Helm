@@ -915,7 +915,6 @@
 "Connected for" = "Connected for";
 "Downloaded" = "Downloaded";
 "Uploaded" = "Uploaded";
-"This tunnel" = "This tunnel";
 "Speed" = "Speed";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "since the tunnel came up";
@@ -1014,3 +1013,19 @@
 "This key has a passphrase" = "This key has a passphrase";
 "That passphrase was not accepted" = "That passphrase was not accepted";
 "Unlock and add" = "Unlock and add";
+"Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page — the tile only counted things, and there was nothing on it to press." = "Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page — the tile only counted things, and there was nothing on it to press.";
+"The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country — and one check that failed cost it until the next reconnection." = "The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country — and one check that failed cost it until the next reconnection.";
+"The exit country is not known" = "The exit country is not known";
+"No tunnel is up" = "No tunnel is up";
+"Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here." = "Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here.";
+"The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections.";
+"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there.";
+"Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down.";
+"Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type.";
+"Except the local network" = "Except the local network";
+"Except Apple’s own servers" = "Except Apple’s own servers";
+"Except the local network and Apple’s own servers" = "Except the local network and Apple’s own servers";
+"Some traffic goes around the tunnel, not through it" = "Some traffic goes around the tunnel, not through it";
+"The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance." = "The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance.";
+"The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel." = "The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel.";
+"A VPN that blinks out for a moment — on a Wi-Fi change, or when your Mac wakes — no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does." = "A VPN that blinks out for a moment — on a Wi-Fi change, or when your Mac wakes — no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does.";

@@ -59,6 +59,12 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "safeAreaInset": "SwiftUI's modifier, named where the documents say what it costs",
         "usesAutomaticRowHeights": "NSTableView's property, in the passage about the table that is gone",
         "noteHeightOfRows": "NSTableView's method, in the same passage",
+        // The two errno values the launch measurement names. `E2BIG` is not
+        // here because the tree already carries it; these two do not, and both
+        // are POSIX's rather than Helm's — the passage names them to say which
+        // failures `NSTask` returns rather than raises.
+        "EMFILE": "POSIX's «too many open files», named in the measurement of which launch failures return an error",
+        "EAGAIN": "POSIX's «no more processes», named in the same measurement",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a

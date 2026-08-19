@@ -143,6 +143,47 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// decorates whichever holds the route, and is dropped when one falls,
     /// because the route may have moved with it.
     private var lastRegion: String?
+    /// When the last exit request that **came back empty** was started, and
+    /// whether one is still out.
+    ///
+    /// Both touched only from the work queue, like `raisedAt` and `lastRegion`
+    /// above: the request is started there and its answer comes back through
+    /// `work.run`. They are the two halves of `VPNExitAsk.should` that are facts
+    /// about this engine rather than about the network — and without the second
+    /// of them one connect starts twenty-six requests, because that is how many
+    /// times `poll` re-reads while a tunnel comes up.
+    private var lastExitAsk: Date?
+    private var askingExit = false
+    /// Which ask the answer coming back belongs to.
+    ///
+    /// **A forced check replaces one that is still out** — a tunnel coming up
+    /// is news and the request in flight was asked about the exit before it —
+    /// and `Task.cancel()` does not make the cancelled one silent: the URL load
+    /// throws, `regionCode()` answers nil, and the completion still runs. Two
+    /// things went wrong through that seam, and both are the family CLAUDE.md
+    /// calls «the last writer wins by scheduling»: the old run cleared
+    /// `askingExit` while the new one was out, so the next refresh started a
+    /// third request; and a late answer overwrote `lastRegion` with a reading
+    /// taken for a route the Mac had left. The counter is what tells the two
+    /// apart, so a superseded run writes nothing at all.
+    private var exitAsk = 0
+    /// The interface the default route was on at the last reading, so that the
+    /// route moving can be noticed at all. Nil means «not read yet», which
+    /// `VPNExitAsk.routeMoved` refuses to call a move.
+    private var lastPrimary: String?
+    /// Tunnels seen falling, and when — held until they come back or stay gone
+    /// (`VPNDropSettle`).
+    ///
+    /// **Keyed by the configuration's id, and the name is carried beside it.**
+    /// Keyed by name it was, for one commit, on the reasoning that the notice
+    /// says a name — and `ANameIsNotAnIdentityTests` said what that costs: two
+    /// configurations may share a display name, so a namesake coming up by
+    /// itself would have read as «it came back» and swallowed the drop of the
+    /// one a rule was actually holding. That test exists because the same
+    /// mistake was made once before, one field over.
+    ///
+    /// Touched only from the work queue.
+    private var fellAt: [String: (name: String, at: Date)] = [:]
     /// The last measurement taken **on each tunnel**, keyed by service id: a
     /// figure belongs to whichever held the route when it was taken and is kept
     /// when the route moves (`VPNExitVerdict.carriesTheDefaultRoute`). What
@@ -350,20 +391,36 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // Recorded outside the lock the names were collected under: sorted so
         // that when several go at once the last one written is the same on
         // every run.
-        for name in dropped.sorted() {
-            HelmLog.shared.info(Self.moduleID, "automatic connection dropped: \(Redact.vpn(name))")
-            // `.dropped`, not `.disconnected`. Nobody asked for this one: the
-            // network went, the server hung up, or somebody stopped it in
-            // System Settings — and the person is now sending everything in
-            // clear having last been told they were behind a tunnel. It is the
-            // one firing here that can be set to arrive as a banner while the
-            // rules stay quiet.
-            recordAutomation(name, .dropped)
+        // **Recorded, not announced.** A tunnel re-handshaking on a Wi-Fi change
+        // is down for a few seconds, and this notice used to fire on the first
+        // read that saw it — measured twice in two days of the owner's log, both
+        // times healed within three seconds (`VPNDropSettle`).
+        // `fallen` rather than `dropped`, because the pending has to be keyed by
+        // the configuration; `dropped` is the name-level answer to «is this news
+        // at all», and it still decides that.
+        for (id, name) in fallen.sorted(by: { $0.value < $1.value })
+        where dropped.contains(name) && fellAt[id] == nil {
+            fellAt[id] = (name, now())
+            HelmLog.shared.info(Self.moduleID, "seen down: \(Redact.vpn(name))")
+            // **One wake-up per fall, scheduled here rather than from the
+            // verdict.** A Mac where a tunnel simply went is a Mac where nothing
+            // else is going to ask again, so the verdict needs a refresh of its
+            // own — and scheduling it from `settleDrops` recurses without end
+            // under `VPNWorkQueue.inline`, which runs a delayed block at once:
+            // refresh → still waiting → schedule → refresh. Here the `where`
+            // guard is what stops it, since the fall is already recorded by the
+            // time the block runs.
+            work.run(after: VPNDropSettle.window) { [weak self] in self?.refreshNow() }
         }
+        settleDrops(parsed)
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
         readInterfaces(parsed)
+        // After `readInterfaces`, never before: the gate asks whether a tunnel
+        // is up in the sense the strip means it — one this module has an
+        // interface for — and that book is filled a line above.
+        noticeTheRouteAndAskWhereWeAre()
         emitState()
     }
 
@@ -771,9 +828,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         for connection in parsed where connection.status.isConnected {
             guard raisedAt[connection.id] == nil, wasDown(connection.id) else { continue }
             raisedAt[connection.id] = now()
-            // The one moment the answer is news, and the one request this app
-            // makes to a server that is not the update feed.
-            checkExit()
+            // A tunnel coming up is news, so this one goes round the gate:
+            // whatever country is on record was read for the route this may
+            // have just taken over, and a quiet period is about not repeating
+            // an unanswered question rather than about ignoring an event.
+            checkExit(force: true)
         }
         let up = Set(parsed.filter(\.status.isConnected).map(\.id))
         // **Against what is up, not against `raisedAt`.** Keyed off the stamps
@@ -788,6 +847,29 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // and a tunnel falling can move the route, so it is dropped outright
         // and asked again when something comes up.
         lastRegion = nil
+    }
+
+    /// Drops a country that belongs to a route the machine has since left, then
+    /// asks for one if there is none.
+    ///
+    /// **Two steps and one order.** A country read for Wi-Fi is not a country
+    /// for the tunnel that has just taken the route, and a stale answer is worse
+    /// than an absent one: absent reads as «not known», stale reads as known.
+    /// So the move is noticed first and the question asked second, in one pass —
+    /// otherwise the drop would wait a refresh for the ask.
+    ///
+    /// The route is read here rather than in `tunnelStates`, which also needs
+    /// it: that one is called from `emitState` and this decides something and
+    /// writes it down, and a getter with a side effect on shared state is the
+    /// defect Autopilot's `folders` records (CLAUDE.md).
+    private func noticeTheRouteAndAskWhereWeAre() {
+        let primary = interfaces.primaryInterface()
+        if VPNExitAsk.routeMoved(from: lastPrimary, to: primary) { lastRegion = nil }
+        // Only a reading that answered is remembered: nil is «no network» and
+        // «could not read» at once, so storing it would make the next real
+        // answer look like a move.
+        if primary != nil { lastPrimary = primary }
+        checkExit()
     }
 
     /// Asks the tool which interface each tunnel that is up came up on, once per
@@ -809,6 +891,43 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // yet, and the next refresh — there is always one, the poll sees to
             // that — asks again.
             interfaceOf[connection.id] = VPNStatusParser.reading(in: output)
+        }
+    }
+
+    /// **Which of the falls seen so far were losses**, asked at every refresh.
+    ///
+    /// A tunnel that is up again is forgotten without a word; one still down
+    /// past `VPNDropSettle.window` is the drop this module's one interrupting
+    /// notice exists for. The wake-up that makes a quiet Mac reach this verdict
+    /// at all is scheduled where the fall is recorded, one per fall — every
+    /// other refresh comes from something happening, and a tunnel that is simply
+    /// gone is nothing happening.
+    private func settleDrops(_ parsed: [VPNConnection]) {
+        guard !fellAt.isEmpty else { return }
+        // **By id.** A tunnel of the same *name* being up is not this one coming
+        // back — see the note on `fellAt`.
+        let upNow = Set(parsed.filter(\.status.isUp).map(\.id))
+        for (id, fall) in fellAt {
+            let name = fall.name
+            switch VPNDropSettle.verdict(fellAt: fall.at, isUpNow: upNow.contains(id),
+                                         now: now()) {
+            case .healed:
+                fellAt[id] = nil
+                HelmLog.shared.info(Self.moduleID, "came back before the notice: \(Redact.vpn(name))")
+            case .waiting:
+                break
+            case .announce:
+                fellAt[id] = nil
+                HelmLog.shared.info(Self.moduleID,
+                                    "automatic connection dropped: \(Redact.vpn(name))")
+                // `.dropped`, not `.disconnected`. Nobody asked for this one: the
+                // network went, the server hung up, or somebody stopped it in
+                // System Settings — and the person is now sending everything in
+                // clear having last been told they were behind a tunnel. It is
+                // the one firing here that can be set to arrive as a banner
+                // while the rules stay quiet.
+                recordAutomation(name, .dropped)
+            }
         }
     }
 
@@ -848,16 +967,50 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             })
     }
 
-    /// Asks the outside world where this Mac appears to be. **Only when a tunnel
-    /// has just come up** — this is the app's one request to a server that is not
-    /// the update feed, and it is made when the answer is news.
-    private func checkExit() {
+    /// Asks the outside world where this Mac appears to be.
+    ///
+    /// **When there is a tunnel up with no country to its name**, which is a
+    /// state rather than an event — `VPNExitAsk` carries the whole rule and the
+    /// story of the event this used to be. `force` is that event, still: a
+    /// tunnel coming up is news and goes round the quiet period.
+    ///
+    /// This is the app's one request to a server that is not the update feed, so
+    /// the gate is not decoration: every path into `refreshNow` reaches here,
+    /// and there are a great many of them behind one connect.
+    private func checkExit(force: Bool = false) {
+        guard force || VPNExitAsk.should(tunnelIsUp: !interfaceOf.isEmpty,
+                                         region: lastRegion, asking: askingExit,
+                                         lastAsked: lastExitAsk, now: now())
+        else { return }
+        askingExit = true
+        // Stamped as the request leaves rather than as it lands, so a run that
+        // never comes back — the process going down mid-flight — cannot leave
+        // the gate open.
+        lastExitAsk = now()
+        exitAsk += 1
+        let mine = exitAsk
         let task = Task { [weak self] in
             guard let self else { return }
             let region = await self.exit.regionCode()
             self.work.run { [weak self] in
-                self?.lastRegion = region
-                self?.emitState()
+                guard let self, self.exitAsk == mine else { return }
+                // The flag is cleared whatever came back — an empty answer is an
+                // answer arriving, and leaving it set would close the question
+                // for the life of the process. What keeps an empty answer from
+                // being asked again straight away is the quiet period, which is
+                // a clock rather than a flag.
+                self.askingExit = false
+                self.lastRegion = region
+                // **An answer wipes the clock, and only an empty one leaves a
+                // mark.** The quiet period separates two attempts that came back
+                // with nothing; a run that answered has closed the question by
+                // itself, and what reopens it is the route moving. Left standing
+                // through a good answer it refused the re-read after a move for a
+                // whole minute — so the tunnel came back onto the route wearing
+                // no country at all, which is the defect one level down from the
+                // one this gate was added for.
+                if region != nil { self.lastExitAsk = nil }
+                self.emitState()
             }
         }
         lock.lock(); let previous = _exitCheck; _exitCheck = task; lock.unlock()

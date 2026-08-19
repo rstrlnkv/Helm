@@ -915,7 +915,6 @@
 "Connected for" = "接続時間";
 "Downloaded" = "ダウンロード";
 "Uploaded" = "アップロード";
-"This tunnel" = "このトンネル";
 "Speed" = "速度";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "トンネル確立時から";
@@ -1014,3 +1013,19 @@
 "This key has a passphrase" = "この鍵にはパスフレーズがあります";
 "That passphrase was not accepted" = "そのパスフレーズは受け付けられませんでした";
 "Unlock and add" = "解除して追加";
+"Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page — the tile only counted things, and there was nothing on it to press." = "“ホストと鍵”はメニューバーパネルのタイルではなくなりました。パネルの“ユーティリティ”に移り、そこからページを開けます。タイルは数を示すだけで、押せるものは何もありませんでした。";
+"The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country — and one check that failed cost it until the next reconnection." = "VPN のページは、Helm を起動する前からトンネルが張られていた場合でも、通信がどの国から出ているかを表示します。以前はトンネルが接続された瞬間にしか問い合わせなかったため、Mac と一緒に立ち上がる VPN では国が分からないままで、確認が一度失敗すると次に接続し直すまで表示されませんでした。";
+"The exit country is not known" = "出口の国は分かりません";
+"No tunnel is up" = "トンネルは張られていません";
+"Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here." = "通信はこの Mac から直接出ています。下で接続を張ると、その国、通信量、速度がここに表示されます。";
+"The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "VPN のページは、通信が実際に通っているトンネルから始まります。本当にトンネルを通っているか、どの国から出ているか、どれだけ張られているか、どれだけ運んだか。これらはこれまでページの一番下、接続の下にありました。";
+"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "張られているトンネルごとに、数値の上にボタンが並びます。どのトンネルの数値かが分かり、別のトンネルに切り替えられます。この行は 2 本張られているときしか描かれず、そのため存在に気づかれませんでした。";
+"Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm が、使用するツールを起動したときに勝手に終了することはなくなりました。Homebrew を開いて検索欄で Return を何度か押すと、アプリ全体が落ちることがありました。";
+"Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Homebrew の検索は、最後に終わった検索ではなく、最後に入力した語の結果を表示します。入力中に brew コマンドが十数個まとめて走ることもなくなりました。";
+"Except the local network" = "ローカルネットワークを除く";
+"Except Apple’s own servers" = "Apple のサーバを除く";
+"Except the local network and Apple’s own servers" = "ローカルネットワークと Apple のサーバを除く";
+"Some traffic goes around the tunnel, not through it" = "一部の通信はトンネルを通らず、その外を通っています";
+"The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance." = "VPN ページの上部は“スリープさせない”と同じ組み方になりました。何が起きているかを上に一行で、その下に一目で見比べられる数値の列を並べます。";
+"The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel." = "VPN ページは、トンネルが外に出しているものを表示します。ほとんどのトンネルはローカルネットワークを除外し、Apple のサーバまで除外するものもあります。その場合、iCloud や App Store は実際のアドレスで出ていき、それ以外だけがトンネルを通ります。";
+"A VPN that blinks out for a moment — on a Wi-Fi change, or when your Mac wakes — no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does." = "Wi-Fi の切り替えや Mac の復帰で VPN が一瞬途切れても、トンネルが失われたとは知らせなくなりました。Helm は五秒ほど様子を見て、戻ってくれば何も言いません。";

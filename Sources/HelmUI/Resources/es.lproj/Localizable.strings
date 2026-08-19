@@ -915,7 +915,6 @@
 "Connected for" = "Conectado durante";
 "Downloaded" = "Descargado";
 "Uploaded" = "Subido";
-"This tunnel" = "Este túnel";
 "Speed" = "Velocidad";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "desde que el túnel se levantó";
@@ -1014,3 +1013,19 @@
 "This key has a passphrase" = "Esta clave tiene frase de contraseña";
 "That passphrase was not accepted" = "Esa frase de contraseña no se aceptó";
 "Unlock and add" = "Desbloquear y añadir";
+"Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page — the tile only counted things, and there was nothing on it to press." = "“Hosts y claves” ya no es un mosaico del panel de la barra de menús. Ahora está en Utilidades, desde donde se abre su página: el mosaico solo contaba cosas y no había nada que pulsar en él.";
+"The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country — and one check that failed cost it until the next reconnection." = "La página de VPN nombra el país por el que sale tu tráfico incluso si el túnel ya estaba levantado antes de iniciar Helm. Antes solo se preguntaba en el momento en que un túnel se conectaba, así que una VPN que se levanta con el Mac nunca obtenía país, y una comprobación fallida costaba el dato hasta la siguiente reconexión.";
+"The exit country is not known" = "No se conoce el país de salida";
+"No tunnel is up" = "No hay ningún túnel levantado";
+"Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here." = "El tráfico sale de este Mac directamente. Levanta una conexión abajo y aquí aparecerán su país, sus contadores y su velocidad.";
+"The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "La página de VPN abre con el túnel por el que realmente pasa tu tráfico: si va o no por el túnel, de qué país sale, cuánto lleva levantado y cuánto ha transportado. Todo eso estaba al final de la página, debajo de las conexiones.";
+"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "Cada túnel levantado tiene ahora un botón sobre esas cifras, así que se ve de cuál son y se puede cambiar a otro. La fila solo se dibujaba con dos levantados, por eso nadie sabía que existía.";
+"Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm ya no se cierra solo al iniciar una de las herramientas que utiliza. Abrir Homebrew y pulsar Return varias veces en el campo de búsqueda podía tumbar la aplicación entera.";
+"Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "La búsqueda en Homebrew muestra los resultados de lo último que escribiste, no de la búsqueda que acabó la última, y Helm ya no lanza una docena de comandos brew a la vez mientras escribes.";
+"Except the local network" = "Salvo la red local";
+"Except Apple’s own servers" = "Salvo los servidores de Apple";
+"Except the local network and Apple’s own servers" = "Salvo la red local y los servidores de Apple";
+"Some traffic goes around the tunnel, not through it" = "Parte del tráfico va por fuera del túnel, no a través de él";
+"The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance." = "La parte superior de la página de VPN está dispuesta como la de No dormir: qué está pasando en una línea arriba, y las lecturas debajo en una fila que se compara de un vistazo.";
+"The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel." = "La página de VPN dice lo que tu túnel deja fuera. Casi todos los túneles dejan fuera la red local, y algunos también los servidores de Apple: eso significa que iCloud y la App Store salen con tu dirección real mientras todo lo demás va por el túnel.";
+"A VPN that blinks out for a moment — on a Wi-Fi change, or when your Mac wakes — no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does." = "Una VPN que parpadea un instante —al cambiar de Wi-Fi o cuando el Mac despierta— ya no avisa de que el túnel se ha perdido. Helm espera cinco segundos a ver si vuelve, y calla si vuelve.";

@@ -89,6 +89,49 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
         return lo < 0 ? nil : (lo / 2, hi / 2)
     }
 
+    /// **The row the connection cards are on, found rather than typed.**
+    ///
+    /// It was `60`, which was inside the cards for exactly as long as the
+    /// connections were the first thing on the page. They are not: the hero
+    /// stands above them now, so that number moved into a sentence and the
+    /// probe reported «nothing was drawn where the connection cards should be»
+    /// — the failure this test's own doc comment predicts for a typed row, one
+    /// paragraph after typing one.
+    ///
+    /// A card is told from a line of text by **density**, not by width: the
+    /// closing notes run the full column at 13 pt and a headline runs most of
+    /// it at 26, and both are ink with paper between the letters. A card is a
+    /// fill, so nearly every pixel between its edges differs from the pane —
+    /// the two cards side by side leave one 12 pt gap in about 450 pt, which is
+    /// still over 90 %.
+    private func cardsRow(_ rep: NSBitmapImageRep) -> Int? {
+        guard let data = rep.bitmapData, rep.samplesPerPixel == 4 else { return nil }
+        let row = rep.bytesPerRow
+        let bg = (0..<3).map { Int(data[6 * row + (rep.pixelsWide / 2) * 4 + $0]) }
+        for y in 0..<(rep.pixelsHigh / 2) {
+            guard let span = edges(rep, atPoint: y), span.right - span.left > 400 else { continue }
+            var ink = 0
+            for x in (span.left * 2)...(span.right * 2) {
+                let p = y * 2 * row + x * 4
+                let d = abs(Int(data[p]) - bg[0]) + abs(Int(data[p + 1]) - bg[1])
+                    + abs(Int(data[p + 2]) - bg[2])
+                if d > 3 { ink += 1 }
+            }
+            guard Double(ink) / Double((span.right - span.left) * 2) > 0.9 else { continue }
+            // **Not this row — the widest one just below it.** The first filled
+            // row of a rounded card is inside its own corner, so it is narrower
+            // than the card by the radius at each end: measured here, 78…766
+            // against the card's true 70…774, which is `HelmRadius.card` twice
+            // over and would have been read as the cards missing their column
+            // by 8 pt. The corner is done within 30 pt of the top on any radius
+            // this house draws.
+            return (y..<min(rep.pixelsHigh / 2, y + 30))
+                .max { (edges(rep, atPoint: $0).map { $0.right - $0.left } ?? 0)
+                     < (edges(rep, atPoint: $1).map { $0.right - $0.left } ?? 0) }
+        }
+        return nil
+    }
+
     private func shoot() throws -> (rep: NSBitmapImageRep, host: NSView) {
         let (view, _) = page()
         // This window never orders in, and a page that idles off screen
@@ -132,7 +175,9 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
         let (rep, host) = try shoot()
         try XCTSkipIf(rep.bitmapData == nil, "nothing drew — no window server")
 
-        let cards = try XCTUnwrap(edges(rep, atPoint: 60),
+        let cardsAt = try XCTUnwrap(cardsRow(rep),
+                                    "no filled row the width of a card was drawn at all")
+        let cards = try XCTUnwrap(edges(rep, atPoint: cardsAt),
                                   "nothing was drawn where the connection cards should be")
         let below = try sectionCardRow(host)
         let section = try XCTUnwrap(edges(rep, atPoint: below.row),
