@@ -13,6 +13,9 @@ public enum HostsCommand: String, CaseIterable, Sendable {
     case restoreHosts
     /// Write `~/.ssh/config`. No dialog: it is the person's own file.
     case applySSHConfig
+    /// Write `~/.ssh/known_hosts`. Payload: the whole file, as the person means
+    /// it to be — which in this file only ever means «with one line gone».
+    case applyKnownHosts
     /// `chmod` one key to the mode `ssh` will accept. Payload: which key.
     case fixKeyPermissions
     /// `chmod` `~/.ssh` itself. **Its own case rather than a reserved name in
@@ -108,6 +111,17 @@ public struct HostsRestore: Codable, Sendable {
 /// sight. It also stops a command's payload being decoded by the wrong arm and
 /// looking plausible.
 public struct SSHConfigApply: Codable, Sendable {
+    public let text: String
+    public init(text: String) { self.text = text }
+}
+
+/// What `applyKnownHosts` carries.
+///
+/// Its own type rather than `SSHConfigApply` reused. The two have the same
+/// shape today and mean different things, which is the split this house makes
+/// on sight — and it stops a payload being decoded by the wrong arm and looking
+/// plausible while it writes one file's text into another.
+public struct KnownHostsApply: Codable, Sendable {
     public let text: String
     public init(text: String) { self.text = text }
 }

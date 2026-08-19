@@ -61,7 +61,13 @@ final class TheTableDoesNotGrowWithTheFileTests: XCTestCase {
         let hosted = HostsUIWire.make(file: file, privileged: .declined)
         wire = hosted
         let model = HostsViewModel.shared(vm: hosted.vm)
-        let mounted = MountedRender(HostsSettingsPage(vm: hosted.vm),
+        // **The table, not the page.** The hosts editor came off the screen on
+        // 2026-08-19 while its worth is decided, so a mount of the page draws
+        // fifteen views and this file's own absence trap fires — correctly.
+        // The subject here was always the table's laziness, and the table is
+        // still in the tree and still worth guarding; going through the page
+        // only ever tied this measurement to which tab happens to open first.
+        let mounted = MountedRender(ScrollView { HostsTable(hvm: model) },
                                     width: Self.width, height: Self.height, appearance: .aqua)
         render = mounted
         mounted.settle()

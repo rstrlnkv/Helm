@@ -40,7 +40,8 @@ struct HostsUIWire {
         let engine = HostsEngine(file: FixedFile(file),
                                  privileged: root,
                                  backups: MemoryBackups(backups),
-                                 keys: keys, agent: agent,
+                                 sshConfig: WireSSHConfig(),
+                                 knownHosts: WireKnownHosts(), keys: keys, agent: agent,
                                  now: { Date(timeIntervalSince1970: 0) },
                                  transport: transport)
         return HostsUIWire(engine: engine, transport: transport, privileged: root,
@@ -140,4 +141,20 @@ final class WireAgent: SSHAgentPort, @unchecked Sendable {
         lock.withLock { answer = .empty }
         return true
     }
+}
+
+/// `known_hosts` for the pages in this target: one host, readable, writable.
+struct WireKnownHosts: KnownHostsPort {
+    let url = URL(fileURLWithPath: "/nowhere/.ssh/known_hosts")
+    func read() -> String? { "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5 me@mac\n" }
+    func write(_ text: String) -> Bool { true }
+}
+
+/// `~/.ssh/config` for the pages in this target. Named at the construction so
+/// that no test here reads the owner's own file — the slip
+/// `EveryEngineNamesItsPortsTests` exists to catch.
+struct WireSSHConfig: SSHConfigPort {
+    let url = URL(fileURLWithPath: "/nowhere/.ssh/config")
+    func read() -> String? { "Host a\n    HostName a.example\n" }
+    func write(_ text: String) -> Bool { true }
 }

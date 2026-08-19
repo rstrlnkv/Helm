@@ -203,7 +203,8 @@ final class HostsApplyTests: XCTestCase {
         let file = FakeHostsFile()
         let privileged = FakePrivileged(.succeed, writingTo: file)
         let engine = HostsEngine(file: file, privileged: privileged, backups: backups,
-                                 keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                                 sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/.ssh/config"), text: "Host a\n"),
+                                 knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(),
                                  now: { Date(timeIntervalSince1970: 1_755_000_000) },
                                  transport: LocalTransport())
         let outcome = try await restore(engine, otherCase)
@@ -296,7 +297,8 @@ private final class Hosts {
     init(_ behaviour: FakePrivileged.Behaviour = .succeed) {
         privileged = FakePrivileged(behaviour, writingTo: file)
         engine = HostsEngine(file: file, privileged: privileged, backups: backups,
-                             keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                             sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/.ssh/config"), text: "Host a\n"),
+                             knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(),
                              now: { Date(timeIntervalSince1970: 1_755_000_000) },
                              transport: transport)
     }

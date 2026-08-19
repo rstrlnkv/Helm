@@ -427,3 +427,47 @@ final class FakeGenerator: KeyGeneratorPort, @unchecked Sendable {
         return lock.withLock { status }
     }
 }
+
+/// `~/.ssh/known_hosts`, faked — **and able to be absent, unreadable, and a
+/// file that refuses the write.**
+///
+/// A Mac that has never connected anywhere has no such file at all, which is
+/// not an empty one; a file can stop being readable between two refreshes; and
+/// a write can fail or report success over bytes it did not store. The last is
+/// what the engine's read-back exists for, and without it here that branch
+/// would have nothing behind it.
+final class FakeKnownHosts: KnownHostsPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: String?
+    private var behaviour: Behaviour
+    private var writes = 0
+
+    enum Behaviour: Sendable { case ordinary, refuse, lie }
+
+    let url: URL
+
+    init(url: URL = URL(fileURLWithPath: "/nowhere/.ssh/known_hosts"),
+         text: String? = "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5 me@mac\n",
+         behaviour: Behaviour = .ordinary) {
+        self.url = url
+        self.stored = text
+        self.behaviour = behaviour
+    }
+
+    var writeCount: Int { lock.withLock { writes } }
+
+    func read() -> String? { lock.withLock { stored } }
+
+    func write(_ text: String) -> Bool {
+        lock.withLock {
+            writes += 1
+            switch behaviour {
+            case .ordinary: stored = text; return true
+            case .refuse: return false
+            // Success over a file that did not change — the shape the read-back
+            // is the only defence against.
+            case .lie: return true
+            }
+        }
+    }
+}

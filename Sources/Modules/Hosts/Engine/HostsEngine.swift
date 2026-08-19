@@ -19,6 +19,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     private let keptBackups: Int
 
     private let sshConfig: SSHConfigPort
+    private let knownHosts: KnownHostsPort
     private let keys: SSHKeysPort
     private let agent: SSHAgentPort
     private let generator: KeyGeneratorPort
@@ -43,6 +44,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 privileged: PrivilegedPort = SystemPrivileged(),
                 backups: BackupPort = SystemBackups(),
                 sshConfig: SSHConfigPort = SystemSSHConfig(),
+                knownHosts: KnownHostsPort = SystemKnownHosts(),
                 keys: SSHKeysPort = SystemSSHKeys(),
                 agent: SSHAgentPort = SystemSSHAgent(),
                 generator: KeyGeneratorPort = SystemKeyGenerator(),
@@ -54,6 +56,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         self.privileged = privileged
         self.backups = backups
         self.sshConfig = sshConfig
+        self.knownHosts = knownHosts
         self.keys = keys
         self.agent = agent
         self.generator = generator
@@ -88,13 +91,16 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         let text = file.read()
         let ssh = sshConfig.read()
         let keyring = readKeys()
+        let known = knownHosts.read()
         let state = HostsState(hostsText: text ?? "", hostsReadable: text != nil,
                                backups: backups.list(),
                                sshText: ssh ?? "", sshReadable: ssh != nil,
                                sshWritable: mayWriteSSH(),
                                keys: keyring.rows, keysReadable: keyring.readable,
                                directoryPermission: keyring.directory,
-                               agent: keyring.agent)
+                               agent: keyring.agent,
+                               knownHostsText: known ?? "", knownHostsReadable: known != nil,
+                               knownHostsWritable: mayWriteKnownHosts())
         localTransport.emit(HostsEvent.state, encoding: state)
         return state
     }
@@ -292,6 +298,39 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                               under: home.appendingPathComponent(".ssh"))
     }
 
+    private func mayWriteKnownHosts() -> Bool {
+        SSHFileScope.mayWrite(knownHosts.url, home: home,
+                              under: home.appendingPathComponent(".ssh"))
+    }
+
+    /// The same three steps as the config next door: gate, write, read back.
+    ///
+    /// **The whole file crosses the wire, exactly as `applySSHConfig` does**,
+    /// and in this file that only ever means «with one line gone». An index
+    /// would be a second contract about which line, decided on one side of the
+    /// wire and acted on at the other after the file may have changed — and the
+    /// thing being removed is somebody's record of a host they trust.
+    private func applyKnownHosts(_ text: String) -> SSHConfigOutcome {
+        HelmActivity.phase("hosts.knownHosts.apply") {
+            defer { emitState() }
+            guard mayWriteKnownHosts() else {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "the known_hosts path is outside what may be written")
+                return .outOfScope
+            }
+            guard knownHosts.write(text) else {
+                HelmLog.shared.warn(Self.moduleID, "known_hosts could not be written")
+                return .failed
+            }
+            guard knownHosts.read() == text else {
+                HelmLog.shared.error(Self.moduleID,
+                                     "the write reported success and the file is not what was sent")
+                return .notVerified
+            }
+            return .applied
+        }
+    }
+
     /// Gate, write, read back, compare.
     ///
     /// **The read-back is not ceremony.** A write that returns success over a
@@ -434,6 +473,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = EngineReply.decode(SSHConfigApply.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(self.applySSH(request.text), for: command)
+            case .applyKnownHosts:
+                guard let request = EngineReply.decode(KnownHostsApply.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(self.applyKnownHosts(request.text), for: command)
             case .fixKeyPermissions:
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }

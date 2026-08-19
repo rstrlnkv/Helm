@@ -75,7 +75,7 @@ final class KeyGenerationTests: XCTestCase {
                                  sshConfig: FakeSSHConfig(
                                     url: home.appendingPathComponent(".ssh/config"),
                                     text: "Host a\n"),
-                                 keys: FakeSSHKeys(names: names), agent: FakeSSHAgent(),
+                                 knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(names: names), agent: FakeSSHAgent(),
                                  generator: generator, home: home, transport: transport)
         return Bench(engine: engine, generator: generator, transport: transport)
     }

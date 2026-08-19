@@ -50,6 +50,22 @@ import Module_Hosts_Engine
     @Published private(set) var sshWritable = true
     @Published private(set) var sshOutcome: SSHConfigOutcome?
 
+    // MARK: - Tab 2, `~/.ssh/known_hosts`
+
+    /// The file as disk says it is. **Canonical and not editable**: the only
+    /// change this tab makes is dropping a line, so there is no draft to hold
+    /// beside it the way tab 1 and the config do.
+    @Published private(set) var knownHostsText: String = ""
+    @Published private(set) var knownHostsReadable = true
+    @Published private(set) var knownHostsWritable = true
+    @Published private(set) var knownHostsOutcome: SSHConfigOutcome?
+    /// The line being forgotten right now, so its own row goes quiet.
+    @Published private(set) var forgetting: Int?
+
+    /// The rows the table draws, derived on every read the way the config's
+    /// blocks are.
+    var knownHosts: [KnownHostsFile.Entry] { KnownHostsFile.parse(knownHostsText).entries }
+
     // MARK: - Tab 3, the keys
 
     /// The keys as the engine last read them. **Not canonical the way the two
@@ -201,6 +217,10 @@ import Module_Hosts_Engine
         // whole snapshot is adopted every time, which is what makes the badge
         // after a load the engine's answer rather than a guess made on this side
         // about what the act did.
+        knownHostsText = state.knownHostsText
+        knownHostsReadable = state.knownHostsReadable
+        knownHostsWritable = state.knownHostsWritable
+
         keys = state.keys
         keysReadable = state.keysReadable
         directoryPermission = state.directoryPermission
@@ -401,4 +421,20 @@ import Module_Hosts_Engine
     /// event as the answer being read, and a refusal left behind would greet
     /// the next opening of the sheet.
     func forgetGeneration() { generated = nil }
+
+    /// Forget one host.
+    ///
+    /// **The whole file crosses the wire**, exactly as an Apply on the config
+    /// does. An index would be a second contract about which line — decided
+    /// here and acted on there, after the file may have changed underneath —
+    /// and what is being dropped is somebody's record of a host they trust.
+    func forget(_ entry: KnownHostsFile.Entry) async {
+        guard forgetting == nil else { return }
+        forgetting = entry.index
+        defer { forgetting = nil }
+        let document = KnownHostsFile.parse(knownHostsText)
+        let text = KnownHostsFile.render(KnownHostsFile.forget(entry.index, in: document))
+        knownHostsOutcome = await client.request(HostsCommand.applyKnownHosts,
+                                                 encoding: KnownHostsApply(text: text))
+    }
 }

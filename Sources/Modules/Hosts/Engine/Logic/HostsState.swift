@@ -42,12 +42,23 @@ public struct HostsState: Codable, Sendable, Equatable {
     public var directoryPermission: KeyRow.Permission
     /// What the agent said, in its three states.
     public var agent: AgentList
+    /// `~/.ssh/known_hosts` as it is on disk right now.
+    public var knownHostsText: String
+    /// False when it could not be read at all. A Mac that has never connected
+    /// anywhere simply has no such file, and the page says that rather than
+    /// drawing an empty table over a file it could not open.
+    public var knownHostsReadable: Bool
+    /// Whether Helm may write it (`SSHFileScope`), asked of the same gate the
+    /// config goes through.
+    public var knownHostsWritable: Bool
 
     public init(hostsText: String = "", hostsReadable: Bool = true, backups: [String] = [],
                 sshText: String = "", sshReadable: Bool = true, sshWritable: Bool = true,
                 keys: [KeyRow] = [], keysReadable: Bool = true,
                 directoryPermission: KeyRow.Permission = .unknown,
-                agent: AgentList = .unreachable) {
+                agent: AgentList = .unreachable,
+                knownHostsText: String = "", knownHostsReadable: Bool = true,
+                knownHostsWritable: Bool = true) {
         self.hostsText = hostsText
         self.hostsReadable = hostsReadable
         self.backups = backups
@@ -58,6 +69,9 @@ public struct HostsState: Codable, Sendable, Equatable {
         self.keysReadable = keysReadable
         self.directoryPermission = directoryPermission
         self.agent = agent
+        self.knownHostsText = knownHostsText
+        self.knownHostsReadable = knownHostsReadable
+        self.knownHostsWritable = knownHostsWritable
     }
 
     /// The two fields that shipped first are read outright; anything added
@@ -85,6 +99,11 @@ public struct HostsState: Codable, Sendable, Equatable {
         directoryPermission = try container.decodeIfPresent(KeyRow.Permission.self,
                                                             forKey: .directoryPermission) ?? .unknown
         agent = try container.decodeIfPresent(AgentList.self, forKey: .agent) ?? .unreachable
+        knownHostsText = try container.decodeIfPresent(String.self, forKey: .knownHostsText) ?? ""
+        knownHostsReadable = try container.decodeIfPresent(Bool.self,
+                                                           forKey: .knownHostsReadable) ?? false
+        knownHostsWritable = try container.decodeIfPresent(Bool.self,
+                                                           forKey: .knownHostsWritable) ?? false
     }
 }
 

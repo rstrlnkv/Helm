@@ -13,7 +13,7 @@ struct HostsSettingsPage: View {
     /// visit, and the page is torn down and rebuilt on every sidebar click
     /// anyway — a remembered tab would be the one thing that outlived the
     /// document it was chosen beside.
-    @State private var tab: Tab = .hosts
+    @State private var tab: Tab = .known
     /// Whether the «New key» sheet is up. Page state rather than the view
     /// model's: a sheet that outlived the page would be a sheet nobody can see
     /// and nobody can close.
@@ -22,7 +22,13 @@ struct HostsSettingsPage: View {
     /// The tabs this page has. Keys, the third of the spec's three, is not one
     /// of them yet — a case here with no page behind it would be a promise the
     /// sidebar keeps and the page breaks.
-    private enum Tab: Hashable { case hosts, ssh, keys }
+    /// **`/etc/hosts` is not among them, and the page still knows how to draw
+    /// it.** The editor was taken off the screen on 2026-08-19 while its worth
+    /// is decided; `hostsTab` below, `HostsTable`, the engine's privileged
+    /// write and its forty tests are all still here and still checked, so
+    /// putting the case back is one line. Deleting them would have been the
+    /// other decision, and it was not the one taken.
+    private enum Tab: Hashable { case known, ssh, keys }
 
     /// The bar's natural height, measured, and whether it is *drawn* — which is
     /// not the same as whether there is anything to say. See `unsavedBar`.
@@ -44,7 +50,7 @@ struct HostsSettingsPage: View {
             tabs
             Divider()
             switch tab {
-            case .hosts: hostsTab
+            case .known: knownHostsTab
             case .ssh: sshTab
             case .keys: keysTab
             }
@@ -58,7 +64,7 @@ struct HostsSettingsPage: View {
     private var tabs: some View {
         HStack {
             Picker(HostsStr.moduleName, selection: $tab) {
-                Text(HostsStr.hostsTab).tag(Tab.hosts)
+                Text(HostsStr.knownHostsTab).tag(Tab.known)
                 Text(HostsStr.sshTab).tag(Tab.ssh)
                 Text(HostsStr.keysTab).tag(Tab.keys)
             }
@@ -183,6 +189,51 @@ struct HostsSettingsPage: View {
         .padding(.vertical, HelmSpace.s3)
     }
 
+
+    // MARK: - Tab 1
+
+    /// The hosts already trusted, and one button per row.
+    private var knownHostsTab: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                if let outcome = hvm.knownHostsOutcome, outcome != .applied {
+                    note(knownHostsSaid(outcome))
+                }
+            }
+            .padding(.horizontal, HelmLayout.formInset)
+            .padding(.vertical, HelmSpace.s3)
+            Divider()
+            if !hvm.knownHostsReadable {
+                // A Mac that has never connected anywhere has no such file, and
+                // that is not an empty one.
+                HelmBanner(HostsStr.knownHostsUnreadable)
+                    .padding(HelmSpace.s5)
+                Spacer()
+            } else if hvm.knownHosts.isEmpty {
+                Text(HostsStr.noKnownHosts)
+                    .foregroundStyle(.secondary)
+                    .padding(HelmSpace.s5)
+                Spacer()
+            } else {
+                ScrollView { KnownHostsTable(hvm: hvm) }
+            }
+        }
+    }
+
+    /// Exhaustive, with no `default`. The outcome type is the config's, because
+    /// the four answers are about writing a file the person owns through the
+    /// fifth gate — one subject — but the sentences are this file's own: «the
+    /// SSH config could not be saved» about `known_hosts` would send somebody
+    /// to the wrong file.
+    private func knownHostsSaid(_ outcome: SSHConfigOutcome) -> String {
+        switch outcome {
+        case .applied: return HostsStr.sshApplied
+        case .failed: return HostsStr.knownHostsFailed
+        case .notVerified: return HostsStr.sshNotVerified
+        case .outOfScope: return HostsStr.sshNotWritable
+        }
+    }
 
     // MARK: - Tab 3
 

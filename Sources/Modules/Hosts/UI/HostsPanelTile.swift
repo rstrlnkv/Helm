@@ -19,24 +19,16 @@ import Module_Hosts_Engine
 struct HostsPanelTile: View {
     @ObservedObject var hvm: HostsViewModel
 
-    private var entries: [HostsFile.Entry] { hvm.entries }
-    private var off: Int { entries.filter { !$0.enabled }.count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(HostsStr.moduleName)
                 .font(HelmText.rowTitle)
-            if hvm.readable {
-                Text(hostsLine)
-                    // The panel's scale rather than the settings window's, the
-                    // way every tile in this app draws its detail.
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-            } else {
-                Text(HostsStr.unreadable)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-            }
+            Text(knownHostsLine)
+                // The panel's scale rather than the settings window's, the way
+                // every tile in this app draws its detail.
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
             Text(keysLine)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
@@ -45,12 +37,14 @@ struct HostsPanelTile: View {
         .helmPanelCard()
     }
 
-    /// «12 entries · 3 off», and the second half only when there is one: a
-    /// «· 0 off» is a fact nobody needed and a line that never settles.
-    private var hostsLine: String {
-        let counted = Plural.entries(entries.count, language: AppLanguage.current.rawValue)
-        guard off > 0 else { return counted }
-        return counted + " · " + HostsStr.entriesOff(off)
+    /// **The hosts file's own counts are not here, because its editor is not on
+    /// the page.** A tile that counted a file nobody can open from it would be
+    /// the app pointing at a door it had taken away. `Plural.entries` and
+    /// `HostsStr.entriesOff` are kept for the day the tab comes back.
+    private var knownHostsLine: String {
+        hvm.knownHostsReadable
+            ? Plural.hosts(hvm.knownHosts.count, language: AppLanguage.current.rawValue)
+            : HostsStr.knownHostsUnreadable
     }
 
     /// The keys, and what the agent is doing with them. The agent's sentence is

@@ -237,3 +237,21 @@ public struct SystemKeyGenerator: KeyGeneratorPort {
                        answering: &secret, timeout: deadline).status
     }
 }
+
+/// `~/.ssh/known_hosts` on this Mac, written through `PrivateFile` like every
+/// other file here that names somebody's hosts.
+public struct SystemKnownHosts: KnownHostsPort {
+    public let url: URL
+    public init(url: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".ssh/known_hosts")) {
+        self.url = url
+    }
+    public func read() -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+    public func write(_ text: String) -> Bool {
+        guard let data = text.data(using: .utf8) else { return false }
+        return PrivateFile.write(data, to: url)
+    }
+}

@@ -44,6 +44,22 @@ enum HostsStr {
     /// The third tab. A title, like `hostsTab` and `sshTab` beside it.
     static var keysTab: String { L("Keys") }
 
+    // MARK: - Tab 2, known_hosts
+
+    static var knownHostsTab: String { L("Known hosts") }
+    static var noKnownHosts: String { L("No hosts have been trusted from this Mac yet") }
+    static var knownHostsUnreadable: String { L("The known hosts file could not be read") }
+    /// **Not `L("Remove")`.** `ssh` calls this forgetting a host, the manual
+    /// page calls it that, and what happens next is that the next connection
+    /// asks again — which «remove» does not say.
+    static var forgetHost: String { L("Forget") }
+    /// A hashed line names no host, and the row says which fact it is short of
+    /// rather than drawing an empty column.
+    static var hashedHost: String { L("Name hidden — this file is hashed") }
+    static var knownHostsFailed: String { L("The known hosts file could not be saved") }
+    static var revokedHost: String { L("Revoked") }
+    static var certificateAuthority: String { L("Certificate authority") }
+
     /// «3 off» on the panel tile, and «2 in the agent» beside it. Both
     /// interpolate a count, so both keep an inline table: the interpolation runs
     /// before a lookup would, which is why there is no English key to be the

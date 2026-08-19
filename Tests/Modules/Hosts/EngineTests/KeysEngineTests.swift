@@ -29,6 +29,7 @@ final class KeysEngineTests: XCTestCase {
                                  sshConfig: FakeSSHConfig(
                                     url: home.appendingPathComponent(".ssh/config"),
                                     text: "Host a\n"),
+                                 knownHosts: FakeKnownHosts(),
                                  keys: keys, agent: agent,
                                  home: home,
                                  transport: transport)

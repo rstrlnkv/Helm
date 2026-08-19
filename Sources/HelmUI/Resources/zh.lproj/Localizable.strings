@@ -1001,3 +1001,13 @@
 "Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out." = "“主机与密钥”新增第三个标签页：.ssh 文件夹中的 SSH 密钥。每个密钥显示类型、指纹和注释；若权限过于开放导致 ssh 拒绝使用，会给出提示和一个修复按钮。密钥可以加入 ssh-agent，也可以取出。";
 "“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it." = "“新建密钥…”可以为你创建 SSH 密钥。口令以你自己输入的方式交给工具，因此绝不会出现在运行中的程序列表里——那里 Mac 上的任何程序都能读到。";
 "The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any." = "菜单栏面板新增“主机与密钥”磁贴：hosts 文件中有多少条目、其中多少已关闭、你有多少密钥，以及代理是否持有密钥。";
+"Known hosts" = "已知主机";
+"No hosts have been trusted from this Mac yet" = "这台 Mac 还没有信任过任何主机";
+"The known hosts file could not be read" = "无法读取已知主机文件";
+"Forget" = "忘记";
+"Name hidden — this file is hashed" = "名称已隐藏 — 此文件经过哈希处理";
+"The known hosts file could not be saved" = "无法保存已知主机文件";
+"Revoked" = "已吊销";
+"Certificate authority" = "证书颁发机构";
+"Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "“主机与密钥”会列出这台 Mac 已经信任过的主机，每一条都带“忘记”按钮。当服务器更换密钥、ssh 拒绝连接并打印一大段警告时，这就是解决办法。即使文件把主机名隐藏起来——macOS 正是这样保存的——条目依然会全部列出，忘记也照样可用。";
+"The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "hosts 文件编辑器暂时不在界面上，我们还在判断它是否属于 Helm。你的 hosts 文件没有被改动，Helm 之前留下的备份也没有删除。";

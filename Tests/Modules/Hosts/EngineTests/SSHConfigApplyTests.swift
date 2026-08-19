@@ -38,7 +38,7 @@ final class SSHConfigApplyTests: XCTestCase {
         let hosts = FakeHostsFile()
         let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
                                  backups: FakeBackups(), sshConfig: port,
-                                 keys: FakeSSHKeys(), agent: FakeSSHAgent(), home: home,
+                                 knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(), home: home,
                                  transport: transport)
         return Bench(engine: engine, port: port, transport: transport)
     }
@@ -89,7 +89,7 @@ final class SSHConfigApplyTests: XCTestCase {
         let hosts = FakeHostsFile()
         let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
                                  backups: FakeBackups(), sshConfig: port,
-                                 keys: FakeSSHKeys(), agent: FakeSSHAgent(), home: home,
+                                 knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(), home: home,
                                  transport: transport)
         engine.activate()
         let outcome = try await apply(transport, "Host b\n")

@@ -138,3 +138,20 @@ public protocol KeyGeneratorPort: Sendable {
     /// nothing in the caller's buffer to leak.
     func generate(_ arguments: [String], answering secret: inout Data) -> Int32
 }
+
+/// `~/.ssh/known_hosts`: the hosts already trusted, read and pruned.
+///
+/// The same shape as `SSHConfigPort` and for the same reasons — the file
+/// belongs to the person, so a write is a write and what stands where the
+/// password dialog stands next door is `SSHFileScope` plus the read-back. It is
+/// its own protocol rather than a second pair of methods on that one: two files
+/// behind one port is a fake that cannot be broken for one of them, and the
+/// engine would have no way to say which file a refusal was about.
+public protocol KnownHostsPort: Sendable {
+    var url: URL { get }
+    /// The text, or nil when the file is missing or is not UTF-8. A Mac that
+    /// has never connected anywhere has no such file, and that is not an empty
+    /// one.
+    func read() -> String?
+    func write(_ text: String) -> Bool
+}

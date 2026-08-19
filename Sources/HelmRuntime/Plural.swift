@@ -44,6 +44,21 @@ public enum Plural {
         }
     }
 
+    /// "3 хоста", "1 host" — the trusted hosts the tile counts.
+    public static func hosts(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
+        switch language {
+        case "ru": return digits + " " + russian(count, "хост", "хоста", "хостов")
+        case "es": return digits + " " + (count == 1 ? "host" : "hosts")
+        case "fr": return digits + " " + (count <= 1 ? "hôte" : "hôtes")
+        case "de": return digits + " " + (count == 1 ? "Host" : "Hosts")
+        case "pt": return digits + " " + (count == 1 ? "host" : "hosts")
+        case "ja": return "\(digits)台のホスト"
+        case "zh": return "\(digits)台主机"
+        default: return digits + " " + (count == 1 ? "host" : "hosts")
+        }
+    }
+
     /// "3 ключа", "1 key" — what the tile says about `~/.ssh`.
     public static func keys(_ count: Int, language: String) -> String {
         let digits = HelmBytes.grouped(count, language: language)
