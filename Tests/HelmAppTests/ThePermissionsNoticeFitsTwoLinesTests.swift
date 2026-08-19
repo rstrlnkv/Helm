@@ -93,14 +93,33 @@ final class ThePermissionsNoticeFitsTwoLinesTests: XCTestCase {
                              + "so the threshold is not measuring anything")
     }
 
-    /// And the button is the short one. The sentence fits because of it: the
-    /// same Russian beside «Показать все» is three lines, so a later change
-    /// that lengthens the button silently un-fixes the notice.
-    func testTheButtonIsWhatMakesTheSentenceFit() {
+    /// **The sentence governs the fold, and the button no longer does.**
+    ///
+    /// This case used to assert the opposite — that the same Russian beside a
+    /// longer «Показать все» took three lines, so lengthening the button would
+    /// silently un-fix the notice. Measured 2026-08-20, after `HelmText.rowDetail`
+    /// became a named text style, it does not: the row is 52 pt either way, and
+    /// the extra width comes out of the *button* rather than out of the
+    /// sentence. Nothing a person sees moved — the shipped button is «Показать»
+    /// and that pair measured 52 before the change and 52 after; what moved is
+    /// only how the row divides the room when a button is longer than any this
+    /// app has.
+    ///
+    /// So the guard that still has a subject is the sentence's, and it is
+    /// `testTheThresholdCatchesTheRowThatWasReported` above. What is left here
+    /// is the pairing itself: the shipped notice beside the shipped button, in
+    /// two lines. It asserts the row **drew** the sentence before asserting how
+    /// tall it is, because «fits in two lines» is also true of a row that drew
+    /// nothing at all.
+    func testTheShippedPairFitsTwoLines() {
         let notice = AppStr.permissionsWithheld(count: 2, modules: 7, language: .ru)
-        XCTAssertLessThanOrEqual(height(notice, AppStr.showPermissions(language: .ru)), twoLines)
-        XCTAssertGreaterThan(height(notice, "Показать все"), twoLines,
-                             "the notice no longer depends on the button's width, which "
-                             + "means this pair has stopped being measured together")
+        let shipped = height(notice, AppStr.showPermissions(language: .ru))
+        XCTAssertGreaterThan(shipped, 40, "the row drew no sentence, so its height means nothing")
+        XCTAssertLessThanOrEqual(shipped, twoLines)
+        XCTAssertEqual(height(notice, "Показать все"), shipped, accuracy: 1,
+                       "the row has started growing with the button again. It did until "
+                       + "2026-08-20 and the note above records why it stopped; if it is back, "
+                       + "the sentence and the button are competing for the same room once "
+                       + "more and this pair needs measuring together")
     }
 }

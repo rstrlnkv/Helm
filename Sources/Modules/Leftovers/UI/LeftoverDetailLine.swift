@@ -20,7 +20,7 @@ enum LeftoverPathFloor {
     /// component, at `HelmText.rowDetail`'s own size.
     static func width(of path: String) -> CGFloat {
         let least = "…" + (path as NSString).lastPathComponent
-        let font = NSFont.systemFont(ofSize: HelmText.rowDetailSize)
+        let font = HelmText.rowDetailNSFont
         return (least as NSString).size(withAttributes: [.font: font]).width.rounded(.up)
     }
 }

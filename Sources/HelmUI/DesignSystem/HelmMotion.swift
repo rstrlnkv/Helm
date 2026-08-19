@@ -40,6 +40,22 @@ public enum HelmMotion {
         reduced ? instant : .snappy(duration: 0.22)
     }
 
+    /// The header strip lighting under the pointer, and going out again.
+    ///
+    /// **Asymmetric, and measured that way off macOS itself.** System Settings
+    /// and Finder were recorded on this Mac at ~32 fps: in over 12 frames
+    /// (0,19 s), out over 20 (0,33 s), monotonic in both directions with no
+    /// overshoot. Nothing already in this vocabulary says that — `interface`
+    /// is a spring with a little bounce, and `disclosure` has the right shape
+    /// but would enter 0,11 s slower than the system does.
+    ///
+    /// One name rather than two tokens, because it is one behaviour with two
+    /// halves; `.smooth` is a spring with the bounce set to zero, which is what
+    /// "monotonic, no overshoot" means in this vocabulary.
+    public static func hover(entering: Bool) -> Animation {
+        reduced ? instant : .smooth(duration: entering ? 0.19 : 0.33)
+    }
+
     /// A panel arriving on screen from the menu bar.
     ///
     /// Short and eased-out, and **nothing but opacity**. macOS menus and

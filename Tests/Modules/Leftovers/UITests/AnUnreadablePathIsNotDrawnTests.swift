@@ -34,9 +34,12 @@ final class AnUnreadablePathIsNotDrawnTests: XCTestCase {
     /// The narrowest pane of the audit, as the other width guards spell it.
     private let narrowestPane: CGFloat = 540
 
-    private func detailFont() -> NSFont {
-        NSFont.systemFont(ofSize: HelmText.rowDetailSize)
-    }
+    /// The very font the line is drawn in, not a second spelling of its size.
+    /// It was `NSFont.systemFont(ofSize: HelmText.rowDetailSize)` — a number
+    /// this side and a `Font` the other — and once the detail style started
+    /// scaling with the system's text size, a measurement built on a fixed 11
+    /// would have held a floor under a line that had grown past it.
+    private func detailFont() -> NSFont { HelmText.rowDetailNSFont }
 
     /// The hazard is real: in every language the reason alone outgrows the
     /// whole pane — before any row chrome is subtracted — so the room it

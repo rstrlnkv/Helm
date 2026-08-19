@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The surfaces that give every Helm screen the same voice as the About page:
@@ -364,19 +365,36 @@ public enum HelmText {
     /// window the scale gives four and a distinction nobody can see. Quieter is
     /// what `HelmText.quiet` is for. A *fifth token* spelling 13 a second time
     /// would be a synonym, and a scale exists to have fewer of those.
-    public static let rowTitle = Font.system(size: 13)
+    /// **Named, not numbered, since 2026-08-20.** These were `.system(size: 13)`
+    /// and `.system(size: 11)`, which is the same face at a size that never
+    /// moves — so a Mac whose owner had raised the interface text size got a
+    /// Helm window that did not. The styles below resolve to the very same
+    /// points at the default setting (measured on macOS 27: `.body` 13 regular,
+    /// `.subheadline` 11 regular), and to larger ones when the system says so.
+    ///
+    /// **`.headline` is not the heading here, and that is measured too.** On
+    /// macOS it resolves to 13 **bold**, not semibold, so mapping
+    /// `sectionHeading` onto it would have weighted every heading in the app a
+    /// step heavier with the size unchanged — which no test could have caught,
+    /// because the size is what a layout measures. `.body.weight(.semibold)` is
+    /// the same size scaled and the weight this app already drew.
+    public static let rowTitle = Font.body
     /// The line under a row's name, and the note under a group: secondary copy
     /// that a reader takes in after the thing it describes.
-    public static let rowDetail = Font.system(size: rowDetailSize)
-    /// The number `rowDetail` is built from, for the one place that measures
-    /// AppKit text at the detail size (`LeftoverPathFloor`) — a size spelled
-    /// twice across that boundary would drift with nothing being an error.
-    public static let rowDetailSize: CGFloat = 11
+    public static let rowDetail = Font.subheadline
+    /// `rowDetail` as AppKit sees it, for the one place that measures text
+    /// rather than drawing it (`LeftoverPathFloor`).
+    ///
+    /// A font rather than the number it used to be. The two sides have to agree
+    /// about the *same* text style now: a bare 11 would keep measuring 11 while
+    /// the drawn line grew with the system's setting, and the floor would be
+    /// under the thing it was holding up.
+    public static var rowDetailNSFont: NSFont { .preferredFont(forTextStyle: .subheadline) }
     /// The heading over a card, on the page rather than inside it.
-    public static let sectionHeading = Font.system(size: 13, weight: .semibold)
+    public static let sectionHeading = Font.body.weight(.semibold)
     /// The heading of a group *inside* a list — the sidebar's own section
     /// labels, and the copies of them the composer draws.
-    public static let groupLabel = Font.system(size: 11, weight: .semibold)
+    public static let groupLabel = Font.subheadline.weight(.semibold)
 }
 
 public extension View {
@@ -489,7 +507,73 @@ public struct HelmSectionTitle: View {
     }
 }
 
+/// The strip lighting under the pointer.
+///
+/// **Measured on macOS 27, on this Mac, against System Settings and Finder.**
+/// Both light the *whole* top 52 pt of the content pane — from the sidebar's
+/// edge to the window's right edge, the sidebar itself unchanged — and not the
+/// control the pointer happens to be over: a button inside the strip moved
+/// +3.0 luma while the strip moved +7.8, which is the background changing
+/// behind it. The profile is flat to ±0.1 over all 51 rows, so it is a fill and
+/// not a gradient, and solving glyph coverage from the composite gave k = 0.100
+/// at rest against 0.0999 lit — the glyphs are untouched, so it is not a
+/// material either. That last point is what makes this verifiable at all: an
+/// offscreen `cacheDisplay` composites a plain fill exactly and never
+/// composites glass.
+///
+/// Dark: pane 30.0 → 37.8, which one constant pair predicts over four different
+/// backdrops — near-white at α ≈ 0.038. `Color.primary` **is** that white in
+/// dark and black in light, so the token says the measurement rather than
+/// restating it per appearance. The light values were not measured: the Mac
+/// switches appearance by the sun and making System Settings draw light is a
+/// system setting, which a read-only measurement may not touch.
+///
+/// The rule at the bottom edge is the other half, and it is the reason this
+/// does not contradict the header having lost its hairline: macOS draws **no
+/// line at rest and a line on hover**. One point, dark 30.0 → 46.0, which is
+/// α ≈ 0.071 by the same arithmetic.
+///
+/// A modifier taking the state as a value, not reading the pointer itself, so a
+/// settled render can be asked for both states without a pointer to move.
+struct HeaderHoverLight: ViewModifier {
+    let lit: Bool
+
+    /// Near-white at 3.7%, from the composite over four backdrops.
+    static let fill = 0.038
+    /// The bottom edge, one point. Present only while lit.
+    static let rule = 0.071
+
+    func body(content: Content) -> some View {
+        content
+            .background(Color.primary.opacity(lit ? Self.fill : 0))
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(Color.primary.opacity(lit ? Self.rule : 0))
+                    .frame(height: 1)
+            }
+            .animation(HelmMotion.hover(entering: lit), value: lit)
+    }
+}
+
 public struct HelmPageHeader<Trailing: View>: View {
+    /// **Both halves, because one of them can stop being true on its own.**
+    /// The strip is lit only while the window is key — measured: with System
+    /// Settings not key, hover changes nothing at all. `hovering` is a flag
+    /// this view sets from a pointer that may never leave (`onHover` does not
+    /// reliably send `false` when a window loses key under a stationary
+    /// pointer), so it is never trusted alone; `controlActiveState` is the live
+    /// fact beside it, and the `&&` is the reverse channel CLAUDE.md's rule
+    /// about a local flag standing in for an external one asks for.
+    ///
+    /// Static and taking its two facts, so it is a question a test can ask
+    /// without a window, a pointer, or a render.
+    static func isLit(hovering: Bool, active: ControlActiveState) -> Bool {
+        hovering && active == .key
+    }
+
+    @State private var hovering = false
+    @Environment(\.controlActiveState) private var activeState
+
     let symbol: String
     let tint: Color
     let title: String
@@ -549,7 +633,13 @@ public struct HelmPageHeader<Trailing: View>: View {
         // been seen because at the default window the pane is 690 pt —
         // narrower than the column, where the two rules agree.
         .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
+        // The lighting goes on the pane-wide frame and not the one above it:
+        // macOS lights the whole strip, and on a grouped-`Form` page the frame
+        // above is capped at the 744 pt column and centred, so a background
+        // there would be a lit band floating in an unlit pane.
         .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
+        .modifier(HeaderHoverLight(lit: Self.isLit(hovering: hovering, active: activeState)))
+        .onHover { hovering = $0 }
     }
 }
 
