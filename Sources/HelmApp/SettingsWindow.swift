@@ -586,7 +586,6 @@ private struct ModuleDetailView: View {
             //
             // Whether a module exists at all is a settings question, and it
             // is asked where the sidebar is arranged.
-            Divider()
             if let live = host.liveModule(id) {
                 descriptor.settingsPage(live.vm)
             } else {

@@ -272,29 +272,38 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// disagree when somebody changes one of the three words.
     private var levelPickerWidth: CGFloat { HelmPickerWidth.segmented(LogView.levelLabels) }
 
-    /// The content of the filter band: everything drawn between the second and
-    /// third rules that is not itself a full-width container.
+    /// The content of the filter band: everything drawn between the first and
+    /// second rules that is not itself a full-width container.
     private func inFilterRow(of shell: ModulePageRender.Shell) -> [ModulePageRender.Drawn] {
         let rules = fullWidthRules(of: shell)
-        guard rules.count == 4 else { return [] }
+        guard rules.count == Self.ruleCount else { return [] }
         return shell.layers.filter {
             $0.frame.width < shell.width - 1
-                && $0.frame.minY >= rules[1] && $0.frame.maxY <= rules[2]
+                && $0.frame.minY >= rules[0] && $0.frame.maxY <= rules[1]
         }
     }
 
-    /// The filter row is what lies between the second and third rules on the
-    /// page: header, rule, the writing switch, rule, **the filters**, rule, the
-    /// lines, rule, footer. Its height is the only signal of the fold that does
-    /// not depend on recognising a SwiftUI-drawn control by its class.
+    /// **Three, and it was four until 2026-08-20.** The page is header, the
+    /// writing switch, rule, **the filters**, rule, the lines, rule, footer —
+    /// the rule that used to fence the header off from the page went with the
+    /// one under every other page header (`ThePageHeaderCarriesNoRuleTests`),
+    /// and this measurement, which anchors on the rules, said so rather than
+    /// quietly measuring the writing switch instead. That is why the count is
+    /// asserted and not assumed.
+    private static let ruleCount = 3
+
+    /// The filter row is what lies between the first and second rules. Its
+    /// height is the only signal of the fold that does not depend on
+    /// recognising a SwiftUI-drawn control by its class.
     private func filterRowHeight(_ shell: ModulePageRender.Shell) -> CGFloat {
         let rules = fullWidthRules(of: shell)
-        guard rules.count == 4 else {
-            XCTFail("the log page draws \(rules.count) full-width rules, not the four this "
-                    + "measurement is built on — it is measuring some other band of the page")
+        guard rules.count == Self.ruleCount else {
+            XCTFail("the log page draws \(rules.count) full-width rules, not the "
+                    + "\(Self.ruleCount) this measurement is built on — it is measuring "
+                    + "some other band of the page")
             return 0
         }
-        return rules[2] - rules[1]
+        return rules[1] - rules[0]
     }
 
     /// The `Divider()`s, top down — the only band boundary on this page that

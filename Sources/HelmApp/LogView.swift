@@ -56,7 +56,6 @@ struct LogView: View {
             HelmPageHeader(symbol: "text.alignleft", tint: .gray,
                            title: AppStr.logPane,
                            bleeds: true)
-            Divider()
             writing
             Divider()
             filters

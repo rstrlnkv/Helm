@@ -113,7 +113,7 @@ public struct HelmWidgetFigure: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(value)
-                .font(.system(size: small ? 15 : 20, weight: .medium, design: .rounded))
+                .font(.system(size: small ? 15 : 20, weight: .medium))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

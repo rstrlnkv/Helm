@@ -545,10 +545,9 @@ public struct HelmPageHeader<Trailing: View>: View {
         // so its header is too — but a full-bleed page draws its toolbar at a
         // flat 20 pt inset across the whole pane, and a centred header above
         // it walks away as the window grows. Measured on a 1400 pt window: the
-        // title sat 203 pt right of the controls beneath it, under a
-        // full-width divider. It has never been seen because at the default
-        // window the pane is 690 pt — narrower than the column, where the two
-        // rules agree.
+        // title sat 203 pt right of the controls beneath it. It has never
+        // been seen because at the default window the pane is 690 pt —
+        // narrower than the column, where the two rules agree.
         .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
         .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
     }

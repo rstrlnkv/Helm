@@ -66,7 +66,7 @@ public struct HelmBadge: View {
     /// low opacity: a neutral drop under a coloured object reads as dirt.
     private var prominent: some View {
         Text(text)
-            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .font(.system(size: 10, weight: .bold))
             .tracking(0.5)
             .foregroundStyle(.white)
             // 2.5, for the same reason as `quiet`'s 1: the silhouette, not a gap.
