@@ -109,10 +109,10 @@ final class TheHeroStandsAtTheTopOfThePageTests: XCTestCase {
     /// told from a line of text by density rather than by width — the closing
     /// notes run the full column and a headline runs most of it, and both are
     /// ink with paper between the letters.
-    private func cardsRow(_ rep: NSBitmapImageRep) -> Int? {
+    private func cardsRow(_ rep: NSBitmapImageRep, from first: Int = 0) -> Int? {
         guard let data = rep.bitmapData, rep.samplesPerPixel == 4 else { return nil }
         let bg = pane(rep, data)
-        for y in 0..<(rep.pixelsHigh / 2) {
+        for y in first..<(rep.pixelsHigh / 2) {
             guard let span = edges(rep, atPoint: y), span.right - span.left > 400 else { continue }
             var ink = 0
             for x in (span.left * 2)...(span.right * 2) {
@@ -146,6 +146,58 @@ final class TheHeroStandsAtTheTopOfThePageTests: XCTestCase {
         XCTAssertGreaterThan(cards - hero, 100, """
             only \(cards - hero) pt stand above the connection cards, which is less \
             than the hero takes — so what was found is not the hero
+            """)
+    }
+
+    /// **The hero's readings and the connection cards are one column.**
+    ///
+    /// The hero rides on a `Form` section's *header*, and macOS insets a header
+    /// ten points further than the section's own card — right for text, wrong
+    /// for a surface. It was latent while nothing in the hero reached its
+    /// edges; the readings became a well with a fill of its own, and the defect
+    /// became visible: measured before the fix, the strip ran 80…764 where the
+    /// cards run 70…774, so the page had two card systems twenty points apart
+    /// across the pair.
+    ///
+    /// Both rows are found rather than typed — `cardsRow` takes the first dense
+    /// wide fill, which is the strip because the hero is above the cards, and
+    /// the cards are the next one below it.
+    func testTheReadingsAndTheCardsShareOneColumn() throws {
+        let rep = try shoot(tunnels: [tunnel()])
+        try XCTSkipIf(rep.bitmapData == nil, "nothing drew — no window server")
+
+        let stripAt = try XCTUnwrap(cardsRow(rep), "the hero drew no readings surface at all")
+        // Past the corner, the same twenty points the cards are read at below.
+        // Read at its first filled row instead, the strip measured 78…766 against
+        // the cards' 70…774 and the two surfaces looked eight points apart when
+        // they were aligned: `HelmRadius.card` is 10, and the top row of a
+        // rounded rectangle is inside its own radius at each end.
+        let strip = try XCTUnwrap(edges(rep, atPoint: stripAt + 20))
+        // **Past the end of the strip, found rather than guessed.** «Eighty
+        // points below» was a guess and it landed *inside* the readings, which
+        // are taller than that: the test then compared the strip with itself and
+        // could not fail. The strip ends at the first row under it carrying no
+        // ink at all.
+        let stripEnds = try XCTUnwrap((stripAt..<(rep.pixelsHigh / 2))
+            .first { edges(rep, atPoint: $0) == nil },
+            "the drawing never stops, so the strip has no end to look past")
+        // **Density again, not width.** Looked for by width alone this found the
+        // closing notes — two lines of prose that run the full column — and then
+        // measured the blank row twenty points under them.
+        let cardsAt = try XCTUnwrap(cardsRow(rep, from: stripEnds),
+                                    "the connection cards drew nothing below the hero")
+        // Past the corner, the way `cardsRow` does it: the first filled row of a
+        // rounded surface is inside its own radius and narrower than the surface.
+        let cards = try XCTUnwrap(edges(rep, atPoint: cardsAt + 20))
+
+        XCTAssertGreaterThan(strip.right - strip.left, 400,
+                             "precondition: what was found is not a full-width surface")
+        XCTAssertEqual(strip.left, cards.left, accuracy: 1, """
+            the readings start at \(strip.left) and the cards at \(cards.left) — \
+            two card systems on one page, \(abs(strip.left - cards.left)) pt apart
+            """)
+        XCTAssertEqual(strip.right, cards.right, accuracy: 1, """
+            the readings end at \(strip.right) and the cards at \(cards.right)
             """)
     }
 

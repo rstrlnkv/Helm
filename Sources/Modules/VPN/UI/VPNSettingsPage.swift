@@ -79,6 +79,13 @@ struct VPNSettingsPage: View {
         VStack(alignment: .leading, spacing: 0) {
             VPNTunnelHero(vm.tunnels, selected: $selectedTunnel,
                           measuring: vm.measuring) { vm.measureSpeed($0) }
+                // **Out to the cards' own column.** A grouped `Form` insets a
+                // section header ten points further than the section's card, and
+                // the hero draws a surface — its readings ran 80…764 against the
+                // connection cards' 70…774, which is two card systems on one page.
+                // The same line `connectionsList` carries below, for the same
+                // reason; the hero puts its *words* back in by the same amount.
+                .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
                 // The gap under the hero, paid here for the reason the old
                 // «This tunnel» heading paid its own: a grouped `Form` spaces
                 // its sections by their footers, and a block riding on a header

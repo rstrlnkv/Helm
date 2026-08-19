@@ -349,8 +349,21 @@ struct VPNTunnelHero: View {
                       _ chosen: VPNTunnelState) -> some View {
         let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
         return VStack(spacing: HelmSpace.s6) {
+            // **The words are inset like a heading; the surface is not.**
+            //
+            // The whole block sits in the cards' own column
+            // (`VPNSettingsPage.heroAndTitle` backs it out of the header inset),
+            // and these two go back in by the same amount, because a heading
+            // belongs level with what the rows below *say* —
+            // `HelmLayout.groupedHeaderOutset` carries both halves of that
+            // ruling. Written the other way round, as a negative padding on the
+            // readings alone, it drew nothing at all: `.clipped()` sits at this
+            // view's root for the cross-fade, and a clip takes back whatever a
+            // negative padding inside it gives.
             headline(strip)
+                .padding(.horizontal, HelmLayout.groupedHeaderOutset)
             verbs(switcher, strip, chosen)
+                .padding(.horizontal, HelmLayout.groupedHeaderOutset)
             readings(strip)
         }
         .frame(maxWidth: .infinity)
@@ -530,5 +543,8 @@ struct VPNTunnelHero: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
+        // The same inset the live state's words take, for the same reason: the
+        // block is in the cards' column and its text is not.
+        .padding(.horizontal, HelmLayout.groupedHeaderOutset)
     }
 }
