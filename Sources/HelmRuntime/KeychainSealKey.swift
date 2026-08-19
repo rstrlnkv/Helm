@@ -9,6 +9,24 @@ import Security
 /// than as permission.
 public protocol SealKeyPort: Sendable {
     func key() -> SealKey?
+
+    /// The key if it is already in hand — never a round trip, and never a wait
+    /// for one somebody else is making.
+    ///
+    /// Nil is a **third answer**, not a refusal: «cannot say yet». A caller that
+    /// folded it into "no key" would report a stored setting as forged because a
+    /// keychain was slow, which is the shape ARCHITECTURE.md § A nil from a
+    /// system read can be folding two questions into one is about.
+    ///
+    /// The default is nil because it is the truth for a port that keeps
+    /// nothing, and `KeychainSealKey` is exactly that port: every answer it
+    /// gives costs `SecItemCopyMatching`, and on an ad-hoc build that is a modal
+    /// dialog. Only something that already holds material can answer otherwise.
+    func keyIfWarm() -> SealKey?
+}
+
+public extension SealKeyPort {
+    func keyIfWarm() -> SealKey? { nil }
 }
 
 /// A seal key in Helm's own login keychain.

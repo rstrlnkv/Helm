@@ -135,7 +135,32 @@ struct MenuBarSettingsView: View {
         // scan somebody switched off comes back on.
         guard let disabledScans else { return }
         AppSettings.disabledScans = ScanConsent.toggling(id, to: on, in: disabledScans)
-        self.disabledScans = AppSettings.disabledScans
+        self.disabledScans = AppSettings.disabledScansIfWarm
+    }
+
+    /// Take the off-list if it is free, and pay for it elsewhere if it is not.
+    ///
+    /// **Every read of that setting on this page goes through here**, and
+    /// `TheSettingsPageNeverWaitsForTheKeychainTests` reads this file to say so.
+    /// The setting verifies a seal on every read, the key behind that seal comes
+    /// from the login keychain, and on an ad-hoc build a keychain read is a
+    /// modal authorization dialog — 19,09 s of it in
+    /// `HelmApp_2026-08-19-235500_MacBook.hang`, taken on the thread that draws
+    /// while the window could not answer a mouse-up.
+    ///
+    /// So the answer is asked for only when it costs nothing, and the round trip
+    /// happens in a task the main actor is not standing on. Nil stays nil
+    /// meanwhile: the rows read it as «not read yet» and draw nothing, which is
+    /// the state the `Set<String>?` exists for.
+    private func readTheOffList() {
+        if let warm = AppSettings.disabledScansIfWarm {
+            disabledScans = warm
+            return
+        }
+        Task {
+            await AppSettings.scanGuard.warmKey()
+            disabledScans = AppSettings.disabledScansIfWarm
+        }
     }
 
     private var settingsForm: some View {
@@ -395,7 +420,7 @@ struct MenuBarSettingsView: View {
             // the interval this window spends inactive: coming back is when
             // «hasn't run yet» can have stopped being true.
             lastScanAt = AppSettings.lastScanAt
-            disabledScans = AppSettings.disabledScans
+            readTheOffList()
             // Login Items is one of the panes a person leaves this window for,
             // and the registration can be taken away there. The refusal Helm
             // remembers survives only while the system still agrees with it.
@@ -404,18 +429,14 @@ struct MenuBarSettingsView: View {
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
-            // Here and not in the state's initial value: this getter verifies a
-            // seal, which reaches the login keychain, and on an ad-hoc build a
-            // keychain read is a modal dialog.
-            //
-            // The task alone is not the fix, and it was measured not being one:
-            // a `.task` continuation is drained by the very layout pass that
-            // draws the page, so a blocking read inside it still delays the
-            // first frame. Warming first is what moves the round trip off this
-            // thread — the await suspends, the page lays out and draws, and the
-            // read below is then memory (`SealKeyCache`).
-            await AppSettings.scanGuard.warmKey()
-            disabledScans = AppSettings.disabledScans
+            // Not in the state's initial value, and not awaited here either.
+            // A `.task` continuation is drained by the very layout pass that
+            // draws the page, so awaiting the keychain inside it delayed the
+            // first frame even with the round trip on another thread — measured
+            // 2026-08-15. `readTheOffList` takes the answer if it is already in
+            // hand and otherwise leaves it nil until a task it does not wait for
+            // brings one.
+            readTheOffList()
         }
         .confirmationDialog(AppStr.resetConfirmTitle, isPresented: $confirmingReset,
                             titleVisibility: .visible) {

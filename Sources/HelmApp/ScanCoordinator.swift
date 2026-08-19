@@ -143,7 +143,15 @@ final class ScanCoordinator {
                    onMains: PowerSource.isOnMains,
                    onConsole: Self.ownsTheConsole,
                    screenLocked: Self.screenIsLocked,
-                   disabledScans: AppSettings.disabledScans,
+                   // **Never the blocking getter, on the main actor.** Verifying
+                   // the seal needs the login keychain, and on an ad-hoc build
+                   // that is a modal dialog; `considerAll` awaits the warm
+                   // before it gets here, so in the ordinary case this is a
+                   // memory read. When the keychain refused, «cannot say» is
+                   // every scan off — the same answer a broken seal gives, and
+                   // the safe direction for a reader nobody is watching.
+                   disabledScans: AppSettings.disabledScansIfWarm
+                       ?? Set(ScanRunner.scannableModules),
                    lastRun: AppSettings.lastScanAt,
                    lastAttempt: AppSettings.lastScanAttemptAt,
                    runsToday: AppSettings.scanRunsToday)
@@ -173,6 +181,13 @@ final class ScanCoordinator {
 
     private func considerAll() async {
         rollOverTheDayIfNeeded()
+        // The off-list below is sealed, and the key behind that seal comes from
+        // the login keychain — a modal authorization dialog on every ad-hoc
+        // build. `AppSettings` is `@MainActor`, so a blocking read here is a
+        // dialog on the thread that draws, with nobody at the desk to dismiss
+        // it. Awaiting suspends; the round trip happens on another thread and
+        // every read afterwards is memory (`SealKeyCache`).
+        await AppSettings.scanGuard.warmKey()
         // One reading of the machine for the whole tick — see `Conditions`.
         var sampled = conditions(idleSeconds: effectiveIdleSeconds())
         for id in Self.scannableModules {

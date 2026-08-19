@@ -148,6 +148,30 @@ extension Notification.Name {
         }
     }
 
+    /// The same off-list, but only if answering it is free.
+    ///
+    /// **The getter above cannot be read from the thread that draws**, and this
+    /// type is `@MainActor`, so every reader of it is on that thread. Verifying
+    /// the seal needs the key, the key comes from the login keychain, and on an
+    /// ad-hoc build a keychain read is a modal authorization dialog: measured on
+    /// the owner's Mac as `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a
+    /// settings window that could not answer a mouse-up while `warmKey()` sat in
+    /// securityd (`SealKeyCache` § Two locks has the other half of that story).
+    ///
+    /// Nil is **«not yet»**, a third answer beside `.sealed` and `.broken`, and
+    /// the screens hold it as `Set<String>?` for exactly that reason: an empty
+    /// set means every scan is on, and standing in for "not read" with it would
+    /// show a whole-volume walk switched on to somebody who never said so.
+    /// `SettingGuard.warmKey()` is what turns nil into an answer.
+    ///
+    /// One line rather than a second copy of the branches above, and that is the
+    /// point: `isWarm` is only ever false → true, so once it is true every ask
+    /// the getter makes — the verdict, the key `.adopt` seals with, the item the
+    /// fresh-install branch establishes — is a memory read.
+    static var disabledScansIfWarm: Set<String>? {
+        scanGuard.isWarm ? disabledScans : nil
+    }
+
     /// The bytes the seal is over. Sorted before sealing, so the same set never
     /// hashes two ways and a re-ordering by anything else is not mistaken for a
     /// forgery.

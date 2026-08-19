@@ -34,26 +34,70 @@ import Foundation
 /// front of a port: `AppSettings.scanGuard` has it, and the two seal keys that
 /// do not — `RuleKeychain` and the one `DuplicatesSettings` builds — still pay a
 /// round trip per verdict.
-/// `@unchecked` because the one mutable field is behind the lock below on both
-/// sides — the rule a `LocalTransport` field once broke by taking the lock on
-/// one of them.
+///
+/// ## Two locks, because one lock had two jobs
+///
+/// There was one `NSLock`, held across the source's own call so that two callers
+/// arriving together cost one dialog rather than two. That is still wanted, and
+/// `testTwoCallersArrivingTogetherCostOneRoundTrip` still holds it. What the one
+/// lock also did, unasked, was make *every* other caller wait for that dialog —
+/// and on 2026-08-19 one of them was the thread that draws:
+/// `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s, the report naming the
+/// arrangement outright as *blocked by turnstile … waiting for … thread
+/// 0x1bc925*, which was `SettingGuard.warmKey()` sitting in securityd.
+///
+/// So the two jobs are two locks:
+///
+/// - `fetching` serialises the round trip. It is held across `source.key()` and
+///   is the one that makes two arrivals cost one dialog. Only a caller that has
+///   decided it can afford a round trip ever takes it.
+/// - `held` guards the material and is **never** held across the source's call.
+///   Every section under it is a field read or a field write, so a caller that
+///   only wants what is already in hand — `keyIfWarm()` — waits for nobody.
+///
+/// The invariant that keeps them honest: nothing takes `fetching` while holding
+/// `held`, and nothing calls out of this file while holding `held`.
+///
+/// `@unchecked` because the one mutable field is behind `held` on both sides —
+/// the rule a `LocalTransport` field once broke by taking the lock on one of
+/// them.
 public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
     private let source: SealKeyPort
-    private let lock = NSLock()
+    /// Serialises the round trip: one dialog for two callers arriving together.
+    private let fetching = NSLock()
+    /// Guards `material`, and is held for a field access and nothing else.
+    private let held = NSLock()
     private var material: Data?
 
     public init(_ source: SealKeyPort) { self.source = source }
 
-    /// The lock is held across the source's own call, so two threads arriving
-    /// together produce one round trip rather than two — one dialog rather than
-    /// two. It costs the second caller a wait it did not have before, and it is
-    /// still strictly less waiting than the read every caller used to do.
+    /// The key, fetching it if this is the first ask.
+    ///
+    /// **Only for a caller that can afford to wait**, which since 2026-08-20
+    /// means not the main actor: the wait is a modal dialog, and on the thread
+    /// that draws it is a window that cannot answer a mouse-up. The main actor
+    /// asks `keyIfWarm()` and lets `SettingGuard.warmKey()` do the waiting.
+    ///
+    /// The cache is checked twice — once before queuing for the fetch and once
+    /// after — so the second of two callers arriving together is served from
+    /// what the first stored rather than making a round trip of its own.
     public func key() -> SealKey? {
-        lock.lock()
-        defer { lock.unlock() }
-        if let material { return SealKey(material: material, firstUse: false) }
+        if let warm = keyIfWarm() { return warm }
+        fetching.lock()
+        defer { fetching.unlock() }
+        // The caller ahead may have finished while this one queued.
+        if let warm = keyIfWarm() { return warm }
         guard let fetched = source.key() else { return nil }
-        material = fetched.material
+        held.withLock { material = fetched.material }
         return fetched
+    }
+
+    /// The key if a fetch has already stored one.
+    ///
+    /// Never `firstUse`: that door belongs to the run that created the keychain
+    /// item, and material handed back from memory is by definition a later ask.
+    public func keyIfWarm() -> SealKey? {
+        guard let material = held.withLock({ material }) else { return nil }
+        return SealKey(material: material, firstUse: false)
     }
 }

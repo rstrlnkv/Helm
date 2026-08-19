@@ -44,6 +44,21 @@ public struct SettingGuard: Sendable {
         return SettingSeal.verdict(payload: payload, mac: mac, key: key)
     }
 
+    /// Whether the key is already in hand, so every member above answers from
+    /// memory rather than from securityd.
+    ///
+    /// **This is the question the main actor asks before it asks anything
+    /// else.** A round trip here is a modal dialog on every ad-hoc build, and on
+    /// the thread that draws it is `HelmApp_2026-08-19-235500_MacBook.hang`:
+    /// 19,09 s of a settings window that could not answer a mouse-up. False
+    /// means «cannot say yet», which is a third answer and not a refusal —
+    /// reading it as `.broken` would tell somebody their settings had been
+    /// forged because a keychain was slow.
+    ///
+    /// It only ever goes false → true: the key is created once and kept, so a
+    /// caller that has seen this true cannot be overtaken by a fetch.
+    public var isWarm: Bool { keys.keyIfWarm() != nil }
+
     /// Spend first use, so the door `.adopt` leaves open is Helm's to walk
     /// through and nobody else's.
     ///
