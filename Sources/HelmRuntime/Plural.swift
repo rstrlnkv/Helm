@@ -25,6 +25,40 @@ public enum Plural {
         }
     }
 
+    /// "3 записи", "1 entry" — the lines of `/etc/hosts` the panel tile counts.
+    ///
+    /// An inline table rather than eight `.strings` keys, for the reason every
+    /// counted noun in this file has one: the interpolation runs before the
+    /// lookup would, so there is no English key to be the key.
+    public static func entries(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
+        switch language {
+        case "ru": return digits + " " + russian(count, "запись", "записи", "записей")
+        case "es": return digits + " " + (count == 1 ? "entrada" : "entradas")
+        case "fr": return digits + " " + (count <= 1 ? "entrée" : "entrées")
+        case "de": return digits + " " + (count == 1 ? "Eintrag" : "Einträge")
+        case "pt": return digits + " " + (count == 1 ? "entrada" : "entradas")
+        case "ja": return "\(digits)件"
+        case "zh": return "\(digits)条"
+        default: return digits + " " + (count == 1 ? "entry" : "entries")
+        }
+    }
+
+    /// "3 ключа", "1 key" — what the tile says about `~/.ssh`.
+    public static func keys(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
+        switch language {
+        case "ru": return digits + " " + russian(count, "ключ", "ключа", "ключей")
+        case "es": return digits + " " + (count == 1 ? "clave" : "claves")
+        case "fr": return digits + " " + (count <= 1 ? "clé" : "clés")
+        case "de": return digits + " " + (count == 1 ? "Schlüssel" : "Schlüssel")
+        case "pt": return digits + " " + (count == 1 ? "chave" : "chaves")
+        case "ja": return "\(digits)個の鍵"
+        case "zh": return "\(digits)个密钥"
+        default: return digits + " " + (count == 1 ? "key" : "keys")
+        }
+    }
+
     /// "3 приложения", "1 app" — the uninstaller's status line, which counts
     /// applications rather than the files inside them.
     public static func apps(_ count: Int, language: String) -> String {

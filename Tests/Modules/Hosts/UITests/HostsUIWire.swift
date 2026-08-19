@@ -33,13 +33,14 @@ struct HostsUIWire {
     /// ever sent a `load`, and every test here would be measuring the replay.
     @MainActor
     static func make(file: String?, privileged: PrivilegedOutcome,
-                     backups: [String: String] = [:]) -> HostsUIWire {
+                     backups: [String: String] = [:],
+                     keys: WireKeys = WireKeys(), agent: WireAgent = WireAgent()) -> HostsUIWire {
         let transport = LocalTransport()
         let root = FixedPrivileged(privileged)
         let engine = HostsEngine(file: FixedFile(file),
                                  privileged: root,
                                  backups: MemoryBackups(backups),
-                                 keys: WireKeys(), agent: WireAgent(),
+                                 keys: keys, agent: agent,
                                  now: { Date(timeIntervalSince1970: 0) },
                                  transport: transport)
         return HostsUIWire(engine: engine, transport: transport, privileged: root,
@@ -85,25 +86,58 @@ final class MemoryBackups: BackupPort, @unchecked Sendable {
 /// keyring that is the same on every run. It is still a keyring a real Mac can
 /// have — one key, its public half beside it, the directory at 0700 — rather
 /// than an empty one, so the table has a row to draw.
-struct WireKeys: SSHKeysPort {
+final class WireKeys: SSHKeysPort, @unchecked Sendable {
     let directory = URL(fileURLWithPath: "/nowhere/.ssh")
-    func names() -> [String]? { ["id_ed25519", "id_ed25519.pub", "known_hosts"] }
+    private let lock = NSLock()
+    private var mode: mode_t
+
+    /// The mode is settable and the `chmod` moves it, because a page test about
+    /// «press Fix and the row changes» needs the row to be able to change. A
+    /// fixed keyring could only ever show one verdict, and the control under it
+    /// would be proved by nothing.
+    private let listing: [String]?
+
+    /// `names: nil` is a folder that could not be read at all, which is not a
+    /// folder with no keys — the distinction the page draws two different
+    /// sentences for, and one a fake without it could not put a test behind.
+    init(mode: mode_t = 0o600,
+         names: [String]? = ["id_ed25519", "id_ed25519.pub", "known_hosts"]) {
+        self.mode = mode
+        self.listing = names
+    }
+
+    func names() -> [String]? { listing }
     func facts(for pair: KeyInventory.Pair) -> KeyFacts {
         KeyFacts(pair: pair,
                  describeLine: "256 SHA256:abc123 me@mac (ED25519)",
-                 mode: 0o600,
+                 mode: lock.withLock { mode },
                  modified: Date(timeIntervalSince1970: 1_700_000_000),
                  publicText: "ssh-ed25519 AAAA me@mac\n")
     }
     func directoryMode() -> mode_t? { 0o700 }
-    func chmod(_ name: String, to mode: mode_t) -> Bool { true }
+    func chmod(_ name: String, to newMode: mode_t) -> Bool {
+        lock.withLock { mode = newMode }
+        return true
+    }
     func chmodDirectory(to mode: mode_t) -> Bool { true }
 }
 
 /// An agent that is running and holding nothing — the state a Mac is in after a
 /// restart, and the one where the load buttons are the point.
-struct WireAgent: SSHAgentPort {
-    func list() -> AgentList { .empty }
-    func load(_ name: String) -> Bool { true }
-    func unload(_ name: String) -> Bool { true }
+final class WireAgent: SSHAgentPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var answer: AgentList = .empty
+
+    /// A load moves the answer, for the same reason the mode above moves: «the
+    /// badge comes on» is a claim about what the page shows *after* the act, and
+    /// an agent that never changes cannot support it.
+    func list() -> AgentList { lock.withLock { answer } }
+    func load(_ name: String) -> Bool {
+        lock.withLock { answer = .holding(["SHA256:abc123"]) }
+        return true
+    }
+    func unload(_ name: String) -> Bool {
+        lock.withLock { answer = .empty }
+        return true
+    }
 }

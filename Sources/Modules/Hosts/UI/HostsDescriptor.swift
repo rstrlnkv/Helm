@@ -19,10 +19,16 @@ import Module_Hosts_Engine
         HostsEngine()
     }
 
-    /// Nothing to act on from the menu bar: editing a hosts file is a page, not
-    /// a toggle. The panel tile waits for plan 3, where two of the three things
-    /// it would summarise start existing.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// A tile that says what it knows and carries no control.
+    ///
+    /// Editing a hosts file is a page, not a toggle: a switch here would raise a
+    /// macOS password dialog from the menu bar, and a password dialog needs a
+    /// gesture that asked for it. The tile waited for this plan because two of
+    /// the three things it summarises — the keys and the agent — did not exist
+    /// until now.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+        MenuBarContribution(panelTile: AnyView(HostsPanelTile(hvm: HostsViewModel.shared(vm: vm))))
+    }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(HostsSettingsPage(vm: vm))

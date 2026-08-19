@@ -43,6 +43,36 @@ enum HostsStr {
 
     /// The third tab. A title, like `hostsTab` and `sshTab` beside it.
     static var keysTab: String { L("Keys") }
+
+    /// «3 off» on the panel tile, and «2 in the agent» beside it. Both
+    /// interpolate a count, so both keep an inline table: the interpolation runs
+    /// before a lookup would, which is why there is no English key to be the
+    /// key. The rule and its reason are CLAUDE.md's.
+    static func entriesOff(_ count: Int) -> String {
+        switch AppLanguage.current {
+        case .ru: return "\(count) выкл."
+        case .es: return "\(count) desactivadas"
+        case .fr: return "\(count) désactivées"
+        case .de: return "\(count) aus"
+        case .pt: return "\(count) desativadas"
+        case .ja: return "\(count) 件オフ"
+        case .zh: return "\(count) 条已关闭"
+        case .en: return "\(count) off"
+        }
+    }
+
+    static func agentHolds(_ count: Int) -> String {
+        switch AppLanguage.current {
+        case .ru: return "\(count) в агенте"
+        case .es: return "\(count) en el agente"
+        case .fr: return "\(count) dans l’agent"
+        case .de: return "\(count) im Agenten"
+        case .pt: return "\(count) no agente"
+        case .ja: return "エージェントに \(count)"
+        case .zh: return "代理中 \(count)"
+        case .en: return "\(count) in the agent"
+        }
+    }
     /// **Not «No keys».** The sentence names the folder, because the two
     /// answers a person needs to tell apart are «this Mac has none» and «Helm
     /// could not look», and a bare «No keys» reads as the first while being
