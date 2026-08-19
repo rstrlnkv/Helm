@@ -86,6 +86,14 @@ import Module_Hosts_Engine
     /// four keys because one `chmod` is in flight.
     @Published private(set) var busyKey: String?
     @Published private(set) var keyOutcome: KeyOutcome?
+    /// The key whose row is asking for a passphrase, and whether an answer has
+    /// already been refused once.
+    ///
+    /// Two fields rather than one, because «this key has a passphrase» and
+    /// «that passphrase was not accepted» are different sentences and the row
+    /// must not open with the second.
+    @Published private(set) var askingFor: String?
+    @Published private(set) var passphraseRefused = false
     /// Whether a key is being made. Its own flag rather than `busyKey`: the
     /// generation is seconds of work behind a sheet, where the acts on a row
     /// are one syscall each.
@@ -360,7 +368,44 @@ import Module_Hosts_Engine
     /// control deciding from its own state would send `agentLoad` for a key that
     /// is already in whenever the two had drifted apart.
     func setInAgent(_ row: KeyRow) async {
-        await act(row.inAgent ? .agentUnload : .agentLoad, naming: row.name)
+        if row.inAgent {
+            await act(.agentUnload, naming: row.name)
+        } else {
+            await load(row.name, passphrase: "")
+        }
+    }
+
+    /// Load a key, with a passphrase when the row has collected one.
+    ///
+    /// **The first press sends nothing**, because most keys need nothing and
+    /// asking everybody for a secret they may not have is the wrong door. The
+    /// engine comes back with `needsPassphrase` when `ssh-add` asked, and the
+    /// row opens then.
+    func load(_ name: String, passphrase: String) async {
+        await busy(name) {
+            let outcome: KeyOutcome? = await self.client.request(
+                HostsCommand.agentLoad,
+                encoding: KeyLoad(name: name, passphrase: Data(passphrase.utf8)))
+            await MainActor.run {
+                switch outcome {
+                case .needsPassphrase:
+                    // Refused only if something was actually offered — a first
+                    // press with nothing typed is a question, not a rejection.
+                    self.passphraseRefused = !passphrase.isEmpty
+                    self.askingFor = name
+                default:
+                    self.askingFor = nil
+                    self.passphraseRefused = false
+                }
+            }
+            return outcome
+        }
+    }
+
+    /// The row's field was closed by hand.
+    func stopAsking() {
+        askingFor = nil
+        passphraseRefused = false
     }
 
     /// Ask the agent again.

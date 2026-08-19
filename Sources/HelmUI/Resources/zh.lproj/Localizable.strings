@@ -1011,3 +1011,6 @@
 "Certificate authority" = "证书颁发机构";
 "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "“主机与密钥”会列出这台 Mac 已经信任过的主机，每一条都带“忘记”按钮。当服务器更换密钥、ssh 拒绝连接并打印一大段警告时，这就是解决办法。即使文件把主机名隐藏起来——macOS 正是这样保存的——条目依然会全部列出，忘记也照样可用。";
 "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "hosts 文件编辑器暂时不在界面上，我们还在判断它是否属于 Helm。你的 hosts 文件没有被改动，Helm 之前留下的备份也没有删除。";
+"This key has a passphrase" = "此密钥设置了口令";
+"That passphrase was not accepted" = "该口令未被接受";
+"Unlock and add" = "解锁并添加";

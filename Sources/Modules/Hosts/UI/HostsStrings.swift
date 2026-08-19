@@ -127,6 +127,11 @@ enum HostsStr {
     static var addToAgent: String { L("Add to the agent") }
     static var removeFromAgent: String { L("Take out of the agent") }
 
+    /// Asked in the row, under the control that was pressed.
+    static var keyIsLocked: String { L("This key has a passphrase") }
+    static var passphraseRefused: String { L("That passphrase was not accepted") }
+    static var unlockAndAdd: String { L("Unlock and add") }
+
     static var copyPublicKey: String { L("Copy public key") }
     static var noPublicHalf: String { L("This key’s public half is missing") }
 
@@ -168,6 +173,9 @@ enum HostsStr {
         case .failed: return L("That did not work")
         case .notFound: return L("That key is no longer there")
         case .agentUnreachable: return agentMissing
+        // The row itself asks for the passphrase, so the bar at the top says
+        // nothing: two places asking one question is one of them being ignored.
+        case .needsPassphrase: return nil
         }
     }
 

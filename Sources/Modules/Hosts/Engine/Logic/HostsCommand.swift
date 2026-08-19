@@ -57,6 +57,22 @@ public struct KeyName: Codable, Sendable {
     public init(name: String) { self.name = name }
 }
 
+/// What `agentLoad` carries: which key, and the passphrase if one has been
+/// typed.
+///
+/// Its own payload rather than `KeyName` with a field bolted on: the other three
+/// acts must not be able to carry a secret at all, and a type they cannot name
+/// is the way to say so.
+public struct KeyLoad: Codable, Sendable {
+    public let name: String
+    /// Empty until `ssh-add` has asked. The engine zeroes it after the run.
+    public let passphrase: Data
+    public init(name: String, passphrase: Data = Data()) {
+        self.name = name
+        self.passphrase = passphrase
+    }
+}
+
 /// What an act on a key came to.
 ///
 /// Four answers rather than a `Bool`, because the page says a different
@@ -68,6 +84,13 @@ public enum KeyOutcome: String, Codable, Sendable {
     /// of date, or a payload that named something else entirely; either way
     /// nothing was run.
     case notFound
+    /// The key is locked and `ssh-add` asked for its passphrase — or the one it
+    /// was given was not accepted.
+    ///
+    /// Its own answer because «that did not work» over a locked key sends a
+    /// person looking at the key, and the key is fine: it is doing exactly what
+    /// a key with a passphrase is for.
+    case needsPassphrase
     /// There is no agent to talk to. Its own answer because «the load failed»
     /// over a dead agent sends a person looking at their key, and the key is
     /// fine — `SSH_AUTH_SOCK` is not set.

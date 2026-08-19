@@ -67,6 +67,8 @@ private struct KeyCard: View {
     /// This row's own controls go quiet while its own act runs — not the
     /// page's. A page-wide flag would disable four keys because one `chmod` is
     /// in flight.
+    @State private var passphrase = ""
+
     private var busy: Bool { hvm.busyKey == row.name }
     private var anyBusy: Bool { hvm.busyKey != nil }
 
@@ -107,6 +109,7 @@ private struct KeyCard: View {
 
             verdict
             controls
+            passphraseField
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .helmCard()
@@ -131,6 +134,41 @@ private struct KeyCard: View {
                 .disabled(anyBusy)
             }
         }
+    }
+
+    /// The field the row opens when `ssh-add` has asked.
+    ///
+    /// **In the row, not in a sheet.** The question belongs to one key, and a
+    /// sheet would take the fingerprint and the name off the screen at the
+    /// moment somebody needs to be sure which key they are unlocking.
+    @ViewBuilder private var passphraseField: some View {
+        if hvm.askingFor == row.name {
+            VStack(alignment: .leading, spacing: HelmSpace.s2) {
+                Text(hvm.passphraseRefused ? HostsStr.passphraseRefused : HostsStr.keyIsLocked)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(hvm.passphraseRefused ? .orange : HelmText.quiet)
+                HStack(spacing: HelmSpace.s2) {
+                    SecureField(HostsStr.keyPassphrase, text: $passphrase)
+                        .frame(maxWidth: 240)
+                        .onSubmit { unlock() }
+                    Button(HostsStr.unlockAndAdd) { unlock() }
+                        .disabled(passphrase.isEmpty || anyBusy)
+                    Button(HostsStr.cancel) {
+                        passphrase = ""
+                        hvm.stopAsking()
+                    }
+                }
+            }
+        }
+    }
+
+    /// The typed answer is dropped as soon as it has been handed over, whatever
+    /// came back. It is a `String` because `SecureField` binds to nothing else —
+    /// the boundary `HostsViewModel.load` states.
+    private func unlock() {
+        let given = passphrase
+        passphrase = ""
+        Task { await hvm.load(row.name, passphrase: given) }
     }
 
     private var controls: some View {

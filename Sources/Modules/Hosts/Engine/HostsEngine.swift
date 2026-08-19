@@ -202,7 +202,12 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// load against a dead socket fails in a way that reads like a problem with
     /// the key, and the key is fine — there is no agent. The page says so and
     /// offers nothing to press.
-    func actOnAgent(_ act: HostsCommand, on name: String) -> KeyOutcome {
+    ///
+    /// A load runs on a terminal (`PTYProcess`), because `ssh-add` asks for a
+    /// passphrase the way `ssh-keygen` does and has no flag that would take one
+    /// safely. The secret arrives as `Data`, is handed to the port `inout`, and
+    /// the port zeroes it.
+    func load(_ name: String, passphrase: Data) async -> KeyOutcome {
         defer { emitState() }
         guard selected(name) != nil else {
             HelmLog.shared.warn(Self.moduleID, "an agent act named a key that is not there")
@@ -212,14 +217,38 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info(Self.moduleID, "there is no agent to load a key into")
             return .agentUnreachable
         }
-        let done = act == .agentLoad ? agent.load(name) : agent.unload(name)
-        if !done {
-            // An encrypted key is the ordinary reason a load fails, and it is
-            // not a defect: `ssh-add` wants the passphrase, and this path has no
-            // channel for one.
-            HelmLog.shared.info(Self.moduleID, "the agent refused: \(act.rawValue)")
+        // `ssh-add` sits on its prompt for as long as somebody would take to
+        // type, and the pty read blocks for all of it. A pool thread must not
+        // be the one waiting — the rule `apply` follows for the password dialog.
+        let outcome = await offTheCooperativePool { [agent] in
+            var carried = passphrase
+            defer { carried = Data() }
+            return agent.load(name, answering: &carried)
         }
-        return done ? .done : .failed
+        switch outcome {
+        case .loaded:
+            return .done
+        case .needsPassphrase:
+            // Not a failure, and the log says so in those words: a locked key is
+            // a key doing exactly what a passphrase is for.
+            HelmLog.shared.info(Self.moduleID, "the agent asked for a passphrase")
+            return .needsPassphrase
+        case .failed:
+            HelmLog.shared.info(Self.moduleID, "the agent refused the key")
+            return .failed
+        }
+    }
+
+    /// Out of the agent. No terminal and no secret: taking a key out is not a
+    /// question anybody is asked.
+    func unload(_ name: String) -> KeyOutcome {
+        defer { emitState() }
+        guard selected(name) != nil else {
+            HelmLog.shared.warn(Self.moduleID, "an agent act named a key that is not there")
+            return .notFound
+        }
+        guard agent.list() != .unreachable else { return .agentUnreachable }
+        return agent.unload(name) ? .done : .failed
     }
 
     /// Make a key.
@@ -483,10 +512,15 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 return EngineReply.encode(self.fixPermissions(of: request.name), for: command)
             case .fixDirectoryPermissions:
                 return EngineReply.encode(self.fixDirectoryPermissions(), for: command)
-            case .agentLoad, .agentUnload:
+            case .agentLoad:
+                guard let request = EngineReply.decode(KeyLoad.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(
+                    await self.load(request.name, passphrase: request.passphrase), for: command)
+            case .agentUnload:
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(self.actOnAgent(name, on: request.name), for: command)
+                return EngineReply.encode(self.unload(request.name), for: command)
             case .generateKey:
                 guard let request = EngineReply.decode(KeyGeneration.Request.self, from: command)
                 else { return Data() }

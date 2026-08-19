@@ -1011,3 +1011,6 @@
 "Certificate authority" = "認証局";
 "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "“ホストと鍵”に、この Mac がすでに信頼したホストの一覧と、各行の“忘れる”ボタンが加わりました。サーバが鍵を変えて接続を拒否したときに ssh が出す長い警告への対処です。ホスト名を伏せたファイル（macOS はそう保存します）でも、全項目が並び、忘れる操作も使えます。";
 "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "hosts ファイルの編集画面は当面表示していません。Helm にそもそも必要かどうかを検討中です。お使いの hosts ファイルには何もしていませんし、Helm が取った控えも消していません。";
+"This key has a passphrase" = "この鍵にはパスフレーズがあります";
+"That passphrase was not accepted" = "そのパスフレーズは受け付けられませんでした";
+"Unlock and add" = "解除して追加";

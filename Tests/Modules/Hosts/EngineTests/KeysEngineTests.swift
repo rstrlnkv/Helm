@@ -44,8 +44,14 @@ final class KeysEngineTests: XCTestCase {
 
     private func act(_ transport: LocalTransport, _ command: HostsCommand,
                      _ name: String = "id_ed25519") async throws -> KeyOutcome {
-        let payload = command == .fixDirectoryPermissions
-            ? Data() : try JSONEncoder().encode(KeyName(name: name))
+        // `agentLoad` carries its own payload: it is the one act that may hold a
+        // secret, and the other three must not be able to.
+        let payload: Data
+        switch command {
+        case .fixDirectoryPermissions: payload = Data()
+        case .agentLoad: payload = try JSONEncoder().encode(KeyLoad(name: name))
+        default: payload = try JSONEncoder().encode(KeyName(name: name))
+        }
         let reply = try await transport.send(EngineCommand(name: command.rawValue,
                                                            payload: payload))
         return try JSONDecoder().decode(KeyOutcome.self, from: reply)
@@ -184,13 +190,56 @@ final class KeysEngineTests: XCTestCase {
         XCTAssertTrue(b.agent.acts.isEmpty, "a load was attempted against an agent that is gone")
     }
 
-    /// An encrypted key is the ordinary reason `ssh-add` says no: it wants a
-    /// passphrase and this path has no channel for one. A failure, not a
-    /// pretence of success.
+    /// An agent that refuses outright — not a locked key, which has its own
+    /// answer below.
     func testAKeyTheAgentRefusesIsAFailure() async throws {
         let b = bench(agent: FakeSSHAgent(.empty, refuses: true))
         let outcome = try await act(b.transport, .agentLoad)
         XCTAssertEqual(outcome, .failed)
         XCTAssertEqual(b.agent.acts, ["load id_ed25519"])
+    }
+
+    /// **A locked key is not a failure**, and the engine says which it is.
+    /// «That did not work» over a key doing exactly what a passphrase is for
+    /// sends a person looking at the key.
+    func testALockedKeyAsksRatherThanFails() async throws {
+        let agent = FakeSSHAgent(.empty, locked: ["id_ed25519": Data("hunter2".utf8)])
+        let b = bench(agent: agent)
+
+        let first = try await act(b.transport, .agentLoad)
+        XCTAssertEqual(first, .needsPassphrase)
+        XCTAssertEqual(b.agent.passphrases, [Data()],
+                       "the first press offered a secret nobody had typed")
+        let stillOut = try await state(b.transport)
+        XCTAssertFalse(stillOut.keys.first?.inAgent ?? true)
+    }
+
+    /// The right passphrase reaches the tool, and the key goes in.
+    func testThePassphraseReachesTheToolAndTheKeyGoesIn() async throws {
+        let agent = FakeSSHAgent(.empty, locked: ["id_ed25519": Data("hunter2".utf8)])
+        let b = bench(agent: agent)
+        let reply = try await b.transport.send(EngineCommand(
+            name: HostsCommand.agentLoad.rawValue,
+            payload: try JSONEncoder().encode(
+                KeyLoad(name: "id_ed25519", passphrase: Data("hunter2".utf8)))))
+        let outcome = try JSONDecoder().decode(KeyOutcome.self, from: reply)
+        XCTAssertEqual(outcome, .done)
+        XCTAssertEqual(b.agent.passphrases.last, Data("hunter2".utf8))
+
+        let after = try await state(b.transport)
+        XCTAssertTrue(after.keys.first?.inAgent ?? false)
+    }
+
+    /// A passphrase that is not the key's is asked for again rather than
+    /// reported as a failure — the person mistyped, and that is the same
+    /// question a second time.
+    func testAWrongPassphraseAsksAgain() async throws {
+        let agent = FakeSSHAgent(.empty, locked: ["id_ed25519": Data("hunter2".utf8)])
+        let b = bench(agent: agent)
+        let reply = try await b.transport.send(EngineCommand(
+            name: HostsCommand.agentLoad.rawValue,
+            payload: try JSONEncoder().encode(
+                KeyLoad(name: "id_ed25519", passphrase: Data("wrong".utf8)))))
+        XCTAssertEqual(try JSONDecoder().decode(KeyOutcome.self, from: reply), .needsPassphrase)
     }
 }

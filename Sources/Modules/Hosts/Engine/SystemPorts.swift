@@ -210,13 +210,36 @@ public struct SystemSSHAgent: SSHAgentPort {
         return AgentList.read(status: run.status, output: run.output)
     }
 
-    public func load(_ name: String) -> Bool { run(["-q"], on: name) }
+    /// On a terminal, so the passphrase is never an argument — the same reason
+    /// `ssh-keygen` gets one. `ssh-add` has no flag that would take a secret
+    /// safely either.
+    public func load(_ name: String, answering secret: inout Data) -> AgentLoad {
+        guard let path = path(for: name) else {
+            secret = Data()
+            return .failed
+        }
+        let run = PTYProcess.run("/usr/bin/ssh-add", [path],
+                                 answering: &secret, timeout: deadline)
+        if run.status == 0 { return .loaded }
+        // The question the tool asked is the answer this app needed. Matched on
+        // the word rather than on an exit code, because `ssh-add` spends the
+        // same non-zero status on a locked key, a wrong passphrase and a dead
+        // socket — and only the first two say «passphrase».
+        return run.output.lowercased().contains("passphrase") ? .needsPassphrase : .failed
+    }
+
     public func unload(_ name: String) -> Bool { run(["-d"], on: name) }
 
     private func run(_ arguments: [String], on name: String) -> Bool {
-        guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return false }
-        let path = directory.appendingPathComponent(name).path
+        guard let path = path(for: name) else { return false }
         return HelmProcess.run("/usr/bin/ssh-add", arguments + [path], timeout: deadline).status == 0
+    }
+
+    /// A name is a plain component or it is nothing — the gate
+    /// `SystemSSHKeys.url(for:)` applies on its own side, for the same reason.
+    private func path(for name: String) -> String? {
+        guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return nil }
+        return directory.appendingPathComponent(name).path
     }
 }
 

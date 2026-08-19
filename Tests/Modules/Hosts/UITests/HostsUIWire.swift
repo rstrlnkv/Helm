@@ -133,9 +133,15 @@ final class WireAgent: SSHAgentPort, @unchecked Sendable {
     /// badge comes on» is a claim about what the page shows *after* the act, and
     /// an agent that never changes cannot support it.
     func list() -> AgentList { lock.withLock { answer } }
-    func load(_ name: String) -> Bool {
+    /// The key this wire draws is locked, because the row that asks for a
+    /// passphrase is the one worth a page test. An empty answer is refused and
+    /// «open» is accepted.
+    func load(_ name: String, answering secret: inout Data) -> AgentLoad {
+        let given = secret
+        secret = Data()
+        guard given == Data("open".utf8) else { return .needsPassphrase }
         lock.withLock { answer = .holding(["SHA256:abc123"]) }
-        return true
+        return .loaded
     }
     func unload(_ name: String) -> Bool {
         lock.withLock { answer = .empty }

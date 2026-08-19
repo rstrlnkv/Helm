@@ -53,20 +53,43 @@ final class KeysTabTests: XCTestCase {
         XCTAssertNil(w.model.busyKey, "the row was left disabled after the act")
     }
 
-    /// The direction is read off the row, so one control does both and its word
-    /// is always the word for what pressing it does.
-    func testTheAgentControlLoadsThenUnloadsTheSameKey() async {
+    /// **The first press asks, the second unlocks.** The wire's key carries a
+    /// passphrase, which is the state a key worth having is in — and the row
+    /// must open its own field rather than reporting a failure over a key that
+    /// is doing exactly what a passphrase is for.
+    func testALockedKeyAsksInItsRowAndThenGoesIn() async {
         let w = await loaded()
-        let key = try? XCTUnwrap(w.model.keys.first)
-        guard let key else { return }
-        XCTAssertFalse(key.inAgent, "precondition: the agent is running and holding nothing")
+        guard let key = w.model.keys.first else { return XCTFail("no row to press") }
+        XCTAssertFalse(key.inAgent, "precondition: the agent is holding nothing")
 
         await w.model.setInAgent(key)
+        XCTAssertEqual(w.model.keyOutcome, .needsPassphrase)
+        XCTAssertEqual(w.model.askingFor, key.name, "the row did not open its field")
+        XCTAssertFalse(w.model.passphraseRefused,
+                       "a first press with nothing typed is a question, not a rejection")
+
+        await w.model.load(key.name, passphrase: "wrong")
+        XCTAssertTrue(w.model.passphraseRefused, "a refused answer reads like the first ask")
+        XCTAssertEqual(w.model.askingFor, key.name)
+
+        await w.model.load(key.name, passphrase: "open")
         await waitUntil("the badge came on") { w.model.keys.first?.inAgent == true }
+        XCTAssertNil(w.model.askingFor, "the row kept asking after the key went in")
+        XCTAssertFalse(w.model.passphraseRefused)
+    }
+
+    /// Out is the same control and no question: taking a key out of the agent
+    /// is not something anybody is asked about.
+    func testTakingTheKeyBackOutAsksNothing() async {
+        let w = await loaded()
+        guard let key = w.model.keys.first else { return XCTFail("no row to press") }
+        await w.model.load(key.name, passphrase: "open")
+        await waitUntil("it went in") { w.model.keys.first?.inAgent == true }
 
         guard let held = w.model.keys.first else { return XCTFail("the row went away") }
         await w.model.setInAgent(held)
         await waitUntil("the badge went off") { w.model.keys.first?.inAgent == false }
+        XCTAssertNil(w.model.askingFor)
     }
 
     /// **A folder nobody could read is not a folder with no keys**, and the page

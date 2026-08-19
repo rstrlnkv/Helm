@@ -1011,3 +1011,6 @@
 "Certificate authority" = "Zertifizierungsstelle";
 "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "„Hosts & Schlüssel“ listet die Hosts auf, denen Ihr Mac bereits vertraut hat, jeder mit einer Taste „Vergessen“. Das ist die Abhilfe für die Textwand, die ssh druckt, wenn ein Server seinen Schlüssel wechselt und die Verbindung verweigert. Eine Datei, die ihre Hostnamen verbirgt — so führt macOS sie — wird trotzdem vollständig aufgelistet, und das Vergessen funktioniert weiterhin.";
 "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "Der Editor für die hosts-Datei ist vorerst nicht mehr auf dem Bildschirm, während wir klären, ob er überhaupt in Helm gehört. An Ihrer hosts-Datei wurde nichts getan, und keine Kopie, die Helm davon angelegt hat, wurde entfernt.";
+"This key has a passphrase" = "Dieser Schlüssel hat eine Passphrase";
+"That passphrase was not accepted" = "Diese Passphrase wurde nicht angenommen";
+"Unlock and add" = "Entsperren und hinzufügen";

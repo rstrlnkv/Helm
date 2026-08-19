@@ -321,12 +321,24 @@ final class FakeSSHAgent: SSHAgentPort, @unchecked Sendable {
     /// the shape of a tool that reported success over something we cannot see.
     private var fingerprints: [String: String]
 
+    /// `locked` names the keys that carry a passphrase and what it is. A key
+    /// absent from it is one `ssh-add` takes without asking.
+    private var locked: [String: Data]
+    private var answered: [Data] = []
+
     init(_ answer: AgentList = .empty, refuses: Bool = false,
-         fingerprints: [String: String] = ["id_ed25519": "SHA256:abc123"]) {
+         fingerprints: [String: String] = ["id_ed25519": "SHA256:abc123"],
+         locked: [String: Data] = [:]) {
         self.answer = answer
         self.refuses = refuses
         self.fingerprints = fingerprints
+        self.locked = locked
     }
+
+    /// What it was answered with, in order — a copy taken before the buffer is
+    /// zeroed, so «the passphrase reached the tool» and «the caller's copy is
+    /// gone» are two facts a test can hold apart.
+    var passphrases: [Data] { lock.withLock { answered } }
 
     var acts: [String] { lock.withLock { recorded } }
 
@@ -336,16 +348,30 @@ final class FakeSSHAgent: SSHAgentPort, @unchecked Sendable {
 
     func list() -> AgentList { lock.withLock { answer } }
 
-    func load(_ name: String) -> Bool {
-        lock.withLock {
+    /// **It can want a passphrase, and it can want the right one.**
+    ///
+    /// An encrypted key is the ordinary state of a key worth having, and until
+    /// this fake could be in it the engine's `needsPassphrase` arm had nothing
+    /// behind it — a fake simpler than the port cannot fail the way the port
+    /// does. It also zeroes what it was handed, as the real one does, so «the
+    /// caller's buffer is empty afterwards» is a thing a test can assert.
+    func load(_ name: String, answering secret: inout Data) -> AgentLoad {
+        let given = secret
+        secret.resetBytes(in: 0..<secret.count)
+        secret = Data()
+        return lock.withLock {
             recorded.append("load \(name)")
-            guard !refuses else { return false }
+            answered.append(given)
+            guard !refuses else { return .failed }
+            if let wanted = locked[name] {
+                guard given == wanted else { return .needsPassphrase }
+            }
             if let print = fingerprints[name] {
                 var held: [String] = []
                 if case .holding(let existing) = answer { held = existing }
                 answer = .holding(held.contains(print) ? held : held + [print])
             }
-            return true
+            return .loaded
         }
     }
 

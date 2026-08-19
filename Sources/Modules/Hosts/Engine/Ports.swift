@@ -114,11 +114,32 @@ public protocol SSHKeysPort: Sendable {
 /// the page can work — the `PowerSource.supply()` shape, two modules over.
 public protocol SSHAgentPort: Sendable {
     func list() -> AgentList
-    /// True when the key went in. An encrypted key prompts for its passphrase,
-    /// which this method has no channel for and must not pretend to have: it
-    /// answers false, and the passphrase path is `PTYProcess`'s.
-    func load(_ name: String) -> Bool
+    /// Put the key in, answering the prompt with `secret` — empty when nobody
+    /// has typed one yet.
+    ///
+    /// **The tool's own question is how this app learns the key is encrypted.**
+    /// The alternative was a probe — `ssh-keygen -y -P '' -f` — run over every
+    /// key on every refresh, which is a second subprocess per row for a fact
+    /// the load itself already surfaces. So there is one path: run it, and if
+    /// `ssh-add` asked for a passphrase, say so.
+    ///
+    /// `secret` is `inout` and is zeroed by the implementation, the way
+    /// `KeyGeneratorPort.generate` is: after this returns the caller's buffer
+    /// holds nothing.
+    func load(_ name: String, answering secret: inout Data) -> AgentLoad
     func unload(_ name: String) -> Bool
+}
+
+/// What a load came to. **Three answers, and the middle one is the point** —
+/// «it failed» over a key that is merely locked sends a person looking at their
+/// key, and the key is fine.
+public enum AgentLoad: String, Codable, Sendable, Equatable {
+    case loaded
+    /// `ssh-add` asked for a passphrase. Either none was given, or the one
+    /// given was not accepted; the page knows which because it knows what it
+    /// sent.
+    case needsPassphrase
+    case failed
 }
 
 /// Making a key.
