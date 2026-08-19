@@ -68,6 +68,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   «traffic is not going through the tunnel» carried by colour alone is said too
   quietly.
 
+  **The readings are four cards** on `HelmSurface.wellFill` at
+  `HelmRadius.card` — the connection cards' own surface, so the page is one card
+  system from top to bottom. They were one well with hairlines between them
+  first; both were drawn at full size and the owner chose the cards. The trade
+  is recorded rather than argued: a well says «four readings of one tunnel»,
+  which is the truer sentence, and four cards say «four independent things».
+
   Three sizes for one thought became one: the country was 16 pt, the exclusions
   11, under a 22 pt heading — two of the page's five measured heights.
   `VPNTunnelSwitcherRow` now contributes its capsules to the row around it

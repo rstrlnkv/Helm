@@ -463,41 +463,39 @@ struct VPNTunnelHero: View {
         }
     }
 
-    /// **The readings as one bounded strip**, which is the half of this that is
-    /// not `KeepAwakeHero`'s.
+    /// **The readings as four cards**, on the surface the connection cards use.
     ///
-    /// Four columns spread across 744 pt of bare page read as four unrelated
-    /// captions; inside a well with hairlines between them they read as one
-    /// instrument. The rules are vertical and full-height here, which is what
-    /// makes them structure rather than the fragments the earlier attempt drew
-    /// — those were 40 pt tall beside three-line columns and began at the label
-    /// and ended inside the note.
+    /// They were one well with full-height hairlines between them, which said
+    /// «four readings of one tunnel» — and that is the truer sentence, since it
+    /// is one `utunN`, one moment it came up, and one `ifdata` read. Four cards
+    /// say «four independent things». The owner chose the cards after seeing
+    /// both drawn, so what this comment records is the trade rather than an
+    /// argument: the page gains one card system from top to bottom, and loses
+    /// the mark that told its hero from its list.
+    ///
+    /// `HelmSurface.wellFill` and `HelmRadius.card` because those are what a
+    /// connection card is made of — two card systems on one page is the defect
+    /// this house has already paid for twice, and a *third* fill here would be
+    /// exactly that.
     private func readings(_ strip: VPNTunnelStrip) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(strip.tiles.enumerated()), id: \.element.id) { index, tile in
-                if index > 0 {
-                    Rectangle()
-                        .fill(HelmSurface.hairline)
-                        .frame(width: 1)
-                        .accessibilityHidden(true)
-                }
-                column(tile)
-            }
+        // The gap the connections grid uses between its own cards, so the two
+        // rows are one rhythm rather than two.
+        HStack(alignment: .top, spacing: HelmSpace.s5) {
+            ForEach(strip.tiles) { column(_: $0) }
         }
-        // The row takes the height of its tallest column and no more. Without
-        // it a container taller than the strip stretches it: the wells this
-        // replaced were photographed at 190 pt with 100 pt of empty fill under
-        // the figures.
+        // The row takes the height of its tallest card and no more. Without it a
+        // container taller than the row stretches it: the wells an earlier
+        // edition drew were photographed at 190 pt with 100 pt of empty fill
+        // under the figures.
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
-            .fill(HelmSurface.wellFill))
     }
 
-    /// One reading: what it is, the figure, and the line that qualifies it.
+    /// One reading, as its own card.
     ///
-    /// `maxWidth: .infinity` on each is what makes the four equal, and the
-    /// padding is the well's inset rather than the page's.
+    /// `maxWidth: .infinity` on each is what makes the four equal, and
+    /// `HelmSpace.s5` is a card's own inner padding — the same number a
+    /// connection card pays, because this is the same surface.
     private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)
@@ -517,6 +515,8 @@ struct VPNTunnelHero: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(HelmSpace.s5)
+        .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
+            .fill(HelmSurface.wellFill))
     }
 
     // MARK: - With nothing up
