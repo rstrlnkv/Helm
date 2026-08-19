@@ -19,7 +19,7 @@
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "入力どおりでは単語でなく、変換すると単語になる場合のみ置き換えます。正しいものはそのままです。";
 "Abbreviation" = "短縮形";
 "Abbreviations" = "短縮入力";
-"Abbreviations. A short token you type often and what it stands for, expanded at the same word boundary a layout conversion happens at. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "略語展開。よく打つ短いつづりと、その展開先を登録できます。展開は配列変換と同じ語の区切りで起こり、展開された語がさらに変換されることはありません。さらに任意で、Helm が確信を持てる唯一の打ち間違いも直します: “KOnnichiwa”→“Konnichiwa”。わざとの全大文字や、数字を含む語は対象外です。";
+"Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "略語展開。よく打つ短いつづりと、その展開先を登録できます。展開は語を打ち終えた時点で起こり、展開された語がさらに変換されることはありません。さらに任意で、Helm が確信を持てる唯一の打ち間違いも直します: “KOnnichiwa”→“Konnichiwa”。わざとの全大文字や、数字を含む語は対象外です。";
 "About Helm" = "Helm について";
 "Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”." = "アクセス権は Helm の特定のコピーに紐づきます。更新のたびに再設定してください：“−”で削除し“+”で追加。";
 "Accessibility" = "アクセシビリティ";
@@ -58,7 +58,7 @@
 "Automation" = "自動化";
 "Autopilot" = "オートパイロット";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "オートパイロットが何をしたかを表示します。過去30日のレポート — どのファイルが、どこへ、どのルールで動いたか。";
-"Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "USB メモリ上でファイルが毎回深く埋もれる問題を修正。移動先のないルールは有効にできません。";
+"Autopilot stops burying files deeper on a USB stick, where a file it had already sorted was sorted again on every sweep. A rule with nowhere to move to can no longer be switched on." = "USB メモリでファイルがどんどん深く埋もれることがなくなりました。すでに振り分けたファイルが、実行のたびにまた振り分けられていたためです。移動先のないルールはオンにできません。";
 "Autopilot’s preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“オートパイロット”のプレビューが、何をするかだけでなく、どこに置かれるかも示すようになりました。“Helm について”には当てはまる 2 つのバッジが並びます。";
 "Autopilot: folders that keep themselves in order. Point Helm at a folder and give it rules — a file that arrives is checked against them in order, and the first one that matches is the one that runs. Sort by kind or by month, move, rename, tag, or bin; conditions include the site a file was downloaded from. A new rule is shown before it is switched on: the editor lists what is in the folder now and what would happen to each file. Nothing is ever overwritten, and nothing is acted on twice." = "“オートパイロット”: 自分で整った状態を保つフォルダ。フォルダを指定してルールを与えると、届いたファイルが上から順に照合され、最初に一致したものが実行されます。種類別・月別の整理、移動、名前変更、タグ付け、ゴミ箱へ。新しいルールは有効にする前に、いま何がどうなるかを一覧で示します。";
 "BETA" = "BETA";
@@ -404,7 +404,7 @@
 "Removal stopped — nothing more was moved." = "削除を停止しました — これ以上は移動されていません。";
 "Remove" = "削除";
 "Remove an app with all of its files" = "アプリを関連ファイルごと削除";
-"Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "アプリの削除時に、別のアプリのファイルを提案しなくなりました。他のアプリのものが既定で選択されることはもうありません。";
+"Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "アプリの削除時に、別のアプリのファイルを提案しなくなりました。他のアプリのものが既定で選択されることはもうありません。";
 "Removing…" = "削除中…";
 "Rename" = "名前を変更";
 "Renaming scheme" = "リネームの方式";
@@ -499,7 +499,7 @@
 "The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "このディスクは読み出し専用です。取り出してロックを解除するか、必要なものを別の場所にコピーしてください。";
 "The download did not match what the release published, so Helm did not install it." = "ダウンロードしたファイルがリリースの公開内容と一致しなかったため、Helm はインストールしませんでした。";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "重複ファイル検索が独立した画面になり、“ディスク”の次に並びます。これまではリングが表示中のフォルダしか調べられませんでしたが、これからは自分でフォルダを指定でき、次回も覚えています。名前ではなく内容を比較し、各グループの 1 つは必ず残します。";
-"The duplicate finder no longer holds on to everything it reads, so the memory a scan uses follows the size of a slice rather than the size of the folder. Memory is also handed back to macOS when a scan finishes and when a module is switched off." = "重複ファイル検索が読んだデータを持ち続けなくなり、メモリ使用量はフォルダの大きさではなく一片の大きさに従います。スキャン完了時とモジュール無効化時にもメモリを返します。";
+"Searching for duplicates uses far less memory — it no longer keeps everything it reads — and gives that memory back when a scan ends or a module is switched off." = "重複の検索が使うメモリが大幅に減りました。読み込んだものをすべて抱え込まなくなり、検索の終了時とモジュールをオフにしたときにメモリを返します。";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "ファイルがロックされているか、あなたの所有物ではありません。Finder の“情報を見る”でロックを解除するか、アクセス権を変更してください。";
 "The icon is white when idle and takes on the colour of whichever module is active." = "待機時のアイコンは白で、モジュールが動作している間はその色になります。";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "アイコンの形・サイズと2つの色をキーボードで選べます。ショートカット記録は Esc で抜けられます。";
@@ -884,7 +884,7 @@
 "A scan of Login Items & Extensions that finds nothing says so, and when everything found is hidden by the filter, that has its own sentence — right under the menu that decides it. The count above the list now counts the rows you see, not the rows that may be ticked." = "ログイン項目と機能拡張のスキャンは、何も見つからなければそう言います。見つかったものすべてがフィルタで隠れているときは、それを決めるメニューのすぐ下に専用の一文が出ます。リストの上の数は、チェックできる行ではなく、いま見えている行を数えるようになりました。";
 "The buttons of Login Items & Extensions keep their whole words in every language, the report of a partly failed removal stops squeezing the list beneath it, and nothing on the page can start new work while a removal is running." = "ログイン項目と機能拡張のボタンはどの言語でも言葉全体を保ち、一部失敗した削除の報告が下のリストを押しつぶすことはなくなり、削除の実行中にページ上の何かが新しい作業を始めることもなくなりました。";
 "Keyboard's menu-bar indicator now offers “Emoji & Symbols”: one press opens the system emoji palette in the app you are typing in — Helm stays in the background, and your focus does not move." = "キーボードインジケータのメニューに“絵文字と記号”が加わりました。ワンプレスで、いま入力しているアプリの中にシステムの絵文字パレットが開きます — Helm は前面に出ず、フォーカスも移動しません。";
-"Keep Awake's lines in the log now file under the module filter's own name for it. Lines written before this build keep the old spelling, so the module menu may list two words for one module until the log rolls over — that is the old lines draining away, not a defect." = "“スリープ防止”のログ行は、モジュールフィルタと同じ名前で記録されるようになりました。このビルド以前に書かれた行は古い表記のままなので、しばらくはモジュールメニューに同じモジュールの名前が二つ並びます — 古い行が流れていくだけで、不具合ではありません。";
+"Keep Awake's lines in the diagnostics log are filed under the module's own name. Older lines keep the previous one, so the log's module menu may list both for a while." = "ログの行は、各モジュール自身の名前で記録されるようになりました。このビルドより前に書かれた行は以前の名前のままなので、モジュールメニューにはしばらく両方が並びます。";
 "Keyboard's menu-bar indicator now matches the system's own input menu: each layout row shows its badge, a new “Show Input Source Name” switch puts the layout's name in the menu bar instead of the badge, and “Open Keyboard Settings…” takes you straight to the pane that opens." = "キーボードインジケータのメニューがシステムの入力メニューに近づきました。各配列がバッジを表示し、新設のスイッチ“入力ソース名を表示”をオンにするとバッジの代わりにメニューバーに配列名が表示され、“キーボード設定を開く…”は該当パネルへ直接移動します。";
 "The Uninstaller's Apps tab now says why it's empty — a search that matched nothing, a Mac with no more apps to show, or a list still being read — instead of showing the same blank screen for all three." = "アンインストーラの“App”タブが、空である理由を伝えるようになりました。検索結果がゼロなのか、Macに本当にアプリが残っていないのか、リストがまだ読み込み中なのか — これまでは三つとも同じ空白画面でした。";
 

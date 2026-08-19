@@ -19,7 +19,7 @@
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
 "Abbreviation" = "简写";
 "Abbreviations" = "缩写";
-"Abbreviations. A short token you type often and what it stands for, expanded at the same word boundary a layout conversion happens at. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "缩写展开。把常打的短写和它代表的内容对应起来，在与布局转换相同的词边界展开。已展开的词不会再被转换。还可选修正 Helm 有把握的那一类手误：“NIhao” → “Nihao”——不动故意全大写的词，也不动含数字的词。";
+"Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "缩写展开。把常打的短写和它代表的内容对应起来，在你打完这个词时展开。已展开的词不会再被转换。还可选修正 Helm 有把握的那一类手误：“NIhao” → “Nihao”——不动故意全大写的词，也不动含数字的词。";
 "About Helm" = "关于 Helm";
 "Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”." = "权限绑定到 Helm 的具体副本，每次更新后需重新授予：用“−”移除，再用“+”添加。";
 "Accessibility" = "无障碍";
@@ -58,7 +58,7 @@
 "Automation" = "自动化";
 "Autopilot" = "自动整理";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "自动整理会说明它做过什么。最近 30 天的报告：哪个文件、去了哪里、由哪条规则决定。";
-"Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "修正了文件在 U 盘上被逐层埋深的问题；没有目标文件夹的规则不能再开启。";
+"Autopilot stops burying files deeper on a USB stick, where a file it had already sorted was sorted again on every sweep. A rule with nowhere to move to can no longer be switched on." = "自动整理不会再把 U 盘上的文件越埋越深——已经归位的文件每次都会被再归位一次。没有目标位置的规则不能再启用。";
 "Autopilot’s preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“自动整理”的预览现在会说明每个文件会落到哪里，而不只是会发生什么。“关于 Helm”同时显示两个适用的标签。";
 "Autopilot: folders that keep themselves in order. Point Helm at a folder and give it rules — a file that arrives is checked against them in order, and the first one that matches is the one that runs. Sort by kind or by month, move, rename, tag, or bin; conditions include the site a file was downloaded from. A new rule is shown before it is switched on: the editor lists what is in the folder now and what would happen to each file. Nothing is ever overwritten, and nothing is acted on twice." = "“自动整理”：会自己保持整齐的文件夹。指定一个文件夹并设定规则，新到的文件按顺序检查，第一条匹配的规则执行。按种类或月份归类、移动、重命名、加标签或移到废纸篓。新规则在开启前先展示：编辑器会列出文件夹里现在有什么、每个文件会发生什么。";
 "BETA" = "BETA";
@@ -404,7 +404,7 @@
 "Removal stopped — nothing more was moved." = "移除已停止 — 未再移动任何内容。";
 "Remove" = "移除";
 "Remove an app with all of its files" = "连同全部文件一起删除应用";
-"Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "卸载一个应用不会再列出另一个应用的文件。现在不会再预先勾选任何其他应用的内容。";
+"Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "卸载一个应用不会再列出另一个应用的文件。现在不会再预先勾选任何其他应用的内容。";
 "Removing…" = "删除中…";
 "Rename" = "重命名";
 "Renaming scheme" = "重命名方式";
@@ -499,7 +499,7 @@
 "The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "所在磁盘是只读的。请推出并解除锁定，或把需要的内容复制到别处。";
 "The download did not match what the release published, so Helm did not install it." = "下载的文件与该版本公布的内容不符，因此 Helm 没有安装它。";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "重复文件查找现在是独立的一页，紧跟在“磁盘”之后。过去它只能搜索环形图当前显示的文件夹，现在由你指定文件夹，并且会记住。仍然比较内容而非文件名，每组也仍然保留一份。";
-"The duplicate finder no longer holds on to everything it reads, so the memory a scan uses follows the size of a slice rather than the size of the folder. Memory is also handed back to macOS when a scan finishes and when a module is switched off." = "重复文件查找不再保留它读取的全部内容：内存占用随一小片的大小增长，而不是随文件夹大小增长。扫描结束和关闭模块时也会将内存交还系统。";
+"Searching for duplicates uses far less memory — it no longer keeps everything it reads — and gives that memory back when a scan ends or a module is switched off." = "查找重复文件占用的内存大幅减少：不再保留读过的全部内容，并在搜索结束或关闭模块时把内存归还。";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "文件已锁定，或不属于你。在访达中打开“显示简介”解锁，或修改其权限。";
 "The icon is white when idle and takes on the colour of whichever module is active." = "空闲时图标为白色；某个模块工作时会显示该模块的颜色。";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "图标形状、大小和两种颜色都可用键盘选择，Esc 可退出快捷键录制。";
@@ -884,7 +884,7 @@
 "A scan of Login Items & Extensions that finds nothing says so, and when everything found is hidden by the filter, that has its own sentence — right under the menu that decides it. The count above the list now counts the rows you see, not the rows that may be ticked." = "登录项与扩展的扫描一无所获时会说出来；当找到的内容全部被筛选器隐藏时，也有专门的一句话 — 就在决定筛选的菜单下方。列表上方的计数现在数的是您看到的行，而不是可以勾选的行。";
 "The buttons of Login Items & Extensions keep their whole words in every language, the report of a partly failed removal stops squeezing the list beneath it, and nothing on the page can start new work while a removal is running." = "登录项与扩展的按钮在所有语言里保留完整的词，部分失败的删除报告不再挤压下方的列表，删除进行中页面上的任何控件都无法开始新的工作。";
 "Keyboard's menu-bar indicator now offers “Emoji & Symbols”: one press opens the system emoji palette in the app you are typing in — Helm stays in the background, and your focus does not move." = "键盘指示器的菜单新增“表情与符号”：按一下即可在你正在输入的应用中打开系统表情面板 — Helm 不会跳到前台，焦点也不会移动。";
-"Keep Awake's lines in the log now file under the module filter's own name for it. Lines written before this build keep the old spelling, so the module menu may list two words for one module until the log rolls over — that is the old lines draining away, not a defect." = "“保持唤醒”的日志行现在使用与模块筛选器一致的名称。此版本之前写入的行保留旧写法，所以模块菜单会在一段时间里为同一个模块显示两个词 — 那是旧行在逐渐退出，不是故障。";
+"Keep Awake's lines in the diagnostics log are filed under the module's own name. Older lines keep the previous one, so the log's module menu may list both for a while." = "日志中的行现在归到各模块自己的名称下。此版本之前写入的行仍用先前的名称，因此模块菜单会同时列出两者一段时间。";
 "Keyboard's menu-bar indicator now matches the system's own input menu: each layout row shows its badge, a new “Show Input Source Name” switch puts the layout's name in the menu bar instead of the badge, and “Open Keyboard Settings…” takes you straight to the pane that opens." = "键盘指示器的菜单现在更接近系统自带的输入菜单：每个输入法都显示自己的徽标，新增的“显示输入法名称”开关会用输入法名称代替徽标显示在菜单栏中，“打开键盘设置…”会直接跳到对应的设置面板。";
 "The Uninstaller's Apps tab now says why it's empty — a search that matched nothing, a Mac with no more apps to show, or a list still being read — instead of showing the same blank screen for all three." = "卸载器的“App”标签页现在会说明为什么是空的——搜索没有结果、Mac 上确实没有更多应用了、还是列表尚未返回——而不是三种情况都显示同一个空白画面。";
 
