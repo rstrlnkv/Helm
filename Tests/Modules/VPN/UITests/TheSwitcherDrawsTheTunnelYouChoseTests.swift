@@ -104,6 +104,30 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         XCTAssertTrue(VPNTunnelSwitcher([], selected: nil).segments.isEmpty)
     }
 
+    /// **A selection of one is not a selection, and the fill says otherwise.**
+    ///
+    /// Measured off the render: the lone accent pill was a 24 pt box at the same
+    /// left edge with the same corner as «Measure speed» 93 pt below it — two
+    /// identical rectangles, one of which does something. The accent is a
+    /// *selection* mark and carries no information when there is nothing to
+    /// select against, so it is spent entirely on looking pressable. It also
+    /// carried the row's one contrast failure: `HelmSignal.success` on the
+    /// accent measures 1.11:1 in light against this house's 3:1 floor for a mark.
+    func testASingleSegmentIsNotDrawnAsAChoice() {
+        let one = VPNTunnelSwitcher([tunnel("home", interface: "utun7", routed: true)],
+                                    selected: nil).segments
+        XCTAssertEqual(one.count, 1, "precondition: the single segment is drawn at all")
+        XCTAssertFalse(one[0].isOneOfSeveral, """
+            the only tunnel there is was marked as one of several, so the row             draws an accent fill for a choice nobody has
+            """)
+        XCTAssertTrue(one[0].isSelected, "the only segment there is was not the chosen one")
+
+        let two = VPNTunnelSwitcher(self.two, selected: nil).segments
+        XCTAssertEqual(two.map(\.isOneOfSeveral), [true, true], """
+            a real choice stopped being drawn as one, which is the case the fill             exists for
+            """)
+    }
+
     func testTwoTunnelsEachGetASegmentInTheOrderTheyCame() {
         let segments = VPNTunnelSwitcher(two, selected: nil).segments
         XCTAssertEqual(segments.map(\.name), ["home", "work"], """

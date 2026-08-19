@@ -111,8 +111,24 @@ private enum OlderPayloadKeys: String, CodingKey { case facts }
 public struct VPNTunnelState: Codable, Equatable, Sendable {
     public let name: String
     public let interface: String
-    /// When Helm saw it come up, or nil when it was already up at launch.
+    /// When the tunnel came up.
+    ///
+    /// **The tool's own answer first, Helm's observation behind it.** This said
+    /// «when Helm saw it come up, or nil when it was already up at launch», and
+    /// that nil was on screen as a missing column on every Mac whose VPN starts
+    /// before the menu bar app does — while `scutil` had been writing
+    /// `LastStatusChangeTime` at the end of every status read the engine already
+    /// performs (`VPNStatusParser.Reading.since`). Helm's own stamp is still
+    /// there for the tool that does not answer.
     public let since: Date?
+    /// What this configuration carries **around** the tunnel: the local network,
+    /// Apple's own, anything else counted (`VPNExcludedRoutes`).
+    ///
+    /// The summary rather than the ranges, because a range is a fact about
+    /// somebody's network and this module already refuses to put an exit address
+    /// on the wire for the same reason. `.none` is «excludes nothing», which is
+    /// a real answer — a status read that failed produces no tunnel at all.
+    public let excluded: VPNExcludedRoutes.Summary
     /// Whole kilobytes, not bytes — see `VPNInterfaceCounters.onTheWire` for
     /// what a raw counter costs a page that redraws on every payload. Nil when
     /// the kernel had no counters for the interface, which is not the same news
@@ -143,10 +159,12 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
 
     public init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
                 bytesOut: UInt64?, exit: VPNExitVerdict, speed: VPNSpeedReading?,
-                measuring: Bool = false) {
+                measuring: Bool = false,
+                excluded: VPNExcludedRoutes.Summary = .none) {
         self.name = name
         self.interface = interface
         self.since = since
+        self.excluded = excluded
         self.bytesIn = bytesIn
         self.bytesOut = bytesOut
         self.exit = exit
@@ -170,6 +188,14 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
         exit = try box.decode(VPNExitVerdict.self, forKey: .exit)
         speed = try box.decodeIfPresent(VPNSpeedReading.self, forKey: .speed)
         measuring = try box.decodeIfPresent(Bool.self, forKey: .measuring) ?? false
+        // The same repair as the field above, for the same reason: a payload
+        // written before this field existed has no key for it, and Swift's
+        // synthesised `Decodable` wants one regardless — `JSONDecoder` then
+        // gives up on the whole document rather than on the field, which here is
+        // every tile the hero draws. `.none` is what a build from before this
+        // meant: it had no way to know what a tunnel excluded.
+        excluded = try box.decodeIfPresent(VPNExcludedRoutes.Summary.self,
+                                           forKey: .excluded) ?? .none
     }
 }
 
@@ -183,12 +209,16 @@ extension VPNTunnelState {
     /// order. The counters reach the wire as whole kilobytes for the reason
     /// `VPNInterfaceCounters.onTheWire` gives, and nil stays nil: an interface
     /// the kernel has no counters for is not a tunnel that has carried nothing.
+    /// `since` is Helm's **own** observation, and it is the fallback: the tool's
+    /// stamp is preferred where there is one. Written the other way round the
+    /// change would be invisible on the machine it was made for — Helm has no
+    /// observation there, which is the whole defect.
     init(_ connection: VPNConnection, on reading: VPNStatusParser.Reading,
          primary: String?, since: Date?, carried: (in: UInt64, out: UInt64)?,
          speed: VPNSpeedReading?, region: String?, measuring: Bool) {
         self.init(name: connection.name,
                   interface: reading.interface,
-                  since: since,
+                  since: reading.since ?? since,
                   bytesIn: carried.map { VPNInterfaceCounters.onTheWire($0.in) },
                   bytesOut: carried.map { VPNInterfaceCounters.onTheWire($0.out) },
                   exit: VPNExitVerdict.of(tunnelInterface: reading.interface,
@@ -196,6 +226,7 @@ extension VPNTunnelState {
                                           tunnelIsPrimary: reading.isPrimaryInterface,
                                           countryCode: region),
                   speed: speed,
-                  measuring: measuring)
+                  measuring: measuring,
+                  excluded: VPNExcludedRoutes.summarize(reading.excludedRoutes))
     }
 }

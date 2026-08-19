@@ -52,6 +52,37 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   Guards: `TheHeroStandsAtTheTopOfThePageTests` photographs the page and fails
   if the hero is not above the connection cards, in both states.
 
+- **The hero takes `KeepAwakeHero`'s shape, and the shape was measured rather
+  than remembered.** Rendered and looked at first, because the name misleads:
+  the figure on that page is a *sentence* at 40 pt light, centred, in
+  `HelmText.quiet`, with a 13 pt caption and a centred row of capsule verbs
+  under it — and no glyph. So the verdict takes the 40 pt slot, the country and
+  the exclusions join into one caption, the segments and the measure button
+  share one capsule row, and the four readings sit in a well with full-height
+  hairlines between them. The empty state is the argument for taking the shape
+  whole: «no tunnel is up» is this page's «the Mac sleeps as usual», in the same
+  slot at the same size.
+
+  The mark stays, against the model. `KeepAwakeHero` can do without one because
+  none of its states is alarming; this block exists for the state that is, and
+  «traffic is not going through the tunnel» carried by colour alone is said too
+  quietly.
+
+  Three sizes for one thought became one: the country was 16 pt, the exclusions
+  11, under a 22 pt heading — two of the page's five measured heights.
+  `VPNTunnelSwitcherRow` now contributes its capsules to the row around it
+  instead of wrapping them itself, because a wrapping row inside a wrapping row
+  lays its children out against the wrong width.
+
+- **A probe that counts columns has to be told what the background is.**
+  `TheStripDrawsOnlyWhatIsKnownTests` counted clusters of ink against the pane,
+  which was right while the columns sat on bare page. The well made every pixel
+  of those rows a departure, the whole strip counted as one cluster, and a
+  four-column drawing measured 3 — the probe reporting the page as broken rather
+  than the page being broken. It reads the modal colour of each row now, so one
+  probe answers for the page and for the well alike; the mutation that drops a
+  column still fails it.
+
 - **A single tunnel gets a segment too.** The row was hidden below two, on the
   reasoning that a control offering one choice is noise — true of a control, and
   this one is also a label: it names the tunnel every figure below is about and

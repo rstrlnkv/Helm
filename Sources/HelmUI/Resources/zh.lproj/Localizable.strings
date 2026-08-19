@@ -1022,3 +1022,9 @@
 "Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "每条已连接的隧道都在这些数字上方有了一个按钮，既能看出数字属于哪条隧道，也能切换到另一条。这一行以前只在两条隧道同时连接时才绘制，所以没人知道它的存在。";
 "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm 在启动它所使用的工具时不会再自行退出。打开 Homebrew 并在搜索框中连按几次 Return，曾会让整个应用崩溃。";
 "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Homebrew 搜索显示的是你最后输入的内容的结果，而不是最后返回的那次搜索的结果——而且在你输入时，Helm 不会再同时运行十几个 brew 命令。";
+"Except the local network" = "本地网络除外";
+"Except Apple’s own servers" = "Apple 的服务器除外";
+"Except the local network and Apple’s own servers" = "本地网络和 Apple 的服务器除外";
+"Some traffic goes around the tunnel, not through it" = "部分流量绕过隧道，而不是穿过它";
+"The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance." = "VPN 页面的顶部改成了与“保持唤醒”相同的排布：正在发生什么用一行写在上面，下面是一排可以一眼比较的读数。";
+"The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel." = "VPN 页面会说明隧道把什么留在了外面。几乎所有隧道都会排除本地网络，有些还会排除 Apple 的服务器——这意味着 iCloud 和 App Store 会以你的真实地址出去，而其余流量走隧道。";

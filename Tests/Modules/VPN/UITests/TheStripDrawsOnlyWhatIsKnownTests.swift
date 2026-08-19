@@ -137,9 +137,23 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         /// than a label dropped.
         func clusters(inRow y: Int) -> Int {
             let row = y * rep.bytesPerRow
-            // The pane's own colour on this row, read at the very edge — the
-            // section is padded, so x = 0 is never inside a column.
-            let pane = (0..<3).map { Int(data[row + $0]) }
+            // **The row's own most common colour, not the pane's.**
+            //
+            // Read at x = 0 this was the pane, which was right for as long as
+            // the columns sat on the bare page. They sit in a well now
+            // (`VPNTunnelHero.readings`), so every pixel of those rows departs
+            // from the pane and the whole strip counted as one cluster of ink —
+            // the probe answered 3 for a four-column drawing and reported the
+            // page as broken. The modal colour is the fill whatever the fill
+            // is, so one probe reads both the page and the well.
+            var counts: [Int: Int] = [:]
+            for x in 0..<rep.pixelsWide {
+                let at = row + x * 4
+                let key = Int(data[at]) << 16 | Int(data[at + 1]) << 8 | Int(data[at + 2])
+                counts[key, default: 0] += 1
+            }
+            let modal = counts.max { $0.value < $1.value }?.key ?? 0
+            let pane = [modal >> 16 & 0xFF, modal >> 8 & 0xFF, modal & 0xFF]
             var found = 0, first = -1, last = -1
             for x in 0..<rep.pixelsWide {
                 let at = row + x * 4

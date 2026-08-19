@@ -106,6 +106,16 @@ struct VPNTunnelStrip {
     }
 
     let tiles: [Tile]
+    /// **What the tunnel carries around itself, or nil when it carries
+    /// nothing.**
+    ///
+    /// The verdict says the traffic goes through the tunnel and the page's own
+    /// footer says «all of this Mac's traffic», and on the machine this was
+    /// written against both are false: `17.0.0.0/8` — Apple's whole network — is
+    /// declared outside the tunnel, so iCloud, the App Store and iMessage leave
+    /// with the real address under a green tick. Helm had been reading those
+    /// lines and discarding them (`VPNExcludedRoutes`).
+    let exclusions: String?
     /// **The verdict alone, with no place in it.** It carried the country as
     /// its own tail until the strip became the page's hero; `place` is that
     /// half now, on a line of its own, and the switcher's accessibility value
@@ -148,6 +158,7 @@ struct VPNTunnelStrip {
         }
         tiles.append(Self.speedTile(facts, now: now))
         self.tiles = tiles
+        exclusions = VPNStr.excluded(state.excluded)
 
         switch state.exit {
         case .throughTunnel(let countryCode):
@@ -258,6 +269,26 @@ struct VPNTunnelHero: View {
     private let measuring: String?
     private let measure: (String) -> Void
 
+    /// Natural height of whatever the block is showing, so it can ramp between
+    /// two of them instead of snapping.
+    ///
+    /// **This block copied `KeepAwakeHero`'s placement and none of its motion**,
+    /// and the whole page paid for it: measured off the render, the section
+    /// title under the hero sat at five different heights across five ordinary
+    /// states of one Mac, and two of those transitions happen with nobody
+    /// touching anything. The exit country arriving moved the page 16 pt; Helm
+    /// first learning the tunnel's uptime moved it 8; pressing a segment moved
+    /// it 46 in one frame. `KeepAwakeHero`'s own comment is about exactly this —
+    /// «a fade that snaps the page by 20 pt underneath somebody's eyes is the
+    /// fade being blamed for a jump it did not cause».
+    @State private var bodyHeight: CGFloat?
+    /// What is **drawn**, as against what has arrived. Seeded from the incoming
+    /// value rather than from a constant: a page opened on a live tunnel must
+    /// show it, not play the empty state swapping into it (`KeepAwakeHero` says
+    /// why an optional falling back to the property is a check that cannot
+    /// fail).
+    @State private var shown: [VPNTunnelState]
+
     init(_ tunnels: [VPNTunnelState], selected: Binding<String?>, now: Date = Date(),
          measuring: String? = nil, measure: @escaping (String) -> Void) {
         self.tunnels = tunnels
@@ -265,6 +296,7 @@ struct VPNTunnelHero: View {
         self.now = now
         self.measuring = measuring
         self.measure = measure
+        _shown = State(initialValue: tunnels)
     }
 
     var body: some View {
@@ -272,97 +304,187 @@ struct VPNTunnelHero: View {
         // binding: the page holds the selection and the engine rewrites the
         // list under it, and a value computed once at construction would be the
         // answer to a question asked before either could move.
-        let switcher = VPNTunnelSwitcher(tunnels, selected: selected)
+        let switcher = VPNTunnelSwitcher(shown, selected: selected)
         return Group {
             if let chosen = switcher.chosen {
-                live(switcher, chosen)
+                live(switcher, chosen).transition(.opacity)
             } else {
-                empty
+                empty.transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The measurement alone, and **not** `helmAccordion`: this block has no
+        // open state and never collapses. What it needs is to be the size of
+        // whatever it is showing, so the cross-fade has an animating frame for
+        // its clip to be taken from.
+        .helmMeasuredHeight($bodyHeight)
+        .frame(height: bodyHeight, alignment: .top)
+        .clipped()
+        // Where the value **lands**, not where it was set: the engine publishes
+        // these and a transaction is the only thing that makes them move
+        // (ARCHITECTURE.md § Motion). `.animation(_:value:)` on the outside was
+        // measured doing nothing for the same shape one module over.
+        .onChange(of: tunnels) { _, arrived in
+            withAnimation(HelmMotion.disclosure) { shown = arrived }
+        }
     }
 
     // MARK: - With a tunnel up
 
+    /// **The shape `KeepAwakeHero` draws, measured off it rather than
+    /// remembered.**
+    ///
+    /// Rendered and looked at before this was written, because the shape is not
+    /// what its name suggests: the figure there is a *sentence* at 40 pt light,
+    /// centred, in `HelmText.quiet` — «Mac засыпает как обычно» — with a 13 pt
+    /// caption under it and a centred row of capsule verbs under that. No
+    /// glyph: the state is carried by words.
+    ///
+    /// So the verdict takes the 40 pt slot, the country and the exclusions
+    /// become the caption, and the segments and the measure button become the
+    /// capsule row. The one departure is the mark, which stays — `KeepAwakeHero`
+    /// can do without one because none of its states is alarming, and this
+    /// block's whole reason for existing is the state that is.
     private func live(_ switcher: VPNTunnelSwitcher,
                       _ chosen: VPNTunnelState) -> some View {
         let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
-        return VStack(alignment: .leading, spacing: HelmSpace.s6) {
+        return VStack(spacing: HelmSpace.s6) {
             headline(strip)
-            // Under the headline and above the figures: the segments say which
-            // tunnel every reading below is about, so they read as that row's
-            // own heading rather than as a control belonging to the page.
-            VPNTunnelSwitcherRow(switcher, selected: $selected)
-            HStack(alignment: .top, spacing: HelmSpace.s4) {
-                ForEach(strip.tiles) { column(_: $0) }
-            }
-            // The row takes the height of its tallest column and no more.
-            // Without it a container taller than the strip stretches it: the
-            // wells this replaced were photographed at 190 pt with 100 pt of
-            // empty fill under the figures.
-            .fixedSize(horizontal: false, vertical: true)
-            action(strip, chosen)
+            verbs(switcher, strip, chosen)
+            readings(strip)
         }
+        .frame(maxWidth: .infinity)
     }
 
-    /// **The verdict, in the size a headline is set in.**
+    /// The verdict at the size a page's own state is set in, and one caption
+    /// under it.
     ///
-    /// Two lines rather than one sentence: the verdict answers «is my traffic
-    /// in the tunnel» and the place answers «where does it come out», and the
-    /// second used to be the tail of the first — the fact a person opens this
-    /// page for, at the end of a sentence, in a caption. The place is quieter
-    /// than the verdict because it qualifies it; it is the same size because it
-    /// is the same headline.
+    /// **The country and the exclusions are one line, not two.** They were a
+    /// 16 pt line and an 11 pt line under a 22 pt heading — three type sizes for
+    /// one thought, and two of the page's five measured heights. Joined by the
+    /// dot this module already punctuates with (`VPNStr.note`), they are one
+    /// caption in the slot `KeepAwakeHero` puts «Ни одно правило не включено» in.
     private func headline(_ strip: VPNTunnelStrip) -> some View {
-        HStack(alignment: .top, spacing: HelmSpace.s5) {
-            Image(systemName: strip.mark.symbol)
-                .font(.system(size: 22))
-                .foregroundStyle(strip.mark.tint)
-                // Decoration: the sentence beside it says the same thing, and a
-                // screen reader that read both would say it twice.
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                // **22, the scale's step above body — not a number chosen by
-                // eye.** It was 26, which is on no step of 10·11·13·16·22·40 and
-                // `TypeScaleRatchetTests` counts every size that is not: the
-                // ladder is only ever shortened, so a headline that wants its
-                // own size has to argue for one rather than type it.
-                Text(strip.verdict)
+        VStack(spacing: HelmSpace.s4) {
+            HStack(alignment: .top, spacing: HelmSpace.s4) {
+                Image(systemName: strip.mark.symbol)
                     .font(.system(size: 22))
+                    .foregroundStyle(strip.mark.tint)
+                    // Optically centred on the first line of a 40 pt sentence
+                    // rather than hung from its top: the cap band of 40 pt SF
+                    // is about 29 pt and the mark is 22, so half the difference
+                    // is what puts the two centres together. `s3` is the step
+                    // that lands there; there is no half-step on the ladder and
+                    // this does not need one.
+                    .padding(.top, HelmSpace.s3)
+                    // Decoration: the sentence beside it says the same thing,
+                    // and a screen reader that read both would say it twice.
+                    .accessibilityHidden(true)
+                Text(strip.verdict)
+                    .font(.system(size: 40, weight: .light))
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                place(strip.place)
+            }
+            if let caption = caption(strip) {
+                Text(caption)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.faint)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    /// The second line, or nothing at all — `VPNTunnelStrip.Place` carries why
-    /// «no country» is two states rather than one empty string.
-    @ViewBuilder
-    private func place(_ place: VPNTunnelStrip.Place) -> some View {
-        switch place {
-        case .named(let country):
-            Text(country)
-                .font(.system(size: 22))
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-        case .unknown:
-            // Body scale, not the headline's: it is a statement about the
-            // check rather than an answer, and setting it at 26 pt would give
-            // «not known» the weight of a country's name.
-            Text(VPNStr.exitCountryUnknown)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.faint)
-                .fixedSize(horizontal: false, vertical: true)
-        case .none:
-            EmptyView()
+    /// «Финляндия · кроме локальной сети и серверов Apple», or whichever half
+    /// of it there is — and nil when there is neither, so the slot is absent
+    /// rather than empty.
+    private func caption(_ strip: VPNTunnelStrip) -> String? {
+        let place: String? = switch strip.place {
+        case .named(let country): country
+        case .unknown: VPNStr.exitCountryUnknown
+        case .none: nil
         }
+        let parts = [place, strip.exclusions].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// **The verbs, as capsules in a centred row** — the shape
+    /// `KeepAwakeHero` gives its presets.
+    ///
+    /// The segments and the measure button share the row because they are the
+    /// same kind of thing here: the only two things this block can be told to
+    /// do. A tunnel that is not carrying the traffic has no button to offer,
+    /// and its sentence goes under the row rather than into it — a paragraph
+    /// among capsules is not a capsule.
+    @ViewBuilder
+    private func verbs(_ switcher: VPNTunnelSwitcher, _ strip: VPNTunnelStrip,
+                       _ chosen: VPNTunnelState) -> some View {
+        VStack(spacing: HelmSpace.s4) {
+            HelmWrappingRow(spacing: HelmSpace.s4, lineSpacing: HelmSpace.s3,
+                            alignment: .center) {
+                VPNTunnelSwitcherRow(switcher, selected: $selected)
+                switch strip.action {
+                case .offer(let word):
+                    Button(word) { measure(chosen.name) }
+                        .controlSize(.large)
+                        .buttonStyle(.bordered)
+                case .running(let word):
+                    HStack(spacing: HelmSpace.s3) {
+                        ProgressView().controlSize(.small)
+                        Text(word)
+                            .font(HelmText.rowDetail)
+                            .foregroundStyle(HelmText.quiet)
+                    }
+                    .frame(height: 30)
+                case .notOffered:
+                    EmptyView()
+                }
+            }
+            if case .notOffered(let sentence) = strip.action {
+                Text(sentence)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// **The readings as one bounded strip**, which is the half of this that is
+    /// not `KeepAwakeHero`'s.
+    ///
+    /// Four columns spread across 744 pt of bare page read as four unrelated
+    /// captions; inside a well with hairlines between them they read as one
+    /// instrument. The rules are vertical and full-height here, which is what
+    /// makes them structure rather than the fragments the earlier attempt drew
+    /// — those were 40 pt tall beside three-line columns and began at the label
+    /// and ended inside the note.
+    private func readings(_ strip: VPNTunnelStrip) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(strip.tiles.enumerated()), id: \.element.id) { index, tile in
+                if index > 0 {
+                    Rectangle()
+                        .fill(HelmSurface.hairline)
+                        .frame(width: 1)
+                        .accessibilityHidden(true)
+                }
+                column(tile)
+            }
+        }
+        // The row takes the height of its tallest column and no more. Without
+        // it a container taller than the strip stretches it: the wells this
+        // replaced were photographed at 190 pt with 100 pt of empty fill under
+        // the figures.
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
+            .fill(HelmSurface.wellFill))
     }
 
     /// One reading: what it is, the figure, and the line that qualifies it.
     ///
-    /// `maxWidth: .infinity` on each is what makes the four equal, and the only
-    /// thing that does now that there is no fill to see the edges of.
+    /// `maxWidth: .infinity` on each is what makes the four equal, and the
+    /// padding is the well's inset rather than the page's.
     private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)
@@ -377,65 +499,36 @@ struct VPNTunnelHero: View {
                 .foregroundStyle(HelmText.faint)
                 // Wrapping rather than truncating: a note that loses its tail
                 // loses the interface out of «incy · utun8», and a tunnel named
-                // at length in System Settings is an ordinary Mac. The columns
-                // are top-aligned, so a second line lengthens one column
-                // without moving a figure beside it.
+                // at length in System Settings is an ordinary Mac.
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// The offer, the run that is already going, or the sentence that stands
-    /// where neither belongs — `VPNTunnelStrip.Action` carries why the three
-    /// are one value rather than three optionals.
-    @ViewBuilder
-    private func action(_ strip: VPNTunnelStrip, _ chosen: VPNTunnelState) -> some View {
-        switch strip.action {
-        case .offer(let word):
-            HStack(spacing: HelmSpace.s4) {
-                Button(word) { measure(chosen.name) }
-                // The price of the press, beside the press rather than under a
-                // figure that does not exist yet.
-                Text(VPNStr.speedNotYet)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        case .running(let word):
-            HStack(spacing: HelmSpace.s3) {
-                ProgressView().controlSize(.small)
-                Text(word)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-            }
-        case .notOffered(let sentence):
-            Text(sentence)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        .padding(HelmSpace.s5)
     }
 
     // MARK: - With nothing up
 
-    /// **The slot answers even with nothing to be about.**
+    /// **The state `KeepAwakeHero` is drawn around**, and the best argument for
+    /// taking its shape whole: «Mac засыпает как обычно» is that page's idle,
+    /// set in the same 40 pt as its countdown. «Ни один туннель не поднят» is
+    /// this one's, and it now sits in the same slot at the same size.
     ///
-    /// The section used to be absent altogether, which is right for a block
-    /// three quarters of the way down a page and wrong for the first one on it:
-    /// a slot that disappears takes the page's shape with it. Quiet rather than
-    /// marked — nothing is wrong with a Mac that has no tunnel up, so there is
-    /// no glyph and no colour, only the sentence and what to do about it.
+    /// No mark, and that is the one place this block does follow the model:
+    /// nothing is wrong with a Mac that has no tunnel up, and a glyph beside
+    /// that sentence would be answering a question nobody asked.
     private var empty: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s4) {
+        VStack(spacing: HelmSpace.s4) {
             Text(VPNStr.noTunnelUp)
-                .font(.system(size: 22))
+                .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
+                .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Text(VPNStr.noTunnelUpNote)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.faint)
+                .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 }

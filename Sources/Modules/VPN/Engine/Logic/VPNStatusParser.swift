@@ -28,12 +28,52 @@ public enum VPNStatusParser {
         /// is the routing table's own answer — and falls back to this, which is
         /// the same question asked of the connection (`VPNExitVerdict.of`).
         public let isPrimaryInterface: Bool?
+        /// **When the tunnel last changed state, as the tool says it.**
+        ///
+        /// `VPNEngine.stampWhatCameUp` carried the sentence «`scutil` cannot
+        /// answer «since when»» for several releases, and it is not true: every
+        /// status read this parser is handed ends with
+        /// `LastStatusChangeTime : 08/19/2026 14:57:22`, and that line was
+        /// already sitting in this parser's own fixture, being walked past. The
+        /// cost of the mistake was a hole in the first column of the page on the
+        /// most ordinary Mac there is — a VPN raised at login, the menu bar app
+        /// started after it — because Helm's own observation was the only source
+        /// and it had not been watching.
+        ///
+        /// Nil when the line is absent or does not parse, and the engine falls
+        /// back to what it saw itself. So this can only ever add a duration.
+        public let since: Date?
+        /// What the configuration carries around the tunnel rather than through
+        /// it — the lines this parser calls decoys, kept instead of only
+        /// stepped over (`VPNExcludedRoutes`).
+        public let excludedRoutes: [VPNExcludedRoutes.Route]
 
-        public init(interface: String, isPrimaryInterface: Bool?) {
+        public init(interface: String, isPrimaryInterface: Bool?,
+                    since: Date? = nil,
+                    excludedRoutes: [VPNExcludedRoutes.Route] = []) {
             self.interface = interface
             self.isPrimaryInterface = isPrimaryInterface
+            self.since = since
+            self.excludedRoutes = excludedRoutes
         }
     }
+
+    /// **`en_US_POSIX`, and the format written out.**
+    ///
+    /// `scutil` writes `MM/dd/yyyy HH:mm:ss` — measured on a Mac whose
+    /// languages are `("ru-RU", "en-US")`, so the tool is not writing the
+    /// reader's format and a formatter built on the user's locale would fail to
+    /// read it. A fixed formatter that answers nil is the safe direction: the
+    /// engine's own observation is still there behind it.
+    ///
+    /// Local time, because the stamp is: the value above matched this app's own
+    /// log line for the same event to three seconds.
+    private static let stamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MM/dd/yyyy HH:mm:ss"
+        return formatter
+    }()
 
     /// **The outermost `InterfaceName` wins, and that is the whole trick.**
     ///
@@ -52,6 +92,13 @@ public enum VPNStatusParser {
     public static func reading(in output: String) -> Reading? {
         var shallowest: (indent: Int, value: String)?
         var isPrimary: Bool?
+        var since: Date?
+        // One exclusion is three lines — destination, interface, mask — and the
+        // pair is completed by the mask, which is the last of the three. A
+        // destination with no mask after it is a dictionary the tool cut short,
+        // and it is dropped rather than half-read.
+        var pendingDestination: String?
+        var excluded: [VPNExcludedRoutes.Route] = []
         for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
             let indent = line.prefix { $0 == " " }.count
             let text = line.trimmingCharacters(in: .whitespaces)
@@ -62,9 +109,20 @@ public enum VPNStatusParser {
             if let flag = value(of: "IsPrimaryInterface", in: text) {
                 isPrimary = flag == "1"
             }
+            if let written = value(of: "LastStatusChangeTime", in: text) {
+                since = stamp.date(from: written)
+            }
+            if let destination = value(of: "DestinationAddress", in: text) {
+                pendingDestination = destination
+            }
+            if let mask = value(of: "SubnetMask", in: text), let destination = pendingDestination {
+                excluded.append(VPNExcludedRoutes.Route(destination: destination, mask: mask))
+                pendingDestination = nil
+            }
         }
         guard let shallowest else { return nil }
-        return Reading(interface: shallowest.value, isPrimaryInterface: isPrimary)
+        return Reading(interface: shallowest.value, isPrimaryInterface: isPrimary,
+                       since: since, excludedRoutes: excluded)
     }
 
     /// The value of a `Field : value` line, or nil when this is not that field.

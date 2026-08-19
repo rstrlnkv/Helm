@@ -636,6 +636,47 @@ enum VPNStr {
     /// is going round the tunnel.
     static var exitCountryUnknown: String { L("The exit country is not known") }
 
+    /// **What the tunnel carries around itself, in one clause under the
+    /// verdict** — or nil when it carries nothing around itself at all.
+    ///
+    /// Four sentences and **no assembly**, which is the point. The obvious
+    /// shape — a stem plus a list joined by «and» — cannot be translated: «кроме
+    /// локальной сети **и ещё двух диапазонов**» needs the genitive plural of a
+    /// number Helm would be interpolating, and the same trap waits in German and
+    /// in French. Each case is its own finished sentence in eight languages.
+    ///
+    /// The price of that is deliberate: a configuration excluding Apple's
+    /// network *and* something else gets the general sentence rather than a
+    /// longer one naming Apple. `VPNExcludedRoutes.Summary.others` says the
+    /// ranges cannot be usefully named anyway, so what is lost is a word and
+    /// what is kept is a sentence nobody has to conjugate.
+    static func excluded(_ summary: VPNExcludedRoutes.Summary) -> String? {
+        if summary.others > 0 { return excludedSomeTraffic }
+        switch (summary.localNetwork, summary.apple) {
+        case (true, true): return excludedLocalAndApple
+        case (true, false): return excludedLocal
+        case (false, true): return excludedApple
+        case (false, false): return nil
+        }
+    }
+
+    /// The dull case nearly every tunnel declares, so that printers and NAS
+    /// boxes keep working. Worth one line because the sentence above it claims
+    /// everything.
+    static var excludedLocal: String { L("Except the local network") }
+    /// `17.0.0.0/8`. The one exclusion worth naming: not a printer — every Apple
+    /// service this Mac talks to.
+    static var excludedApple: String { L("Except Apple\u{2019}s own servers") }
+    static var excludedLocalAndApple: String {
+        L("Except the local network and Apple\u{2019}s own servers")
+    }
+    /// Anything the two sentences above do not cover. General because a range is
+    /// not something a reader can act on, and because a count cannot be
+    /// interpolated into eight grammars.
+    static var excludedSomeTraffic: String {
+        L("Some traffic goes around the tunnel, not through it")
+    }
+
     /// The hero with nothing to be about.
     ///
     /// The section used to be absent altogether when no tunnel was up, which
