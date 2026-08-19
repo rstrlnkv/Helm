@@ -5,6 +5,78 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.13] — 2026-08-19
+
+> Plan 3 of the Hosts & Keys design: the keys tab, the pty behind it, and the
+> panel tile plan 1 deliberately left for this one. The version is written here;
+> cutting the release itself is a separate step.
+
+### Added
+- **«Hosts & Keys» has its third tab: the keys in `~/.ssh`.** One card per pair —
+  type, size, SHA-256 fingerprint, comment and modification date — with the
+  verdict on the key's mode and, when it is too open for `ssh` to use the key,
+  the `chmod` that fixes it. The agent control sits beside it, and «Copy public
+  key» is a pasteboard write with no engine command at all: the public half is
+  public, so it travels in the state.
+
+  **The private half is never opened, and that is a property of the design
+  rather than a promise.** `ssh-keygen -l` is pointed at the `.pub` file, so a
+  pair whose public half has been deleted has no description and the row says
+  so, instead of the tool being aimed at the private key with a passphrase
+  prompt inside a listing that runs on every refresh.
+
+  Three refusals the page keeps apart, because folding any of them makes Helm
+  claim something it cannot support. A folder nobody could read is not a folder
+  with no keys. A mode `stat` could not read is not a mode that is fine — and it
+  offers no Fix, because writing 0600 over a file this process could not look at
+  is a guess about somebody's key. And a key whose `ssh-keygen -l` line this
+  build cannot parse is not in the agent however full the agent is: the badge is
+  asked by fingerprint, and the alternative is a claim about an agent built out
+  of a parse failure.
+
+  The agent answers in three states, so «no agent is running» is its own
+  sentence and every load control goes dead under it. A button that cannot work
+  is worse than none.
+- **«New key…» makes a key without the passphrase ever being an argument.**
+  `ssh-keygen -N '<passphrase>'` puts the secret in `ps auxww` for every process
+  on the machine, which is the same defect as a staged path in a privileged
+  sentence one argument over. So `PTYProcess`: `posix_openpt`, then
+  `posix_spawn` with the slave on all three descriptors and
+  `POSIX_SPAWN_SETSID`, and the answer written to the master when the child
+  asks. The secret is never in `argv`, the environment, a file or the log; it is
+  `Data` written from its own buffer — no `String` is made of it anywhere in
+  that file, because a `String` is a copy the code cannot zero — and it is
+  zeroed on every path out, the failed spawn and the deadline included.
+
+  The terminal's echo is cleared before the child exists. Without it the
+  passphrase comes straight back in the transcript, measured against a child
+  that had done nothing wrong; `ssh-keygen` clears echo itself while it asks,
+  and that is not a property this code may lean on.
+
+  A name already in the directory is never pointed at. `ssh-keygen` asks
+  «Overwrite (y/n)?» and this design answers prompts, so an answer meant for a
+  passphrase would land on that question and destroy a key nobody offered to
+  replace. The public half counts as taking the name too.
+
+  What reaches SwiftUI is the one part this app cannot promise: `SecureField`
+  binds to `String` and nothing else, so between the keystroke and the view
+  model the secret is a value that cannot be overwritten. The boundary is
+  written at the method rather than left for a reader to find.
+- **A panel tile for the module**, read-only by decision: entries, how many are
+  switched off, how many keys, and whether the agent holds any. A hosts toggle
+  in the panel would be a macOS password dialog raised from the menu bar, and a
+  password dialog needs a gesture that asked for it.
+
+### Fixed
+- **Three guards caught this work before it shipped, and each was right.**
+  `Fix` had already been claimed by Layout's rule switch, where Russian spells
+  it «Исправлять» — a behaviour that goes on, not a button that acts once — so
+  the keys tab's button is `Fix permissions`. `TypeScaleRatchetTests` found five
+  sites at 10 pt where a note under a control is 11, and two font styles on no
+  step of the scale; they are `HelmText` tokens now.
+  `PunctuationIsTerminologyTests` found corner brackets in a Japanese string,
+  which none of the eight languages quote with.
+
 ## [0.10.0-dev.12] — 2026-08-18
 
 ### Changed

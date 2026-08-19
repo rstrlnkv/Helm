@@ -989,3 +989,6 @@
 "There is already a key with that name" = "已存在同名的密钥";
 "A comment cannot contain a line break" = "注释不能包含换行";
 "The key could not be made" = "无法创建密钥";
+"Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out." = "“主机与密钥”新增第三个标签页：.ssh 文件夹中的 SSH 密钥。每个密钥显示类型、指纹和注释；若权限过于开放导致 ssh 拒绝使用，会给出提示和一个修复按钮。密钥可以加入 ssh-agent，也可以取出。";
+"“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it." = "“新建密钥…”可以为你创建 SSH 密钥。口令以你自己输入的方式交给工具，因此绝不会出现在运行中的程序列表里——那里 Mac 上的任何程序都能读到。";
+"The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any." = "菜单栏面板新增“主机与密钥”磁贴：hosts 文件中有多少条目、其中多少已关闭、你有多少密钥，以及代理是否持有密钥。";

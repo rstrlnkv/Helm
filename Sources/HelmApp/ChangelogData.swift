@@ -71,6 +71,9 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .new, text: L("Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out.")),
+                ChangeItem(kind: .new, text: L("“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it.")),
+                ChangeItem(kind: .upd, text: L("The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any.")),
                 ChangeItem(kind: .new, text: L("The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. \u{201C}Measure speed\u{201D} measures the link when you press it \u{2014} about fifteen seconds of real traffic, so it is never measured on its own.")),
                 ChangeItem(kind: .fix, text: L("The panel\u{2019}s \u{201C}permissions not granted\u{201D} notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel.")),
                 ChangeItem(kind: .upd, text: L("Everything about one VPN is on its own card now: the applications that raise it, and how loudly it speaks. Two buttons under the card open them.")),

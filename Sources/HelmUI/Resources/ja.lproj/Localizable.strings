@@ -989,3 +989,6 @@
 "There is already a key with that name" = "その名前の鍵はすでにあります";
 "A comment cannot contain a line break" = "コメントに改行は使えません";
 "The key could not be made" = "鍵を作成できませんでした";
+"Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out." = "“ホストと鍵”に3つ目のタブが加わりました。.ssh フォルダの SSH 鍵です。各鍵の種類・フィンガープリント・コメントが表示され、アクセス権が広すぎて ssh が使用を拒否する場合はその旨と修正ボタンが出ます。ssh-agent への追加と取り出しもできます。";
+"“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it." = "“新しい鍵…”で SSH 鍵を作成できます。パスフレーズはご自身が打つのと同じ形でツールに渡されるため、実行中のプログラム一覧には現れません。そこは Mac 上のあらゆるものが読める場所です。";
+"The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any." = "メニューバーのパネルに“ホストと鍵”のタイルが加わりました。hosts ファイルの項目数、そのうちオフの数、鍵の数、そしてエージェントが鍵を保持しているかどうかが分かります。";
