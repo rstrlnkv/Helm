@@ -67,3 +67,52 @@ func watchState(_ transport: LocalTransport,
         }
     }
 }
+
+/// Kick the engine and **wait for the state that shows it happened.**
+///
+/// `VPNEngine.refresh()` puts the work on a queue and returns at once, so a test
+/// that reads the wire straight afterwards is reading whatever had already
+/// arrived — usually the state before the one it asked for. Worse, a test that
+/// then changes the runner's answers is racing the refresh it just started: the
+/// read may pick up the *next* fixture, and the step it meant to exercise never
+/// happens at all.
+///
+/// The subscription is taken **before** the engine is kicked, because the
+/// transport replays only the last event per name: subscribing afterwards can
+/// miss the state and wait for ever for one that has already gone by.
+///
+/// Answers whether the state arrived. It is a `Bool` rather than the payload
+/// because `StatePayload` is not `Sendable` and must not cross out of the
+/// watching task; the caller reads the wire itself afterwards, which is the
+/// same value by then.
+@discardableResult
+func refreshed(_ engine: VPNEngine, on transport: LocalTransport,
+               timeout: TimeInterval = 5,
+               until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool)
+    async -> Bool {
+    await stepped(on: transport, timeout: timeout, until: matches) { engine.refresh() }
+}
+
+/// The same wait around any act that makes the engine speak.
+@discardableResult
+func stepped(on transport: LocalTransport, timeout: TimeInterval = 5,
+             until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool,
+             _ act: () -> Void) async -> Bool {
+    let events = transport.events
+    let watcher = Task { () -> Bool in
+        for await event in events where event.name == VPNEvent.state.rawValue {
+            guard let payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self,
+                                                          from: event.payload) else { continue }
+            if matches(payload) { return true }
+        }
+        return false
+    }
+    act()
+    let deadline = Task {
+        try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+        watcher.cancel()
+    }
+    let arrived = await watcher.value
+    deadline.cancel()
+    return arrived
+}

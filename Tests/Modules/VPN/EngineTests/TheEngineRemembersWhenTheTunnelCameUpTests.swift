@@ -155,7 +155,13 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                       "precondition: something read the list before the connect, so this is "
                       + "not the launch-time rule this test is about")
 
-        engine.connect("A", auto: true)
+        // Waited for, not read at once: `connect` hands the work to the
+        // engine's queue and returns, so the read that followed it was of
+        // whatever had arrived by then — nothing, on a loaded machine.
+        let up = await stepped(on: transport, until: { !$0.tunnels.isEmpty }) {
+            engine.connect("A", auto: true)
+        }
+        XCTAssertTrue(up, "precondition: the tunnel never reached the strip at all")
 
         let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.since, at,
@@ -178,7 +184,13 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport,
                                 interfaces: tunnelIsTheDefaultRoute())
 
-        engine.connect("A", auto: true)
+        // The wait is for the tunnel to *exist*, never for the stamp: this
+        // test asserts an absence, and waiting for the thing it denies would
+        // spend five seconds proving nothing on every green run.
+        let up = await stepped(on: transport, until: { !$0.tunnels.isEmpty }) {
+            engine.connect("A", auto: true)
+        }
+        XCTAssertTrue(up, "precondition: the tunnel never reached the strip at all")
 
         let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertNotNil(facts, "precondition: no strip at all, so the absence below is free")
@@ -194,9 +206,14 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport,
                                 interfaces: tunnelIsTheDefaultRoute())
 
-        engine.refresh()                     // seen down
+        // Each reading is waited for. Without that, the second `refresh` could
+        // overtake the first and the engine never saw the tunnel down — which
+        // is the whole of what this test is about.
+        let down = await refreshed(engine, on: transport) { $0.tunnels.isEmpty }
+        XCTAssertTrue(down, "precondition: the first reading never landed, so nothing was «down»")
         runner.listOutput = list("Connected")
-        engine.refresh()                     // and now up
+        let up = await refreshed(engine, on: transport) { !$0.tunnels.isEmpty }
+        XCTAssertTrue(up, "precondition: the tunnel never came up")
 
         let facts = await lastState(on: transport)?.tunnels.first
         XCTAssertEqual(facts?.since, at,

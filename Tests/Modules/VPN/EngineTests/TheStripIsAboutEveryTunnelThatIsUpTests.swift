@@ -310,11 +310,22 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
 
+        // **Each step is waited for.** `refresh()` returns before the work
+        // starts, so changing the runner's answers straight afterwards raced the
+        // refresh that was meant to see the old ones — the tunnel never went
+        // away, and the assertion below fell over on its own precondition
+        // roughly two runs in three.
         runner.listOutput = list("Connected", "Disconnected")
-        engine.refresh()
-        runner.listOutput = list("Connected", "Connected")
-        engine.refresh()
+        let gone = await refreshed(engine, on: transport) { state in
+            !state.tunnels.contains { $0.name == "home" }
+        }
+        XCTAssertTrue(gone, "precondition: «home» never went away, so nothing was forgotten")
 
+        runner.listOutput = list("Connected", "Connected")
+        let back = await refreshed(engine, on: transport) { state in
+            state.tunnels.contains { $0.name == "home" }
+        }
+        XCTAssertTrue(back, "precondition: «home» never came back, so nothing was inherited")
         let home = await lastState(on: transport)?.tunnels.first { $0.name == "home" }
         XCTAssertNotNil(home, "precondition: «home» never came back, so nothing was inherited")
         XCTAssertNil(home?.speed, """
