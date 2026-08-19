@@ -1,5 +1,6 @@
 import Foundation
 import HelmContract
+import HelmRuntime
 import HelmUI
 import Module_Homebrew_Engine
 
@@ -159,13 +160,37 @@ import Module_Homebrew_Engine
         loadedOutdated = true
     }
     @Published public private(set) var loadedOutdated = false
+
+    /// Which search the hits belong to, so an older answer cannot land on a
+    /// newer one — and so a search nobody is waiting for any more stops
+    /// spending `brew` runs on descriptions.
+    ///
+    /// **A counter rather than a latch**, for the reason `LatestRequest` gives:
+    /// the second search exists because the person typed something else, and
+    /// refusing it would leave the screen showing the results of a word they
+    /// have moved on from. What has to be dropped is the older *answer*.
+    ///
+    /// Duplicates and Leftovers had this and Homebrew did not, which is what
+    /// made a Return key expensive: `search` runs two `brew search` calls in
+    /// sequence — measured at about nine seconds — and then a `brew desc` per
+    /// kind, and the page put every press on its own unbounded `Task`. Ten
+    /// presses were ten of those at once; the crash report that started this
+    /// shows ten threads inside one `brew` call and nine more waiting on a
+    /// pipe, with the twenty-first launch the one that raised.
+    private var searches = LatestRequest()
+
     public func search(_ q: String) async {
+        let mine = searches.take()
         guard let hits: [SearchHit] = await client.request(HomebrewCommand.search,
                                                            payload: Data(q.utf8))
         else { return }
+        // The hits first: a stale answer must not replace what a newer search
+        // has already drawn.
+        guard searches.isLatest(mine) else { return }
         searchHits = hits
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
-                               casks: searchHits.filter(\.isCask).map(\.name))
+                               casks: searchHits.filter(\.isCask).map(\.name),
+                               token: mine)
     }
 
     public func description(name: String, isCask: Bool) -> String? {
@@ -178,18 +203,30 @@ import Module_Homebrew_Engine
     /// at each of these five places and at the three row identities, and the two
     /// halves have to agree exactly: a description stored under a key no row
     /// asks for is a row with no description and nothing in any log.
-    private func loadDescriptions(formulae: [String], casks: [String]) async {
-        await load(formulae, isCask: false)
-        await load(casks, isCask: true)
+    /// `token` is the search these names came from, or nil for a list that
+    /// belongs to no search — the installed packages, which nothing supersedes.
+    ///
+    /// **Checked between the two calls, not only before them.** They run in
+    /// sequence and each is a `brew` run of its own, so a search abandoned
+    /// while the first is out would otherwise still pay for the second.
+    private func loadDescriptions(formulae: [String], casks: [String],
+                                  token: Int? = nil) async {
+        await load(formulae, isCask: false, token: token)
+        guard token.map(searches.isLatest) ?? true else { return }
+        await load(casks, isCask: true, token: token)
     }
 
-    private func load(_ names: [String], isCask: Bool) async {
+    private func load(_ names: [String], isCask: Bool, token: Int? = nil) async {
         let wanted = names.filter { descriptions[BrewKey.of(name: $0, isCask: isCask)] == nil }
         guard !wanted.isEmpty,
               let found: [String: String] = await client.request(
                   HomebrewCommand.descriptions,
                   encoding: DescriptionsRequest(names: wanted, isCask: isCask))
         else { return }
+        // A description is keyed by the package it describes, so a late batch
+        // is not *wrong* — but writing it republishes the whole dictionary and
+        // redraws a list the person is no longer looking at.
+        guard token.map(searches.isLatest) ?? true else { return }
         for (name, text) in found { descriptions[BrewKey.of(name: name, isCask: isCask)] = text }
     }
 

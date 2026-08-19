@@ -5,7 +5,7 @@ import SwiftUI
 import HelmUI
 import Module_VPN_Engine
 
-/// **What the strip draws, as one value.**
+/// **What the hero draws, as one value.**
 ///
 /// Separate from the view because every rule worth guarding here is a rule
 /// about *content* — which tiles exist, what each says, which sentence the
@@ -17,7 +17,7 @@ import Module_VPN_Engine
 /// prose instead.
 struct VPNTunnelStrip {
 
-    /// What the verdict line wears beside its sentence. Three, not a boolean:
+    /// What the headline wears beside its sentence. Three, not a boolean:
     /// a check that could not be made must never be dressed as the bad answer
     /// (`VPNExitVerdict`).
     ///
@@ -45,8 +45,8 @@ struct VPNTunnelStrip {
         }
     }
 
-    /// What sits at the right of the verdict line — the offer, the run that is
-    /// already going, or the sentence that stands where neither belongs.
+    /// What stands under the readings — the offer, the run that is already
+    /// going, or the sentence that stands where neither belongs.
     ///
     /// One value, because the three are exclusive and a set of optionals can be
     /// several at once or none: a button drawn beside its own spinner is a
@@ -87,8 +87,32 @@ struct VPNTunnelStrip {
     /// link's throughput, and the button under it is the whole point.
     static let noReading = "—"
 
+    /// **The hero's second line, as one value of three cases.**
+    ///
+    /// Not an optional string: «no country» is two different states and they
+    /// must not be drawn the same. The traffic is in the tunnel and nobody has
+    /// been told where it comes out — that is worth a sentence — against the
+    /// traffic not being in the tunnel at all, where there is no exit country
+    /// to be about and a line saying one is unknown would be answering a
+    /// question nobody asked.
+    enum Place: Equatable {
+        /// The country, already named in Helm's own language.
+        case named(String)
+        /// In the tunnel; the exit has not answered.
+        case unknown
+        /// Nothing to say — the traffic is beside the tunnel, or the routing
+        /// reading itself failed.
+        case none
+    }
+
     let tiles: [Tile]
+    /// **The verdict alone, with no place in it.** It carried the country as
+    /// its own tail until the strip became the page's hero; `place` is that
+    /// half now, on a line of its own, and the switcher's accessibility value
+    /// reads this one — which is why it has to stay a sentence that is true
+    /// without the country rather than one with a dangling dash.
     let verdict: String
+    let place: Place
     let mark: Mark
     let action: Action
 
@@ -122,26 +146,25 @@ struct VPNTunnelStrip {
             tiles.append(Tile(kind: .up, label: VPNStr.tileUp,
                               value: Bytes(Int(clamping: bytesOut)), note: VPNStr.bytesSince))
         }
-        tiles.append(Self.speedTile(facts, now: now,
-                                    offered: state.exit.carriesTheDefaultRoute))
+        tiles.append(Self.speedTile(facts, now: now))
         self.tiles = tiles
 
         switch state.exit {
         case .throughTunnel(let countryCode):
-            // The place is named out of `Locale` in Helm's own language, and
-            // the sentence loses its dash rather than its end when the code is
-            // absent or is not a region.
-            if let named = countryCode.flatMap(VPNStr.country) {
-                verdict = VPNStr.trafficThroughTunnel(country: named)
-            } else {
-                verdict = VPNStr.trafficThroughTunnel
-            }
+            verdict = VPNStr.trafficThroughTunnel
+            // The place is named out of `Locale` in Helm's own language — never
+            // the exit service's own spelling of it — and a code that is not a
+            // region, or none at all, is `unknown` rather than a line that
+            // trails off.
+            place = countryCode.flatMap(VPNStr.country).map(Place.named) ?? .unknown
             mark = .success
         case .besideTunnel:
             verdict = VPNStr.trafficBesideTunnel
+            place = .none
             mark = .warning
         case .unknown:
             verdict = VPNStr.trafficUnknown
+            place = .none
             mark = .neutral
         }
 
@@ -173,15 +196,18 @@ struct VPNTunnelStrip {
     /// comment and this is its only reader; a fresh reading keeps the unit
     /// alone. Written the other way round (an age under every reading) the
     /// property would be a promise with nothing keeping it.
-    private static func speedTile(_ facts: VPNTunnelFacts, now: Date,
-                                  offered: Bool) -> Tile {
+    private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
-            // `speedNotYet` is the **button's price tag** — fifteen seconds and
-            // some traffic — so it is quoted only where there is a button to
-            // pay it. On a tunnel that is not carrying the route the note is the
-            // unit alone, and the sentence on the verdict line says why.
+            // **The unit alone, because the price is beside the button now.**
+            // `speedNotYet` — fifteen seconds and some traffic — used to be
+            // quoted here, on the reasoning that the column should say what the
+            // button under it costs. The hero draws that button with its price
+            // next to it, so quoting it here as well put the same clause on the
+            // screen twice, 40 pt apart, and wrapped this column to two lines
+            // while its three neighbours took one. A price belongs beside the
+            // thing it is paid for.
             return Tile(kind: .speed, label: VPNStr.tileSpeed, value: noReading,
-                        note: VPNStr.speedNote(offered ? VPNStr.speedNotYet : nil))
+                        note: VPNStr.speedNote(nil))
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
                     // `Count`, not `Decimal`: the figure is a whole number of
@@ -196,18 +222,24 @@ struct VPNTunnelStrip {
     }
 }
 
-/// **What the tunnel carrying the default route is doing, right now.**
+/// **The top of the VPN page: what the tunnel carrying your traffic is doing.**
 ///
 /// The one thing this page can say that a card cannot. A card knows its own
 /// configuration is connected; only the page knows which tunnel the traffic is
 /// actually leaving through, how long it has been that way, and what it has
-/// carried — so the strip is per page and reads one tunnel rather than being
-/// drawn four times over.
+/// carried — so this reads one tunnel rather than being drawn four times over.
 ///
-/// **No card of its own, and no heading either.** On the settings page this is
-/// a row of a grouped `Form`, and the section card the form draws *is* the
-/// card; the heading belongs to that section's header, which sits outside it
-/// (`VPNTunnelStrip.heading`).
+/// **It was the last block on the page and is the first.** As a `Form` section
+/// under the grid of connections it sat below the fold on any Mac with more
+/// than a few configurations, and the two things a person opens this page to
+/// find out — is my traffic really in the tunnel, and where does it come out —
+/// were a 13 pt line at the bottom of it. The shape is `KeepAwakeHero`'s, which
+/// solved the same problem one module over: what is happening, in the type size
+/// of a headline, above the settings rather than after them.
+///
+/// **No card of its own.** It rides on the first section's header with
+/// `.helmSettingsColumn()`, the way `KeepAwakeSettingsPage.sessionHero` does —
+/// a hero inside a card would be a card above the cards.
 ///
 /// **And no wells.** The four columns were recessed fills
 /// (`HelmSurface.wellFill`), which drew four boxes where the page wanted one
@@ -215,9 +247,8 @@ struct VPNTunnelStrip {
 /// now, and what makes them read as one row is that every column has the same
 /// three lines. Hairline rules between them were drawn and rejected by
 /// looking: at 40 pt they begin at the label and end inside the note, so they
-/// read as fragments rather than as structure. The horizontal `Divider()`
-/// below stays, because that one separates two different kinds of thing.
-struct VPNTunnelSection: View {
+/// read as fragments rather than as structure.
+struct VPNTunnelHero: View {
     private let tunnels: [VPNTunnelState]
     @Binding private var selected: String?
     private let now: Date
@@ -244,20 +275,25 @@ struct VPNTunnelSection: View {
         let switcher = VPNTunnelSwitcher(tunnels, selected: selected)
         return Group {
             if let chosen = switcher.chosen {
-                card(switcher, chosen)
+                live(switcher, chosen)
+            } else {
+                empty
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func card(_ switcher: VPNTunnelSwitcher, _ chosen: VPNTunnelState) -> some View {
+    // MARK: - With a tunnel up
+
+    private func live(_ switcher: VPNTunnelSwitcher,
+                      _ chosen: VPNTunnelState) -> some View {
         let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
-        return VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            // Above the columns and inside the card: the segments say which
-            // tunnel every figure below is about, so they read as that row's
-            // heading rather than as a control belonging to the page.
-            if !switcher.segments.isEmpty {
-                VPNTunnelSwitcherRow(switcher, selected: $selected)
-            }
+        return VStack(alignment: .leading, spacing: HelmSpace.s6) {
+            headline(strip)
+            // Under the headline and above the figures: the segments say which
+            // tunnel every reading below is about, so they read as that row's
+            // own heading rather than as a control belonging to the page.
+            VPNTunnelSwitcherRow(switcher, selected: $selected)
             HStack(alignment: .top, spacing: HelmSpace.s4) {
                 ForEach(strip.tiles) { column(_: $0) }
             }
@@ -266,10 +302,61 @@ struct VPNTunnelSection: View {
             // wells this replaced were photographed at 190 pt with 100 pt of
             // empty fill under the figures.
             .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            verdictLine(strip, chosen)
+            action(strip, chosen)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// **The verdict, in the size a headline is set in.**
+    ///
+    /// Two lines rather than one sentence: the verdict answers «is my traffic
+    /// in the tunnel» and the place answers «where does it come out», and the
+    /// second used to be the tail of the first — the fact a person opens this
+    /// page for, at the end of a sentence, in a caption. The place is quieter
+    /// than the verdict because it qualifies it; it is the same size because it
+    /// is the same headline.
+    private func headline(_ strip: VPNTunnelStrip) -> some View {
+        HStack(alignment: .top, spacing: HelmSpace.s5) {
+            Image(systemName: strip.mark.symbol)
+                .font(.system(size: 22))
+                .foregroundStyle(strip.mark.tint)
+                // Decoration: the sentence beside it says the same thing, and a
+                // screen reader that read both would say it twice.
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                // **22, the scale's step above body — not a number chosen by
+                // eye.** It was 26, which is on no step of 10·11·13·16·22·40 and
+                // `TypeScaleRatchetTests` counts every size that is not: the
+                // ladder is only ever shortened, so a headline that wants its
+                // own size has to argue for one rather than type it.
+                Text(strip.verdict)
+                    .font(.system(size: 22))
+                    .fixedSize(horizontal: false, vertical: true)
+                place(strip.place)
+            }
+        }
+    }
+
+    /// The second line, or nothing at all — `VPNTunnelStrip.Place` carries why
+    /// «no country» is two states rather than one empty string.
+    @ViewBuilder
+    private func place(_ place: VPNTunnelStrip.Place) -> some View {
+        switch place {
+        case .named(let country):
+            Text(country)
+                .font(.system(size: 22))
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
+        case .unknown:
+            // Body scale, not the headline's: it is a statement about the
+            // check rather than an answer, and setting it at 26 pt would give
+            // «not known» the weight of a country's name.
+            Text(VPNStr.exitCountryUnknown)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+        case .none:
+            EmptyView()
+        }
     }
 
     /// One reading: what it is, the figure, and the line that qualifies it.
@@ -298,39 +385,57 @@ struct VPNTunnelSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func verdictLine(_ strip: VPNTunnelStrip,
-                             _ chosen: VPNTunnelState) -> some View {
-        HStack(spacing: HelmSpace.s3) {
-            Image(systemName: strip.mark.symbol)
-                .foregroundStyle(strip.mark.tint)
-                // Decoration: the sentence beside it says the same thing, and a
-                // screen reader that read both would say it twice.
-                .accessibilityHidden(true)
-            Text(strip.verdict)
-                .font(HelmText.rowTitle)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: HelmSpace.s5)
-            switch strip.action {
-            case .offer(let word):
+    /// The offer, the run that is already going, or the sentence that stands
+    /// where neither belongs — `VPNTunnelStrip.Action` carries why the three
+    /// are one value rather than three optionals.
+    @ViewBuilder
+    private func action(_ strip: VPNTunnelStrip, _ chosen: VPNTunnelState) -> some View {
+        switch strip.action {
+        case .offer(let word):
+            HStack(spacing: HelmSpace.s4) {
                 Button(word) { measure(chosen.name) }
-            case .running(let word):
-                HStack(spacing: HelmSpace.s3) {
-                    ProgressView().controlSize(.small)
-                    Text(word)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                }
-            case .notOffered(let sentence):
-                Text(sentence)
+                // The price of the press, beside the press rather than under a
+                // figure that does not exist yet.
+                Text(VPNStr.speedNotYet)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
-                    // Wrapping, and trailing-aligned where the button was: it
-                    // is a sentence rather than a word, and at the narrow pane
-                    // it takes two lines beside a verdict that takes two of
-                    // its own.
-                    .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        case .running(let word):
+            HStack(spacing: HelmSpace.s3) {
+                ProgressView().controlSize(.small)
+                Text(word)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+            }
+        case .notOffered(let sentence):
+            Text(sentence)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    // MARK: - With nothing up
+
+    /// **The slot answers even with nothing to be about.**
+    ///
+    /// The section used to be absent altogether, which is right for a block
+    /// three quarters of the way down a page and wrong for the first one on it:
+    /// a slot that disappears takes the page's shape with it. Quiet rather than
+    /// marked — nothing is wrong with a Mac that has no tunnel up, so there is
+    /// no glyph and no colour, only the sentence and what to do about it.
+    private var empty: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s4) {
+            Text(VPNStr.noTunnelUp)
+                .font(.system(size: 22))
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(VPNStr.noTunnelUpNote)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -915,7 +915,6 @@
 "Connected for" = "Verbunden seit";
 "Downloaded" = "Heruntergeladen";
 "Uploaded" = "Hochgeladen";
-"This tunnel" = "Dieser Tunnel";
 "Speed" = "Geschwindigkeit";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "seit dem Aufbau des Tunnels";
@@ -1014,3 +1013,12 @@
 "This key has a passphrase" = "Dieser Schlüssel hat eine Passphrase";
 "That passphrase was not accepted" = "Diese Passphrase wurde nicht angenommen";
 "Unlock and add" = "Entsperren und hinzufügen";
+"Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page — the tile only counted things, and there was nothing on it to press." = "„Hosts & Schlüssel“ ist keine Kachel im Menüleisten-Panel mehr. Das Modul steht jetzt unter „Dienstprogramme“, von wo aus seine Seite geöffnet wird – die Kachel hat nur gezählt, und drücken ließ sich darauf nichts.";
+"The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country — and one check that failed cost it until the next reconnection." = "Die VPN-Seite nennt das Land, aus dem Ihr Datenverkehr austritt, auch wenn der Tunnel schon vor dem Start von Helm bestand. Gefragt wurde bisher nur im Moment des Verbindungsaufbaus – ein VPN, das mit dem Mac hochkommt, bekam also nie ein Land, und eine fehlgeschlagene Prüfung kostete es bis zur nächsten Neuverbindung.";
+"The exit country is not known" = "Das Austrittsland ist nicht bekannt";
+"No tunnel is up" = "Es ist kein Tunnel aktiv";
+"Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here." = "Der Datenverkehr verlässt diesen Mac direkt. Bauen Sie unten eine Verbindung auf, dann erscheinen hier ihr Land, ihre Zähler und ihre Geschwindigkeit.";
+"The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "Die VPN-Seite beginnt mit dem Tunnel, durch den Ihr Datenverkehr tatsächlich läuft: ob er wirklich im Tunnel ist, aus welchem Land er austritt, wie lange der Tunnel schon steht und was er befördert hat. All das stand bisher ganz unten auf der Seite, unter den Verbindungen.";
+"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "Jeder aktive Tunnel bekommt eine Taste über diesen Zahlen – so ist zu sehen, um welchen es geht, und man kann zu einem anderen wechseln. Die Reihe wurde erst ab zwei Tunneln gezeichnet, weshalb niemand von ihr wusste.";
+"Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm beendet sich nicht mehr von selbst, wenn es eines der Werkzeuge startet, die es verwendet. Homebrew zu öffnen und im Suchfeld mehrmals die Eingabetaste zu drücken konnte die ganze App abstürzen lassen.";
+"Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Die Homebrew-Suche zeigt die Ergebnisse dessen, was Sie zuletzt getippt haben, und nicht der Suche, die zuletzt fertig wurde – und Helm startet nicht mehr ein Dutzend brew-Befehle gleichzeitig, während Sie tippen.";

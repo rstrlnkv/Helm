@@ -519,14 +519,6 @@ enum VPNStr {
 
     // MARK: - The strip
 
-    /// The heading over the strip. **On the pane, above the card, in the
-    /// page's own idiom** — `HelmSectionTitle`, the same as «Connections» a
-    /// section higher. It was a bold title *inside* the card with the tunnel's
-    /// name in it, which is a second heading idiom on one page and a name
-    /// repeated three lines above the row it belongs to; the name is under the
-    /// first column now (`tunnelAndInterface`), beside the interface.
-    static var thisTunnel: String { L("This tunnel") }
-
     /// How long the tunnel carrying the default route has been up.
     static var tileUptime: String { L("Connected for") }
     /// The column beside it: bytes received since the tunnel came up.
@@ -624,14 +616,38 @@ enum VPNStr {
     /// this pair — two members rather than one with an empty half, since a
     /// sentence ending in a dash and nothing is a sentence that lost its end.
     static var trafficThroughTunnel: String { L("Traffic goes through the tunnel") }
-    /// The good verdict with a place in it, once the exit's country is known.
-    static func trafficThroughTunnel(country: String, language: AppLanguage = AppLanguage.current) -> String {
-        L("Traffic goes through the tunnel — \(country)",
-          [.ru: "Трафик идёт через туннель — \(country)", .es: "El tráfico pasa por el túnel — \(country)",
-           .fr: "Le trafic passe par le tunnel — \(country)", .de: "Der Datenverkehr läuft durch den Tunnel — \(country)",
-           .ja: "通信はトンネルを通っています — \(country)", .zh: "流量正在通过隧道 — \(country)",
-           .pt: "O tráfego passa pelo túnel — \(country)"],
-          language: language)
+    /// **The hero's second line is the country's own name, and nothing else.**
+    ///
+    /// It was a sentence — «leaving from the Netherlands» — with the name
+    /// interpolated into it, and that is a shape Russian cannot take: «из»
+    /// governs the genitive and `Locale.localizedString(forRegionCode:)` hands
+    /// back the nominative, so the line read «выход из Нидерланды». Every
+    /// inflecting language of the eight has the same fault and none of them can
+    /// be fixed from a region code, which is why the verdict used to put the
+    /// country after a dash. A bare name declines nowhere: the line above has
+    /// already said what it is the country of.
+    /// **The traffic is in the tunnel and the exit has not answered.**
+    ///
+    /// Its own sentence rather than an empty second line, because the two
+    /// states a person has to tell apart are «Helm does not know» and «the
+    /// answer is on its way» — and both are honest here, while a blank slot
+    /// reads as neither. Never drawn beside a verdict that is not
+    /// `throughTunnel`: there is no exit country to be about when the traffic
+    /// is going round the tunnel.
+    static var exitCountryUnknown: String { L("The exit country is not known") }
+
+    /// The hero with nothing to be about.
+    ///
+    /// The section used to be absent altogether when no tunnel was up, which
+    /// is right for a section three quarters of the way down a page and wrong
+    /// for the first block on it: a slot that disappears takes the page's
+    /// shape with it, and a reader who looked at the top of this page
+    /// yesterday finds something else there today.
+    static var noTunnelUp: String { L("No tunnel is up") }
+    /// And what to do about it, in one sentence that also says what appears
+    /// here when they do.
+    static var noTunnelUpNote: String {
+        L("Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here.")
     }
     /// The bad verdict: a rule brought a tunnel up, and macOS's own route
     /// table sent the traffic around it anyway — the one outcome this check

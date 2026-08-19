@@ -36,9 +36,17 @@ struct VPNTunnelSwitcher {
         let isSelected: Bool
     }
 
-    /// The row, or **nothing at all for a single tunnel**: a control offering
-    /// one choice is noise on a card that already names that tunnel under its
-    /// first column.
+    /// The row, **drawn for one tunnel as well as for four**.
+    ///
+    /// It was hidden below two, on the reasoning that a control offering one
+    /// choice is noise. True of a control and false of this one, which is why
+    /// the reasoning was wrong: hidden at one tunnel — the ordinary Mac — the
+    /// row was invisible to everybody who had never had two up at once, so the
+    /// switching was reported as missing rather than as unnecessary. A single
+    /// segment is a label that happens to be pressable: it names the tunnel
+    /// every figure below is about, and it marks whether that one carries the
+    /// traffic, which is the fact the dot is for and is not decoration at any
+    /// count.
     let segments: [Segment]
     /// The tunnel the card draws — the one picked while it is still up, and
     /// otherwise the first, which is the one carrying the traffic.
@@ -51,7 +59,7 @@ struct VPNTunnelSwitcher {
         // name the page is holding: a selection whose tunnel has dropped falls
         // back, and a row lighting the stale name would light a segment that is
         // not there while the card drew a different tunnel.
-        segments = tunnels.count < 2 ? [] : tunnels.map {
+        segments = tunnels.map {
             Segment(name: $0.name,
                     carriesTraffic: $0.exit.carriesTheDefaultRoute,
                     isSelected: $0.name == chosen?.name)
@@ -108,7 +116,7 @@ struct VPNTunnelSwitcherRow: View {
                 .buttonStyle(.plain)
                 // The dot is hidden from VoiceOver (`HelmStatusDot`), so what it
                 // marks is said in words here — and the same sentence the
-                // verdict line uses, because it is the same fact.
+                // headline uses, because it is the same fact.
                 .accessibilityLabel(segment.name)
                 .accessibilityValue(segment.carriesTraffic ? VPNStr.trafficThroughTunnel : "")
                 .accessibilityAddTraits(segment.isSelected ? [.isSelected] : [])

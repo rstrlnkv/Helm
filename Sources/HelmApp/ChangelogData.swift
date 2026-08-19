@@ -70,6 +70,14 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
+            ChangelogEntry(version: "0.11.0", date: "2026-08-19", items: [
+                ChangeItem(kind: .upd, text: L("Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page \u{2014} the tile only counted things, and there was nothing on it to press.")),
+                ChangeItem(kind: .fix, text: L("The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country \u{2014} and one check that failed cost it until the next reconnection.")),
+                ChangeItem(kind: .upd, text: L("The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections.")),
+                ChangeItem(kind: .upd, text: L("Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there.")),
+                ChangeItem(kind: .fix, text: L("Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down.")),
+                ChangeItem(kind: .fix, text: L("Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last \u{2014} and Helm no longer runs a dozen brew commands at once while you type.")),
+            ]),
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names \u{2014} which is how macOS keeps it \u{2014} still lists every entry, and forgetting still works.")),
                 ChangeItem(kind: .upd, text: L("The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed.")),

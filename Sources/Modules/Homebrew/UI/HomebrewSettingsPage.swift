@@ -21,6 +21,19 @@ struct HomebrewSettingsPage: View {
     @State private var pendingUninstall: BrewPackage?
     @State private var segment: Segment = .installed
     @State private var query = ""
+    /// The search a press of Return started, held so the next press can drop it.
+    ///
+    /// **Every press used to be its own `Task` and nothing held any of them.**
+    /// One search is two `brew search` runs — measured at about nine seconds —
+    /// and a `brew desc` per kind after them, so ten presses were ten of those
+    /// chains at once. What stops the *work* is `HelmProcess.launchCeiling` and
+    /// the `LatestRequest` in the view model; this is the third of the three and
+    /// the smallest: it keeps the tasks themselves from piling up, one per
+    /// keystroke, each holding its own await for the life of a `brew` run.
+    ///
+    /// Cancelling does not stop the tool, and nothing here pretends it does —
+    /// the child is the engine's and runs to its end.
+    @State private var searching: Task<Void, Never>?
 
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
@@ -207,7 +220,10 @@ struct HomebrewSettingsPage: View {
     private var searchView: some View {
         VStack(spacing: 0) {
             HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
-                            onSubmit: { Task { await hb.search(query) } })
+                            onSubmit: {
+                                searching?.cancel()
+                                searching = Task { await hb.search(query) }
+                            })
                 .frame(height: 22)
                 .padding(.horizontal, HelmLayout.formInset)
                 .padding(.top, 12)

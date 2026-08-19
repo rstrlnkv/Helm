@@ -84,13 +84,23 @@ extension Module {
     }
 }
 
-/// The three every module is built on.
+/// The three every module is built on, and the one Objective-C target under
+/// them.
+///
+/// **`HelmLaunch` is the package's only non-Swift target, and it exists for one
+/// call.** `NSTask` raises an Objective-C exception on some launch paths, and
+/// such an exception goes straight past a Swift `catch` into `std::terminate` —
+/// so the guard that was written around `process.run()` could not work, whatever
+/// it said, and a shipped build died with SIGABRT. The `@try` has to sit in
+/// Objective-C with no Swift frame between it and the raise; that is the whole
+/// target, and `HelmLaunch.h` carries the measurement.
 let foundation: [Target] = [
+    .target(name: "HelmLaunch"),
     .target(name: "HelmContract"),
     // One edge, and only this direction: `EngineReply` is engine-side wire
     // plumbing that logs, and the log lives here. The contract stays free of
     // everything.
-    .target(name: "HelmRuntime", dependencies: ["HelmContract"]),
+    .target(name: "HelmRuntime", dependencies: ["HelmContract", "HelmLaunch"]),
     .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
             resources: [.process("Resources")]),
 ]

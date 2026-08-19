@@ -68,9 +68,22 @@ struct VPNSettingsPage: View {
     /// cannot come to mean four slightly different things.
     private var hasConnections: Bool { !vm.connections.isEmpty }
 
-    /// The connections block, and the heading of the section it rides on.
-    private var connectionsAndTitle: some View {
+    /// **The hero, then the heading, then the connections.**
+    ///
+    /// All three ride on one section's header, which is what puts the hero
+    /// above the page's first card rather than inside it — the same
+    /// construction `KeepAwakeSettingsPage.heroAndTitle` uses, and for the same
+    /// reason: a grouped `Form` draws a section's header outside its card, and
+    /// a hero is not a row.
+    private var heroAndTitle: some View {
         VStack(alignment: .leading, spacing: 0) {
+            VPNTunnelHero(vm.tunnels, selected: $selectedTunnel,
+                          measuring: vm.measuring) { vm.measureSpeed($0) }
+                // The gap under the hero, paid here for the reason the old
+                // «This tunnel» heading paid its own: a grouped `Form` spaces
+                // its sections by their footers, and a block riding on a header
+                // has no footer of its own to be spaced by.
+                .padding(.bottom, HelmSpace.s7)
             HelmSectionTitle(VPNStr.connections())
             connectionsList
                 // The gap the form itself puts under a heading. Every other
@@ -88,9 +101,9 @@ struct VPNSettingsPage: View {
     /// footer. macOS puts a sentence of this kind *under* the group it
     /// qualifies, so both go under the last group there is.
     ///
-    /// Which group that is depends on whether a tunnel is up: the strip's
-    /// section is absent with nothing to be about. One view, placed by that one
-    /// question, rather than the same two sentences written twice.
+    /// Which group that is used to be a question — the strip had a section of
+    /// its own and it was absent with nothing to be about. There is one section
+    /// now, so the answer is unconditional.
     private var closingNotes: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
             Text(VPNStr.connectionsHint)
@@ -146,47 +159,11 @@ struct VPNSettingsPage: View {
             Section {
                 news
             } header: {
-                connectionsAndTitle
+                heroAndTitle
             } footer: {
-                // Only when this *is* the last section — see `closingNotes`.
-                if hasConnections, vm.tunnels.isEmpty { closingNotes }
-            }
-            // **Only when there is a tunnel to be about.** With nothing up the
-            // section is absent rather than empty: a card of dashes is not an
-            // empty state, and the page below already says what to do about
-            // having no VPN.
-            if !vm.tunnels.isEmpty {
-                Section {
-                    // The strip draws no card of its own — this row *is* the
-                    // section's card. The insets go because the strip pays for
-                    // its own padding, so its columns sit at the card's inset
-                    // rather than at a row's.
-                    VPNTunnelSection(vm.tunnels, selected: $selectedTunnel,
-                                     measuring: vm.measuring) { vm.measureSpeed($0) }
-                        .padding(HelmSpace.s5)
-                        .listRowInsets(EdgeInsets())
-                } header: {
-                    // On the pane, above the card, level with «Connections» —
-                    // a `Form` section's header is outside the card it belongs
-                    // to, which is where a page's heading goes. The strip drew
-                    // its own inside the card until 0.10.0-dev.11, which is two
-                    // heading idioms on one page.
-                    // **The gap above it is paid here.** A grouped `Form`
-                    // spaces its sections by their footers, and the section
-                    // above this one has none once the closing notes moved
-                    // down — photographed on the running app, «Этот туннель»
-                    // sat 14 pt under the connection cards against the 28 the
-                    // page gives «Подключения». The connections block is a
-                    // header riding on this section's neighbour rather than a
-                    // real card, so there is nothing else to pay it.
-                    HelmSectionTitle(VPNStr.thisTunnel)
-                        .padding(.top, HelmSpace.s7)
-                } footer: {
-                    // Unconditional, unlike the footer above: the strip is
-                    // about a connection, so this section existing is already
-                    // `hasConnections` answered.
-                    closingNotes
-                }
+                // The two sentences that qualify the connections, under the
+                // group they qualify — which is now the only group there is.
+                if hasConnections { closingNotes }
             }
         }
         .formStyle(.grouped)

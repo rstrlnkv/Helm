@@ -77,14 +77,30 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         }
     }
 
-    // MARK: - 1. One tunnel is no switcher
+    // MARK: - 1. One tunnel gets a segment too
 
-    func testOneTunnelDrawsNoSwitcherAtAll() {
+    /// **The row is drawn at one tunnel as well as at four**, and it was not.
+    ///
+    /// Hidden below two on the reasoning that a control offering one choice is
+    /// noise — true of a control, and this one is also a label: it names the
+    /// tunnel every figure below is about and marks whether that tunnel carries
+    /// the traffic. Hidden at one, the switching was invisible to everybody who
+    /// had never had two tunnels up at once, and was reported as missing rather
+    /// than as unnecessary. Which is the whole reason this row exists.
+    func testOneTunnelStillGetsItsSegment() {
         let one = [tunnel("home", interface: "utun7", routed: true)]
-        XCTAssertTrue(VPNTunnelSwitcher(one, selected: nil).segments.isEmpty, """
-            a switcher was drawn over a single tunnel — a control offering one \
-            choice, on a card that already names that tunnel under its first column
+        let segments = VPNTunnelSwitcher(one, selected: nil).segments
+        XCTAssertEqual(segments.map(\.name), ["home"], """
+            a single tunnel drew no segment, so a Mac with one VPN is shown no \
+            switching at all — which is how the row came to be reported missing
             """)
+        XCTAssertEqual(segments.first?.isSelected, true,
+                       "the only segment there is was not the chosen one")
+    }
+
+    /// Nothing up is still nothing to switch between: the hero draws its empty
+    /// state instead, and a row of no segments would be a strip of air above it.
+    func testNoTunnelsDrawNoSegments() {
         XCTAssertTrue(VPNTunnelSwitcher([], selected: nil).segments.isEmpty)
     }
 
@@ -210,17 +226,26 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         XCTAssertEqual(tile?.note, VPNStr.speedNote(HelmDates.relative(taken, to: now)))
     }
 
-    /// And with no figure it does not advertise the price of a press there is no
-    /// button to make: `speedNotYet` is that button's price tag.
-    func testANonRoutedTunnelWithNoFigureDoesNotQuoteAPriceNobodyCanPay() {
+    /// And a tunnel that is not carrying the traffic quotes no price at all,
+    /// because there is no press to pay it.
+    ///
+    /// `speedNotYet` is the button's price tag and it now lives beside the
+    /// button (`VPNTunnelHero.action`), so this asks the thing that decides:
+    /// the column says the unit, and the action is the sentence rather than an
+    /// offer. Asserted together, because «the note is the unit» is true of the
+    /// routed tunnel too and would be a check that cannot fail on its own.
+    func testANonRoutedTunnelOffersNoPressAndQuotesNoPrice() {
         inEachLanguage { language in
-            let tile = VPNTunnelStrip(tunnel("work", interface: "utun4"), now: now)
-                .tiles.first { $0.kind == .speed }
+            let drawn = VPNTunnelStrip(tunnel("work", interface: "utun4"), now: now)
+            let tile = drawn.tiles.first { $0.kind == .speed }
             XCTAssertEqual(tile?.value, VPNTunnelStrip.noReading,
                            "precondition: \(language.rawValue) drew a figure from nowhere")
-            XCTAssertEqual(tile?.note, VPNStr.speedUnit, """
-                \(language.rawValue): the column quotes «\(VPNStr.speedNotYet)» under a \
-                tunnel whose card has a sentence where the button would be
+            XCTAssertEqual(tile?.note, VPNStr.speedUnit,
+                           "\(language.rawValue): the column says something other than the unit")
+            XCTAssertEqual(drawn.action, .notOffered(VPNStr.speedIsTheRoutedTunnels), """
+                \(language.rawValue): a tunnel that is not carrying the traffic is \
+                offered a measurement, which would be taken on another tunnel and \
+                drawn under this one's name
                 """)
         }
     }
@@ -238,8 +263,8 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
     private func mount(_ tunnels: [VPNTunnelState], selected: String? = nil) -> MountedRender {
         let page = ZStack {
             Color(nsColor: .windowBackgroundColor)
-            VPNTunnelSection(tunnels, selected: .constant(selected), now: now,
-                             measuring: nil, measure: { _ in })
+            VPNTunnelHero(tunnels, selected: .constant(selected), now: now,
+                          measuring: nil, measure: { _ in })
                 .padding(HelmSpace.s5)
         }
         let render = MountedRender(page, width: 720, height: 260, appearance: .darkAqua)
@@ -248,15 +273,15 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         return render
     }
 
-    /// One control on the card with one tunnel — the Measure button — and three
-    /// with two, which is that button and a segment each. A count, because a
-    /// render is what can answer «is it there at all»; which segment says what
-    /// is read off the value above.
-    func testTheSwitcherIsAbsentAtOneTunnelAndDrawnAtTwo() {
+    /// Two controls with one tunnel — its segment and the Measure button — and
+    /// three with two. A count, because a render is what can answer «is it there
+    /// at all»; which segment says what is read off the value above.
+    func testEveryTunnelIsOnTheScreenAsAControl() {
         let one = mount([tunnel("home", interface: "utun7", routed: true)])
-        XCTAssertEqual(one.host.everyView(named: "_FocusRingView").count, 1, """
-            a switcher is on the screen over a single tunnel, or the probe cannot \
-            see the button it is counting
+        XCTAssertEqual(one.host.everyView(named: "_FocusRingView").count, 2, """
+            a single tunnel draws \
+            \(one.host.everyView(named: "_FocusRingView").count) control(s): its own \
+            segment and the Measure button is two
             """)
 
         let both = mount(two)

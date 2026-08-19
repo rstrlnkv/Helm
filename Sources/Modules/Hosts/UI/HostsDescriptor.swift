@@ -19,16 +19,20 @@ import Module_Hosts_Engine
         HostsEngine()
     }
 
-    /// A tile that says what it knows and carries no control.
+    /// **A utility, so the panel lists it and does not draw it.**
     ///
-    /// Editing a hosts file is a page, not a toggle: a switch here would raise a
-    /// macOS password dialog from the menu bar, and a password dialog needs a
-    /// gesture that asked for it. The tile waited for this plan because two of
-    /// the three things it summarises — the keys and the agent — did not exist
-    /// until now.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(HostsPanelTile(hvm: HostsViewModel.shared(vm: vm))))
-    }
+    /// It had a tile of three counts and no control, and a tile with nothing to
+    /// press is exactly what `MenuBarContribution.isUtility` describes: the
+    /// panel is for what can be acted on from the menu bar, and everything this
+    /// module can do — editing the hosts file, fixing a key's mode, reading a
+    /// fingerprint — is a page. Counting on the panel was the module asking for
+    /// a widget's worth of somebody's glass to say «go and open Settings».
+    ///
+    /// The reason the tile carried no control in the first place stands and is
+    /// why no tile is coming back: a hosts toggle in the panel is a macOS
+    /// password dialog raised from the menu bar, and a password dialog needs a
+    /// gesture that asked for it.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(HostsSettingsPage(vm: vm))
