@@ -1028,3 +1028,4 @@
 "Some traffic goes around the tunnel, not through it" = "部分流量绕过隧道，而不是穿过它";
 "The top of the VPN page is laid out like Keep Awake’s: what is happening in one line across the top, and the readings under it in a row you can compare at a glance." = "VPN 页面的顶部改成了与“保持唤醒”相同的排布：正在发生什么用一行写在上面，下面是一排可以一眼比较的读数。";
 "The VPN page says what your tunnel leaves outside itself. Most tunnels leave the local network out, and some leave Apple’s servers out too — which means iCloud and the App Store go out with your real address while everything else is in the tunnel." = "VPN 页面会说明隧道把什么留在了外面。几乎所有隧道都会排除本地网络，有些还会排除 Apple 的服务器——这意味着 iCloud 和 App Store 会以你的真实地址出去，而其余流量走隧道。";
+"A VPN that blinks out for a moment — on a Wi-Fi change, or when your Mac wakes — no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does." = "VPN 短暂中断时——切换 Wi-Fi 或 Mac 唤醒时——不再提示隧道已断开。Helm 会等五秒看它是否恢复，恢复了就什么都不说。";

@@ -159,6 +159,26 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   cancels the previous one, which is the smallest of the three: cancelling does
   not stop the tool, and nothing there pretends it does.
 
+- **The drop notice fired on a tunnel that was back three seconds later.** It is
+  this module's only interrupting signal, and its own comment says why — «the
+  person is now sending everything in clear having last been told they were
+  behind a tunnel». It was fired on the first `scutil --nc list` read that showed
+  a watched tunnel not up, and a NetworkExtension tunnel re-handshaking on a
+  Wi-Fi change or a wake does exactly that. Measured in the owner's log against
+  the tool in the same breath: `automatic connection dropped` at 14:57:19,
+  `LastStatusChangeTime : 14:57:22`. Twice in the two days of log there was.
+
+  A fall is recorded now and the verdict asked at each refresh
+  (`VPNDropSettle`): up again at any age is `healed` and says nothing, still down
+  past five seconds is the drop the notice exists for. A clock, not a timer —
+  `VPNWorkQueue.inline` runs a delayed block at once, so a test of the wait would
+  be over before it began, and the engine already takes its own `now`.
+
+  One wake-up is scheduled per fall so a quiet Mac reaches the verdict at all.
+  Scheduled from inside the verdict instead, it recursed without end under the
+  inline queue: refresh → still waiting → schedule → refresh. The test hung
+  rather than failing, which is how it said so.
+
 - **The exit country was tied to an event, and the state it is about is a
   state.** `checkExit()` ran only from `stampWhatCameUp`, on a service seen
   down at one reading and up at the next — so a tunnel already up when the

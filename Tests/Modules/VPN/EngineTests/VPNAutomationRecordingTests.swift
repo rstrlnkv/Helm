@@ -14,7 +14,21 @@ import HelmRuntime
 /// for everything.
 final class VPNAutomationRecordingTests: XCTestCase {
 
-    private let at = Date(timeIntervalSince1970: 1_000_000)
+    /// **A clock the test can move**, because a drop is now held for
+    /// `VPNDropSettle.window` before it is announced: a tunnel seen down once is
+    /// a re-handshake until the clock says otherwise. Fixed, this fixture left
+    /// every drop `waiting` for ever.
+    private final class Clock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _now = Date(timeIntervalSince1970: 1_000_000)
+        var now: Date { lock.lock(); defer { lock.unlock() }; return _now }
+        func advance(_ seconds: TimeInterval) {
+            lock.lock(); _now = _now.addingTimeInterval(seconds); lock.unlock()
+        }
+    }
+    private let clock = Clock()
+
+    private var at: Date { clock.now }
     private let uuid = "11111111-1111-1111-1111-111111111111"
 
     private func list(_ status: String) -> String { "(\(status)) \(uuid) IPSec \"A\"" }
@@ -22,12 +36,12 @@ final class VPNAutomationRecordingTests: XCTestCase {
     private func makeEngine(_ runner: FakeRunner,
                             apps: FakeApps = FakeApps.trustingA(),
                             settings: VPNSettings? = nil) -> VPNEngine {
-        let at = self.at
+        let clock = self.clock
         return VPNEngine(settings: settings ?? makeSettings(),
                          runner: runner,
                          apps: apps,
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                         now: { at },
+                         now: { clock.now },
                          work: .inline)
     }
 
@@ -186,6 +200,14 @@ final class VPNAutomationRecordingTests: XCTestCase {
         engine.clearLastAutomationForTesting()
 
         runner.listOutput = list("Disconnected")
+        engine.refresh()
+        // **Held for the settle window first.** A tunnel seen down once is a
+        // re-handshake until the clock says otherwise (`VPNDropSettle`), so the
+        // recording is stamped at the moment the loss is *established* rather
+        // than at the moment it was first seen.
+        XCTAssertNil(engine.lastAutomation,
+                     "the drop was recorded on the first read that saw the tunnel down")
+        clock.advance(VPNDropSettle.window)
         engine.refresh()
 
         XCTAssertEqual(engine.lastAutomation,

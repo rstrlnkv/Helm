@@ -171,6 +171,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// route moving can be noticed at all. Nil means «not read yet», which
     /// `VPNExitAsk.routeMoved` refuses to call a move.
     private var lastPrimary: String?
+    /// Tunnels seen falling, and when — held until they come back or stay gone
+    /// (`VPNDropSettle`).
+    ///
+    /// **Keyed by the configuration's id, and the name is carried beside it.**
+    /// Keyed by name it was, for one commit, on the reasoning that the notice
+    /// says a name — and `ANameIsNotAnIdentityTests` said what that costs: two
+    /// configurations may share a display name, so a namesake coming up by
+    /// itself would have read as «it came back» and swallowed the drop of the
+    /// one a rule was actually holding. That test exists because the same
+    /// mistake was made once before, one field over.
+    ///
+    /// Touched only from the work queue.
+    private var fellAt: [String: (name: String, at: Date)] = [:]
     /// The last measurement taken **on each tunnel**, keyed by service id: a
     /// figure belongs to whichever held the route when it was taken and is kept
     /// when the route moves (`VPNExitVerdict.carriesTheDefaultRoute`). What
@@ -378,16 +391,28 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // Recorded outside the lock the names were collected under: sorted so
         // that when several go at once the last one written is the same on
         // every run.
-        for name in dropped.sorted() {
-            HelmLog.shared.info(Self.moduleID, "automatic connection dropped: \(Redact.vpn(name))")
-            // `.dropped`, not `.disconnected`. Nobody asked for this one: the
-            // network went, the server hung up, or somebody stopped it in
-            // System Settings — and the person is now sending everything in
-            // clear having last been told they were behind a tunnel. It is the
-            // one firing here that can be set to arrive as a banner while the
-            // rules stay quiet.
-            recordAutomation(name, .dropped)
+        // **Recorded, not announced.** A tunnel re-handshaking on a Wi-Fi change
+        // is down for a few seconds, and this notice used to fire on the first
+        // read that saw it — measured twice in two days of the owner's log, both
+        // times healed within three seconds (`VPNDropSettle`).
+        // `fallen` rather than `dropped`, because the pending has to be keyed by
+        // the configuration; `dropped` is the name-level answer to «is this news
+        // at all», and it still decides that.
+        for (id, name) in fallen.sorted(by: { $0.value < $1.value })
+        where dropped.contains(name) && fellAt[id] == nil {
+            fellAt[id] = (name, now())
+            HelmLog.shared.info(Self.moduleID, "seen down: \(Redact.vpn(name))")
+            // **One wake-up per fall, scheduled here rather than from the
+            // verdict.** A Mac where a tunnel simply went is a Mac where nothing
+            // else is going to ask again, so the verdict needs a refresh of its
+            // own — and scheduling it from `settleDrops` recurses without end
+            // under `VPNWorkQueue.inline`, which runs a delayed block at once:
+            // refresh → still waiting → schedule → refresh. Here the `where`
+            // guard is what stops it, since the fall is already recorded by the
+            // time the block runs.
+            work.run(after: VPNDropSettle.window) { [weak self] in self?.refreshNow() }
         }
+        settleDrops(parsed)
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
@@ -866,6 +891,43 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // yet, and the next refresh — there is always one, the poll sees to
             // that — asks again.
             interfaceOf[connection.id] = VPNStatusParser.reading(in: output)
+        }
+    }
+
+    /// **Which of the falls seen so far were losses**, asked at every refresh.
+    ///
+    /// A tunnel that is up again is forgotten without a word; one still down
+    /// past `VPNDropSettle.window` is the drop this module's one interrupting
+    /// notice exists for. The wake-up that makes a quiet Mac reach this verdict
+    /// at all is scheduled where the fall is recorded, one per fall — every
+    /// other refresh comes from something happening, and a tunnel that is simply
+    /// gone is nothing happening.
+    private func settleDrops(_ parsed: [VPNConnection]) {
+        guard !fellAt.isEmpty else { return }
+        // **By id.** A tunnel of the same *name* being up is not this one coming
+        // back — see the note on `fellAt`.
+        let upNow = Set(parsed.filter(\.status.isUp).map(\.id))
+        for (id, fall) in fellAt {
+            let name = fall.name
+            switch VPNDropSettle.verdict(fellAt: fall.at, isUpNow: upNow.contains(id),
+                                         now: now()) {
+            case .healed:
+                fellAt[id] = nil
+                HelmLog.shared.info(Self.moduleID, "came back before the notice: \(Redact.vpn(name))")
+            case .waiting:
+                break
+            case .announce:
+                fellAt[id] = nil
+                HelmLog.shared.info(Self.moduleID,
+                                    "automatic connection dropped: \(Redact.vpn(name))")
+                // `.dropped`, not `.disconnected`. Nobody asked for this one: the
+                // network went, the server hung up, or somebody stopped it in
+                // System Settings — and the person is now sending everything in
+                // clear having last been told they were behind a tunnel. It is
+                // the one firing here that can be set to arrive as a banner
+                // while the rules stay quiet.
+                recordAutomation(name, .dropped)
+            }
         }
     }
 
