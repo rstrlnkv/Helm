@@ -45,6 +45,25 @@ final class TheScanSettingsSealDoesNotMoveTests: XCTestCase {
         XCTAssertEqual(guards.count, 1, "found: \(guards)")
     }
 
+    /// And the keychain is asked once for the whole process, not once per
+    /// verdict.
+    ///
+    /// **Read out of the source for the same reason the strings above are**: the
+    /// only behavioural way to ask whether this guard remembers its key is to
+    /// warm it, which reaches the login keychain of whoever runs the suite. What
+    /// the cache buys is measured through a port everywhere else
+    /// (`TheKeepPolicyIsReadWhenItIsFreeTests`); this records that the module's
+    /// own guard is the one that has it. Without it every read here is a
+    /// `SecItemCopyMatching`, and on an ad-hoc build that is a modal
+    /// authorization dialog — the engine pays one per background scan and the
+    /// page paid one inside `init`, on the thread that draws.
+    func testTheKeyIsFetchedOncePerProcess() throws {
+        XCTAssertTrue(try settingsSource().contains("SealKeyCache(KeychainSealKey("), """
+            the module's guard reaches the keychain directly, so every verdict is a round trip — \
+            `AppSettings.scanGuard` is the shape this one follows
+            """)
+    }
+
     /// The store keys are stored data too, and the MAC's spelling is derived
     /// from the value's rather than written twice. Recorded as the literals that
     /// shipped: deriving both sides here would be a test whose two halves read

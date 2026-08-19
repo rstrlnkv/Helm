@@ -19,23 +19,36 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     private var store: NamespacedStore!
     private var keys: PlantedSealKey!
+    /// The page's guard, wired the way the module wires it: behind
+    /// `SealKeyCache`, because what the page reads it reads only once the key is
+    /// in hand and a port that keeps nothing is never in hand
+    /// (`ThePageNeverWaitsForTheKeychainTests`).
+    private var settings: SettingGuard!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         store = duplicatesStore(folder: "\(home)/Downloads")
         keys = PlantedSealKey()
+        settings = SettingGuard(keys: SealKeyCache(keys))
     }
 
-    private func model(_ wire: EngineTransport = OneAnswerTransport(groups: []))
+    /// The page with its first load finished.
+    ///
+    /// **Awaited, not raced.** The policy arrives from a task the initialiser
+    /// holds, because reading it goes to the keychain and this page is built on
+    /// the thread that draws; a test that read `policy` on the next line would be
+    /// asserting about a page mid-load rather than about what is in force.
+    private func model(_ wire: EngineTransport = OneAnswerTransport(groups: [])) async
     -> DuplicatesViewModel {
-        DuplicatesViewModel(vm: ModuleViewModel(transport: wire), store: store,
-                            settings: SettingGuard(keys: keys))
+        let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport: wire), store: store,
+                                      settings: settings)
+        await dvm.firstLoad?.value
+        return dvm
     }
 
     /// The whole crossing in one assertion: the page writes, the engine reads,
     /// and the engine is the one that judges the seal.
-    func testChoosingAPolicyStoresItWhereTheEngineReadsIt() {
-        let dvm = model()
+    func testChoosingAPolicyStoresItWhereTheEngineReadsIt() async {
+        let dvm = await model()
 
         dvm.choose(.byDate)
 
@@ -46,16 +59,20 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     /// And the value that is stored is what the popup opens on, so the sentence
     /// under the toolbar describes the search that is actually going to run.
-    func testThePageOpensOnTheStoredPolicy() {
-        model().choose(.byDate)
+    func testThePageOpensOnTheStoredPolicy() async {
+        await model().choose(.byDate)
 
-        XCTAssertEqual(model().policy, .byDate)
+        let reopened = await model()
+
+        XCTAssertEqual(reopened.policy, .byDate)
     }
 
     /// A Mac nobody has asked gets the standard belief, and the popup says so
     /// rather than showing an empty selection.
-    func testAPageThatWasNeverAskedShowsTheStandardPolicy() {
-        XCTAssertEqual(model().policy, .standard)
+    func testAPageThatWasNeverAskedShowsTheStandardPolicy() async {
+        let policy = await model().policy
+
+        XCTAssertEqual(policy, .standard)
     }
 
     /// A stored policy Helm did not write is not the one the page shows either.
@@ -67,14 +84,16 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
     /// reads the plist unchecked also satisfies. Measured — that shape passed
     /// with the seal skipped, exactly as `TheKeepPolicyIsSealedWhereStoredTests`
     /// records one target down.
-    func testAForgedPolicyIsNotWhatThePageShows() {
+    func testAForgedPolicyIsNotWhatThePageShows() async {
         // Sealed through the same call the page makes, so what is planted here is
         // what a person choosing `by place` would have left behind.
         DuplicatesSettings.setKeepPolicy(.byPlace, in: store,
                                          guardedBy: SettingGuard(keys: keys))
         store.set(KeepPolicy.byDate.rawValue, for: DuplicatesSettings.keepPolicyKey)
 
-        XCTAssertEqual(model().policy, .byPlace)
+        let policy = await model().policy
+
+        XCTAssertEqual(policy, .byPlace)
     }
 
     /// The request carries it, because the engine needs the policy *before* it
@@ -82,7 +101,7 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
     /// the same ladder — and because the person may have just changed the popup.
     func testASearchCarriesThePolicyThePageIsShowing() async {
         let wire = DuplicatesWire(groups: [])
-        let dvm = model(wire)
+        let dvm = await model(wire)
         dvm.choose(.byDate)
 
         dvm.search()

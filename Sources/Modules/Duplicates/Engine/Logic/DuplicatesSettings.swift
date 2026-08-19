@@ -17,10 +17,18 @@ import HelmRuntime
 /// its account and its category are stored data on every Mac that has run a
 /// background scan and never move. `TheScanSettingsSealDoesNotMoveTests`
 /// records the three strings that address it.
+///
+/// **Behind `SealKeyCache`, so the keychain is asked once for the process rather
+/// than once per verdict.** Every read here — the engine's on each background
+/// scan, the page's when it opens — called `SecItemCopyMatching`, and on an
+/// ad-hoc signed bundle that is a modal authorization dialog rather than data
+/// (ARCHITECTURE.md § A seal needs a signature). `AppSettings.scanGuard` is the
+/// shape this follows, and the cache's own documentation named this guard as one
+/// of the two still paying per verdict.
 public enum DuplicatesSettings {
     public static let guardOfScanSettings = SettingGuard(
-        keys: KeychainSealKey(service: "com.helm.app", account: "settings-seal",
-                              category: "scan"))
+        keys: SealKeyCache(KeychainSealKey(service: "com.helm.app", account: "settings-seal",
+                                           category: "scan")))
 
     /// Where the keep policy is stored, in the module's own namespace.
     ///
@@ -73,6 +81,32 @@ public enum DuplicatesSettings {
             // the person's files is the spare one.
             return KeepPolicy(rawValue: stored) ?? .standard
         }
+    }
+
+    /// The same reading, but only if answering is free.
+    ///
+    /// **The reading above cannot be done from the thread that draws.** Verifying
+    /// the seal needs the key, the key comes from the login keychain, and on an
+    /// ad-hoc build a keychain read is a modal authorization dialog — measured
+    /// one target over as `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a
+    /// settings window that could not answer a mouse-up. `DuplicatesViewModel` is
+    /// `@MainActor` and read the policy inside its own `init`, which is the same
+    /// door: a `@State` initial value, a window's construction and a page's view
+    /// model are all «an `init`», and CLAUDE.md's rule about that names them all.
+    ///
+    /// Nil is **«not yet»**, a third answer beside the two the seal gives, and it
+    /// is deliberately not `.standard`: a caller that folded it into the default
+    /// could never tell a policy it has not read yet from one it has read and
+    /// refused, and would stop asking. `SettingGuard.warmKey()` is what turns nil
+    /// into an answer, from a thread that is allowed to wait.
+    ///
+    /// One line rather than a second copy of the branches above, which is the
+    /// point: what is in force stays one reading for both targets, and only the
+    /// *waiting* is the caller's to choose. `isWarm` only ever goes false → true,
+    /// so once it is true every ask below is a memory read.
+    public static func keepPolicyIfWarm(in store: NamespacedStore?,
+                                        guardedBy settings: SettingGuard) -> KeepPolicy? {
+        settings.isWarm ? keepPolicy(in: store, guardedBy: settings) : nil
     }
 
     /// Stores the policy and seals it, which is one act: a value written without

@@ -86,7 +86,9 @@ public enum KeepGrounds: Equatable, Sendable {
     /// What the person believes an extra copy is, as the popup under the toolbar
     /// shows it — and as the engine has it stored, since the two are read from
     /// one place.
-    @Published public private(set) var policy: KeepPolicy
+    /// **It opens on the standard belief and is corrected by `firstLoad`**, and
+    /// `readTheStoredPolicy` has why.
+    @Published public private(set) var policy: KeepPolicy = .standard
 
     /// One line about what the last press did to the marks, or nil.
     ///
@@ -123,13 +125,18 @@ public enum KeepGrounds: Equatable, Sendable {
     /// a test must not write to the person's.
     private let settings: SettingGuard
     private var eventsTask: Task<Void, Never>?
+    /// The keychain round trip the initialiser owes, and the read after it.
+    /// **Held, not fired and forgotten**: a task no caller can reach is one no
+    /// caller can wait out, and a test reading `policy` then races it — 8
+    /// failures in 200 constructions, in Autopilot's model.
+    private(set) var firstLoad: Task<Void, Never>?
 
     /// Search state must outlive the settings page. Settings tears the page down
     /// on every sidebar visit, and this module has no on-disk cache behind it —
     /// hashing a folder is minutes of reading, so losing it to a click is
     /// hostile. One instance per host view model; the page observes it.
     private static var cached: DuplicatesViewModel?
-    ///
+
     /// `settings:` is forwarded rather than left to `init`'s default for the
     /// reason `ATestNamesTheKeychainPortsItBuildsOverTests` gives: the default
     /// is the login keychain, so a caller that cannot name a double — a test
@@ -156,10 +163,6 @@ public enum KeepGrounds: Equatable, Sendable {
         self.store = store
         self.settings = settings
         self.client = TransportClient(vm.transport)
-        // Through the engine's own reading, seal and all: a page that parsed the
-        // plist itself would show a forged policy as the one in force, which is
-        // the single place the forgery must not be believed.
-        self.policy = DuplicatesSettings.keepPolicy(in: store, guardedBy: settings)
         let remembered = store.string("folder", default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
         // The stream is captured here and `self` re-acquired per event: handing
@@ -174,9 +177,31 @@ public enum KeepGrounds: Equatable, Sendable {
                 await self.handle(event)
             }
         }
+        // The guard and not `self`: a `[weak self]` that calls a method holds
+        // the object for as long as that call runs, and this one waits on the
+        // keychain. The guard is a value, so `self` is re-acquired only for the
+        // assignment after it.
+        firstLoad = Task { [weak self] in
+            await settings.warmKey()
+            self?.readTheStoredPolicy()
+        }
     }
 
-    deinit { eventsTask?.cancel() }
+    deinit { eventsTask?.cancel(); firstLoad?.cancel() }
+
+    /// Take what is in force, now that asking is free.
+    ///
+    /// **Through the engine's own reading, seal and all**: a page that parsed the
+    /// plist itself would show a forged policy as the one in force, which is the
+    /// single place the forgery must not be believed. It ran in `init` until
+    /// 2026-08-20 — a modal authorization dialog on every ad-hoc build, taken by
+    /// the thread that draws. Nil is «the keychain still cannot say»; the popup
+    /// then keeps the belief the engine is applying anyway.
+    private func readTheStoredPolicy() {
+        guard let inForce = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
+        else { return }
+        policy = inForce
+    }
 
     /// What emptying the basket would free.
     ///
@@ -239,6 +264,7 @@ public enum KeepGrounds: Equatable, Sendable {
         // Sealed here because here is where the authority is: an open panel the
         // person just used. The background scan reads this value with nobody
         // watching and refuses it if the seal does not match — see `SettingGuard`.
+        // The key here is warm: a write is reached by a press on a page already up.
         store.set(settings.seal(Data(url.path.utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))
         search()
