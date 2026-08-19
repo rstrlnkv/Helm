@@ -72,6 +72,9 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
             authorization dialog, and this is the thread that draws
             """)
         XCTAssertEqual(dvm.policy, .standard, "and it answers while the keychain is still deciding")
+        // Released here rather than left to the valve: a healthy page then costs
+        // the suite nothing, and only a page that waited pays the two seconds.
+        gate.signal()
         await dvm.firstLoad?.value
     }
 
