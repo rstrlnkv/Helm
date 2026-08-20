@@ -918,7 +918,6 @@
 "Speed" = "Скорость";
 "Mbit/s" = "Мбит/с";
 "since the tunnel came up" = "с подъёма туннеля";
-"about 15 s, spends traffic" = "около 15 с, потратит трафик";
 "Speed is measured on the tunnel that carries the traffic" = "Скорость измеряется у туннеля, через который идёт трафик";
 "Measure speed" = "Измерить скорость";
 "Measure again" = "Измерить ещё раз";
@@ -926,7 +925,7 @@
 "Traffic goes through the tunnel" = "Трафик идёт через туннель";
 "Traffic is not going through the tunnel" = "Трафик идёт мимо туннеля";
 "Could not check where the traffic goes" = "Не удалось проверить, куда идёт трафик";
-"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "Страница VPN показывает, что делает туннель, через который идёт трафик: сколько он уже поднят, сколько принято и отправлено и действительно ли трафик выходит через него и из какой страны. «Измерить скорость» измеряет канал по нажатию — около пятнадцати секунд реального трафика, поэтому сам по себе он никогда не измеряется.";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about twenty seconds of real traffic, so it is never measured on its own." = "Страница VPN показывает, что делает туннель, через который идёт трафик: сколько он уже поднят, сколько принято и отправлено и действительно ли трафик выходит через него и из какой страны. «Измерить скорость» измеряет канал по нажатию — около двадцати секунд реального трафика, поэтому сам по себе он никогда не измеряется.";
 "Hosts & Keys" = "Хосты и ключи";
 "Hosts" = "Хосты";
 "Edit the hosts file, SSH hosts and keys" = "Правка hosts, SSH-хостов и ключей";
@@ -1024,7 +1023,7 @@
 "No tunnel is up" = "Ни один туннель не поднят";
 "Traffic is leaving this Mac directly — bring a connection up below." = "Трафик выходит с этого Mac напрямую — поднимите подключение ниже.";
 "The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "Страница VPN открывается тем туннелем, через который реально идёт трафик: идёт ли он через туннель, из какой страны выходит, сколько туннель поднят и сколько уже унёс. Раньше всё это стояло в самом низу страницы, под подключениями.";
-"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "У каждого поднятого туннеля появилась кнопка над этими цифрами — видно, о каком туннеле они, и можно переключиться на другой. Раньше ряд рисовался только при двух поднятых, поэтому о нём никто не знал.";
+"When more than one tunnel is up, the figures name theirs and a button switches between them. With a single tunnel there is nothing to choose, so the row is left to Measure speed alone." = "Когда поднято несколько туннелей, цифры называют свой, и кнопка переключает между ними. При одном туннеле выбирать не из чего — ряд остаётся кнопке замера.";
 "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm больше не завершается сам, когда запускает один из нужных ему инструментов. Открыть Homebrew и нажать Return несколько раз в поле поиска могло уронить всё приложение.";
 "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Поиск в Homebrew показывает результаты того, что вы набрали последним, а не того поиска, который последним успел ответить, — и Helm больше не запускает десяток команд brew разом, пока вы печатаете.";
 "Except the local network" = "Кроме локальной сети";
@@ -1046,7 +1045,7 @@
 "If a VPN’s speed cannot be measured, the button no longer turns for ever." = "Если измерить скорость VPN не удалось, кнопка больше не крутится бесконечно.";
 "The VPN page notices when your traffic stops leaving through the tunnel with the tunnel still up. It used to decide that once and never look again." = "Страница VPN замечает, когда трафик перестаёт идти через туннель, хотя сам туннель ещё поднят. Раньше Helm определял это один раз и больше не проверял.";
 "The figures on the VPN page are the tunnel’s. When traffic went out around the tunnel, they could be the other route’s instead." = "Цифры на странице VPN относятся к самому туннелю. Раньше, когда трафик уходил мимо туннеля, там могли оказаться цифры другого маршрута.";
-"A page’s header has no line under it any more, and lights up under the pointer — the way Finder and System Settings do." = "Полоса заголовка больше не отделена линией и подсвечивается под указателем — как в Finder и Системных настройках.";
+"A page’s header carries no line at rest. It tints and takes one the moment the page scrolls under it, or the pointer rests on it — the way Finder and System Settings do." = "Полоса заголовка в покое без линии. Она подкрашивается и получает линию, как только страница уходит под неё или на ней задерживается указатель — как в Finder и Системных настройках.";
 "Numbers are set in the system font, and hold their place as they count. Monospaced type is left to paths, configuration files and command output." = "Числа набраны системным шрифтом, и разряды не съезжают, когда они меняются. Моноширинный шрифт остался для путей, файлов настроек и вывода команд.";
 
 "Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back." = "Удаление приложения, которое ещё работает, теперь так и сообщает, а не отчитывается об успехе. macOS позволяет перенести работающее приложение в Корзину, оно продолжает работать — и файлы, которые оно потом запишет, возвращаются.";
@@ -1059,3 +1058,5 @@
 "When brew declines to answer, Helm says so instead of drawing an empty machine. A refusal used to read as “No packages installed” over a full Cellar, and as “Updates: 0”." = "Когда brew отказывается отвечать, Helm так и говорит, а не рисует пустую машину. Раньше отказ читался как «Пакетов не установлено» поверх полного Cellar и как «Обновлений: 0».";
 "Your SSH keys show their fingerprint, type and size again, and the badge for a key the agent already holds can light. Every key was drawn as one Helm could not read." = "Ваши SSH-ключи снова показывают отпечаток, тип и длину, а значок ключа, который уже держит агент, снова может загореться. Раньше каждый ключ рисовался как нечитаемый.";
 "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened." = "Сохранение конфигурации SSH сохраняет символическую ссылку в репозиторий dotfiles, а «Забыть» больше не выбрасывает хосты, которым вы доверились уже после открытия страницы.";
+"Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Замер скорости VPN показывает, на какой он стадии, а карточка, куда ляжет число, предупреждает о нём. Раньше кнопка просто крутилась столько, сколько шёл замер.";
+"The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Показания на странице VPN стоят на одной высоте, какими бы длинными ни были числа, а возраст замера пишется коротко — 40 мин. назад, а не отдельной строкой.";

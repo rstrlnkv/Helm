@@ -247,6 +247,49 @@ proven newer than its sources.
   commit; the recorded number goes 3 → 4, which a ratchet is not supposed to do,
   and says why at the constant: the tree did not drift, the scan grew.
 
+- **The header's scroll edge, and one answer behind both of its reasons.** The
+  strip is the system's 52 pt (12 + 28 + 12) and lies **over** the page rather
+  than above it, so content passes behind its material and is blurred by it
+  instead of stopping at its bottom edge. It lights for two reasons now — the
+  pointer resting on it while the window is key, and the page having scrolled
+  under it — and `isLit(hovering:active:scrolled:)` answers once for both the
+  fill and the rule, so the two cannot disagree about whether the strip is lit.
+  At rest there is neither. Our rule composites at α 0.084 against the system's
+  0.071; that gap is known and accepted rather than unmeasured. A page whose top
+  band does not scroll (the Log page, the What's New sheet) draws
+  `HelmPageHeader` directly and gets no edge, which is why the guard reads two
+  spellings and fails if either leaves the tree.
+
+- **A speed run says how far along it is, and «fifteen seconds» was never
+  true.** Four runs measured at 18.52, 19.23, 20.64 and 23.67 s, so
+  `NetworkQualitySpeed.typicalRun` is 22 and the reading carries its own `took`
+  — the wait is drawn against *this link's* last run, not against a constant.
+  `HelmActivity.phase` does not hand a duration back (it is a registry of what
+  is running now), so the port times itself. The 0.10.0 entry that shipped
+  saying «about fifteen seconds» is corrected to twenty in all eight tables,
+  and because the English **is** the key that is one edit rather than seven
+  corrections — the same shape as the «Configure panel» repair.
+
+- **The four readings stand at one height, and the age is macOS's short
+  spelling.** A stale reading pushed its card 13 pt taller than the three beside
+  it, because «40 минут назад» wraps where «40 мин. назад» does not.
+  `HelmDates.AgeStyle` offers `.full` and `.short` only — `.abbreviated` is
+  unrepresentable, because it prints «-1 min» in French and Russian — and the
+  formatter cache is keyed by language **and** style, which a mutation dropping
+  the style from the key proved by answering short for `.full`. Nothing is
+  reserved: a blank second line would have cost 13 pt of every card at every
+  pane, permanently, to hide a jump that `.short` removes outright. The speed
+  tile also reads `1 176↓ 298↑` rather than spelling both directions in words,
+  which is 88.9 pt against 101.0 at four digits.
+
+- **The tunnel switcher is drawn where there is a choice.** One tunnel up and a
+  Measure button beside it is not a choice, so the pill is not drawn and the
+  button stands centred alone; the row is kept when nothing else on it names the
+  tunnel. `drawn(beside:)` switches exhaustively over the strip's action and
+  `VPNTunnelSwitcherRow` takes only what that returns, so a view cannot reach
+  past the rule. The offer button carries an explicit 30 pt height — without it
+  a second tunnel coming up moved the block by 1 pt.
+
 ## [0.11.0-dev.1] — 2026-08-19
 
 > The version number is written here; cutting the release is a separate step,

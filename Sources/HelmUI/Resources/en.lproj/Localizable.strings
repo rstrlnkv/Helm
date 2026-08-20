@@ -918,7 +918,6 @@
 "Speed" = "Speed";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "since the tunnel came up";
-"about 15 s, spends traffic" = "about 15 s, spends traffic";
 "Speed is measured on the tunnel that carries the traffic" = "Speed is measured on the tunnel that carries the traffic";
 "Measure speed" = "Measure speed";
 "Measure again" = "Measure again";
@@ -926,7 +925,7 @@
 "Traffic goes through the tunnel" = "Traffic goes through the tunnel";
 "Traffic is not going through the tunnel" = "Traffic is not going through the tunnel";
 "Could not check where the traffic goes" = "Could not check where the traffic goes";
-"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own.";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about twenty seconds of real traffic, so it is never measured on its own." = "The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about twenty seconds of real traffic, so it is never measured on its own.";
 "Hosts & Keys" = "Hosts & Keys";
 "Hosts" = "Hosts";
 "Edit the hosts file, SSH hosts and keys" = "Edit the hosts file, SSH hosts and keys";
@@ -1024,7 +1023,7 @@
 "No tunnel is up" = "No tunnel is up";
 "Traffic is leaving this Mac directly — bring a connection up below." = "Traffic is leaving this Mac directly — bring a connection up below.";
 "The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections.";
-"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there.";
+"When more than one tunnel is up, the figures name theirs and a button switches between them. With a single tunnel there is nothing to choose, so the row is left to Measure speed alone." = "When more than one tunnel is up, the figures name theirs and a button switches between them. With a single tunnel there is nothing to choose, so the row is left to Measure speed alone.";
 "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down.";
 "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type.";
 "Except the local network" = "Except the local network";
@@ -1046,7 +1045,7 @@
 "If a VPN’s speed cannot be measured, the button no longer turns for ever." = "If a VPN’s speed cannot be measured, the button no longer turns for ever.";
 "The VPN page notices when your traffic stops leaving through the tunnel with the tunnel still up. It used to decide that once and never look again." = "The VPN page notices when your traffic stops leaving through the tunnel with the tunnel still up. It used to decide that once and never look again.";
 "The figures on the VPN page are the tunnel’s. When traffic went out around the tunnel, they could be the other route’s instead." = "The figures on the VPN page are the tunnel’s. When traffic went out around the tunnel, they could be the other route’s instead.";
-"A page’s header has no line under it any more, and lights up under the pointer — the way Finder and System Settings do." = "A page’s header has no line under it any more, and lights up under the pointer — the way Finder and System Settings do.";
+"A page’s header carries no line at rest. It tints and takes one the moment the page scrolls under it, or the pointer rests on it — the way Finder and System Settings do." = "A page’s header carries no line at rest. It tints and takes one the moment the page scrolls under it, or the pointer rests on it — the way Finder and System Settings do.";
 "Numbers are set in the system font, and hold their place as they count. Monospaced type is left to paths, configuration files and command output." = "Numbers are set in the system font, and hold their place as they count. Monospaced type is left to paths, configuration files and command output.";
 
 "Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back." = "Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back.";
@@ -1059,3 +1058,5 @@
 "When brew declines to answer, Helm says so instead of drawing an empty machine. A refusal used to read as “No packages installed” over a full Cellar, and as “Updates: 0”." = "When brew declines to answer, Helm says so instead of drawing an empty machine. A refusal used to read as “No packages installed” over a full Cellar, and as “Updates: 0”.";
 "Your SSH keys show their fingerprint, type and size again, and the badge for a key the agent already holds can light. Every key was drawn as one Helm could not read." = "Your SSH keys show their fingerprint, type and size again, and the badge for a key the agent already holds can light. Every key was drawn as one Helm could not read.";
 "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened." = "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened.";
+"Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took.";
+"The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own.";

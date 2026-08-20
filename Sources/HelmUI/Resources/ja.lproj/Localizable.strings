@@ -918,7 +918,6 @@
 "Speed" = "速度";
 "Mbit/s" = "Mbit/s";
 "since the tunnel came up" = "トンネル確立時から";
-"about 15 s, spends traffic" = "約15秒、通信量を使います";
 "Speed is measured on the tunnel that carries the traffic" = "速度は通信が通っているトンネルで測定します";
 "Measure speed" = "速度を測定";
 "Measure again" = "もう一度測定";
@@ -926,7 +925,7 @@
 "Traffic goes through the tunnel" = "通信はトンネルを通っています";
 "Traffic is not going through the tunnel" = "通信はトンネルを通っていません";
 "Could not check where the traffic goes" = "通信がどこへ向かうか確認できませんでした";
-"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "VPN の画面に、通信が通っているトンネルの様子が出ます。接続してからの時間、受信量と送信量、そして通信が本当にそのトンネルから、どの国を経て出ているか。“速度を測定”を押すとリンクを測定します — 実際の通信を十五秒ほど使うため、自動では測定しません。";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about twenty seconds of real traffic, so it is never measured on its own." = "VPN の画面に、通信が通っているトンネルの様子が出ます。接続してからの時間、受信量と送信量、そして通信が本当にそのトンネルから、どの国を経て出ているか。“速度を測定”を押すとリンクを測定します — 実際の通信を二十秒ほど使うため、自動では測定しません。";
 "Hosts & Keys" = "ホストと鍵";
 "Hosts" = "ホスト";
 "Edit the hosts file, SSH hosts and keys" = "hosts ファイル、SSH ホスト、鍵を編集";
@@ -1024,7 +1023,7 @@
 "No tunnel is up" = "トンネルは張られていません";
 "Traffic is leaving this Mac directly — bring a connection up below." = "通信がこの Mac から直接出ているので、下で接続を張ってください。";
 "The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections." = "VPN のページは、通信が実際に通っているトンネルから始まります。本当にトンネルを通っているか、どの国から出ているか、どれだけ張られているか、どれだけ運んだか。これらはこれまでページの一番下、接続の下にありました。";
-"Every tunnel that is up gets a button above those figures, so you can see which one they are about and switch to another. The row was drawn only when two were up, which is why nobody knew it was there." = "張られているトンネルごとに、数値の上にボタンが並びます。どのトンネルの数値かが分かり、別のトンネルに切り替えられます。この行は 2 本張られているときしか描かれず、そのため存在に気づかれませんでした。";
+"When more than one tunnel is up, the figures name theirs and a button switches between them. With a single tunnel there is nothing to choose, so the row is left to Measure speed alone." = "トンネルが複数張られているときは、数値がどのトンネルのものかを示し、ボタンで切り替えられます。1 本だけのときは選ぶものがないので、その行は速度の測定だけになります。";
 "Helm no longer quits on its own when it starts one of the tools it uses. Opening Homebrew and pressing Return a few times in the search field could take the whole app down." = "Helm が、使用するツールを起動したときに勝手に終了することはなくなりました。Homebrew を開いて検索欄で Return を何度か押すと、アプリ全体が落ちることがありました。";
 "Searching Homebrew shows the results of what you typed last, not of whichever search happened to finish last — and Helm no longer runs a dozen brew commands at once while you type." = "Homebrew の検索は、最後に終わった検索ではなく、最後に入力した語の結果を表示します。入力中に brew コマンドが十数個まとめて走ることもなくなりました。";
 "Except the local network" = "ローカルネットワークを除く";
@@ -1046,7 +1045,7 @@
 "If a VPN’s speed cannot be measured, the button no longer turns for ever." = "VPN の速度を測れなかったとき、ボタンが延々と回り続けることはなくなりました。";
 "The VPN page notices when your traffic stops leaving through the tunnel with the tunnel still up. It used to decide that once and never look again." = "トンネルが張られたままでも、通信がトンネルを通らなくなったことを VPN のページが気づきます。これまでは一度判断したきり、二度と確かめませんでした。";
 "The figures on the VPN page are the tunnel’s. When traffic went out around the tunnel, they could be the other route’s instead." = "VPN のページの数値はトンネル自身のものです。これまでは通信がトンネルを迂回して出ていくとき、別の経路の数値が出ることがありました。";
-"A page’s header has no line under it any more, and lights up under the pointer — the way Finder and System Settings do." = "ページのヘッダの下に線がなくなり、ポインタを重ねると明るくなります。Finder やシステム設定と同じです。";
+"A page’s header carries no line at rest. It tints and takes one the moment the page scrolls under it, or the pointer rests on it — the way Finder and System Settings do." = "ページのヘッダは、何もしていないときは線を持ちません。下をページがスクロールしたり、ポインタを重ねたりすると、色がついて線が現れます。Finder やシステム設定と同じです。";
 "Numbers are set in the system font, and hold their place as they count. Monospaced type is left to paths, configuration files and command output." = "数値はシステムフォントで組まれ、数えているあいだも桁の位置がずれません。等幅書体はパスや設定ファイル、コマンドの出力に残しました。";
 
 "Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back." = "まだ動いているアプリを削除しようとすると、成功したと報告せずその旨を伝えます。macOS は起動中のアプリでもゴミ箱へ移せてしまい、アプリはそのまま動き続けるので、あとから書き込まれたファイルが戻ってきます。";
@@ -1059,3 +1058,5 @@
 "When brew declines to answer, Helm says so instead of drawing an empty machine. A refusal used to read as “No packages installed” over a full Cellar, and as “Updates: 0”." = "brew が応答を拒んだとき、Helm は空のマシンを描かずにその旨を伝えます。これまでは拒否が、中身のある Cellar の上に“パッケージはインストールされていません”と出たり、“アップデート: 0”と出たりしていました。";
 "Your SSH keys show their fingerprint, type and size again, and the badge for a key the agent already holds can light. Every key was drawn as one Helm could not read." = "SSH の鍵がふたたびフィンガープリント、種類、長さを表示し、エージェントがすでに持っている鍵のバッジも点くようになりました。これまではどの鍵も、Helm が読めない鍵として描かれていました。";
 "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened." = "SSH の設定を保存しても、dotfiles リポジトリへのシンボリックリンクはそのまま残ります。また“忘れる”が、ページを開いたあとに信頼したホストを捨ててしまうことはなくなりました。";
+"Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "VPN の速度を測るとき、どこまで進んだかが分かり、数値が入るカードがそれを予告します。以前は、かかる間ボタンが回るだけでした。";
+"The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 画面の値は、桁が伸びても高さが揃います。測定からの経過時間も短く、行を分けずに 40 分前のように出ます。";
