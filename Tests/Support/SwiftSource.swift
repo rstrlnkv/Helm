@@ -196,6 +196,53 @@ public enum SwiftSource {
         return characters.count
     }
 
+    // MARK: - Modifier chains
+
+    /// The SwiftUI modifier chain the line at `index` belongs to, by brace
+    /// depth rather than by indent.
+    ///
+    /// **Two accessibility guards need exactly this and it was written twice.**
+    /// `KeyboardReachableControlsTests` asks whether a tap gesture's own chain
+    /// carries an accessibility action; `AHeadingIsAHeadingToTheRotorTests` asks
+    /// whether a heading's own chain carries `.isHeader`. Both must stop at the
+    /// end of the chain and not read the control underneath — a chain that ran
+    /// on would take the neighbour's trait and report a bare heading as judged.
+    ///
+    /// **Depth and not indent**, which is the reading the first of the two had
+    /// to fix: the closing brace of a multi-line closure is a line no deeper
+    /// than the modifier's own that does not begin with a dot, so an indent walk
+    /// ended the chain there and could not see a modifier three lines further
+    /// down. Any offender could have been hidden from such a rule by pressing
+    /// return.
+    ///
+    /// A blank line or a comment-only line does not end a chain: the modifiers
+    /// in this repository are separated by their own explanations. Those
+    /// explanations are **stripped from what comes back**, and that is not
+    /// optional — both rules are written down in a comment that quotes the very
+    /// modifier they look for, so a chain carrying its own comments reports the
+    /// reasoning as the finding.
+    public static func modifierChain(from index: Int, in lines: [String]) -> String {
+        var text = RepoSource.code(lines[index])
+        var depth = braces(in: text)
+        for raw in lines.dropFirst(index + 1) {
+            let code = RepoSource.code(raw)
+            let body = code.trimmingCharacters(in: .whitespaces)
+            if depth > 0 {
+                text += "\n" + code
+                depth += braces(in: code)
+                continue
+            }
+            guard body.isEmpty || body.hasPrefix(".") else { break }
+            text += "\n" + code
+            depth += braces(in: code)
+        }
+        return text
+    }
+
+    private static func braces(in code: String) -> Int {
+        code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
+    }
+
     // MARK: - Bodies
 
     /// A named declaration and the braces around its body.

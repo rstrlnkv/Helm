@@ -60,14 +60,37 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
         var described: String { "  \(file):\(line)  \(kind.rawValue) \(named)" }
     }
 
-    /// HelmUI, every module's UI, and the app shell.
-    private func drawnFiles() throws -> [String] { try UISources.everyDrawnFile() }
+    /// HelmUI, every module's UI, and the app shell — the files the read below
+    /// covers, named separately so the reach test holds the same list the scan
+    /// does rather than a second one nothing uses.
+    private func drawnFiles() throws -> [String] { try read().map(\.0) }
 
-    private func read() throws -> [(String, [String])] {
-        try drawnFiles().map { ($0, try RepoSource.lines(of: $0)) }
+    /// Every drawn file, as lines with comments **and the insides of string
+    /// literals** blanked, every newline kept where it was.
+    ///
+    /// `SwiftSource.code` rather than `RepoSource.code` line by line: this scan
+    /// counts braces and parentheses to find where a presentation ends, and a
+    /// bracket inside a string literal, or a multi-line literal, puts that count
+    /// out by one — silently, which for a guard is the failure mode that
+    /// matters. Newlines survive the blanking, so a finding still names its line.
+    private func read() throws -> [(String, [String])] { try Self.blanked.get() }
+
+    /// **Read once for the whole class, not once per case.** XCTest builds a new
+    /// instance per test, and blanking every drawn file is a character walk over
+    /// the whole of `Sources`: measured at 2,1 s a case, which is 6,7 s across
+    /// this class and 0,9 s once. A `Result` rather than an optional, so a read
+    /// that fails is rethrown at the assertion instead of arriving as an empty
+    /// tree — a scan over no files passes every rule it has.
+    private static let blanked: Result<[(String, [String])], Error> = Result {
+        try UISources.everyDrawnFile().map {
+            ($0, SwiftSource.code(try RepoSource.text(of: $0)).components(separatedBy: "\n"))
+        }
     }
 
-    private func modals() throws -> [Modal] { Self.modals(in: try read()) }
+    private func modals() throws -> [Modal] {
+        let files = try read()
+        return Self.modals(in: files, views: Self.declarations(in: files))
+    }
 
     private func offenders() throws -> [Modal] { Self.offenders(in: try read()) }
 
@@ -77,12 +100,16 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
     private static let dialogOpeners = [".confirmationDialog(", ".alert("]
 
     /// Every modal presented anywhere in the drawn tree.
-    private static func modals(in files: [(String, [String])]) -> [Modal] {
+    ///
+    /// The view map is passed in rather than built here: `offenders` needs the
+    /// same one, and reading every declaration in every drawn file twice for one
+    /// answer is work nobody asked for.
+    private static func modals(in files: [(String, [String])],
+                               views: [String: String]) -> [Modal] {
         var out: [Modal] = []
-        let views = declarations(in: files)
         for (file, lines) in files {
             for (index, raw) in lines.enumerated() {
-                let code = RepoSource.code(raw)
+                let code = raw
                 let kind: Kind
                 if sheetOpeners.contains(where: code.contains) {
                     kind = .sheet
@@ -103,7 +130,7 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
     /// The ones with no way out a keyboard can take.
     private static func offenders(in files: [(String, [String])]) -> [Modal] {
         let views = declarations(in: files)
-        return modals(in: files).filter { modal in
+        return modals(in: files, views: views).filter { modal in
             guard let lines = files.first(where: { $0.0 == modal.file })?.1 else { return false }
             var source = presentation(from: modal.line - 1, in: lines)
             for name in constructed(in: source) {
@@ -120,27 +147,25 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
         }
     }
 
-    /// Every `struct <Name>: View` in the tree, with the code of its body.
+    /// Every view in the tree, by name, with the text of its body.
+    ///
+    /// `SwiftSource.typeBodies` rather than a pattern for `struct X: View` and a
+    /// brace walk beside it: it reads declarations with a brace **stack**, which
+    /// is the only reading that survives nesting — and nesting is the normal
+    /// shape here, a sheet's view declaring an enum above its own body. A view
+    /// is one with a `var body: some View`: the conformance is spelled several
+    /// ways and the body is spelled one.
     private static func declarations(in files: [(String, [String])]) -> [String: String] {
         var out: [String: String] = [:]
         for (_, lines) in files {
-            for (index, raw) in lines.enumerated() {
-                guard let name = declaredView(in: RepoSource.code(raw)) else { continue }
-                out[name] = block(from: index, in: lines)
+            let source = lines.joined(separator: "\n")
+            let characters = Array(source)
+            for body in SwiftSource.typeBodies(in: source) {
+                let text = String(characters[(body.open + 1)..<body.close])
+                if text.contains("var body: some View") { out[body.name] = text }
             }
         }
         return out
-    }
-
-    private static let declaration = try? NSRegularExpression(
-        pattern: #"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*View\b"#)
-
-    private static func declaredView(in code: String) -> String? {
-        guard let declaration,
-              let match = declaration.firstMatch(
-                in: code, range: NSRange(code.startIndex..., in: code)),
-              let range = Range(match.range(at: 1), in: code) else { return nil }
-        return String(code[range])
     }
 
     /// The types constructed in a piece of code — `NewKeySheet(hvm: hvm)`.
@@ -163,27 +188,13 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
     /// closes — a `.sheet(isPresented: Binding(get: …, set: …)) { … }` spans six
     /// lines and its content is on all of them.
     private static func presentation(from index: Int, in lines: [String]) -> String {
-        var text = RepoSource.code(lines[index])
+        var text = lines[index]
         var depth = nesting(in: text)
         guard depth > 0 else { return text }
         for raw in lines.dropFirst(index + 1) {
-            let code = RepoSource.code(raw)
-            text += "\n" + code
-            depth += nesting(in: code)
+            text += "\n" + raw
+            depth += nesting(in: raw)
             if depth <= 0 { break }
-        }
-        return text
-    }
-
-    /// The same walk from a declaration, which opens with a brace and no paren.
-    private static func block(from index: Int, in lines: [String]) -> String {
-        var text = RepoSource.code(lines[index])
-        var depth = text.filter { $0 == "{" }.count - text.filter { $0 == "}" }.count
-        for raw in lines.dropFirst(index + 1) {
-            let code = RepoSource.code(raw)
-            text += "\n" + code
-            depth += code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
-            if depth <= 0 && text.contains("{") { break }
         }
         return text
     }
@@ -354,7 +365,10 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
                        "the scan is reading comments, so it reports its own explanation")
     }
 
+    /// A fixture read exactly as the tree is read, blanking and all — a fixture
+    /// taking a different path would be proving a scan nothing runs.
     private func scanned(_ text: String) -> [Modal] {
-        Self.offenders(in: [("fixture.swift", text.components(separatedBy: "\n"))])
+        Self.offenders(in: [("fixture.swift",
+                             SwiftSource.code(text).components(separatedBy: "\n"))])
     }
 }

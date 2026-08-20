@@ -35,7 +35,7 @@ final class TheReadingsAreFourStopsTests: XCTestCase {
     // MARK: - The promise
 
     func testAReadingIsOneStop() throws {
-        let body = try body(of: "private func column(", in: Self.hero)
+        let body = try cardBody()
 
         XCTAssertTrue(body.contains(".accessibilityElement(children: .combine)"), """
             the hero's reading card draws its label, its figure and its note as three \
@@ -48,7 +48,7 @@ final class TheReadingsAreFourStopsTests: XCTestCase {
 
     /// And it is still the card that promise is about.
     func testTheCardIsStillThreeStackedTexts() throws {
-        let body = try body(of: "private func column(", in: Self.hero)
+        let body = try cardBody()
         let drawn = body.components(separatedBy: "Text(").count - 1
 
         XCTAssertEqual(drawn, 3, """
@@ -77,9 +77,9 @@ final class TheReadingsAreFourStopsTests: XCTestCase {
             of: "    .padding(HelmSpace.s5)",
             with: "    .accessibilityElement(children: .combine)\n    .padding(HelmSpace.s5)")
 
-        XCTAssertFalse(Self.block(from: loose).contains(".accessibilityElement(children: .combine)"),
+        XCTAssertFalse(Self.cardBody(in: loose).contains(".accessibilityElement(children: .combine)"),
                        "the reading cannot see the shape it was written from")
-        XCTAssertTrue(Self.block(from: combined).contains(".accessibilityElement(children: .combine)"),
+        XCTAssertTrue(Self.cardBody(in: combined).contains(".accessibilityElement(children: .combine)"),
                       "the reading cannot see the fix either, so it reports every card for ever")
     }
 
@@ -94,35 +94,34 @@ final class TheReadingsAreFourStopsTests: XCTestCase {
             }
             """
 
-        XCTAssertFalse(Self.block(from: explained).contains(".accessibilityElement(children: .combine)"),
+        XCTAssertFalse(Self.cardBody(in: explained).contains(".accessibilityElement(children: .combine)"),
                        "the reading is taking comments, so a promise in prose passes for the fix")
     }
 
     // MARK: - Reading the source
 
-    /// The body of the declaration opening with `opening`, comments stripped.
+    /// The body of the card's own function, in a piece of Swift.
     ///
-    /// Unwrapped rather than defaulted: a file that has moved, or a function
-    /// that has been renamed, must fail here — an empty string would satisfy
-    /// nothing above and would read as «the card is gone», which is a different
-    /// report from «the scan lost the file».
-    private func body(of opening: String, in file: String) throws -> String {
-        let lines = try RepoSource.lines(of: file)
-        let start = try XCTUnwrap(lines.firstIndex { RepoSource.code($0).contains(opening) },
-                                  "no declaration opening `\(opening)` in \(file)")
-        return Self.block(from: lines[start...].joined(separator: "\n"))
+    /// `SwiftSource` rather than a brace walk written here: it blanks comments
+    /// **and** the insides of string literals in one pass, which a line-wise
+    /// strip cannot do, and it finds a body by brace stack rather than by the
+    /// nearest declaration above — the two readings this file would otherwise
+    /// have re-derived, one of them wrongly. Empty for a fixture with no such
+    /// function, which fails every assertion above rather than excusing it.
+    private static func cardBody(in source: String) -> String {
+        SwiftSource.body(of: "column", in: SwiftSource.code(source)) ?? ""
     }
 
-    /// From the first line to the brace it closes.
-    private static func block(from source: String) -> String {
-        var text = ""
-        var depth = 0
-        for raw in source.components(separatedBy: "\n") {
-            let code = RepoSource.code(raw)
-            text += code + "\n"
-            depth += code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
-            if depth <= 0 && text.contains("{") { break }
-        }
-        return text
+    /// The same, read out of the hero itself.
+    private func cardBody() throws -> String {
+        try XCTUnwrap(Self.cardBody(in: try RepoSource.text(of: Self.hero)).nonEmpty,
+                      "no `column` function in \(Self.hero) — the scan has lost the card it "
+                      + "is about, which is a different report from «the card is not combined»")
     }
+}
+
+private extension String {
+    /// Nothing rather than nothing-at-all, so a lost reading can be unwrapped
+    /// into a failure that says which of the two happened.
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

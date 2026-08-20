@@ -125,34 +125,12 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
         return nil
     }
 
-    /// A heading is judged when the chain below it carries the trait.
+    /// A heading is judged when its **own** modifier chain carries the trait —
+    /// `SwiftSource.modifierChain`, which stops at the end of the chain rather
+    /// than reading on into the control underneath.
     private static func marked(_ heading: Heading, in lines: [String]) -> Bool {
-        chain(from: heading.line - 1, in: lines).contains(".accessibilityAddTraits(.isHeader)")
-    }
-
-    /// The modifier chain the heading belongs to, by brace depth — the shape
-    /// `KeyboardReachableControlsTests` walks, and for its reason: an indent
-    /// walk ends at the closing brace of a multi-line closure.
-    private static func chain(from index: Int, in lines: [String]) -> String {
-        var text = RepoSource.code(lines[index])
-        var depth = braces(in: text)
-        for raw in lines.dropFirst(index + 1) {
-            let code = RepoSource.code(raw)
-            let body = code.trimmingCharacters(in: .whitespaces)
-            if depth > 0 {
-                text += "\n" + code
-                depth += braces(in: code)
-                continue
-            }
-            guard body.isEmpty || body.hasPrefix(".") else { break }
-            text += "\n" + code
-            depth += braces(in: code)
-        }
-        return text
-    }
-
-    private static func braces(in code: String) -> Int {
-        code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
+        SwiftSource.modifierChain(from: heading.line - 1, in: lines)
+            .contains(".accessibilityAddTraits(.isHeader)")
     }
 
     private static func recorded(_ heading: Heading) -> Bool {

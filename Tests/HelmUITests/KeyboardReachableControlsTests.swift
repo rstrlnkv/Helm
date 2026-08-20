@@ -130,7 +130,7 @@ final class KeyboardReachableControlsTests: XCTestCase {
             for (index, raw) in lines.enumerated() {
                 let code = RepoSource.code(raw)
                 guard code.contains(".onTapGesture") else { continue }
-                let chain = self.chain(from: index, in: lines)
+                let chain = SwiftSource.modifierChain(from: index, in: lines)
                 guard chain.contains("accessibilityAction")
                         || chain.contains("isButton") else { continue }
                 out.append(Offender(file: file, line: index + 1,
@@ -140,56 +140,12 @@ final class KeyboardReachableControlsTests: XCTestCase {
         return out
     }
 
-    /// The modifier chain the tap gesture belongs to, by brace depth rather than
-    /// by indent.
-    ///
-    /// **Indent was not enough, and the widened scan is where it stops being
-    /// enough.** The old walk ended the chain at the first line no deeper than
-    /// the gesture's own that did not begin with a dot — and the closing brace of
-    /// a multi-line closure is exactly that, so
-    ///
-    /// ```swift
-    /// .onTapGesture { point in
-    ///     open(segment(at: point))
-    /// }
-    /// .accessibilityAction { … }
-    /// ```
-    ///
-    /// — `RingView`'s shape, a gesture that takes a location and therefore cannot
-    /// be a one-liner — was read as a chain of one line with no action in it. The
-    /// rule would have been unable to fail on any control whose handler needed a
-    /// second line, which is most of them. Depth counting is what
-    /// `AnImposedPickerWidthFitsItsLabelsTests` walks chains with, for the same
-    /// reason.
-    ///
-    /// Comments are stripped by `RepoSource.code` first, and that is not
-    /// optional: the rule is explained above by quoting the very thing it
-    /// forbids, so a scan that read comments would report its own reasoning.
-    private static func chain(from index: Int, in lines: [String]) -> String {
-        var text = RepoSource.code(lines[index])
-        var depth = braces(in: text)
-        for raw in lines.dropFirst(index + 1) {
-            let code = RepoSource.code(raw)
-            let body = code.trimmingCharacters(in: .whitespaces)
-            // Inside a closure of the chain: every line belongs to it.
-            if depth > 0 {
-                text += "\n" + code
-                depth += braces(in: code)
-                continue
-            }
-            // At depth zero only a further modifier continues the chain. A blank
-            // line or a comment-only line does not end it — the modifiers in
-            // this repository are separated by their own explanations.
-            guard body.isEmpty || body.hasPrefix(".") else { break }
-            text += "\n" + code
-            depth += braces(in: code)
-        }
-        return text
-    }
-
-    private static func braces(in code: String) -> Int {
-        code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
-    }
+    // The chain is `SwiftSource.modifierChain` now, and the reasoning that used
+    // to stand here — depth rather than indent, because the closing brace of a
+    // multi-line closure ends an indent walk and hides everything under it —
+    // moved with it when a second accessibility guard needed the same reading.
+    // `testAMultiLineHandlerDoesNotEndTheChain` below still holds it from here,
+    // which is the point of moving it rather than copying it.
 
     // MARK: - The ratchet
 
