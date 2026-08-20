@@ -70,7 +70,21 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.11.0", date: "2026-08-19", items: [
+            ChangelogEntry(version: "0.11.0", date: "2026-08-20", items: [
+                ChangeItem(kind: .new, text: L("Hosts & Keys is an SSH manager. Keys come first, and each one says where it is used: the hosts that name it, every host, or nothing at all. A key that nothing names may still be the one you log in with, and it says so instead of looking unused.")),
+                ChangeItem(kind: .upd, text: L("A host now shows the key it uses, and is marked when it points at a key that is gone. Fingerprints you have already trusted moved into the host\u{2019}s own row with Forget beside them, so there is no separate list of them any more.")),
+                ChangeItem(kind: .upd, text: L("Hosts & Keys fits the window at its smallest. Fingerprints and host names used to be given a fixed width and pushed everything else off the edge.")),
+                ChangeItem(kind: .fix, text: L("Helm no longer freezes when you come back to its window. Coming back could leave it unresponsive for close to twenty seconds while it waited on your keychain.")),
+                ChangeItem(kind: .fix, text: L("Opening Duplicates no longer freezes Helm the same way.")),
+                ChangeItem(kind: .fix, text: L("A rule you paused stays paused when Helm updates itself and restarts. It used to come back holding your Mac awake with nothing saying so.")),
+                ChangeItem(kind: .fix, text: L("Helm no longer asks for your administrator password over and over while you change settings. Declining once to remove its sleep rule used to make every later change ask again.")),
+                ChangeItem(kind: .fix, text: L("After a VPN blinked out and came back, Helm quietly stopped watching it, and the next time it really dropped nothing was said.")),
+                ChangeItem(kind: .fix, text: L("Measuring a VPN\u{2019}s speed no longer leaves the button turning for ever when the measurement cannot be taken.")),
+                ChangeItem(kind: .fix, text: L("The VPN page notices when your traffic stops leaving through the tunnel while the tunnel is still up. It used to decide that once and never look again.")),
+                ChangeItem(kind: .fix, text: L("The VPN page could name the network interface your traffic leaves around the tunnel by, and draw its figures as though they were the tunnel\u{2019}s.")),
+                ChangeItem(kind: .fix, text: L("A change on the network makes Helm look once, not seven times.")),
+                ChangeItem(kind: .upd, text: L("A page\u{2019}s title has no line under it any more, and the strip lights up when you move the pointer over it \u{2014} the way Finder and System Settings do.")),
+                ChangeItem(kind: .upd, text: L("Figures are set in the system\u{2019}s own face, with digits that keep their places as they change. Monospaced type stays where it belongs: paths, configuration files and command output.")),
                 ChangeItem(kind: .upd, text: L("Hosts & Keys is no longer a tile in the menu-bar panel. It is under Utilities there instead, which opens its page \u{2014} the tile only counted things, and there was nothing on it to press.")),
                 ChangeItem(kind: .fix, text: L("The VPN page names the country your traffic leaves from even when the tunnel was already up before Helm started. It used to ask only at the moment a tunnel connected, so a VPN that comes up with your Mac never got a country \u{2014} and one check that failed cost it until the next reconnection.")),
                 ChangeItem(kind: .upd, text: L("The VPN page opens with the tunnel your traffic is actually going through: whether it really is in the tunnel, which country it comes out of, how long it has been up and what it has carried. All of it used to be the last thing on the page, under the connections.")),
