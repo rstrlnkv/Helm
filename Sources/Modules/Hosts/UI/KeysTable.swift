@@ -95,6 +95,14 @@ private struct KeyCard: View {
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(2)
                 .truncationMode(.tail)
+                // Selectable for the same reason the fingerprint is — this line
+                // lists host names somebody may want to paste — and for a second
+                // one worth stating: a plain `Text` leaves no AppKit view, so
+                // `HostsRowsFitTheMinimumPaneTests` finds nothing to measure and
+                // a fixed width **here** left all three of its cases green. The
+                // line the whole tab was rebuilt around was the one line its
+                // width guard could not see.
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             verdict

@@ -71,12 +71,27 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
     private let alias = "build-runner-eu-west-1"
     private let hostName = "build-runner-eu-west-1.internal.corp.example.com"
 
+    /// A second and third host on the same key, for the reason the names above
+    /// are long: the usage sentence lists them, and a sentence naming one short
+    /// alias fits at any pane and proves nothing about the line it is on. One
+    /// host was what this fixture had while that line was unmeasurable.
+    private let secondAlias = "build-runner-us-east-2"
+    private let thirdAlias = "bastion-eu-west-1"
+
     private var config: String {
         """
         Host \(alias)
             HostName \(hostName)
             User rstrlnkv
             Port 2222
+            IdentityFile ~/.ssh/id_ed25519_work_laptop
+
+        Host \(secondAlias)
+            HostName build-runner-us-east-2.internal.corp.example.com
+            IdentityFile ~/.ssh/id_ed25519_work_laptop
+
+        Host \(thirdAlias)
+            HostName bastion-eu-west-1.internal.corp.example.com
             IdentityFile ~/.ssh/id_ed25519_work_laptop
 
         """
@@ -175,11 +190,19 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
 
     // MARK: - The rows
 
-    /// Two selectable lines: the fingerprint, and the `chmod` the verdict
-    /// carries. Counted rather than assumed — a row that had stopped drawing
-    /// its fingerprint would satisfy every reading below over the figure alone.
+    /// **Three selectable lines since 2026-08-20**: the fingerprint, the `chmod`
+    /// the verdict carries, and the usage sentence. Counted rather than assumed —
+    /// a row that had stopped drawing its fingerprint would satisfy every
+    /// reading below over the figure alone.
+    ///
+    /// The third one is why the count moved. A plain `Text` leaves no AppKit
+    /// view, so this scan found nothing to measure on the usage line and a fixed
+    /// width **there** left all three cases in this file green — the line the
+    /// whole tab was rebuilt around was the one line its width guard could not
+    /// see. It is `.textSelection(.enabled)` now, which both makes it measurable
+    /// and lets somebody copy the host names it lists.
     func testTheKeyRowFitsTheNarrowestPane() {
-        judge("the key row", atLeast: 2) { KeysTable(hvm: $0) }
+        judge("the key row", atLeast: 3, growing: 2, wrapping: 1) { KeysTable(hvm: $0) }
     }
 
     /// Two as well: the address, and the fingerprint of the trust drawn under
@@ -229,7 +252,8 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
     }
 
     /// The four readings, on one subject.
-    private func judge(_ what: String, atLeast lines: Int,
+    private func judge(_ what: String, atLeast lines: Int, growing: Int = 1,
+                       wrapping: Int = 0,
                        _ view: (HostsViewModel) -> some View) {
         let narrow = draw(view(model()), at: narrowest)
         let wide = draw(view(model()), at: widest)
@@ -243,15 +267,25 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
         XCTAssertEqual(narrow.selectable.count, wide.selectable.count,
                        "\(what) draws a different number of detail lines at the two panes")
 
-        for line in narrow.selectable {
-            XCTAssertLessThanOrEqual(line.height, oneLine, """
-                a detail line of \(what) is \(line.height) pt tall at the \(narrowest) pt pane, \
-                which is more than the one line it has to be: it has wrapped rather than \
-                truncated. A fingerprint is 47 characters and this pane is what the window's \
-                own minimum leaves — so the line has to lose its middle, not its place.
+        // **One line each, with a counted exception.** The fingerprint has to
+        // lose its middle rather than its place: 47 characters against what the
+        // window's own minimum leaves. The usage sentence is the one line this
+        // module allows two of — it lists host names and truncating it is
+        // losing the answer — so what is asserted is *how many* lines wrap, not
+        // that none do, and no line may take a third.
+        let wrapped = narrow.selectable.filter { $0.height > oneLine }
+        XCTAssertLessThanOrEqual(wrapped.count, wrapping, """
+            \(wrapped.count) detail lines of \(what) wrap at the \(narrowest) pt pane, not the \
+            \(wrapping) that may. A fingerprint is 47 characters and this pane is what the \
+            window's own minimum leaves, so it has to lose its middle, not its place.
+            """)
+        for line in wrapped {
+            XCTAssertLessThanOrEqual(line.height, oneLine * 2 + 1, """
+                a detail line of \(what) is \(line.height) pt tall at \(narrowest) pt, which is \
+                past the two lines the usage sentence is allowed — anything taller is a row \
+                growing down the page instead of truncating
                 """)
         }
-
         // **The longest line, not every line.** A short figure — `chmod 600` —
         // is its own width at any pane and always will be; what has to grow is
         // the line the pane is actually pressing on, which is the fingerprint.
@@ -262,6 +296,27 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
             \(given) pt at \(widest) — the same width at two panes is what «imposes a width» \
             means once it is measured rather than read, and it is the line holding the \
             fingerprint that pays for it.
+            """)
+
+        // **Every long line, not only the longest one.** Taking the maximum
+        // guards exactly one line: with the fingerprint growing, a width pinned
+        // on any *other* line is invisible, and the usage sentence — the line
+        // this whole tab was rebuilt around — was pinnable at 300 pt with all
+        // three cases in this file green. Measured, 2026-08-20.
+        //
+        // Paired by index and never sorted, for the reason `fieldWidths` gives:
+        // a sorted pair hands a pinned reading to its neighbour and both
+        // «grew». A line may legitimately not grow — `chmod 600` is its own
+        // width at any pane — so what is counted is how many *do*, against the
+        // number this row has that are long enough for the pane to press on.
+        let grew = zip(narrow.selectable, wide.selectable)
+            .filter { $1.width > $0.width + 1 }
+            .count
+        XCTAssertGreaterThanOrEqual(grew, growing, """
+            \(grew) of \(what)'s detail lines grew with the pane, not the \(growing) that are \
+            long enough to be pressed by it. A line that reads the same at \(narrowest) pt and \
+            \(widest) pt has a width of its own — which is what this file exists to refuse, and \
+            what the longest-line reading above cannot see once another line is already growing.
             """)
 
         assertTheRowKeepsItsGutter(what, narrow: narrow, wide: wide)
