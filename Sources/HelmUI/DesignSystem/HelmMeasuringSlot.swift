@@ -106,8 +106,16 @@ public struct HelmMeasuringSlot: ViewModifier {
                               segment: Double = HelmMeasuringSlot.segment) -> Sweep {
             guard lap > 0, segment > 0 else { return Sweep(first: 0...0, second: 0...0) }
             let length = Swift.min(segment, 1)
-            let head = (now.timeIntervalSinceReferenceDate / lap)
+            // Folded twice on purpose. `truncatingRemainder` keeps the sign
+            // of its *dividend*, and the interval is negative on any Mac whose
+            // clock has reset — a dead battery boots at the Unix epoch, which
+            // is well before 2001. One fold leaves the head in `-1..<0` and
+            // hands `trim(from:to:)` a span it is not defined on; adding a
+            // whole lap and folding again puts it in `0..<1` for every clock,
+            // which is the parametrisation the border is drawn in.
+            let turn = (now.timeIntervalSinceReferenceDate / lap)
                 .truncatingRemainder(dividingBy: 1)
+            let head = (turn + 1).truncatingRemainder(dividingBy: 1)
             let tail = head + length
             return Sweep(first: head...Swift.min(tail, 1),
                          second: 0...Swift.max(tail - 1, 0))
