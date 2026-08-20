@@ -140,7 +140,7 @@ public enum MenuBarIcon {
                                      tintToken: String?) -> [NSImage] {
         let key = SpinnerKey(style: style, size: size, tint: tintToken,
                              appearance: currentAppearanceName)
-        return spinnerCache.frames(for: key) {
+        return spinnerCache.value(for: key) {
             (0..<frameCount).map {
                 makeSpinner(style: style, size: size, tintToken: tintToken,
                             phase: Double($0) / Double(frameCount))
@@ -374,21 +374,10 @@ public enum MenuBarIcon {
         let appearance: String
     }
 
-    private static let spinnerCache = SpinnerCache()
-
-    private final class SpinnerCache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stored: [SpinnerKey: [NSImage]] = [:]
-
-        func frames(for key: SpinnerKey, build: () -> [NSImage]) -> [NSImage] {
-            lock.lock()
-            if let hit = stored[key] { lock.unlock(); return hit }
-            lock.unlock()
-            let built = build()
-            lock.lock(); stored[key] = built; lock.unlock()
-            return built
-        }
-    }
+    /// One set of frames per key, built once. It used to let go of its lock to
+    /// build, so two menu-bar redraws arriving together each rendered the whole
+    /// spin — which is `frameCount` bitmaps drawn twice for nothing.
+    private static let spinnerCache = LockedMemo<SpinnerKey, [NSImage]>()
 
     /// Palette lookup, also used for menu-bar text drawn beside the glyph.
     public static func nsColor(forTintToken token: String?) -> NSColor { nsColor(tintToken: token) }

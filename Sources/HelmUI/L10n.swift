@@ -138,7 +138,7 @@ enum Localized {
     /// migration reads as untranslated English rather than a crash.
     static func string(_ key: String, language: AppLanguage) -> String {
         guard language != .en else { return key }
-        return cache.table(for: language)[key] ?? key
+        return table(for: language)[key] ?? key
     }
 
     /// The path to a language's `Localizable.strings`, so a test can read the
@@ -151,30 +151,20 @@ enum Localized {
             .appendingPathComponent("Localizable.strings")
     }
 
-    private static let cache = TableCache()
+    private static let cache = LockedMemo<AppLanguage, [String: String]>()
 
-    private final class TableCache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var tables: [AppLanguage: [String: String]] = [:]
+    private static func table(for language: AppLanguage) -> [String: String] {
+        cache.value(for: language) { load(language) }
+    }
 
-        func table(for language: AppLanguage) -> [String: String] {
-            lock.lock()
-            defer { lock.unlock() }
-            if let existing = tables[language] { return existing }
-            let loaded = Self.load(language)
-            tables[language] = loaded
-            return loaded
-        }
-
-        private static func load(_ language: AppLanguage) -> [String: String] {
-            guard let bundleURL = Bundle.module.url(forResource: language.rawValue,
-                                                     withExtension: "lproj"),
-                  let bundle = Bundle(url: bundleURL),
-                  let path = bundle.path(forResource: "Localizable", ofType: "strings"),
-                  let dict = NSDictionary(contentsOfFile: path) as? [String: String]
-            else { return [:] }
-            return dict
-        }
+    private static func load(_ language: AppLanguage) -> [String: String] {
+        guard let bundleURL = Bundle.module.url(forResource: language.rawValue,
+                                                withExtension: "lproj"),
+              let bundle = Bundle(url: bundleURL),
+              let path = bundle.path(forResource: "Localizable", ofType: "strings"),
+              let dict = NSDictionary(contentsOfFile: path) as? [String: String]
+        else { return [:] }
+        return dict
     }
 }
 

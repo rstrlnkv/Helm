@@ -58,7 +58,9 @@ public enum SystemFolderNames {
 
     // MARK: - Table
 
-    private static let cache = TableCache()
+    /// The table is a few dozen strings read once per language; the box keeps
+    /// that off the filesystem for every row the ring draws.
+    private static let cache = LockedMemo<String, [String: String]>()
 
     /// What macOS calls the directory for a language Helm calls something else.
     ///
@@ -71,27 +73,11 @@ public enum SystemFolderNames {
     private static let systemDirectory = ["zh": "zh_CN"]
 
     private static func table(for language: String) -> [String: String] {
-        if let hit = cache.get(language) { return hit }
-        let directory = systemDirectory[language] ?? language
-        let path = localizationsRoot + "/" + directory + ".lproj/SystemFolderLocalizations.strings"
-        let loaded = (NSDictionary(contentsOfFile: path) as? [String: String]) ?? [:]
-        cache.set(language, loaded)
-        return loaded
-    }
-
-    /// The table is a few dozen strings read once per language; the box keeps
-    /// that off the filesystem for every row the ring draws.
-    private final class TableCache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var tables: [String: [String: String]] = [:]
-
-        func get(_ language: String) -> [String: String]? {
-            lock.lock(); defer { lock.unlock() }
-            return tables[language]
-        }
-
-        func set(_ language: String, _ table: [String: String]) {
-            lock.lock(); tables[language] = table; lock.unlock()
+        cache.value(for: language) {
+            let directory = systemDirectory[language] ?? language
+            let path = localizationsRoot + "/" + directory
+                + ".lproj/SystemFolderLocalizations.strings"
+            return (NSDictionary(contentsOfFile: path) as? [String: String]) ?? [:]
         }
     }
 }

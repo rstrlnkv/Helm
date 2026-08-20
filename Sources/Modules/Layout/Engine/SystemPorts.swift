@@ -399,27 +399,13 @@ public struct UCTranslation: TranslationPort {
     /// keyCode → the character it types, for the printable letter range.
     /// Cached: building it walks fifty keys through Carbon, and it changes only
     /// when the installed layouts do.
-    private static let cache = TableCache()
-
-    private final class TableCache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var tables: [String: [UInt16: Character]] = [:]
-
-        func table(_ sourceID: String, build: () -> [UInt16: Character]?) -> [UInt16: Character]? {
-            lock.lock()
-            if let cached = tables[sourceID] { lock.unlock(); return cached }
-            lock.unlock()
-            guard let built = build() else { return nil }
-            lock.lock(); tables[sourceID] = built; lock.unlock()
-            return built
-        }
-    }
+    private static let cache = LockedMemo<String, [UInt16: Character]>()
 
     private static func characterTable(_ sourceID: String) -> [UInt16: Character]? {
         // The keyboard type is baked into the table by `UCKeyTranslate`, so it
         // belongs in the key: plugging in an ISO keyboard where an ANSI one was
         // leaves every cached table describing the wrong hardware.
-        cache.table("\(sourceID)#\(LMGetKbdType())") { buildTable(sourceID) }
+        cache.valueOrNothing(for: "\(sourceID)#\(LMGetKbdType())") { buildTable(sourceID) }
     }
 
     private static func buildTable(_ sourceID: String) -> [UInt16: Character]? {
