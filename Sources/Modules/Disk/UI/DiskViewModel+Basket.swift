@@ -11,6 +11,22 @@ import Module_Disk_Engine
 /// reader, and `busy` stays there because an extension cannot hold storage.
 extension DiskViewModel {
 
+    /// Whether the basket may hold this row.
+    ///
+    /// Here rather than in the page because the row draws its basket button from
+    /// this and `toggleBasket` acts on it: two spellings is how a button comes to
+    /// stand over a row the basket will quietly decline.
+    ///
+    /// **The folded bucket is refused by its flag.** It is the one row on the
+    /// ring whose path names no file — an aggregate of the small files in a
+    /// directory, wearing the name `…` — and the gate used to keep it out by
+    /// refusing that name, which refused the person's own file of the same name
+    /// with it, drawn as a system item with nothing saying why. The flag is what
+    /// the two differ by, and it cannot be typed into a filename.
+    func canBasket(_ entry: DiskEntry) -> Bool {
+        !entry.isFolded && UserFileScope.isRemovable(entry.path)
+    }
+
     /// **The basket does not move while a removal is in flight.**
     ///
     /// `emptyBasket` sends what is ticked, waits, and then empties the basket
@@ -27,7 +43,7 @@ extension DiskViewModel {
         guard !busy else { return }
         if let index = basket.firstIndex(where: { $0.path == entry.path }) {
             basket.remove(at: index)
-        } else if UserFileScope.isRemovable(entry.path) {
+        } else if canBasket(entry) {
             basket.append(entry)
         }
     }

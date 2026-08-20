@@ -37,8 +37,15 @@ public enum UserFileScope {
         // allowed to remove the alias (PathCanonical says why).
         let path = PathCanonical.resolvingAncestors(standardized)
         guard path.hasPrefix("/"), path != "/" else { return false }
-        // A folded "…" bucket is an aggregate, not a real path.
-        guard !path.hasSuffix("/…") else { return false }
+        // **The bucket is a flag, never a name.** This used to refuse any path
+        // ending in `/…`, because that was once the only way to recognise the
+        // disk module's folded aggregate — and `…` is a name a person can type
+        // and Finder accepts. Their own file was then drawn as a system item
+        // with no basket button and no sentence saying why, in a gate whose
+        // whole question is «does this belong to the user». The bucket is
+        // `DiskNode.isFolded` now, all the way to `DiskEntry.isFolded` on the
+        // wire, and it is told apart by the flag at the row, in the basket and
+        // in `DiskRemovalPlan` — none of which can be typed into a filename.
         // Both spellings. `standardizingPath` does more than drop `.` and `..`:
         // for a path that **exists on disk** it rewrites `/private/var/…` to
         // `/var/…`. So `/private/var/db` — the entry on the list — was rewritten

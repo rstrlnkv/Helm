@@ -68,9 +68,9 @@ final class DiskAdvisorTests: XCTestCase {
         XCTAssertEqual(advice.first?.name, "Caches")
     }
 
-    /// The folded bucket is an aggregate, not a path: `UserFileScope` refuses
-    /// anything ending in `/…`, so nothing will ever be attempted for it. Its
-    /// bytes belong to the folder's total and not to the row's promise.
+    /// The folded bucket is an aggregate, not a path, and its own flag is what
+    /// says so — nothing will ever be attempted for it. Its bytes belong to the
+    /// folder's total and not to the row's promise.
     func testCacheSizeIsWhatWillBeAttempted() {
         let cachesPath = home + "/Library/Caches"
         let loose = DiskNode(name: "…", bytes: 400_000_000, isDirectory: false, isFolded: true)
@@ -223,9 +223,26 @@ final class DiskAdvisorTests: XCTestCase {
         XCTAssertEqual(advice.map(\.bytes), advice.map(\.bytes).sorted(by: >))
     }
 
+    /// By the flag. The fixture used to be an ordinary node wearing the name
+    /// `…`, and it passed because `UserFileScope` refused that name — so the
+    /// same test would have passed with `sweep`'s `!node.isFolded` deleted,
+    /// which is the guard it exists to hold. The gate judges no names now.
     func testFoldedBucketIsNeverAdvised() {
-        let bucket = file(home + "/Movies/…", 8_000_000_000, ageDays: 500)
+        let bucket = DiskNode(name: "…", bytes: 8_000_000_000, isDirectory: false,
+                              modified: now.timeIntervalSince1970 - 500 * 86_400,
+                              isFolded: true)
         let root = dir(home, [dir(home + "/Movies", [bucket])])
         XCTAssertTrue(DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now).isEmpty)
+    }
+
+    /// And the other half of the same collision: a file the person really named
+    /// `…` is an ordinary file, and big and old enough to be worth pointing at.
+    /// Without this the assertion above is satisfied by a rule that refuses the
+    /// name, which is what was wrong.
+    func testAFileTheUserNamedLikeTheBucketIsAdvisedLikeAnyOther() {
+        let real = file(home + "/Movies/…", 8_000_000_000, ageDays: 500)
+        let root = dir(home, [dir(home + "/Movies", [real])])
+        let advice = DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now)
+        XCTAssertEqual(advice.map(\.path), [home + "/Movies/…"])
     }
 }

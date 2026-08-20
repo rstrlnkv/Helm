@@ -27,8 +27,11 @@ public final class DiskNode: @unchecked Sendable {
     /// It used to be recognised by its name — `"…"` and not a directory — which
     /// is also a description of a file somebody can create. That file then
     /// absorbed every small file beside it, showed a size that was not its own,
-    /// and could not be selected, because `UserFileScope` refuses a path ending
-    /// in `/…`. A flag cannot be typed into a filename.
+    /// and could not be selected, because `UserFileScope` refused a path ending
+    /// in `/…`. A flag cannot be typed into a filename, and all three symptoms
+    /// are gone: the gate judges no names now, and the bucket is kept out of the
+    /// basket by this flag at the row, in `toggleBasket` and in
+    /// `DiskRemovalPlan.question` — the last point before the paths are strings.
     public let isFolded: Bool
     /// Modification time as epoch seconds; 0 when the scanner had no date.
     public let modified: TimeInterval

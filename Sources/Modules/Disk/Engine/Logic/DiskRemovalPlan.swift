@@ -47,11 +47,19 @@ public enum DiskRemovalPlan {
     /// The paths are `targets` itself — the very list the press hands over, not a
     /// second walk of the basket that agrees with it today. The size comes from
     /// the advice's own total, which `DiskAdvice` derives from those same targets.
+    ///
+    /// **A folded bucket never leaves here**, and this is the last place that can
+    /// say so: the flag stops at the wire, and everything past this point is
+    /// strings — `UserFileScope` and `HelmTrash` see a path that is the path a
+    /// real file named `…` would have, and cannot tell the aggregate from the
+    /// file. The row and the basket refuse it first; this is the step between the
+    /// two of them and the engine.
     public static func question(basket: [DiskEntry], advice: [DiskAdvice]) -> Question {
-        Question(paths: targets(basket: basket.map(\.path), advice: advice),
-                 bytes: basket.reduce(0) { total, entry in
-                     total + (advice.first { $0.path == entry.path }?.bytes ?? entry.bytes)
-                 })
+        let named = basket.filter { !$0.isFolded }
+        return Question(paths: targets(basket: named.map(\.path), advice: advice),
+                        bytes: named.reduce(0) { total, entry in
+                            total + (advice.first { $0.path == entry.path }?.bytes ?? entry.bytes)
+                        })
     }
 
     /// The paths a basket really hands to the Trash, in the order it holds them.

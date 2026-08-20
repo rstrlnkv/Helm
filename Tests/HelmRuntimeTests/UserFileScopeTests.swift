@@ -21,9 +21,15 @@ final class UserFileScopeTests: XCTestCase {
         XCTAssertTrue(UserFileScope.isRemovable("/Volumes/Backup/old"))
     }
 
-    /// The ring's folded bucket is an aggregate of many files, not a path.
-    func testFoldedBucketIsNotRemovable() {
-        XCTAssertFalse(UserFileScope.isRemovable("/Users/x/Documents/…"))
+    /// **This gate judges no names.** It used to refuse any path ending in `/…`
+    /// — the disk module's folded bucket wore that name, and refusing it here
+    /// was how the aggregate was kept out of the basket. `…` is a name a person
+    /// can type and Finder accepts, so the rule refused their own file with it:
+    /// drawn as a system item, no basket button, nothing saying why. The bucket
+    /// is `DiskNode.isFolded` now and is told apart by the flag at the row, in
+    /// the basket and in `DiskRemovalPlan` — none of which a filename can reach.
+    func testAFileNamedLikeTheRingsFoldedBucketIsStillTheUsersOwnFile() {
+        XCTAssertTrue(UserFileScope.isRemovable("/Users/x/Documents/…"))
     }
 
     func testOrdinaryUserFilesAreRemovable() {

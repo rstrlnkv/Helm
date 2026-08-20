@@ -158,18 +158,29 @@ enum DiskAdvisor {
         // visit, handing back as a transient spike exactly the ~345 MB that
         // dropping the stored path saved.
         func sweep(_ node: DiskNode, path: String) {
-            if !node.isDirectory, !node.isFolded, node.modified > 0,
-               UserFileScope.isRemovable(path),
-               !cachePrefixes.contains(where: { path.hasPrefix($0) }) {
-                let age = now.timeIntervalSince1970 - node.modified
-                if path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
-                    advice.append(DiskAdvice(name: node.name, path: path,
-                                             bytes: node.bytes, kind: .oldDownload,
-                                             modified: node.modified))
-                } else if node.bytes >= largeFloor, age > largeAge {
-                    advice.append(DiskAdvice(name: node.name, path: path,
-                                             bytes: node.bytes, kind: .largeOld,
-                                             modified: node.modified))
+            // The pool goes **inside**, per node judged, not around the descent:
+            // `UserFileScope.isRemovable` is `standardizingPath`, a `fileExists`
+            // walk up the parent chain and `resolvingSymlinksInPath`, all of it
+            // Foundation handing back autoreleased objects — and this runs inside
+            // `offTheCooperativePool`, where the only pool that would ever drain
+            // is the one closing when the whole scan returns. Measured over
+            // 20 000 file nodes: 56 bytes a node kept without this, 0 with it
+            // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
+            // books). ARCHITECTURE.md § Memory.
+            autoreleasepool {
+                if !node.isDirectory, !node.isFolded, node.modified > 0,
+                   UserFileScope.isRemovable(path),
+                   !cachePrefixes.contains(where: { path.hasPrefix($0) }) {
+                    let age = now.timeIntervalSince1970 - node.modified
+                    if path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
+                        advice.append(DiskAdvice(name: node.name, path: path,
+                                                 bytes: node.bytes, kind: .oldDownload,
+                                                 modified: node.modified))
+                    } else if node.bytes >= largeFloor, age > largeAge {
+                        advice.append(DiskAdvice(name: node.name, path: path,
+                                                 bytes: node.bytes, kind: .largeOld,
+                                                 modified: node.modified))
+                    }
                 }
             }
             // A node is judged before its children, as it was when this popped a
@@ -188,9 +199,10 @@ enum DiskAdvisor {
     /// it, each with its own weight.
     ///
     /// The folded bucket is left out and it is not an oversight — it is an
-    /// aggregate of the small loose files, wearing the name `…`, and
-    /// `UserFileScope` refuses any path ending in one. Including it would
-    /// advertise bytes nothing would ever be asked to free.
+    /// aggregate of the small loose files, wearing the name `…`, and its path
+    /// names no file. Including it would advertise bytes nothing would ever be
+    /// asked to free. By the flag, and only by the flag: the gate no longer
+    /// refuses that name, because a person may have given it to a real file.
     private static func contents(of node: DiskNode,
                                  at path: String) -> [DiskAdvice.Target] {
         node.children.filter { !$0.isFolded }.map {

@@ -84,7 +84,13 @@ import Module_Disk_Engine
     /// keeping for the next launch. The one place that decides it, because the
     /// consequence of getting it wrong is a partial tree presented as fact at
     /// every launch — the failure "Choose another…" exists to give a way out of.
-    public var treeIsComplete: Bool { !stopped }
+    ///
+    /// **Both ways a tree can be unfinished, not only the one with a button.**
+    /// This was `!stopped` alone, and `stopped` is false while a walk is
+    /// *running* — so it answered yes about a tree still being built, which is
+    /// every removal made from a live ring (the bar is drawn over the snapshot
+    /// and dimmed only by `busy`).
+    public var treeIsComplete: Bool { !stopped && !live }
 
     /// Names for scans, handed out in order. Two are in flight whenever
     /// somebody drills into a folder the walk has not reached, and both talk on
@@ -192,7 +198,22 @@ import Module_Disk_Engine
         // again" button and nothing else at all — no ring, no rows, no reason
         // given — and the only way out was a back arrow that did not look like
         // one. Folders get scanned and then deleted; volumes do not.
-        guard FileManager.default.fileExists(atPath: cached.result.root.path) else {
+        //
+        // **Off the main actor**, because the last thing a saved root can be is a
+        // network mount nobody is holding up any more: `fileExists` then blocks
+        // for the mount's own timeout, and this runs while the window is being
+        // drawn — the family the three frozen windows of 2026-08-20 came from.
+        // Through `offTheCooperativePool` and not a detached task: a detached
+        // task is still a task on the pool, so a stat that blocks for a minute
+        // holds one of its few threads whoever started it. The phase is asked
+        // again on the way back — a scan may have started across the suspension,
+        // and the fresh one wins.
+        let rootPath = cached.result.root.path
+        let rootIsThere = await offTheCooperativePool {
+            FileManager.default.fileExists(atPath: rootPath)
+        }
+        guard phase == .start else { return }
+        guard rootIsThere else {
             store.clear()
             return
         }
@@ -267,6 +288,16 @@ import Module_Disk_Engine
         }
         volumes = list
         volumeListLost = false
+        // **The ring is laid out against this list, and this list arrives after
+        // it.** `recomputeSegments` asks `isVolumeScan`, a membership test of
+        // `scannedPath` against `volumes`; `restoreLastScan` draws the cached
+        // tree first and looks the volumes up afterwards, so a restored whole
+        // volume settled holding both halves of the answer and a ring built from
+        // neither — every arc a share of `data + free` with the free part left
+        // out, which is every angle on screen wrong. Here rather than at the
+        // restore, because the list is what changed: a disk mounted under an
+        // open ring arrives by the same door.
+        recomputeSegments()
     }
 
     public func scan(path: String) async {
@@ -457,16 +488,22 @@ import Module_Disk_Engine
         let grafted = DiskTreeSplice.replacing(path, with: scan.root, in: current.root)
         // The advice stays: it describes the volume, not the folder just
         // measured, and recomputing it from one branch would narrow it.
-        result = ScanResult(root: grafted, freeBytes: current.freeBytes,
-                            filesScanned: current.filesScanned, seconds: current.seconds,
-                            advice: current.advice)
+        let measured = ScanResult(root: grafted, freeBytes: current.freeBytes,
+                                  filesScanned: current.filesScanned, seconds: current.seconds,
+                                  advice: current.advice)
+        result = measured
         // Rebuild the focus from paths: the entries in `focusPath` are values
         // from the tree that just changed underneath them.
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: grafted)
         guard let focus else { return }
         focusPath.append(contentsOf: DiskFocus.chain(from: focus, to: path))
         recomputeSegments()
-        store.saveDetached(result!, at: completedAt ?? Date())
+        // The rule `emptyBasket` already keeps, and this door had none at all —
+        // which is the worst place for that, because a stopped tree is exactly
+        // the tree full of folders the walk never reached, and measuring one on
+        // demand is what a stopped screen is for. Everything around the graft is
+        // still a floor.
+        if treeIsComplete { store.saveDetached(measured, at: completedAt ?? Date()) }
     }
 
     public func back() {

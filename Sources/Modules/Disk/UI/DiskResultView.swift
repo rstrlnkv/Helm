@@ -79,24 +79,32 @@ struct DiskResultView: View {
         }
     }
 
-    /// Every visible child refuses removal — true at a volume root, where the
-    /// caption would otherwise repeat down the whole column.
-    private var allRowsAreSystem: Bool {
-        let children = dvm.focus?.children ?? []
-        return !children.isEmpty && children.allSatisfy { !UserFileScope.isRemovable($0.path) }
+    /// Which rows the basket will take, asked **once for the list** and asked of
+    /// the view model, which is where that rule lives.
+    ///
+    /// It is several syscalls a path — `standardizingPath`, a `fileExists` walk
+    /// up the parent chain, `resolvingSymlinksInPath` — and it was asked twice
+    /// over: once per row for that row's own caption, and n more times for «are
+    /// they all system items», on every body evaluation, which on this page means
+    /// every hover frame. The n² inside the `ForEach` was fixed by hoisting the
+    /// second question; this answers both from one pass.
+    ///
+    /// Keyed by `id` and not by `path`: the folded bucket's path is the path a
+    /// real file named `…` would have, and the two are one key.
+    private func removableRows(_ children: [DiskEntry]) -> Set<String> {
+        Set(children.lazy.filter(dvm.canBasket).map(\.id))
     }
 
     private var populatedChildList: some View {
-        // Answered once for the list, not once per row. Inside the `ForEach` it
-        // re-scanned every child for each child — at the 200-child cap that is
-        // 40 000 `isRemovable` calls per body evaluation, each one a
-        // `standardizingPath` and several prefix tests. `UserFileScope` already
-        // carries the note that it runs per row on every frame; it was priced
-        // for one pass, not n.
-        let everySystem = allRowsAreSystem
+        let children = dvm.focus?.children ?? []
+        let removable = removableRows(children)
+        // True at a volume root, where the caption would otherwise repeat down
+        // the whole column.
+        let everySystem = !children.isEmpty && removable.isEmpty
         return List(selection: $selection) {
-            ForEach(dvm.focus?.children ?? []) { child in
+            ForEach(children) { child in
                 ChildRow(everyRowIsSystem: everySystem,
+                         removable: removable.contains(child.id),
                          child: child,
                          title: dvm.displayName(for: child),
                          fraction: fraction(of: child),
@@ -407,6 +415,10 @@ private struct ChildRow: View {
     /// root, all ten of them. Homebrew already wrote this lesson down: "46 of 47
     /// rows were 'formula', and a label with one value is an ornament."
     var everyRowIsSystem = false
+    /// Whether the basket will take this row — answered by the list, in one pass
+    /// over its children, rather than by the row asking the filesystem from
+    /// inside its own body on every hover frame.
+    let removable: Bool
     let child: DiskEntry
     let title: String
     let fraction: Double
@@ -425,7 +437,6 @@ private struct ChildRow: View {
     /// things on one row.
     private var drawnName: String { child.isFolded ? DkStr.otherItems : title }
 
-    private var removable: Bool { UserFileScope.isRemovable(child.path) }
     private var isHovered: Bool { hovered == child.path }
 
     private func reveal() { HelmReveal.inFinder(child.path) }

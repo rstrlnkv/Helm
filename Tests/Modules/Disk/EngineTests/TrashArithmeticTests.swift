@@ -63,8 +63,9 @@ final class DiskTrashArithmeticTests: XCTestCase {
 ///
 /// The real file then becomes the bucket: every small file in that directory is
 /// charged to it, the row on screen reports a size the file does not have, and
-/// `UserFileScope` refuses anything ending in `/…`, so the one row whose size is
-/// wrong is also the one row that cannot be put in the basket.
+/// `UserFileScope` used to refuse anything ending in `/…`, so the one row whose
+/// size was wrong was also the one row that could not be put in the basket. Both
+/// halves are the flag's now — `isFolded` here, and at the row.
 final class DiskFoldedBucketNameTests: XCTestCase {
 
     func testARealFileNamedLikeTheBucketStaysItsOwnEntry() {
