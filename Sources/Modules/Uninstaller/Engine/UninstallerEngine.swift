@@ -140,10 +140,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         watcher = nil
     }
 
-    /// "Look again" — it carries nothing, because what is in the Trash and
-    /// whether any of it is worth offering is answered by `trashedAppLeftovers`
-    /// and by nobody else.
-
     /// Where every leftover this module knows about lives.
     ///
     /// It carried a doc comment about running blocking work on a dispatch queue
@@ -500,7 +496,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// under a live process — which then writes its preferences on exit and puts
     /// back the leftovers this batch has just taken. That is the family CLAUDE.md
     /// names: a local flag standing in for a live external fact. The flag is not
-    /// made fresher; the question is asked where the answer is used.
+    /// made fresher; the question is asked where the answer is used, and again
+    /// after the quitting — which is itself long enough to have changed it.
     private func removeBatch(_ paths: [String],
                              quittingRunningApps mayQuit: Bool) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
@@ -511,11 +508,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         case .proceed:
             break
         case .refuse(let apps):
-            // Counts and tags: a bundle id names somebody's habits.
-            HelmLog.shared.info(UninstallerEngine.moduleID,
-                                "batch held: \(apps.count) app(s) running, no quit allowed "
-                                + "(\(apps.map { Redact.app($0.bundleID) }.joined(separator: ",")))")
-            return UninstallResult(trashed: [], freedBytes: 0, stillRunning: apps.map(\.path))
+            return held(apps, because: "no quit allowed")
         case .quitFirst(let apps):
             for app in apps {
                 HelmLog.shared.info(UninstallerEngine.moduleID, "force quit \(Redact.app(app.bundleID))")
@@ -524,8 +517,32 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // model's business, decided there from the same stale flag.
                 await waitUntilGone(bundleID: app.bundleID)
             }
+            // **And the reading above is older than the move.** Two ordinary
+            // things happen inside a deadline per app: one comes back up while
+            // the batch quits the others — a login item, a helper, a double
+            // click — or it ignores the quit and the deadline proceeds. macOS
+            // moves a running app's bundle without a word, so neither refuses
+            // anything, and the process writes its preferences on exit and puts
+            // back the leftovers this batch has just taken. Asked again, then,
+            // where the answer is used; `mayQuit: false` because the quit has
+            // been spent, which is `verdict`'s existing rule at a later moment.
+            let stillUp = await offTheCooperativePool { self.runningApps(among: paths) }
+            if case .refuse(let up) = UninstallPlan.verdict(running: stillUp, mayQuit: false) {
+                return held(up, because: "still up after the quit")
+            }
         }
         return await offTheCooperativePool { self.trashSync(paths) }
+    }
+
+    /// Nothing moved, and the applications that are why. One result for both
+    /// refusals because they are one outcome — a leftover carries no link back
+    /// to the app it was found for, so there is no "the rest of it"
+    /// (`UninstallPlan.verdict`).
+    private func held(_ apps: [UninstallPlan.RunningApp], because why: String) -> UninstallResult {
+        // Counts and tags: a bundle id names somebody's habits.
+        HelmLog.shared.info(UninstallerEngine.moduleID, "batch held: \(apps.count) app(s) running, "
+                            + "\(why) (\(apps.map { Redact.app($0.bundleID) }.joined(separator: ",")))")
+        return UninstallResult(trashed: [], freedBytes: 0, stillRunning: apps.map(\.path))
     }
 
     /// The applications in a batch that are up at this moment.

@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
@@ -17,6 +18,10 @@ struct OrphansView: View {
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
+    /// Nobody answered the removal. Its own flag rather than a banner string:
+    /// there is no sentence to build, because nothing is known to have moved and
+    /// nothing is known to have stayed.
+    @State private var replyLost = false
 
     private var selectedBytes: Int {
         groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
@@ -24,18 +29,8 @@ struct OrphansView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let banner {
-                // A green bar over a refusal is the app congratulating itself
-                // for work macOS did not let it do.
-                HelmRemovalOutcome(succeededText: banner,
-                                   removed: removedCount,
-                                   failures: failures.map {
-                                       HelmRemovalFailure(path: $0.path,
-                                                          reason: UnStr.failureReason($0.reason))
-                                   },
-                                   needsFullDiskAccess: failures.contains {
-                                       $0.reason == .needsFullDiskAccess
-                                   })
+            if let report = removalReport {
+                report
                     // 20/12 like every other bar in Helm. At 12/10 this one sat
                     // narrower than the toolbar above it and the footer below.
                     .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
@@ -51,6 +46,13 @@ struct OrphansView: View {
             Divider()
             footer
         }
+    }
+
+    /// What the last removal had to say, or nil while this page has said
+    /// nothing — built where the Trash window builds its own, because the two
+    /// report the same four states.
+    private var removalReport: HelmRemovalOutcome? {
+        .uninstaller(banner, removed: removedCount, failures: failures, replyLost: replyLost)
     }
 
     @ViewBuilder private var content: some View {
@@ -174,7 +176,7 @@ struct OrphansView: View {
     // MARK: - Actions
 
     private func scan() async {
-        scanning = true; banner = nil
+        scanning = true; banner = nil; replyLost = false
         groups = await uvm.scanOrphans()
         // Nothing is pre-selected. A ticked list of 251 items is a button that
         // deletes whatever the scan got wrong, and this scan was wrong: apps
@@ -184,16 +186,38 @@ struct OrphansView: View {
     }
 
     private func trashSelected() async {
+        // The page refuses a second run itself rather than trusting the footer to
+        // have dimmed the button: `.disabled(busy)` is a redraw away, and the
+        // press comes out of a `confirmationDialog` that holds its own copy of
+        // this view. What a second press costs is not a second deletion — the
+        // files are already in the Trash — but a wrong report about the first:
+        // every path comes back refused, and whichever round answers last is
+        // what this page draws. Measured against a stale copy of the struct: the
+        // `@State` read here is the live one, so this really does refuse.
+        guard !busy else { return }
         busy = true
+        // Down when the round is over, the rescan below included: a page that
+        // says it is idle over a list it is still rebuilding is the flag
+        // describing something other than the work.
+        defer { busy = false }
         let result = await uvm.trashPaths(Array(selected))
-        busy = false
-        guard let result else { return }
         // The rescan first. Its own first statement is `banner = nil`, and it
         // runs synchronously up to its own await — so an outcome set before it
         // was wiped inside the same main-actor turn and SwiftUI never drew a
         // frame in between. This screen has been reporting nothing at all,
         // including refusals somebody could have acted on.
         await scan()
+        // **A reply that never came is not a batch that moved nothing**, and
+        // this said nothing at all about it: no banner, no rescan, no line in
+        // the log. Somebody pressed a destructive button and the page had no
+        // comment. It claims neither way — the engine may have moved everything
+        // — and points at the list, which the rescan above has just refreshed.
+        guard let result else {
+            replyLost = true
+            HelmLog.shared.info(UninstallerEngine.moduleID, "orphans: trash reply lost")
+            return
+        }
+        // `scan()` above has already put `replyLost` down.
         failures = result.failures
         removedCount = result.trashed.count
         banner = UnStr.movedToTrash(Bytes(result.freedBytes))

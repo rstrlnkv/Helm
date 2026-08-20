@@ -99,6 +99,17 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
         lock.withLock { sentPayloads.last { $0.0 == command }?.1 }
     }
 
+    /// Every payload a command was sent with, in order.
+    ///
+    /// The last one is the wrong question for a command sent once per app:
+    /// `dismissTrashedApp` writes the record that is final for as long as an app
+    /// sits in the Trash, and *which* apps it named is the whole of what a test
+    /// of that record can ask. Reading only the last would pass over a decline
+    /// written for an app whose files are still there.
+    func payloads(of command: UninstallerCommand) -> [Data] {
+        lock.withLock { sentPayloads.filter { $0.0 == command }.map(\.1) }
+    }
+
     /// The enum, not a literal: a fake that answers names of its own goes on
     /// answering after the module renames one, and what it answers then is
     /// `Data()` — which this codebase spells «the module could not answer».

@@ -4,7 +4,12 @@ import HelmUI
 import HelmRuntime
 import Module_Uninstaller_Engine
 
-extension InstalledApp: Identifiable { public var id: String { bundleID } }
+/// The copy on disk, not the bundle id — the same identity `UninstallGroup.id`
+/// carries, and for the same reason one step earlier: `WorkspaceAppLister` reads
+/// four folders and deduplicates by *path* precisely because a Setapp copy and a
+/// direct download share an id, and a `ForEach` given one identity for two rows
+/// is what SwiftUI answers with «undefined results».
+extension InstalledApp: Identifiable { public var id: String { path } }
 
 /// Two steps, AppCleaner-style: tick the apps to remove, then review the files
 /// found for each of them before anything goes to the Trash. A running app is

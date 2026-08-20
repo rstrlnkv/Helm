@@ -5,7 +5,13 @@ import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
-extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID } }
+/// Where the copy sits in the Trash, not the bundle id. Delete, reinstall,
+/// delete again and the Finder keeps both — «Tool.app» and «Tool 2.app», one
+/// `Info.plist` and one id between them — and the sweep really does offer both.
+/// A card that is in `groups` but not on screen still contributes its paths to
+/// what Move to Trash sends, and «what one press sends has to be exactly what
+/// was listed above it» is this window's own promise.
+extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } }
 
 /// The one door the host uses. `HelmApp` depends on the UI targets only — a
 /// direct edge to an engine would be "a door past the transport into an engine's
@@ -67,6 +73,21 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     @Published private(set) var outcome: String?
     @Published private(set) var removedCount = 0
     @Published private(set) var replyLost = false
+    /// The apps on screen this window has **not** been able to answer for: macOS
+    /// refused their files, or the batch came back with nothing at all.
+    ///
+    /// `TrashOfferPlan.answered` refuses to file them and `removeSelection`
+    /// refuses to file anything after a lost reply — and the close undid both,
+    /// because it declines every group on screen and after either of those the
+    /// only control left in the footer is Done. `trashOfferDismissed` is final
+    /// for as long as the app sits in the Trash, over files that are on no other
+    /// screen Helm has, so the window standing open is the whole of what those
+    /// two rules buy: the way out has to know which apps it may not answer for.
+    ///
+    /// Bundle ids, where the cards are identified by path: two copies of one app
+    /// in the Trash are two cards and **one** record, because
+    /// `dismissTrashedApp` is keyed by the id and cannot tell them apart either.
+    private var unresolved: Set<String> = []
 
     init(vm: ModuleViewModel) {
         client = TransportClient(vm.transport)
@@ -134,6 +155,13 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// Returns true when the window has said everything it has to say and may
     /// close.
     func removeSelection() async -> Bool {
+        // The model refuses a second run itself rather than trusting the footer
+        // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
+        // and what a second press costs here is not a second deletion — the
+        // files are already in the Trash — but a wrong report about the first.
+        // The second round finds every path gone, comes back with a refusal
+        // apiece, and overwrites the report of the removal that worked.
+        guard !busy else { return false }
         // Fixed before the work starts: an app that lands in the Trash while this
         // is running was never on screen, and answering a question on somebody's
         // behalf is exactly what the record must not do.
@@ -141,17 +169,24 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         let paths = TrashOfferPlan.paths(groups, selected: selected)
         guard !paths.isEmpty else { return true }
         busy = true
+        // Down after the record is written and the report is built, not on the
+        // line the reply arrives: `refresh()` skips itself while a removal is in
+        // flight, and a flag lowered mid-operation opens that door over a Trash
+        // the batch is still changing.
+        defer { busy = false }
         HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: trashing \(paths.count) path(s)")
         // No app bundle is ever in this batch — the one the person dragged to the
         // Trash is deliberately not offered — so there is nothing here to quit.
         let result = await client.request(UninstallerCommand.trashPaths,
                                           encoding: TrashBatchRequest(paths: paths),
                                           as: UninstallResult.self)
-        busy = false
         // Only the apps this actually answered for. A refusal from macOS is not
         // the person's "no", and the record is final for as long as the app sits
-        // in the Trash — see `TrashOfferPlan.answered`.
-        await answered(TrashOfferPlan.answered(answering, to: result))
+        // in the Trash — see `TrashOfferPlan.answered`. The rest are held back
+        // from the close as well, which is where they used to be filed anyway.
+        let settled = TrashOfferPlan.answered(answering, to: result)
+        unresolved.formUnion(Set(answering.map(\.bundleID)).subtracting(settled.map(\.bundleID)))
+        await answered(settled)
         // **A reply that never came is not "nothing failed".** Folded that way,
         // every group on screen was written to `trashOfferDismissed` — a record
         // that is final for as long as the app sits in the Trash — and the window
@@ -174,6 +209,16 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
                             "trash offer: \(result.trashed.count) moved, "
                             + "\(Bytes(result.freedBytes)), "
                             + "\(leftUnticked) left by choice, \(result.failed.count) refused")
+        // The engine held the batch: an application in it was up and nothing
+        // moved at all. No app bundle is ever offered here, so this window
+        // cannot produce that state on its own — which is exactly why it must
+        // not be read as "nothing failed". The list stays, the offer stands, and
+        // nothing was recorded above.
+        guard result.stillRunning.isEmpty else {
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "trash offer: the batch was held, nothing moved")
+            return false
+        }
         guard !result.failures.isEmpty else { return true }
         failures = result.failures
         removedCount = result.trashed.count
@@ -189,8 +234,14 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// Takes the groups it answers for, rather than reading `groups`: by the time
     /// this runs the list may have grown, and an app nobody has seen yet has not
     /// been declined by anybody.
+    ///
+    /// Called with nothing — which is how the close calls it — it declines every
+    /// app on screen **except** the ones this window was not able to answer for.
+    /// A refusal from macOS is not a "no" one click later either: the person can
+    /// grant Full Disk Access, unlock the file, quit whatever was holding it, and
+    /// the offer has to still be there when they do.
     func answered(_ answering: [TrashedAppLeftovers]? = nil) async {
-        for group in answering ?? groups {
+        for group in answering ?? groups.filter({ !unresolved.contains($0.bundleID) }) {
             await client.send(UninstallerCommand.dismissTrashedApp, payload: Data(group.bundleID.utf8))
         }
     }
@@ -256,18 +307,8 @@ struct TrashedLeftoversView: View {
     /// and the lost reply has no `outcome` string to key off — it is the state
     /// where there is nothing to build a sentence out of.
     private var removalReport: HelmRemovalOutcome? {
-        // Ahead of the outcome, which is nil in this state.
-        if model.replyLost { return .unanswered }
-        guard let outcome = model.outcome else { return nil }
-        return HelmRemovalOutcome(succeededText: outcome,
-                                  removed: model.removedCount,
-                                  failures: model.failures.map {
-                                      HelmRemovalFailure(path: $0.path,
-                                                         reason: UnStr.failureReason($0.reason))
-                                  },
-                                  needsFullDiskAccess: model.failures.contains {
-                                      $0.reason == .needsFullDiskAccess
-                                  })
+        .uninstaller(model.outcome, removed: model.removedCount,
+                     failures: model.failures, replyLost: model.replyLost)
     }
 
     /// The standing line, and it is the honest cost of offering now rather than

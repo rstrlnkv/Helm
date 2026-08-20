@@ -63,6 +63,17 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     private var running: Set<String>
     /// Apps that ignore a quit request, so the deadline path has a subject.
     private let stubborn: Set<String>
+    /// Quitting the key brings the value back up.
+    ///
+    /// `launch` alone can only say "the app is up again" at a moment the test
+    /// picks by hand, which is no moment at all once the subject is *inside* a
+    /// batch — the engine quits every application in turn and waits for each,
+    /// and what a test needs is a relaunch landing in that window. This is the
+    /// ordinary way one arrives: a helper or a login item that restarts its own
+    /// app when it is killed, `open -a` from a script, the person double
+    /// clicking. Deterministic where a `sleep` racing a five-second deadline
+    /// is not.
+    private let relaunching: [String: String]
     /// Records (bundleID, force) so tests can assert how an app was quit.
     private(set) var quits: [(String, Bool)] = []
 
@@ -74,10 +85,12 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     /// whole subject.
     private let quitAfter: TimeInterval
 
-    init(running: [String], stubborn: [String] = [], quitAfter: TimeInterval = 0) {
+    init(running: [String], stubborn: [String] = [], quitAfter: TimeInterval = 0,
+         relaunching: [String: String] = [:]) {
         self.running = Set(running)
         self.stubborn = Set(stubborn)
         self.quitAfter = quitAfter
+        self.relaunching = relaunching
     }
 
     func isRunning(bundleID: String) -> Bool {
@@ -98,6 +111,9 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
         let willGo = !stubborn.contains(bundleID)
         let delay = quitAfter
         if willGo, delay == 0 { running.remove(bundleID) }
+        // Whatever this quit starts, it starts whether or not the app being
+        // asked goes anywhere itself.
+        if let other = relaunching[bundleID] { running.insert(other) }
         lock.unlock()
         guard willGo, delay > 0 else { return }
         DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [self] in
