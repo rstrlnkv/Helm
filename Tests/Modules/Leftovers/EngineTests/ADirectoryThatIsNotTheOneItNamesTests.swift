@@ -27,6 +27,16 @@ import XCTest
 /// The two tests below are the two halves of the same escape, and the second is the
 /// reason the fix is not `isSymbolicLinkKey`: a link at `~/Library` redirects
 /// `~/Library/QuickLook` without `~/Library/QuickLook` being a link.
+///
+/// **What «not scanned» is asserted over.** These two read `items == []` until the
+/// refusal grew a voice: a source the scan will not walk now comes back as one row
+/// standing for the *folder* — `ItemStatus.sourceRedirected`, unjudged, offering
+/// nothing — because a refusal that reached only the log left the page drawing «No
+/// leftovers found» under a green check over a folder nobody opened
+/// (`ASourceNobodyWalkedIsNotACleanMacTests`). So what is asserted is the thing
+/// this file is about, and it is the stronger reading of the two: **nothing from
+/// behind the link is in the list**, and what is there says the folder went
+/// unread rather than standing in for a file.
 final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -50,7 +60,7 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
     func testASourceThatIsALinkIsNotScanned() {
         let items = scan(filesWithARedirectedPlugInFolder())
 
-        XCTAssertEqual(items, [], """
+        XCTAssertEqual(items.filter { !$0.status.isSource }, [], """
             the scan followed `~/Library/QuickLook` to \
             `~/Library/Containers/com.victim.app/Data` and came back with \
             \(items.map { "\($0.path) status=\($0.status.rawValue) removable=\($0.removable)" }) — \
@@ -59,6 +69,11 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
             directory that is a link is not the directory it names, and a scan source cannot be \
             taken on the strength of its spelling.
             """)
+        // The one row that is allowed is the folder saying it went unread, and it
+        // stands for the source as it is spelled — never for what the link leads to.
+        XCTAssertEqual(items.map(\.path), ["/Users/x/Library/QuickLook"])
+        XCTAssertEqual(items.map(\.status), [.sourceRedirected])
+        XCTAssertFalse(items.contains { $0.removable || $0.canToggle || $0.writable })
     }
 
     /// And the same escape one component up, which is why the question is about the
@@ -70,12 +85,17 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
 
         let items = scan(files)
 
-        XCTAssertEqual(items, [], """
+        XCTAssertEqual(items.filter { !$0.status.isSource }, [], """
             `~/Library` is the link and `~/Library/Preferences` is an ordinary directory name \
             under it, so a check on the source's own last component says nothing — and the scan \
             listed \(items.map(\.path)) from /Volumes/Elsewhere. This is the ancestor case \
             `PathCanonical` exists for, one layer above the removal gate.
             """)
+        // Six of the seven sources are under the redirected `~/Library`, and each
+        // says so on its own row: nothing here is a file, and every one of them is
+        // counted as unchecked rather than as a Mac with nothing left over.
+        XCTAssertEqual(items.count { $0.status == .sourceRedirected }, 6)
+        XCTAssertFalse(items.contains(where: \.status.judged))
     }
 
     /// **The control, without which both assertions above hold for a scanner that
@@ -105,8 +125,15 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
                        "Program": "/Applications/Gone.app/Contents/MacOS/agent"])
 
         let items = scan(files)
+        let judged = items.filter { !$0.status.isSource }
 
-        XCTAssertEqual(items.map(\.path), ["/Users/x/Library/LaunchAgents/com.gone.vendor.agent.plist"])
-        XCTAssertEqual(try XCTUnwrap(items.first).status, .orphaned)
+        XCTAssertEqual(judged.map(\.path),
+                       ["/Users/x/Library/LaunchAgents/com.gone.vendor.agent.plist"])
+        XCTAssertEqual(try XCTUnwrap(judged.first).status, .orphaned)
+        // And the redirected folder is still reported, in the row that says the
+        // scan did not read it — «the rest was scanned» must not become «the one
+        // that was not went quiet».
+        XCTAssertEqual(items.filter { $0.status.isSource }.map(\.path),
+                       ["/Users/x/Library/QuickLook"])
     }
 }

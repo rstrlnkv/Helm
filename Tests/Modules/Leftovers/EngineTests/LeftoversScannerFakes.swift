@@ -36,6 +36,12 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     /// and without it «the read was refused» was a state no fixture could hold —
     /// which is `ARefusedReadIsNotAMissingProgramTests`.
     var unreadable: Set<String> = []
+    /// Directories that will not open at all: `contents` answers `.refused` for
+    /// these, which is the port's third answer and the one `[]` used to swallow.
+    /// Without it «Helm could not read this folder» was a state no fixture could
+    /// hold, and a scan that never opened a source looked exactly like a clean Mac
+    /// (`ASourceNobodyWalkedIsNotACleanMacTests`).
+    var unopenable: Set<String> = []
     var plists: [String: PlistData] = [:]
 
     /// **A path that leads somewhere other than where it is spelled.** One entry
@@ -51,11 +57,13 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     var redirects: [String: String] = [:]
 
     func isWritableDirectory(_ url: URL) -> Bool { !unwritable.contains(url.path) }
-    func children(of url: URL) -> [URL] {
+    func contents(of url: URL) -> DirectoryListing.Contents {
+        let real = resolve(url.path)
+        guard !unopenable.contains(real) else { return .refused }
         // The child keeps the spelling it was asked for, exactly as
         // `DirectoryListing.children` builds it out of the URL handed in — that
         // false spelling is the whole of the finding.
-        (listing[resolve(url.path)] ?? []).map { url.appendingPathComponent($0) }
+        return .listed((listing[real] ?? []).map { url.appendingPathComponent($0) })
     }
     func exists(_ path: String) -> Bool? {
         let real = resolve(path)

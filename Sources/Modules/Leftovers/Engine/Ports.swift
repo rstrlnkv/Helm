@@ -43,7 +43,17 @@ public protocol LeftoversFilePort: Sendable {
     /// component, so the children built from it are honest by construction and need
     /// no second resolution of their own.
     func resolvingSymlinks(_ url: URL) -> URL
-    func children(of url: URL) -> [URL]
+    /// What a source directory holds — and whether it opened at all.
+    ///
+    /// **It answered `[URL]`, and the empty array meant two things.** A folder that
+    /// is not there and a folder this process may not read both came back with
+    /// nothing in them, and the scan has no way to tell one from the other: the
+    /// second is a permission drawn as a fact about somebody's Mac, and the page
+    /// over it says «No leftovers found» about a folder nobody opened. The same
+    /// fold `exists` was taken apart for below, one declaration further down, and
+    /// the same repair — `DirectoryListing.Contents.refused` is the third answer,
+    /// and a fake of this port can hold it because the port can.
+    func contents(of url: URL) -> DirectoryListing.Contents
     /// Whether something is at this path — and `nil` when this process cannot tell.
     ///
     /// **It answered `Bool`, and `false` meant two things.**
@@ -63,6 +73,17 @@ public protocol LeftoversFilePort: Sendable {
     func exists(_ path: String) -> Bool?
     func size(_ url: URL) -> Int
     func readPlist(_ url: URL) -> PlistData?
+}
+
+public extension LeftoversFilePort {
+    /// What is in the directory, for a caller that walks what it finds and draws
+    /// no conclusion from an empty answer — every reader of a *source* draws one,
+    /// so every reader of a source asks `contents(of:)`.
+    ///
+    /// Written once here rather than in each conformance, so «the entries» and
+    /// «did it open» cannot come apart in a fake the way they came apart in the
+    /// port.
+    func children(of url: URL) -> [URL] { contents(of: url).entries }
 }
 
 /// Installed apps and their bundle ids — the yardstick for "is anyone still

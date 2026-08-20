@@ -43,6 +43,11 @@ public enum LeftoverActions {
     /// same family of reason, one argument the other way round: it took a
     /// `status` and never read it.
     public static func available(for item: StaleItem) -> Set<LeftoverAction> {
+        // **A source row is a folder the scan did not read, not a file it found.**
+        // Nothing below is true of one: there is no file to move, no label to
+        // switch and no owner to judge. Looking at it is the one thing left, and
+        // it is what a person told «Helm did not read this folder» wants to do.
+        if item.status.isSource { return [.reveal] }
         if item.kind == .systemExtension { return [.systemSettings] }
         if item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem {
             return [.reveal]
@@ -57,7 +62,14 @@ public enum LeftoverActions {
         // omits `Label` and an invention for one whose contents never came — and
         // disabling an invented label writes an entry the next scan reads back as
         // «Disabled».
+        // **And a label two files claim is one switch, not two.** Both copies of
+        // `com.vendor.updater` pass `mayBeSwitched` — each sits in a LaunchAgents
+        // folder and each is named after its label — so the page drew «Turn off»
+        // twice for one `launchctl disable`, on rows badged «Leftover» and «In
+        // use». `LaunchClaims` says why neither may carry it, and the row names
+        // the other file instead.
         if item.kind == .launchAgent, item.status != .unreadable,
+           item.labelAlsoClaimedBy == nil,
            LaunchLabel.mayBeSwitched(label: item.identifier, path: item.path) {
             actions.insert(.turnOff)
         }
@@ -78,6 +90,15 @@ public enum LeftoverActions {
     /// cannot come to disagree about which rows have a button — the disagreement
     /// `StaleItem.removable` records paying for once already.
     public static func whyDeleteIsWithheld(from item: StaleItem) -> NoDelete? {
+        // **A source row has no answer here, because it is not a file.** Neither
+        // sentence is true of a folder the scan did not read: no administrator can
+        // help, and macOS is not protecting it. Nil is «no sentence», and the page
+        // draws neither the button nor a reason for such a row
+        // (`LeftoversSettingsPage.controls`). The invariant the other rows keep —
+        // a reason exactly where the button is not — is a rule about rows that
+        // stand for files, and that is what `WhyDeleteIsWithheldTests` reads it
+        // over.
+        guard !item.status.isSource else { return nil }
         guard !available(for: item).contains(.delete) else { return nil }
         // A system extension is not a file: macOS removes it with the app that
         // installed it and SIP refuses everyone else. The row draws the button
@@ -126,6 +147,12 @@ public enum LeftoverActions {
         // claim the reading that failed, and «could not read this file» would
         // blame the file.
         case .undetermined: return .cannotBeChecked
+        // Never reached — `available` withholds every act from a source row, and
+        // no dialog is drawn for one. It answers rather than returning nil for the
+        // reason `.protectedItem` does: nil here says «delete this without
+        // asking», and «Helm could not check whether anything still uses it» is
+        // the plain truth about a folder it never opened.
+        case .sourceRedirected, .sourceUnreadable: return .cannotBeChecked
         }
     }
 }

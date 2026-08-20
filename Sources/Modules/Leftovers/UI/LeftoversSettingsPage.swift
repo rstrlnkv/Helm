@@ -437,8 +437,15 @@ struct LeftoversSettingsPage: View {
             Button(LfStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 .controlSize(.small)
         } else {
-            Text(Bytes(item.sizeBytes))
-                .helmFigure().foregroundStyle(HelmText.quiet)
+            // **A folder has no size to report** — it holds whatever it holds,
+            // which is the point of the row. The rest falls away on its own:
+            // `LeftoverActions.available` gives a source row no switch, no pane,
+            // no delete and no reason for one, so the menu that is left is the
+            // way to go and look at the folder.
+            if !item.status.isSource {
+                Text(Bytes(item.sizeBytes))
+                    .helmFigure().foregroundStyle(HelmText.quiet)
+            }
             Menu {
                 Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                 if item.actions.contains(.delete) {
@@ -517,8 +524,13 @@ struct LeftoversSettingsPage: View {
         // nobody may tick already wear.
         case .unreadable: (LfStr.statusUnreadable, .secondary)
         // Grey for the reason above: what separates a colour here is «ticked by
-        // Select all» from «never ticked», and this is one of the never-ticked.
-        case .undetermined: (LfStr.statusUndetermined, .secondary)
+        // Select all» from «never ticked», and these are the never-ticked. **One
+        // word for the three of them on purpose**: all three are counted in the
+        // «Helm could not check N items» the empty screen draws, and a second
+        // word would have the badge and that sentence disagree. Which kind of
+        // unchecked a row is, is the sentence under its name.
+        case .undetermined, .sourceRedirected, .sourceUnreadable:
+            (LfStr.statusUndetermined, .secondary)
         }
         return HelmBadge(text, tint: color)
     }

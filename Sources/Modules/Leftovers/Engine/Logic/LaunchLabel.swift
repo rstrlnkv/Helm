@@ -50,7 +50,7 @@ enum LaunchLabel {
     static func mayBeSwitched(label: String, path: String) -> Bool {
         isSwitchable(label)
             && (path as NSString).deletingLastPathComponent
-                .hasSuffix("/Library/LaunchAgents")
+                .hasSuffix("/" + LaunchClaims.agentFolder)
             && label == LaunchAgentReader.labelFromFileName(path)
     }
 

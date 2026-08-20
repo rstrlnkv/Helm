@@ -40,6 +40,44 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// be folding two questions into one is the rule being followed: a reason that
     /// needs telling apart gets named, not read out of a shared one.
     case undetermined
+    /// The row is not an item at all: it is one of the scan's seven **source**
+    /// directories, which was not the directory it names, so the scan refused to
+    /// walk it (`LeftoversScanner.isItsOwnPlace`).
+    ///
+    /// **A refusal that reaches only the log is a green tick over a folder nobody
+    /// opened.** The refusal is right — a link at `~/Library/QuickLook` moves the
+    /// whole enumeration somewhere else, under Helm's Full Disk Access — and it
+    /// used to leave nothing behind: the rows were *missing* rather than unjudged,
+    /// `uncheckedCount` was zero, and the page drew «No leftovers found» under a
+    /// green check over a source it had never read. One of the seven is enough,
+    /// because it is the filtered list that has to be empty for that message and
+    /// not the scan.
+    case sourceRedirected
+    /// The same hole with no link in it: a source directory this process could not
+    /// open — a mode, an ACL, a folder belonging to somebody else, or a TCC grant
+    /// Helm does not have (`LeftoversFilePort.contents` → `.refused`).
+    ///
+    /// Its own case rather than `sourceRedirected`, because the two ask different
+    /// things of the person: one folder is somewhere else and worth looking at, the
+    /// other needs a permission. It is the split `.unreadable` and `.undetermined`
+    /// already are, one layer up — a whole source instead of one file.
+    case sourceUnreadable
+
+    /// Whether this row stands for a *source* of the scan rather than for
+    /// something found in one.
+    ///
+    /// A folder is not a file Helm may move, switch off or tick: everything the
+    /// rules answer about an item — delete, «Turn off», the reason a delete is
+    /// withheld — is about a file, and these rows have none.
+    /// `LeftoverActions.available` asks this first for that reason.
+    ///
+    /// Exhaustive on purpose, like `judged` below.
+    public var isSource: Bool {
+        switch self {
+        case .sourceRedirected, .sourceUnreadable: true
+        case .orphaned, .inUse, .protectedItem, .unreadable, .undetermined: false
+        }
+    }
 
     /// Whether this status is a verdict about the item at all.
     ///
@@ -49,13 +87,15 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// somebody's Mac — was drawn under a green check over items nobody had
     /// judged. `LeftoversEmpty.reason` counts the unjudged ones through this.
     ///
-    /// Exhaustive on purpose: a sixth status has to be placed on one side of this
+    /// Exhaustive on purpose: a further status has to be placed on one side of this
     /// line by whoever adds it, and a `default` here is how one would come to be
-    /// counted as a verdict it never reached.
+    /// counted as a verdict it never reached. The two source statuses are the
+    /// unjudged side by construction — a folder nobody read is every verdict it
+    /// would have held, missing.
     public var judged: Bool {
         switch self {
         case .orphaned, .inUse, .protectedItem: true
-        case .unreadable, .undetermined: false
+        case .unreadable, .undetermined, .sourceRedirected, .sourceUnreadable: false
         }
     }
 }
@@ -75,6 +115,26 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public let disabled: Bool
     /// Whether Helm can move this file without an admin password.
     public let writable: Bool
+    /// Where a **source** row's directory actually leads, when it is not the
+    /// directory it names. Nil on every other row.
+    ///
+    /// The row's own `path` is the folder as the scan is compiled with it — the
+    /// spelling the person recognises — and this is what a link in it points at,
+    /// which is the fact that tells them whether it is theirs.
+    public let leadsTo: String?
+    /// Another file in the same scan that registers this row's launchd label —
+    /// nil when no other does.
+    ///
+    /// **launchd's switch is aimed at a label, and a label is not a file.**
+    /// `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
+    /// `/Library/LaunchAgents` on plenty of Macs, and both load into `gui/<uid>`:
+    /// two rows, one of them badged «Leftover» and the other «In use», and one
+    /// `launchctl disable gui/<uid>/com.vendor.updater` between them. Helm cannot
+    /// say which of the two registrations launchd kept — that would need a
+    /// `launchctl print` this app does not have — so neither row offers the switch
+    /// (`LeftoverActions.available`), and each names the other so the person can
+    /// see what the two rows are.
+    public private(set) var labelAlsoClaimedBy: String?
 
     /// What the checkbox offers: clearing leftovers in bulk. Anything in use
     /// is deleted one at a time, through the row's own menu, so a careless
@@ -94,7 +154,8 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
                 missingTarget: String? = nil, runAtLoad: Bool = false,
                 status: ItemStatus = .orphaned, disabled: Bool = false,
-                writable: Bool = true) {
+                writable: Bool = true, leadsTo: String? = nil,
+                labelAlsoClaimedBy: String? = nil) {
         self.path = path
         self.identifier = identifier
         self.kind = kind
@@ -104,6 +165,20 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
         self.status = status
         self.disabled = disabled
         self.writable = writable
+        self.leadsTo = leadsTo
+        self.labelAlsoClaimedBy = labelAlsoClaimedBy
+    }
+
+    /// The same row, told which other file in this scan registers its label.
+    ///
+    /// The claim is a fact about the *pair*, and the pair is only known once every
+    /// launch item has been read — so it is written here rather than passed to the
+    /// initialiser, which is what the one caller
+    /// (`LeftoversScanner.namingRivalClaims`) has in hand at that point.
+    func claiming(alsoRegisteredBy path: String) -> StaleItem {
+        var claimed = self
+        claimed.labelAlsoClaimedBy = path
+        return claimed
     }
 
     /// The one call into `LeftoverActions`, and the answer `removable` and

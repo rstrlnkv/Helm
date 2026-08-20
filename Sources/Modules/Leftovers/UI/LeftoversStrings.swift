@@ -307,12 +307,78 @@ enum LfStr {
         // Written as the one difference rather than as eight rows of which seven
         // are identical: only Japanese changes the mark.
         let dot = language == .ja ? "・" : " · "
-        guard let target = item.missingTarget else {
-            return Detail(path: item.path, clause: nil, separator: dot)
-        }
-        return Detail(path: item.path,
-                      clause: missingTarget(target, language: language),
+        return Detail(path: item.path, clause: clause(for: item, language: language),
                       separator: dot)
+    }
+
+    /// What is wrong with this row, in one clause — or nothing, for a row whose
+    /// badge is the whole story.
+    ///
+    /// **One clause, and the order is what a person can do about it.** A leftover
+    /// whose label another file registers carries two facts at once: that it points
+    /// at a missing file, which is why it is badged «Leftover» — a mark already on
+    /// screen — and that another file wears its name, which is why the row has no
+    /// «Turn off». The second explains a control that is *not* there, and a missing
+    /// control with no reason is what this sentence exists to prevent.
+    ///
+    /// Exhaustive over the status for the reason `kindName` records: a source row's
+    /// sentence is the only thing on its row, and a `default` is how one would come
+    /// to be drawn with the wrong one or with none.
+    private static func clause(for item: StaleItem, language: AppLanguage) -> String? {
+        switch item.status {
+        case .sourceRedirected: return item.leadsTo.map { sourceLeadsElsewhere($0, language: language) }
+        case .sourceUnreadable: return folderUnreadable(language: language)
+        case .orphaned, .inUse, .protectedItem, .unreadable, .undetermined:
+            if let other = item.labelAlsoClaimedBy {
+                return labelClaimedTwice(other, language: language)
+            }
+            return item.missingTarget.map { missingTarget($0, language: language) }
+        }
+    }
+
+    /// A source of the scan that leads somewhere else, and where it leads.
+    ///
+    /// The destination rather than the folder: the row already draws the folder as
+    /// its name and its path, and what a person cannot see anywhere else is where
+    /// the link actually goes — which is what tells them whether it is theirs.
+    static func sourceLeadsElsewhere(_ destination: String,
+                                     language: AppLanguage = AppLanguage.current) -> String {
+        L("Helm did not read this folder: it is a link to \(destination)",
+          [.ru: "Helm не прочитал эту папку: это ссылка на \(destination)",
+           .es: "Helm no leyó esta carpeta: es un enlace a \(destination)",
+           .fr: "Helm n’a pas lu ce dossier\u{00A0}: c’est un lien vers \(destination)",
+           .de: "Helm hat diesen Ordner nicht gelesen: Er ist eine Verknüpfung zu \(destination)",
+           .ja: "Helm はこのフォルダを読み取っていません：\(destination) へのリンクです",
+           .zh: "Helm 未读取此文件夹：它是指向 \(destination) 的链接",
+           .pt: "O Helm não leu esta pasta: é um link para \(destination)"],
+          language: language)
+    }
+
+    /// A source of the scan this process could not open. **Autopilot's key, not a
+    /// second one saying the same thing**: it is the same sentence about the same
+    /// fact, and one English key means one thing.
+    static func folderUnreadable(language: AppLanguage = AppLanguage.current) -> String {
+        L("Helm cannot read this folder", language: language)
+    }
+
+    /// The other file that registers this row's login item.
+    ///
+    /// **It names the file rather than counting the files**, because the question
+    /// the row leaves a person with is «then which one am I looking at» — and the
+    /// pair point at each other, so either row answers it. The clause is why there
+    /// is no «Turn off» here: the switch is aimed at the name, two files carry the
+    /// name, and Helm cannot read which registration launchd kept.
+    static func labelClaimedTwice(_ other: String,
+                                  language: AppLanguage = AppLanguage.current) -> String {
+        L("Another file claims this login item: \(other)",
+          [.ru: "Этот же элемент входа заявляет другой файл: \(other)",
+           .es: "Otro archivo reclama este elemento de inicio: \(other)",
+           .fr: "Un autre fichier revendique cet élément d’ouverture\u{00A0}: \(other)",
+           .de: "Eine andere Datei beansprucht dieses Anmeldeobjekt: \(other)",
+           .ja: "別のファイルが同じログイン項目を宣言しています：\(other)",
+           .zh: "另一个文件也声明了此登录项：\(other)",
+           .pt: "Outro arquivo reivindica este item de início: \(other)"],
+          language: language)
     }
     static func missingTarget(_ path: String,
                               language: AppLanguage = AppLanguage.current) -> String {

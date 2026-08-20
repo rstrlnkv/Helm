@@ -10,7 +10,9 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 
     public func resolvingSymlinks(_ url: URL) -> URL { url.resolvingSymlinksInPath() }
 
-    public func children(of url: URL) -> [URL] { DirectoryListing.children(of: url) }
+    public func contents(of url: URL) -> DirectoryListing.Contents {
+        DirectoryListing.contents(of: url)
+    }
 
     /// `stat`, not `FileManager.fileExists`, because the errno is the answer.
     ///

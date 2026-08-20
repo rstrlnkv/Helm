@@ -95,11 +95,15 @@ final class LeftoversWritableTests: XCTestCase {
     /// fixture the suite had.
     ///
     /// Three things have to be true of it at once, and only the third is about the
-    /// sort: the person's copy may be moved, root's may not — and both may still be
-    /// switched off, because launchd's disabled list is per-user and works on a
-    /// system-wide agent without a password. That last one is why the row offers
-    /// «Turn off» where it offers no delete, and it is the whole of what
-    /// `LeftoverActions` documents about the two.
+    /// sort: the person's copy may be moved, root's may not — and **neither may be
+    /// switched**, which is where this test used to say the opposite. Both files
+    /// register `com.vendor.updater`, `launchctl disable gui/<uid>/…` is aimed at
+    /// that name and not at either file, and Helm cannot read which registration
+    /// launchd kept — so the switch drawn on both rows was one switch drawn twice
+    /// (`OneLabelIsOneSwitchTests`). What that assertion was really about,
+    /// «launchd's disabled list is the user's own, so root's folder does not
+    /// withhold the switch», is a claim about a *system-wide agent* and is asserted
+    /// on one below, where no second file claims the label.
     func testTheSameLabelInBothFoldersIsTwoRowsWithDifferentOffers() throws {
         var files = LeftoversFakeFiles()
         for directory in ["/Users/x/Library/LaunchAgents", "/Library/LaunchAgents"] {
@@ -129,9 +133,35 @@ final class LeftoversWritableTests: XCTestCase {
         XCTAssertEqual(LeftoverActions.whyDeleteIsWithheld(from: everybodys), .needsAdministrator,
                        "and this is the row where that sentence is the true one")
 
-        XCTAssertTrue(mine.canToggle)
+        XCTAssertFalse(mine.canToggle)
+        XCTAssertFalse(everybodys.canToggle,
+                       "one label, two files, one `launchctl disable` — the row a person "
+                       + "presses would be the one whose badge they liked least")
+        XCTAssertEqual(mine.labelAlsoClaimedBy, everybodys.path,
+                       "and the row says which other file wears its name, or the switch is "
+                       + "simply missing")
+        XCTAssertEqual(everybodys.labelAlsoClaimedBy, mine.path)
+    }
+
+    /// The claim the pair above can no longer carry, on the row it is actually
+    /// about: an agent installed for everybody, in a folder Helm may not write in,
+    /// with nobody else claiming its label. launchd's disabled list is the user's
+    /// own, so this one is switchable without a password — the one offer this row
+    /// keeps, and the reason `LeftoverActions` withholds delete and not the switch.
+    func testASystemWideAgentNobodyElseClaimsIsStillSwitchable() throws {
+        var files = LeftoversFakeFiles()
+        files.listing["/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
+        files.plists["/Library/LaunchAgents/com.vendor.updater.plist"] =
+            PlistData(["Label": "com.vendor.updater",
+                       "Program": "/Library/Application Support/Vendor/updater"])
+        files.unwritable = ["/Library/LaunchAgents"]
+
+        let everybodys = try XCTUnwrap(scan(files).first)
+
+        XCTAssertNil(everybodys.labelAlsoClaimedBy, "precondition: one file wears this label")
+        XCTAssertFalse(everybodys.writable)
         XCTAssertTrue(everybodys.canToggle,
                       "launchd's disabled list is the user's own, so a system-wide agent can be "
-                      + "switched off without a password — the one offer this row keeps")
+                      + "switched off without a password")
     }
 }
