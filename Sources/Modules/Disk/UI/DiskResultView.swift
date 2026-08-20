@@ -1,5 +1,4 @@
 import SwiftUI
-import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
@@ -561,7 +560,7 @@ private struct AdviceList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(DkStr.advice)
-                .font(.headline)
+                .font(HelmText.sectionHeading)
                 .padding(.horizontal, HelmSpace.s5).padding(.top, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
             Divider()
             ScrollView {

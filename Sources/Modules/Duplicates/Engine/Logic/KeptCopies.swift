@@ -23,7 +23,7 @@ import Foundation
 /// Nothing here reads a disk. It is arithmetic over the batch, so a contradiction
 /// is refused before the verification spends minutes reading the pair it is
 /// about (ARCHITECTURE.md § Duplicates).
-public enum KeptCopies {
+enum KeptCopies {
 
     /// The plans that may be acted on, and the copies refused for contradicting
     /// them.
@@ -43,7 +43,7 @@ public enum KeptCopies {
     /// - it keeps a copy an earlier plan is removing, which is the same promise
     ///   broken from the other side: the survivor this plan is measured against
     ///   is on its way to the Trash.
-    public static func partition(_ plans: [DuplicatePlan])
+    static func partition(_ plans: [DuplicatePlan])
     -> (honoured: [DuplicatePlan], contradicted: [String]) {
         var going: Set<String> = []
         var staying: Set<String> = []

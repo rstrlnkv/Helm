@@ -1,5 +1,4 @@
 import Foundation
-import HelmRuntime
 
 public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder, with
