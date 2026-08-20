@@ -429,6 +429,30 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   in the panel would be a macOS password dialog raised from the menu bar, and a
   password dialog needs a gesture that asked for it.
 
+### Changed
+- **A glyph that changes is a morph now, not a cut.** Five places drew one
+  symbol or another and changed between them with nothing on the wire: the
+  panel's edit corner (`pencil` ↔ `checkmark`), a disk row's basket button
+  (`plus.circle` ↔ `checkmark.circle.fill`), «Keep this copy»
+  (`circle` ↔ `circle.fill`), the two permission marks in Settings, and the
+  setting row's clock — the last of which had a plain replacement and now
+  has Magic Replace. `helmSymbolSwap` is the one way it is done, and it carries
+  the two halves a hand-written `.contentTransition` kept missing: the
+  transaction, without which the transition is a decoration that never fires
+  (`RuleEditor.swift` had already measured that on a rolling digit), and Reduce
+  Motion, which SwiftUI does not honour for symbol effects any more than it does
+  for `.symbolEffect(.rotate)`.
+
+  **Measured off a screen recording rather than predicted.** 60 fps, read back
+  frame by frame: with the token the five pairs pass through 7 to 32 distinct
+  rendered states over 0.10–0.65 s. The same probe with the modifier removed
+  — which is what all five sites were doing before — arrives in **one**
+  step, with no intermediate frame at any of the sixty. The pair predicted to
+  share no layers and take the fallback, `pencil` and `checkmark`, was measured
+  morphing stroke into stroke instead: which pair gets Magic Replace and which
+  gets the slide is the token's business, not a judgement anybody makes by eye
+  at a call site.
+
 ### Fixed
 - **Three guards caught this work before it shipped, and each was right.**
   `Fix` had already been claimed by Layout's rule switch, where Russian spells

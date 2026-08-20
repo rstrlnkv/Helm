@@ -161,6 +161,17 @@ public enum HelmMotion {
     public static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
         requested && !reduceMotion
     }
+
+    /// Whether one glyph may morph into another.
+    ///
+    /// The same shape as `spins` and for the same reason: a decision made of
+    /// arguments can be asserted, a decision that reads `NSWorkspace` can only
+    /// be asserted about the machine it ran on. There is no `requested:` half
+    /// — a glyph that changes what it says always wants to be seen changing;
+    /// the only question is whether the person has asked for stillness.
+    public static func swaps(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
 }
 
 public extension View {
@@ -173,5 +184,32 @@ public extension View {
         symbolEffect(.rotate, options: .repeating,
                      isActive: HelmMotion.spins(requested: active,
                                                 reduceMotion: HelmMotion.reduceMotion))
+    }
+
+    /// The one way a glyph becomes a different glyph.
+    ///
+    /// `symbol` is the name the `Image` is drawing, and it is an argument
+    /// rather than something this modifier could read, because
+    /// `.contentTransition` needs a transaction to fire at all: a bare
+    /// `.contentTransition` is a decoration that draws one value where the
+    /// same view with an `.animation` beside it draws twelve (measured on a
+    /// rolling digit, `RuleEditor.swift`). So the modifier carries both halves
+    /// and there is no way to take one without the other.
+    ///
+    /// **Magic Replace, with a fallback that is not optional.** Layers the two
+    /// symbols share travel; the rest is replaced. Apple makes `fallback:`
+    /// part of the signature because a pair may share nothing — `pencil` and
+    /// `checkmark` do — and then the whole glyph slides up and away instead.
+    /// One token for both cases: the pair decides which it gets, not the
+    /// call site, so nobody has to judge two symbols by eye.
+    ///
+    /// Reduce Motion cuts twice over. `HelmMotion.interface` collapses to a
+    /// 0.01 s cut on its own, and the transition goes to `.identity` as well,
+    /// so the glyph changes without the layers being taken apart first.
+    func helmSymbolSwap(_ symbol: String) -> some View {
+        contentTransition(HelmMotion.swaps(reduceMotion: HelmMotion.reduceMotion)
+                          ? .symbolEffect(.replace.magic(fallback: .downUp))
+                          : .identity)
+            .animation(HelmMotion.interface, value: symbol)
     }
 }

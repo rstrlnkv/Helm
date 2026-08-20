@@ -376,16 +376,24 @@ private struct BasketButton: View {
     let toggle: () -> Void
 
     var body: some View {
-        Button(action: toggle) {
-            Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
+        // Named once: the `Image` draws it and the swap is told what it drew,
+        // and a pair spelled twice is a pair that can drift. It stays inside
+        // `body` and directly above the name below it, because
+        // `ResultViewAccessibilityTests` reads the ten lines after this one for
+        // the label and the trait — the scan is what stops this button being
+        // announced as «Add» on a row where pressing it removes.
+        let symbol = basketed ? "checkmark.circle.fill" : "plus.circle"
+        return Button(action: toggle) {
+            Image(systemName: symbol)
+                .helmSymbolSwap(symbol)
                 .foregroundStyle(basketed ? Color.accentColor : .secondary)
                 .opacity(removing ? 0.4 : 1)
         }
         .buttonStyle(.borderless)
-        .disabled(removing)
-        .help(DkStr.basketAction(name: name, basketed: basketed))
         .accessibilityLabel(DkStr.basketAction(name: name, basketed: basketed))
         .accessibilityAddTraits(basketed ? .isSelected : [])
+        .disabled(removing)
+        .help(DkStr.basketAction(name: name, basketed: basketed))
     }
 }
 

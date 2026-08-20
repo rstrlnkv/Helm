@@ -53,6 +53,11 @@ struct EditChrome: ViewModifier {
 
     private var open: Bool { hovering || focused }
 
+    /// Named once so the glyph and the swap cannot disagree about which symbol
+    /// is on screen — the pair shares nothing, so this is the one of the five
+    /// swaps that always takes Magic Replace's fallback.
+    private var chooseSymbol: String { choosing ? "checkmark" : "pencil" }
+
     func body(content: Content) -> some View {
         // **One branch, whatever the mode.** This used to be `if !active {
         // content } else { content.decorated }`, and the two branches are two
@@ -110,7 +115,8 @@ struct EditChrome: ViewModifier {
                         EmptyView()
                     } else if let choose {
                         Button(action: choose) {
-                            Image(systemName: choosing ? "checkmark" : "pencil")
+                            Image(systemName: chooseSymbol)
+                                .helmSymbolSwap(chooseSymbol)
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundStyle(choosing ? Color.white : HelmText.quiet)
                                 .padding(.horizontal, 6).padding(.vertical, 3)

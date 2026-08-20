@@ -234,9 +234,12 @@ private struct KeepThisCopyButton: View {
     let keep: () -> Void
     @State private var hovering = false
 
+    private var symbol: String { hovering ? "circle.fill" : "circle" }
+
     var body: some View {
         Button(action: keep) {
-            Image(systemName: hovering ? "circle.fill" : "circle")
+            Image(systemName: symbol)
+                .helmSymbolSwap(symbol)
                 .foregroundStyle(hovering ? HelmSignal.success : HelmText.quiet)
                 .contentShape(Circle())
         }
