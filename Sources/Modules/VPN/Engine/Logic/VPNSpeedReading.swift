@@ -17,12 +17,34 @@ public struct VPNSpeedReading: Codable, Equatable, Sendable {
     /// of zero, and nobody measured one at all.
     public let rpm: Int?
     public let at: Date
+    /// **How long the run that produced this took**, or nil when nobody timed
+    /// it.
+    ///
+    /// The page draws an arc against an expected length while a measurement is
+    /// in flight, and that length was a constant in a view: 22 s, measured on
+    /// one Mac, on one link, on one afternoon. The tool times itself
+    /// (`NetworkQualitySpeed.measure` runs inside `HelmActivity.phase`), so the
+    /// number the arc is drawn against can be a fact about *this* link — which
+    /// is what the reading already is.
+    ///
+    /// **Still not a stage.** The engine knows whether a run is in flight and
+    /// nothing else; this publishes a *length*, so the arc goes on claiming the
+    /// clock rather than the work (`HelmExpectedWait`).
+    ///
+    /// Optional, and that is what makes an older payload decode: Swift
+    /// synthesises `decodeIfPresent` for an `Optional` property, where a
+    /// non-optional with a stored default is still a required key and throws
+    /// away the whole document (CLAUDE.md § a `defaulted` property on a
+    /// `Codable` payload). Nil is also what a run of no measurable length
+    /// means, which is every reading a test's fixed clock produces.
+    public let took: TimeInterval?
 
-    public init(down: Int, up: Int, rpm: Int?, at: Date) {
+    public init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {
         self.down = down
         self.up = up
         self.rpm = rpm
         self.at = at
+        self.took = took
     }
 
     /// **Every field or nothing.** A run that was killed at its deadline prints
@@ -33,7 +55,8 @@ public struct VPNSpeedReading: Codable, Equatable, Sendable {
     /// because the tool's output cannot be trusted, and `Int(_: Double)` **traps**
     /// on a value outside `Int`'s range — refusing the document is the difference
     /// between a nil and the app going down on a line of JSON.
-    public static func parse(_ output: String, at: Date) -> VPNSpeedReading? {
+    public static func parse(_ output: String, at: Date,
+                             took: TimeInterval? = nil) -> VPNSpeedReading? {
         guard let data = output.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let down = json["dl_throughput"] as? Double,
@@ -50,7 +73,7 @@ public struct VPNSpeedReading: Codable, Equatable, Sendable {
             guard let value = whole(responsiveness) else { return nil }
             rpm = value
         }
-        return VPNSpeedReading(down: downMbit, up: upMbit, rpm: rpm, at: at)
+        return VPNSpeedReading(down: downMbit, up: upMbit, rpm: rpm, at: at, took: took)
     }
 
     /// A figure the tool printed as a whole number this app can hold, or nil for

@@ -117,6 +117,45 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
         XCTAssertNil(port.measure(onInterface: nil))
     }
 
+    /// **A reading carries how long it took to take.**
+    ///
+    /// The page draws an arc against an expected length while a measurement
+    /// runs, and that length was a constant in a view — 22 s, measured on one
+    /// Mac on one link on one afternoon. The tool already times itself here, so
+    /// the number the arc is drawn against can be a fact about *this* person's
+    /// link instead. Not a stage and not a fraction: the engine still knows only
+    /// whether a run is in flight (`VPNEngine.measuringSpeed`), and this is the
+    /// length of the last one.
+    func testAReadingCarriesHowLongItsRunTook() {
+        let clock = ClockBox([Date(timeIntervalSince1970: 10_000),
+                              Date(timeIntervalSince1970: 10_019)])
+        let port = NetworkQualitySpeed(now: clock.next, run: { _ in
+            HelmProcess.Result(status: 0, output:
+                #"{"dl_throughput": 212345678, "ul_throughput": 95123456}"#)
+        })
+        let reading = port.measure(onInterface: nil)
+        XCTAssertEqual(reading?.took, 19)
+        XCTAssertEqual(reading?.at, Date(timeIntervalSince1970: 10_019), """
+            the reading is stamped when the run began rather than when it             answered, so a twenty-second measurement is twenty seconds old the             moment it lands
+            """)
+    }
+
+    /// **A clock that does not move is not a run of no length.**
+    ///
+    /// Every other test in this file injects a `now` that answers the same
+    /// instant for ever, which is a run of exactly zero seconds — and an arc
+    /// drawn against zero is `HelmExpectedWait`'s own «no claim» case, reached
+    /// by arithmetic rather than by anybody deciding it. A length that is not
+    /// positive is no length.
+    func testARunWithNoLengthCarriesNone() {
+        let at = Date(timeIntervalSince1970: 10_000)
+        let port = NetworkQualitySpeed(now: { at }, run: { _ in
+            HelmProcess.Result(status: 0, output:
+                #"{"dl_throughput": 212345678, "ul_throughput": 95123456}"#)
+        })
+        XCTAssertNil(port.measure(onInterface: nil)?.took)
+    }
+
     /// The arguments the tool is actually given: machine-readable, and bound
     /// only when the caller named an interface.
     func testTheInterfaceIsOnTheCommandLineOnlyWhenThereIsOne() {
@@ -128,6 +167,28 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
         _ = port.measure(onInterface: nil)
         _ = port.measure(onInterface: "utun6")
         XCTAssertEqual(seen.all, [["-c"], ["-c", "-I", "utun6"]])
+    }
+}
+
+/// A clock handed out one reading at a time, so a test can say what the tool
+/// took: the port asks `now` twice and a constant closure makes every run
+/// instantaneous.
+private final class ClockBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var remaining: [Date]
+    private var last: Date
+
+    init(_ dates: [Date]) {
+        remaining = dates
+        last = dates.last ?? Date()
+    }
+
+    /// The next stamp, and the final one for ever after — a port that asked a
+    /// third time must get an answer rather than a crash.
+    func next() -> Date {
+        lock.lock(); defer { lock.unlock() }
+        guard !remaining.isEmpty else { return last }
+        return remaining.removeFirst()
     }
 }
 

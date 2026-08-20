@@ -159,7 +159,7 @@ public protocol VPNExitPort: AnyObject {
 
 /// One measurement of the link, bound to an interface when the caller knows it.
 public protocol VPNSpeedPort: AnyObject {
-    /// **This blocks its thread for about fifteen seconds, and up to sixty at
+    /// **This blocks its thread for `NetworkQualitySpeed.typicalRun`, and up to sixty at
     /// its deadline. Never call it on the module's serial queue.**
     ///
     /// Said at the protocol because the cost is not visible at the call site and

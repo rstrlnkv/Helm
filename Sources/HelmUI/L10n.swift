@@ -210,11 +210,49 @@ public func Count(_ value: Int, language: AppLanguage = AppLanguage.current) -> 
 /// held, which meant they kept the language the app started in after the user
 /// picked another one in Settings. Keyed by language, so both go away.
 public enum HelmDates {
+
+    /// **How long an age is spelled**, as two cases rather than as the system's
+    /// three.
+    ///
+    /// macOS writes «1 минуту назад», «1 мин. назад» and «-1 мин» for the same
+    /// moment, and the third is not an age at all: `.abbreviated` prints a
+    /// *signed delta* in Russian and French — measured on macOS 27, «-1 мин» and
+    /// «-1 min», against a plain «hace 1 min» in Spanish, so the defect is in
+    /// two of the eight and invisible in the language most of this is read in.
+    /// Drawn under the VPN speed tile, whose value is itself two signed
+    /// readings, a leading minus reads as a third one.
+    ///
+    /// So the third case is not offered. This is a switch over something the
+    /// app defines, exhaustive on purpose: a caller cannot choose the answer
+    /// that is wrong, and the mapping below is what
+    /// `AnAgeIsNotASignedDeltaTests` holds — the enum stops a caller picking it
+    /// and cannot stop the enum being wired to it.
+    public enum AgeStyle {
+        /// «1 минуту назад» — for a line that has the width for it.
+        case full
+        /// «1 мин. назад» — macOS's own short form, for a column that has not.
+        case short
+
+        var system: RelativeDateTimeFormatter.UnitsStyle {
+            switch self {
+            case .full: .full
+            case .short: .short
+            }
+        }
+    }
+
     /// "2 hours ago", «2 часа назад» — for a timestamp whose distance is the
     /// point, not its calendar position.
+    ///
+    /// `style` defaults to what the four callers that predate it already drew:
+    /// a scan row, the update check, Disk's «measured» line and the key table
+    /// each have a full row's width, and only the VPN speed tile — 143 pt at the
+    /// default window and 91 at the narrowest — asks for the short form.
     public static func relative(_ date: Date, to now: Date = Date(),
+                                style: AgeStyle = .full,
                                 language: String = AppLanguage.current.rawValue) -> String {
-        cache.relative(language: language).localizedString(for: date, relativeTo: now)
+        cache.relative(language: language, style: style)
+            .localizedString(for: date, relativeTo: now)
     }
 
     /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
@@ -389,13 +427,21 @@ public enum HelmDates {
             return formatter
         }
 
-        func relative(language: String) -> RelativeDateTimeFormatter {
+        /// Keyed by the language **and** the style, for the reason `span` above
+        /// is keyed by its unit set: a formatter is not safe to reconfigure
+        /// under a reader, and keyed by language alone the first style a
+        /// language was asked for would be the style it answers in for the life
+        /// of the process — so the VPN tile's `.short` would reword the About
+        /// page's «last checked» on any Mac that opened the VPN page first.
+        func relative(language: String,
+                      style: HelmDates.AgeStyle) -> RelativeDateTimeFormatter {
+            let key = "\(language)|\(style)"
             lock.lock(); defer { lock.unlock() }
-            if let existing = relatives[language] { return existing }
+            if let existing = relatives[key] { return existing }
             let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .full
+            formatter.unitsStyle = style.system
             formatter.locale = Locale(identifier: language)
-            relatives[language] = formatter
+            relatives[key] = formatter
             return formatter
         }
 

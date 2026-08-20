@@ -97,6 +97,34 @@ final class AHeroThatDoesNotShoveThePageTests: XCTestCase {
             """)
     }
 
+    /// **A second tunnel coming up must not resize the block either**, and that
+    /// is a fact about the button rather than about the segments.
+    ///
+    /// A lone segment is dropped where a button stands beside it
+    /// (`VPNTunnelSwitcher.drawn(beside:)`), so on a Mac with one tunnel the
+    /// Measure button is the only thing on the row of verbs — and a `.large`
+    /// bordered button is not the 30 pt the segments and the spinner beside it
+    /// are. Measured with the pin taken out: 361.5 pt with one tunnel against
+    /// 362.5 with two, so the page settles 1 pt higher on an ordinary Mac and
+    /// drops back the moment a second tunnel connects — a move
+    /// `helmMeasuredHeight` would ramp over 0.30 s rather than snap. Free to
+    /// avoid, so it is avoided, and asserted **exactly**: the reading is off the
+    /// same pixels twice and `accuracy: 1` swallowed the whole defect.
+    func testASecondTunnelComingUpDoesNotChangeTheBlocksHeight() {
+        let alone = tunnel(exit: .throughTunnel(countryCode: "NL"))
+        let second = VPNTunnelState(name: "work", interface: "utun7",
+                                    since: alone.since, bytesIn: alone.bytesIn,
+                                    bytesOut: alone.bytesOut, exit: .besideTunnel, speed: nil)
+        let one = height([alone])
+        let both = height([alone, second])
+        XCTAssertGreaterThan(one, 0, "precondition: nothing was drawn at all")
+        XCTAssertEqual(one, both, """
+            the block is \(one) pt with one tunnel and \(both) with two, so the \
+            page moves \(abs(one - both)) pt when a second tunnel connects — the \
+            row's controls are not one height
+            """)
+    }
+
     /// **Structural, because motion is not a value.**
     ///
     /// Whether the block ramps cannot be read off a still, and a probe that

@@ -22,7 +22,7 @@ struct VPNTunnelStrip {
     ///
     /// One value, because the three are exclusive and a set of optionals can be
     /// several at once or none: a button drawn beside its own spinner is a
-    /// second fifteen seconds of somebody's traffic one press away, and a button
+    /// second twenty seconds of somebody's traffic one press away, and a button
     /// drawn beside the sentence explaining why there is no button is worse.
     enum Action: Equatable {
         case offer(String)
@@ -96,6 +96,37 @@ struct VPNTunnelStrip {
     let verdict: String
     let place: Place
     let action: Action
+    /// **How long the arc under a running measurement is drawn against.**
+    ///
+    /// This link's own last run, and a measured fallback before there is one. It
+    /// was a constant in the view — 22 s, taken on one Mac on one link on one
+    /// afternoon, under a comment saying it should not be a constant at all. The
+    /// port times its own run now and the reading carries the length
+    /// (`VPNSpeedReading.took`), so from the second measurement onwards the arc
+    /// is a fact about the link in front of the reader;
+    /// `NetworkQualitySpeed.typicalRun` is what stands before that, and it is
+    /// the same figure with its measurement written at it.
+    ///
+    /// Here rather than in the view for the reason this whole type exists: a
+    /// number the page draws is content, and content that lives in a `body` has
+    /// prose instead of a test.
+    ///
+    /// Still a **length**, never a stage — the engine knows only whether a run
+    /// is in flight (`VPNEngine.measuringSpeed` is a name or nothing) — so the
+    /// arc goes on claiming the clock rather than the work.
+    let expectedWait: TimeInterval
+
+    /// **Whether a run is in flight for the tunnel this strip is about.**
+    ///
+    /// Read off `action` rather than stored beside it, so the two cannot
+    /// disagree: `.running` *is* the state, and a second field meaning the same
+    /// thing is a field somebody has to remember to set. The speed card wears
+    /// the measuring slot while this is true (`helmMeasuringSlot`) — the figure
+    /// already there drops a rank rather than disappearing, because it is still
+    /// the only reading the person has.
+    var isMeasuring: Bool {
+        if case .running = action { true } else { false }
+    }
 
     /// **`measuring` defaults to the state's own answer, not to false.**
     ///
@@ -129,6 +160,7 @@ struct VPNTunnelStrip {
         }
         tiles.append(Self.speedTile(facts, now: now))
         self.tiles = tiles
+        expectedWait = facts.speed?.took ?? NetworkQualitySpeed.typicalRun
         exclusions = VPNStr.excluded(state.excluded)
 
         switch state.exit {
@@ -177,14 +209,14 @@ struct VPNTunnelStrip {
     /// property would be a promise with nothing keeping it.
     private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
-            // **The unit alone, because the price is beside the button now.**
-            // `speedNotYet` — fifteen seconds and some traffic — used to be
-            // quoted here, on the reasoning that the column should say what the
-            // button under it costs. The hero draws that button with its price
-            // next to it, so quoting it here as well put the same clause on the
-            // screen twice, 40 pt apart, and wrapped this column to two lines
-            // while its three neighbours took one. A price belongs beside the
-            // thing it is paid for.
+            // **The unit alone.** A price tag — «about 15 s, spends traffic» —
+            // used to be quoted here, on the reasoning that the column should
+            // say what the button under it costs, and it wrapped this column to
+            // two lines while its three neighbours took one. It moved beside the
+            // button, then off the screen entirely when the button stopped
+            // quoting it, and `VPNStr.speedNotYet` went with it: the figure in
+            // it had never been measured and was five seconds short of the
+            // truth (`NetworkQualitySpeed.typicalRun`), in eight languages.
             return Tile(kind: .speed, label: VPNStr.tileSpeed, value: noReading,
                         note: VPNStr.speedNote(nil))
         }
@@ -195,9 +227,24 @@ struct VPNTunnelStrip {
                     // that member takes a `Double` and `down` is an `Int`, so the
                     // call bound to `Foundation.Decimal.init(_: Int)` and drew its
                     // locale-independent description: «10000» for a 10 Gbit link.
-                    value: "\(Count(speed.down)) ↓  \(Count(speed.up)) ↑",
+                    //
+                    // **Each arrow sits against its own digits, and there is one
+                    // space between the pair.** It was `1176 ↓  298 ↑` — a space
+                    // before each arrow and two between the readings — which
+                    // measured 101.0 pt for a four-digit reading against the
+                    // 88.9 this draws. That is the whole difference between the
+                    // figure standing at 16 pt and `helmMetricFigure` shrinking
+                    // it at the narrowest pane the window allows. An arrow is
+                    // the unit of the number beside it, not a word of its own.
+                    value: "\(Count(speed.down))↓ \(Count(speed.up))↑",
+                    // `.short`, and **never `.abbreviated`** however well its
+                    // name suits a 116 pt column: that style prints «-1 мин» in
+                    // Russian and «-1 min» in French — a signed delta rather
+                    // than an age, under a figure that is already two signed
+                    // readings. `HelmDates.AgeStyle` has two cases so the third
+                    // cannot be asked for here.
                     note: VPNStr.speedNote(facts.speedIsStale
-                        ? HelmDates.relative(speed.at, to: now) : nil))
+                        ? HelmDates.relative(speed.at, to: now, style: .short) : nil))
     }
 }
 
@@ -256,6 +303,18 @@ struct VPNTunnelHero: View {
     /// why an optional falling back to the property is a check that cannot
     /// fail).
     @State private var shown: [VPNTunnelState]
+    /// **When this page saw a run begin, or nil because it did not.**
+    ///
+    /// The engine says *whether* a measurement is in flight and nothing else —
+    /// no stage, no fraction, no byte count (`VPNEngine.measuringSpeed` is a
+    /// name or nothing). So the only fact anybody has about how far along a run
+    /// is, is the clock, and the only page entitled to read that clock is one
+    /// that watched the run start. Seeded `nil` rather than `Date()`, which is
+    /// the same law the `shown` property above obeys from the other end: a page
+    /// opened *into* a run never saw it begin, and a stamp taken at `init` would
+    /// be a twenty-second-old run drawn as a fresh one. `HelmExpectedWait`
+    /// answers `nil` with the indeterminate spinner this page has always drawn.
+    @State private var measureStarted: Date?
 
     init(_ tunnels: [VPNTunnelState], selected: Binding<String?>, now: Date = Date(),
          measuring: String? = nil, measure: @escaping (String) -> Void) {
@@ -294,6 +353,24 @@ struct VPNTunnelHero: View {
         // measured doing nothing for the same shape one module over.
         .onChange(of: tunnels) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shown = arrived }
+        }
+        // **The stamp is taken where the run begins, and only there.** Not in
+        // `init` — that is every rebuild the engine causes, and it causes dozens
+        // behind one connect, so the clock would restart under a wait already
+        // running. Not inside `measure`'s closure either: a press is not a
+        // start, the engine refuses a tunnel that is not carrying the default
+        // route, and `VPNViewModel.measuring` puts the press in front of the
+        // engine's answer for as long as the command is crossing the queue.
+        // Nil → a name is the one transition that is a run beginning; a name →
+        // nil is it ending, and the stamp goes with it so the next page opened
+        // into a run inherits nothing.
+        //
+        // No `withAnimation` around it, and that is not an oversight: what this
+        // value changes is *which* indicator draws, and the handover between
+        // them is a cut on purpose — the two say different things and a
+        // cross-fade between them would be the app hedging.
+        .onChange(of: measuring) { was, running in
+            measureStarted = running == nil ? nil : (was == nil ? Date() : measureStarted)
         }
     }
 
@@ -408,15 +485,34 @@ struct VPNTunnelHero: View {
         VStack(spacing: HelmSpace.s4) {
             HelmWrappingRow(spacing: HelmSpace.s4, lineSpacing: HelmSpace.s3,
                             alignment: .center) {
-                VPNTunnelSwitcherRow(switcher, selected: $selected)
+                VPNTunnelSwitcherRow(switcher.drawn(beside: strip.action),
+                                     selected: $selected)
                 switch strip.action {
                 case .offer(let word):
                     Button(word) { measure(chosen.name) }
                         .controlSize(.large)
                         .buttonStyle(.bordered)
+                        // **30, which is what the segments and the spinner
+                        // beside it are.** A `.large` bordered button measures
+                        // 28, and on a Mac with one tunnel it is now the only
+                        // thing on the row — so the block stood 2 pt shorter
+                        // there and dropped back the moment a second tunnel came
+                        // up. `helmMeasuredHeight` would ramp that rather than
+                        // snap it, which is a 0.30 s move of the whole page for
+                        // a difference nobody asked for.
+                        .frame(height: 30)
                 case .running(let word):
                     HStack(spacing: HelmSpace.s3) {
-                        ProgressView().controlSize(.small)
+                        // **The one thing on this page that says how far in the
+                        // wait is** — and it says it about the wait, not about
+                        // the measurement, because the measurement reports
+                        // nothing until it is over. Same slot and same 16 pt as
+                        // the spinner it replaces, so the row it stands in does
+                        // not move; when the clock runs out it *becomes* that
+                        // spinner again rather than filling up and sitting
+                        // there. `HelmExpectedWait` carries the argument.
+                        HelmExpectedWait(started: measureStarted,
+                                         expected: strip.expectedWait)
                         Text(word)
                             .font(HelmText.rowDetail)
                             .foregroundStyle(HelmText.quiet)
@@ -454,7 +550,14 @@ struct VPNTunnelHero: View {
         // The gap the connections grid uses between its own cards, so the two
         // rows are one rhythm rather than two.
         HStack(alignment: .top, spacing: HelmSpace.s5) {
-            ForEach(strip.tiles) { column(_: $0) }
+            // **Only the speed card, and only while its own run is going.** The
+            // slot is the one place on this page that says a newer figure is on
+            // its way; drawn on all four it would be saying it about three
+            // readings nobody asked for. `false` is inert — full ink, no border,
+            // a paused schedule (`HelmMeasuringSlot`).
+            ForEach(strip.tiles) { tile in
+                column(tile).helmMeasuringSlot(strip.isMeasuring && tile.kind == .speed)
+            }
         }
         // The row takes the height of its tallest card and no more. Without it a
         // container taller than the row stretches it: the wells an earlier
@@ -466,9 +569,21 @@ struct VPNTunnelHero: View {
 
     /// One reading, as its own card.
     ///
-    /// `maxWidth: .infinity` on each is what makes the four equal, and
+    /// `maxWidth: .infinity` on each is what makes the four equal in width, and
     /// `HelmSpace.s5` is a card's own inner padding — the same number a
     /// connection card pays, because this is the same surface.
+    ///
+    /// **`maxHeight: .infinity` is what makes them equal in height, and the row
+    /// went without it.** The row's own comment claimed «every column has the
+    /// same three lines», which was true while every note was one line and is
+    /// not a rule anything held: measured on the page at the narrowest pane it
+    /// allows, the four stood at 76 / 94 / 94 / 81, and a configuration named at
+    /// length in System Settings breaks the family at every pane. Under the
+    /// row's `.fixedSize(vertical:)` the `HStack` still takes the height of its
+    /// tallest card and no more — this only spends that height on the other
+    /// three — and `alignment: .top` on the row keeps every word where it was.
+    /// `TheReadingsAreOneRowTests` reads it off the drawing, because a SwiftUI
+    /// idiom is not a contract and no value carries the answer.
     private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)
@@ -486,7 +601,7 @@ struct VPNTunnelHero: View {
                 // at length in System Settings is an ordinary Mac.
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(HelmSpace.s5)
         .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
             .fill(HelmSurface.wellFill))

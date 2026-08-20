@@ -527,7 +527,7 @@ enum VPNStr {
     static var tileUp: String { L("Uploaded") }
     /// The fourth column, filled only after a press of `measureSpeed` — there
     /// is no passive way to read a link's throughput, so it starts empty and
-    /// says so (`speedNotYet`) rather than a number nobody asked for.
+    /// says so with a dash rather than a number nobody asked for.
     ///
     /// **Plain, and the unit is in the note.** It read «Speed, Mbit/s» beside
     /// «129.4 MB» and «1.1 GB», which is two grammars for a unit in one row:
@@ -550,11 +550,6 @@ enum VPNStr {
     /// — every column carries a note so the row has one shape, and a count with
     /// no span under it is a number the reader has to guess the meaning of.
     static var bytesSince: String { L("since the tunnel came up") }
-
-    /// Under the speed column before it has ever been pressed. Says the cost
-    /// up front — a real transfer, not a ping — because a person reads this
-    /// before deciding whether the number is worth the megabytes.
-    static var speedNotYet: String { L("about 15 s, spends traffic") }
 
     /// Under the first column: which tunnel the row is about, and the
     /// interface it came up on.

@@ -17,8 +17,10 @@ import XCTest
 /// *which*. The tunnels that are up are a row of segments above the columns now,
 /// and three rules hold it together.
 ///
-/// One tunnel is **no switcher at all** — a control offering one choice is noise
-/// on a card that is already four columns and a sentence.
+/// One tunnel is **no pill where a button stands beside it** — a capsule that
+/// selects between one thing, drawn in the same box as the control next to it —
+/// and a pill where none does, because the row would otherwise be empty and the
+/// tunnel unnamed.
 ///
 /// The selection is a name and the list is rewritten under it whenever the
 /// network moves, so a tunnel that drops leaves the page holding a word that
@@ -68,34 +70,56 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
          tunnel("work", interface: "utun4", bytesIn: 33_000_000, bytesOut: 7_000_000)]
     }
 
-    private func inEachLanguage(_ body: (AppLanguage) -> Void) {
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            body(language)
-        }
+    // MARK: - 1. A lone segment, and where it goes
+
+    /// **A pill that selects between one thing, beside a button that does
+    /// something.**
+    ///
+    /// This was tried the other way and reverted, and the reasoning is worth
+    /// keeping: hidden below two tunnels, the row «was invisible to everybody
+    /// who had never had two up at once, so the switching was reported as
+    /// missing rather than as unnecessary». What answers it is that the tunnel
+    /// is named anyway — card one's note is «home · utun7», 40 pt below — so
+    /// dropping the pill costs the name nothing and saves a capsule that reads
+    /// as pressable and is not a choice.
+    ///
+    /// **And it goes only where a button stands beside it.** The three actions
+    /// are not the same row: `.offer` and `.running` each leave a control there,
+    /// and `.notOffered` leaves nothing at all — measured, dropping the lone
+    /// pill in that state takes the block from 52 pt to 22 and leaves 26 pt of
+    /// `s6 + s4` standing over a floating sentence. It is also the state where
+    /// the tunnel most needs naming: the traffic is not in it and its dot is
+    /// grey.
+    func testALoneSegmentGoesWhereAButtonStandsBesideIt() {
+        let one = VPNTunnelSwitcher([tunnel("home", interface: "utun7", routed: true)],
+                                    selected: nil)
+        XCTAssertEqual(one.segments.map(\.name), ["home"],
+                       "precondition: the switcher does not know about the tunnel at all")
+
+        XCTAssertTrue(one.drawn(beside: .offer(VPNStr.measureSpeed)).isEmpty, """
+            a Mac with one tunnel draws a selection of one beside the Measure \
+            button — two capsules on one row, one of which does something
+            """)
+        XCTAssertTrue(one.drawn(beside: .running(VPNStr.measuring)).isEmpty, """
+            the lone pill is still drawn while the measurement runs, so the row \
+            it stands in is a spinner and a segment nobody can choose against
+            """)
+        XCTAssertEqual(one.drawn(beside: .notOffered(VPNStr.speedIsTheRoutedTunnels))
+            .map(\.name), ["home"], """
+            the lone pill was dropped from the one state that has no button, \
+            which empties the row and leaves its spacing over a bare sentence
+            """)
     }
 
-    // MARK: - 1. One tunnel gets a segment too
-
-    /// **The row is drawn at one tunnel as well as at four**, and it was not.
-    ///
-    /// Hidden below two on the reasoning that a control offering one choice is
-    /// noise — true of a control, and this one is also a label: it names the
-    /// tunnel every figure below is about and marks whether that tunnel carries
-    /// the traffic. Hidden at one, the switching was invisible to everybody who
-    /// had never had two tunnels up at once, and was reported as missing rather
-    /// than as unnecessary. Which is the whole reason this row exists.
-    func testOneTunnelStillGetsItsSegment() {
-        let one = [tunnel("home", interface: "utun7", routed: true)]
-        let segments = VPNTunnelSwitcher(one, selected: nil).segments
-        XCTAssertEqual(segments.map(\.name), ["home"], """
-            a single tunnel drew no segment, so a Mac with one VPN is shown no \
-            switching at all — which is how the row came to be reported missing
-            """)
-        XCTAssertEqual(segments.first?.isSelected, true,
-                       "the only segment there is was not the chosen one")
+    /// A real choice is drawn in every state, because it is one.
+    func testTwoTunnelsKeepTheirSegmentsWhateverTheButtonSays() {
+        let switcher = VPNTunnelSwitcher(two, selected: nil)
+        for action in [VPNTunnelStrip.Action.offer(VPNStr.measureSpeed),
+                       .running(VPNStr.measuring),
+                       .notOffered(VPNStr.speedIsTheRoutedTunnels)] {
+            XCTAssertEqual(switcher.drawn(beside: action).map(\.name), ["home", "work"],
+                           "a Mac with two tunnels up lost its switching under \(action)")
+        }
     }
 
     /// Nothing up is still nothing to switch between: the hero draws its empty
@@ -206,7 +230,7 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
     /// A measurement is unbound and follows the default route, so offering one
     /// here would file «home»'s figure under «work»'s name.
     func testANonRoutedTunnelSaysWhyThereIsNoButton() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = VPNTunnelStrip(tunnel("work", interface: "utun4"), now: now)
             XCTAssertEqual(drawn.action, .notOffered(VPNStr.speedIsTheRoutedTunnels), """
                 \(language.rawValue): a tunnel that is not carrying the traffic \
@@ -216,7 +240,7 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
     }
 
     func testTheRoutedTunnelStillOffersTheButton() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = VPNTunnelStrip(tunnel("home", interface: "utun7", routed: true), now: now)
             XCTAssertEqual(drawn.action, .offer(VPNStr.measureSpeed),
                            "\(language.rawValue): the tunnel the traffic goes through cannot "
@@ -247,19 +271,20 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         XCTAssertTrue(tile?.value.contains("212") == true, """
             the tunnel's own measurement was dropped because the route moved off it
             """)
-        XCTAssertEqual(tile?.note, VPNStr.speedNote(HelmDates.relative(taken, to: now)))
+        XCTAssertEqual(tile?.note,
+                       VPNStr.speedNote(HelmDates.relative(taken, to: now, style: .short)))
     }
 
     /// And a tunnel that is not carrying the traffic quotes no price at all,
     /// because there is no press to pay it.
     ///
-    /// `speedNotYet` is the button's price tag and it now lives beside the
-    /// button (`VPNTunnelHero.action`), so this asks the thing that decides:
+    /// The button's price tag used to be quoted in this column and is gone
+    /// altogether, so this asks the thing that decides:
     /// the column says the unit, and the action is the sentence rather than an
     /// offer. Asserted together, because «the note is the unit» is true of the
     /// routed tunnel too and would be a check that cannot fail on its own.
     func testANonRoutedTunnelOffersNoPressAndQuotesNoPrice() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = VPNTunnelStrip(tunnel("work", interface: "utun4"), now: now)
             let tile = drawn.tiles.first { $0.kind == .speed }
             XCTAssertEqual(tile?.value, VPNTunnelStrip.noReading,
@@ -297,15 +322,15 @@ final class TheSwitcherDrawsTheTunnelYouChoseTests: XCTestCase {
         return render
     }
 
-    /// Two controls with one tunnel — its segment and the Measure button — and
-    /// three with two. A count, because a render is what can answer «is it there
-    /// at all»; which segment says what is read off the value above.
+    /// One control with one tunnel — the Measure button, with no pill beside it
+    /// — and three with two. A count, because a render is what can answer «is it
+    /// there at all»; which segment says what is read off the value above.
     func testEveryTunnelIsOnTheScreenAsAControl() {
         let one = mount([tunnel("home", interface: "utun7", routed: true)])
-        XCTAssertEqual(one.host.everyView(named: "_FocusRingView").count, 2, """
+        XCTAssertEqual(one.host.everyView(named: "_FocusRingView").count, 1, """
             a single tunnel draws \
-            \(one.host.everyView(named: "_FocusRingView").count) control(s): its own \
-            segment and the Measure button is two
+            \(one.host.everyView(named: "_FocusRingView").count) control(s) where \
+            the Measure button alone is one — a selection of one is drawn beside it
             """)
 
         let both = mount(two)

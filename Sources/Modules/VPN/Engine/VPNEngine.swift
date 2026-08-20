@@ -238,7 +238,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     /// **Name the three network ports in every test that builds one of these.**
     /// Their defaults are the real thing: `TraceExit` reaches a server and
-    /// `NetworkQualitySpeed` runs a subprocess for fifteen seconds under load.
+    /// `NetworkQualitySpeed` runs a subprocess for `typicalRun` under load.
     /// Eleven `AutopilotEngine` tests took a default port that turned out to be
     /// the owner's own keychain and rolled their rules back (CLAUDE.md § a
     /// default argument naming a real port); `NoTestTakesAProductionPortTests`
@@ -1139,7 +1139,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// **Nowhere near the module's serial queue.** `VPNWorkQueue` is one queue
     /// and every connect, disconnect and poll goes through it, while
-    /// `networkQuality` holds the thread it runs on for about fifteen seconds by
+    /// `networkQuality` holds the thread it runs on for `NetworkQualitySpeed.typicalRun` by
     /// design and up to the sixty of its deadline — so a run started there
     /// leaves the module deaf to a person pressing Connect for as long as it
     /// lasts. Off the cooperative pool as well (`offTheCooperativePool`): that
@@ -1177,7 +1177,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             }
             // One run at a time, and this one **is** silent: the run already
             // going will say «not measuring» when it ends and nothing has
-            // changed meanwhile. A second press would spend another fifteen
+            // changed meanwhile. A second press would spend another twenty
             // seconds answering the question already being asked, and the first
             // ending would say the run had stopped while the second still ran.
             guard self.measuringSpeed == nil else { return }
@@ -1192,7 +1192,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func startMeasuring(for name: String) {
         let task = Task { [weak self] in
             // Weakly inside the pool closure too: the engine is not held for the
-            // fifteen seconds the tool takes, and a module switched off in the
+            // twenty seconds the tool takes, and a module switched off in the
             // middle of a run is dropped then rather than at the end of it.
             let reading = await offTheCooperativePool { [weak self] in
                 self?.speed.measure(onInterface: nil)

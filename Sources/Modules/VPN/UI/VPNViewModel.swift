@@ -367,7 +367,8 @@ import Module_VPN_Engine
         }
     }
     /// Asks for one measurement, **on a named tunnel**. It spends real traffic
-    /// and takes about 15 s, which is why nothing calls this but a press.
+    /// and takes `NetworkQualitySpeed.typicalRun`, which is why nothing calls this
+    /// but a press.
     ///
     /// The engine refuses a name that is not the tunnel carrying the default
     /// route and publishes when it does, so the optimistic flag below is cleared

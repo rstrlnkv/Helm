@@ -520,8 +520,8 @@ public final class TraceExit: VPNExitPort {
 /// Production `VPNSpeedPort`: the tool macOS ships.
 ///
 /// `-c` for machine-readable output, `-I` to bind the run to one interface. The
-/// deadline is generous because the tool takes about 15 s by design and a run
-/// killed early prints half its JSON, which `VPNSpeedReading.parse` refuses.
+/// deadline is generous because the tool takes `typicalRun` and a run killed
+/// early prints half its JSON, which `VPNSpeedReading.parse` refuses.
 ///
 /// **Nothing binds today, and the parameter stays.** Measured on this machine,
 /// 2026-08-18: `networkQuality -c -I utunN` against a live tunnel prints
@@ -532,6 +532,22 @@ public final class TraceExit: VPNExitPort {
 /// (`VPNEngine.measureSpeed`); this keeps the seam a build with a working bind
 /// goes through, rather than removing the only place the question is asked.
 public final class NetworkQualitySpeed: VPNSpeedPort {
+
+    /// **How long a run takes on a Mac, measured rather than remembered.**
+    ///
+    /// `/usr/bin/networkQuality -c`, four consecutive runs on 2026-08-20:
+    /// 18.52 s, 19.23 s, 20.64 s, 23.67 s — a mean of 20.5 with a 27 % spread.
+    /// Every doc comment in this module that used to say «about 15 s» was
+    /// repeating a figure nobody had taken; this is the one place the number
+    /// lives, and it is deliberately near the *top* of the spread rather than
+    /// at the middle, because the two ways of being wrong are not equal. Set
+    /// short, the page's arc fills and hands over to the indeterminate spinner
+    /// on half of all runs, and a signal that fires half the time says nothing.
+    ///
+    /// **The fallback, not the answer.** A reading carries its own run's length
+    /// (`VPNSpeedReading.took`), so this is what the page draws against before
+    /// this Mac has ever measured its own link.
+    public static let typicalRun: TimeInterval = 22
 
     private let now: @Sendable () -> Date
     private let run: @Sendable ([String]) -> HelmProcess.Result
@@ -551,7 +567,14 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
         HelmActivity.phase("vpn.speed") {
             var args = ["-c"]
             if let interface { args += ["-I", interface] }
+            // **Timed here, because this is the only place that knows.**
+            // `HelmActivity.phase` records when a phase began and hands nothing
+            // back when it ends — it is a registry for «what is running now»,
+            // not a stopwatch — so the two stamps are taken around the call
+            // rather than read out of it afterwards.
+            let began = now()
             let result = run(args)
+            let ended = now()
             // **A status of 0 is not a success from this tool.** Measured here on
             // 2026-08-18: `networkQuality -c -I utunN` against a live tunnel
             // prints `"error_code": -1009, "error_domain": "NSURLErrorDomain"`,
@@ -562,7 +585,13 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
             // belongs — the tool has more ways to fail successfully than a
             // status can enumerate.
             guard result.status == 0 else { return nil }
-            return VPNSpeedReading.parse(result.output, at: now())
+            // A run that took no measurable time did not take twenty seconds
+            // either: nil rather than zero, which the page would draw an arc
+            // against and `HelmExpectedWait` would answer «no claim» to by
+            // arithmetic rather than by anybody deciding it.
+            let took = ended.timeIntervalSince(began)
+            return VPNSpeedReading.parse(result.output, at: ended,
+                                         took: took > 0 ? took : nil)
         }
     }
 }

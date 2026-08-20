@@ -65,24 +65,10 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         VPNTunnelStrip(state, now: now, measuring: measuring)
     }
 
-    /// Every string here is read through `AppLanguage.current`, the way
-    /// `VPNStr`'s own members are, so a bare assertion would only ever check
-    /// whichever language this Mac happens to be set to.
-    private func inEachLanguage(_ body: (AppLanguage) -> Void) {
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            body(language)
-        }
-    }
-
-    private func inLanguage(_ language: AppLanguage, _ body: () -> Void) {
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
-        AppLanguage.override = language
-        body()
-    }
+    // Every string here is read through `AppLanguage.current`, the way `VPNStr`'s
+    // own members are, so a bare assertion would only ever check whichever
+    // language this Mac happens to be set to — `AppLanguage.each` is what runs
+    // one in all eight and puts the app back afterwards.
 
     // MARK: - The render, and what it can answer
 
@@ -189,7 +175,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     // MARK: - 1. A moment nobody saw is not a dash
 
     func testATunnelWhoseMomentWasNotSeenDrawsNoUptimeTile() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let kinds = strip(tunnel(since: nil)).tiles.map(\.kind)
             XCTAssertFalse(kinds.contains(.uptime), """
                 \(language.rawValue): a tunnel that was already up when Helm \
@@ -210,7 +196,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     // MARK: - 2. A stamped tunnel says how long
 
     func testAStampedTunnelDrawsItsUptime() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             guard let tile = strip(tunnel(since: stamped)).tiles.first(where: { $0.kind == .uptime })
             else {
                 XCTFail("\(language.rawValue): no uptime tile for a tunnel Helm watched come up")
@@ -221,7 +207,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
                 \(language.rawValue) wrote one hour fourteen as «\(tile.value)»
                 """)
         }
-        inLanguage(.ru) {
+        AppLanguage.only(.ru) {
             let drawn = strip(tunnel(since: stamped))
             let tile = drawn.tiles.first { $0.kind == .uptime }
             XCTAssertEqual(tile?.value, "1 ч 14 мин")
@@ -231,7 +217,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     // MARK: - 3. Before a measurement
 
     func testBeforeAMeasurementTheSpeedTileOffersOneAndSaysWhatItCosts() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped))
             guard let tile = drawn.tiles.first(where: { $0.kind == .speed }) else {
                 XCTFail("\(language.rawValue): no speed tile at all")
@@ -256,7 +242,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     func testAfterAMeasurementTheFigureIsDrawnWithItsAge() {
         let taken = now.addingTimeInterval(-180)
         let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: taken)
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped, speed: reading))
             guard let tile = drawn.tiles.first(where: { $0.kind == .speed }) else {
                 XCTFail("\(language.rawValue): no speed tile at all")
@@ -265,10 +251,18 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
             XCTAssertTrue(tile.value.contains("212") && tile.value.contains("95"), """
                 \(language.rawValue) drew the reading as «\(tile.value)»
                 """)
-            XCTAssertEqual(tile.note, VPNStr.speedNote(HelmDates.relative(taken, to: now)), """
-                \(language.rawValue): a figure three minutes old is drawn \
-                without its age, which reads as the link's speed now
-                """)
+            // **`.short`, which is an argument rather than a restatement.** The
+            // tile drew the full form until the owner reported «1 минуту назад»
+            // wrapping a 119 pt column, so this line fails in six of the eight
+            // if the style is dropped from the call — Japanese and Chinese spell
+            // the two the same and cannot tell them apart at all.
+            XCTAssertEqual(tile.note,
+                           VPNStr.speedNote(HelmDates.relative(taken, to: now, style: .short)),
+                           """
+                           \(language.rawValue): a figure three minutes old is drawn \
+                           without its age, which reads as the link's speed now
+                           """)
+
             XCTAssertEqual(drawn.action, .offer(VPNStr.measureAgain),
                            "\(language.rawValue): the button still offers a first measurement")
         }
@@ -286,7 +280,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     func testAFourDigitReadingIsGroupedTheWayTheLanguageGroupsDigits() {
         let reading = VPNSpeedReading(down: 10_000, up: 4_200, rpm: 340,
                                       at: now.addingTimeInterval(-5))
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let tile = strip(tunnel(since: stamped, speed: reading)).tiles
                 .first { $0.kind == .speed }
             XCTAssertEqual(tile?.label, VPNStr.tileSpeed,
@@ -304,7 +298,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     func testAFreshReadingStandsWithoutAnAge() {
         let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340,
                                       at: now.addingTimeInterval(-5))
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let tile = strip(tunnel(since: stamped, speed: reading)).tiles
                 .first { $0.kind == .speed }
             // The absence below passes for free on a strip that drew nothing.
@@ -329,7 +323,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// fill behind them.
     func testEveryColumnCarriesANote() {
         let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: now.addingTimeInterval(-5))
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped, speed: reading))
             XCTAssertEqual(drawn.tiles.count, 4,
                            "precondition: \(language.rawValue) drew \(drawn.tiles.count) columns, "
@@ -347,7 +341,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// one place on the page where «which tunnel» belongs to the row it is
     /// about rather than to a title three lines above it.
     func testTheFirstColumnNamesTheTunnelAndItsInterface() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped))
             let tile = drawn.tiles.first { $0.kind == .uptime }
             XCTAssertEqual(tile?.label, VPNStr.tileUptime,
@@ -370,7 +364,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// they are the same reading in two directions and a note on one alone
     /// would read as a difference between them.
     func testBothByteColumnsSayWhatSpanTheyAreATotalOver() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped))
             for kind in [VPNTunnelStrip.Reading.down, .up] {
                 let tile = drawn.tiles.first { $0.kind == kind }
@@ -389,7 +383,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// the label became a plain word like the other three.
     func testTheSpeedLabelIsAPlainWordAndTheUnitIsInTheNote() {
         let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: now.addingTimeInterval(-5))
-        inEachLanguage { language in
+        AppLanguage.each { language in
             for state in [tunnel(since: stamped), tunnel(since: stamped, speed: reading)] {
                 let tile = strip(state).tiles.first { $0.kind == .speed }
                 XCTAssertEqual(tile?.label, VPNStr.tileSpeed,
@@ -409,7 +403,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     // MARK: - 5. The verdict is words, not a colour
 
     func testTrafficGoingRoundTheTunnelIsSaidInWords() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped, exit: .besideTunnel))
             XCTAssertEqual(drawn.verdict, VPNStr.trafficBesideTunnel, """
                 \(language.rawValue): the one outcome this check exists to \
@@ -434,7 +428,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// the sentence 16.25 pt off the axis of its own caption doing it
     /// (`VPNTunnelHero.headline`). The section's title was already the rule.
     func testAnUncheckedExitIsNeitherVerdict() {
-        inLanguage(.en) {
+        AppLanguage.only(.en) {
             let drawn = strip(tunnel(since: stamped, exit: .unknown))
             XCTAssertEqual(drawn.verdict, VPNStr.trafficUnknown)
         }
@@ -448,7 +442,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// tunnel», which is true or false before anybody has been told where the
     /// traffic comes out.
     func testTheVerdictSaysNothingAboutThePlace() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             for code in ["NL", "XX", nil] {
                 XCTAssertEqual(strip(tunnel(since: stamped,
                                             exit: .throughTunnel(countryCode: code))).verdict,
@@ -465,7 +459,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// does not know — and both are different from «there is no exit country to
     /// be about», which is what the other two verdicts are.
     func testAPlaceIsNamedOnlyWhenItIsKnown() {
-        inLanguage(.en) {
+        AppLanguage.only(.en) {
             XCTAssertEqual(strip(tunnel(since: stamped,
                                         exit: .throughTunnel(countryCode: "NL"))).place,
                            .named(VPNStr.country("NL") ?? ""))
@@ -482,7 +476,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
     /// «The exit country is not known» beside «Traffic is not going through the
     /// tunnel» would be answering a question the reader has not reached.
     func testAVerdictThatIsNotAboutAnExitCarriesNoPlace() {
-        inLanguage(.en) {
+        AppLanguage.only(.en) {
             XCTAssertEqual(strip(tunnel(since: stamped, exit: .besideTunnel)).place, VPNTunnelStrip.Place.none)
             XCTAssertEqual(strip(tunnel(since: stamped, exit: .unknown)).place, VPNTunnelStrip.Place.none)
         }
@@ -490,8 +484,60 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
 
     // MARK: - 6. While it runs
 
+    /// **The arc is drawn against this link's own last run, and it was drawn
+    /// against a constant in a view.**
+    ///
+    /// 22 s, taken on one Mac on one link on one afternoon, with the view's own
+    /// comment saying it should not be a constant at all. It is not one now: the
+    /// port times its run and the reading carries the length, so a link that
+    /// takes 31 s is drawn against 31.
+    ///
+    /// Still a length rather than a stage — the engine knows only whether a run
+    /// is in flight — which is why this is one number on a value and not a
+    /// progress report.
+    func testTheWaitIsDrawnAgainstThisLinksOwnLastRun() {
+        let measured = VPNSpeedReading(down: 212, up: 95, rpm: 340,
+                                       at: now.addingTimeInterval(-5), took: 31)
+        XCTAssertEqual(strip(tunnel(since: stamped, speed: measured)).expectedWait, 31, """
+            the page draws its arc against a number somebody typed rather than \
+            against the run this Mac actually took
+            """)
+    }
+
+    /// And before this Mac has ever measured its own link — or after an update
+    /// from a build whose readings carried no length — the fallback is the
+    /// figure the port was measured at, in the one place it is written down.
+    func testWithNoRunToGoOnTheWaitIsTheMeasuredTypicalOne() {
+        XCTAssertEqual(strip(tunnel(since: stamped)).expectedWait,
+                       NetworkQualitySpeed.typicalRun,
+                       "a Mac that has never measured is drawn against nothing")
+        let untimed = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: now)
+        XCTAssertEqual(strip(tunnel(since: stamped, speed: untimed)).expectedWait,
+                       NetworkQualitySpeed.typicalRun, """
+            a reading decoded from a payload written before the length existed \
+            has no length, and the arc is drawn against nil
+            """)
+    }
+
+    /// **The slot is worn by the run, not by the page.**
+    ///
+    /// `isMeasuring` is read off `action` rather than stored beside it, so the
+    /// two cannot disagree — and the row asks it once per card, so a second
+    /// field meaning the same thing would be a field somebody has to remember
+    /// to set in three places.
+    func testTheStripSaysWhenARunIsInFlight() {
+        XCTAssertTrue(strip(tunnel(since: stamped), measuring: true).isMeasuring)
+        XCTAssertFalse(strip(tunnel(since: stamped)).isMeasuring,
+                       "a quiet tunnel wears the measuring slot, which says a "
+                       + "figure is on its way when none is")
+        XCTAssertFalse(strip(tunnel(since: stamped, exit: .besideTunnel)).isMeasuring, """
+            a tunnel with no button to press is drawn as though a run were going \
+            on it, and no run can be
+            """)
+    }
+
     func testWhileMeasuringTheButtonIsGoneAndTheWordIsThere() {
-        inEachLanguage { language in
+        AppLanguage.each { language in
             let drawn = strip(tunnel(since: stamped), measuring: true)
             XCTAssertEqual(drawn.action, .running(VPNStr.measuring), """
                 \(language.rawValue): the button is still offered while a run \
@@ -499,17 +545,17 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
                 """)
         }
         // On the screen: the control is gone and a spinner stands in its place.
-        // Two controls, not one: the tunnel's own segment is drawn at one tunnel
-        // now, so «the button» is the second of them and its absence below is
-        // one fewer rather than none.
+        // One control, and none while the run is in flight — a lone tunnel's
+        // segment is not drawn beside a button (`VPNTunnelSwitcher.drawn(beside:)`),
+        // so the Measure button is the only control this state has.
         let quiet = mount(tunnel(since: stamped))
-        XCTAssertEqual(quiet.host.everyView(named: "_FocusRingView").count, 2,
+        XCTAssertEqual(quiet.host.everyView(named: "_FocusRingView").count, 1,
                        "precondition: the probe cannot see the button it is looking for")
         XCTAssertTrue(quiet.host.everyView(ofType: NSProgressIndicator.self).isEmpty,
                       "precondition: something is already spinning with no run in flight")
 
         let running = mount(tunnel(since: stamped), measuring: true)
-        XCTAssertEqual(running.host.everyView(named: "_FocusRingView").count, 1,
+        XCTAssertEqual(running.host.everyView(named: "_FocusRingView").count, 0,
                        "the button is still on the screen while a measurement runs")
         XCTAssertEqual(running.host.everyView(ofType: NSProgressIndicator.self).count, 1,
                        "no spinner stands where the button was")

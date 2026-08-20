@@ -47,17 +47,9 @@ struct VPNTunnelSwitcher {
         let isSelected: Bool
     }
 
-    /// The row, **drawn for one tunnel as well as for four**.
-    ///
-    /// It was hidden below two, on the reasoning that a control offering one
-    /// choice is noise. True of a control and false of this one, which is why
-    /// the reasoning was wrong: hidden at one tunnel — the ordinary Mac — the
-    /// row was invisible to everybody who had never had two up at once, so the
-    /// switching was reported as missing rather than as unnecessary. A single
-    /// segment is a label that happens to be pressable: it names the tunnel
-    /// every figure below is about, and it marks whether that one carries the
-    /// traffic, which is the fact the dot is for and is not decoration at any
-    /// count.
+    /// Every tunnel that is up, in the engine's order. **What the row actually
+    /// draws is `drawn(beside:)`** — this is the model behind it, and a caller
+    /// that reaches for it to build a view is drawing a selection of one.
     let segments: [Segment]
     /// The tunnel the card draws — the one picked while it is still up, and
     /// otherwise the first, which is the one carrying the traffic.
@@ -77,6 +69,36 @@ struct VPNTunnelSwitcher {
                     isSelected: $0.name == chosen?.name)
         }
     }
+
+    /// **What the hero's row of verbs actually draws**, which at one tunnel
+    /// depends on what stands beside it.
+    ///
+    /// A lone segment selects between one thing. It was drawn anyway, and the
+    /// reasoning is worth keeping because it was tried the other way and
+    /// reverted: hidden below two tunnels the row «was invisible to everybody
+    /// who had never had two up at once, so the switching was reported as
+    /// missing rather than as unnecessary». What answers that now is card one's
+    /// note — «home · utun7», 40 pt below — which names the tunnel and its
+    /// interface whether or not a pill does, so the only thing the lone pill
+    /// still carried was the look of a control.
+    ///
+    /// **And it is dropped only where a button stands beside it.** The three
+    /// actions are three different rows. `.offer` and `.running` each leave a
+    /// control there, so the row is still a row; `.notOffered` leaves nothing at
+    /// all, and dropping the pill takes the block from 52 pt to 22 with 26 pt of
+    /// `s6 + s4` standing over a sentence with no row above it. That is also the
+    /// state where the tunnel most needs naming: the traffic is not in it and
+    /// its dot is grey.
+    ///
+    /// The switch is exhaustive on purpose — a fourth action must be a decision
+    /// about this row, not a default.
+    func drawn(beside action: VPNTunnelStrip.Action) -> [Segment] {
+        guard segments.count == 1 else { return segments }
+        switch action {
+        case .offer, .running: return []
+        case .notOffered: return segments
+        }
+    }
 }
 
 /// The segments, as capsules in the hero's row of verbs.
@@ -91,17 +113,22 @@ struct VPNTunnelSwitcher {
 /// rounded rectangles at `HelmRadius.ctl` — the same box as a row control — and
 /// the hero's shape is the one that page draws: a centred row of capsules under
 /// a 40 pt sentence.
+///
+/// **The segments themselves, never the switcher.** Handed the list
+/// `VPNTunnelSwitcher.drawn(beside:)` answered with, so a view cannot reach past
+/// the rule and draw a selection of one: the only way to get segments here is to
+/// have said what stands beside them.
 struct VPNTunnelSwitcherRow: View {
-    private let switcher: VPNTunnelSwitcher
+    private let segments: [VPNTunnelSwitcher.Segment]
     @Binding private var selected: String?
 
-    init(_ switcher: VPNTunnelSwitcher, selected: Binding<String?>) {
-        self.switcher = switcher
+    init(_ segments: [VPNTunnelSwitcher.Segment], selected: Binding<String?>) {
+        self.segments = segments
         _selected = selected
     }
 
     var body: some View {
-        ForEach(switcher.segments) { segment in
+        ForEach(segments) { segment in
                 Button { selected = segment.name } label: {
                     HStack(spacing: HelmSpace.s3) {
                         // **The dot goes white on the filled segment.**

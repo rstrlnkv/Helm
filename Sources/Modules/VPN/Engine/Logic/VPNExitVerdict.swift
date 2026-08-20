@@ -33,7 +33,7 @@ public enum VPNExitVerdict: Codable, Equatable, Sendable {
     /// One predicate for two readers a target apart: the engine refuses a speed
     /// command naming a tunnel this is false of, and the page draws a sentence
     /// where the button would be for the same tunnel. Spelled twice they can
-    /// disagree, and the disagreement is a fifteen-second subprocess measuring
+    /// disagree, and the disagreement is a twenty-second subprocess measuring
     /// one tunnel and reporting its figure under another's name — `networkQuality`
     /// cannot be bound to an interface (`NetworkQualitySpeed`), so an unbound run
     /// follows the default route whatever the switcher is showing.
