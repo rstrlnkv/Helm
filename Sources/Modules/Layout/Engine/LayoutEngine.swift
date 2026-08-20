@@ -35,6 +35,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// something to work with: the shortcut is itself a chord, and a chord ends
     /// the word before the Carbon handler for it ever runs.
     private var lastCompleted: RememberedWord?
+    /// The app the characters now in the buffer were typed into, kept for the
+    /// same reason `lastCompleted` carries one: the gesture's edit is blind and
+    /// is only correct where the word was measured. Read only through
+    /// `buffer.wholeWord`, so it says nothing while the buffer is empty — and
+    /// empty is the module's «no idea which app», which matches nothing.
+    private var typingApp = ""
     private var activeObserver: NSObjectProtocol?
     private var undo: UndoRecord?
     /// The last conversion as the page shows it, kept apart from `undo`: the
@@ -167,8 +173,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// another one. The person who restored the grant got a page that said
     /// «Active» with nobody listening, until they relaunched. Clearing the flag
     /// is what makes the retry the module already had reach the tap.
+    ///
+    /// And it lets go of the word, exactly as `deactivate` does. The buffer, the
+    /// remembered word and the undo record are blind edits kept correct by
+    /// events the tap delivers — a click drops the remembered word, a keystroke
+    /// invalidates the undo, a boundary clears the buffer. None of those can
+    /// arrive again, so all three would freeze at the instant the grant went and
+    /// be trusted for the life of the process, while the Carbon shortcut — which
+    /// needs no grant at all — still reaches `fix()`. Being unable to falsify a
+    /// precondition is not the same as it holding.
     private func tapDied() {
-        lock.lock(); tapped = false; lock.unlock()
+        lock.lock(); tapped = false; forgetTheWord(); lock.unlock()
         announcer?.announce(.grantLost)
         emitState()
     }
@@ -216,6 +231,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// this function, the one that has it, carried no comment at all.
     private func forgetTheWord() {
         buffer.clear()
+        typingApp = ""
         undo = nil
         lastCompleted = nil
         // The page's record goes with the rest — nothing that names typed text
@@ -296,6 +312,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             let here = secure.frontmostBundleID()
             lock.lock()
             lastCompleted = finished.map { RememberedWord($0, in: here) }
+            // The word still being typed is pinned to the same app on the same
+            // event: both doors into `convertLastWord` edit blind, and the one
+            // that reaches the buffer used to carry nothing to check.
+            typingApp = here
             lock.unlock()
         }
         guard let completed = finished else { return }
@@ -372,9 +392,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// probe was paid twice and the second time on the one thread the comment
     /// above `fix()` says it must never be on. The transport's
     /// `convertSelection` has nothing read yet and still asks here.
-    private func transform(_ action: SelectionAction, selected: String? = nil) {
+    ///
+    /// `readIn` is the app the caller read that text out of — the pin the word
+    /// path has carried on `RememberedWord` since a word typed in Notes was
+    /// converted into Mail. Nil means nobody has read anything yet, so the read
+    /// happens here and pins the app it happens in.
+    private func transform(_ action: SelectionAction, selected: String? = nil, readIn: String? = nil) {
         guard let selection else { return }
-        let bundleID = secure.frontmostBundleID()
+        let bundleID = readIn ?? secure.frontmostBundleID()
         lock.lock()
         // A module that was turned off types nothing. The word path has always
         // asked and this one did not, which showed up as nothing only because
@@ -410,6 +435,24 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // said so. A count, not the text — the log carries no content.
             HelmLog.shared.info(Self.moduleID,
                                 "selection left alone: no conversion for \(text.count) characters")
+            return
+        }
+
+        // Written where it was read, or not written at all.
+        //
+        // Everything above was decided about `bundleID`, and by now that verdict
+        // is as old as the read: up to 200 ms of pasteboard polling in this call,
+        // or a whole queue hop when `fix()` did the reading. The tap cannot
+        // report the app changing in that window — a Space swipe, an alert, a
+        // call joining and any program calling `activate()` are neither a
+        // keystroke nor a left click — so the app is asked for again here, at the
+        // last moment before somebody else's text is replaced. Without it the
+        // scope refusal was spent on an app that had already gone, and a
+        // paragraph read out of Notes was typed over what was selected in Mail.
+        guard secure.frontmostBundleID() == bundleID else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "selection left alone: \(Redact.app(bundleID)) was replaced by "
+                                + "another app while its selection was being read")
             return
         }
 
@@ -569,13 +612,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // again. It used to be discarded, and the second read landed on main,
         // which is exactly the thread this hop exists to keep clear.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
+            // Read before the selection, not after: the app that owns this text
+            // is the one that had the keyboard when the read began, and the read
+            // is exactly the window the app can change in. The text crossed the
+            // hop below on its own and landed in whoever held the keyboard on
+            // arrival — `transform` compares this against the app in front at
+            // the write. `FrontmostApp` is asked rather than `NSWorkspace`
+            // precisely so this question is answerable off the main thread.
+            let readIn = secure.frontmostBundleID()
             let selected = selection?.selectedTextWithoutClipboard()
             let hasSelection = !(selected ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             DispatchQueue.main.async { [self] in
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture: \(hasSelection ? "selection" : "last word")")
-                if hasSelection { transform(.convert, selected: selected); return }
+                if hasSelection { transform(.convert, selected: selected, readIn: readIn); return }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
                 let undoable = undo?.canUndo(in: bundleID) ?? false
@@ -618,17 +669,19 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock()
         // `wholeWord`, not `word`: the buffer refuses a word it could not hold
         // in full, and this is the second door into the same blind edit.
-        let live = buffer.wholeWord
+        // Mid-word there is no ending, so nothing extra to delete; a word that
+        // ended carries the character that ended it.
+        let live = buffer.wholeWord.map { RememberedWord(inProgress: $0, in: typingApp) }
         let previous = lastCompleted
         lock.unlock()
-        if let live {
-            // Mid-word: nothing ended it, so there is nothing extra to delete.
-            convert(live, trailing: nil, force: true)
-        } else if let previous, previous.belongs(to: bundleID) {
-            // Only where it was typed. The backspaces are counted against text
-            // this app is holding; anywhere else they eat somebody else's.
-            convert(previous.word, trailing: previous.ending, force: true)
-        }
+        // Only where it was typed, whichever of the two words this is. The
+        // backspaces are counted against text one app is holding; anywhere else
+        // they eat somebody else's — and the live branch used to run first
+        // *and* ask nothing, so it was the one door with no check on the one
+        // word that never became a `RememberedWord`. One predicate answers
+        // both now, so neither can be repaired without the other.
+        guard let word = live ?? previous, word.belongs(to: bundleID) else { return }
+        convert(word.word, trailing: word.ending, force: true)
     }
 
     /// Re-reads what the settings page wrote. The page owns the store; the

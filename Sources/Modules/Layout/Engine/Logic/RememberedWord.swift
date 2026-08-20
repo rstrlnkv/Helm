@@ -24,6 +24,19 @@ struct RememberedWord: Equatable, Sendable {
         self.app = app
     }
 
+    /// The word still being typed. Nothing has ended it, so it has no ending —
+    /// and it needs the app for the same reason the finished one does. The
+    /// gesture reaches the live buffer first and the buffer carries no app, so
+    /// that door made the blind edit with no check at all: an app change that
+    /// is neither a keystroke nor a left click — a Space swipe, an alert, any
+    /// program calling `activate()` — is invisible to the tap, and the
+    /// half-typed word went wherever the keyboard had gone.
+    init(inProgress word: String, in app: String) {
+        self.word = word
+        self.ending = nil
+        self.app = app
+    }
+
     /// An empty id is "no idea which app", which matches nothing — the rule
     /// `UndoRecord` and `AppScope` both apply before typing at all.
     func belongs(to bundleID: String) -> Bool {
