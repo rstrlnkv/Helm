@@ -232,7 +232,7 @@ struct RingView: View {
                 .font(HelmText.rowDetail)
                 .lineLimit(1)
             Text(Bytes(segment.bytes))
-                .font(.system(size: 11, design: .monospaced))
+                .helmFigure()
                 .foregroundStyle(HelmText.quiet)
         }
         .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s2)
@@ -247,7 +247,7 @@ struct RingView: View {
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))
-                .font(.system(size: 19, weight: .medium, design: .monospaced))
+                .font(.system(size: 19, weight: .medium).monospacedDigit())
                 .contentTransition(.numericText())
                 // The same curve **and the same length** as the arcs around it.
                 //

@@ -199,7 +199,7 @@ private struct BreadcrumbBar: View {
                     ProgressView().controlSize(.small)
                     if let tick = dvm.tick, layout.showsScanStatement {
                         Text(DkStr.liveCount(tick.files))
-                            .font(.system(size: 11, design: .monospaced))
+                            .helmFigure()
                             .foregroundStyle(HelmText.quiet)
                     }
                     Button(DkStr.stop) { dvm.cancel() }
@@ -445,7 +445,7 @@ private struct ChildRow: View {
             .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(child.bytes))
-                .font(.system(size: 11, design: .monospaced))
+                .helmFigure()
                 .foregroundStyle(HelmText.quiet)
             // What the double-click does, as a control: in for a folder, Finder
             // for a file. It was a double-click and an accessibility action —
@@ -573,7 +573,7 @@ private struct AdviceList: View {
             }
             Spacer()
             Text(Bytes(item.bytes))
-                .font(.system(size: 11, design: .monospaced))
+                .helmFigure()
                 .foregroundStyle(HelmText.quiet)
             BasketButton(name: item.name, basketed: basketed,
                          removing: dvm.busy) { dvm.toggleBasket(entry) }

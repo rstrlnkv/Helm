@@ -153,7 +153,7 @@ struct LayoutSettingsPage: View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
                 Text("\(lvm.state.conversionsToday)")
-                    .font(.system(size: 40, weight: .light, design: .monospaced))
+                    .font(.system(size: 40, weight: .light).monospacedDigit())
                     .tracking(-2)
                     // A count that changes while the page is open changes by
                     // one, and the digits should roll rather than cut.
