@@ -1,3 +1,4 @@
+import HelmRuntime
 import XCTest
 @testable import Module_Disk_Engine
 
@@ -6,20 +7,20 @@ import XCTest
 /// ids; the old code converted to UInt64, which traps.
 final class DeviceIDTests: XCTestCase {
     func testNegativeDeviceIdsAreRepresentable() {
-        let negative = DiskScanner.DeviceID(raw: dev_t(-16777233))
-        let same = DiskScanner.DeviceID(raw: dev_t(-16777233))
+        let negative = BulkWalk.DeviceID(raw: dev_t(-16777233))
+        let same = BulkWalk.DeviceID(raw: dev_t(-16777233))
         XCTAssertTrue(negative.matches(same))
     }
 
     func testDifferentDevicesDoNotMatch() {
-        XCTAssertFalse(DiskScanner.DeviceID(raw: 1).matches(DiskScanner.DeviceID(raw: 2)))
-        XCTAssertFalse(DiskScanner.DeviceID(raw: -1).matches(DiskScanner.DeviceID(raw: 1)))
+        XCTAssertFalse(BulkWalk.DeviceID(raw: 1).matches(BulkWalk.DeviceID(raw: 2)))
+        XCTAssertFalse(BulkWalk.DeviceID(raw: -1).matches(BulkWalk.DeviceID(raw: 1)))
     }
 
     /// A path that cannot be stat'ed must not be treated as "same volume".
     func testUnknownNeverMatches() {
-        XCTAssertFalse(DiskScanner.DeviceID.unknown.matches(DiskScanner.DeviceID(raw: 1)))
-        XCTAssertFalse(DiskScanner.DeviceID(raw: 1).matches(.unknown))
-        XCTAssertFalse(DiskScanner.DeviceID.unknown.matches(.unknown))
+        XCTAssertFalse(BulkWalk.DeviceID.unknown.matches(BulkWalk.DeviceID(raw: 1)))
+        XCTAssertFalse(BulkWalk.DeviceID(raw: 1).matches(.unknown))
+        XCTAssertFalse(BulkWalk.DeviceID.unknown.matches(.unknown))
     }
 }

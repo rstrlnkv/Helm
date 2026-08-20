@@ -21,6 +21,9 @@ import XCTest
 /// 8,5 MB grown — 24 bytes an entry, so the walk with no `autoreleasepool` was
 /// *not* the DiskScanner defect one framework call further out, and a pool here
 /// would have been added on the strength of the story rather than of a reading.
+/// That measurement was taken of a `FileManager` enumeration; the loop under
+/// this test is `BulkWalk.walk` now, which carries the pools the rule asks for,
+/// and the threshold below is what says the promotion did not put the cost back.
 final class WalkFootprintTests: XCTestCase {
 
     /// Small files below the size floor, so the walk looks at every one and
@@ -87,9 +90,9 @@ final class WalkFootprintTests: XCTestCase {
         // its answer.
         XCTAssertLessThan(perEntry, 100, """
             the walk is scaling with what it looked at rather than with the files it \
-            kept — every entry is carrying something out of the loop. If a real read \
-            shows Foundation accumulating per-entry objects, an autoreleasepool inside \
-            the enumerator loop is what fixed the same shape in DiskScanner.
+            kept — every entry is carrying something out of the loop. The loop is \
+            `BulkWalk.walk`'s now, and it has a pool per directory and a pool per batch; \
+            check that both are still there before looking at this file's own filter.
             """)
     }
 }

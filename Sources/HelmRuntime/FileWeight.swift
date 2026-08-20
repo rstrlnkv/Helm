@@ -96,22 +96,25 @@ public enum FileWeight {
     }
 
     private static func weigh(_ url: URL, _ ledger: inout Ledger) -> Int {
-        let keys: [URLResourceKey] = [.totalFileAllocatedSizeKey, .isDirectoryKey,
-                                      .isPackageKey, .fileResourceIdentifierKey,
-                                      .isRegularFileKey, .linkCountKey]
-        guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return 0 }
-        // A package is a directory wearing one icon. It has to be walked for the
-        // same reason and reports the same zero if it is not.
-        let holdsThings = (values.isDirectory ?? false) || (values.isPackage ?? false)
-        guard holdsThings else { return once(url, values, &ledger) }
+        // **The walk, not `resourceValues`.** The same tree, measured on this
+        // Mac warm and compiled `-O`: the forty bundles in `/Applications` cost
+        // 3,50–3,63 s enumerated and 1,1–1,2 s walked, which is the four seconds
+        // of «Counting apps…» the Uninstaller opened with.
+        //
+        // `BulkWalk.entry` rather than `isDirectory`: a resource value follows a
+        // symlink, so a link to a folder would be charged the folder — and this
+        // is also what makes the package case ordinary rather than special. A
+        // package is a directory wearing one icon; `st_mode` has always said so,
+        // and it was `URLResourceValues` calling it a file that reported an
+        // application bundle as weighing nothing at all.
+        guard let root = BulkWalk.entry(at: url.path) else { return 0 }
+        guard root.isDirectory else { return once(root, &ledger) }
 
         var total = 0
         // Hidden files are not skipped: they are freed along with the folder and
         // belong in the figure.
-        let items = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys)
-        while let item = items?.nextObject() as? URL {
-            guard let v = try? item.resourceValues(forKeys: Set(keys)) else { continue }
-            total += once(item, v, &ledger)
+        BulkWalk.walk(root: url.path) { batch in
+            for file in batch.files { total += once(file, &ledger) }
         }
         return total
     }
@@ -123,16 +126,15 @@ public enum FileWeight {
     /// Only a file with more than one link can collide by inode, so the common
     /// case costs one comparison; the clone question is asked of regular files
     /// only, and only on the removal path (`Ledger.asksAboutClones`).
-    private static func once(_ url: URL, _ values: URLResourceValues,
-                             _ ledger: inout Ledger) -> Int {
-        let bytes = values.totalFileAllocatedSize ?? 0
-        if (values.linkCount ?? 1) > 1 {
-            var status = stat()
-            if lstat(url.path, &status) == 0,
-               !ledger.inodes.insert(UInt64(status.st_ino)).inserted { return 0 }
-        }
-        guard ledger.asksAboutClones, values.isRegularFile ?? false,
-              let family = CloneShare.familyID(ofFileAt: url.path) else { return bytes }
+    ///
+    /// The link count and the file id both come out of the walk now. They used
+    /// to cost a `resourceValues` and, for anything with a second name, an
+    /// `lstat` on top of it.
+    private static func once(_ entry: BulkEntry, _ ledger: inout Ledger) -> Int {
+        let bytes = entry.allocatedBytes
+        if entry.linkCount > 1, !ledger.inodes.insert(entry.fileID).inserted { return 0 }
+        guard ledger.asksAboutClones, entry.isRegularFile,
+              let family = CloneShare.familyID(ofFileAt: entry.path) else { return bytes }
         return ledger.families.insert(family).inserted ? bytes : 0
     }
 }

@@ -6,14 +6,18 @@ import XCTest
 
 /// What one walk costs the process, and which of its two loops the cost is in.
 ///
-/// ARCHITECTURE.md § Memory reaches both. The **worker** loop asks Foundation
-/// for a directory at a time and has had its pool for as long as that section
-/// has existed. The **builder** loop — `while let batch = channel.pop()`, on the
-/// calling thread — had none, and it is where every path string in the scan is
-/// made: `TreeBuilder.insert` bridges through `NSString` twice per file, and
-/// `charge` does it once more per ancestor level on the way up. Nothing drains
-/// those: the loop runs inside `offTheCooperativePool`, so the pool they belong
-/// to is the one that closes when the whole scan is over.
+/// ARCHITECTURE.md § Memory reaches both, and **both loops are `BulkWalk`'s
+/// now** — the walk moved to `HelmRuntime` so that `FileWeight` and the
+/// duplicate finder could stop enumerating. The **worker** loop reads a
+/// directory at a time and has had its pool for as long as that section has
+/// existed. The **consumer** loop — the one that hands each batch to the closure
+/// this scan builds its tree in, on the calling thread — had none, and it is
+/// where every path string in the scan is made: `TreeBuilder.insert` bridges
+/// through `NSString` twice per file, and `charge` does it once more per
+/// ancestor level on the way up. Nothing drains those: the loop runs inside
+/// `offTheCooperativePool`, so the pool they belong to is the one that closes
+/// when the whole scan is over. This case therefore measures the shared walk
+/// through the module that has always had the deepest fixture for it.
 ///
 /// **Against a tree this file builds, not against the owner's home directory,
 /// and not behind an environment variable.** This test used to be both, and so
@@ -95,7 +99,7 @@ final class ScanFootprintTests: XCTestCase {
             the walk is keeping every path it composed rather than the tree it built. \
             `TreeBuilder` bridges through NSString twice per file and once per ancestor \
             level, and nothing drains those until the whole scan returns — check the \
-            autoreleasepool inside `while let batch = channel.pop()` in DiskScanner.scan.
+            autoreleasepool around `consume(batch)` in `BulkWalk.walk`.
             """)
     }
 }

@@ -260,6 +260,42 @@ proven newer than its sources.
   both.
 
 ### Changed
+- **The fast walker is everybody's now, and «Counting apps…» is under a second.**
+
+  Disk walked a tree with `getattrlistbulk` across eight threads while
+  `FileWeight` — which sizes every application in the Uninstaller and every
+  leftover in Leftovers — and the duplicate finder each enumerated with
+  `FileManager` and asked `resourceValues` per entry. Measured warm on this Mac,
+  compiled `-O`, three readings each: `~/Projects` at 105 000 files, 0,79–1,53 s
+  enumerated against 0,23–0,32 s walked; `~/Library` at 92 000, 3,60–3,72 s
+  against 2,09–3,00 s; and the shipped path this was promoted for — `FileWeight`
+  over the forty bundles in `/Applications`, the four seconds of «Counting
+  apps…» on every first visit to the Uninstaller — **3,50–3,63 s against
+  0,76–0,82 s**.
+
+  The walk is `BulkWalk` in `HelmRuntime`, and all three callers ask it now. It
+  decides nothing: which directories are descended into is the caller's
+  predicate, so the firmlink twin, the volume boundary, an application's
+  database and `~/Library`-on-the-timer's-path each stay with the module that
+  owns the reason and keeps the test. The `autoreleasepool` rule travelled with
+  it — one per directory in the workers, one per batch around the consumer, and
+  removing the second one still measures 530 bytes a file against 4
+  (`ScanFootprintTests`).
+
+  Two things it fixed on the way. `URLResourceValues.totalFileAllocatedSize`
+  answers **0** for a compressed file that `du` and the kernel both call 4 KB, so
+  four applications had been under-reported — 28 172 046 336 bytes across
+  `/Applications` before, 28 172 103 680 after, and every other app to the byte.
+  And a file's «Date Added» composed through 1970 lands 240 ns from what
+  Foundation reports for the same file in about a quarter of readings, which is
+  the date the duplicate finder picks a survivor by; it is built through the
+  reference date now and matches exactly.
+
+  Two promises that had no test have one: a file inside an application bundle is
+  never offered as a duplicate — `.skipsPackageDescendants` used to carry that
+  and would have left with the enumerator, silently — and the three walkers are
+  read off the source to check they all still go through the shared walk.
+
 - **Seven controls on the General page are four, and one of them now means what
   its label says.**
 

@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// A volume offered on the start screen.
 public struct VolumeInfo: Codable, Equatable, Sendable, Identifiable {

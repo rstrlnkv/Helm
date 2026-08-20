@@ -237,102 +237,92 @@ final class DuplicateScanner: @unchecked Sendable {
     /// .app bundle as "a duplicate" invites breaking the app — and the walk
     /// stays on the root's volume: descending into a mounted backup drive
     /// means reading gigabytes over whatever bus it hangs from.
+    ///
+    /// **`BulkWalk`, not `FileManager.enumerator`.** The same question asked the
+    /// same way as Disk asks it, and the reason the shared walker exists:
+    /// measured warm on this Mac, compiled `-O`, `~/Projects` at 105 000 files
+    /// costs 0,79 s enumerated and 0,23 s walked. What the enumerator used to
+    /// answer per entry — the size, the inode, the modification time, the date
+    /// added — the walk hands over with the entry, so the `lstat` this loop used
+    /// to make per candidate is gone too.
+    ///
     /// Internal rather than private so `WalkFootprintTests` can measure it apart
     /// from the hashing — the two are the module's two bulk loops and they have
     /// different answers about memory. `find` is its only caller in the app.
     func walk(_ root: String,
               onProgress: (@Sendable (DuplicateProgress) -> Void)?) -> [FileFacts] {
-        let url = URL(fileURLWithPath: root)
-        var rootStat = stat()
-        let rootDevice: Int32? = lstat(root, &rootStat) == 0 ? rootStat.st_dev : nil
+        let rootDevice = BulkWalk.deviceID(of: root)
         // Walking "/" reaches every user file twice — once as /Users/… and
         // once as /System/Volumes/Data/Users/…. The inode collapse keeps that
         // from inventing duplicates, but the second visit is a whole disk of
         // wasted reads. The same table DiskScanner uses names the twins.
         let firmlinkSkip = FirmlinkMap.skipSet(scanRoot: root)
-        // `addedToDirectoryDate` decides which copy stays — the Finder's
-        // "Date Added", not the creation date a file carries with it when it
-        // is copied. See `SurvivingCopy`.
-        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey,
-                                      .totalFileAllocatedSizeKey,
-                                      .addedToDirectoryDateKey]
-        // The handler is what makes "keep walking" a decision instead of a
-        // default. Measured on this OS, the handler-less overload already walks
-        // past a directory it cannot open — but it walks past it *silently*,
-        // and a whole subtree missing from "what is duplicated" is the one
-        // thing this answer must not hide. Returning true carries on; the count
-        // is what the log reports, the way DiskScanner marks a denied directory
-        // `noAccess` instead of dropping it.
-        guard let enumerator = FileManager.default.enumerator(
-            at: url, includingPropertiesForKeys: keys,
-            options: [.skipsPackageDescendants],
-            errorHandler: { [weak self] _, _ in
-                self?.noteUnreadable()
-                return true
-            }) else { return [] }
 
         var files: [FileFacts] = []
         var seen = 0
         var lastEmit = Date.distantPast
-        for case let item as URL in enumerator {
-            if isCancelled { return files }
-            guard let values = try? item.resourceValues(forKeys: Set(keys)) else { continue }
-            seen += 1
-            // The walk is silent work; without a tick the sheet sits inert
-            // for the seconds a big folder takes, which reads as a hang.
-            if Date().timeIntervalSince(lastEmit) > 0.35 {
-                lastEmit = Date()
-                onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
-            }
-            if values.isDirectory == true {
-                if stops(at: item.path, firmlinkSkip: firmlinkSkip, rootDevice: rootDevice) {
-                    enumerator.skipDescendants()
+        BulkWalk.walk(
+            root: root,
+            isCancelled: { self.isCancelled },
+            descends: { entry in
+                !self.stops(at: entry.path, firmlinkSkip: firmlinkSkip, rootDevice: rootDevice)
+            },
+            consume: { batch in
+                // A subtree the walk was refused is a hole in "what is
+                // duplicated", and the count is what the log reports — the way
+                // DiskScanner marks a denied directory `noAccess` instead of
+                // dropping it.
+                for _ in batch.denied { self.noteUnreadable() }
+                seen += batch.files.count
+                for file in batch.files
+                where file.isRegularFile && file.logicalBytes >= Self.minBytes {
+                    // The date the copy arrived decides which copy stays
+                    // (`SurvivingCopy`), and the clone family is what tells the
+                    // size of a copy from what removing it returns — one
+                    // `getattrlist`, and only for files already past the floor.
+                    files.append(FileFacts(path: file.path, bytes: file.logicalBytes,
+                                           fileID: file.fileID, added: file.added,
+                                           allocated: file.allocatedBytes,
+                                           cloneFamily: CloneShare.familyID(ofFileAt: file.path),
+                                           modified: file.modified))
                 }
-                continue
-            }
-            guard values.isRegularFile == true,
-                  let size = values.fileSize, size >= Self.minBytes else { continue }
-            var status = stat()
-            guard lstat(item.path, &status) == 0 else { continue }
-            if let rootDevice, status.st_dev != rootDevice { continue }
-            files.append(FileFacts(path: item.path, bytes: size,
-                                   fileID: UInt64(status.st_ino),
-                                   added: values.addedToDirectoryDate,
-                                   allocated: values.totalFileAllocatedSize ?? size,
-                                   // One `getattrlist` per candidate, and only
-                                   // for files already past the size floor. What
-                                   // it buys is the difference between the size
-                                   // of a copy and what removing it returns.
-                                   cloneFamily: CloneShare.familyID(ofFileAt: item.path),
-                                   // Free: the `lstat` above was already made
-                                   // for the inode and the device.
-                                   modified: TimeInterval(status.st_mtimespec.tv_sec)
-                                       + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000))
-        }
+                // The walk is silent work; without a tick the sheet sits inert
+                // for the seconds a big folder takes, which reads as a hang.
+                // Once per directory rather than once per file: `Date()` in the
+                // inner loop was a reading taken a hundred thousand times to be
+                // thrown away, and a batch is a directory.
+                if Date().timeIntervalSince(lastEmit) > 0.35 {
+                    lastEmit = Date()
+                    onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
+                }
+            })
         return files
     }
 
     /// Whether the walk stops at this directory rather than going into it.
     ///
-    /// Four different reasons, each with its own record to keep, which is why
-    /// they read better as one question than as four branches inside the walk.
+    /// Five different reasons, each with its own record to keep, which is why
+    /// they read better as one question than as five branches inside the walk.
     private func stops(at path: String, firmlinkSkip: Set<String>,
-                       rootDevice: Int32?) -> Bool {
+                       rootDevice: BulkWalk.DeviceID) -> Bool {
         // The Data volume's second face. Descending it reads the whole disk
         // twice for an answer the inode collapse has already given.
         if firmlinkSkip.contains(path) { return true }
         // An application's own database — a photo library, a Music library, a
-        // Final Cut bundle. `.skipsPackageDescendants` on the enumerator covers
-        // these only while LaunchServices knows the type on *this* Mac; a
-        // library copied from another machine, or one whose application has been
-        // removed, is a plain directory to that flag. And what is inside is not
-        // a file somebody can delete: offering it as a duplicate is meaningless
-        // at best. The unattended case is worse than meaningless — see
-        // `ScanRoot.refusesDescent`.
+        // Final Cut bundle. Judged by name, so a library copied from another
+        // machine — one this Mac has never registered a type for — is still a
+        // database and not a folder of somebody's files. The unattended case is
+        // worse than meaningless — see `ScanRoot.refusesDescent`.
         if ScanRoot.refusesDescent(into: path) {
             noteSkippedLibrary()
             return true
         }
+        // Any other package: an `.app`, an `.rtfd`, a `.pkg`. This is the half
+        // `.skipsPackageDescendants` used to carry on the enumerator, and it has
+        // to travel with the walk rather than be left behind with it — offering
+        // half of an application bundle as "a duplicate" invites breaking the
+        // app.
+        if isPackage(path) { return true }
         // `~/Library` and what is under it, on the timer's path only. The root
         // gate cannot cover this: the home is the commonest duplicate-scan root
         // there is, so refusing to *begin* there stops nothing once the walk is
@@ -348,12 +338,25 @@ final class DuplicateScanner: @unchecked Sendable {
             return true
         }
         // Another volume mounted inside this one: reading a backup drive means
-        // gigabytes over whatever bus it hangs from.
-        var dirStat = stat()
-        if let rootDevice, lstat(path, &dirStat) == 0, dirStat.st_dev != rootDevice {
-            return true
-        }
+        // gigabytes over whatever bus it hangs from. A `stat` per directory, and
+        // `BulkWalk.deviceID` says why the walk cannot answer this itself.
+        if !BulkWalk.deviceID(of: path).matches(rootDevice) { return true }
         return false
+    }
+
+    /// Whether macOS draws this directory as one item.
+    ///
+    /// Asked only of a name that carries an extension, and that is a
+    /// measurement rather than a guess: of 221 packages under `~/Projects` and
+    /// 2452 under `/Applications`, every one had an extension, while asking the
+    /// question of *every* directory costs 0,34 s over the 12 000 in
+    /// `~/Projects` — a third of the walk it is part of. A directory carrying
+    /// the bundle bit and no extension is walked into, which is the one case
+    /// this differs from `.skipsPackageDescendants` in.
+    private func isPackage(_ path: String) -> Bool {
+        guard !(path as NSString).pathExtension.isEmpty else { return false }
+        let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.isPackageKey])
+        return values?.isPackage == true
     }
 
     // MARK: - Progress

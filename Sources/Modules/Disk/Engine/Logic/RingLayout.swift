@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// One drawable arc of the sunburst.
 public struct RingSegment: Sendable, Equatable {

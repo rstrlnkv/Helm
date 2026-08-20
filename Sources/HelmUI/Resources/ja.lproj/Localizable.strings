@@ -1063,3 +1063,4 @@
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "モジュールアイコンの“シンプル”がパネルを含めどこでもシンプルになりました。これまでは設定のサイドバーだけが変わっていました。";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "メニューバーのパネルが、開く前に macOS へ権限を尋ねて止まることはなくなりました。これまではアイコンをクリックするたび、その途中でメッセージや Safari のファイルを読んでいました。";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "パネルの鉛筆と右クリックメニューが、同じものを同じ名前で呼ぶようになりました。";
+"The Uninstaller no longer spends four seconds counting before it can show you anything: measuring what an application occupies is about four times faster. Leftovers and duplicate searches walk the same way now." = "アンインストーラが表示までに4秒かけて数えることはなくなりました。アプリの使用容量の計測が約4倍速くなっています。残存物と重複の検索も同じ方法でディスクをたどるようになりました。";
