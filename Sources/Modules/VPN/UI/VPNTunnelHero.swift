@@ -202,11 +202,17 @@ struct VPNTunnelStrip {
     /// The note always opens with the unit, because this column's value is two
     /// numbers and cannot carry one the way a byte figure does — and what
     /// follows the unit is the one thing worth qualifying it with. The age is
-    /// there exactly when `VPNTunnelFacts.speedIsStale` says the figure can no
-    /// longer stand as the link's speed now, which is that property's own doc
-    /// comment and this is its only reader; a fresh reading keeps the unit
-    /// alone. Written the other way round (an age under every reading) the
-    /// property would be a promise with nothing keeping it.
+    /// there exactly when `VPNTunnelFacts.speedShowsItsAge` says there is one
+    /// to draw; a fresh reading keeps the unit alone. Written the other way
+    /// round (an age under every reading) the property would be a promise with
+    /// nothing keeping it.
+    ///
+    /// **`speedShowsItsAge`, not `speedIsStale`, and the two came apart here.**
+    /// This line read the staleness — «may the figure stand as live» — as «show
+    /// the age», so a reading stamped ahead of this page's clock, which is
+    /// stale for that very reason, drew «Мбит/с · через 5 мин.»: a time still
+    /// to come under a figure taken in the past
+    /// (`AnAgeIsNeverAheadOfTheClockTests`).
     private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
             // **The unit alone.** A price tag — «about 15 s, spends traffic» —
@@ -243,7 +249,7 @@ struct VPNTunnelStrip {
                     // than an age, under a figure that is already two signed
                     // readings. `HelmDates.AgeStyle` has two cases so the third
                     // cannot be asked for here.
-                    note: VPNStr.speedNote(facts.speedIsStale
+                    note: VPNStr.speedNote(facts.speedShowsItsAge
                         ? HelmDates.relative(speed.at, to: now, style: .short) : nil))
     }
 }

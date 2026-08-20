@@ -154,7 +154,7 @@ public enum HostsFile {
     public static func parse(_ text: String) -> Document {
         var lines: [Line] = []
         var index = 0
-        for raw in splitKeepingEndings(text) {
+        for raw in LineEndings.split(text) {
             if let entry = entry(from: raw.body, index: index, ending: raw.ending) {
                 lines.append(.entry(entry))
                 index += 1
@@ -163,29 +163,6 @@ public enum HostsFile {
             }
         }
         return Document(lines: lines)
-    }
-
-    /// A line, and the ending it had. `components(separatedBy:)` throws the
-    /// ending away, which is how a CRLF file comes back as LF and every line
-    /// in it reads as changed.
-    ///
-    /// CRLF is one `Character` in Swift — a grapheme cluster — so it is matched
-    /// as itself. A reader that looks for `"\r"` and peeks ahead for `"\n"`
-    /// matches neither half and swallows a CRLF file whole, and the round trip
-    /// cannot see it do that: an unsplit file is a file nobody reformatted.
-    private static func splitKeepingEndings(_ text: String) -> [(body: String, ending: String)] {
-        var out: [(body: String, ending: String)] = []
-        var body = ""
-        for character in text {
-            if character == "\r\n" || character == "\n" || character == "\r" {
-                out.append((body, String(character)))
-                body = ""
-            } else {
-                body.append(character)
-            }
-        }
-        if !body.isEmpty { out.append((body, "")) }
-        return out
     }
 
     private static func entry(from body: String, index: Int, ending: String) -> Entry? {

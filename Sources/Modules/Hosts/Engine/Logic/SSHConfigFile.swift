@@ -186,7 +186,7 @@ public enum SSHConfigFile {
         var hostIndex = 0
         var fieldIndex = 0
         var scope: Scope = .preamble
-        for raw in splitKeepingEndings(text) {
+        for raw in LineEndings.split(text) {
             let body = raw.body
             if let host = host(from: body, ending: raw.ending, index: hostIndex) {
                 lines.append(.host(host))
@@ -213,28 +213,6 @@ public enum SSHConfigFile {
             lines.append(.verbatim(body + raw.ending))
         }
         return Document(lines: lines)
-    }
-
-    /// A line, and the ending it had — the same reader the hosts parser uses,
-    /// and for the reason recorded there: `components(separatedBy:)` throws the
-    /// ending away, so a CRLF file comes back as LF and every line in it reads
-    /// as changed. CRLF is one `Character` in Swift, so it is matched as
-    /// itself.
-    private static func splitKeepingEndings(_ text: String) -> [(body: String, ending: String)] {
-        var out: [(String, String)] = []
-        var body = ""
-        for character in text {
-            if character == "\n" || character == "\r\n" || character == "\r" {
-                out.append((body, String(character)))
-                body = ""
-            } else {
-                body.append(character)
-            }
-        }
-        // A file whose last line has no ending is a file that must not gain
-        // one; the empty tail after a final newline is not a line at all.
-        if !body.isEmpty { out.append((body, "")) }
-        return out
     }
 
     /// Splits a directive line into indent, keyword, separator, value and

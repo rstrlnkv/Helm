@@ -565,12 +565,14 @@ enum VPNStr {
 
     /// The speed column's note: the unit, and whatever qualifies it.
     ///
-    /// Two things ever do — how old a figure is once it is too old to stand as
-    /// the link's speed now (`VPNTunnelFacts.speedIsStale`, whose only reader
-    /// this is), and what a first measurement costs before there is a figure at
-    /// all. A fresh reading is qualified by neither and keeps the unit alone,
-    /// which is the distinction that property exists for, drawn as a shorter
-    /// note rather than as no note at all.
+    /// Two things ever do — how old a figure is when there is an age to draw
+    /// (`VPNTunnelFacts.speedShowsItsAge`, whose only reader this is), and what
+    /// a first measurement costs before there is a figure at all. A fresh
+    /// reading is qualified by neither and keeps the unit alone, which is the
+    /// distinction that property exists for, drawn as a shorter note rather
+    /// than as no note at all — and so does a reading stamped *ahead* of the
+    /// page's clock, which is stale and has no age to print, which is why the
+    /// two properties on `VPNTunnelFacts` are two.
     static func speedNote(_ qualifier: String?) -> String {
         guard let qualifier else { return speedUnit }
         return note(speedUnit, qualifier)

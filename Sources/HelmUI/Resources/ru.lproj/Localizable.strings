@@ -1005,6 +1005,7 @@
 "Used by default — ssh tries this name" = "Используется по умолчанию — ssh пробует это имя";
 "Not used by anything here" = "Здесь ничем не используется";
 "Not named here — an included file may use it" = "Здесь не указан — может использоваться включённым файлом";
+"Named under a Match — used when its condition holds" = "Указан в блоке Match — используется при выполнении условия";
 "This key is missing" = "Этот ключ отсутствует";
 "The known hosts file could not be read" = "Не удалось прочитать файл известных хостов";
 "Forget" = "Забыть";

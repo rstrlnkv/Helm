@@ -1005,6 +1005,7 @@
 "Used by default — ssh tries this name" = "Utilisée par défaut — ssh essaie ce nom";
 "Not used by anything here" = "Utilisée par rien ici";
 "Not named here — an included file may use it" = "Non nommée ici — un fichier inclus peut l’utiliser";
+"Named under a Match — used when its condition holds" = "Nommée sous un Match — utilisée quand sa condition est vraie";
 "This key is missing" = "Cette clé est introuvable";
 "The known hosts file could not be read" = "Impossible de lire le fichier des hôtes connus";
 "Forget" = "Oublier";

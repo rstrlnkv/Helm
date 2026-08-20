@@ -1194,9 +1194,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // Weakly inside the pool closure too: the engine is not held for the
             // twenty seconds the tool takes, and a module switched off in the
             // middle of a run is dropped then rather than at the end of it.
-            let reading = await offTheCooperativePool { [weak self] in
+            //
+            // The two nils are one answer here — the tool refused, or the engine
+            // went away while it ran — and neither is a figure, so they are
+            // flattened at the read rather than carried as a shape nothing else
+            // in this file has to think about.
+            let reading: VPNSpeedReading? = await offTheCooperativePool { [weak self] in
                 self?.speed.measure(onInterface: nil)
-            }
+            } ?? nil
             self?.work.run { [weak self] in
                 guard let self else { return }
                 // **Every ending writes this, refusal included.** The reading may
@@ -1205,10 +1210,16 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 // other field of the payload will have moved. What makes the end
                 // of a run news is the run's own state changing here.
                 self.measuringSpeed = nil
-                // Filed under the tunnel it was taken on; a run whose tunnel
-                // went mid-flight finds no id and keeps nothing.
-                if let id = self.connections.first(where: { $0.name == name })?.id {
-                    self.lastSpeed[id] = reading ?? nil
+                // **A refusal keeps the figure it had.** The reading is filed
+                // under the tunnel it was taken on — a run whose tunnel went
+                // mid-flight finds no id and keeps nothing — and an ending with
+                // nothing to report writes nothing at all: `lastSpeed[id] = nil`
+                // *removes* the key, so a `-1009` erased the number the card was
+                // still showing and the button under it forgot it had ever been
+                // pressed. What drops a figure is that tunnel going, above.
+                if let id = self.connections.first(where: { $0.name == name })?.id,
+                   let reading {
+                    self.lastSpeed[id] = reading
                 }
                 self.emitState()
             }

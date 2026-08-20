@@ -40,14 +40,40 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// `var speedIsStale: Bool { true }` passed the whole suite.
     public static let speedGoesStaleAfter: TimeInterval = 60
 
-    /// Whether the figure on screen must carry its age rather than stand as the
-    /// link's speed now. True with no measurement at all, so the tile never
-    /// draws a bare dash and leaves the reader to guess — and true for a
-    /// negative age, which is the clock-skew case `init` already refuses for
-    /// `since`: a figure stamped in the future has no age to show.
+    /// Whether the figure on screen may still stand as the link's speed now.
+    /// True with no measurement at all, so the tile never draws a bare dash and
+    /// leaves the reader to guess — and true for a negative age, which is the
+    /// clock-skew case `init` already refuses for `since`: a figure stamped in
+    /// the future has no age to show.
+    ///
+    /// **That last sentence is why this is not the property a note reads.**
+    /// «Stale» and «has an age to draw» are different questions and the skewed
+    /// stamp answers them oppositely; `speedShowsItsAge` is the second one.
     public var speedIsStale: Bool {
         guard let speedAge else { return true }
         return speedAge < 0 || speedAge > Self.speedGoesStaleAfter
+    }
+
+    /// Whether the figure has an age that can be *drawn* beside it — which is
+    /// not the same question as `speedIsStale`, and reading the one for the
+    /// other printed a forecast.
+    ///
+    /// `speedIsStale` answers «may this figure stand as the link's speed now»,
+    /// and a stamp ahead of the clock answers that `false` as surely as an
+    /// hour-old one does. But its only reader took the `true` as «show the age»
+    /// and drew `HelmDates.relative` of a future date: «через 5 мин.», "in
+    /// 5 min." — a time still to come under a figure taken in the past. The
+    /// property's own doc comment had already decided the opposite — «a figure
+    /// stamped in the future has no age to show» — so the rule was written down
+    /// and then read backwards one target over.
+    ///
+    /// Nothing is drawn for that reading rather than something invented, which
+    /// is what `HelmExpectedWait.Claim.at` does with the same input: «a negative
+    /// elapsed time … is evidence that the stamp cannot be trusted». The unit
+    /// stands alone, claiming no age at all.
+    public var speedShowsItsAge: Bool {
+        guard let speedAge, speedAge >= 0 else { return false }
+        return speedIsStale
     }
 
     public init(since: Date?, bytesIn: UInt64?, bytesOut: UInt64?,

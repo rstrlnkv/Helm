@@ -41,7 +41,16 @@ final class KeyUsageHarderConfigsTests: XCTestCase {
         """
         XCTAssertEqual(identities(config)[0], [.named("work_rsa")],
                        "the `Match` block's key was attributed to the `Host` block above it")
-        XCTAssertEqual(usage(config)["personal"], .unused)
+        // **This read `.unused` until 2026-08-20, and that was the wrong half of
+        // a right decision.** Belonging to no `Host` is correct — the assertion
+        // above — but «belongs to no host row» became «used by nothing», which
+        // `HostsStr.usage(of:)` spells «Not used by anything here» and this
+        // file's own header calls the sentence read as «safe to delete». `ssh`
+        // offers this key every time the condition holds. The block is in the
+        // file Helm read; what Helm cannot read is the condition, which is
+        // «cannot say» — the same answer `Include` gets one section down, for
+        // the same reason (`AMatchBlocksKeyIsNotSafeToDeleteTests`).
+        XCTAssertEqual(usage(config)["personal"], .cannotSay(.matchCondition))
     }
 
     /// A `Host` after a `Match` opens a block again — which is what `ssh` does,

@@ -37,17 +37,30 @@ public enum KnownHostsFile {
         /// The key itself, base64 as written. Public by definition.
         public let key: String
         public let comment: String
-        /// The line exactly as it was written.
+        /// The line exactly as it was written, **without its ending.**
         ///
         /// Held on the value rather than rebuilt from the fields, because
         /// rendering must be the file's own bytes: a line here carries somebody
         /// else's public key and this app has no business re-spelling it.
+        ///
+        /// The ending sits beside it rather than inside it because this is the
+        /// value `forget(line:)` matches on, and it travels to the engine
+        /// through a command: a line named by a page that read a CRLF file
+        /// would otherwise have to carry the `\r` back for the match to hold.
         public let raw: String
+        /// The ending this line had — `"\n"`, `"\r\n"`, `"\r"`, or `""` for a
+        /// last line that ended without one.
+        ///
+        /// Kept per line, not per file: a file with mixed endings keeps each
+        /// line's own, and a file Helm only read comes back byte for byte
+        /// whichever machine wrote it.
+        public let ending: String
 
         public var id: Int { index }
 
         public init(index: Int, marker: String, hosts: [String], isHashed: Bool,
-                    keyType: String, key: String, comment: String, raw: String) {
+                    keyType: String, key: String, comment: String,
+                    raw: String, ending: String) {
             self.index = index
             self.marker = marker
             self.hosts = hosts
@@ -56,6 +69,7 @@ public enum KnownHostsFile {
             self.key = key
             self.comment = comment
             self.raw = raw
+            self.ending = ending
         }
 
         /// The SHA-256 fingerprint `ssh` prints, or nil for a key whose base64
@@ -84,10 +98,12 @@ public enum KnownHostsFile {
         case entry(Entry)
         case verbatim(String)
 
-        var raw: String {
+        /// The bytes this line puts back into the file, ending included —
+        /// which for an entry is `raw` and the ending held beside it.
+        var rendered: String {
             switch self {
             case .verbatim(let text): return text
-            case .entry(let entry): return entry.raw
+            case .entry(let entry): return entry.raw + entry.ending
             }
         }
     }
@@ -101,19 +117,20 @@ public enum KnownHostsFile {
     }
 
     public static func parse(_ text: String) -> Document {
-        // `omittingEmptySubsequences: false` keeps a blank line as a line, and
-        // the trailing empty piece after a final newline keeps the file's own
-        // ending — both are bytes this type promises to give back.
-        let raws = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        // Split by the ending each line actually had, never by `"\n"` alone:
+        // Swift makes `"\r\n"` one `Character`, so a file written on another
+        // machine has no `"\n"` to split on and comes back as a single line —
+        // every trust in it one row, and forgetting that row an empty file.
         var lines: [Line] = []
-        for (index, raw) in raws.enumerated() {
-            lines.append(entry(from: raw, at: index).map(Line.entry) ?? .verbatim(raw))
+        for (index, raw) in LineEndings.split(text).enumerated() {
+            lines.append(entry(from: raw.body, at: index, ending: raw.ending).map(Line.entry)
+                         ?? .verbatim(raw.body + raw.ending))
         }
         return Document(lines: lines)
     }
 
     public static func render(_ document: Document) -> String {
-        document.lines.map(\.raw).joined(separator: "\n")
+        document.lines.map(\.rendered).joined()
     }
 
     /// The document without the line that reads exactly this. The only edit
@@ -136,10 +153,14 @@ public enum KnownHostsFile {
         })
     }
 
-    private static func entry(from raw: String, at index: Int) -> Entry? {
+    private static func entry(from raw: String, at index: Int, ending: String) -> Entry? {
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { return nil }
-        var fields = trimmed.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        // Space **or tab**: `ssh` walks a field to the first of either, so a
+        // tab-separated line is an ordinary trust it honours. Read on spaces
+        // alone it came back as one field, failed the guard below and drew no
+        // row — a trust nobody could see, and so nobody could forget.
+        var fields = trimmed.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
         var marker = ""
         if let first = fields.first, first.hasPrefix("@") {
             marker = first
@@ -157,6 +178,7 @@ public enum KnownHostsFile {
                      keyType: fields[1],
                      key: fields[2],
                      comment: fields.dropFirst(3).joined(separator: " "),
-                     raw: raw)
+                     raw: raw,
+                     ending: ending)
     }
 }

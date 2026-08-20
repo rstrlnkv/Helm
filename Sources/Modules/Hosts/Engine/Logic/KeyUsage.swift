@@ -9,8 +9,10 @@ import Foundation
 /// about the key somebody logs in with, and on screen that answer reads as «safe
 /// to delete».
 ///
-/// So a key's usage is one of four states rather than a count, and a host's
-/// identity is one of three rather than a path. Folding either would be the
+/// So a key's usage is a state rather than a count, and a host's identity is a
+/// state rather than a path — read `OfKey` and `Identity` for how many each is
+/// now, because that number has already gone stale in this sentence once.
+/// Folding either would be the
 /// defect ARCHITECTURE.md § A nil from a system read can be folding two
 /// questions into one is about, arriving in a module that has no system read:
 /// «named nowhere» and «not used» are different facts, and so are «points at a
@@ -43,8 +45,14 @@ public enum KeyUsage {
         case byDefaultName
         /// Nothing names it and nothing will reach for it.
         case unused
-        /// Nothing **in the file Helm read** names it, and the file hands part
-        /// of itself to files Helm has not read — an `Include`.
+        /// **The reading could not be completed, and by what.**
+        ///
+        /// The reason is carried rather than folded away because the row draws
+        /// a sentence from it, and the two sentences are about different files:
+        /// «an included file may use it» is false of a config with no
+        /// `Include`, and telling somebody that about a key their `Match all`
+        /// block lends to every connection is a claim about their machine that
+        /// is not true.
         ///
         /// **Its own answer rather than `unused`, and that is a decision.**
         /// `KeyUsage` already names one limit — `IdentitiesOnly yes` is not
@@ -52,10 +60,28 @@ public enum KeyUsage {
         /// keeps a key that could have gone. `Include` is the same limit
         /// pointing the *unsafe* way, because it makes the module understate
         /// use, and the sentence it understates into is the one somebody
-        /// deletes a key on. So the reading that cannot be completed says so,
+        /// deletes a key on. A `Match` is that same limit pointing the same
+        /// way, and it was left standing for a day after `Include` was
+        /// settled. So the reading that cannot be completed says so,
         /// which is the same shape as `AgentList.unreachable` and
         /// `KeyRow.Permission.unknown`: «cannot say» is not «nothing».
-        case cannotSay
+        case cannotSay(Unread)
+    }
+
+    /// What stopped a reading that could not be completed — one of the two
+    /// things in an `ssh_config` this module deliberately does not read.
+    ///
+    /// Beside `OfKey` rather than inside it: nested one level further the type
+    /// is past what this house's linter allows, and a reason that stands on its
+    /// own is what a third one would be added to.
+    public enum Unread: Equatable, Sendable {
+        /// The config `Include`s files Helm never opened, and one of them may
+        /// name the key.
+        case includedFile
+        /// The key is named here, under a `Match` block whose condition this
+        /// module can neither show nor evaluate (`SSHConfigFile.Scope.match`).
+        /// `ssh` offers it every time that condition holds.
+        case matchCondition
     }
 
     /// The names `ssh` tries when a host names no identity of its own.
@@ -93,18 +119,22 @@ public enum KeyUsage {
         return out
     }
 
-    /// The identities named before the first `Host` line.
+    /// The identities named in one scope, for the two scopes that name no
+    /// `Host` block — and they mean opposite things to a key.
     ///
     /// Asked separately from `ofHosts` because what they mean *to a key* is a
     /// different answer: a preamble key is not «named by these two blocks», it
     /// is lent to every connection the file describes — including one to a host
     /// the file never mentions, which is why a config with a preamble key and
-    /// no `Host` block at all still has a key in use.
-    static func ofPreamble(_ document: SSHConfigFile.Document,
+    /// no `Host` block at all still has a key in use. A `Match` key is the
+    /// other limit: it is named, in this file, by a block whose condition this
+    /// parser does not read — so what it cannot be is «named by nothing».
+    static func identities(in scope: SSHConfigFile.Scope,
+                           of document: SSHConfigFile.Document,
                            keys: [String], home: String) -> [Identity] {
         let known = Set(keys)
         return document.fields
-            .filter { $0.scope == .preamble && $0.name == .identityFile }
+            .filter { $0.scope == scope && $0.name == .identityFile }
             .map { identity(of: $0.value, keys: known, home: home) }
     }
 
@@ -112,48 +142,84 @@ public enum KeyUsage {
     /// — a dictionary missing one is a row with nothing to draw.
     public static func ofKeys(_ document: SSHConfigFile.Document,
                               keys: [String], home: String) -> [String: OfKey] {
-        let identities = ofHosts(document, keys: keys, home: home)
+        let naming = Naming(document, keys: keys, home: home)
+        return keys.reduce(into: [:]) { out, key in out[key] = naming.verdict(for: key) }
+    }
+
+    /// Everything the config says about the keys, gathered once — so the
+    /// verdict for one key is a reading rather than another walk of the file.
+    private struct Naming {
+        /// Keys lent to every connection the file describes: a `*` block, or
+        /// the preamble, which is `Host *` by another spelling.
         var everywhere: Set<String> = []
+        /// For every other key, the blocks that name it, by their patterns as
+        /// they are written.
         var namedBy: [String: [String]] = [:]
-        // The preamble is `Host *` by another spelling — it reaches every
-        // connection — so its keys go straight into `everywhere`, which
-        // outranks any block that also happens to name them.
-        for identity in ofPreamble(document, keys: keys, home: home) {
-            if case .named(let name) = identity { everywhere.insert(name) }
-        }
-        for host in document.hosts {
-            let names = (identities[host.index] ?? []).compactMap { identity -> String? in
-                if case .named(let name) = identity { return name } else { return nil }
-            }
-            for name in names {
-                if isEveryHost(host.patterns) {
-                    everywhere.insert(name)
-                } else if !(namedBy[name] ?? []).contains(host.patterns) {
-                    // Once per host, not once per line that mentions the key.
-                    // Two blocks with the same patterns are ordinary — people
-                    // keep a second `Host box` for an override — and the row
-                    // said «Used by box, box». A host is not two hosts because
-                    // its file says so twice.
-                    namedBy[name, default: []].append(host.patterns)
+        /// Keys named under a `Match`, whose condition this module reads
+        /// neither for the row nor for itself.
+        var underAMatch: Set<String> = []
+        /// Whether the file hands part of itself to files Helm never opened.
+        ///
+        /// A question about the document, asked once, where it used to be asked
+        /// again for every key in the inventory — and it is not a stored flag
+        /// being read: `Document.includesOtherFiles` walks every line and parses
+        /// each one that is not a directive this module edits.
+        var includesOtherFiles = false
+
+        init(_ document: SSHConfigFile.Document, keys: [String], home: String) {
+            let perHost = ofHosts(document, keys: keys, home: home)
+            everywhere = Set(named(in: identities(in: .preamble, of: document,
+                                                  keys: keys, home: home)))
+            underAMatch = Set(named(in: identities(in: .match, of: document,
+                                                   keys: keys, home: home)))
+            includesOtherFiles = document.includesOtherFiles
+            for host in document.hosts {
+                for name in named(in: perHost[host.index] ?? []) {
+                    if isEveryHost(host.patterns) {
+                        everywhere.insert(name)
+                    } else if !(namedBy[name] ?? []).contains(host.patterns) {
+                        // Once per host, not once per line that mentions the
+                        // key. Two blocks with the same patterns are ordinary —
+                        // people keep a second `Host box` for an override — and
+                        // the row said «Used by box, box». A host is not two
+                        // hosts because its file says so twice.
+                        namedBy[name, default: []].append(host.patterns)
+                    }
                 }
             }
         }
-        return keys.reduce(into: [:]) { out, key in
+
+        /// One key's answer, in the order the states outrank each other.
+        func verdict(for key: String) -> OfKey {
             if everywhere.contains(key) {
                 // A `*` block outranks a named one: a key lent to everything is
                 // not described by listing the one block that also mentions it.
-                out[key] = .everyHost
-            } else if let blocks = namedBy[key] {
-                out[key] = .namedBy(blocks)
-            } else if defaultNames.contains(key) {
-                // Independent of the config: `ssh` tries this name whatever any
-                // included file says, so an `Include` takes nothing away from
-                // it.
-                out[key] = .byDefaultName
-            } else {
-                out[key] = document.includesOtherFiles ? .cannotSay : .unused
+                return .everyHost
             }
+            if let blocks = namedBy[key] { return .namedBy(blocks) }
+            // Independent of the config: `ssh` tries this name whatever any
+            // included file says, so an `Include` takes nothing away from it.
+            if defaultNames.contains(key) { return .byDefaultName }
+            // **Named here, and by nobody this module can print.** A `Match`
+            // block's condition is a grammar this parser does not read, so
+            // «used by nothing» — which the row spells «Not used by anything
+            // here» and a person reads as «safe to delete» — is a claim the
+            // reading does not support. `Match all` is the plainest case: it
+            // reaches every connection below it, and read as unused it invites
+            // deleting the key they all log in with.
+            //
+            // Said before the `Include` answer, because a config can carry both
+            // and this one is about a line the person can go and read.
+            if underAMatch.contains(key) { return .cannotSay(.matchCondition) }
+            if includesOtherFiles { return .cannotSay(.includedFile) }
+            return .unused
         }
+    }
+
+    /// The keys among a list of identities, in the order they were written.
+    /// A `.missing` or `.elsewhere` names no key in this inventory.
+    private static func named(in identities: [Identity]) -> [String] {
+        identities.compactMap { if case .named(let name) = $0 { return name } else { return nil } }
     }
 
     /// Whether a block's pattern list covers every host.

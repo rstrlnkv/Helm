@@ -1005,6 +1005,7 @@
 "Used by default — ssh tries this name" = "Used by default — ssh tries this name";
 "Not used by anything here" = "Not used by anything here";
 "Not named here — an included file may use it" = "Not named here — an included file may use it";
+"Named under a Match — used when its condition holds" = "Named under a Match — used when its condition holds";
 "This key is missing" = "This key is missing";
 "The known hosts file could not be read" = "The known hosts file could not be read";
 "Forget" = "Forget";
