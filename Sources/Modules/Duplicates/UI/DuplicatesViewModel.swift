@@ -200,38 +200,45 @@ public enum KeepGrounds: Equatable, Sendable {
     private func readTheStoredPolicy() {
         guard let inForce = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
         else { return }
-        policy = inForce
+        apply(inForce)
     }
 
-    /// What emptying the basket would free.
+    /// The one way `policy` is ever assigned, and a method so that it cannot be
+    /// assigned without the list being decided again — «the screen said `by
+    /// date` while every search ran `by place`» is this module's own named
+    /// defect, and until now only the popup's `choose(_:)` re-decided.
     ///
-    /// **Not the sum of the ticked copies' sizes.** A clone shares its blocks
-    /// with the copy it was made from, and in this module that copy is the one
-    /// that stays — so its removal returns nothing, and adding the sizes up
-    /// promised exactly double on the case Finder's own Duplicate command
-    /// creates. `DuplicateGroup.reclaimable` is the same fold `wasted` uses and
-    /// the same slate `HelmTrash` opens for the batch, so the bar, the
-    /// confirmation that quotes it and the banner afterwards are one arithmetic.
-    public var basketBytes: Int {
-        DuplicateGroup.reclaimable(marking: Set(basket), in: groups)
+    /// **The other door opened when the keychain read left `init`.** The page is
+    /// live while `SecurityAgent` holds its dialog (ARCHITECTURE.md § A seal
+    /// needs a signature): the folder is remembered and «Search now» is one
+    /// press, so a whole list can exist before the stored belief lands. The
+    /// reply's own `if chosen != policy` cannot cover that — at the moment it
+    /// runs the two are still the same value.
+    ///
+    /// Answers whether anything moved, so the caller that also *stores* the
+    /// choice keeps its early return without spelling the comparison twice.
+    @discardableResult
+    private func apply(_ chosen: KeepPolicy) -> Bool {
+        guard chosen != policy else { return false }
+        policy = chosen
+        rearrange()
+        return true
     }
 
-    /// One copy's own figure. A group's size is the copy that stays, so quoting
-    /// it against a path promised a clone's nothing for a real file, or the
-    /// reverse — the basket bar and the menu under it both ask this.
-    public func bytes(of path: String) -> Int {
-        groups.lazy.compactMap { group in
-            group.copies.first { $0.path == path }
-        }.first?.bytes ?? 0
-    }
+    /// What emptying the basket would free, and what one copy is worth — both
+    /// through `DuplicateBasket`, which is the same fold `HelmTrash` opens its
+    /// slate with, so the bar, the confirmation that quotes it and the banner
+    /// afterwards are one arithmetic.
+    public var basketBytes: Int { DuplicateBasket.worth(marking: basket, in: groups) }
 
-    /// What acting on the whole screen would free — every extra copy in every
-    /// group, through the fold `basketBytes` uses, so pressing «Mark every extra
-    /// copy» makes the bar say what the toolbar above it already said.
-    public var wastedBytes: Int {
-        DuplicateGroup.reclaimable(marking: Set(groups.flatMap { $0.paths.dropFirst() }),
-                                   in: groups)
-    }
+    public func bytes(of path: String) -> Int { DuplicateBasket.bytes(of: path, in: groups) }
+
+    /// What acting on the whole screen would free — every extra copy Helm may
+    /// actually take, through the fold `basketBytes` uses, so pressing «Mark
+    /// every extra copy» makes the bar say what the line above the list already
+    /// said. `DuplicateBasket` is where the two halves of that promise are kept
+    /// together.
+    public var wastedBytes: Int { DuplicateBasket.wasted(in: groups) }
 
     /// Why there is no list — and `nil` when there is one, which is what the
     /// page branches on.
@@ -280,10 +287,8 @@ public enum KeepGrounds: Equatable, Sendable {
     /// a policy it did not write, so a value saved without its MAC would leave
     /// every unattended scan on the default while this page said otherwise.
     public func choose(_ chosen: KeepPolicy) {
-        guard chosen != policy else { return }
-        policy = chosen
+        guard apply(chosen) else { return }
         DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
-        rearrange()
     }
 
     /// Which copy stays, decided again for every group the person has not
@@ -401,8 +406,18 @@ public enum KeepGrounds: Equatable, Sendable {
 
     // MARK: - Searching
 
+    /// **Not while a removal is running**, which is the second way out of a
+    /// destructive act and was the ungated one. The lines below empty the
+    /// basket, the groups, the marks note and the whole removal report — the
+    /// harm `clearBasket` grew its own `guard !busy` for, and worse in one
+    /// respect: the removal's tick and its «Stop removal» button are drawn
+    /// inside the bar those three bring up, so one press took every control that
+    /// reaches a running removal off the screen. The window is minutes, because
+    /// `trash` re-reads both files of every pair before anything moves. The page
+    /// dims the control too; both, or neither is reliable (ARCHITECTURE.md
+    /// § One removal at a time).
     public func search() {
-        guard let folder, phase != .searching else { return }
+        guard let folder, phase != .searching, !busy else { return }
         phase = .searching
         progress = nil
         groups = []
@@ -530,10 +545,15 @@ public enum KeepGrounds: Equatable, Sendable {
     /// word with — a checkbox that ticked something the engine will refuse would
     /// be a promise the page cannot keep. What was missing is the count: the
     /// refusal was silent, and one press stands for a page of decisions.
+    ///
+    /// Through `DuplicateBasket.removableExtras`, which is also what the figure
+    /// above the list is folded from: a total that counted an extra this press
+    /// passes over is a promise of space no press on the page can reclaim.
     private func mark(extrasOf group: DuplicateGroup) -> Int {
+        let allowed = Set(DuplicateBasket.removableExtras(of: group))
         var skipped = 0
         for path in group.paths.dropFirst() where !basket.contains(path) {
-            if UserFileScope.isRemovable(path) {
+            if allowed.contains(path) {
                 basket.append(path)
             } else {
                 skipped += 1
@@ -576,20 +596,12 @@ public enum KeepGrounds: Equatable, Sendable {
     @Published public private(set) var busy = false
 
     public func emptyBasket() async {
-        let paths = basket
-        guard !paths.isEmpty else { return }
-        // Each removal travels with the copy it duplicates, so the engine can
-        // read the pair again before it moves anything. A group's first copy is
-        // the survivor — `SurvivingCopy`'s order — and a basket entry whose
-        // group has gone is dropped rather than sent unpaired: the engine would
-        // refuse it anyway, and unpaired is exactly the shape it cannot check.
-        let chosen = Set(paths)
-        let plans: [DuplicatePlan] = groups.flatMap { group -> [DuplicatePlan] in
-            guard let survivor = group.copies.first?.path else { return [] }
-            return group.copies.dropFirst()
-                .filter { chosen.contains($0.path) }
-                .map { DuplicatePlan(remove: $0.path, keep: survivor) }
-        }
+        // What goes and what stays, decided beside the gate the engine reads the
+        // batch against (`DuplicateBasket`): the plans pair each marked extra
+        // with the copy it duplicates, and the second list is every copy the
+        // screen keeps — the extras left unticked as much as the survivors,
+        // because a clone family is held by any member of it that stays.
+        let (plans, staying) = DuplicateBasket.removal(marking: basket, in: groups)
         guard !plans.isEmpty else { return }
         // **One removal at a time**, the rule `UninstallerViewModel` already
         // follows. The basket is not emptied until the answer comes back, so
@@ -607,7 +619,9 @@ public enum KeepGrounds: Equatable, Sendable {
             busy = false
             progress = nil
         }
-        let removal: DuplicateRemoval? = await client.request(DuplicatesCommand.trash, encoding: plans)
+        let removal: DuplicateRemoval? = await client.request(
+            DuplicatesCommand.trash,
+            encoding: DuplicateRemovalRequest(plans: plans, staying: staying))
         // **An unanswered removal is not a removal that did nothing.**
         // `TransportClient.request` answers nil for a request that threw and for
         // a reply that would not decode, and this module reaches the second in

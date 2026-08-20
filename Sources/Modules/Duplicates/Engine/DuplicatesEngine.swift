@@ -261,7 +261,17 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// The scope gate still runs, and first: what may be deleted at all is a
     /// different question from whether this particular deletion still makes
     /// sense, and the engine has the last word on both.
-    public func trash(_ plans: [DuplicatePlan]) async -> DuplicateRemoval {
+    ///
+    /// - Parameter staying: every copy the caller is keeping, for the clone
+    ///   accounting below — the survivors *and* the extras left unticked, which
+    ///   hold their families exactly as survivors do. It defaults to nothing so
+    ///   that a caller with no screen behind it stays as it was, and the default
+    ///   is the direction that **over-reports**: a batch that names nothing gets
+    ///   its families charged in full. Only a caller that can see the whole list
+    ///   can fill it, which is why the wire carries it
+    ///   (`DuplicateRemovalRequest`).
+    public func trash(_ plans: [DuplicatePlan],
+                      staying: [String] = []) async -> DuplicateRemoval {
         let trashing = self.trashing
         let verify = verifying()
         // The flag lives in the box so `stopRemoval` can reach it, and is this
@@ -271,8 +281,15 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         let slot = removalBox.start(stop)
         defer { slot.finish() }
         return await offTheCooperativePool {
+            // The batch against itself, before the batch against the disk: a
+            // plan that takes a copy another plan is keeping passes both of the
+            // gates below — `UserFileScope` judges a path and
+            // `DuplicateVerification` judges a pair, and each half of
+            // `[a→keep b, b→keep a]` is a valid path and a valid pair. Refused
+            // here it costs nothing; found later it would have cost the content.
+            let (honoured, contradicted) = KeptCopies.partition(plans)
             var byPath: [String: DuplicatePlan] = [:]
-            for plan in plans { byPath[plan.remove] = plan }
+            for plan in honoured { byPath[plan.remove] = plan }
             let (inScope, outOfScope) = UserFileScope.partition(Array(byPath.keys))
 
             var allowed: [String] = []
@@ -312,23 +329,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 }
                 return stop.isStopped
             }
-            if !stale.isEmpty {
-                HelmLog.shared.info(Self.moduleID,
-                                    "refused \(stale.count) — changed since the scan")
-            }
-            if !unreadable.isEmpty {
-                HelmLog.shared.info(Self.moduleID,
-                                    "refused \(unreadable.count) — could not be read")
-            }
-            // Spelled once for both ways out: a reply that dropped these on
-            // either path would be a refusal silently discarded. Both verdicts
-            // of the reading, not only the stale one — the name has to say so,
-            // or the next reader folds them back.
-            let verifyRefusals = stale.map {
-                HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
-            } + unreadable.map {
-                HelmTrash.Refusal(path: $0, reason: .unreadable)
-            }
+            let refusedBeforeAnythingMoved = Self.refusals(stale: stale,
+                                                            unreadable: unreadable,
+                                                            contradicted: contradicted)
             if stopped {
                 // A named outcome, not silence — and nothing moves from here:
                 // the verified remainder was about to be trashed, and Stop
@@ -342,15 +345,32 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     removed: [],
                     refused: outOfScope.map {
                         HelmTrash.Refusal(path: $0, reason: .outOfScope)
-                    } + verifyRefusals,
+                    } + refusedBeforeAnythingMoved,
                     freedBytes: 0, cancelled: true)
             }
-            // The copies that stay, named for the batch's clone accounting: a
-            // marked copy that shares its blocks with its survivor gives the disk
-            // nothing back, and it is this module — where the survivor is never in
-            // the batch — that the seed exists for.
+            // Every copy that stays, named for the batch's clone accounting: a
+            // marked copy that shares its blocks with a copy that is not going
+            // gives the disk nothing back, and it is this module — where the
+            // survivor is never in the batch — that the seed exists for.
+            //
+            // **Not merely the survivors.** `DuplicateGroup.reclaimable`, which
+            // is what the bar above the press promises, counts a family as held
+            // by *any* copy that is not marked; a clone the person left unticked
+            // holds its family exactly as a survivor does, and seeded from the
+            // plans alone the banner charged its twin in full — one screen
+            // promising 0 and reporting 4 MB about the same two files. `staying`
+            // is that fact, and it comes from the page because nothing here can
+            // work it out: `HelmTrash`'s own doc says there is no reverse lookup
+            // from a clone family to its members.
+            //
+            // And what this batch refused stays too — an out-of-scope path, a
+            // pair that stopped matching, one that could not be read, one the
+            // batch contradicted itself over. Those the engine does know, so it
+            // adds them itself rather than trusting the caller to have.
+            let staysBehind = Set(staying + honoured.map(\.keep)
+                                  + outOfScope + stale + unreadable + contradicted)
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
-                                          sharedWith: Array(Set(plans.map(\.keep))),
+                                          sharedWith: Array(staysBehind),
                                           module: Self.moduleID, trashing: trashing)
             // A new value rather than a mutation: the reply is immutable on
             // purpose, so a refusal cannot be quietly dropped from one after the
@@ -358,9 +378,47 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             // ever silently discarded — the house rule this module answers to.
             return DuplicateRemoval(
                 removed: result.removed,
-                refused: result.refused + verifyRefusals,
+                refused: result.refused + refusedBeforeAnythingMoved,
                 freedBytes: result.freedBytes)
         }
+    }
+
+    /// Everything Helm itself turned away before a file could move, said once
+    /// for both ways out of `trash`: a reply that dropped these on either path
+    /// would be a refusal silently discarded.
+    ///
+    /// The three are apart because they are three facts. A pair that stopped
+    /// matching *moved on*; a pair that could not be read is wherever it was — a
+    /// permission withdrawn, a volume gone, or the survivor unreadable — and
+    /// folded together, the person was told «this is not where Helm found it»
+    /// about a file that is exactly there, while the actionable half was hidden.
+    ///
+    /// A contradiction — a plan taking a copy the same batch is keeping — wears
+    /// `changedSinceScan`, the closest true thing an existing reason says:
+    /// nothing was attempted, the pair the plan named cannot be honoured, and
+    /// the step its sentence ends on, «search again», is what puts the list
+    /// right. It is not the sentence this deserves; a reason of its own is a
+    /// `TrashFailure.Reason` case and eight translations, and both live outside
+    /// this module.
+    ///
+    /// It is the one refusal here that is logged as a **warning**: nothing on
+    /// the page can build such a batch, so a run that reaches it is a defect
+    /// above the wire or a payload no screen produced. Counts, never names.
+    private static func refusals(stale: [String], unreadable: [String],
+                                 contradicted: [String]) -> [HelmTrash.Refusal] {
+        if !stale.isEmpty {
+            HelmLog.shared.info(moduleID, "refused \(stale.count) — changed since the scan")
+        }
+        if !unreadable.isEmpty {
+            HelmLog.shared.info(moduleID, "refused \(unreadable.count) — could not be read")
+        }
+        if !contradicted.isEmpty {
+            HelmLog.shared.warn(moduleID, "refused \(contradicted.count) — "
+                                + "the batch was keeping the copy it asked to take")
+        }
+        return stale.map { HelmTrash.Refusal(path: $0, reason: .changedSinceScan) }
+            + unreadable.map { HelmTrash.Refusal(path: $0, reason: .unreadable) }
+            + contradicted.map { HelmTrash.Refusal(path: $0, reason: .changedSinceScan) }
     }
 
     // MARK: - Transport
@@ -395,10 +453,18 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 // engine would be trusting the very reading it is meant to
                 // re-check — so there is no fallback to it: a caller sending
                 // bare paths gets nothing removed rather than something removed
-                // unchecked.
-                guard let plans = EngineReply.decode([DuplicatePlan].self, from: command)
+                // unchecked. The request around them carries what stays.
+                guard let request = EngineReply.decode(DuplicateRemovalRequest.self,
+                                                       from: command)
                 else { return Data() }
-                return EngineReply.encode(await self.trash(plans), for: command)
+                // The copies that stay travel with the plans because only the
+                // page can see them (`DuplicateRemovalRequest.staying`); a
+                // request that names none is one this app does not send, and it
+                // gets today's arithmetic rather than a refusal — nothing about
+                // *what may be removed* depends on the list.
+                return EngineReply.encode(
+                    await self.trash(request.plans, staying: request.staying ?? []),
+                    for: command)
             }
         }
     }

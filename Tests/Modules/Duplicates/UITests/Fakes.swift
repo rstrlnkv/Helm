@@ -153,7 +153,12 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     /// The removals that reached the wire, likewise: a plan names the copy that
     /// goes and the copy it duplicates, and «the survivor was never sent» is a
     /// claim about the payload rather than about the command.
-    private var planned: [[DuplicatePlan]] = []
+    ///
+    /// The whole request, not only its plans: what a removal frees is arithmetic
+    /// over the copies that *stay*, and a fake that dropped that list on the way
+    /// in could not tell a page that names them from one that leaves the engine
+    /// to guess — which is the same shape as a search that carries no policy.
+    private var planned: [DuplicateRemovalRequest] = []
     private var held: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)] = []
 
     /// Stored, not rebuilt per access: the view model subscribes once at init,
@@ -207,7 +212,10 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     var searches: [DuplicateSearchRequest] { lock.withLock { searched } }
 
     /// What each removal asked for, in order.
-    var removals: [[DuplicatePlan]] { lock.withLock { planned } }
+    var removals: [[DuplicatePlan]] { lock.withLock { planned.map(\.plans) } }
+
+    /// What each removal said would stay, in order — nil where it said nothing.
+    var staying: [[String]?] { lock.withLock { planned.map(\.staying) } }
 
     var parkedCount: Int { lock.withLock { held.count } }
 
@@ -280,8 +288,9 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
                 searched.append(request)
             }
         case .trash:
-            if let plans = try? JSONDecoder().decode([DuplicatePlan].self, from: payload) {
-                planned.append(plans)
+            if let request = try? JSONDecoder().decode(DuplicateRemovalRequest.self,
+                                                       from: payload) {
+                planned.append(request)
             }
         case .cancel, .stopRemoval, .backgroundScan:
             break
@@ -358,17 +367,31 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
 /// A view model over `transport`, with a folder remembered.
 ///
 /// **The one place the seal key is injected, and it is not the person's.** The
-/// view model reads the keep policy at `init` — through the same guard the
-/// engine reads it with — so a fixture left on the default would have every test
-/// in this target reach into the login keychain for `com.helm.app / settings-seal`
-/// and create it where it is absent. The machine is a boundary of its own, and a
-/// test does not write to it.
+/// view model reads the keep policy through the same guard the engine reads it
+/// with, so a fixture left on the default would have every test in this target
+/// reach into the login keychain for `com.helm.app / settings-seal` and create
+/// it where it is absent. The machine is a boundary of its own, and a test does
+/// not write to it. (It read the policy inside `init` until `23dae882`; it warms
+/// the key on a task of its own now, which is what the cache below is for.)
+///
+/// **Behind `SealKeyCache`, because the page reads through `keyIfWarm()`.** A
+/// bare `PlantedSealKey` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
+/// `SettingGuard.isWarm` is false for ever and `keepPolicyIfWarm` never answers
+/// — a keychain permanently mid-answer, which is a state the real one is never
+/// permanently in, and it made «the page opened on what is stored» unwritable
+/// through the shared fixture. The cache is what turns the one round trip
+/// `firstLoad` makes into a warm read, exactly as
+/// `DuplicatesSettings.guardOfScanSettings` does in the app.
+/// - Parameter store: for the tests that have to put something in it first — a
+///   sealed keep policy is written before the page exists, the way an earlier
+///   run of the app would have left it. Left out, the fixture builds its own.
 @MainActor
 func duplicatesModel(over transport: EngineTransport,
-                     folder: String = "\(home)/Downloads") -> DuplicatesViewModel {
+                     folder: String = "\(home)/Downloads",
+                     store: NamespacedStore? = nil) -> DuplicatesViewModel {
     DuplicatesViewModel(vm: ModuleViewModel(transport: transport),
-                        store: duplicatesStore(folder: folder),
-                        settings: SettingGuard(keys: PlantedSealKey()))
+                        store: store ?? duplicatesStore(folder: folder),
+                        settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())))
 }
 
 /// A view model that has already searched, with `groups` as the answer.

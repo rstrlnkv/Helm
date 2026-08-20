@@ -75,3 +75,36 @@ public struct DuplicateSearchRequest: Codable, Sendable {
         self.policy = policy?.rawValue
     }
 }
+
+/// What one press of «Move to the Trash» asks for: the copies that go, each
+/// with the copy it duplicates, and the copies that stay.
+///
+/// **The second list is not decoration.** What a removal frees is arithmetic
+/// over clone families, and a family is held by *any* copy of it that is not
+/// going — `DuplicateGroup.reclaimable`, which the bar above the press is folded
+/// from, says so outright. The engine cannot work that out: the copy the person
+/// left unticked is named in no plan, and there is no reverse lookup from a
+/// clone family to its members (`HelmTrash.remove`). So the page, which is the
+/// only place that knows what is on the screen, says it — and the bar before the
+/// press and the banner after it stay one arithmetic.
+public struct DuplicateRemovalRequest: Codable, Sendable {
+    /// The copies going, each with the copy it is a duplicate of.
+    public let plans: [DuplicatePlan]
+
+    /// Every copy the page is keeping — the survivors *and* the extras left
+    /// unticked.
+    ///
+    /// Optional for the reason `DuplicateSearchRequest.policy` is: a synthesised
+    /// `Decodable` demands the key whatever default the property carries, so a
+    /// non-optional field would make a payload written without it decode as
+    /// nothing at all — and «nothing at all» here is a removal that never
+    /// happens (CLAUDE.md § A `defaulted` property on a `Codable` payload).
+    /// Absent means «the caller did not say», which is what every direct caller
+    /// of `DuplicatesEngine.trash` outside this wire is.
+    public let staying: [String]?
+
+    public init(plans: [DuplicatePlan], staying: [String]) {
+        self.plans = plans
+        self.staying = staying
+    }
+}

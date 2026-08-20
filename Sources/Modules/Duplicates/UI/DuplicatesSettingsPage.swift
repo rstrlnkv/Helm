@@ -156,9 +156,14 @@ struct DuplicatesSettingsPage: View {
                 .fixedSize()
                 if dvm.folder != nil {
                     let title = dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain
+                    // Dimmed while a removal runs, for the reason the clear
+                    // button beside the basket already is: this press empties
+                    // the basket the request is out with, and takes the
+                    // removal's own tick and Stop button down with it.
                     control(title, symbol: "arrow.clockwise", labelled: layout.labelsSearch) {
                         dvm.search()
                     }
+                    .disabled(dvm.busy)
                 }
                 if !dvm.groups.isEmpty {
                     // The label goes before the button does: every group header
