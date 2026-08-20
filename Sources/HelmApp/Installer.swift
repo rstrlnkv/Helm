@@ -7,7 +7,12 @@ import HelmRuntime
 /// script that waits for this process to quit, swaps the bundle in place, and
 /// relaunches. The running app cannot overwrite its own bundle, hence the script.
 enum Installer {
-    enum InstallError: Error { case unzipFailed, appNotFound, versionMismatch(String), notReplaceable }
+    enum InstallError: Error {
+        case unzipFailed, appNotFound, versionMismatch(String), notReplaceable
+        /// The swap script could not be started. `HelmProcess` has already
+        /// logged why; this is what the caller shows.
+        case couldNotHandOver
+    }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
     /// Runs on the main actor; the work is quick for a ~2 MB archive.
@@ -77,9 +82,12 @@ enum Installer {
         // behind is the note itself (`UpdateHandoff`).
         UpdateHandoff.note(version: version)
 
-        // The one spawn here that is not `HelmProcess`: that runner reads the
-        // child to EOF and waits for its status, and this child is waiting for
-        // *this* process to exit before it does any work.
+        // Not `HelmProcess.run`: that runner reads the child to EOF and waits
+        // for its status, and this child is waiting for *this* process to exit
+        // before it does any work. It is `HelmProcess.start` all the same —
+        // the launch itself has to go through the door that answers instead of
+        // raising, and this is the worst place in the app for an abort, since
+        // it happens while Helm is replacing itself.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = [scriptURL.path]
@@ -91,14 +99,12 @@ enum Installer {
         // Detach: the script must outlive this process (it swaps + relaunches us).
         proc.standardOutput = nil
         proc.standardError = nil
-        do {
-            try proc.run()
-        } catch {
+        guard HelmProcess.start(proc, path: "/bin/bash") else {
             // Nothing was handed over, so there is nothing for the next launch
             // to report — and a note left here would accuse a swap that never
             // happened.
             UpdateHandoff.clear()
-            throw error
+            throw InstallError.couldNotHandOver
         }
     }
 }

@@ -199,6 +199,24 @@ public enum HelmProcess {
     /// and the only place it could be seen is the log. The path is redacted for
     /// the same reason every path in this log is; the exception's name is a
     /// Foundation constant and carries nothing of anybody's.
+    /// Start a child this caller owns, through the same door.
+    ///
+    /// `run` and `runData` read a child to EOF and wait for its status; two
+    /// callers cannot use either, because their child outlives the call — the
+    /// updater's swap script waits for *this* process to exit before it does
+    /// any work, and Homebrew's streaming port hands its pipes to a page. Both
+    /// had their own `try process.run()`, which is the spelling that aborts the
+    /// app: `NSTask` raises an Objective-C exception on some launch paths and a
+    /// Swift `catch` cannot see it.
+    ///
+    /// False rather than a throw, because the refusal is already logged here
+    /// and a caller that owns the process owns what to do about it — the
+    /// updater has a hand-over note to take back, and the streaming port has a
+    /// page to tell.
+    public static func start(_ process: Process, path: String) -> Bool {
+        launched(process, path)
+    }
+
     private static func launched(_ process: Process, _ path: String) -> Bool {
         var failure: NSError?
         if HelmLaunchTask(process, &failure) { return true }
