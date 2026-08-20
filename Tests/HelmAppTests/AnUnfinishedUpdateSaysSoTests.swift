@@ -88,7 +88,17 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
                                  "the installer hands the swap over without leaving a note, "
                                  + "so a swap that fails is reported nowhere: the app that "
                                  + "owns the log is dead before the script starts")
-        let spawn = try XCTUnwrap(source.range(of: "proc.run()"))
+        // The hand-over, by the name of the door it goes through. It was
+        // `proc.run()` until 2026-08-20, when the launch moved onto
+        // `HelmProcess.start` — the one that answers instead of raising, since
+        // an `NSTask` that raises aborts the app, and here it would abort it
+        // while it is replacing itself. Any source scan anchors on a spelling;
+        // what this one can do is say which spelling, so the next rename is an
+        // edit here rather than a puzzle.
+        let spawn = try XCTUnwrap(source.range(of: "HelmProcess.start(proc"),
+                                  "the installer no longer hands the swap over through "
+                                  + "`HelmProcess.start`, so this scan cannot see where the "
+                                  + "hand-over is — find the launch and name it here")
         XCTAssertLessThan(note.lowerBound, spawn.lowerBound,
                           "the note is written after the handover, so a swap that beats "
                           + "this process to it clears a note that is not there yet")

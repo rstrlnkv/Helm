@@ -31,7 +31,7 @@ import XCTest
 /// in the next module to grow a basket.
 final class OneRemovalAtATimeEverywhereTests: XCTestCase {
 
-    func testEveryTrashingViewModelRefusesASecondRun() throws {
+    func testEveryFileThatSendsARemovalRefusesASecondPress() throws {
         // `RepoSource.root`, not three `deletingLastPathComponent`s: that count is a
         // fact about where this file sits, and moving the file makes the walk land
         // somewhere with no `Sources/Modules` in it — an enumerator over nothing,
@@ -44,15 +44,9 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
         var offenders: [String] = []
         let files = FileManager.default.enumerator(at: modules, includingPropertiesForKeys: nil)
         while let url = files?.nextObject() as? URL {
-            // `contains`, not `hasSuffix`: a view model may be split across
-            // extension files (`DiskViewModel+Basket.swift` holds Disk's
-            // `emptyBasket`), and the unit this guard is about is the file that
-            // *sends* the command — the `guard !busy` has to stand beside the
-            // request it gates, whichever file of the type that is.
             guard url.pathExtension == "swift",
-                  url.lastPathComponent.contains("ViewModel"),
                   let source = try? String(contentsOf: url, encoding: .utf8),
-                  source.contains("Command.trash")
+                  Self.sendsARemoval(source)
             else { continue }
             checked.append(url.lastPathComponent)
             if !source.contains("guard !busy") {
@@ -60,13 +54,32 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(checked.count, 4,
-                       "\(checked.count) trashing view models were found rather than four, "
+        XCTAssertEqual(checked.count, 6,
+                       "\(checked.count) files that send a removal were found rather than six, "
                        + "so this scan is looking for something that has changed shape: "
                        + "\(checked.sorted())")
         XCTAssertTrue(offenders.isEmpty,
                       "these can start a second removal while the first is still running, "
                       + "which reports the first as having failed: "
                       + offenders.sorted().joined(separator: ", "))
+    }
+
+    /// **The subject is a file that sends a removal, not a file called a view
+    /// model.**
+    ///
+    /// It was `lastPathComponent.contains("ViewModel")` and it missed two doors,
+    /// both found by an adversarial pass on 2026-08-20 and both real: the Trash
+    /// offer's model lives in `TrashedLeftoversView.swift` and started a batch
+    /// whatever was already in flight, and the Leftovers tab sends straight
+    /// through `trashPaths`, which is the one route around
+    /// `UninstallerViewModel.removeSelection`'s own guard. Naming the *type* was
+    /// naming the place a removal is usually written rather than the thing that
+    /// makes it dangerous.
+    ///
+    /// Two spellings, because there are two doors on the wire and the module's
+    /// own `UninstallerCommand` says so at the `trashPaths` case: «`uninstall`
+    /// was `trashPaths` with the app bundle appended — a second door».
+    private static func sendsARemoval(_ source: String) -> Bool {
+        source.contains("Command.trash") || source.contains("uvm.trashPaths(")
     }
 }
