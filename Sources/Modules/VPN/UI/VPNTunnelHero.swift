@@ -607,6 +607,10 @@ struct VPNTunnelHero: View {
                 // at length in System Settings is an ordinary Mac.
                 .fixedSize(horizontal: false, vertical: true)
         }
+        // «Скорость, 343, incy · utun8» as one VoiceOver stop, the way
+        // `HelmMetricStrip` reads its two. Left apart, the four cards are twelve
+        // stops and three of them say the figure before the word naming it.
+        .accessibilityElement(children: .combine)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(HelmSpace.s5)
         .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
