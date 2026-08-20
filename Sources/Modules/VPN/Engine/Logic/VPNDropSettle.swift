@@ -25,7 +25,7 @@ import Foundation
 /// delayed block immediately — the poll loop depends on that — so the wait would
 /// be over before a test could say what happened during it (CLAUDE.md § a fake
 /// that finishes instantly makes a test of a wait vacuous).
-public enum VPNDropSettle {
+enum VPNDropSettle {
 
     /// How long a tunnel has to stay down before its loss is announced.
     ///
@@ -33,10 +33,10 @@ public enum VPNDropSettle {
     /// than picked: the blips in the log healed in three. It is also the whole
     /// cost of the change to somebody whose tunnel really has gone — five
     /// seconds later than before, on a notice they will act on for minutes.
-    public static let window: TimeInterval = 5
+    static let window: TimeInterval = 5
 
     /// What to do with a tunnel that was seen falling.
-    public enum Verdict: Equatable, Sendable {
+    enum Verdict: Equatable, Sendable {
         /// It is up again. Nothing was lost and nothing is said.
         case healed
         /// Still down, but not for long enough to be sure.
@@ -54,7 +54,7 @@ public enum VPNDropSettle {
     /// negative interval is not five seconds having passed. The drop is then
     /// announced at the first refresh after the clock is ahead of the stamp
     /// again, which is the safe direction: late news rather than invented news.
-    public static func verdict(fellAt: Date, isUpNow: Bool, now: Date) -> Verdict {
+    static func verdict(fellAt: Date, isUpNow: Bool, now: Date) -> Verdict {
         if isUpNow { return .healed }
         return now.timeIntervalSince(fellAt) >= window ? .announce : .waiting
     }

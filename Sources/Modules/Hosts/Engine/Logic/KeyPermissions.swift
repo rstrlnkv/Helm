@@ -12,10 +12,10 @@ import Foundation
 /// refused by `ssh` today, and `sshd` refuses an `authorized_keys` under one —
 /// so the verdict is drawn for both, and the wording on screen says which is
 /// which rather than lumping them together.
-public enum KeyPermissions {
+enum KeyPermissions {
 
     /// What a mode comes to.
-    public enum Verdict: Equatable, Sendable {
+    enum Verdict: Equatable, Sendable {
         case ok
         /// Too open, and what it should be. The number is carried rather than
         /// recomputed at the call site, because the caller that draws the
@@ -36,7 +36,7 @@ public enum KeyPermissions {
     /// A private key: readable and writable by its owner, by nobody else.
     /// 0600 is what `ssh-keygen` writes; 0400 is what a careful person writes,
     /// and `ssh` accepts it.
-    public static func privateKey(_ mode: mode_t) -> Verdict {
+    static func privateKey(_ mode: mode_t) -> Verdict {
         mode & 0o077 == 0 ? .ok : .tooOpen(fix: 0o600)
     }
 
@@ -44,13 +44,13 @@ public enum KeyPermissions {
     /// somebody else can write is a directory somebody else can replace a key
     /// in. Group and other **read** is what `ssh` tolerates here and `sshd`
     /// does not, so the fix is the tighter one.
-    public static func directory(_ mode: mode_t) -> Verdict {
+    static func directory(_ mode: mode_t) -> Verdict {
         mode & 0o077 == 0 ? .ok : .tooOpen(fix: 0o700)
     }
 
     /// The public half is meant to be readable by anyone — it is public — so
     /// only writability by others is a fault.
-    public static func publicKey(_ mode: mode_t) -> Verdict {
+    static func publicKey(_ mode: mode_t) -> Verdict {
         mode & 0o022 == 0 ? .ok : .tooOpen(fix: 0o644)
     }
 }

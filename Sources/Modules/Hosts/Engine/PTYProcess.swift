@@ -23,14 +23,14 @@ import HelmRuntime
 /// This starts in the module. It moves to `HelmRuntime` when a second module
 /// spells it — that is the rule, and the list of things written twice before
 /// they moved is long enough to trust it.
-public enum PTYProcess {
+enum PTYProcess {
 
-    public struct Result: Sendable {
-        public let status: Int32
+    struct Result: Sendable {
+        let status: Int32
         /// Everything the child wrote, prompts included. **Never logged whole**
         /// — a caller that wants a line out of it takes the line.
-        public let output: String
-        public init(status: Int32, output: String) {
+        let output: String
+        init(status: Int32, output: String) {
             self.status = status
             self.output = output
         }
@@ -39,9 +39,9 @@ public enum PTYProcess {
     /// The status of a run whose deadline passed. Distinguishable from anything
     /// a child can produce, the way `HelmProcess.timedOutStatus` is: exit codes
     /// are 0…255, a signal death reports the signal, and -1 is a failed spawn.
-    public static let timedOutStatus: Int32 = -2
+    static let timedOutStatus: Int32 = -2
     /// The status when the terminal or the spawn itself could not be had.
-    public static let couldNotStartStatus: Int32 = -1
+    static let couldNotStartStatus: Int32 = -1
 
     /// Run `path` with `arguments` on a pty, answering every passphrase prompt
     /// with `secret`.
@@ -54,7 +54,7 @@ public enum PTYProcess {
     /// both wordings have changed across macOS releases. What does not change is
     /// that the word «passphrase» is in the question, so each read that contains
     /// it and has not yet been answered gets one answer.
-    public static func run(_ path: String, _ arguments: [String],
+    static func run(_ path: String, _ arguments: [String],
                            answering secret: inout Data,
                            timeout: TimeInterval = 60) -> Result {
         defer { zero(&secret) }

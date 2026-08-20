@@ -14,9 +14,9 @@ public protocol RunningProcess: Sendable {
 /// A handle with nothing behind it: a stream that failed to spawn, or a fake
 /// whose child has no process. Terminating it does nothing, which is all there
 /// is to do.
-public struct NoProcess: RunningProcess {
-    public init() {}
-    public func terminate() {}
+struct NoProcess: RunningProcess {
+    init() {}
+    func terminate() {}
 }
 
 public protocol ProcessRunner: Sendable {

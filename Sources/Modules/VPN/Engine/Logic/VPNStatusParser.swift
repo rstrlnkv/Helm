@@ -16,18 +16,18 @@ import Foundation
 /// `B8689BB0-071F-4E35-906E-FBC1F66D195C`, and the lookup answered nil for
 /// every tunnel this app can raise. The module already speaks `scutil` through
 /// `VPNRunnerPort`, and the tool answers by the same name `--nc start` takes.
-public enum VPNStatusParser {
+enum VPNStatusParser {
 
     /// What one status read found. Only ever built with an interface: a
     /// connection that is down, or one whose tunnel has not come up yet, names
     /// none — and `nil` is that state rather than an empty string.
-    public struct Reading: Equatable, Sendable {
-        public let interface: String
+    struct Reading: Equatable, Sendable {
+        let interface: String
         /// `IsPrimaryInterface` as the tool answers it, or nil when it did not.
         /// The routing verdict prefers the dynamic store's global entry — that
         /// is the routing table's own answer — and falls back to this, which is
         /// the same question asked of the connection (`VPNExitVerdict.of`).
-        public let isPrimaryInterface: Bool?
+        let isPrimaryInterface: Bool?
         /// **When the tunnel last changed state, as the tool says it.**
         ///
         /// `VPNEngine.stampWhatCameUp` carried the sentence «`scutil` cannot
@@ -42,13 +42,13 @@ public enum VPNStatusParser {
         ///
         /// Nil when the line is absent or does not parse, and the engine falls
         /// back to what it saw itself. So this can only ever add a duration.
-        public let since: Date?
+        let since: Date?
         /// What the configuration carries around the tunnel rather than through
         /// it — the lines this parser calls decoys, kept instead of only
         /// stepped over (`VPNExcludedRoutes`).
-        public let excludedRoutes: [VPNExcludedRoutes.Route]
+        let excludedRoutes: [VPNExcludedRoutes.Route]
 
-        public init(interface: String, isPrimaryInterface: Bool?,
+        init(interface: String, isPrimaryInterface: Bool?,
                     since: Date? = nil,
                     excludedRoutes: [VPNExcludedRoutes.Route] = []) {
             self.interface = interface
@@ -102,7 +102,7 @@ public enum VPNStatusParser {
     /// So the anchor is the `IPv4` dictionary's own indent: the tunnel's line
     /// is its direct child, the decoys sit two levels deeper inside
     /// `ExcludedRoutes` — and `scutil` indents two spaces per level, always.
-    public static func reading(in output: String) -> Reading? {
+    static func reading(in output: String) -> Reading? {
         /// The indent of the `IPv4 : <dictionary> {` line, once it has been
         /// seen. Its direct children are two spaces further in.
         var ipv4Indent: Int?

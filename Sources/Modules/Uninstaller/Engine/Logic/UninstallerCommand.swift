@@ -101,10 +101,10 @@ public struct TrashBatchRequest: Codable, Sendable {
 }
 
 /// Ask a running app to quit before its bundle is taken away.
-public struct QuitRequest: Codable, Sendable {
-    public let bundleID: String
+struct QuitRequest: Codable, Sendable {
+    let bundleID: String
     /// `terminate` rather than a polite request. The person ticked it.
-    public let force: Bool
+    let force: Bool
     public init(bundleID: String, force: Bool) {
         self.bundleID = bundleID
         self.force = force

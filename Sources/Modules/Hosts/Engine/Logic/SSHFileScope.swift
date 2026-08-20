@@ -24,9 +24,9 @@ import HelmRuntime
 ///
 /// `/etc/hosts` is not gated here at all: it is a constant, never composed from
 /// anything, which is a different guarantee and a stronger one.
-public enum SSHFileScope {
+enum SSHFileScope {
 
-    public static func mayWrite(_ url: URL, home: URL, under directory: URL? = nil) -> Bool {
+    static func mayWrite(_ url: URL, home: URL, under directory: URL? = nil) -> Bool {
         let asked = PathCanonical.resolvingAncestors(url.path)
         if let directory {
             guard isInside(asked, of: PathCanonical.resolvingWholePath(directory.path)) else {

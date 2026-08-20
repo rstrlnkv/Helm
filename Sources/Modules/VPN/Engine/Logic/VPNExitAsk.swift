@@ -30,7 +30,7 @@ import Foundation
 /// Pure, because every one of those is a rule and none of them is a rendering —
 /// and because the alternative is four conditions spelled inside a method that
 /// also starts a `Task`, which is where the original defect lived.
-public enum VPNExitAsk {
+enum VPNExitAsk {
 
     /// How long an empty answer stands before the question may be asked again.
     ///
@@ -40,7 +40,7 @@ public enum VPNExitAsk {
     /// requests per minute rather than in seconds of waiting. A person who wants
     /// the answer sooner than that has raised or dropped a tunnel, which is an
     /// event and goes round this gate (`VPNEngine.checkExit(force:)`).
-    public static let quietPeriod: TimeInterval = 60
+    static let quietPeriod: TimeInterval = 60
 
     /// Whether to make the request now.
     ///
@@ -49,7 +49,7 @@ public enum VPNExitAsk {
     /// the question by itself, and what reopens it is the route moving — so a
     /// clock kept through a good answer would refuse the re-read the move
     /// exists to ask for.
-    public static func should(tunnelIsUp: Bool, region: String?, asking: Bool,
+    static func should(tunnelIsUp: Bool, region: String?, asking: Bool,
                               lastAsked: Date?, now: Date) -> Bool {
         guard tunnelIsUp, region == nil, !asking else { return false }
         guard let lastAsked else { return true }
@@ -73,7 +73,7 @@ public enum VPNExitAsk {
     /// network at all *and* for a read that failed (`VPNInterfacePort`), and
     /// treating a failed read as a route change would drop a good answer every
     /// time the dynamic store hiccupped.
-    public static func routeMoved(from previous: String?, to current: String?) -> Bool {
+    static func routeMoved(from previous: String?, to current: String?) -> Bool {
         guard let previous, let current else { return false }
         return previous != current
     }
