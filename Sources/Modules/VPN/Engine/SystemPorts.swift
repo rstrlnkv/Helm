@@ -169,7 +169,35 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials.
     private let helmVPNKeychainService = "com.helm.vpn"
 
-    public init() { Self.purgeItemsWithTheOldAccessList() }
+    public convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
+
+    /// The purge as an action, so a test can watch when it runs without ever
+    /// reaching a keychain.
+    ///
+    /// **The decision is not injected, only the doing.**
+    /// `CredentialCachePurge.shouldRun` still asks `AppBuild.isBundledApp`
+    /// inside the default action, which is the guard that exists because
+    /// `swift test` once deleted the owner's real VPN secrets. Internal rather
+    /// than public: no other target may forget which one it is taking.
+    ///
+    /// **And it runs off the thread that built this.** That thread is the main
+    /// one — `VPNDescriptor.makeEngine` is `@MainActor` and builds
+    /// `VPNSystemPorts()` while the module list is assembled — so a
+    /// `SecItemDelete` there is a launch-time keychain call, the family of the
+    /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog
+    /// at every install rather than once (ARCHITECTURE.md § A seal needs a
+    /// signature). Nothing waits for the answer: the purge is a one-time
+    /// deletion of items this port will simply re-read the System keychain past
+    /// if it beats them to it.
+    ///
+    /// A global queue rather than `offTheCooperativePool`, which is the bridge
+    /// *out of* an async context and there is none here — and a keychain dialog
+    /// holds whatever thread it is on for as long as a person looks at it,
+    /// which is the one thing the cooperative pool's thread-per-core must never
+    /// be spent on.
+    init(purge: @escaping @Sendable () -> Void) {
+        DispatchQueue.global(qos: .utility).async(execute: purge)
+    }
 
     /// Items written by the previous implementation carry an access list that
     /// lets `/usr/bin/security` read them with no prompt — anything running as

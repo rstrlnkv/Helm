@@ -39,6 +39,36 @@ func stateEvents(on transport: LocalTransport,
     return seen
 }
 
+/// The same drain, around work that has to be **awaited** — a command sent
+/// through the transport rather than a method called on the engine.
+///
+/// `LocalTransport.send` is `async`, so it cannot be spelled inside the closure
+/// above, and starting it in a detached `Task` instead would race the sentinel:
+/// the drain would end before the handler had run and count nothing, which is
+/// the shape of a test that passes because its subject never happened. A
+/// separate argument label rather than an overload of `during:`, so no existing
+/// call site can quietly change which one it resolves to.
+///
+/// With `VPNWorkQueue.inline` the handler runs to completion inside the `await`,
+/// so everything the command caused is already buffered when the sentinel goes
+/// out.
+func stateEvents(on transport: LocalTransport,
+                 awaiting work: () async -> Void) async -> [VPNEngine.StatePayload?] {
+    let events = transport.events
+    await work()
+    let end = EngineEvent(name: "test.sentinel.\(UUID().uuidString)", payload: Data())
+    transport.emit(end)
+    var seen: [VPNEngine.StatePayload?] = []
+    for await event in events {
+        if event.name == end.name { break }
+        if event.name == VPNEvent.state.rawValue {
+            seen.append(try? JSONDecoder().decode(VPNEngine.StatePayload.self,
+                                                  from: event.payload))
+        }
+    }
+    return seen
+}
+
 /// The state a page opened now would draw: the transport replays the last event
 /// of each name to every new subscriber, which is what a view model built after
 /// the engine has already spoken receives. Nil is «the engine has said nothing».

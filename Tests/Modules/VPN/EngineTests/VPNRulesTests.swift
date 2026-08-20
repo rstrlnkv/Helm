@@ -123,19 +123,31 @@ final class VPNStatusVocabularyTests: XCTestCase {
 /// read "ACTIVE 0 · AUTOMATIC 1" until the app restarted.
 final class AutoConnectedFollowsRealityTests: XCTestCase {
 
+    /// **The credit runs out at `VPNDropSettle.window`, not at the first read
+    /// showing the tunnel down.** That read is the one the settle exists to
+    /// distrust — a NetworkExtension tunnel re-handshaking on a Wi-Fi change is
+    /// down for three seconds — and emptying the book on it cost Helm the
+    /// tunnel it was holding, and with it the next real drop
+    /// (`ABlipDoesNotCostHelmItsTunnelTests`).
     func testANameNoLongerUpIsNoLongerCountedAsAutomatic() {
         let runner = FakeRunner()
+        let clock = TestClock()
         runner.listOutput = #"* (Connected) A --> B  "Work" [IKEv2]"#
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
             namespace: "vpn", backing: InMemoryKeyValueStore())),
             runner: runner, apps: FakeApps(),
             interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-            work: .inline)
+            now: { clock.now }, work: .inline)
         engine.connect("Work", auto: true)
         XCTAssertEqual(engine.autoConnected, ["Work"])
 
         // It drops without Helm asking.
         runner.listOutput = #"* (Disconnected) A --> B  "Work" [IKEv2]"#
+        engine.refresh()
+        XCTAssertEqual(engine.autoConnected, ["Work"],
+                       "a fall inside the settle window was taken for a loss")
+
+        clock.advance(VPNDropSettle.window)
         engine.refresh()
 
         XCTAssertTrue(engine.autoConnected.isEmpty,

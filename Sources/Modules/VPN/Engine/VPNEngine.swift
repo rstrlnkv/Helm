@@ -23,8 +23,10 @@ import HelmRuntime
 /// its secret handling is one subject, the auto-connect book another, the strip
 /// a third — and that is a change to somebody's live tunnels.
 ///
-/// It sits one line under the `file_length` **error**, which is not deliberate:
-/// the next feature in this file has nowhere to go but that decomposition.
+/// It is past the `file_length` **error** as well, which is not deliberate: it
+/// says the next feature in this file has nowhere to go but that decomposition,
+/// and the six repairs of 2026-08-20 were the next feature. `swiftlint lint
+/// Sources/Modules/VPN/Engine/VPNEngine.swift` prints how far past.
 public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -87,6 +89,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// thread. `cancelWorkThatLeftTheQueue()`.
     private var _exitCheck: Task<Void, Never>?
     private var _speedRun: Task<Void, Never>?
+    /// Whether a re-read is already armed for the burst of network
+    /// notifications going on now — `networkChanged()`. Under the lock because
+    /// the store delivers on its own queue and the re-read runs on the work
+    /// queue.
+    private var _networkChangePending = false
 
     public var lastAutomation: VPNAutomation? {
         lock.lock(); defer { lock.unlock() }; return _lastAutomation
@@ -190,7 +197,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// drops it is that tunnel going, below.
     private var lastSpeed: [String: VPNSpeedReading] = [:]
     /// Which interface each connected tunnel is on, and what the tool said about
-    /// its routing — read once per tunnel and dropped when it goes.
+    /// its routing — dropped when it goes, and read once per tunnel for as long
+    /// as the routing half is nobody's answer (`readInterfaces`).
     ///
     /// **Read from `scutil --nc status <name>`, not from the dynamic store.**
     /// The store wants a network service's id and `--nc list` answers with a
@@ -286,13 +294,49 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // The one question this module answers is asked of the system, not of a
         // cache: a tunnel raised from the menu bar, stopped in System Settings
         // or dropped by the network never comes back through Helm.
-        network?.startObserving { [weak self] in
-            // An observer that never fires and an observer that fires and finds
-            // nothing changed look identical from outside the process, and the
-            // release process triages dev builds against the log. One line per
-            // real network event, no names in it.
-            HelmLog.shared.info(Self.moduleID, "network state changed; re-reading")
-            self?.refresh()
+        network?.startObserving { [weak self] in self?.networkChanged() }
+    }
+
+    /// How long the store has to go quiet before the list is re-read.
+    ///
+    /// A quarter of a second, chosen against what the store actually delivers
+    /// rather than picked: the bursts in the owner's log arrive inside a single
+    /// second — seven, seven, seven, six — and one connect is followed by five
+    /// to eleven notifications in under half a second. Long enough to swallow a
+    /// burst, short enough to be invisible beside the 0.7 s the poll already
+    /// waits between its own re-reads.
+    private static let networkSettle: TimeInterval = 0.25
+
+    /// **One re-read per burst, not one per notification.**
+    ///
+    /// `SCDynamicStore` does not deliver one event for one thing happening: a
+    /// tunnel coming up moves the global IPv4 entity, each service's IPv4
+    /// entity and the Setup entity, and this engine subscribes to all three
+    /// (`DynamicStoreNetworkWatch`). Every notification used to cost a
+    /// `scutil --nc list` — a subprocess measured at 16 ms, on the queue every
+    /// connect has to get through — and a line in a `LogTail` bounded at 1000,
+    /// which is the heartbeat `ScanCoordinator` has an explicit rule against.
+    ///
+    /// The port carries no detail about what changed, so deciding how often to
+    /// re-read is the engine's job and nobody else's. The flag is the whole
+    /// coalescer: the first notification of a burst arms the re-read and says
+    /// so once in the log, the rest of the burst are free, and the re-read
+    /// clears the flag before it runs so a later change re-arms it.
+    private func networkChanged() {
+        lock.lock()
+        let alreadyArmed = _networkChangePending
+        _networkChangePending = true
+        lock.unlock()
+        // An observer that never fires and an observer that fires and finds
+        // nothing changed look identical from outside the process, and the
+        // release process triages dev builds against the log. One line per
+        // burst, no names in it.
+        guard !alreadyArmed else { return }
+        HelmLog.shared.info(Self.moduleID, "network state changed; re-reading")
+        work.run(after: Self.networkSettle) { [weak self] in
+            guard let self else { return }
+            self.lock.lock(); self._networkChangePending = false; self.lock.unlock()
+            self.refreshNow()
         }
     }
 
@@ -371,13 +415,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // came up for its own reasons in the same breath is not mistaken for the
         // tunnel that went. Helm cannot tell which configuration `--nc start`
         // acted on; it can tell that the one it watched come up is down.
+        //
+        // **Nothing is struck out here, and that is the whole of the settle.**
+        // The books were emptied on this very read — the first one showing the
+        // tunnel down, which is the read `VPNDropSettle` exists to distrust —
+        // while only the *announcement* waited for the window. A three-second
+        // re-handshake therefore cost Helm the tunnel: the loop below that
+        // re-adopts a connected tunnel is gated on `_autoConnected`, which this
+        // had just cleared, so nothing put it back and the next real drop was
+        // unreportable for the rest of the session. The forgetting waits for
+        // `settleDrops` to answer `.announce` now (`forgetWhatWasLost`), and
+        // `.healed` leaves both books exactly as they were.
         let fallen = _cameUp.filter { !up.contains($0.key) }
-        for id in fallen.keys { _cameUp[id] = nil }
+        let stillUp = _cameUp.filter { up.contains($0.key) }
         // A name is only forgotten when nothing Helm watched come up still
         // carries it — the same rule as the report below, so the page's book and
-        // the news agree.
-        let dropped = Set(fallen.values).subtracting(_cameUp.values)
-        _autoConnected.subtract(dropped)
+        // the news agree. Asked of the other half of the same partition rather
+        // than of what is left in `_cameUp`, because nothing has been taken out
+        // of it: the two were one sentence while the fallen were struck out
+        // first.
+        let dropped = Set(fallen.values).subtracting(stillUp.values)
         for connection in parsed where connection.status.isUp
             && _autoConnected.contains(connection.name) {
             _cameUp[connection.id] = connection.name
@@ -416,11 +473,17 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
-        readInterfaces(parsed)
+        // **One question about this Mac, asked once for the whole refresh.**
+        // Both of the calls below need it — the interface read to know whether
+        // the tool's own routing flag is the reading that decides, the country
+        // check to notice the route moving — and asking the store twice is
+        // also two answers that can disagree inside one reading.
+        let primary = interfaces.primaryInterface()
+        readInterfaces(parsed, whileStoreSays: primary)
         // After `readInterfaces`, never before: the gate asks whether a tunnel
         // is up in the sense the strip means it — one this module has an
         // interface for — and that book is filled a line above.
-        noticeTheRouteAndAskWhereWeAre()
+        noticeTheRouteAndAskWhereWeAre(primary)
         emitState()
     }
 
@@ -858,12 +921,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// So the move is noticed first and the question asked second, in one pass —
     /// otherwise the drop would wait a refresh for the ask.
     ///
-    /// The route is read here rather than in `tunnelStates`, which also needs
-    /// it: that one is called from `emitState` and this decides something and
-    /// writes it down, and a getter with a side effect on shared state is the
-    /// defect Autopilot's `folders` records (CLAUDE.md).
-    private func noticeTheRouteAndAskWhereWeAre() {
-        let primary = interfaces.primaryInterface()
+    /// The route is decided on here rather than in `tunnelStates`, which also
+    /// reads it: that one is called from `emitState` and this decides something
+    /// and writes it down, and a getter with a side effect on shared state is
+    /// the defect Autopilot's `folders` records (CLAUDE.md). The reading itself
+    /// is `refreshNow`'s, taken once for the refresh.
+    private func noticeTheRouteAndAskWhereWeAre(_ primary: String?) {
         if VPNExitAsk.routeMoved(from: lastPrimary, to: primary) { lastRegion = nil }
         // Only a reading that answered is remembered: nil is «no network» and
         // «could not read» at once, so storing it would make the next real
@@ -881,16 +944,40 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the answer is then about whichever macOS picks; that ambiguity is the
     /// tool's own and is recorded at `_cameUp`, which carries it for the same
     /// reason.
-    private func readInterfaces(_ parsed: [VPNConnection]) {
+    ///
+    /// **Once per tunnel is right about the interface and was wrong about the
+    /// routing flag.** The same `Reading` carries both, and only the first of
+    /// them holds still: a tunnel's `utunN` does not change while it is up,
+    /// while `IsPrimaryInterface` — whether this Mac's traffic is leaving
+    /// through the tunnel — moves without the tunnel moving at all, on a
+    /// Wi-Fi-to-Ethernet switch, a second tunnel taking the route or a captive
+    /// network arriving. Cached for the life of the tunnel it was a local
+    /// memory of a live external fact with no channel to say it had changed
+    /// (CLAUDE.md), and the dangerous direction is the route leaving while the
+    /// green tick stays.
+    ///
+    /// So the cache is kept exactly where the flag is dead weight. The
+    /// parameter is the routing table's own answer, which is what
+    /// `VPNExitVerdict.of` prefers whenever it has one; the tool's flag is
+    /// consulted only when that is nil — «a Mac with no default route» and «the
+    /// store could not be read» at once (`VPNInterfacePort.primaryInterface`) —
+    /// and that is precisely when it has to be read again. On the ordinary Mac,
+    /// where the store answers, this is still one subprocess per tunnel.
+    private func readInterfaces(_ parsed: [VPNConnection], whileStoreSays primary: String?) {
         let up = Set(parsed.filter(\.status.isConnected).map(\.id))
         for id in interfaceOf.keys where !up.contains(id) { interfaceOf[id] = nil }
         for connection in parsed
-        where connection.status.isConnected && interfaceOf[connection.id] == nil {
+        where connection.status.isConnected
+            && (interfaceOf[connection.id] == nil || primary == nil) {
             let output = runner.run(["--nc", "status", connection.name]).output
             // Nil stays nil: a tunnel that is still coming up names no interface
             // yet, and the next refresh — there is always one, the poll sees to
-            // that — asks again.
+            // that — asks again. A *re-read* that answers nothing keeps what was
+            // read before instead: the tunnel is up, the last reading is the
+            // last thing the tool said about it, and dropping the row out of the
+            // strip on one short answer is news about nothing.
             interfaceOf[connection.id] = VPNStatusParser.reading(in: output)
+                ?? interfaceOf[connection.id]
         }
     }
 
@@ -918,6 +1005,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 break
             case .announce:
                 fellAt[id] = nil
+                // The books are emptied here and nowhere else, so «Helm is
+                // holding this tunnel» and «Helm has said it was lost» are the
+                // same moment. Before the notice, because everything
+                // downstream reads off those two books.
+                forgetWhatWasLost(id: id, name: name)
                 HelmLog.shared.info(Self.moduleID,
                                     "automatic connection dropped: \(Redact.vpn(name))")
                 // `.dropped`, not `.disconnected`. Nobody asked for this one: the
@@ -929,6 +1021,25 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 recordAutomation(name, .dropped)
             }
         }
+    }
+
+    /// Strikes a tunnel whose loss has just been announced out of both books.
+    ///
+    /// **The other end of the settle window.** A fall is not a loss until
+    /// `VPNDropSettle` says so, so nothing may be forgotten on the reading that
+    /// merely saw the tunnel down — a NetworkExtension tunnel re-handshaking on
+    /// a Wi-Fi change is down for three seconds and comes back, and Helm is
+    /// still holding it.
+    ///
+    /// The name goes only when no configuration Helm watched come up still
+    /// carries it, which is `refreshNow`'s own rule read at this end: two
+    /// configurations may share a display name, and `_autoConnected` is what
+    /// the quit rule hands back to `--nc stop`.
+    private func forgetWhatWasLost(id: String, name: String) {
+        lock.lock()
+        _cameUp[id] = nil
+        if !_cameUp.values.contains(name) { _autoConnected.remove(name) }
+        lock.unlock()
     }
 
     /// Was this service **seen** down before this refresh.
@@ -990,9 +1101,16 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         exitAsk += 1
         let mine = exitAsk
         let task = Task { [weak self] in
-            guard let self else { return }
-            let region = await self.exit.regionCode()
-            self.work.run { [weak self] in
+            // **Weakly across the await, the way `startMeasuring` already is.**
+            // `guard let self` at the top captures weakly and then holds the
+            // engine strongly for as long as the body runs — which here is the
+            // eight seconds `VPNExitPort` may take — so `deinit` could not run
+            // to cancel the task that was holding it (CLAUDE.md
+            // § `Task { [weak self] … }`). The port is held instead, and it
+            // points at nothing.
+            guard let exit = self?.exit else { return }
+            let region = await exit.regionCode()
+            self?.work.run { [weak self] in
                 guard let self, self.exitAsk == mine else { return }
                 // The flag is cleared whatever came back — an empty answer is an
                 // answer arriving, and leaving it set would close the question
@@ -1047,9 +1165,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // silent return leaves the second with a spinner and no button under
             // it, a refresh over a quiet tunnel being withheld by the dedup —
             // `connectNow`'s rule for its own early return.
+            //
+            // **And the publication is forced**, because the dedup is what it
+            // was being withheld by: a refusal moves no field of the payload,
+            // so an ordinary `emitState()` here was the silent return it was
+            // written to replace (`ARefusedMeasurementIsNotSilenceTests`).
             guard let target = self.tunnelStates().first(where: { $0.name == name }),
                   target.exit.carriesTheDefaultRoute else {
-                self.emitState()
+                self.emitState(force: true)
                 return
             }
             // One run at a time, and this one **is** silent: the run already
@@ -1137,7 +1260,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Which is why the tunnel's byte counters cross in whole kilobytes: they
     /// move while nobody touches them, and at byte precision every one of the
     /// poll's re-reads would be a change (`VPNInterfaceCounters.onTheWire`).
-    private func emitState() {
+    ///
+    /// **`force` is for news the payload has no field for.** A refusal changes
+    /// nothing about the module, so the payload it publishes is equal in every
+    /// field to the last one and the guard below withholds it — which over a
+    /// quiet tunnel is the whole of the answer the page was waiting for
+    /// (`measureSpeed`). The stamp is taken either way, so a forced emission
+    /// leaves the dedup saying exactly what it said before.
+    private func emitState(force: Bool = false) {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
                                     defaultName: defaultConnection?.name,
@@ -1147,7 +1277,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     tunnels: tunnelStates())
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
-        guard !isDuplicate else { return }
+        guard force || !isDuplicate else { return }
         localTransport.emit(VPNEvent.state, encoding: payload)
     }
 }

@@ -20,19 +20,7 @@ import HelmRuntime
 /// parser silently changes so that two configurations become one.
 final class ANameIsNotAnIdentityTests: XCTestCase {
 
-    /// **A clock the test can move**, because a drop is now held for
-    /// `VPNDropSettle.window` before it is announced: a tunnel seen down once is
-    /// a re-handshake until the clock says otherwise. Fixed, this fixture left
-    /// every drop `waiting` for ever.
-    private final class Clock: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _now = Date(timeIntervalSince1970: 1_000_000)
-        var now: Date { lock.lock(); defer { lock.unlock() }; return _now }
-        func advance(_ seconds: TimeInterval) {
-            lock.lock(); _now = _now.addingTimeInterval(seconds); lock.unlock()
-        }
-    }
-    private let clock = Clock()
+    private let clock = TestClock()
 
     private var at: Date { clock.now }
 

@@ -22,19 +22,6 @@ import XCTest
 /// then the real drop is silent too.
 final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
 
-    /// A clock the test moves, because the settle is a clock rather than a timer
-    /// — `VPNWorkQueue.inline` runs a delayed block at once, so a test of the
-    /// wait would be over before it began.
-    private final class Clock: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _now = Date(timeIntervalSince1970: 1_700_000_000)
-        var now: Date {
-            get { lock.lock(); defer { lock.unlock() }; return _now }
-            set { lock.lock(); _now = newValue; lock.unlock() }
-        }
-        func advance(_ seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
-    }
-
     private let bundleID = "com.example.app"
     private let identity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
     private let header = "Available network connection services:"
@@ -53,7 +40,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     /// an app that launched — and not by a command somebody sent. The first
     /// version of this fixture connected through the transport and then asserted
     /// its own precondition, which is how it said so.
-    private func engineHoldingTheTunnel(_ runner: FakeRunner, _ clock: Clock) -> VPNEngine {
+    private func engineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
         let apps = FakeApps()
         apps.identities[bundleID] = identity
         apps.bundleIDs = [bundleID]
@@ -77,7 +64,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     /// The measured case: down at one read, up at the next, three seconds later.
     func testATunnelThatComesBackInsideTheWindowIsNeverAnnounced() {
         let runner = FakeRunner()
-        let clock = Clock()
+        let clock = TestClock()
         let engine = engineHoldingTheTunnel(runner, clock)
 
         runner.listOutput = list("Disconnected")
@@ -107,7 +94,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     /// satisfy the first test and leave the module with no signal at all.
     func testATunnelThatStaysDownIsAnnouncedOnceTheWindowHasPassed() throws {
         let runner = FakeRunner()
-        let clock = Clock()
+        let clock = TestClock()
         let engine = engineHoldingTheTunnel(runner, clock)
 
         runner.listOutput = list("Disconnected")
@@ -127,7 +114,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     /// Announced once, not at every refresh afterwards.
     func testTheLossIsAnnouncedOnceRatherThanAtEveryRefresh() {
         let runner = FakeRunner()
-        let clock = Clock()
+        let clock = TestClock()
         let engine = engineHoldingTheTunnel(runner, clock)
 
         runner.listOutput = list("Disconnected")

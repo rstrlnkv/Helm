@@ -68,12 +68,21 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     /// The behaviour the day's change exists for, so a fix cannot buy the test
     /// above by simply never forgetting anything: a connection Helm raised,
     /// that came up and then dropped on its own, stops being Helm's.
+    ///
+    /// **The deadline is `VPNDropSettle.window`, not the first read that saw it
+    /// down.** It was the first read for one release, and the settle then
+    /// deferred only the *announcement* — so a three-second re-handshake
+    /// emptied this book while the tunnel was up and Helm was holding it, and
+    /// the next real drop had nothing to be read out of
+    /// (`ABlipDoesNotCostHelmItsTunnelTests`). Both ends are asserted here now:
+    /// still Helm's inside the window, and not Helm's past it.
     func test_a_vpn_that_came_up_and_then_went_is_forgotten() {
         let runner = FakeRunner()
+        let clock = TestClock()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
                                apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
+                               now: { clock.now }, work: .inline)
 
         runner.listOutput = list("Disconnected")
         engine.connect("A", auto: true)
@@ -83,6 +92,12 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
 
         // The network went, or somebody stopped it in System Settings.
         runner.listOutput = list("Disconnected")
+        engine.refresh()
+        XCTAssertTrue(engine.autoConnected.contains("A"),
+                      "a fall inside the settle window was taken for a loss, which is the "
+                      + "read `VPNDropSettle` exists to distrust")
+
+        clock.advance(VPNDropSettle.window)
         engine.refresh()
 
         XCTAssertFalse(engine.autoConnected.contains("A"),

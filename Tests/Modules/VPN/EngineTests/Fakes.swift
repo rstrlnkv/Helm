@@ -150,6 +150,33 @@ final class FakeCreds: VPNCredentialsPort {
     }
 }
 
+/// A clock the test moves, for anything this module measures an interval by.
+///
+/// The engine takes its own `now` so a firing's moment is a fact of the caller
+/// rather than of the machine, and the settle is a clock rather than a timer
+/// for the reason `VPNDropSettle` gives — `VPNWorkQueue.inline` runs a delayed
+/// block at once, so a test of the wait would be over before it began.
+///
+/// **Six files in this target had written this out privately** — three epochs
+/// between them, one with no `advance` and one with no settable `now` — which
+/// is the shape CLAUDE.md records for every helper that ended up in
+/// `HelmRuntime`. It is here rather than in `HelmTestSupport` only because
+/// `Tests/Support` has another writer in it today; that is the move owed next.
+final class TestClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _now: Date
+
+    /// The epoch does not matter to a test that measures from its own start,
+    /// which is all of them; it is a parameter for the one that pins a date.
+    init(_ start: Date = Date(timeIntervalSince1970: 1_700_000_000)) { _now = start }
+
+    var now: Date {
+        get { lock.lock(); defer { lock.unlock() }; return _now }
+        set { lock.lock(); _now = newValue; lock.unlock() }
+    }
+    func advance(_ seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
+}
+
 /// Records the observer's lifetime as well as its callback: an observer a
 /// module starts has to stop, and "did it stop" is the assertion that catches
 /// the callback landing on a freed engine.

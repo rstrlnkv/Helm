@@ -110,7 +110,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         let transport = LocalTransport()
         let exit = FakeExit()
         exit.answer = nil
-        let clock = Clock(Date(timeIntervalSince1970: 1_000_000))
+        let clock = TestClock(Date(timeIntervalSince1970: 1_000_000))
         let engine = makeEngine(alreadyUp(), transport: transport,
                                 interfaces: routed("utun4"), exit: exit,
                                 now: { clock.now })
@@ -265,18 +265,6 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     }
 
     // MARK: - Plumbing
-
-    /// A clock a test can move. `Date.init` cannot answer «a minute later»
-    /// without the test sleeping for one.
-    private final class Clock: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _now: Date
-        init(_ now: Date) { _now = now }
-        var now: Date {
-            get { lock.lock(); defer { lock.unlock() }; return _now }
-            set { lock.lock(); _now = newValue; lock.unlock() }
-        }
-    }
 
     /// Waits for a condition the module reaches on its own thread, with a
     /// deadline so a failure is a failure rather than a hung suite.

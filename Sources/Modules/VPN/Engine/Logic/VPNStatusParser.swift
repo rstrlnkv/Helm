@@ -75,7 +75,8 @@ public enum VPNStatusParser {
         return formatter
     }()
 
-    /// **The outermost `InterfaceName` wins, and that is the whole trick.**
+    /// **The tunnel's own `InterfaceName` is the one inside the `IPv4`
+    /// dictionary, and nothing else is an answer.**
     ///
     /// A connected tunnel's Extended Status carries the excluded routes it was
     /// configured with, each a dictionary naming the interface the traffic
@@ -86,11 +87,26 @@ public enum VPNStatusParser {
     /// is not going through the tunnel» on a Mac where it is: a false alarm in
     /// the one sentence this feature exists to get right.
     ///
-    /// The tunnel's own line sits in the `IPv4` dictionary itself, the decoys
-    /// two levels deeper inside its `ExcludedRoutes`, so indentation is what
-    /// separates them — and `scutil` indents two spaces per level, always.
+    /// This was «the shallowest `InterfaceName` seen» for one release, which is
+    /// the same rule only while the tunnel's own line is present. `scutil`
+    /// prints a dictionary's keys in order — `Addresses`, `ExcludedRoutes`,
+    /// `InterfaceName`, `Router`, `ServerAddress` — so the decoys come *before*
+    /// the line that overrules them, and any output stopping between the two
+    /// leaves a decoy as the shallowest candidate there is: a tunnel a moment
+    /// past `Connected`, or a read cut short inside `ExcludedRoutes`. The
+    /// caller then caches that reading for the life of the tunnel
+    /// (`VPNEngine.readInterfaces`), so one transient read draws `en0`'s
+    /// since-boot counters under a green tick. Nil is the answer, and the
+    /// caller is already written for it.
+    ///
+    /// So the anchor is the `IPv4` dictionary's own indent: the tunnel's line
+    /// is its direct child, the decoys sit two levels deeper inside
+    /// `ExcludedRoutes` — and `scutil` indents two spaces per level, always.
     public static func reading(in output: String) -> Reading? {
-        var shallowest: (indent: Int, value: String)?
+        /// The indent of the `IPv4 : <dictionary> {` line, once it has been
+        /// seen. Its direct children are two spaces further in.
+        var ipv4Indent: Int?
+        var tunnelInterface: String?
         var isPrimary: Bool?
         var since: Date?
         // One exclusion is three lines — destination, interface, mask — and the
@@ -102,9 +118,12 @@ public enum VPNStatusParser {
         for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
             let indent = line.prefix { $0 == " " }.count
             let text = line.trimmingCharacters(in: .whitespaces)
+            if ipv4Indent == nil, let opened = value(of: "IPv4", in: text), opened.hasSuffix("{") {
+                ipv4Indent = indent
+            }
             if let value = value(of: "InterfaceName", in: text), !value.isEmpty,
-               indent < (shallowest?.indent ?? .max) {
-                shallowest = (indent, value)
+               tunnelInterface == nil, let ipv4Indent, indent == ipv4Indent + 2 {
+                tunnelInterface = value
             }
             if let flag = value(of: "IsPrimaryInterface", in: text) {
                 isPrimary = flag == "1"
@@ -120,8 +139,8 @@ public enum VPNStatusParser {
                 pendingDestination = nil
             }
         }
-        guard let shallowest else { return nil }
-        return Reading(interface: shallowest.value, isPrimaryInterface: isPrimary,
+        guard let tunnelInterface else { return nil }
+        return Reading(interface: tunnelInterface, isPrimaryInterface: isPrimary,
                        since: since, excludedRoutes: excluded)
     }
 
