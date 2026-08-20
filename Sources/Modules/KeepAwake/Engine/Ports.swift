@@ -81,8 +81,20 @@ public protocol ClamshellPort: AnyObject {
     /// none, because it is reported as done.
     func canDisableSleepWithoutPassword() -> Bool
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void)   // admin prompt once
-    /// Takes the rule back out when the feature is switched off.
+    /// Takes the rule back out when the feature is switched off. Raises the
+    /// administrator dialog, so it needs somebody at the screen.
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void)
+    /// Takes the rule back out using the rule's own grant — `sudo -n`, no
+    /// dialog, nothing to decline.
+    ///
+    /// Synchronous on purpose. It is the one withdrawal a *terminating* process
+    /// can carry out: anything posted to a queue on the way out is a promise the
+    /// process may not live to keep, which is how two orphaned predecessor rules
+    /// came to sit in `/etc/sudoers.d` on the machine this was written on.
+    ///
+    /// `false` is an ordinary answer, not a fault: a rule written before the
+    /// withdrawal line existed, or by something else, does not permit it.
+    func removeSudoersWithoutPassword() -> Bool
     func setDisableSleep(_ on: Bool) -> Bool                // pmset (passwordless)
     func pmsetReport() -> String
 }

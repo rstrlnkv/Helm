@@ -6,9 +6,9 @@ import HelmRuntime
 /// **The one thing this module does that outlives its own process.** It is
 /// `sudo pmset disablesleep 1` — a system-wide setting, above every IOKit
 /// assertion, still in force after Helm quits — reached through a NOPASSWD
-/// rule in `/etc/sudoers.d`. Six methods and four flags, and no other part of
-/// the engine reads any of them: the session logic asks for the lid and is told
-/// whether it got it.
+/// rule in `/etc/sudoers.d`. One port and a handful of flags, and no other part
+/// of the engine reads any of them: the session logic asks for the lid and is
+/// told whether it got it.
 ///
 /// It lived inside `KeepAwakeEngine` among the timers and the battery guard.
 /// Out here, the code that can leave a Mac unable to sleep, and the code that
@@ -34,7 +34,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// Where this port's child processes go.
     ///
-    /// Four of its six methods are `HelmProcess.run`, which waits for a child
+    /// Most of `ClamshellPort` is `HelmProcess.run`, which waits for a child
     /// with **no deadline** and takes one of eight slots shared with every other
     /// module — Homebrew's search is two `brew search` runs of about nine
     /// seconds each. And the callers here are the thread that draws: `activate()`
@@ -249,8 +249,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
         }
     }
 
-    /// The module is being switched off, or Helm is quitting. **Sleep goes back;
-    /// the grant stays.**
+    /// The module is being switched off, or Helm is quitting. **Sleep goes back,
+    /// and the grant with it wherever it has nothing left to do.**
     ///
     /// It used to remove the rule here too, and that was a promise this process
     /// cannot keep: `removeSudoers` dispatches to a global queue and runs
@@ -268,12 +268,85 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// grant. The one path where the rule is load-bearing was the one taking it
     /// away.
     ///
-    /// So the grant's lifetime is the **lid option**, not the process:
-    /// `releaseIfUnneeded()` takes it out on the setting's falling edge, where
-    /// there is somebody at the screen to answer the dialog. Switching the module
-    /// off leaves it, exactly as a crash does.
-    func tearDown() {
+    /// Both objections are answered rather than overruled, and only one of them
+    /// was about the password. **The dialog is still never raised here** — the
+    /// withdrawal is `sudo -n`, because the rule permits its own removal, and a
+    /// rule too old to make that promise is left where it is. **And the refused
+    /// restore still keeps its grant**, along with the two other states in which
+    /// the rule is load-bearing; `withdrawAtQuit` names all three. What changed
+    /// is the case neither objection covered: quit, then drag the app to the
+    /// Trash, which runs no code and left the grant naming an application that
+    /// no longer existed.
+    ///
+    /// `releaseIfUnneeded()` still takes it out on the option's own falling edge,
+    /// and that edge is now free too. A crash still leaves the rule, which is
+    /// what `recoverAtLaunch` wants.
+    /// - Parameter sessionWillResume: a session the person asked for is still
+    ///   running, so the next launch brings it back.
+    func tearDown(sessionWillResume: Bool) {
         if active { disengage() }
+        withdrawAtQuit(sessionWillResume: sessionWillResume)
+    }
+
+    /// Take the rule out on the way past — but only where it has nothing left to
+    /// do.
+    ///
+    /// **This is the case dragging the app to the Trash leaves open**, and it is
+    /// how a Mac application is normally removed: no code runs, so a grant that
+    /// only a person at a screen could revoke stayed for the life of the machine
+    /// naming an application that no longer existed. Most people quit before
+    /// they delete, and quitting is code.
+    ///
+    /// It became affordable because the rule permits its own withdrawal: this is
+    /// `sudo -n`, silent, with nothing to decline. **A dialog is never raised
+    /// here** — `applicationWillTerminate` reaches this on every live engine, and
+    /// nobody types a password into a dialog belonging to an app that is already
+    /// gone. A rule too old to withdraw itself is therefore left where it is, for
+    /// the lid option's own switch to take out.
+    ///
+    /// Synchronous, on the thread that is quitting, for the reason `restoreSleep`
+    /// is: work posted to a queue on the way out is a promise this process may
+    /// not live to keep. It is one `sudo -n rm` beside the one `sudo -n pmset`
+    /// already spent there.
+    ///
+    /// The three refusals are the three states in which the grant is still
+    /// load-bearing, and each of them costs something a person would notice:
+    /// - sleep is still off (`active`, or the note to the next launch is set),
+    ///   and putting it back needs `sudo -n pmset disablesleep 0` — this grant.
+    ///   Withdraw it and the Mac never sleeps again, with every screen saying
+    ///   Keep Awake is idle;
+    /// - a session will resume with the lid option on. Helm's own updater
+    ///   terminates and relaunches, and the resumed session engages the lid
+    ///   without prompting — so the grant's absence would be silent;
+    /// - a removal is already under way (`willDisable` asked for one), and that
+    ///   route is allowed the dialog this one is not.
+    ///
+    /// `isSudoersInstalled()` rather than `lookForTheRule()`: the verdict that
+    /// one publishes is posted to a main queue this process will not drain.
+    ///
+    /// **One case stays open, and it is written here rather than papered over:
+    /// deleting Helm while it is still running leaves the rule.** No code runs,
+    /// so nothing withdraws it, and the file then names an application that is
+    /// gone. Nothing closes that without a Developer ID and a real privileged
+    /// helper the system removes with the app — the fifth thing that purchase is
+    /// blocking, beside `NEVPNManager`, `SMAppService`, notarization and a
+    /// stable cdhash for TCC and the keychain (ARCHITECTURE.md § A seal needs a
+    /// signature). Until then the answer is a sentence: `KAStr.adminNote` names
+    /// the path and the `sudo rm` that removes it, before the password is asked
+    /// for rather than after.
+    private func withdrawAtQuit(sessionWillResume: Bool) {
+        guard !active,
+              !store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
+              !(sessionWillResume && settings.clamshellEnabled),
+              !removalInFlight,
+              clamshell.isSudoersInstalled()
+        else { return }
+        guard clamshell.removeSudoersWithoutPassword() else {
+            HelmLog.shared.info(KeepAwakeEngine.moduleID,
+                                "the pmset rule cannot withdraw itself; leaving it for the lid option")
+            return
+        }
+        HelmLog.shared.info(KeepAwakeEngine.moduleID, "the passwordless pmset rule was withdrawn at quit")
     }
 
     // MARK: - Engaging
@@ -476,41 +549,58 @@ final class ClamshellCoordinator: @unchecked Sendable {
     private func removeGrant() {
         guard !removalInFlight else { return }
         removalInFlight = true
-        clamshell.removeSudoers { [weak self] removed in
-            guard let self else { return }
-            // **Which rule survived decides who is being talked about.** Both
-            // branches were one line accusing a third party, and one of the two
-            // cases it fired in is the case where Helm wrote the rule itself: a
-            // declined dialog leaves *our* file exactly where it was, and the
-            // report «a rule survives that Helm did not write» then sent whoever
-            // read the log looking for a second one.
-            //
-            // Read here rather than after a hop: these touch no state of ours,
-            // and a hop would put the check after the caller returns — which is
-            // how a synchronous fake releases a gate before the thing it gates
-            // has happened, and how a test of it passes for free.
-            let ours = !removed && self.clamshell.isSudoersInstalled()
-            if ours {
-                HelmLog.shared.warn(KeepAwakeEngine.moduleID,
-                                    "the passwordless pmset rule Helm wrote was not removed")
-            } else if self.clamshell.canDisableSleepWithoutPassword() {
-                // The file is gone and the grant is not. Measured on a real
-                // machine: `/etc/sudoers.d` held the identical rule under another
-                // name, so «removed» was reported while any process running as
-                // this user still had passwordless `pmset disablesleep`. A
-                // revocation that revokes nothing is worse than none, because it
-                // is reported as done.
-                HelmLog.shared.warn(KeepAwakeEngine.moduleID,
-                                    "a passwordless pmset rule survives that Helm did not write")
+        // The child process belongs off the thread that draws: `releaseIfUnneeded`
+        // runs from `settingsChanged`, which the page sends for every control it
+        // draws.
+        shell.async { [self] in
+            // The rule permits its own withdrawal, so the ordinary route costs
+            // nothing and asks nobody. Only a rule that cannot make that promise
+            // — one from before the line existed, one written by something else
+            // — reaches the dialog.
+            if clamshell.removeSudoersWithoutPassword() {
+                finishedRemoving(true)
+            } else {
+                clamshell.removeSudoers { [weak self] removed in
+                    self?.finishedRemoving(removed)
+                }
             }
-            // State of ours does hop. `removalInFlight` is cleared whatever the
-            // answer was, because a declined removal has to be askable again, and
-            // a flag left standing would mean the rule could never come off for
-            // the life of the process.
-            Task { @MainActor in
-                self.removalInFlight = false
-                self.noteGrantRemains(ours)
-            }
+        }
+    }
+
+    /// The one place a removal's answer is read, whichever route made it.
+    private func finishedRemoving(_ removed: Bool) {
+        // **Which rule survived decides who is being talked about.** Both
+        // branches were one line accusing a third party, and one of the two
+        // cases it fired in is the case where Helm wrote the rule itself: a
+        // declined dialog leaves *our* file exactly where it was, and the
+        // report «a rule survives that Helm did not write» then sent whoever
+        // read the log looking for a second one.
+        //
+        // Read here rather than after a hop: these touch no state of ours,
+        // and a hop would put the check after the caller returns — which is
+        // how a synchronous fake releases a gate before the thing it gates
+        // has happened, and how a test of it passes for free.
+        let ours = !removed && clamshell.isSudoersInstalled()
+        if ours {
+            HelmLog.shared.warn(KeepAwakeEngine.moduleID,
+                                "the passwordless pmset rule Helm wrote was not removed")
+        } else if clamshell.canDisableSleepWithoutPassword() {
+            // The file is gone and the grant is not. Measured on a real
+            // machine: `/etc/sudoers.d` held the identical rule under another
+            // name, so «removed» was reported while any process running as
+            // this user still had passwordless `pmset disablesleep`. A
+            // revocation that revokes nothing is worse than none, because it
+            // is reported as done.
+            HelmLog.shared.warn(KeepAwakeEngine.moduleID,
+                                "a passwordless pmset rule survives that Helm did not write")
+        }
+        // State of ours does hop. `removalInFlight` is cleared whatever the
+        // answer was, because a declined removal has to be askable again, and
+        // a flag left standing would mean the rule could never come off for
+        // the life of the process.
+        Task { @MainActor in
+            self.removalInFlight = false
+            self.noteGrantRemains(ours)
         }
     }
 }

@@ -61,7 +61,8 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
     /// The expensive half. Our file goes; the capability stays; the module used
     /// to report the whole thing done.
-    func testARemovalThatLeavesTheGrantBehindIsSaidOutLoud() {
+    @MainActor
+    func testARemovalThatLeavesTheGrantBehindIsSaidOutLoud() async {
         HelmLog.shared.setEnabled(true)
         defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
         HelmLog.shared.clearTail()
@@ -72,7 +73,10 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
         engine.settingsChangedForTests()
 
-        XCTAssertEqual(clamshell.removeCalls, 1, "precondition: the file was removed")
+        // The withdrawal runs on the module's own queue, because a child
+        // process must not run on the thread that draws.
+        await waitUntil("the file went") { !self.clamshell.isSudoersInstalled() }
+        await waitUntil("the log was written") { self.survivorLines() > 0 }
         XCTAssertTrue(survivorLines() > 0,
                       "the file went and the grant did not, and nothing said so — the module "
                       + "reported a revocation that revoked nothing")
@@ -80,7 +84,8 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
     /// And when the grant really does go with the file, there is nothing to
     /// warn about — otherwise the line above is wallpaper.
-    func testAnOrdinaryRemovalSaysNothing() {
+    @MainActor
+    func testAnOrdinaryRemovalSaysNothing() async {
         HelmLog.shared.setEnabled(true)
         defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
         HelmLog.shared.clearTail()
@@ -91,6 +96,9 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
         engine.settingsChangedForTests()
 
+        // Asserted after the removal really happened: an absence read before the
+        // subject has run is green on any code whatever.
+        await waitUntil("the file went") { !self.clamshell.isSudoersInstalled() }
         XCTAssertEqual(survivorLines(), 0)
     }
 
@@ -109,7 +117,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     /// switch and never from quitting —
     /// `ALidThatDidNotWorkSaysSoTests`). `deactivate()` is the one route out that
     /// may not ask, because it is the one nobody is watching.
-    func testQuittingLeavesTheRuleToTheTwoEdgesThatMayAsk() {
+    func testQuittingNeverRaisesADialogAndTakesBackWhatItCanForFree() {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
 
@@ -117,6 +125,21 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
         XCTAssertEqual(clamshell.removeCalls, 0,
                        "a password dialog was raised on the way out of the process that raised it")
+        XCTAssertFalse(clamshell.isSudoersInstalled(),
+                       "the lid option is off and sleep is back, so the grant had nothing left to "
+                       + "do — and the app about to stop existing is the last chance to say so")
+    }
+
+    /// The half that has to stay: a rule that cannot withdraw itself is **left**
+    /// rather than answered with a dialog nobody is there for.
+    func testQuittingLeavesARuleItCannotTakeOutForFree() {
+        clamshell.sudoersInstalled = true
+        clamshell.passwordlessGrantExists = true
+        clamshell.withdrawalIsGranted = false
+
+        engine.deactivate()
+
+        XCTAssertEqual(clamshell.removeCalls, 0)
         XCTAssertTrue(clamshell.isSudoersInstalled())
     }
 

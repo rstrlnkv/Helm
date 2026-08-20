@@ -759,7 +759,7 @@
 "Until you stop it" = "停止するまで";
 "While an external display is connected" = "外部ディスプレイが接続されている間";
 "While the Mac is on power" = "Mac が電源に接続されている間";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープをオフにできるルールを残します。この設定をオフにすると、そのルールも消えます。Helm を終了するとスリープはオンに戻ります。Helm がクラッシュしたり強制終了された場合は、次回の起動でオンに戻ります。";
+"macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープをオフにできるルールを /etc/sudoers.d/helm-keepawake に残します。このルールは自分自身の削除を許可しているため、この設定をオフにすると二度目のパスワードなしで消え、Helm を終了したときも同じです。Helm が動いたまま削除された場合はルールが残ります。sudo rm /etc/sudoers.d/helm-keepawake で削除してください。Helm を終了するとスリープはオンに戻ります。Helm がクラッシュしたり強制終了された場合は、次回の起動でオンに戻ります。";
 "Developer" = "開発";
 "Interface language" = "インターフェイスの言語";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "dev ビルド専用。この Mac に設定されていない言語でアプリを読むためのものです。";
@@ -1061,3 +1061,4 @@
 "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened." = "SSH の設定を保存しても、dotfiles リポジトリへのシンボリックリンクはそのまま残ります。また“忘れる”が、ページを開いたあとに信頼したホストを捨ててしまうことはなくなりました。";
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "VPN の速度を測るとき、どこまで進んだかが分かり、数値が入るカードがそれを予告します。以前は、かかる間ボタンが回るだけでした。";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 画面の値は、桁が伸びても高さが揃います。測定からの経過時間も短く、行を分けずに 40 分前のように出ます。";
+"Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "ふたを閉じたまま維持する設定をオフにしたとき、あるいは Helm を終了したときに、残していた管理者ルールを取り消すようになりました。パスワードの再入力は不要です。設定画面には、そのルールの場所と手動で削除する方法が書かれています。";

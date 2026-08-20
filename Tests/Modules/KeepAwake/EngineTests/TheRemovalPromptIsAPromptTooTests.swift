@@ -36,6 +36,13 @@ private final class RemovalPromptClamshell: ClamshellPort {
         done(true)
     }
 
+    /// A rule that cannot take itself out — the case the dialog still exists
+    /// for, and therefore the only one in which this file's subject is reached
+    /// at all. Answering `true` here would withdraw the rule for free and the
+    /// gate below would never be met, which is the vacuum this fake was written
+    /// to avoid on the other side.
+    func removeSudoersWithoutPassword() -> Bool { false }
+
     /// The prompt goes up and stays up. The file is still there.
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         removeCount += 1

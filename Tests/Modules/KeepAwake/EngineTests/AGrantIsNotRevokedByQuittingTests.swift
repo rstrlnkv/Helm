@@ -128,14 +128,19 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     /// The control: the grant's lifetime is the lid option, so switching *that*
     /// off still removes it. Without this, everything above is satisfied by a
     /// module that can never revoke anything.
-    func testTheLidOptionGoingOffStillTakesTheGrantOut() {
+    @MainActor
+    func testTheLidOptionGoingOffStillTakesTheGrantOut() async {
         settings.setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
 
-        XCTAssertEqual(clamshell.removeCalls, 1,
-                       "a NOPASSWD line for a feature that is off is a grant nobody is holding — "
-                       + "and there is somebody at the screen to answer the dialog")
+        // Counted on the withdrawal, not on the dialog: the rule permits its own
+        // removal, so the ordinary route asks nobody for anything.
+        // `TheGrantDoesNotOutliveTheAppItNamesTests` argues both routes.
+        await waitUntil("the rule came out") { !self.clamshell.isSudoersInstalled() }
+        XCTAssertEqual(clamshell.passwordlessRemovals, 1,
+                       "a NOPASSWD line for a feature that is off is a grant nobody is holding")
+        XCTAssertEqual(clamshell.removeCalls, 0)
     }
 
     /// A second engine over the same store and the same lid, which is what the

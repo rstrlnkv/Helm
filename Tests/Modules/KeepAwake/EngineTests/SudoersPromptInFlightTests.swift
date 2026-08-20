@@ -51,6 +51,14 @@ private final class PromptClamshell: ClamshellPort {
         for done in waiting { done(granted) }
     }
 
+    /// The rule this fake stands for is one Helm has just written, so it can
+    /// withdraw itself — and the count below is of removals, not of dialogs.
+    func removeSudoersWithoutPassword() -> Bool {
+        removeCount += 1
+        sudoersInstalled = false
+        return true
+    }
+
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         removeCount += 1
         sudoersInstalled = false

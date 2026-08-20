@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_KeepAwake_Engine
 
 /// What happens *after* somebody presses Cancel on the removal dialog.
@@ -74,14 +75,19 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         super.tearDown()
     }
 
-    /// The control: switching the option off asks once, which is the whole
-    /// point of the removal and must not be what a fix takes away.
-    func testSwitchingTheOptionOffAsksForTheRuleBackOnce() async {
+    /// The control: switching the option off takes the rule out once, which is
+    /// the whole point of the removal and must not be what a fix takes away.
+    ///
+    /// It is counted on the withdrawal rather than on the dialog because the
+    /// rule permits its own removal now, so the ordinary route raises nothing —
+    /// the dialog below is what a rule *older than that line* still costs.
+    func testSwitchingTheOptionOffTakesTheRuleBackOnce() async {
         settings.setClamshellEnabled(false)
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
 
-        XCTAssertEqual(clamshell.removeCalls, 1)
+        XCTAssertEqual(clamshell.passwordlessRemovals, 1)
+        XCTAssertEqual(clamshell.removeCalls, 0, "nothing to ask a password for")
     }
 
     /// Cancel, then edit anything else on the page.
@@ -94,10 +100,11 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// answering the dialog does, and without it this case would pass on a
     /// guard that has nothing to do with the defect.
     func testAnUnrelatedEditAfterACancelDoesNotRaiseTheDialogAgain() async {
+        clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: it was asked, and declined")
         XCTAssertTrue(clamshell.isSudoersInstalled(),
                       "precondition: Cancel leaves our file exactly where it was")
@@ -124,10 +131,11 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// and `removeGrant` already does it — in a `guard` whose `else` throws the
     /// answer away.
     func testTheClaimStopsWhenTheRuleIsTakenOutBehindTheAppsBack() async {
+        clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition: declined, so the rule is still there")
 
         // An administrator removes it from the terminal. Nothing tells the app.
@@ -144,10 +152,11 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// The other side of that reading, so the repair cannot be «clear it»: while
     /// the rule really is still on disk, the complaint stands.
     func testTheClaimStandsWhileTheRuleIsStillThere() async {
+        clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition")
 
         engine.settingsChangedForTests()
@@ -161,10 +170,5 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// The removal's callback records its verdict on the main actor. Awaiting a
     /// hop of our own is what puts this after it; a serial executor runs them in
     /// order, so this is an ordering fact rather than a sleep.
-    private func settle() async {
-        await Task.yield()
-        let drained = expectation(description: "main actor drained")
-        Task { @MainActor in drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
-    }
+    private func settle() async { await drainMainActor() }
 }

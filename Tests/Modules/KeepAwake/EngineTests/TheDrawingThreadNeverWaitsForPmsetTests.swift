@@ -90,6 +90,13 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
             record("removeSudoers")
             DispatchQueue.global().async { done(true) }
         }
+        /// The free withdrawal — a child process like the rest, so it belongs on
+        /// this list for the same reason.
+        func removeSudoersWithoutPassword() -> Bool {
+            record("removeSudoersWithoutPassword")
+            grantExists = false
+            return true
+        }
         func setDisableSleep(_ on: Bool) -> Bool { record("setDisableSleep"); return grantExists }
         func pmsetReport() -> String { record("pmsetReport"); return pmset }
     }

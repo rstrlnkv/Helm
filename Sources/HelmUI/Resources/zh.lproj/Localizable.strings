@@ -759,7 +759,7 @@
 "Until you stop it" = "直到你停止";
 "While an external display is connected" = "接着外接显示器时";
 "While the Mac is on power" = "Mac 接着电源时";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "首次启用时 macOS 会要求输入管理员密码，并保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。关掉此设置会移除它。退出 Helm 会重新开启睡眠；若 Helm 崩溃或被强制退出，下次启动会重新开启。";
+"macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "首次启用时 macOS 会要求输入管理员密码，并在 /etc/sudoers.d/helm-keepawake 保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。该规则允许删除自身，因此关掉此设置会移除它，无需再输一次密码；退出 Helm 时也一样。若 Helm 仍在运行时被删除，规则会留下：请用 sudo rm /etc/sudoers.d/helm-keepawake 移除。退出 Helm 会重新开启睡眠；若 Helm 崩溃或被强制退出，下次启动会重新开启。";
 "Developer" = "开发";
 "Interface language" = "界面语言";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "仅限 dev 版本，用于以这台 Mac 未设置的语言阅读应用。";
@@ -1061,3 +1061,4 @@
 "Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened." = "保存 SSH 配置会保留指向 dotfiles 仓库的符号链接，“忘记”也不会再丢掉你在打开页面之后信任的主机。";
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "测量 VPN 速度时会显示进行到哪一步，数字将要落入的卡片也会预告。以前按钮只是一直转到测完。";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 页面上的数值无论多长都保持同一高度，测量的时间也写得简短．40 分钟前，而不占单独一行。";
+"Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "关闭合盖模式，或者直接退出 Helm，现在都会撤回此前保留的管理员规则，且无需再次输入密码。设置中会说明该规则的位置以及如何手动删除。";

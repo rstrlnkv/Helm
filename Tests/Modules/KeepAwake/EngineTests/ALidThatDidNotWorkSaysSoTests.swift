@@ -123,12 +123,18 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     // MARK: - The rule outlived the feature
 
     /// A declined administrator dialog. The `Bool` said so and nobody read it.
+    ///
+    /// The dialog is reached only by a rule that cannot withdraw itself — one
+    /// from before that line existed, or one written by something else — because
+    /// every rule Helm writes now comes out for free. That is the state, not a
+    /// contrivance: it is every Mac upgrading into this build.
     func testADeclinedRemovalIsPublishedRatherThanDiscarded() async {
+        clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: the removal was attempted")
         XCTAssertTrue(clamshell.isSudoersInstalled(),
@@ -145,11 +151,12 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     func testADeclinedRemovalIsNotReportedAsSomebodyElsesRule() async {
         HelmLog.shared.setEnabled(true)
         HelmLog.shared.clearTail()
+        clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
 
         XCTAssertEqual(lines(containing: "Helm did not write"), 0,
                        "the rule Helm wrote itself was reported as somebody else's")
@@ -169,7 +176,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         settings.setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
 
         XCTAssertFalse(clamshell.isSudoersInstalled(), "precondition: our file went")
         XCTAssertEqual(lines(containing: "Helm did not write"), 1,
@@ -185,7 +192,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         settings.setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
-        await settle()
+        await removalRan(on: clamshell)
 
         XCTAssertFalse(engine.lidGrantRemains)
     }
@@ -197,12 +204,22 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// option's, so somebody who switched all of Keep Awake off left the rule
     /// behind for a module they had just turned off.
     func testSwitchingTheModuleOffAsksForTheGrantBack() async {
+        clamshell.withdrawalIsGranted = false
         engine.willDisable()
-        await settle()
+        await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.removeCalls, 1,
                        "the module is off and its NOPASSWD line is not — and this is the last "
                        + "moment there is anybody at the screen to answer the dialog")
+    }
+
+    /// …and the rule Helm wrote itself needs nobody at the screen at all.
+    func testSwitchingTheModuleOffTakesAWithdrawableRuleOutForFree() async {
+        engine.willDisable()
+        await removalRan(on: clamshell)
+
+        XCTAssertFalse(clamshell.isSudoersInstalled())
+        XCTAssertEqual(clamshell.removeCalls, 0)
     }
 
     /// Quitting must not, and that is the whole reason `willDisable` exists:
@@ -250,10 +267,5 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// ours hops, the reads of the port deliberately do not. Awaiting a hop of our
     /// own is what puts this after it; a serial executor runs them in order, so
     /// this is an ordering fact rather than a sleep.
-    private func settle() async {
-        await Task.yield()
-        let drained = expectation(description: "main actor drained")
-        Task { @MainActor in drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
-    }
+    private func settle() async { await drainMainActor() }
 }

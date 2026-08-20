@@ -17,10 +17,19 @@ final class SudoersRuleTests: XCTestCase {
 
     // MARK: - The rule
 
-    func test_rule_grants_only_the_two_pmset_commands() {
-        XCTAssertEqual(
-            SudoersRule.text(user: user),
-            "someone ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 1, /usr/bin/pmset disablesleep 0")
+    /// The whole file, character for character. The rule lines are argued
+    /// separately in `TheRuleTakesItselfBackOutTests`, which reads them as
+    /// command specs rather than as text; this is the one place that says what
+    /// lands on disk.
+    func test_the_file_is_a_header_and_three_granted_commands() {
+        XCTAssertEqual(SudoersRule.text(user: user), """
+            # Installed by Helm - Keep Awake, closed-lid option.
+            # Lets this user run exactly the two pmset commands below without a password,
+            # and lets Helm withdraw this file again without one.
+            # Remove it by hand with:  sudo rm /etc/sudoers.d/helm-keepawake
+            someone ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 1, /usr/bin/pmset disablesleep 0
+            someone ALL=(root) NOPASSWD: /bin/rm -f /etc/sudoers.d/helm-keepawake
+            """)
     }
 
     // MARK: - The privileged command
@@ -44,7 +53,10 @@ final class SudoersRuleTests: XCTestCase {
     }
 
     func test_install_command_carries_the_rule_text_itself() {
-        XCTAssertTrue(SudoersRule.installCommand(user: user).contains(SudoersRule.text(user: user)))
+        let command = SudoersRule.installCommand(user: user)
+        for line in SudoersRule.lines(user: user) {
+            XCTAssertTrue(command.contains(line), "the install never writes: \(line)")
+        }
     }
 
     func test_install_command_writes_then_checks_then_moves_into_place() {

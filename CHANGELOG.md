@@ -97,6 +97,53 @@ the first while reporting «Build complete» for both. Everything here was
 re-measured in private scratch paths, one target per invocation, with the bundle
 proven newer than its sources.
 
+### Security
+
+- **Keep Awake's `sudoers` grant outlived the application that asked for it,
+  and the rule now carries its own revocation.** `/etc/sudoers.d/helm-keepawake`
+  permits two `pmset disablesleep` commands and nothing else, which was right;
+  what was wrong was its lifetime. `sudoers` has no expiry and no conditionals,
+  so the only way out was an administrator dialog — which needs somebody at the
+  screen — and dragging `Helm.app` to the Trash, which is how a Mac application
+  is normally removed, runs no code at all. The grant stayed for the life of the
+  machine naming an app that no longer existed, and anything running as that
+  account could hold the Mac awake with no password. On a laptop in a bag that
+  is a thermal event.
+
+  The file gains one line: `<user> ALL=(root) NOPASSWD: /bin/rm -f
+  /etc/sudoers.d/helm-keepawake`. Argument-exact, one literal path, no wildcard,
+  and not a widening — the worst anything can do with it is take a privilege
+  away. Two shapes were rejected and are written down at `SudoersRule.lines` so
+  nobody re-derives them: pointing the rule at a script inside the bundle turns
+  a leak into an escalation, because `/Applications` is writable by an admin
+  without a password; a root-owned helper outside the bundle is not removed by
+  dragging the app to the Trash either. The whole file — a self-explaining
+  comment header and three command specs — is checked by `visudo -cf` in
+  `TheRuleTakesItselfBackOutTests`, against a scratch copy, with a malformed
+  file beside it so the check is not decorative.
+
+  With the withdrawal free, it happens where it could not before. Switching the
+  option off no longer costs a second password. **Quitting takes the rule with
+  it** — but only where the grant has nothing left to do, and the three refusals
+  are each a state somebody would notice: sleep is still off (the restore
+  refused, and the next launch needs `sudo -n pmset disablesleep 0` to put it
+  back); a session will resume with the lid option on (Helm's own updater
+  terminates and relaunches, and the resumed session engages the lid without
+  prompting); or a removal is already under way. A rule too old to withdraw
+  itself is **left**, never answered with a dialog on the way out — that was the
+  defect this module was corrected for once already. The next launch puts
+  nothing back: the rule is asked for when the feature is needed, one dialog per
+  run of the app.
+
+  **One case stays open and is not papered over.** Deleting Helm while it is
+  still running leaves the rule, and nothing closes that without a Developer ID
+  and a privileged helper the system removes with the app — the fifth thing that
+  purchase is blocking. Until then the answer is a sentence: the setting's own
+  note names `/etc/sudoers.d/helm-keepawake` and the `sudo rm` that removes it,
+  in all eight languages, *before* the password is asked for rather than after.
+  `TheNoteNamesTheFileItLeavesBehindTests` reads the path out of `SudoersRule`,
+  so the sentence cannot name a file the engine stopped writing.
+
 ### Fixed
 - **The window stopped answering for 19 seconds, and the report named the
   arrangement outright.** `HelmApp_2026-08-19-235500_MacBook.hang`, on

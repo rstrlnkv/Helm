@@ -311,10 +311,22 @@ public final class PmsetClamshellPort: ClamshellPort {
         HelmProcess.run(Self.pmsetPath, ["-g"]).output
     }
 
+    /// The words come from `SudoersRule`, because the rule has to spell the same
+    /// ones: `sudo` matches a command spec argument for argument, so two
+    /// spellings of this call are a name only one side ever changes — and the
+    /// drift is an error nowhere, it is a call that quietly starts asking for a
+    /// password again.
     public func setDisableSleep(_ on: Bool) -> Bool {
-        let flag = on ? "1" : "0"
-        let result = HelmProcess.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", flag])
-        return result.status == 0
+        withoutPassword(SudoersRule.disableSleepArguments(on: on)) == 0
+    }
+
+    /// `sudo -n` — it fails rather than prompting, which is what makes every one
+    /// of these safe to run with nobody watching. Every call this port makes
+    /// against the grant goes through here, so the flag cannot be left off at
+    /// one site: without it the command waits on a password prompt in a child
+    /// process no window belongs to.
+    private func withoutPassword(_ arguments: [String]) -> Int32 {
+        HelmProcess.run(Self.sudoPath, ["-n"] + arguments).status
     }
 
     /// Existence, not contents: the file is installed 0440 root:wheel, so
@@ -329,7 +341,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// `disablesleep 0` is the half of the grant that is safe to spend on a
     /// question: it is what «restore sleep» does anyway, and it is idempotent.
     public func canDisableSleepWithoutPassword() -> Bool {
-        HelmProcess.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", "0"]).status == 0
+        withoutPassword(SudoersRule.disableSleepArguments(on: false)) == 0
     }
 
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
@@ -351,9 +363,23 @@ public final class PmsetClamshellPort: ClamshellPort {
         }
     }
 
-    /// Takes the rule back out. A permanent grant of passwordless root for a
-    /// setting the user has switched off is a grant no one asked to keep — and
-    /// Helm's predecessor left one behind on this very machine.
+    /// Takes the rule back out with the rule's own grant. A permanent grant of
+    /// passwordless root for a setting the user has switched off is a grant no
+    /// one asked to keep — and Helm's predecessor left one behind on this very
+    /// machine.
+    ///
+    /// **The verdict is the second `fileExists`, not sudo's exit status.** The
+    /// question is whether the file is gone, and a reading taken before the act
+    /// cannot answer it.
+    public func removeSudoersWithoutPassword() -> Bool {
+        guard isSudoersInstalled() else { return true }
+        withoutPassword(SudoersRule.removeArguments)
+        return !isSudoersInstalled()
+    }
+
+    /// The withdrawal for a rule that cannot make it itself: one from before the
+    /// `rm` line existed, or one somebody else wrote. This is the one that puts
+    /// the administrator dialog on screen, so only a gesture may reach it.
     public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard self.isSudoersInstalled() else { done(true); return }

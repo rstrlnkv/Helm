@@ -200,10 +200,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         power.stopObserving()
         displayObserver.stopObserving()
         if isActive { assertions.release() }
-        // Sleep back — and the grant stays, for the reason `tearDown` gives: this
-        // is also what `applicationWillTerminate` calls, and a password dialog
-        // raised on the way out is one nobody answers.
-        lid.tearDown()
+        // Sleep back, and the grant with it where it has nothing left to do.
+        // `manualOn` is read here rather than after the reset below: a session
+        // still running is one the next launch resumes, and it resumes without
+        // prompting, so withdrawing the rule under it would take the lid away in
+        // silence. `tearDown` has the other two refusals.
+        lid.tearDown(sessionWillResume: manualOn)
         cancelTimers()
         // A notification still waiting on macOS's permission prompt belongs to a
         // module that no longer exists — see `tellSomebodyTheVetoArrived`.

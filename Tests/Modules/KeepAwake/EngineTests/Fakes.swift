@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
 import HelmRuntime
+import HelmTestSupport
+import XCTest
 @testable import Module_KeepAwake_Engine
 
 /// Two assertions, because the real port holds two.
@@ -114,7 +116,14 @@ final class FakeClamshell: ClamshellPort {
     var disableSleepCalls: [Bool] = []
     var installCompletion: ((Bool) -> Void)?
     var installCalls = 0
-    func isSudoersInstalled() -> Bool { sudoersInstalled }
+    /// How many times the file was looked for. An absence — «the launch put
+    /// nothing back» — has to be read *after* the launch looked, or it is green
+    /// because nothing has run yet.
+    private(set) var installedChecks = 0
+    func isSudoersInstalled() -> Bool {
+        installedChecks += 1
+        return sudoersInstalled
+    }
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         installCalls += 1
         installCompletion = done
@@ -144,6 +153,27 @@ final class FakeClamshell: ClamshellPort {
         removeCalls += 1
         if removalSucceeds { sudoersInstalled = false }
         done(removalSucceeds)
+    }
+    /// Whether the rule on disk permits its own withdrawal. **False is a real
+    /// state, not a failure mode**: a rule installed by a version of Helm from
+    /// before that line existed cannot take itself out, and neither can one
+    /// written by something else — and that is the only case in which the
+    /// removal still costs a password. A fake that always allowed the free route
+    /// would make «the rule is too old to withdraw itself» unrepresentable, and
+    /// with it the whole fallback.
+    var withdrawalIsGranted = true
+    /// How many times the free route was tried. «No dialog was raised» has to be
+    /// read beside this or it is green because nothing was attempted at all.
+    private(set) var passwordlessRemovals = 0
+    func removeSudoersWithoutPassword() -> Bool {
+        passwordlessRemovals += 1
+        // Read here rather than remembered: `sudoersInstalled` is a `var` a test
+        // may move between two of these, which is what an administrator tidying
+        // `/etc/sudoers.d` under the app looks like.
+        guard sudoersInstalled else { return true }
+        guard withdrawalIsGranted else { return false }
+        sudoersInstalled = false
+        return true
     }
     /// Whether `pmset` accepts the call. A fake that always succeeds makes
     /// «the sudoers rule was removed behind the app's back» an unrepresentable
@@ -217,5 +247,41 @@ final class FakeClock: Clock {
     func fire(after: TimeInterval) {
         guard let e = entries.last(where: { $0.after == after && !cancelledIDs.contains($0.id) }) else { return }
         e.block()
+    }
+}
+
+/// Waiting for the two things this module's ports do off the caller's thread.
+///
+/// Both were written out in each file that needed them — `settle()` twice,
+/// word for word, and the wait for a withdrawal would have been a third and a
+/// fourth. Test plumbing shared by one target lives beside that target's fakes,
+/// the way `HelmTestSupport` holds what every target shares.
+extension XCTestCase {
+
+    /// Everything already posted to the main actor has run.
+    ///
+    /// A hop of our own, awaited: a serial executor runs them in order, so this
+    /// is an ordering fact rather than a sleep.
+    @MainActor
+    func drainMainActor() async {
+        await Task.yield()
+        let drained = expectation(description: "main actor drained")
+        Task { @MainActor in drained.fulfill() }
+        await fulfillment(of: [drained], timeout: 5)
+    }
+
+    /// The withdrawal has been attempted, and its verdict has landed.
+    ///
+    /// It runs on the coordinator's own serial queue — a child process must not
+    /// run on the thread that draws — so «it happened» is waited for rather than
+    /// assumed. Draining the main actor afterwards is what puts the reader after
+    /// the verdict the port posts back.
+    @MainActor
+    func removalRan(on clamshell: FakeClamshell, attempts: Int = 1,
+                    file: StaticString = #filePath, line: UInt = #line) async {
+        await waitUntil("the withdrawal was attempted \(attempts) time(s)", file: file, line: line) {
+            clamshell.passwordlessRemovals >= attempts
+        }
+        await drainMainActor()
     }
 }

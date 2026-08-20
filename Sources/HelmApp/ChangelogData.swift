@@ -104,6 +104,7 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("A VPN that blinks out for a moment \u{2014} on a Wi-Fi change, or when your Mac wakes \u{2014} no longer tells you the tunnel was lost. Helm waits five seconds to see whether it comes back, and says nothing if it does.")),
                 ChangeItem(kind: .upd, text: L("Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took.")),
                 ChangeItem(kind: .upd, text: L("The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own.")),
+                ChangeItem(kind: .upd, text: L("Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand.")),
             ]),
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .upd, text: L("A glyph that changes now turns into the next one instead of blinking \u{2014} the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.")),

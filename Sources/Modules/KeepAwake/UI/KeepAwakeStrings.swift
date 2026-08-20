@@ -445,8 +445,18 @@ enum KAStr {
     /// code — and those are what `recoverAtLaunch` exists for. So the sentence now
     /// says what happens, which is also the reassuring half; it read as a warning
     /// about the ordinary case for eight languages.
+    ///
+    /// **And it now names the file and says how to get rid of it by hand.** The
+    /// sentence described a grant with no way to find it: `/etc/sudoers.d` was
+    /// mentioned in the two failure notes above and never here, where the
+    /// decision is made. What a person needs before they type a password is
+    /// where the thing lands, what takes it away, and what to do if nothing
+    /// does — and the last of those is a real case: deleting Helm while it is
+    /// running leaves the rule behind, and nothing in the app can reach it then
+    /// (`ClamshellCoordinator.withdrawAtQuit`).
     static var adminNote: String {
-        L("macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on.")
+        // swiftlint:disable:next line_length
+        L("macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on.")
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well. Says «too» because the timer already ends the session it started —
