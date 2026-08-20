@@ -47,23 +47,36 @@ final class TheTotalPromisesWhatHelmWillTakeTests: XCTestCase {
         XCTAssertGreaterThan(dvm.wastedBytes, 0, "a total of zero agrees with everything")
     }
 
-    /// And the same press over an extra the engine's own gate refuses: the bar
-    /// says nothing will be freed, and the line above the list goes on promising
-    /// the whole copy.
+    /// And the same press over a group holding an extra the engine's own gate
+    /// refuses: the bar promises what it can really take, and the total above
+    /// the list must not go on offering the copy it cannot.
+    ///
+    /// **Three copies, not two, and the third is what makes this case
+    /// answerable.** It was written with one removable copy and one refused
+    /// one, and its own preconditions then contradicted each other: a group
+    /// whose only extra is refused marks nothing, so `basketBytes` is 0, and
+    /// `basketBytes == wastedBytes` forces `wastedBytes == 0` — which
+    /// «the line has something to say» forbids in the line above. It was red
+    /// under every implementation, which is a test asserting the defect rather
+    /// than catching it. With a removable extra beside the refused one the bar
+    /// has something to promise and the two figures can be compared.
     func testACopyTheEngineWillRefuseIsNotSpaceTheTotalMayPromise() async {
         let dvm = await searchedModel([group(["\(home)/Downloads/a1",
-                                              "/System/Library/CoreServices/a2"])])
+                                              "\(home)/Downloads/a2",
+                                              "/System/Library/CoreServices/a3"])])
         XCTAssertGreaterThan(dvm.wastedBytes, 0, "precondition: the line has something to say")
 
         dvm.basketAllExtras()
 
         XCTAssertEqual(dvm.marksNote, DupStr.skippedNotRemovable(1),
-                       "precondition: the extra really was passed over, so this is that copy")
+                       "precondition: exactly one extra was passed over, so this is that copy")
+        XCTAssertGreaterThan(dvm.basketBytes, 0,
+                             "precondition: the other extra really was marked, so the bar has "
+                             + "a figure of its own to compare")
         XCTAssertEqual(dvm.basketBytes, dvm.wastedBytes, """
-            «Mark every extra copy» ticked nothing and the bar promises \(dvm.basketBytes), while \
-            the total under the floor note still offers \(dvm.wastedBytes) of space Helm refuses \
-            to reclaim — the one clone-corrected figure on the page, counting a copy no press on \
-            it can ever remove
+            the bar promises \(dvm.basketBytes) while the total under the floor note offers \
+            \(dvm.wastedBytes) — the one clone-corrected figure on the page, counting a copy no \
+            press on it can ever remove
             """)
     }
 

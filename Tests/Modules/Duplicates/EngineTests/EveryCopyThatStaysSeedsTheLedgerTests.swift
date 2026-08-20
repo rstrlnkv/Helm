@@ -83,20 +83,32 @@ final class EveryCopyThatStaysSeedsTheLedgerTests: XCTestCase {
     /// And the banner has to say the same thing. It does not: the ledger is
     /// seeded from the plans' survivors, and the copy that is really holding the
     /// blocks was never named.
+    /// **The batch has to be told what stays, and now it can be.**
+    ///
+    /// This asked the engine for a fact nobody handed it: `staying.bin` appears
+    /// in no plan, and `HelmTrash.remove`'s own doc records why it cannot be
+    /// recovered from the disk — there is no reverse lookup from a clone family
+    /// to its members, and `ATTR_CMNEXT_PRIVATESIZE` reads ~0 for each twin
+    /// while both are present. So it was red under every implementation that
+    /// did not change the wire.
+    ///
+    /// The wire changed: `trash` takes `staying:`, and the page fills it from
+    /// every copy it is keeping rather than from each group's survivor. Told
+    /// that, the same batch reports the nothing it frees.
     func testTheBannerSaysWhatTheBarPromisedRatherThanTheWholeClone() async throws {
         let bar = DuplicateGroup.reclaimable(marking: [marked], in: [group()])
 
         let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
-            .trash([DuplicatePlan(remove: marked, keep: survivor)])
+            .trash([DuplicatePlan(remove: marked, keep: survivor)],
+                   staying: [survivor, staying])
 
         XCTAssertEqual(result.removed, [marked],
                        "precondition: the batch was accepted, so the figure is about it")
         XCTAssertTrue(result.refused.isEmpty)
         XCTAssertEqual(result.freedBytes, bar, """
             the banner promised the clone's whole allocation while its twin — an extra the person \
-            left unticked — goes on holding the family's blocks. `DuplicatesEngine.trash` seeds \
-            `sharedWith:` from `plans.map(\\.keep)`, which names the survivors and not the copies \
-            that merely stay
+            left unticked — goes on holding the family's blocks. The seed has to be every copy \
+            that stays, not each group's survivor
             """)
     }
 
