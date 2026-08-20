@@ -20,6 +20,20 @@ public enum ScanRoot {
 
     private static let home = FileManager.default.homeDirectoryForCurrentUser.path
 
+    /// The home, resolved once and kept.
+    ///
+    /// A question about the machine, not about the directory in hand: asking it
+    /// per directory met would be one `resolvingSymlinksInPath` per entry of
+    /// every walk, for an answer that cannot change while the process lives.
+    ///
+    /// It is the spelling `resolve` approves a root in, which is why the descent
+    /// gate below compares against this and not against `home`. It is **not** a
+    /// promise about the spelling the walk's own paths arrive in — measured, an
+    /// enumerator resolves the root's symlinks on the way out and hands back
+    /// something else; the gate folds `/private` away on both sides for exactly
+    /// that reason.
+    public static let canonicalHome = PathCanonical.resolvingWholePath(home)
+
     /// Subtrees of the home that macOS protects with TCC, and that an
     /// unattended scan has no business walking.
     ///
@@ -38,6 +52,12 @@ public enum ScanRoot {
     /// An *interactive* scan may still go there: the person picked the folder
     /// in an open panel and is watching the result. This gate is only asked
     /// about the unattended case.
+    ///
+    /// **Asked about every directory, not only about the root.** It answers
+    /// `resolve` below and `refusesDescentInHome` further down, and until
+    /// 2026-08-20 it answered only the first — which refused to *start* in
+    /// `~/Library` while the walk went in one step later. One list, two
+    /// questions: where an unattended walk may begin, and where it may go.
     private static let refusedInHome = ["library"]
 
     /// The scan root to actually walk, or nil.
@@ -78,14 +98,18 @@ public enum ScanRoot {
         // resolved the same way, or a home that is itself reached through a link
         // would never match its own children.
         let lowered = path.lowercased()
-        let loweredHome = PathCanonical.resolvingWholePath(home).lowercased()
+        let loweredHome = canonicalHome.lowercased()
         guard lowered == loweredHome || lowered.hasPrefix(loweredHome + "/") else {
             return nil
         }
 
-        let inside = String(lowered.dropFirst(loweredHome.count)).drop { $0 == "/" }
-        guard !refusedInHome.contains(where: { inside == $0 || inside.hasPrefix($0 + "/") })
-        else { return nil }
+        // Asked of the descent gate rather than spelled out again here. The two
+        // questions differ only in *when* they are put — where a walk may begin,
+        // where it may go — and a rule written twice is two rules waiting to
+        // disagree about the same list. The home itself is not refused by it,
+        // which is right: this gate's whole reason for existing is that the home
+        // is a legitimate root.
+        guard !refusesDescentInHome(into: path) else { return nil }
 
         // Existence and directory-ness are part of the answer: a root that is
         // not there produces an empty walk, and an empty walk reported as a
@@ -141,6 +165,62 @@ public enum ScanRoot {
         let name = (path as NSString).lastPathComponent
         let ext = (name as NSString).pathExtension.lowercased()
         return applicationLibraryExtensions.contains(ext)
+    }
+
+    /// Whether a walk that nobody is watching must stop at this directory
+    /// because of *where in the home* it is.
+    ///
+    /// **`refusedInHome` used to be asked one question too few.** It was
+    /// consulted only from `resolve`, which judges where a walk *begins* — and
+    /// the home is the commonest duplicate-scan root there is, so the subtree
+    /// the list exists to protect was reached on the very next step. Measured on
+    /// the owner's own machine on 2026-08-20: 3895 items in the last unattended
+    /// duplicate journal, 217 of them under `~/Library` and 19 under
+    /// `~/Library/Mobile Documents`, at 0600. Refusing to *start* there while
+    /// walking straight in is not a gate.
+    ///
+    /// The sibling above refuses an application's database wherever it stands;
+    /// this one refuses a subtree of *this* home, so it needs the home to
+    /// compare against and `refusesDescent` does not.
+    ///
+    /// **`home` is the canonical spelling** — `canonicalHome`, asked of the
+    /// filesystem once for the life of the process rather than once per
+    /// directory met. What the walk's own paths are spelled like is not in
+    /// anybody's gift, which the body below says out loud with the measurement.
+    ///
+    /// Judged by name, for the same two reasons as `refusesDescent`: reading the
+    /// directory to decide whether to read it is the disclosure, and a pure rule
+    /// is a test rather than a machine this happens to be true on.
+    ///
+    /// An *interactive* scan still goes wherever the person pointed it. The
+    /// distinction is unattended versus asked-for, never `~/Library` versus
+    /// everything else.
+    public static func refusesDescentInHome(into path: String,
+                                            home: String = canonicalHome) -> Bool {
+        // Folded, because the boot volume is case-insensitive and the plist that
+        // names the root is writable by any process running as this user.
+        //
+        // **`/private` is stripped from both sides, and the walk is why.**
+        // Measured 2026-08-20: `FileManager.enumerator` given a root spelled
+        // `/var/folders/…` yields its children spelled `/private/var/folders/…`
+        // — it resolves the root's symlinks on the way out, so the walk's own
+        // paths need not carry the spelling of the root it was handed. A gate
+        // comparing one against the other then matches nothing and fails open,
+        // silently, which is the worst way for a gate to be wrong. It does not
+        // arise for `/Users/…`, and that is luck about this volume's layout
+        // rather than anything the code is doing.
+        //
+        // Applied to both sides, never to one: the asymmetry is the defect.
+        // Pure string work, so the rule stays a fact rather than a question
+        // about the filesystem asked once per directory met.
+        //
+        // A trailing slash needs no stripping: `library/` is caught by the
+        // prefix arm below, which is the spelling the descendants take anyway.
+        let lowered = PathCanonical.withoutPrivate(path.lowercased())
+        let loweredHome = PathCanonical.withoutPrivate(home.lowercased())
+        guard lowered.hasPrefix(loweredHome + "/") else { return false }
+        let inside = lowered.dropFirst(loweredHome.count + 1)
+        return refusedInHome.contains { inside == $0 || inside.hasPrefix($0 + "/") }
     }
 
     // There is deliberately no `isAllowed(_:) -> Bool`.

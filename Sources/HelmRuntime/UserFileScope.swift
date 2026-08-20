@@ -62,7 +62,8 @@ public enum UserFileScope {
         // so `/USR/bin` and `/system/Library/CoreServices` are those
         // directories to the filesystem and strangers to a prefix test.
         let lowered = path.lowercased()
-        let spellings = [lowered, lowered.hasPrefix("/private/") ? String(lowered.dropFirst("/private".count)) : "/private" + lowered]
+        let bare = PathCanonical.withoutPrivate(lowered)
+        let spellings = [bare, "/private" + bare]
         guard !loweredPrefixes.contains(where: { prefix in
             spellings.contains { $0 == prefix || $0.hasPrefix(prefix + "/") }
         }) else { return false }

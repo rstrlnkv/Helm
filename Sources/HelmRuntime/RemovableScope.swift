@@ -54,13 +54,37 @@ public enum RemovableScope {
         for bad in forbidden where resolved == bad || resolved.hasPrefix(bad + "/") {
             return false
         }
+        // **The positional refusals come first, above the `.app` clause.** That
+        // clause returns `true` before any other test can run, so where it sits
+        // decides what it exempts a path from: below these two it relaxes the
+        // *roots list*, above them it relaxed the whole rule — and the rule this
+        // gate states about itself is positional, not a blocklist. Measured
+        // while it sat above: `/Volumes/Ext.app` was removable here and refused
+        // by `UserFileScope`, which guards volume roots by name. Two gates
+        // disagreeing about volume roots is the shape that once let Duplicates
+        // offer every copy of a file.
+        //
+        // The first component is compared rather than the string folded:
+        // `lowercased()` is full Unicode case folding, which changes the length
+        // of some strings, and a prefix test against a different string is not a
+        // prefix test.
+        let parts = resolved.split(separator: "/")
+        // Nothing at the top level of the boot volume is a file somebody means
+        // to remove — their contents still are.
+        guard parts.count > 1 else { return false }
+        // A mounted volume's own root is the volume, not something on it.
+        if parts.count == 2,
+           parts[0].compare("Volumes", options: .caseInsensitive) == .orderedSame {
+            return false
+        }
         // An app bundle names itself: `.app` is a structure macOS defines, and
         // people keep apps in ~/Downloads, on external volumes and in Setapp's
         // folder as readily as in /Applications. Removing the bundle the user
-        // pointed at is the module's entire job, so the rule is the forbidden
-        // list above plus "not a top-level directory", not a fixed location.
-        if resolved.hasSuffix(".app"),
-           resolved.dropFirst().split(separator: "/").count >= 2 { return true }
+        // pointed at is the module's entire job, so the rule is everything above
+        // this line plus "it is a bundle", not a fixed location. It carried its
+        // own copy of the depth test until the positional refusals moved above
+        // it; one rule spelled twice is two rules waiting to disagree.
+        if resolved.hasSuffix(".app") { return true }
         // `~/Library`'s own children are the shared folders — `Caches`,
         // `Application Support`, `Containers` — and an app owns something
         // *inside* one of them, never one of them. So that root needs two

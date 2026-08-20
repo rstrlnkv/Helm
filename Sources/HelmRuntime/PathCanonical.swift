@@ -124,6 +124,23 @@ public enum PathCanonical {
             .resolvingSymlinksInPath().standardizedFileURL.path
     }
 
+    /// The same place, spelled without the `/private` the filesystem treats as
+    /// invisible and a prefix test does not.
+    ///
+    /// Not `standardizingPath`, which does this rewrite **only for a path that
+    /// exists** — so it answers differently about a folder that has just been
+    /// removed, and it asks the disk to find out. This is a fact about the two
+    /// spellings, and it holds for a path that was never there.
+    ///
+    /// Internal rather than public: both callers are in this target. `ScanRoot`
+    /// folds it away on both sides of a comparison, because an enumerator can
+    /// hand back children spelled differently from the root it was given;
+    /// `UserFileScope` needs the pair, because the *list* it tests against holds
+    /// `/private/var/db` itself.
+    static func withoutPrivate(_ path: String) -> String {
+        path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
+    }
+
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.
     ///

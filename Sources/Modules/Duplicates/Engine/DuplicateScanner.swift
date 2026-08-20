@@ -78,7 +78,25 @@ final class DuplicateScanner: @unchecked Sendable {
         lock.lock(); skippedLibraries += 1; lock.unlock()
     }
 
-    init() {}
+    /// Stop at the subtrees of the home an unattended reader has no business in
+    /// (`ScanRoot.refusesDescentInHome`), rather than only refusing to start
+    /// there.
+    ///
+    /// Off for a search a person asked for and is watching: they picked the
+    /// folder in an open panel, and a gate that quietly dropped half of what
+    /// they pointed at would be answering a question they did not ask. On for
+    /// the timer, where the journal written afterwards names every path found,
+    /// at 0600 — readable by every process running as this user, including the
+    /// ones macOS refuses.
+    private let unattended: Bool
+    /// Injected only by tests; production takes the canonical home, which is the
+    /// spelling `ScanRoot.resolve` hands the walk its root in.
+    private let home: String
+
+    init(unattended: Bool = false, home: String = ScanRoot.canonicalHome) {
+        self.unattended = unattended
+        self.home = home
+    }
 
     func cancel() {
         lock.lock(); cancelled = true; lock.unlock()
@@ -267,27 +285,7 @@ final class DuplicateScanner: @unchecked Sendable {
                 onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
             }
             if values.isDirectory == true {
-                if firmlinkSkip.contains(item.path) {
-                    enumerator.skipDescendants()
-                    continue
-                }
-                // An application's own database — a photo library, a Music
-                // library, a Final Cut bundle. `.skipsPackageDescendants` above
-                // covers these only while LaunchServices knows the type on
-                // *this* Mac; a library copied from another machine, or one
-                // whose application has been removed, is a plain directory to
-                // that flag. And what is inside is not a file somebody can
-                // delete: offering it as a duplicate is meaningless at best.
-                // The unattended case is worse than meaningless — see
-                // `ScanRoot.refusesDescent`.
-                if ScanRoot.refusesDescent(into: item.path) {
-                    noteSkippedLibrary()
-                    enumerator.skipDescendants()
-                    continue
-                }
-                var dirStat = stat()
-                if let rootDevice, lstat(item.path, &dirStat) == 0,
-                   dirStat.st_dev != rootDevice {
+                if stops(at: item.path, firmlinkSkip: firmlinkSkip, rootDevice: rootDevice) {
                     enumerator.skipDescendants()
                 }
                 continue
@@ -312,6 +310,50 @@ final class DuplicateScanner: @unchecked Sendable {
                                        + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000))
         }
         return files
+    }
+
+    /// Whether the walk stops at this directory rather than going into it.
+    ///
+    /// Four different reasons, each with its own record to keep, which is why
+    /// they read better as one question than as four branches inside the walk.
+    private func stops(at path: String, firmlinkSkip: Set<String>,
+                       rootDevice: Int32?) -> Bool {
+        // The Data volume's second face. Descending it reads the whole disk
+        // twice for an answer the inode collapse has already given.
+        if firmlinkSkip.contains(path) { return true }
+        // An application's own database — a photo library, a Music library, a
+        // Final Cut bundle. `.skipsPackageDescendants` on the enumerator covers
+        // these only while LaunchServices knows the type on *this* Mac; a
+        // library copied from another machine, or one whose application has been
+        // removed, is a plain directory to that flag. And what is inside is not
+        // a file somebody can delete: offering it as a duplicate is meaningless
+        // at best. The unattended case is worse than meaningless — see
+        // `ScanRoot.refusesDescent`.
+        if ScanRoot.refusesDescent(into: path) {
+            noteSkippedLibrary()
+            return true
+        }
+        // `~/Library` and what is under it, on the timer's path only. The root
+        // gate cannot cover this: the home is the commonest duplicate-scan root
+        // there is, so refusing to *begin* there stops nothing once the walk is
+        // one step in.
+        if unattended, ScanRoot.refusesDescentInHome(into: path, home: home) {
+            // Said out loud, because an unattended run that finds fewer copies
+            // than the interactive one owes the reason. Not `noteSkippedLibrary`:
+            // that count draws «Photo and music libraries were not opened» on
+            // the page, which this is not.
+            HelmLog.shared.info(DuplicatesEngine.moduleID,
+                                "unattended: not descending into "
+                                + Redact.path(path, home: home))
+            return true
+        }
+        // Another volume mounted inside this one: reading a backup drive means
+        // gigabytes over whatever bus it hangs from.
+        var dirStat = stat()
+        if let rootDevice, lstat(path, &dirStat) == 0, dirStat.st_dev != rootDevice {
+            return true
+        }
+        return false
     }
 
     // MARK: - Progress

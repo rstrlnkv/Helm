@@ -113,12 +113,18 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// instance that did the walking is still in hand — a hole nobody is told
     /// about reads as a clean folder, which was this module's whole answer in the
     /// case where it is most likely to be wrong.
+    ///
+    /// **`unattended` has no default here**, and that is the point of naming it:
+    /// the two callers below differ in exactly this, and a parameter one of them
+    /// could forget is how the timer's walk came to reach `~/Library` in the
+    /// first place.
     private func run(under path: String, by rule: KeepRule, cache: HashCache?,
+                     unattended: Bool,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)?)
     async -> DuplicateFindings? {
         // A new search supersedes any still running.
         finderBox.current?.cancel()
-        let finder = DuplicateScanner()
+        let finder = DuplicateScanner(unattended: unattended)
         let slot = finderBox.start(finder)
         defer { slot.finish() }
         return await offTheCooperativePool {
@@ -144,7 +150,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// two-pipelines defect wearing a parameter list.
     public func find(under path: String, keeping policy: KeepPolicy)
     async -> DuplicateFindings? {
-        await run(under: path, by: KeepRule(policy), cache: nil, onProgress: { progress in
+        await run(under: path, by: KeepRule(policy), cache: nil,
+                  unattended: false, onProgress: { progress in
             self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
         })
     }
@@ -220,8 +227,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // No progress: nobody is watching, so every tick would cross the
         // transport to a view model that may not exist.
         let cache = Self.loadCache() ?? HashCache()
+        // Unattended, which is not only "no progress to report": the walk stops
+        // at the subtrees of the home a reader nobody is watching has no
+        // business in. `ScanRoot.resolve` above bounds where it may *begin*, and
+        // the home — which it allows, because the home is the commonest search
+        // root there is — has `~/Library` one step inside it.
         guard let found = await run(under: root, by: KeepRule(storedKeepPolicy()),
-                                    cache: cache, onProgress: nil) else { return nil }
+                                    cache: cache, unattended: true,
+                                    onProgress: nil) else { return nil }
         let groups = found.groups
         // Compacted on the way out, never on the way in: a scan cut short would
         // otherwise replace the settled segment with a fresh one holding only

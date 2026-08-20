@@ -35,7 +35,21 @@ public enum WatchScope {
 
     public static func allows(_ rawPath: String,
                               home: String = NSHomeDirectory()) -> Bool {
-        let path = canonical(rawPath)
+        // Absolute first, before any resolution — the same opening guard, for
+        // the same reason, as `UserFileScope.isRemovable` and
+        // `ScanRoot.resolve`. `canonical` below builds a
+        // `URL(fileURLWithPath:)`, which resolves a relative path against the
+        // **process's working directory** and hands back something absolute, so
+        // canonicalizing first answers the question this guard is asking:
+        // measured with the working directory inside the home, `relative/path`
+        // and `""` were both allowed, and with it at `/` both were refused. A
+        // bundle launched by LaunchServices or launchd has `/`, which is why
+        // this was latent rather than live — and a gate whose verdict depends on
+        // how the program was started is not a gate.
+        let standardized = (rawPath as NSString).standardizingPath
+        guard standardized.hasPrefix("/"), standardized != "/" else { return false }
+
+        let path = canonical(standardized)
         let home = canonical(home)
 
         guard path != "/", !path.hasSuffix("/") else { return false }
