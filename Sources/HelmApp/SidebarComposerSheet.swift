@@ -150,7 +150,12 @@ struct SidebarComposerSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(AppStr.sidebarSections)
-                    .font(.system(size: 15, weight: .semibold))
+                    // 16, the scale's step above body, and the same one
+                    // `HelmPageHeader` sets a page's own title on — this is a
+                    // sheet's title and reads at the same rank. It was 15,
+                    // which is on no step and was invisible only because the
+                    // ratchet did not read the app shell.
+                    .font(.system(size: 16, weight: .semibold))
                 Spacer()
                 Button(AppStr.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)

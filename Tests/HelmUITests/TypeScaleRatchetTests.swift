@@ -38,8 +38,20 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// «the hero's figure, one down» — a step the scale does not have, since it
     /// goes 22 · 40. Moving either is redrawing a screen, and the reason is at
     /// each line.
-    private static let recorded = 3
-
+    ///
+    /// **4 on 2026-08-20, and the tree did not drift — the scan grew.** This
+    /// number is only ever lowered, so an increase has to say what changed, and
+    /// what changed is which files are read: `Sources/HelmApp` was never
+    /// scanned, and the shell held twelve hand-typed sizes nobody was counting.
+    /// Eleven of them size a symbol rather than a word and are now excluded on
+    /// purpose (see `hits()`); of the two that are really type, the composer
+    /// sheet's heading went to 16 — the step `HelmPageHeader` already sets a
+    /// page title on, which is the rank a sheet's title reads at — and the
+    /// fourth is the About page's «Helm» wordmark at 34. That is the same
+    /// figure `HelmDurationField` is excused for and the same reason: the scale
+    /// goes 22 · 40, the wordmark belongs between them, and moving it is
+    /// redrawing the About page rather than tidying a number.
+    private static let recorded = 4
     private static let ladder: Set<Double> = [10, 11, 13, 16, 22, 40]
 
     private static let patterns = [
@@ -49,10 +61,43 @@ final class TypeScaleRatchetTests: XCTestCase {
         #"\bmonospacedDigitSystemFont\(ofSize:\s*(-?\d+(?:\.\d+)?)"#,
     ]
 
+    /// Every hand-typed size in a file that draws, **minus the ones sizing a
+    /// symbol rather than a word.**
+    ///
+    /// This scan read `UISources.files()` — `HelmUI` and the module pages —
+    /// until 2026-08-20, and not `Sources/HelmApp`. Twelve hand-typed sizes
+    /// were sitting in the shell it did not read: the panel, its chrome, the
+    /// composer sheet and the About page. A ladder guarded everywhere except
+    /// the surface a person opens most is not a ladder.
+    ///
+    /// **Eleven of those twelve were `Image(systemName:)`.** A symbol is drawn
+    /// against the font's metrics — `HelmSurfaces.swift` says so at the place
+    /// it does it — so `.font(.system(size: 12))` on an `Image` states how big
+    /// to draw a glyph, not which step of a type scale a word is set on. Left
+    /// in, they would have made this check fail for a reason it does not mean,
+    /// and the way to satisfy it would have been to resize icons to suit a
+    /// ladder that is about text. A check that fails for the wrong reason is
+    /// worse than none, because somebody will fix it.
+    ///
+    /// So the file set widens and the subject narrows, in the same commit. What
+    /// governs a glyph's size is a separate question and is not answered here;
+    /// nothing measures it yet, and that is written down rather than implied.
     private func hits() throws -> [UISources.Hit] {
-        try UISources.hits(matching: Self.patterns, in: UISources.files())
+        try UISources.hits(matching: Self.patterns, in: UISources.everyDrawnFile())
+            .filter { try !Self.sizesAGlyph($0) }
     }
 
+    /// Whether a hit is the size of a symbol rather than of type.
+    ///
+    /// Read from the line itself and the two above it, because SwiftUI puts the
+    /// `Image` and the `.font` on separate lines far more often than not, and
+    /// a scan that only read its own line would call every one of them type.
+    private static func sizesAGlyph(_ hit: UISources.Hit) throws -> Bool {
+        let lines = try RepoSource.lines(of: hit.file)
+        let first = max(0, hit.line - 3)
+        return lines[first..<hit.line]
+            .contains { RepoSource.code($0).contains("Image(systemName:") }
+    }
     func testTypeOffTheScaleDoesNotGrow() throws {
         let off = UISources.offLadder(try hits(), ladder: Self.ladder)
         XCTAssertLessThanOrEqual(off.count, Self.recorded, """
@@ -62,6 +107,31 @@ final class TypeScaleRatchetTests: XCTestCase {
             This number is only ever lowered, by the commit that lowers it.
             \(UISources.summary(off))
             """)
+    }
+
+    /// **The filter above can swallow the scan, and then nothing fails.**
+    ///
+    /// `off.count <= recorded` is satisfied by zero, so a `sizesAGlyph` that
+    /// answered true for everything would leave the ratchet guarding an empty
+    /// set and reporting success — the shape ARCHITECTURE.md § A check that
+    /// cannot fail is not a check collects. So the scan states what it still
+    /// sees: files, sizes, and sizes that are on the ladder rather than off it.
+    ///
+    /// The last of those three is the one that matters. A scan finding only
+    /// off-ladder sizes would also be a scan that had stopped reading most of
+    /// the tree.
+    func testTheScanStillHasTypeToJudge() throws {
+        XCTAssertGreaterThan(try UISources.everyDrawnFile().count, 50,
+                             "the file list has collapsed; every ratchet over it is idle")
+        let seen = try hits()
+        XCTAssertGreaterThan(seen.count, 20, """
+            the scan sees \(seen.count) hand-typed sizes in the whole app. Either the tree \
+            really has that few, or `sizesAGlyph` is excluding type — and the ratchet above \
+            passes either way, which is why this floor is here
+            """)
+        XCTAssertGreaterThan(seen.filter { Self.ladder.contains($0.value) }.count, 15,
+                             "the scan finds almost nothing on the ladder, so it is not "
+                             + "reading the files where the scale is actually kept")
     }
 
     // MARK: - The second unit: a size that was named rather than typed

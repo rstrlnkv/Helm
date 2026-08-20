@@ -330,11 +330,21 @@ public enum HelmText {
     /// than at SF Pro 10 with tabular figures, so two such columns cannot be
     /// made to agree by choosing a width — they disagree about the glyphs.
     ///
-    /// Monospaced rather than tabular-SF-Pro because the figures share their
-    /// row with a unit («ГБ», "Mo") and a mono face keeps the number and its
-    /// unit at one rhythm. 11 pt is the size the strip's own figures scale
-    /// from, one step under body.
-    public static let figureFont = Font.system(size: 11, design: .monospaced)
+    /// **SF Pro with tabular figures since 2026-08-20, not SF Mono.** The old
+    /// note argued a mono face keeps a number and its unit at one rhythm, and it
+    /// does — but so does the interface face with `monospacedDigit()`, which is
+    /// what macOS itself sets a size in, and SF Mono then reads as what it
+    /// is everywhere else in this app: code. A byte size in a settings row is
+    /// not code. The digits still do not jump as they change, which was the
+    /// whole requirement; `.monospacedDigit()` is **on the token**, so a caller
+    /// that spells `.font(HelmText.figureFont)` without reaching for
+    /// `helmFigure()` gets it too — seven call sites do exactly that.
+    ///
+    /// 11 pt is the size the strip's own figures scale from, one step under
+    /// body, and it is named rather than numbered for the reason the scale below
+    /// is: a Mac whose owner raised the interface text size should get a Helm
+    /// window that follows.
+    public static let figureFont = Font.subheadline.monospacedDigit()
 
     /// The same instrument voice one step up: the **headline** figure of a
     /// metric or a tile, rather than one in a row of them. 16 is the scale's
@@ -345,8 +355,13 @@ public enum HelmText {
     /// module page, and VPN's tile strip. Both also cap the line and let it
     /// shrink, which is why the whole treatment is `helmMetricFigure()` rather
     /// than this size alone.
-    public static let metricFont = Font.system(size: 16, weight: .medium, design: .monospaced)
-
+    ///
+    /// **The tabular digits are on the token and were never on the modifier.**
+    /// `helmMetricFigure()` capped the line and let it shrink and did not ask
+    /// for `monospacedDigit()` at all — which cost nothing while the face was
+    /// SF Mono and would have cost a headline figure that jumps as it counts
+    /// the moment it stopped being.
+    public static let metricFont = Font.system(size: 16, weight: .medium).monospacedDigit()
     // MARK: - The settings type scale
     //
     // **Four sizes, because the window had six.** Counted across the settings

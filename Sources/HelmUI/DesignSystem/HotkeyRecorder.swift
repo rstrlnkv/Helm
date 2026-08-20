@@ -127,7 +127,7 @@ public struct HelmHotkeyRow: View {
                 if recorder.recording {
                     Text(Self.pressKeys).foregroundStyle(HelmText.quiet)
                 } else if !recorder.label.isEmpty {
-                    Text(recorder.label).font(.body.monospaced())
+                    Text(recorder.label).font(.body)
                         // «⌃⌥K» read as symbols is noise; the combination in
                         // words is what a reader can actually repeat.
                         .accessibilityLabel(Self.spoken(recorder.label))

@@ -94,7 +94,7 @@ public struct HelmDurationField: View {
                     // one down». 40 is the hero itself and 22 halves the
                     // field. Recorded by `TypeScaleRatchetTests` as an
                     // exception rather than swept into a screen redrawn.
-                    .font(.system(size: 34, weight: .light, design: .monospaced))
+                    .font(.system(size: 34, weight: .light).monospacedDigit())
                     .foregroundStyle(HelmText.faint)
                     .frame(height: fieldHeight)
             }
@@ -124,7 +124,7 @@ public struct HelmDurationField: View {
                 // The hero's own figure, one step down: this is the same number
                 // in the same module and it should not arrive in a different
                 // voice from the countdown it is about to become.
-                .font(.system(size: 34, weight: .light, design: .monospaced))
+                .font(.system(size: 34, weight: .light).monospacedDigit())
                 .frame(width: 62, height: fieldHeight)
                 .focused($focus, equals: field)
                 .accessibilityLabel(label)
