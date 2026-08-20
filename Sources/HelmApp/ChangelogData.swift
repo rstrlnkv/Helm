@@ -71,6 +71,16 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.0", date: "2026-08-20", items: [
+                ChangeItem(kind: .fix, text: L("Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back.")),
+                ChangeItem(kind: .fix, text: L("A disk scan you stopped is no longer saved and reopened as though it had finished. It used to come back labelled with the time it was measured, over folders the scan never reached.")),
+                ChangeItem(kind: .fix, text: L("A volume scan you come back to draws the free space again. Reopened, every slice of the ring was a share of the wrong total.")),
+                ChangeItem(kind: .fix, text: L("Duplicates can no longer remove every copy of a file. A set of marks that named each copy as the reason to keep the other passed both of its checks.")),
+                ChangeItem(kind: .fix, text: L("“Search again” no longer starts while a removal is running. It cleared the bar the removal was reported on, leaving nothing on screen that reached it.")),
+                ChangeItem(kind: .fix, text: L("“Turn off” in Leftovers is not offered when two files register the same login item, and each row names the other. Switching off the one marked as a leftover used to stop the one marked as in use.")),
+                ChangeItem(kind: .fix, text: L("“No leftovers found” is not drawn over a folder Helm could not open. Such a folder is now a row of its own saying so, with a way to look again.")),
+                ChangeItem(kind: .fix, text: L("When brew declines to answer, Helm says so instead of drawing an empty machine. A refusal used to read as “No packages installed” over a full Cellar, and as “Updates: 0”.")),
+                ChangeItem(kind: .fix, text: L("Your SSH keys show their fingerprint, type and size again, and the badge for a key the agent already holds can light. Every key was drawn as one Helm could not read.")),
+                ChangeItem(kind: .fix, text: L("Saving your SSH config keeps a symlink into a dotfiles checkout, and Forget no longer discards hosts trusted since the page was opened.")),
                 ChangeItem(kind: .new, text: L("Hosts & Keys is an SSH manager now, and your keys come first on it. Each key says which hosts use it — and a key no host names is not an unused key. It is usually the one ssh logs you in with.")),
                 ChangeItem(kind: .upd, text: L("A host now shows the key it uses, and says when that key is gone. The fingerprint you trusted for it sits in the same row, with Forget beside it, instead of in a list of its own.")),
                 ChangeItem(kind: .upd, text: L("Hosts & Keys fits the window at its smallest. Long fingerprints and host names used to push everything else off the edge.")),

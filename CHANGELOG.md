@@ -11,6 +11,92 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > Two hangs on the owner's own Mac opened this one, and the second was found by
 > looking for the first one's family rather than by waiting for a report.
 
+### The eight-module sweep
+
+Every module was given to an adversarial tester and then to an engineer: **41
+defects found, 41 fixed**, each pinned by a test that was red first and each
+repair proven by a mutation read back off disk. What follows is the shape of
+what was found rather than a list — the commits carry the detail.
+
+**Six of the first seventeen were one family, and it is not the one CLAUDE.md
+had named.** The rule said «a local flag standing in for a live external fact»;
+what the sweep actually found, over and over, was **a reading older than the
+act**. The Uninstaller read which apps were running once and then spent five
+seconds a app quitting the others before it moved anything — and macOS moves a
+running app's bundle without a word, so the removal reported itself clean over
+an app that was still up, while `ARCHITECTURE.md` justified the deadline with
+«`trashSync` reports what would not move», which was never true. Disk's
+`treeIsComplete` was `!stopped`, and `stopped` is false *while a walk is
+running*, so two of three save doors wrote a partial tree the module then
+reopened on and labelled «Measured N minutes ago». The VPN cached
+`isPrimaryInterface` for the tunnel's life beside the `utunN` that really does
+hold still, so the route could leave while the green tick stayed. Layout read a
+selection from one app and wrote it into whichever was in front at the write —
+the text crossed a queue boundary and the app it came from did not.
+
+**Two were destructive.** Duplicates would take *every* copy of the content if
+two plans named each other: `UserFileScope` asks about a path and
+`DuplicateVerification` asks about a pair, and both say yes to each half of
+`[a→keep b, b→keep a]` — measured at two removals and no refusals. And
+Leftovers' «Turn off» aimed `launchctl disable` at a **label**, which two files
+can register, so switching off the row badged «Leftover» stopped the job the
+same scan badged «In use».
+
+**One was a crash loop reachable by anything that can write a preference.**
+Autopilot's next sequence number is `UInt64` arithmetic written through the
+*trapping* `Int(_:)`, and `foldersSeq` comes out of a plist. With the `folders`
+key removed there is nothing for the seal to judge, so `Int.max` reaches the
+conversion and the app dies — and the value survives the crash, on the one
+gesture that configures the module.
+
+**One was already killing the app on this Mac.** Homebrew launched every
+`install`, `uninstall`, `upgrade` and the Homebrew installer through
+`try p.run()` — verbatim the line `HelmProcess.launched` documents as unable to
+guard this class of refusal, since `NSTask` raises an Objective-C exception that
+goes past a Swift `catch` into `std::terminate`. The updater's swap script had
+the same launch, which is the worst place in the app for an abort: it happens
+while Helm is replacing itself. Both go through `HelmProcess.start` now.
+
+**Hosts, rebuilt this same day, was the most defective module in the tree**, and
+three of its thirteen were mine. `ssh-keygen -l`'s output never parsed, because
+the split expects the last field to end in `)` and the tool's ends in `)\n` — so
+every key on every Mac drew «Helm could not read this key», and since the agent
+badge is asked by fingerprint it could never light. `activate()` blocked the
+drawing thread for five seconds plus five per key, at every launch, while every
+other module's is empty. An `IdentityFile` before the first `Host` block read
+«not used by anything here» — the exact sentence the design names as meaning
+«safe to delete». The first Apply on a symlinked `~/.ssh/config` destroyed the
+dotfiles link, because `.atomic` renames a new inode over it; and the passphrase
+was never actually zeroed, because `Data` is copy-on-write and `resetBytes` was
+zeroing a copy.
+
+**What the fakes could not say was as productive as what the code did.**
+Repeatedly the reason a defect had survived was a fake that could not be in a
+state its port can: `FakeSSHKeys` answered a `ssh-keygen` line with no ending,
+which no tool prints — a fake *tidier* than reality. `FakeRunning` could not
+have an app come back mid-batch. `WireKnownHosts` had a constant `read()` and a
+`write` that stored nothing. `PlantedSealKey` inherited `keyIfWarm() -> nil`, so
+the shared Duplicates fixture was a keychain permanently mid-answer.
+`SynthesisTyping.perform`'s `Bool` cannot be produced for the reason its own
+contract states.
+
+**And several guards turned out to be unable to fail.** `OneRemovalAtATimeEverywhereTests`
+scanned for files *named* `ViewModel` and missed two real doors.
+`HostsRowsFitTheMinimumPaneTests` could not see the usage sentence at all, then
+— once it could — guarded growth on the longest line only, then had a fixture
+that gave that line nothing to say. `DocumentsNameTheTreeTests` matches names
+against a blob of every file's contents, so a renamed symbol survives in
+somebody's doc comment and the guard says nothing; the same hole makes
+`knownAbsent` unusable for a name that was explained well. A `find -newermt
+"@epoch"` freshness check was a BSD parse error that matched nothing.
+
+**A note for anyone running agents in one worktree:** the shared `.build`
+handed back a test bundle one edit behind the source, so a mutation was answered
+by the code *before* it — and `swift build --target A --target B` honours only
+the first while reporting «Build complete» for both. Everything here was
+re-measured in private scratch paths, one target per invocation, with the bundle
+proven newer than its sources.
+
 ### Fixed
 - **The window stopped answering for 19 seconds, and the report named the
   arrangement outright.** `HelmApp_2026-08-19-235500_MacBook.hang`, on
