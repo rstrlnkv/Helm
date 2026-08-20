@@ -16,9 +16,12 @@ final class BrewParserShapeTests: XCTestCase {
             XCTAssertEqual(BrewSearchParser.parse(output, isCask: false).count, 0, output.debugDescription)
             XCTAssertEqual(BrewDescParser.parse(output).count, 0, output.debugDescription)
         }
-        XCTAssertEqual(BrewOutdatedParser.parse(Data()).count, 0)
-        XCTAssertEqual(BrewOutdatedParser.parse(Data("not json".utf8)).count, 0)
-        XCTAssertEqual(BrewOutdatedParser.parse(Data("{}".utf8)).count, 0)
+        // Stronger than a count of zero for this one: nothing readable in is
+        // "the module could not answer", which the engine keeps apart from a
+        // machine with nothing outstanding (`ARefusedQueryIsNotACleanMachineTests`).
+        XCTAssertNil(BrewOutdatedParser.parse(Data()))
+        XCTAssertNil(BrewOutdatedParser.parse(Data("not json".utf8)))
+        XCTAssertNil(BrewOutdatedParser.parse(Data("{}".utf8)))
     }
 
     /// Split out because this one is the odd parser: the other three trim each
@@ -43,12 +46,12 @@ final class BrewParserShapeTests: XCTestCase {
     /// the Install/Uninstall buttons pass `isCask` straight to the brew command.
     /// If the two ever collapse into one row, the button uninstalls the wrong
     /// one. The rows carry it correctly today — pinning so they keep to it.
-    func testAPackageThatIsBothFormulaAndCaskStaysTwoDistinguishableRows() {
+    func testAPackageThatIsBothFormulaAndCaskStaysTwoDistinguishableRows() throws {
         let json = """
         {"formulae":[{"name":"docker","installed_versions":["27.0.1"],"current_version":"28.0.0"}],
          "casks":[{"name":"docker","installed_versions":["4.30.0"],"current_version":"4.40.0"}]}
         """
-        let outdated = BrewOutdatedParser.parse(Data(json.utf8))
+        let outdated = try XCTUnwrap(BrewOutdatedParser.parse(Data(json.utf8)))
         XCTAssertEqual(outdated.count, 2)
         XCTAssertEqual(Set(outdated.map { "\($0.isCask ? "c" : "f"):\($0.name)" }).count, 2)
         // The kind must travel with the version pair, not be reassigned by order.

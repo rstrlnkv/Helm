@@ -88,9 +88,46 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// The tool's answer, or nil past the runner's deadline.
+    ///
+    /// **Only the deadline**, because for `search` a non-zero exit is an
+    /// answer: measured against Homebrew 6.0.18, `brew search --formula --
+    /// <no match>` exits 1 with empty stdout, which is how that subcommand
+    /// spells "nothing found". `describe` reads it the same way for its own
+    /// reason — a non-zero exit there is one name it cannot resolve, and the
+    /// batch splits rather than gives up. Every other query wants `refused`.
     private func completed(_ result: (status: Int32, stdout: String),
                            query: String) -> String? {
         timedOut(result.status, query: query) ? nil : result.stdout
+    }
+
+    /// Whether brew declined to answer at all — the deadline, or any other
+    /// non-zero exit.
+    ///
+    /// The exit code is the only thing left that knows: the sentence explaining
+    /// a refusal goes to stderr and `HelmProcess` sends stderr to `nullDevice`.
+    /// So a broken tap, a Ruby error, another brew holding the lock — a state
+    /// this module reaches by itself, since a child brew survives the app —
+    /// arrived here as empty stdout and was parsed into an empty list, which the
+    /// page draws as a fact about the machine: "No packages installed." over a
+    /// full Cellar, «Updates: 0» over thirty held-back updates.
+    ///
+    /// Measured on this Mac before trusting the code (Homebrew 6.0.18, three
+    /// consecutive readings): `brew list --versions` and `brew outdated
+    /// --json=v2` both exit **0** whatever they find — including with five
+    /// packages outdated — so for these two a non-zero exit is never the
+    /// answer's shape.
+    private func refused(_ status: Int32, query: String) -> Bool {
+        if timedOut(status, query: query) { return true }
+        guard status != 0 else { return false }
+        HelmLog.shared.warn(Self.moduleID,
+                            "\(query) refused by brew, exit \(status) — keeping the last answer")
+        return true
+    }
+
+    /// The tool's answer, or nil when it refused to give one.
+    private func answered(_ result: (status: Int32, stdout: String),
+                          query: String) -> String? {
+        refused(result.status, query: query) ? nil : result.stdout
     }
 
     /// Labelled, like the scans in the other modules: reading and parsing the
@@ -114,10 +151,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return []
         }
         let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage]? in
-            guard let f = completed(runner.run(brew, ["list", "--versions", "--formula"], env: [:]),
-                                    query: "list formulae"),
-                  let c = completed(runner.run(brew, ["list", "--versions", "--cask"], env: [:]),
-                                    query: "list casks")
+            // Both halves or neither: a refusal of the cask half alone kept the
+            // formulae and every installed app vanished from the page, which is
+            // worse than nothing because it looks complete.
+            guard let f = answered(runner.run(brew, ["list", "--versions", "--formula"], env: [:]),
+                                   query: "list formulae"),
+                  let c = answered(runner.run(brew, ["list", "--versions", "--cask"], env: [:]),
+                                   query: "list casks")
             else { return nil }
             return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
         }
@@ -135,8 +175,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             // String held a second copy of the whole payload for the parse
             // (`OutdatedQueryAllocationBenchmark`).
             let result = runner.runData(brew, ["outdated", "--json=v2"], env: [:])
-            guard !timedOut(result.status, query: "outdated") else { return nil }
-            return BrewOutdatedParser.parse(result.stdout)
+            guard !refused(result.status, query: "outdated") else { return nil }
+            // And the parser answers nil too: bytes that are not the document
+            // this decoder knows are not an up-to-date machine either.
+            guard let parsed = BrewOutdatedParser.parse(result.stdout) else {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "outdated: brew answered a shape this build cannot read "
+                                    + "— keeping the last answer")
+                return nil
+            }
+            return parsed
         }
         HelmLog.shared.memory("homebrew.outdated")
         if let parsed { HelmLog.shared.info(Self.moduleID, "outdated: \(parsed.count)") }
@@ -158,16 +206,27 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// exactly one.
     public func descriptions(names: [String], isCask: Bool) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
+        // Bounded: the split is a bisection, and a batch refused wholesale
+        // walks to a leaf per name (`DescriptionBudget`).
+        let budget = DescriptionBudget(forBatchOf: names.count)
         // Named while it runs, like the two list queries: one batch covers the
         // whole installed set, and a bad name in it turns into a dozen calls.
         let found = HelmActivity.phase("homebrew.descriptions") {
-            describe(names, isCask: isCask, brew: brew)
+            describe(names, isCask: isCask, brew: brew, budget: budget)
+        }
+        if budget.exhausted {
+            // Counts, never names.
+            HelmLog.shared.warn(Self.moduleID,
+                                "descriptions: brew refused \(names.count) names wholesale "
+                                + "— gave up after \(budget.allowance) calls")
         }
         HelmLog.shared.memory("homebrew.descriptions")
         return found
     }
 
-    private func describe(_ names: [String], isCask: Bool, brew: String) -> [String: String] {
+    private func describe(_ names: [String], isCask: Bool, brew: String,
+                          budget: DescriptionBudget) -> [String: String] {
+        guard budget.spend() else { return [:] }
         let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula", "--"] + names, env: [:])
         if result.status == 0 { return BrewDescParser.parse(result.stdout) }
         // A timeout, never split: each half would hang for the same full
@@ -178,8 +237,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // Nothing to say about it, and nothing it should cost the others.
         guard names.count > 1 else { return [:] }
         let middle = names.count / 2
-        return describe(Array(names[..<middle]), isCask: isCask, brew: brew)
-            .merging(describe(Array(names[middle...]), isCask: isCask, brew: brew)) { a, _ in a }
+        return describe(Array(names[..<middle]), isCask: isCask, brew: brew, budget: budget)
+            .merging(describe(Array(names[middle...]), isCask: isCask, brew: brew,
+                              budget: budget)) { a, _ in a }
     }
 
     public func search(_ query: String) -> [SearchHit]? {
@@ -240,27 +300,60 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// before the gate opens (or the next operation's marker could lose to
     /// this one's clear), the gate opened, the state event sent. Returns
     /// whether the end was asked for, so the caller can word its log line.
+    ///
+    /// `code` is nil when no child ever ran — a stop that landed before the
+    /// launch. There is no exit code for a process that was never started, and
+    /// inventing one would put a number on the page's failure that names
+    /// nothing.
     @discardableResult
-    private func concludeOp(code: Int32, label: String) -> Bool {
+    private func concludeOp(code: Int32?, label: String) -> Bool {
         let stopped = wasStopped
         marker.clear()
         endBusy()
-        emitState(OpState(phase: code == 0 ? .done : .failed,
-                          label: label, exitCode: Int(code),
-                          reason: code != 0 && stopped ? .stopped : nil))
+        // nil is "no child ever ran", which is not a success.
+        let phase: OpPhase = code == 0 ? .done : .failed
+        emitState(OpState(phase: phase, label: label, exitCode: code.map(Int.init),
+                          reason: phase == .failed && stopped ? .stopped : nil))
         return stopped
     }
 
-    /// Ends the running long operation, if any. SIGTERM through the handle;
-    /// the exit arrives the way every exit does — EOF, then `onExit` — so the
-    /// busy gate and the state event follow the one path they already have.
+    /// Ends the running long operation. SIGTERM through the handle; the exit
+    /// arrives the way every exit does — EOF, then `onExit` — so the busy gate
+    /// and the state event follow the one path they already have.
+    ///
+    /// **The press is recorded even when there is nothing to terminate yet.**
+    /// This used to `guard busy, let handle = current`, and `current` is set
+    /// after the child has been launched: everything before that point is a
+    /// window in which the page shows a live Stop button and the press falls
+    /// into a bare `return` — no state, no log, and `stopRequested` never set,
+    /// so nothing later could tell that the person had asked. The launch reads
+    /// the flag instead (`stoppedBeforeLaunch`).
     public func stop() {
         lock.lock()
-        guard busy, let handle = current else { lock.unlock(); return }
+        guard busy else { lock.unlock(); return }
         stopRequested = true
+        let handle = current
         lock.unlock()
         HelmLog.shared.info(Self.moduleID, "stop requested")
-        handle.terminate()
+        handle?.terminate()
+    }
+
+    /// Whether the person pressed Stop before this operation had a child, in
+    /// which case the operation ends here and the launch must not happen.
+    ///
+    /// For a package operation that window is a spawn, measured in
+    /// milliseconds. For `installBrew` it is **the administrator password
+    /// dialog**: `runAdmin` blocks this thread for as long as a person takes to
+    /// find their password, and the module used to go on to download and run
+    /// the Homebrew installer after a Stop pressed while it was up.
+    ///
+    /// Nothing was launched, so no `onExit` is coming to conclude the operation
+    /// — it is concluded here, or the gate stays shut for the life of the app.
+    private func stoppedBeforeLaunch(label: String) -> Bool {
+        guard wasStopped else { return false }
+        HelmLog.shared.info(Self.moduleID, "stopped before the child was started")
+        concludeOp(code: nil, label: label)
+        return true
     }
 
     private func emitLog(_ line: String) {
@@ -289,23 +382,34 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
         HelmLog.shared.info(Self.moduleID, "\(what) started")
         emitState(OpState(phase: .running, label: label))
+        startChild(label: label, launch: launch, args: args, env: env) { [weak self] code in
+            guard let self else { return }
+            let stopped = self.concludeOp(code: code, label: label)
+            if code == 0 {
+                HelmLog.shared.info(Self.moduleID, "\(what) done")
+            } else if stopped {
+                HelmLog.shared.info(Self.moduleID, "\(what) stopped on request, exit \(code)")
+            } else {
+                HelmLog.shared.warn(Self.moduleID, "\(what) failed, exit \(code)")
+            }
+        }
+    }
+
+    /// **The one place this module starts a child**, so the three things that
+    /// belong to every launch cannot be remembered at one site and forgotten at
+    /// the next: the Stop that arrived before the child existed, the marker
+    /// that reports a quit mid-operation, and the handle joining the operation
+    /// it belongs to. The two callers differ only in what they say at the exit.
+    private func startChild(label: String, launch: String, args: [String],
+                            env: [String: String],
+                            onExit: @escaping @Sendable (Int32) -> Void) {
+        guard !stoppedBeforeLaunch(label: label) else { return }
         // The child survives a quit; whatever is still written at the next
         // launch is the report (`AQuitMidOperationIsReportedTests`).
         marker.write(label)
-        let handle = runner.stream(launch, args, env: env,
-                      onLine: { [weak self] line in self?.emitLog(line) },
-                      onExit: { [weak self] code in
-                          guard let self else { return }
-                          let stopped = self.concludeOp(code: code, label: label)
-                          if code == 0 {
-                              HelmLog.shared.info(Self.moduleID, "\(what) done")
-                          } else if stopped {
-                              HelmLog.shared.info(Self.moduleID, "\(what) stopped on request, exit \(code)")
-                          } else {
-                              HelmLog.shared.warn(Self.moduleID, "\(what) failed, exit \(code)")
-                          }
-                      })
-        adopt(handle)
+        adopt(runner.stream(launch, args, env: env,
+                            onLine: { [weak self] line in self?.emitLog(line) },
+                            onExit: onExit))
     }
 
     /// The handle joins the operation it belongs to — unless the operation has
@@ -313,8 +417,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// before it returns), in which case there is nothing left to address.
     private func adopt(_ handle: RunningProcess) {
         lock.lock()
-        if busy { current = handle }
+        guard busy else { lock.unlock(); return }
+        current = handle
+        let stopped = stopRequested
         lock.unlock()
+        // The other half of the window `stoppedBeforeLaunch` closes: a press
+        // that landed after that check and before this line found `current`
+        // still nil, so it terminated nothing. It has a child to reach now.
+        if stopped { handle.terminate() }
     }
 
     /// brew can vanish between `status()` and the press: Homebrew's own
@@ -349,14 +459,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
     /// native admin prompt, then run the official installer non-interactively.
     public func installBrew() {
+        // One label, read by every way this operation can end — including the
+        // marker, which is compared against nothing but itself.
+        let label = "install Homebrew"
         guard beginBusy() else { emitLog("⚠︎ Another operation is already running."); return }
-        emitState(OpState(phase: .running, label: "install Homebrew"))
+        emitState(OpState(phase: .running, label: label))
         // `user` is NSUserName(), which on a managed Mac is whatever the
         // directory says; this string is evaluated by a root shell. Single
         // quotes stop expansion, and the name is checked before it gets there.
         guard AccountName.isPlausible(user) else {
-            endBusy()
-            emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))
+            concludeOp(code: 1, label: label)
             emitLog("Unsupported account name.")
             return
         }
@@ -368,8 +480,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // already names its tools in full; see `SudoersRule.installCommand`.
         let prep = "/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '\(user)':admin /opt/homebrew"
         guard privileged.runAdmin(prep) else {
-            endBusy()
-            emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))
+            concludeOp(code: 1, label: label)
             emitLog("Administrator authorization was cancelled.")
             return
         }
@@ -379,13 +490,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let installer = "set -e; script=$(/usr/bin/mktemp); "
                       + "/usr/bin/curl -fsSL \(Self.installerURL) -o \"$script\"; "
                       + "/bin/bash \"$script\"; rc=$?; /bin/rm -f \"$script\"; exit $rc"
-        marker.write("install Homebrew")
-        let handle = runner.stream("/bin/bash", ["-c", installer], env: ["NONINTERACTIVE": "1"],
-                      onLine: { [weak self] line in self?.emitLog(line) },
-                      onExit: { [weak self] code in
-                          self?.concludeOp(code: code, label: "install Homebrew")
-                      })
-        adopt(handle)
+        // The dialog above blocked this thread for as long as the person took
+        // to find their password, with a live Stop button on the page the whole
+        // time; `startChild` is where a press that landed during it is read.
+        startChild(label: label, launch: "/bin/bash", args: ["-c", installer],
+                   env: ["NONINTERACTIVE": "1"]) { [weak self] code in
+            self?.concludeOp(code: code, label: label)
+        }
     }
 
     // MARK: - Transport

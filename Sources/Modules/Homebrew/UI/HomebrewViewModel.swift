@@ -66,13 +66,36 @@ import Module_Homebrew_Engine
     /// itself waited for an event that may never come.
     deinit { eventsTask?.cancel() }
 
-    /// What the page asks for on appear. The first visit does the work; later
-    /// visits show what is already here.
+    /// What the page asks for on appear — and it asks whether brew is there
+    /// every time.
+    ///
+    /// **Whether Homebrew is installed is not a property of this process.** It
+    /// is a file on disk that `FSBrewLocator` re-reads at every call, and it
+    /// changes under the app for the most ordinary reasons there are: somebody
+    /// follows brew.sh in a terminal, or runs Homebrew's own uninstaller, with
+    /// this window open beside it. A `loadedStatus` flag latched by the first
+    /// visit meant brew appearing was noticed never and brew vanishing was
+    /// noticed never, for the life of the process — `HomebrewSettingsPage.body`
+    /// branches on `status.installed` and on nothing else, and the only other
+    /// path that re-read the status was `refreshAfterOp`, which needs an
+    /// operation to have run: the one thing you cannot do from the install
+    /// screen you are stuck on.
+    ///
+    /// The guard stays where it was earned, on the *expensive* half. Asking the
+    /// locator is two `isExecutableFile` calls; asking brew is `brew list
+    /// --versions` twice and a `brew desc` batch over every package installed.
+    /// And the packages belong to *a* brew, not to the app: a Homebrew
+    /// uninstalled and installed again between two visits — or moved from
+    /// `/usr/local` to `/opt/homebrew` — is a new Cellar, and the rows of the
+    /// one that is gone each carry an Uninstall button the engine now refuses.
     public func loadIfNeeded() async {
-        guard !loadedStatus else { return }
         await refreshStatus()
-        if status.installed { await refreshInstalled() }
+        guard status.installed, !loadedInstalled || listedBrew != status.brewPath else { return }
+        await refreshInstalled()
     }
+
+    /// The brew the installed list was last read from.
+    private var listedBrew: String?
 
     public var running: Bool { op.phase == .running }
 
@@ -128,12 +151,8 @@ import Module_Homebrew_Engine
 
     // MARK: - Queries
 
-    /// False until the first answer, so `loadIfNeeded` can tell "not asked yet"
-    /// from "asked, and brew is not installed".
-    @Published public private(set) var loadedStatus = false
     public func refreshStatus() async {
         status = await client.request(HomebrewCommand.status) ?? status
-        loadedStatus = true
         // Carried once: the engine's marker is consumed by the read, so only
         // the first status after an interrupted quit says it — into the
         // console, the surface that already narrates operations.
@@ -150,6 +169,7 @@ import Module_Homebrew_Engine
         else { return }
         installed = answer
         loadedInstalled = true
+        listedBrew = status.brewPath
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }

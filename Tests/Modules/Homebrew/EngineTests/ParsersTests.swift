@@ -16,24 +16,31 @@ final class BrewListParserTests: XCTestCase {
 }
 
 final class BrewOutdatedParserTests: XCTestCase {
-    func testParsesFormulaeAndCasks() {
+    func testParsesFormulaeAndCasks() throws {
         let json = """
         {"formulae":[{"name":"deno","installed_versions":["2.9.3"],"current_version":"2.9.4"}],
          "casks":[{"name":"figma","installed_versions":["1.2.3"],"current_version":"1.2.4"}]}
         """.data(using: .utf8)!
-        let out = BrewOutdatedParser.parse(json)
+        let out = try XCTUnwrap(BrewOutdatedParser.parse(json))
         XCTAssertEqual(out.count, 2)
         XCTAssertEqual(out.first { $0.name == "deno" },
                        OutdatedPackage(name: "deno", installed: "2.9.3", latest: "2.9.4", isCask: false))
         XCTAssertEqual(out.first { $0.name == "figma" }?.isCask, true)
     }
+    /// The two ends of "nothing came back", which are different answers: brew
+    /// printing its own empty document is a machine with nothing outstanding,
+    /// while no bytes at all is a question that was never answered.
     func testEmpty() {
-        XCTAssertTrue(BrewOutdatedParser.parse(#"{"formulae":[],"casks":[]}"#.data(using: .utf8)!).isEmpty)
-        XCTAssertTrue(BrewOutdatedParser.parse(Data()).isEmpty)
+        XCTAssertEqual(BrewOutdatedParser.parse(#"{"formulae":[],"casks":[]}"#.data(using: .utf8)!),
+                       [])
+        XCTAssertNil(BrewOutdatedParser.parse(Data()))
     }
+    /// One array present and the other absent is still an answer — brew prints
+    /// both today, and a build that stops printing the empty one has not
+    /// stopped answering.
     func testMissingInstalledVersions() {
         let json = #"{"formulae":[{"name":"x","current_version":"2.0"}]}"#.data(using: .utf8)!
-        XCTAssertEqual(BrewOutdatedParser.parse(json).first?.installed, "")
+        XCTAssertEqual(BrewOutdatedParser.parse(json)?.first?.installed, "")
     }
 }
 

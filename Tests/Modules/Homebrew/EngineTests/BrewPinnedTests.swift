@@ -13,8 +13,16 @@ import XCTest
 /// checked against the real command on this machine.
 final class BrewPinnedTests: XCTestCase {
 
-    private func parse(_ json: String) -> [OutdatedPackage] {
-        BrewOutdatedParser.parse(Data(json.utf8))
+    /// `parse` answers nil for a document it cannot read, and a `?? []` here
+    /// would turn that into the same empty list these tests then count — so the
+    /// unreadable case fails by name instead.
+    private func parse(_ json: String,
+                       file: StaticString = #filePath, line: UInt = #line) -> [OutdatedPackage] {
+        guard let parsed = BrewOutdatedParser.parse(Data(json.utf8)) else {
+            XCTFail("the parser could not read this document at all", file: file, line: line)
+            return []
+        }
+        return parsed
     }
 
     func testAPinnedFormulaIsMarkedAsSuch() {
