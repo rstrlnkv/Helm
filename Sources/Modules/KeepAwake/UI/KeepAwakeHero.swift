@@ -284,10 +284,11 @@ struct KeepAwakeHero: View {
     /// and an idle page that dropped to body text there made the whole screen
     /// change shape when a timer began.
     private var idle: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroIdle)
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
             // Why *this module* is not holding the Mac. It used to have a
             // third branch — «something other than Helm is keeping this Mac
             // awake» — which contradicted the 40 pt sentence directly above it
@@ -303,7 +304,13 @@ struct KeepAwakeHero: View {
             // changes under the reader, and `.idle` and `.timed` are the same
             // height by design — the note on `stopNote` below is the same rule.
             Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
-                .font(.system(size: 13)).foregroundStyle(HelmText.faint)
+                // `quiet`, like the other three states' captions. It was
+                // `faint` — one slot, two inks, 115 against 112 of 255, which
+                // is about 1.2 % of luminance and nothing anybody can see. A
+                // distinction that is in the source and not on the screen is
+                // one person twice.
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
                 .opacity(batteryStopped ? 0 : 1)
                 .animation(HelmMotion.interface, value: batteryStopped)
                 .accessibilityHidden(batteryStopped)
@@ -316,7 +323,7 @@ struct KeepAwakeHero: View {
                 customButton
                 startButton(KAStr.indefinite, minutes: 0)
             }
-            .padding(.top, 18)
+            .padding(.top, HelmSpace.s6)
         }
     }
 
@@ -326,7 +333,7 @@ struct KeepAwakeHero: View {
         // an animation keyed on the raw interval fires on a tick that draws the
         // same digits.
         let label = TimerProgress.label(remaining: max(0, end.timeIntervalSince(now)))
-        return VStack(spacing: 8) {
+        return VStack(spacing: HelmSpace.s4) {
             // Tabular digits, so the figure does not jitter as they change
             // width — it is redrawn once a second for hours. It was a
             // monospaced *face*, which bought the same thing and made a
@@ -335,6 +342,11 @@ struct KeepAwakeHero: View {
             Text(label)
                 .font(.system(size: 40, weight: .light).monospacedDigit())
                 .tracking(-2)
+                // The one figure in this block that is a number rather than a
+                // sentence, and it takes the same treatment: a countdown does
+                // not wrap, and the four states must not disagree about how the
+                // slot behaves when one of them does.
+                .helmHeroSentence()
                 .contentTransition(.numericText(countsDown: true))
                 // The half that was missing. A content transition is not an
                 // animation, it is an instruction for one: `.numericText` says
@@ -351,7 +363,9 @@ struct KeepAwakeHero: View {
                 // its own; read it when asked, not when it moves».
                 .accessibilityLabel(KAStr.a11yRemaining(label))
                 .accessibilityAddTraits(.updatesFrequently)
-            Text(timedNote(end)).font(.system(size: 13)).foregroundStyle(HelmText.quiet)
+            Text(timedNote(end))
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
             HelmWrappingRow {
                 // The same arithmetic the panel's «+15» uses, and for the
                 // same reason: this is a `Double` that came off disk.
@@ -362,7 +376,7 @@ struct KeepAwakeHero: View {
                     .controlSize(.large)
                 stopButton
             }
-            .padding(.top, 18)
+            .padding(.top, HelmSpace.s6)
         }
     }
 
@@ -375,11 +389,13 @@ struct KeepAwakeHero: View {
     /// this Mac going to sleep — and everything about *why* sits under it, which
     /// is what the countdown state already did.
     private var indefinite: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroAwake)
                 .font(.system(size: 40, weight: .light))
+                .helmHeroSentence()
             Text(KAStr.heroUntilYouStop)
-                .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
             HelmWrappingRow {
                 // A session with no deadline can be given one, and until now
                 // the only way to bound it was to stop it and start again.
@@ -387,16 +403,18 @@ struct KeepAwakeHero: View {
                 customButton
                 stopButton
             }
-            .padding(.top, 18)
+            .padding(.top, HelmSpace.s6)
         }
     }
 
     private func automatic(_ conditions: Set<ActiveCondition>) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroAwake)
                 .font(.system(size: 40, weight: .light))
+                .helmHeroSentence()
             Text(KAStr.conditionsLine(conditions, appNames: appNames))
-                .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
             HelmWrappingRow {
                 // The same three a session with no deadline offers. It used
                 // to be one button carrying whatever «Default duration» said,
@@ -413,7 +431,7 @@ struct KeepAwakeHero: View {
                 startButton(KAStr.indefinite, minutes: 0)
                 stopButton
             }
-            .padding(.top, 18)
+            .padding(.top, HelmSpace.s6)
         }
     }
 
@@ -448,7 +466,7 @@ struct KeepAwakeHero: View {
         .frame(maxWidth: .infinity)
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.
-        .padding(.top, 12)
+        .padding(.top, HelmSpace.s5)
     }
 
     /// Whether the slot under the buttons has anything in it at all.
@@ -484,7 +502,8 @@ struct KeepAwakeHero: View {
 
     private var stopNote: some View {
         Text(KAStr.heroStopSuppresses)
-            .font(.system(size: 11)).foregroundStyle(HelmText.faint)
+            .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+            .helmHeroSentence()
             // Opacity, not an `if`. The condition is the engine's and changes
             // under the reader — an app quits, a charger comes out — and a
             // caption that removed itself from the hierarchy would take the
@@ -493,7 +512,7 @@ struct KeepAwakeHero: View {
             .opacity(saysWhatStopWouldDo ? 1 : 0)
             .animation(HelmMotion.interface, value: saysWhatStopWouldDo)
             .accessibilityHidden(!saysWhatStopWouldDo)
-            .padding(.top, 6)
+            .padding(.top, HelmSpace.s3)
     }
 
     // MARK: - Buttons
@@ -589,9 +608,9 @@ struct KeepAwakeHero: View {
     /// `12`. `HelmDurationField` is the Clock shape: a column per unit, the
     /// abbreviation above the figure.
     private var customTimeEditor: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: HelmSpace.s5) {
             Text(KAStr.customTimeTitle)
-                .font(.system(size: 13, weight: .semibold))
+                .font(HelmText.sectionHeading)
             HelmDurationField(minutes: $customMinutes,
                               ceiling: TimerPolicy.longestSessionMinutes,
                               hourLabel: KAStr.hoursUnitShort,
@@ -605,7 +624,7 @@ struct KeepAwakeHero: View {
                 // something would be this screen giving one choice two names.
                 .disabled(customMinutes == 0)
         }
-        .padding(18)
+        .padding(HelmSpace.s6)
         .frame(width: 230)
     }
 

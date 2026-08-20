@@ -17,34 +17,6 @@ import Module_VPN_Engine
 /// prose instead.
 struct VPNTunnelStrip {
 
-    /// What the headline wears beside its sentence. Three, not a boolean:
-    /// a check that could not be made must never be dressed as the bad answer
-    /// (`VPNExitVerdict`).
-    ///
-    /// The glyph and the colour hang off the case rather than off two switches
-    /// in the view, so a fourth answer is one place to fill in and a build
-    /// error until it is.
-    enum Mark: Equatable {
-        case success, warning, neutral
-
-        var symbol: String {
-            switch self {
-            case .success: "checkmark.circle.fill"
-            case .warning: "exclamationmark.triangle.fill"
-            case .neutral: "questionmark.circle"
-            }
-        }
-
-        var tint: Color {
-            switch self {
-            case .success: HelmSignal.success
-            case .warning: HelmSignal.warning
-            // Quiet, never `danger`: a probe that failed is not bad news.
-            case .neutral: HelmText.quiet
-            }
-        }
-    }
-
     /// What stands under the readings — the offer, the run that is already
     /// going, or the sentence that stands where neither belongs.
     ///
@@ -123,7 +95,6 @@ struct VPNTunnelStrip {
     /// without the country rather than one with a dangling dash.
     let verdict: String
     let place: Place
-    let mark: Mark
     let action: Action
 
     /// **`measuring` defaults to the state's own answer, not to false.**
@@ -168,15 +139,12 @@ struct VPNTunnelStrip {
             // region, or none at all, is `unknown` rather than a line that
             // trails off.
             place = countryCode.flatMap(VPNStr.country).map(Place.named) ?? .unknown
-            mark = .success
         case .besideTunnel:
             verdict = VPNStr.trafficBesideTunnel
             place = .none
-            mark = .warning
         case .unknown:
             verdict = VPNStr.trafficUnknown
             place = .none
-            mark = .neutral
         }
 
         // **The offer belongs to the tunnel holding the default route, and to
@@ -342,28 +310,40 @@ struct VPNTunnelHero: View {
     ///
     /// So the verdict takes the 40 pt slot, the country and the exclusions
     /// become the caption, and the segments and the measure button become the
-    /// capsule row. The one departure is the mark, which stays — `KeepAwakeHero`
-    /// can do without one because none of its states is alarming, and this
-    /// block's whole reason for existing is the state that is.
+    /// capsule row. **And there is no departure left**: this block kept a mark
+    /// beside its sentence on the reasoning that Keep Awake can do without one
+    /// because none of its states is alarming. The reasoning survives the
+    /// glyph's removal — the alarming state is still the reason this block
+    /// exists — but the glyph was carrying colour and nothing else, and the
+    /// note on `headline` has what it cost to draw it.
     private func live(_ switcher: VPNTunnelSwitcher,
                       _ chosen: VPNTunnelState) -> some View {
         let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
         return VStack(spacing: HelmSpace.s6) {
+            // **The figure block is `KeepAwakeHero`'s, spacing and all.** That
+            // page draws its verdict, its caption and its row of verbs in one
+            // `VStack(spacing: s4)` with `s6` on top of the row, and this one
+            // drew the three as siblings at `s6` — 18 pt from caption to verbs
+            // against Keep Awake's 26, photographed at 29.5 and 39.0 from the
+            // caption's cap. Two heroes that are the same shape on purpose must
+            // not be two rhythms.
+            VStack(spacing: HelmSpace.s4) {
+                headline(strip)
+                verbs(switcher, strip, chosen)
+                    .padding(.top, HelmSpace.s6)
+            }
             // **The words are inset like a heading; the surface is not.**
             //
             // The whole block sits in the cards' own column
             // (`VPNSettingsPage.heroAndTitle` backs it out of the header inset),
-            // and these two go back in by the same amount, because a heading
+            // and the words go back in by the same amount, because a heading
             // belongs level with what the rows below *say* —
             // `HelmLayout.groupedHeaderOutset` carries both halves of that
             // ruling. Written the other way round, as a negative padding on the
             // readings alone, it drew nothing at all: `.clipped()` sits at this
             // view's root for the cross-fade, and a clip takes back whatever a
             // negative padding inside it gives.
-            headline(strip)
-                .padding(.horizontal, HelmLayout.groupedHeaderOutset)
-            verbs(switcher, strip, chosen)
-                .padding(.horizontal, HelmLayout.groupedHeaderOutset)
+            .padding(.horizontal, HelmLayout.groupedHeaderOutset)
             readings(strip)
         }
         .frame(maxWidth: .infinity)
@@ -377,34 +357,27 @@ struct VPNTunnelHero: View {
     /// one thought, and two of the page's five measured heights. Joined by the
     /// dot this module already punctuates with (`VPNStr.note`), they are one
     /// caption in the slot `KeepAwakeHero` puts «Ни одно правило не включено» in.
+    ///
+    /// **And the verdict wore a glyph, which it no longer does.** A tick or a
+    /// warning triangle beside the sentence, `accessibilityHidden` because the
+    /// sentence already said it — so it was carrying colour and nothing else,
+    /// and it was carrying it badly: photographed, the mark's own ink sat
+    /// 5.75 pt above the cap band it claimed to be optically centred on, and
+    /// standing inside the centred row it pushed the sentence 16.25 pt to the
+    /// right of the caption underneath it. Both were arithmetic against a line
+    /// box rather than against the drawing. `KeepAwakeHero` carries its verdict
+    /// in words alone at the same rank, and now so does this — which is what
+    /// `TheStripDrawsOnlyWhatIsKnownTests` § 5 already called the rule.
+    @ViewBuilder
     private func headline(_ strip: VPNTunnelStrip) -> some View {
-        VStack(spacing: HelmSpace.s4) {
-            HStack(alignment: .top, spacing: HelmSpace.s4) {
-                Image(systemName: strip.mark.symbol)
-                    .font(.system(size: 22))
-                    .foregroundStyle(strip.mark.tint)
-                    // Optically centred on the first line of a 40 pt sentence
-                    // rather than hung from its top: the cap band of 40 pt SF
-                    // is about 29 pt and the mark is 22, so half the difference
-                    // is what puts the two centres together. `s3` is the step
-                    // that lands there; there is no half-step on the ladder and
-                    // this does not need one.
-                    .padding(.top, HelmSpace.s3)
-                    // Decoration: the sentence beside it says the same thing,
-                    // and a screen reader that read both would say it twice.
-                    .accessibilityHidden(true)
-                Text(strip.verdict)
-                    .font(.system(size: 40, weight: .light))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let caption = caption(strip) {
-                Text(caption)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.faint)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        Text(strip.verdict)
+            .font(.system(size: 40, weight: .light))
+            .helmHeroSentence()
+        if let caption = caption(strip) {
+            Text(caption)
+                .font(HelmText.rowTitle)
+                .foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
         }
     }
 
@@ -526,21 +499,20 @@ struct VPNTunnelHero: View {
     /// set in the same 40 pt as its countdown. «Ни один туннель не поднят» is
     /// this one's, and it now sits in the same slot at the same size.
     ///
-    /// No mark, and that is the one place this block does follow the model:
-    /// nothing is wrong with a Mac that has no tunnel up, and a glyph beside
-    /// that sentence would be answering a question nobody asked.
+    /// No mark, which used to be the one place this block followed the model
+    /// and is now both of them: nothing is wrong with a Mac that has no tunnel
+    /// up, and a glyph beside that sentence would be answering a question
+    /// nobody asked.
     private var empty: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(VPNStr.noTunnelUp)
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+                .helmHeroSentence()
             Text(VPNStr.noTunnelUpNote)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.faint)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+                .font(HelmText.rowTitle)
+                .foregroundStyle(HelmText.quiet)
+                .helmHeroSentence()
         }
         .frame(maxWidth: .infinity)
         // The same inset the live state's words take, for the same reason: the

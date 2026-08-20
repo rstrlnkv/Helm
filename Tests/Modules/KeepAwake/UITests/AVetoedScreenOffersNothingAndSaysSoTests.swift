@@ -109,6 +109,17 @@ final class AVetoedScreenOffersNothingAndSaysSoTests: XCTestCase {
     ///
     /// In points, which is what `ink` takes, because the scale is a fact about
     /// whichever display the suite runs on and the bands are not.
+    ///
+    /// **Re-measured on 2026-08-20, when the two heroes converged, and all three
+    /// stand.** That change stopped this block spelling its spacing in bare
+    /// numbers — `VStack(spacing: 8)` became `HelmSpace.s4` and
+    /// `.padding(.top, 18)` became `s6` — which is the same geometry under a
+    /// name, so nothing moved: the figure inks 9.5…39.5, the reason 58.0…70.5
+    /// and the verbs 97.0…125.0, each inside the band that names it. Had the
+    /// gap gone to the VPN's 18 instead, the verb row would have risen 8 pt to
+    /// 88…118 and this band would have covered two thirds of it and 8 pt of
+    /// nothing — still passing, because every assertion below is a floor or a
+    /// ratio. A band is only a measurement on the day somebody takes it again.
     private enum Band {
         /// The 40 pt figure, which neither change may touch.
         static let figure = 10...40
@@ -136,7 +147,11 @@ final class AVetoedScreenOffersNothingAndSaysSoTests: XCTestCase {
     /// Measured 2026-08-12 on the quiet block, light then dark: figure
     /// 1 873 457 / 1 873 457, reason 387 351 / 442 917, verbs
     /// 1 308 727 / 1 385 391. Under the veto the verbs read 43 % of that and the
-    /// reason band reads 0, in both. The 40 pt figure agreeing to the byte while
+    /// reason band reads 0, in both. Re-measured 2026-08-20: the figure and the
+    /// verbs are the same to the byte and the reason band reads 395 664 /
+    /// 452 355 — 2.1 % more ink, because that line was `HelmText.faint` where
+    /// the other three states' captions are `quiet`, and one slot does not get
+    /// two inks. The 40 pt figure agreeing to the byte while
     /// the 13 pt line under it is 14 % heavier in dark is why the thresholds here
     /// are floors and ratios rather than recorded values: what moves between the
     /// two screens is how much ink small type is given, and no assertion should

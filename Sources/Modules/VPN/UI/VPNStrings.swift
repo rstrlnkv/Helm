@@ -685,10 +685,19 @@ enum VPNStr {
     /// shape with it, and a reader who looked at the top of this page
     /// yesterday finds something else there today.
     static var noTunnelUp: String { L("No tunnel is up") }
-    /// And what to do about it, in one sentence that also says what appears
-    /// here when they do.
+    /// And what to do about it, in **one** sentence.
+    ///
+    /// It was two, and the second one — «and its country, its counters and its
+    /// speed appear here» — described the screen the reader is about to be
+    /// shown rather than telling them anything they can act on. It cost a line:
+    /// this note sits in the slot a hero's caption takes, which is the scale's
+    /// body step (`HelmText.rowTitle`), and at that size the old sentence
+    /// needed 717 pt in English and 916 in German against a 684 pt column — so
+    /// the state a Mac with no VPN shows every time would have grown a line in
+    /// three more languages and pushed the first card down
+    /// (`AHeroThatDoesNotShoveThePageTests`).
     static var noTunnelUpNote: String {
-        L("Traffic is leaving this Mac directly. Bring a connection up below and its country, its counters and its speed appear here.")
+        L("Traffic is leaving this Mac directly — bring a connection up below.")
     }
     /// The bad verdict: a rule brought a tunnel up, and macOS's own route
     /// table sent the traffic around it anyway — the one outcome this check

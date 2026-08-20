@@ -415,7 +415,6 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
                 \(language.rawValue): the one outcome this check exists to \
                 catch is not written down
                 """)
-            XCTAssertEqual(drawn.mark, .warning)
             // …and it is not the same sentence as the two it must never be
             // read as.
             XCTAssertNotEqual(drawn.verdict,
@@ -426,12 +425,18 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         }
     }
 
-    /// A probe that failed is not the bad news, and never wears its mark.
+    /// A probe that failed is not the bad news.
+    ///
+    /// Both cases above checked a `mark` as well as a sentence — a glyph the
+    /// headline wore beside its words — until the two heroes converged and the
+    /// glyph went. It was `accessibilityHidden` because the sentence already
+    /// said what it said, so it carried colour and nothing else, and it moved
+    /// the sentence 16.25 pt off the axis of its own caption doing it
+    /// (`VPNTunnelHero.headline`). The section's title was already the rule.
     func testAnUncheckedExitIsNeitherVerdict() {
         inLanguage(.en) {
             let drawn = strip(tunnel(since: stamped, exit: .unknown))
             XCTAssertEqual(drawn.verdict, VPNStr.trafficUnknown)
-            XCTAssertEqual(drawn.mark, .neutral)
         }
     }
 
