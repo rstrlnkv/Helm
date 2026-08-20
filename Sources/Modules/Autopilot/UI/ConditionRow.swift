@@ -133,12 +133,7 @@ struct ConditionRow: View {
             // Typed as a list because that is how it reads: "pdf, png, zip".
             TextField("pdf, png", text: Binding(
                 get: { list.joined(separator: ", ") },
-                set: { text in
-                    condition = .fileExtension(text
-                        .split(separator: ",")
-                        .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-                        .filter { !$0.isEmpty })
-                }))
+                set: { condition = .fileExtension(typed: $0) }))
                 .accessibilityLabel(ApStr.a11yExtensions)
 
         case let .kind(kind):

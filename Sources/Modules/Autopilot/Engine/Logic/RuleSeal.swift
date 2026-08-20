@@ -143,6 +143,17 @@ enum RuleSeal {
         }
     }
 
+    /// The highest number the store this is written back to can hold.
+    ///
+    /// The plist keeps the number as an `Int` — `SealedRules.seal` writes it
+    /// with `store.set(Int(next), …)` — and `Int.init(_: UInt64)` is the
+    /// *trapping* conversion, so one above `Int.max` is `Fatal error: Not enough
+    /// bits to represent the passed value` rather than a refusal. Both numbers
+    /// this counts from can be planted: the stored one by anything that can
+    /// write `com.helm.app.plist`, and the mark by whatever can reach the
+    /// keychain item. Neither may produce a number the save cannot write back.
+    static let ceiling = UInt64(Int.max)
+
     /// The number the next save gets.
     ///
     /// One above both what the plist says and what the mark says. Above the
@@ -152,8 +163,32 @@ enum RuleSeal {
     /// since a person asking for their rules to be written is the wrong end to
     /// fail at.
     static func next(after stored: UInt64, mark: RuleSequence) -> UInt64 {
-        guard case let .at(highWater) = mark else { return stored + 1 }
-        return max(stored, highWater) + 1
+        guard case let .at(highWater) = mark else { return above(stored) }
+        return above(max(stored, highWater))
+    }
+
+    /// One above `current`, and never above what the store can hold.
+    ///
+    /// **At the ceiling the sequence stops counting rather than the save
+    /// stopping.** What that costs is the narrow half of the rollback guard: two
+    /// saves at the ceiling share a number, so a copy of the earlier of them
+    /// could be put back without the mark saying so. What it keeps is
+    /// everything else — every rule set numbered below the ceiling is still
+    /// refused, the person's own save still goes through, and the arithmetic
+    /// never reaches the trapping conversion. Refusing the save instead would
+    /// hand anybody who can write a preference a way to stop Helm saving rules
+    /// at all, which is the same door held open a different way.
+    ///
+    /// `TheNextNumberFitsItsStoreTests` is the guard: it asks `Int(exactly:)` of
+    /// the answer for every number a plist can hand back, because a test that
+    /// reached the conversion itself would abort the bundle.
+    ///
+    /// Through `clamped(to:)` rather than a `min`/`max` spelled here — that
+    /// helper exists because this same family of crashes was repaired by hand
+    /// once per module, and its own documentation names the plist holding
+    /// `9223372036854775807`.
+    private static func above(_ current: UInt64) -> UInt64 {
+        current.clamped(to: 0...(ceiling - 1)) + 1
     }
 
     /// What the MAC is taken over.

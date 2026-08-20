@@ -295,6 +295,17 @@ final class SealedRules: @unchecked Sendable {
     /// person's own rules are never the thing this refuses.
     private func seal(_ data: Data, _ key: RuleKey) {
         let next = RuleSeal.next(after: storedSequence, mark: resolvedHighWater())
+        if next == RuleSeal.ceiling {
+            // Nobody's saves count that far: reaching the ceiling means a number
+            // was written into the plist or the keychain item rather than
+            // counted up to. Said on every save that stays there, because from
+            // here the number no longer says which rule set this is.
+            HelmLog.shared.error(AutopilotEngine.moduleID,
+                                 "the number that says which rule set this is has reached the "
+                                 + "highest a preference file can hold, so it will not count up "
+                                 + "again — something wrote that number rather than Helm counting "
+                                 + "to it")
+        }
         store.set(RuleSeal.mac(for: data, seq: next, key: key.material), for: RuleSeal.storeKey)
         store.set(Int(next), for: RuleSeal.sequenceKey)
         guard sequence.raise(to: next) else {

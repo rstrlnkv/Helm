@@ -125,6 +125,19 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
         case .setFolders:
             if let list = try? JSONDecoder().decode([WatchedFolder].self, from: payload) {
                 saved.append(list)
+                // **And an engine that took the write holds it afterwards.**
+                // Recording the save without applying it is a state the real
+                // engine cannot be in: `SealedRules.write` either seals the list
+                // — and every later `folders` answers with it — or refuses it
+                // and keeps what it had. A wire that only recorded made those
+                // two indistinguishable, so a page that re-read after a write
+                // would be told its own save had vanished, and three tests here
+                // would fail for the fake's reasons rather than the page's.
+                //
+                // Refused is the other half of the same rule and is the state
+                // the refusal already describes: a rule set the engine will not
+                // overwrite is one this must not overwrite either.
+                if status.refusal == nil { folders = list }
             }
         case .previewDraft:
             previewed = try? JSONDecoder().decode(WatchedFolder.self, from: payload)

@@ -25,6 +25,36 @@ public enum RuleCondition: Codable, Equatable, Sendable {
     case tag(String)
 }
 
+public extension RuleCondition {
+    /// The extensions somebody typed into the editor's one field: "pdf, .PNG"
+    /// is `["pdf", "png"]`.
+    ///
+    /// **In the engine because the parse is the rule.** The list's contract is
+    /// two words on the case above — lowercase, no dots — and `RuleMatcher`
+    /// compares it against an extension that never carries one, so a condition
+    /// that keeps the dot a person typed is `isComplete`, may be switched on,
+    /// and can never match a file. That is a rule which looks like it works,
+    /// which is the one thing this module must not draw.
+    ///
+    /// **Here and not in `storable`.** Every launch reads the stored rules
+    /// through `storable`, so stripping the dot there would change what a rule
+    /// already on somebody's Mac does: a condition inert since the day it was
+    /// written would begin moving or trashing files, unattended, because Helm
+    /// was updated. A rule may come to match *less* on its own — that is what
+    /// this module's repairs do — and it comes to match more only with somebody
+    /// typing it.
+    ///
+    /// A dot on its own is not an extension and is dropped with the empties, so
+    /// the field cannot produce the entry that would match every file.
+    static func fileExtension(typed text: String) -> RuleCondition {
+        .fileExtension(text.split(separator: ",").compactMap { entry in
+            let trimmed = entry.trimmingCharacters(in: .whitespaces).lowercased()
+            let named = String(trimmed.drop(while: { $0 == "." }))
+            return named.isEmpty ? nil : named
+        })
+    }
+}
+
 public enum TextComparison: String, Codable, CaseIterable, Sendable {
     case `is`, contains, beginsWith, endsWith
 }

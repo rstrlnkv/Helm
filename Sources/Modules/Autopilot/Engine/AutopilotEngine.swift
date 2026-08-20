@@ -198,8 +198,24 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// Shown all the same: the page's job is to say what happened, and a
     /// history that has been rewritten is itself something that happened.
+    ///
+    /// **The whole verdict is on the queue, not only the payload it starts
+    /// from.** The history and the seal over it are two store reads, and `write`
+    /// makes them two store writes — the seal first, so a process dying between
+    /// them leaves a mismatched pair that refuses. A reader that took the
+    /// payload under the queue and let it go before reading the seal could hold
+    /// Helm's new seal over Helm's old history, which does not verify: the page
+    /// asks this on every load, the writers are the hourly sweep and the
+    /// FSEvents batch, and what it draws is the card saying somebody rewrote the
+    /// record. `remember` and `putBack` judge the same pair on this queue for
+    /// the same reason; this one was the odd one out
+    /// (`TheHistorysVerdictIsOneReadingTests`).
+    ///
+    /// Safe to take synchronously here: `status` is answered by `answerAtOnce`
+    /// on the thread that asked, never from inside a block `offQueue` put on
+    /// this queue (`TheQueueIsNotAskedToWaitForItselfTests`).
     public var historyRefused: Bool {
-        !rules.historyIsHelms(queue.sync { store.data(ActionHistory.storeKey) })
+        !queue.sync { rules.historyIsHelms(store.data(ActionHistory.storeKey)) }
     }
 
     /// On the engine's own queue, like every write to this key.

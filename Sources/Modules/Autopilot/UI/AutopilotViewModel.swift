@@ -373,14 +373,26 @@ import SwiftUI
         Task { await sendFolders(list) }
     }
 
-    /// The same write, waited for.
+    /// The same write, waited for, **and then the engine asked what became of
+    /// it.**
     ///
-    /// One caller needs that: a folder arriving with a preset in it is swept
-    /// straight afterwards, and the sweep names the folder by id — so a
+    /// One caller needs the waiting: a folder arriving with a preset in it is
+    /// swept straight afterwards, and the sweep names the folder by id — so a
     /// `runNow` that overtook the write would ask the engine about a folder it
     /// had not been told about yet, and answer nothing.
+    ///
+    /// Every caller needs the asking. Whether a save was taken is a fact about
+    /// the store, not about this page: the rules are JSON in a plist any process
+    /// running as this user can rewrite, and `SealedRules.write` turns down a
+    /// rule set it did not write — so a save can be refused at any moment by
+    /// something the page never saw happen. `refusal` read once at load is the
+    /// local flag standing in for that live fact, and `setFolders` is answered
+    /// with empty `Data` whether it saved or refused, so the reply cannot carry
+    /// the answer either. The re-read is the reverse channel, and it is the same
+    /// gesture `discardRefusedRules` makes one method up.
     private func sendFolders(_ list: [WatchedFolder]) async {
         await client.send(AutopilotCommand.setFolders, encoding: list)
+        await load()
     }
 
     // MARK: - Folders
