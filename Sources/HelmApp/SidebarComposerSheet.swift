@@ -220,6 +220,11 @@ struct SidebarComposerSheet: View {
             .padding(.vertical, 12)
         }
         .frame(width: Self.width, height: Self.windowHeight(table: tableHeight, chrome: chrome))
+        // The way out for a keyboard. «Done» holds Return and there is no second
+        // button to hang `.cancelAction` on — and there should not be one, since
+        // every edit here is applied as it is made, so leaving loses nothing and
+        // Escape means the same thing «Done» does.
+        .onExitCommand { dismiss() }
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }

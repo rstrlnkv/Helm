@@ -53,7 +53,13 @@ struct NewKeySheet: View {
 
             HStack {
                 Spacer()
+                // Escape leaves a sheet on this system, and SwiftUI gives
+                // that away for free to nobody: without this, the only way out
+                // is to Tab past a picker, three fields and a banner. Nothing
+                // here claims Return — no field calls `.onSubmit` — so «Create»
+                // keeps the other key.
                 Button(HostsStr.cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
                 Button(HostsStr.create) {
                     Task {
                         await hvm.generate(type: type, name: name,
