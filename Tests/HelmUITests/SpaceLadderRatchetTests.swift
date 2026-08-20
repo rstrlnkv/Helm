@@ -46,8 +46,13 @@ final class SpaceLadderRatchetTests: XCTestCase {
     /// **12**, measured 2026-08-12 against `main` = `83af00f`. Eight are on the
     /// menu-bar panel and its two tiles, which keep their own numbers; three are
     /// `HelmBadge`'s, where the padding is half of a capsule's silhouette rather
-    /// than a gap between two things; one is `HelmPageHeader`'s 9, which is the
-    /// mockup's 46 pt strip minus its 28 pt plate, halved.
+    /// than a gap between two things; one was `HelmPageHeader`'s 9.
+    ///
+    /// **11 from 2026-08-20**, and the one that left is that 9. It was the
+    /// mockup's 46 pt strip minus its 28 pt plate, halved — a number derived
+    /// rather than chosen, which is why it was allowed to stand. The strip is
+    /// System Settings' 52 now, and 12 + 28 + 12 reaches it through
+    /// `HelmSpace.s5`: the same arithmetic, landing on the ladder this time.
     ///
     /// **Read the fall from 126 with this in hand: 40 of it is one rename.**
     /// `.padding(.horizontal, 20)` is `HelmLayout.formInset` — what a grouped
@@ -55,7 +60,7 @@ final class SpaceLadderRatchetTests: XCTestCase {
     /// leaves this scan for the same reason `.padding()` with no argument never
     /// entered it. Nothing moved on screen at those forty sites. The rest did
     /// move, by 1 or 2 pt each, onto `HelmSpace`.
-    private static let recorded = 12
+    private static let recorded = 11
 
     private static let ladder: Set<Double> = [0, 2, 4, 6, 8, 12, 18, 28, 40]
 

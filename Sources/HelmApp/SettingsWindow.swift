@@ -543,11 +543,25 @@ private struct ModuleDetailView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
-                           tint: descriptor.moduleTint.colour,
-                           title: descriptor.moduleMetadata.name,
-                           bleeds: descriptor.pageBleeds) {
+        // The header lies **over** the page, and the page scrolls under it —
+        // which is where the strip's material and its scroll-edge rule come
+        // from. It was a sibling in a `VStack(spacing: 0)`, with nothing
+        // passing behind it to blur. `safeAreaInset` reserves the strip's own
+        // height, so no page here reserves it and none had to give anything up.
+        page
+            // Leading, not centre. This alignment governs only content that
+            // does not fill the pane, and everything here fills it — a capped
+            // column and a non-bleeding header each centre themselves,
+            // measured unmoved at 610, 810 and 1400 pt. What it does govern is
+            // a row that wants *more* than the pane: centred, the overflow was
+            // split between the two edges, so a clipped toolbar hid its path
+            // under the sidebar and its buttons off the right. Pinned leading,
+            // an overflow spills one way and reads as one.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
+                            tint: descriptor.moduleTint.colour,
+                            title: descriptor.moduleMetadata.name,
+                            bleeds: descriptor.pageBleeds) {
                 // Only for a module that can say. Most answer nil, and nil
                 // draws nothing rather than «Not active» for a module with no
                 // notion of running at all.
@@ -576,46 +590,41 @@ private struct ModuleDetailView: View {
                     }
                 }
             }
-            // No switch here. It was the third one in the app for the same
-            // fact — the composer sheet's column and the empty state's
-            // «Включить» being the other two — and it was the only one that
-            // could act on the page you were standing on: the sidebar lists
-            // what is on, so switching a module off from its own header
-            // removed its row, left the selection pointing at nothing, and
-            // went on showing the module you had just turned off.
-            //
-            // Whether a module exists at all is a settings question, and it
-            // is asked where the sidebar is arranged.
-            if let live = host.liveModule(id) {
-                descriptor.settingsPage(live.vm)
-            } else {
-                // A sentence pointing at a switch in the far corner was the
-                // app's poorest screen: it said neither what the module does
-                // nor where to turn it on. Say what it is, then offer the
-                // action where the eye already is.
-                HelmEmptyState(symbol: descriptor.moduleMetadata.sfSymbol,
-                               tint: descriptor.moduleTint.colour,
-                               title: descriptor.moduleMetadata.name,
-                               message: descriptor.moduleMetadata.summary) {
-                    Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .padding(.top, 4)
-                }
+            // The badge above reads a value off an object this view does not
+            // observe, so without this it is right once per visit and stale
+            // after.
+            .onReceive(activityChanges) { _ in activityRevision &+= 1 }
+    }
+
+    /// The module's own page, or the invitation to switch it on.
+    ///
+    /// No switch here. It was the third one in the app for the same fact — the
+    /// composer sheet's column and the empty state's «Включить» being the other
+    /// two — and it was the only one that could act on the page you were
+    /// standing on: the sidebar lists what is on, so switching a module off
+    /// from its own header removed its row, left the selection pointing at
+    /// nothing, and went on showing the module you had just turned off.
+    ///
+    /// Whether a module exists at all is a settings question, and it is asked
+    /// where the sidebar is arranged.
+    @ViewBuilder private var page: some View {
+        if let live = host.liveModule(id) {
+            descriptor.settingsPage(live.vm)
+        } else {
+            // A sentence pointing at a switch in the far corner was the app's
+            // poorest screen: it said neither what the module does nor where to
+            // turn it on. Say what it is, then offer the action where the eye
+            // already is.
+            HelmEmptyState(symbol: descriptor.moduleMetadata.sfSymbol,
+                           tint: descriptor.moduleTint.colour,
+                           title: descriptor.moduleMetadata.name,
+                           message: descriptor.moduleMetadata.summary) {
+                Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(.top, 4)
             }
         }
-        // The badge above reads a value off an object this view does not
-        // observe, so without this it is right once per visit and stale after.
-        .onReceive(activityChanges) { _ in activityRevision &+= 1 }
-        // Leading, not centre. This alignment governs only content that does
-        // not fill the pane, and everything here fills it — a capped column
-        // and a non-bleeding header each centre themselves, measured unmoved
-        // at 610, 810 and 1400 pt. What it does govern is a row that wants
-        // *more* than the pane: centred, the overflow was split between the
-        // two edges, so a clipped toolbar hid its path under the sidebar and
-        // its buttons off the right. Pinned leading, an overflow spills one
-        // way and reads as one.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

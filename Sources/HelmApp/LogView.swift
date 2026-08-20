@@ -50,6 +50,17 @@ struct LogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // **A band, not a scroll edge — and `HelmPageHeader` directly is
+            // how a page says so.** The other pages hand their content to
+            // `helmPageHeader`, which lays the strip over a scroll view and
+            // gives it the material and the rule. This page is not a scroll
+            // view: it is seven bands, and the one under the header is the
+            // writing switch, which does not move. A material over an opaque
+            // fixed row would blur nothing, and the rule would be a hairline
+            // between a header and a band — the line measured away in
+            // `ThePageHeaderCarriesNoRuleTests`, back under a new name. The
+            // 52 pt strip is the same either way; only the edge is not.
+            //
             // `bleeds: true` like every other full-width page: without it the
             // header caps at `HelmLayout.settingsColumn` and centres, which put
             // its icon at x = 53 against the rows' x = 21 on this pane.

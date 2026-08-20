@@ -80,11 +80,13 @@ struct MenuBarSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HelmPageHeader(symbol: "gearshape", tint: .gray,
-                           title: AppStr.settingsPane)
-            settingsForm
-        }
+        // Over the form, not above it: the form is the scroll view, so this is
+        // what gives the strip's material something to blur and its rule
+        // something to be the edge of. The inset the header costs is the
+        // header's own height — `safeAreaInset` reserves it — so the form's
+        // first section starts exactly where it used to.
+        settingsForm
+            .helmPageHeader(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane)
     }
 
     private func permissionRow(_ title: String, detail: String, granted: Bool,
