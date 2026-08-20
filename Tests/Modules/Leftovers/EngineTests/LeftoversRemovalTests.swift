@@ -41,7 +41,9 @@ final class LeftoversRemovalTests: XCTestCase {
         try FileManager.default.createDirectory(
             at: home.appendingPathComponent("Library/Application Support"),
             withIntermediateDirectories: true)
-        engine = LeftoversEngine(home: home)
+        engine = LeftoversEngine(home: home, files: LeftoversFakeFiles(),
+                                 apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
+                                 switcher: LeftoversFakeSwitcher())
     }
 
     override func tearDownWithError() throws {

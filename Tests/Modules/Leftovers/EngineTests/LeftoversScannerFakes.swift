@@ -2,7 +2,8 @@ import Foundation
 import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-/// The scanner's three ports, faked once for this target.
+/// The module's four ports, faked once for this target — the scanner's three
+/// and the switch the engine alone holds.
 ///
 /// **There were five sets of these in six files, and two of them could not
 /// describe an ordinary Mac.** `LeftoversScanTests` and
@@ -120,4 +121,26 @@ struct LeftoversFakeLoaded: LoadedItemsPort {
     var disabled: Set<String>? = []
     func installedExtensions() -> [SystemExtensionInfo]? { installed }
     func disabledLabels() -> Set<String>? { disabled }
+}
+
+/// The writing half of launchd: what it was asked, and nothing done.
+///
+/// Two files carried this privately and byte for byte, under the same sentence,
+/// and a third and fourth needed it the moment every construction had to name
+/// `switcher:` — the real one holds `launchctl disable gui/<uid>/<label>` against
+/// the login items of whoever runs the suite.
+///
+/// `setDisabled` returns nothing in the port, so there is no refusal for this to
+/// be freer or poorer about; what it records is the whole of the observable act.
+final class LeftoversFakeSwitcher: LoginItemSwitchPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var seen: [String] = []
+    func setDisabled(_ disabled: Bool, label: String) {
+        lock.lock(); defer { lock.unlock() }
+        seen.append(label)
+    }
+    var labels: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return seen
+    }
 }

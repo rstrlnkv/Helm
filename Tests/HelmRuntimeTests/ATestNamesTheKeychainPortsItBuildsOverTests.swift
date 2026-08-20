@@ -65,17 +65,13 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     // MARK: - The rule
 
     func testEveryTestConstructionNamesThePortsThatWouldReachTheKeychain() throws {
-        let subjects = try Self.subjects()
-        var unported: [String] = []
-        for site in try Self.constructions(of: subjects) {
-            guard Self.allowed[site.where_] == nil else { continue }
-            let missing = site.required.filter { !site.call.names.contains($0) }
-            guard !missing.isEmpty else { continue }
-            unported.append("\(site.where_) \(site.type)(…) leaves "
-                            + missing.sorted().map { "\($0):" }.joined(separator: " ")
-                            + " on its production default")
-        }
-        XCTAssertEqual(unported.sorted(), [], """
+        let found = try PortsAtConstruction.misses(of: Self.subjects(), under: "Tests")
+        let unported = found.misses
+            .filter { Self.allowed[$0.where_] == nil }
+            .map { "\($0.where_) \($0.type)(…) leaves "
+                   + $0.missing.sorted().map { "\($0):" }.joined(separator: " ")
+                   + " on its production default" }
+        XCTAssertEqual(unported, [], """
             these build a type over a port whose default is the login keychain, so running them \
             reads — and where the item is absent, creates — an item in the keychain of whoever \
             runs the suite. Hand each one a double: SealKeyProbe or SilentSealKey \
@@ -104,11 +100,12 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
                        "DuplicatesViewModel's settings: default is gone, or the scan is not "
                        + "reading Sources — it found \(subjects.keys.sorted())")
 
-        let sites = try Self.constructions(of: subjects)
-        XCTAssertGreaterThanOrEqual(sites.count, 15, """
-            \(sites.count) constructions of \(subjects.keys.sorted()) in Tests/, where the tree \
-            has well over a dozen — the walk, the extension filter or the balance reader has \
-            broken rather than the tree having improved.
+        let constructions = try PortsAtConstruction.misses(of: subjects,
+                                                           under: "Tests").constructions
+        XCTAssertGreaterThanOrEqual(constructions, 15, """
+            \(constructions) constructions of \(subjects.keys.sorted()) in Tests/, where the \
+            tree has well over a dozen — the walk, the extension filter or the balance reader \
+            has broken rather than the tree having improved.
             """)
     }
 
@@ -327,29 +324,4 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         return first
     }
 
-    // MARK: - The call sites in Tests/
-
-    /// One construction of a subject in a test file.
-    private struct Site {
-        let file: String
-        let type: String
-        let call: SwiftSource.Call
-        /// The labels this type's ports are spelled with.
-        let required: [String]
-
-        var where_: String { "\(file):\(call.line)" }
-    }
-
-    private static func constructions(of subjects: [String: [String]]) throws -> [Site] {
-        var out: [Site] = []
-        for file in try RepoSource.swiftFiles(under: "Tests") {
-            let text = SwiftSource.code(try RepoSource.text(of: file))
-            for (type, required) in subjects {
-                out += SwiftSource.callSites(of: type, in: text).map {
-                    Site(file: file, type: type, call: $0, required: required)
-                }
-            }
-        }
-        return out.sorted { ($0.file, $0.call.line) < ($1.file, $1.call.line) }
-    }
 }

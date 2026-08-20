@@ -76,28 +76,16 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
 
     // MARK: - The engine's own last word
 
-    /// A switch port that records what it was asked and does nothing.
-    private final class Recorder: LoginItemSwitchPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var seen: [String] = []
-        func setDisabled(_ disabled: Bool, label: String) {
-            lock.lock(); defer { lock.unlock() }
-            seen.append(label)
-        }
-        var labels: [String] {
-            lock.lock(); defer { lock.unlock() }
-            return seen
-        }
-    }
-
     /// The agent this Mac is *not* asked about.
     ///
-    /// **The port is named at every construction.** `LeftoversEngine`'s `files:`
-    /// defaults to `FileSystemLeftovers`, and the engine reads the two LaunchAgents
-    /// folders before it switches anything (`LaunchClaims`) — so a forgetful
-    /// construction here would make these three answers facts about whoever runs
-    /// the suite (CLAUDE.md: a default argument naming a real port makes every
-    /// forgetful construction an integration test).
+    /// **Every port is named at every construction**, and that sentence is no
+    /// longer only a sentence: `EveryEngineNamesItsPortsTests` reads this file and
+    /// fails on a construction that leaves one out. It said `files:` alone while
+    /// `apps:` and `loaded:` went on defaulting to `WorkspaceInstalledApps` and
+    /// `ActiveExtensions` — the second of which shells out to `launchctl
+    /// print-disabled gui/$(getuid())`, so these three answers were partly facts
+    /// about whoever ran the suite (CLAUDE.md: a default argument naming a real
+    /// port makes every forgetful construction an integration test).
     private var switchable: LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
@@ -115,8 +103,9 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     /// The page is not the guard. A request naming a label that is not the one its
     /// file would register is refused by the engine, whoever asked.
     func testTheEngineRefusesALabelThatIsNotTheFilesOwn() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: switchable, switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
 
         try await send(LeftoversToggle(label: victim,
                                        path: "/Users/x/Library/LaunchAgents/zz-innocent.plist",
@@ -132,8 +121,9 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     /// And it still switches the ordinary row, or the guard has closed the feature
     /// rather than the hole.
     func testTheEngineStillSwitchesAJobUnderItsOwnName() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: switchable, switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
 
         try await send(LeftoversToggle(label: "com.vendor.updater",
                                        path: "/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
@@ -145,8 +135,9 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     /// A path that is in no LaunchAgents folder defines no user agent at all, whatever
     /// it is called — so a request carrying one is not a switch request.
     func testTheEngineRefusesAPathThatDefinesNoLoginItem() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: switchable, switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: switchable, apps: LeftoversFakeApps(),
+                                     loaded: LeftoversFakeLoaded(), switcher: recorder)
 
         try await send(LeftoversToggle(label: "com.vendor.updater",
                                        path: "/tmp/com.vendor.updater.plist",

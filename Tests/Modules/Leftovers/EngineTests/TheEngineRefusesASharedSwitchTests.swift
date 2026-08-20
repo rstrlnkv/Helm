@@ -24,26 +24,14 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     private let label = "com.vendor.updater"
     private var path: String { "/Users/x/Library/LaunchAgents/\(label).plist" }
 
-    /// A switch port that records what it was asked and does nothing.
-    private final class Recorder: LoginItemSwitchPort, @unchecked Sendable {
-        private let lock = NSLock()
-        private var seen: [String] = []
-        func setDisabled(_ disabled: Bool, label: String) {
-            lock.lock(); defer { lock.unlock() }
-            seen.append(label)
-        }
-        var labels: [String] {
-            lock.lock(); defer { lock.unlock() }
-            return seen
-        }
-    }
-
     /// The person's own copy of an agent, and root's alongside it when `shared`.
     ///
-    /// **The port is named at every construction**, so what the engine reads is
+    /// **Every port is named at every construction**, so what the engine reads is
     /// this fixture and never this Mac's own `/Library/LaunchAgents` — the default
     /// argument is the real filesystem, and a forgetful construction would make the
-    /// answer a fact about whoever runs the suite (CLAUDE.md).
+    /// answer a fact about whoever runs the suite (CLAUDE.md). The promise was
+    /// written here before anything held it, and `apps:` and `loaded:` were
+    /// defaulting the whole time; `EveryEngineNamesItsPortsTests` holds it now.
     private func files(shared: Bool) -> LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
@@ -63,8 +51,10 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
 
     /// **The finding, at the port that acts.** Two files, one label, no switch.
     func testTheEngineWillNotDisableALabelTwoFilesRegister() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: files(shared: true), switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: files(shared: true),
+                                     apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
+                                     switcher: recorder)
 
         try await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -80,8 +70,10 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// **The control.** The same request with nobody else claiming the label goes
     /// through, or the guard has closed the feature rather than the hole.
     func testTheEngineStillDisablesALabelOnlyOneFileRegisters() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: files(shared: false), switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: files(shared: false),
+                                     apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
+                                     switcher: recorder)
 
         try await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -91,8 +83,10 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// And the reading is the disk's, not the request's: a request naming the
     /// *other* copy is refused by the same fact.
     func testEitherOfTheTwoFilesIsRefused() async throws {
-        let recorder = Recorder()
-        let engine = LeftoversEngine(home: home, files: files(shared: true), switcher: recorder)
+        let recorder = LeftoversFakeSwitcher()
+        let engine = LeftoversEngine(home: home, files: files(shared: true),
+                                     apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
+                                     switcher: recorder)
 
         try await send(LeftoversToggle(label: label,
                                        path: "/Library/LaunchAgents/\(label).plist",

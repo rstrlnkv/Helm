@@ -51,7 +51,10 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
     private func refusals() async -> [String] {
         let outOfScope = home.appendingPathComponent("Documents/\(bundleID).plist").path
         let inScope = home.appendingPathComponent("Library/Preferences/\(bundleID).plist").path
-        _ = await LeftoversEngine(home: home).trash([outOfScope, inScope])
+        _ = await LeftoversEngine(home: home, files: LeftoversFakeFiles(),
+                                  apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
+                                  switcher: LeftoversFakeSwitcher())
+            .trash([outOfScope, inScope])
         return lines
     }
 
