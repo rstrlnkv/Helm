@@ -94,7 +94,8 @@ final class TheSSHTabDrawsTheConfigTests: XCTestCase {
     /// on a document is a defect no model-level test can see.
     func testThePageMountsWithAConfigWithoutTrapping() {
         let hvm = model(HostsState(hostsText: "127.0.0.1\tlocalhost\n", sshText: config))
-        let render = MountedRender(SSHConfigTable(hvm: hvm), width: 720, height: 400,
+        let render = MountedRender(SSHHostsTable(hvm: hvm, select: { _ in }),
+                                   width: 720, height: 400,
                                    appearance: .darkAqua)
         render.settle(10)
         XCTAssertGreaterThan(render.host.fittingSize.height, 0)

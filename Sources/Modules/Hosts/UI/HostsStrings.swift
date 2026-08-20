@@ -39,15 +39,25 @@ enum HostsStr {
     static var sshFailed: String { L("The SSH config could not be saved") }
     static var sshNotVerified: String { L("The save reported success and the file did not change") }
 
-    // MARK: - Tab 3, the keys
+    // MARK: - Tab 1, the keys
 
-    /// The third tab. A title, like `hostsTab` and `sshTab` beside it.
+    /// The first tab, and the reason the module was rebuilt: the question
+    /// somebody arrives with is «what are my keys and which of them still do
+    /// anything».
     static var keysTab: String { L("Keys") }
 
-    // MARK: - Tab 2, known_hosts
+    // MARK: - Tab 2, the hosts
 
-    static var knownHostsTab: String { L("Known hosts") }
-    static var noKnownHosts: String { L("No hosts have been trusted from this Mac yet") }
+    /// The second tab. **Not `moduleNameShort`, which is also «Hosts»**: that
+    /// one is the module's name in a sidebar of module names, and this is a
+    /// title over the blocks of `~/.ssh/config`. One English key means one
+    /// thing, so the tab says which hosts it is about.
+    static var sshHostsTab: String { L("SSH hosts") }
+    /// The trusts that belong to no block in the config — most of anybody's
+    /// `known_hosts`, and every hashed line, since a hashed line names nobody.
+    static var otherTrustedHosts: String { L("Other trusted hosts") }
+    /// The mark on a host whose key this Mac has already accepted.
+    static var trustedHost: String { L("Trusted") }
     static var knownHostsUnreadable: String { L("The known hosts file could not be read") }
     /// **Not `L("Remove")`.** `ssh` calls this forgetting a host, the manual
     /// page calls it that, and what happens next is that the next connection
@@ -78,6 +88,48 @@ enum HostsStr {
         }
     }
 
+    // MARK: - Which key opens which host
+
+    /// What a key is used for, in four sentences — **and they are four, not
+    /// three.**
+    ///
+    /// `byDefaultName` is the one that must never read as `unused`: `ssh` tries
+    /// `id_ed25519` and its siblings without being told to, so a key nothing
+    /// mentions may be the one somebody logs in with everywhere. Collapsing the
+    /// pair writes «you can delete this» over it.
+    ///
+    /// Exhaustive, with no `default`: a state added to `KeyUsage.OfKey` is a
+    /// build error here rather than a row that says nothing.
+    static func usage(of usage: KeyUsage.OfKey,
+                      language: AppLanguage = AppLanguage.current) -> String {
+        switch usage {
+        case .namedBy(let hosts): return usedBy(hosts, language: language)
+        case .everyHost: return L("Used by every host", language: language)
+        case .byDefaultName: return L("Used by default — ssh tries this name", language: language)
+        case .unused: return L("Not used by anything here", language: language)
+        }
+    }
+
+    /// The hosts by name. Interpolated, so it keeps an inline table: the
+    /// interpolation runs before a lookup would, which is why there is no
+    /// English key to be the key.
+    private static func usedBy(_ hosts: [String], language: AppLanguage) -> String {
+        let named = hosts.joined(separator: ", ")
+        return L("Used by \(named)", [.ru: "Используется: \(named)", .es: "Usada por \(named)", .fr: "Utilisée par \(named)", .de: "Verwendet von \(named)", .ja: "\(named) が使用", .zh: "由 \(named) 使用", .pt: "Usada por \(named)"], language: language)
+    }
+
+    /// The key a host uses, on the host's own row. Interpolated for the reason
+    /// above; the name is the file's, which is what `IdentityFile` writes.
+    static func usesKey(_ name: String, language: AppLanguage = AppLanguage.current) -> String {
+        L("Key: \(name)", [.ru: "Ключ: \(name)", .es: "Clave: \(name)", .fr: "Clé\u{00A0}: \(name)", .de: "Schlüssel: \(name)", .ja: "鍵: \(name)", .zh: "密钥：\(name)", .pt: "Chave: \(name)"], language: language)
+    }
+
+    /// **A host pointing at a key that is gone is not a host pointing at
+    /// none.** The first is broken — the connection will fail and the file says
+    /// nothing about why — and the second is ordinary, which is why only one of
+    /// them is marked.
+    static var hostKeyMissing: String { L("This key is missing") }
+
     /// **Not «No keys».** The sentence names the folder, because the two
     /// answers a person needs to tell apart are «this Mac has none» and «Helm
     /// could not look», and a bare «No keys» reads as the first while being
@@ -86,9 +138,6 @@ enum HostsStr {
     static var keysUnreadable: String { L("The .ssh folder could not be read") }
     static var keyFingerprint: String { L("Fingerprint") }
     static var keyType: String { L("Type") }
-    /// The column of the row's own name — the private half's file name, which
-    /// is what `IdentityFile` names.
-    static var keyFile: String { L("File") }
     static var keyUnreadable: String { L("Helm could not read this key") }
 
     /// The verdict, and it names the consequence rather than the number: the

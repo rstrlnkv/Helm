@@ -3,12 +3,14 @@ import SwiftUI
 import HelmUI
 import Module_Hosts_Engine
 
-/// Tab 3: one row per key pair in `~/.ssh`.
+/// Tab 1: one row per key pair in `~/.ssh`, and what each key still opens.
 ///
-/// A list of cards rather than a `Table`, because a row here is not four values
-/// in four columns — it is a name, what `ssh-keygen` said about it, a verdict
-/// that may carry a button, and a control for the agent. The hosts tab's table
-/// is a grid because its rows really are three fields wide.
+/// **The rows are lines, not columns.** A fingerprint is 47 characters and a
+/// comment is whatever `ssh-keygen` was told; no width can be chosen that
+/// survives both at the 490 pt the settings pane comes down to. So a row is
+/// built the way a macOS list row is — a title line that truncates last, and
+/// detail lines that may truncate freely — and nothing in it is pinned to a
+/// number. `HostsRowsFitTheMinimumPaneTests` is what keeps that true.
 struct KeysTable: View {
     @ObservedObject var hvm: HostsViewModel
 
@@ -17,7 +19,10 @@ struct KeysTable: View {
             agentLine
             if case .tooOpen = hvm.directoryPermission { directoryLine }
             ForEach(hvm.keys) { row in
-                KeyCard(hvm: hvm, row: row)
+                // Named, so a host row on the other tab can scroll to the key
+                // it points at rather than leaving somebody to find it.
+                KeyCard(hvm: hvm, row: row, usage: hvm.usage(of: row.name))
+                    .id(row.name)
             }
         }
         .padding(.horizontal, HelmLayout.formInset)
@@ -63,6 +68,11 @@ struct KeysTable: View {
 private struct KeyCard: View {
     @ObservedObject var hvm: HostsViewModel
     let row: KeyRow
+    /// **Handed in, never worked out here.** The join is three files wide and
+    /// belongs to the whole tab; a row that computed its own share would parse
+    /// all three again per row and again on every redraw, with nothing keeping
+    /// two rows' answers in step.
+    let usage: KeyUsage.OfKey
 
     /// This row's own controls go quiet while its own act runs — not the
     /// page's. A page-wide flag would disable four keys because one `chmod` is
@@ -74,38 +84,18 @@ private struct KeyCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
-            HStack(spacing: HelmSpace.s2) {
-                Text(row.name).font(.headline)
-                if let described = row.described {
-                    HelmBadge(described.type)
-                    Text("\(described.bits)").font(HelmText.rowDetail).foregroundStyle(.secondary)
-                }
-                if row.inAgent { HelmBadge(HostsStr.inAgent, tint: .green) }
-                Spacer()
-                if let modified = row.modified {
-                    Text(HelmDates.relative(modified))
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if let described = row.described {
-                Text(described.fingerprint)
-                    .font(HelmText.figureFont)
-                    .textSelection(.enabled)
-                    .accessibilityLabel(HostsStr.keyFingerprint)
-                if !described.comment.isEmpty {
-                    Text(described.comment).font(HelmText.rowDetail).foregroundStyle(.secondary)
-                }
-            } else {
-                // No `.pub` to read, or a line this build could not parse.
-                // Said rather than drawn as blank columns: a fingerprint column
-                // that is empty because the parse failed and one that is empty
-                // because the key has no comment are different facts.
-                Text(row.hasPublicHalf ? HostsStr.keyUnreadable : HostsStr.noPublicHalf)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(.secondary)
-            }
+            title
+            fingerprintLine
+            // **The sentence this whole tab was rebuilt for.** Four states, and
+            // «used by default» is not «unused»: `ssh` reaches for `id_ed25519`
+            // without being told, so the difference is between «safe to delete»
+            // and «this is how you log in».
+            Text(HostsStr.usage(of: usage))
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+                .lineLimit(2)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             verdict
             controls
@@ -114,6 +104,68 @@ private struct KeyCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .helmCard()
         .opacity(busy ? 0.5 : 1)
+    }
+
+    /// The name, then what `ssh-keygen` said about the key, then the date.
+    ///
+    /// The name takes the room the badges leave and truncates in the middle —
+    /// `id_ed25519_work` and `id_ed25519_home` differ at the end, so a tail
+    /// truncation would make two keys look like one. Nothing here is pinned to
+    /// a width: the badges are as wide as their words, in eight languages.
+    private var title: some View {
+        HStack(spacing: HelmSpace.s2) {
+            Text(row.name)
+                .font(.headline)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .layoutPriority(1)
+            if let described = row.described {
+                HelmBadge(described.type)
+                Text("\(described.bits)").font(HelmText.rowDetail).foregroundStyle(.secondary)
+            }
+            if row.inAgent { HelmBadge(HostsStr.inAgent, tint: .green) }
+            Spacer(minLength: HelmSpace.s2)
+            if let modified = row.modified {
+                Text(HelmDates.relative(modified))
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    /// The fingerprint and the comment, on one line that may lose either end.
+    ///
+    /// **Middle truncation, so both ends stay comparable**: what a person does
+    /// with a fingerprint is check it against one somewhere else, and a tail
+    /// truncation leaves every SHA-256 line looking identical.
+    @ViewBuilder private var fingerprintLine: some View {
+        if let described = row.described {
+            HStack(spacing: HelmSpace.s2) {
+                Text(described.fingerprint)
+                    .font(HelmText.figureFont)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .accessibilityLabel(HostsStr.keyFingerprint)
+                if !described.comment.isEmpty {
+                    Text(described.comment)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Spacer(minLength: 0)
+            }
+        } else {
+            // No `.pub` to read, or a line this build could not parse. Said
+            // rather than drawn as a blank: a fingerprint that is empty because
+            // the parse failed and one that is empty because the key has no
+            // comment are different facts.
+            Text(row.hasPublicHalf ? HostsStr.keyUnreadable : HostsStr.noPublicHalf)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(.secondary)
+        }
     }
 
     /// Exhaustive over the three answers, with no `default` — «unknown» has its
@@ -125,13 +177,31 @@ private struct KeyCard: View {
             EmptyView()
         case .unknown:
             Text(HostsStr.keyModeUnknown).font(HelmText.rowDetail).foregroundStyle(.secondary)
-        case .tooOpen:
-            HStack(spacing: HelmSpace.s2) {
-                Text(HostsStr.keyTooOpen).font(HelmText.rowDetail).foregroundStyle(.orange)
+        case .tooOpen(let fix):
+            // On the first baseline, because the sentence is the only thing
+            // here that wraps: centred, the `chmod` and the button float to the
+            // middle of a two-line paragraph at the narrow pane, which is where
+            // nothing else on the row sits.
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s2) {
+                Text(HostsStr.keyTooOpen)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                // **The mode is not translated**, for the reason the four
+                // `ssh_config` keywords are not: `chmod 600` is what somebody
+                // would type, and a localised spelling of it would teach a
+                // command that does not exist. It is carried on the verdict
+                // rather than recomputed, so the number on screen and the one
+                // the button writes cannot disagree.
+                Text(verbatim: "chmod \(String(fix, radix: 8))")
+                    .font(HelmText.figureFont)
+                    .foregroundStyle(HelmText.quiet)
+                    .textSelection(.enabled)
                 Button(HostsStr.fixPermissions) {
                     Task { await hvm.fixPermissions(of: row.name) }
                 }
                 .disabled(anyBusy)
+                Spacer(minLength: 0)
             }
         }
     }
@@ -148,8 +218,10 @@ private struct KeyCard: View {
                     .font(HelmText.rowDetail)
                     .foregroundStyle(hvm.passphraseRefused ? .orange : HelmText.quiet)
                 HStack(spacing: HelmSpace.s2) {
+                    // **No width of its own.** It had one — 240 pt — which at
+                    // the narrowest pane took half the row from a card that has
+                    // three other controls on this line.
                     SecureField(HostsStr.keyPassphrase, text: $passphrase)
-                        .frame(maxWidth: 240)
                         .onSubmit { unlock() }
                     Button(HostsStr.unlockAndAdd) { unlock() }
                         .disabled(passphrase.isEmpty || anyBusy)
@@ -192,7 +264,7 @@ private struct KeyCard: View {
                 }
                 .disabled(anyBusy)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
     }
 }

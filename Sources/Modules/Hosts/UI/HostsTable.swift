@@ -22,11 +22,6 @@ import Module_Hosts_Engine
 struct HostsTable: View {
     @ObservedObject var hvm: HostsViewModel
 
-    /// The address column. Wide enough for the longest address this module will
-    /// write — an IPv6 form — and fixed, so the name fields beside it start at
-    /// one x down the whole table rather than stepping in and out per row.
-    private let addressWidth: CGFloat = 220
-
     var body: some View {
         // The parse is asked for once. `entries` re-parses the document on
         // every read, so a body that asked it per row would parse the file as
@@ -64,11 +59,16 @@ struct HostsTable: View {
             // at half ink whose own way back is the dimmest thing in it is a
             // control asking to be found before it can be pressed.
             Group {
+                // **No width in points, on either field.** The address column
+                // was pinned at 220 pt so the name fields would start at one x
+                // down the table; two fields that each take an equal share of
+                // whatever the row has do that too, and they still do it at the
+                // 490 pt the settings pane comes down to, where 220 was half
+                // the row. `HostsRowsFitTheMinimumPaneTests` holds the rule.
                 TextField(HostsStr.address, text: Binding(
                     get: { entry.address },
                     set: { hvm.setAddress($0, entry: entry.index) }
                 ))
-                .frame(width: addressWidth)
 
                 TextField(HostsStr.names, text: Binding(
                     get: { entry.names.joined(separator: " ") },

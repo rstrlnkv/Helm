@@ -100,7 +100,12 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                                directoryPermission: keyring.directory,
                                agent: keyring.agent,
                                knownHostsText: known ?? "", knownHostsReadable: known != nil,
-                               knownHostsWritable: mayWriteKnownHosts())
+                               knownHostsWritable: mayWriteKnownHosts(),
+                               // The home this reading was taken under, so the
+                               // page joins `IdentityFile` against the same
+                               // directory the keys were listed from rather
+                               // than asking its own process.
+                               home: home.path)
         localTransport.emit(HostsEvent.state, encoding: state)
         return state
     }

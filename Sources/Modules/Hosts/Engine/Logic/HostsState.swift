@@ -51,6 +51,15 @@ public struct HostsState: Codable, Sendable, Equatable {
     /// Whether Helm may write it (`SSHFileScope`), asked of the same gate the
     /// config goes through.
     public var knownHostsWritable: Bool
+    /// The home directory the engine read all of this under.
+    ///
+    /// **It travels rather than being asked again on the other side.**
+    /// `IdentityFile ~/.ssh/k`, `%d/.ssh/k` and `/Users/someone/.ssh/k` are one
+    /// key, and resolving them needs a home — so a page that asked its own
+    /// process for one would be joining the keys the engine listed against a
+    /// path nobody read them from. It is also what lets a test own a home
+    /// instead of the machine's.
+    public var home: String
 
     public init(hostsText: String = "", hostsReadable: Bool = true, backups: [String] = [],
                 sshText: String = "", sshReadable: Bool = true, sshWritable: Bool = true,
@@ -58,7 +67,7 @@ public struct HostsState: Codable, Sendable, Equatable {
                 directoryPermission: KeyRow.Permission = .unknown,
                 agent: AgentList = .unreachable,
                 knownHostsText: String = "", knownHostsReadable: Bool = true,
-                knownHostsWritable: Bool = true) {
+                knownHostsWritable: Bool = true, home: String = "") {
         self.hostsText = hostsText
         self.hostsReadable = hostsReadable
         self.backups = backups
@@ -72,6 +81,7 @@ public struct HostsState: Codable, Sendable, Equatable {
         self.knownHostsText = knownHostsText
         self.knownHostsReadable = knownHostsReadable
         self.knownHostsWritable = knownHostsWritable
+        self.home = home
     }
 
     /// The two fields that shipped first are read outright; anything added
@@ -104,6 +114,12 @@ public struct HostsState: Codable, Sendable, Equatable {
                                                            forKey: .knownHostsReadable) ?? false
         knownHostsWritable = try container.decodeIfPresent(Bool.self,
                                                            forKey: .knownHostsWritable) ?? false
+        // Added with the keys-and-hosts join, and read the same way. Empty
+        // rather than this process's own home: a payload that never carried one
+        // is not evidence about anybody's directory, and an empty home resolves
+        // no `~` — which draws a key as «not used here» rather than joining it
+        // against a path the engine never read.
+        home = try container.decodeIfPresent(String.self, forKey: .home) ?? ""
     }
 }
 

@@ -50,6 +50,32 @@ import Module_Hosts_Engine
     @Published private(set) var sshWritable = true
     @Published private(set) var sshOutcome: SSHConfigOutcome?
 
+    // MARK: - The join both tabs are drawn from
+
+    /// Which key opens which host, worked out **once per change** rather than
+    /// per row and per redraw.
+    ///
+    /// Three files meet in it — the config, the key names and `known_hosts` —
+    /// and a row that worked out its own share would parse all three again for
+    /// every row on the page, with nothing keeping two rows' answers in step.
+    /// That is `ScanCoordinator.Conditions`' shape: one reading, one verdict.
+    @Published private(set) var hostRows: [SSHHostRows.Row] = []
+    /// The trusts belonging to no block in the config — every hashed line among
+    /// them, since a hashed line names nobody.
+    @Published private(set) var otherTrusted: [KnownHostsFile.Entry] = []
+    /// What each key is used for, by name. Private because **every key gets an
+    /// answer**: `usage(of:)` below is the only reader, and it turns a name the
+    /// table has no entry for into `.unused` rather than into a blank row.
+    @Published private var keyUsage: [String: KeyUsage.OfKey] = [:]
+    /// The home the engine read all of this under, so `~/.ssh/k`, `%d/.ssh/k`
+    /// and an absolute path resolve to the key they name. Never this process's
+    /// own: the page joins against the directory the keys were listed from.
+    private var home = ""
+
+    /// What one key is used for. `.unused` for a name the join has never seen,
+    /// which is the same answer the join gives a key nothing mentions.
+    func usage(of key: String) -> KeyUsage.OfKey { keyUsage[key] ?? .unused }
+
     // MARK: - Tab 2, `~/.ssh/known_hosts`
 
     /// The file as disk says it is. **Canonical and not editable**: the only
@@ -61,10 +87,6 @@ import Module_Hosts_Engine
     @Published private(set) var knownHostsOutcome: SSHConfigOutcome?
     /// The line being forgotten right now, so its own row goes quiet.
     @Published private(set) var forgetting: Int?
-
-    /// The rows the table draws, derived on every read the way the config's
-    /// blocks are.
-    var knownHosts: [KnownHostsFile.Entry] { KnownHostsFile.parse(knownHostsText).entries }
 
     // MARK: - Tab 3, the keys
 
@@ -233,6 +255,25 @@ import Module_Hosts_Engine
         keysReadable = state.keysReadable
         directoryPermission = state.directoryPermission
         agent = state.agent
+        home = state.home
+
+        refreshJoin()
+    }
+
+    /// Works the join out again, from whatever the model is holding now.
+    ///
+    /// **Called where something changes it, never where something draws it.**
+    /// The four inputs are the config on screen, the key names, `known_hosts`
+    /// and the home — so a keystroke in the raw view moves it, and a body pass
+    /// does not.
+    private func refreshJoin() {
+        let document = SSHConfigFile.parse(sshText)
+        let names = keys.map(\.name)
+        let table = SSHHostRows.table(config: document, keys: names, home: home,
+                                      known: KnownHostsFile.parse(knownHostsText))
+        keyUsage = KeyUsage.ofKeys(document, keys: names, home: home)
+        hostRows = table.rows
+        otherTrusted = table.other
     }
 
     // MARK: - Editing
@@ -241,9 +282,14 @@ import Module_Hosts_Engine
 
     func revert() { text = onDisk }
 
-    func setSSHText(_ new: String) { sshText = new }
+    func setSSHText(_ new: String) {
+        sshText = new
+        refreshJoin()
+    }
 
-    func revertSSH() { sshText = sshOnDisk }
+    /// Through the setter above, so «what revert means» and «what typing means»
+    /// cannot end up refreshing different things.
+    func revertSSH() { setSSHText(sshOnDisk) }
 
     /// Rewrites one field of one block, and answers whether the editor took it.
     ///
@@ -261,7 +307,10 @@ import Module_Hosts_Engine
         // Only a change that happened is published: a body pass writes every
         // binding on the page back into its control, under a caret that is
         // mid-word (see `edit` above, which learned this the hard way).
-        if rendered != sshText { sshText = rendered }
+        if rendered != sshText {
+            sshText = rendered
+            refreshJoin()
+        }
         return true
     }
 

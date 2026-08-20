@@ -13,22 +13,30 @@ struct HostsSettingsPage: View {
     /// visit, and the page is torn down and rebuilt on every sidebar click
     /// anyway — a remembered tab would be the one thing that outlived the
     /// document it was chosen beside.
-    @State private var tab: Tab = .known
+    ///
+    /// **Keys first**, because the question that brings somebody here is «what
+    /// are my keys and which of them still do anything».
+    @State private var tab: Tab = .keys
     /// Whether the «New key» sheet is up. Page state rather than the view
     /// model's: a sheet that outlived the page would be a sheet nobody can see
     /// and nobody can close.
     @State private var makingKey = false
+    /// The key a host row sent us to, so the first tab can put it under the
+    /// person's eye. Page state, because it is a state of this visit and of
+    /// nothing on disk.
+    @State private var chosenKey: String?
 
-    /// The tabs this page has. Keys, the third of the spec's three, is not one
-    /// of them yet — a case here with no page behind it would be a promise the
-    /// sidebar keeps and the page breaks.
-    /// **`/etc/hosts` is not among them, and the page still knows how to draw
-    /// it.** The editor was taken off the screen on 2026-08-19 while its worth
-    /// is decided; `hostsTab` below, `HostsTable`, the engine's privileged
-    /// write and its forty tests are all still here and still checked, so
-    /// putting the case back is one line. Deleting them would have been the
-    /// other decision, and it was not the one taken.
-    private enum Tab: Hashable { case known, ssh, keys }
+    /// The tabs this page has. **`known_hosts` is not one of them any more**: a
+    /// trusted fingerprint is a fact about a host, so it is drawn on the host's
+    /// row with Forget beside it, and the lines matching no host gather at the
+    /// end of that tab.
+    /// **`/etc/hosts` is not among them either, and the page still knows how to
+    /// draw it.** The editor was taken off the screen on 2026-08-19 while its
+    /// worth is decided; `hostsTab` below, `HostsTable`, the engine's
+    /// privileged write and its forty tests are all still here and still
+    /// checked, so putting the case back is one line. Deleting them would have
+    /// been the other decision, and it was not the one taken.
+    private enum Tab: Hashable { case ssh, keys }
 
     /// The bar's natural height, measured, and whether it is *drawn* — which is
     /// not the same as whether there is anything to say. See `unsavedBar`.
@@ -50,7 +58,6 @@ struct HostsSettingsPage: View {
             tabs
             Divider()
             switch tab {
-            case .known: knownHostsTab
             case .ssh: sshTab
             case .keys: keysTab
             }
@@ -64,9 +71,8 @@ struct HostsSettingsPage: View {
     private var tabs: some View {
         HStack {
             Picker(HostsStr.moduleName, selection: $tab) {
-                Text(HostsStr.knownHostsTab).tag(Tab.known)
-                Text(HostsStr.sshTab).tag(Tab.ssh)
                 Text(HostsStr.keysTab).tag(Tab.keys)
+                Text(HostsStr.sshHostsTab).tag(Tab.ssh)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -189,38 +195,6 @@ struct HostsSettingsPage: View {
         .padding(.vertical, HelmSpace.s3)
     }
 
-
-    // MARK: - Tab 1
-
-    /// The hosts already trusted, and one button per row.
-    private var knownHostsTab: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                if let outcome = hvm.knownHostsOutcome, outcome != .applied {
-                    note(knownHostsSaid(outcome))
-                }
-            }
-            .padding(.horizontal, HelmLayout.formInset)
-            .padding(.vertical, HelmSpace.s3)
-            Divider()
-            if !hvm.knownHostsReadable {
-                // A Mac that has never connected anywhere has no such file, and
-                // that is not an empty one.
-                HelmBanner(HostsStr.knownHostsUnreadable)
-                    .padding(HelmSpace.s5)
-                Spacer()
-            } else if hvm.knownHosts.isEmpty {
-                Text(HostsStr.noKnownHosts)
-                    .foregroundStyle(.secondary)
-                    .padding(HelmSpace.s5)
-                Spacer()
-            } else {
-                ScrollView { KnownHostsTable(hvm: hvm) }
-            }
-        }
-    }
-
     /// Exhaustive, with no `default`. The outcome type is the config's, because
     /// the four answers are about writing a file the person owns through the
     /// fifth gate — one subject — but the sentences are this file's own: «the
@@ -235,7 +209,7 @@ struct HostsSettingsPage: View {
         }
     }
 
-    // MARK: - Tab 3
+    // MARK: - Tab 1
 
     /// The keys, read-only apart from three acts: a `chmod`, and the two the
     /// agent answers.
@@ -258,7 +232,21 @@ struct HostsSettingsPage: View {
                     .padding(HelmSpace.s5)
                 Spacer()
             } else {
-                ScrollView { KeysTable(hvm: hvm) }
+                // A host row can send somebody here naming a key, and the list
+                // is longer than the pane — so the row is scrolled to rather
+                // than left for them to find.
+                //
+                // `onAppear` and not `onChange`: the press sets the name and
+                // the tab in one gesture, so this subtree is built *after* the
+                // change and an `onChange` on it would be watching for
+                // something that already happened.
+                ScrollViewReader { proxy in
+                    ScrollView { KeysTable(hvm: hvm) }
+                        .onAppear {
+                            guard let key = chosenKey else { return }
+                            proxy.scrollTo(key, anchor: .top)
+                        }
+                }
             }
         }
         .sheet(isPresented: $makingKey) { NewKeySheet(hvm: hvm) }
@@ -282,8 +270,12 @@ struct HostsSettingsPage: View {
 
     // MARK: - Tab 2
 
-    /// `~/.ssh/config`: the same pair of views, and a header that says what
-    /// this file does *not* need — no password, because it is the person's own.
+    /// The hosts of `~/.ssh/config`, each with the key it uses and the
+    /// fingerprints already trusted for it — and the same raw view of the file
+    /// beside them, because the text is what gets written.
+    ///
+    /// The header says what this file does *not* need: no password, because it
+    /// is the person's own.
     private var sshTab: some View {
         VStack(spacing: 0) {
             sshHeader
@@ -305,7 +297,15 @@ struct HostsSettingsPage: View {
                         .accessibilityLabel(HostsStr.sshTab)
                         .disabled(!hvm.sshWritable)
                 } else {
-                    ScrollView { SSHConfigTable(hvm: hvm) }
+                    ScrollView {
+                        SSHHostsTable(hvm: hvm) { key in
+                            // The key a host points at is on the other tab, so
+                            // the press takes the person there and names which
+                            // row to look at.
+                            chosenKey = key
+                            tab = .keys
+                        }
+                    }
                 }
             } else {
                 // Missing or not UTF-8. Not an empty config: a table over one
@@ -320,6 +320,20 @@ struct HostsSettingsPage: View {
 
     private var sshHeader: some View {
         HStack {
+            // **`known_hosts` has no tab of its own to say this on any more.**
+            // A Mac that has never connected anywhere simply has no such file,
+            // and that is not an empty one — so the tab says which it is rather
+            // than drawing hosts with no trust beside them and letting the
+            // absence read as a fact.
+            if !hvm.knownHostsReadable {
+                note(HostsStr.knownHostsUnreadable)
+            }
+            // And a Forget that did not happen says so here, in this file's own
+            // words: «the SSH config could not be saved» about `known_hosts`
+            // would send somebody to the wrong file.
+            if let outcome = hvm.knownHostsOutcome, outcome != .applied {
+                note(knownHostsSaid(outcome))
+            }
             Spacer()
 
             if let outcome = hvm.sshOutcome, outcome != .applied {

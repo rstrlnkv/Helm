@@ -968,7 +968,6 @@
 "The .ssh folder could not be read" = ".ssh フォルダを読み込めませんでした";
 "Fingerprint" = "フィンガープリント";
 "Type" = "種類";
-"File" = "ファイル";
 "Helm could not read this key" = "Helm はこの鍵を読み込めませんでした";
 "Others can read this key — ssh will refuse to use it" = "他のユーザーがこの鍵を読み取れます。ssh は使用を拒否します";
 "Helm could not read this key’s permissions" = "Helm はこの鍵のアクセス権を読み込めませんでした";
@@ -1000,8 +999,13 @@
 "Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out." = "“ホストと鍵”に3つ目のタブが加わりました。.ssh フォルダの SSH 鍵です。各鍵の種類・フィンガープリント・コメントが表示され、アクセス権が広すぎて ssh が使用を拒否する場合はその旨と修正ボタンが出ます。ssh-agent への追加と取り出しもできます。";
 "“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it." = "“新しい鍵…”で SSH 鍵を作成できます。パスフレーズはご自身が打つのと同じ形でツールに渡されるため、実行中のプログラム一覧には現れません。そこは Mac 上のあらゆるものが読める場所です。";
 "The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any." = "メニューバーのパネルに“ホストと鍵”のタイルが加わりました。hosts ファイルの項目数、そのうちオフの数、鍵の数、そしてエージェントが鍵を保持しているかどうかが分かります。";
-"Known hosts" = "既知のホスト";
-"No hosts have been trusted from this Mac yet" = "この Mac からはまだどのホストも信頼していません";
+"SSH hosts" = "SSH ホスト";
+"Other trusted hosts" = "その他の信頼済みホスト";
+"Trusted" = "信頼済み";
+"Used by every host" = "すべてのホストが使用";
+"Used by default — ssh tries this name" = "既定で使用 — ssh がこの名前を試します";
+"Not used by anything here" = "ここでは使われていません";
+"This key is missing" = "この鍵がありません";
 "The known hosts file could not be read" = "既知のホストのファイルを読み込めませんでした";
 "Forget" = "忘れる";
 "Name hidden — this file is hashed" = "名前は非表示 — このファイルはハッシュ化されています";

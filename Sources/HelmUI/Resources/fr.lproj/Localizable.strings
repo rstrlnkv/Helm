@@ -968,7 +968,6 @@
 "The .ssh folder could not be read" = "Impossible de lire le dossier .ssh";
 "Fingerprint" = "Empreinte";
 "Type" = "Type";
-"File" = "Fichier";
 "Helm could not read this key" = "Helm n’a pas pu lire cette clé";
 "Others can read this key — ssh will refuse to use it" = "D’autres peuvent lire cette clé — ssh refusera de l’utiliser";
 "Helm could not read this key’s permissions" = "Helm n’a pas pu lire les autorisations de cette clé";
@@ -1000,8 +999,13 @@
 "Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out." = "« Hôtes et clés » a un troisième onglet : les clés SSH de votre dossier .ssh. Chaque clé affiche son type, son empreinte et son commentaire, signale quand ses autorisations sont trop larges pour que ssh l’utilise — avec un bouton qui corrige — et peut être placée dans l’agent ssh puis retirée.";
 "“New key…” makes an SSH key for you. Your passphrase is typed to the tool the way you would type it yourself, so it never appears in the list of running programs, where anything on your Mac could read it." = "« Nouvelle clé… » crée une clé SSH. Votre phrase secrète est saisie à l’outil comme vous la saisiriez vous-même : elle n’apparaît donc jamais dans la liste des programmes en cours, où n’importe quoi sur votre Mac pourrait la lire.";
 "The menu-bar panel has a Hosts & Keys tile: how many entries are in the hosts file, how many of them are switched off, how many keys you have, and whether the agent is holding any." = "Le panneau de la barre des menus a une tuile « Hôtes et clés » : combien d’entrées compte le fichier hosts, combien sont désactivées, combien de clés vous avez et si l’agent en détient.";
-"Known hosts" = "Hôtes connus";
-"No hosts have been trusted from this Mac yet" = "Aucun hôte n’a encore été approuvé depuis ce Mac";
+"SSH hosts" = "Hôtes SSH";
+"Other trusted hosts" = "Autres hôtes de confiance";
+"Trusted" = "De confiance";
+"Used by every host" = "Utilisée par tous les hôtes";
+"Used by default — ssh tries this name" = "Utilisée par défaut — ssh essaie ce nom";
+"Not used by anything here" = "Utilisée par rien ici";
+"This key is missing" = "Cette clé est introuvable";
 "The known hosts file could not be read" = "Impossible de lire le fichier des hôtes connus";
 "Forget" = "Oublier";
 "Name hidden — this file is hashed" = "Nom masqué — ce fichier est haché";
