@@ -226,7 +226,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         "System": [.de],
         "Tab": [.de],
         "Tag": [.fr, .de],
-        "Text": [.de],
         "Timer": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],

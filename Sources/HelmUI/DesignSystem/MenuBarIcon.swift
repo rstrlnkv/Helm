@@ -56,17 +56,25 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
         }
     }
 
-    /// A value read back from disk, including the two this build dropped.
+    /// A value read back from disk, including the two this build dropped — and
+    /// **the one place the shipped default is written**.
     ///
     /// Mapped to the nearest survivor rather than to the default: somebody who
     /// chose the smallest icon wanted a small icon, and answering that with
     /// the middle one is the app overruling them. `xxxSmall` was 9 and becomes
     /// 11; `medium` was 18 and becomes 15.
+    ///
+    /// The fallback is `.small` — 15 pt, «L» — because that is what the app has
+    /// always shipped. It read `.extraSmall` here while `AppSettings` supplied
+    /// `"small"` on the way in: two defaults for one setting, disagreeing by a
+    /// size and a letter, and invisible only because the caller never passed an
+    /// empty string. `AppSettings.menuBarIconSize` is typed now and passes one,
+    /// so this is the answer rather than a second opinion nobody reached.
     public init(stored: String) {
         switch stored {
         case "xxxSmall": self = .xxSmall
         case "medium": self = .small
-        default: self = MenuBarIconSize(rawValue: stored) ?? .extraSmall
+        default: self = MenuBarIconSize(rawValue: stored) ?? .small
         }
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 import HelmRuntime
 
 /// The one way Helm says "this needs a permission you have not given".
@@ -79,8 +80,9 @@ public extension View {
     /// fact about somebody's terminal. This is the same discipline
     /// `ModulePageRender` applies to the appearance: a reading says which screen
     /// it is of, rather than inheriting whatever this Mac happens to be.
-    func helmTracksAccessibility(_ state: Binding<PermissionState>) -> some View {
-        modifier(HelmAccessibilityTracker(state: state))
+    func helmTracksAccessibility(_ state: Binding<PermissionState>,
+                                 alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmAccessibilityTracker(state: state, extra: extra))
     }
 
     /// Keeps `state` on whether Full Disk Access has been granted: once as the
@@ -100,8 +102,9 @@ public extension View {
     /// `helmTracksAccessibility` states: five pages draw a 61 pt banner off this
     /// answer, so without a reading a measurement of any of them is a fact about
     /// the grants of whichever process drew it.
-    func helmTracksFullDiskAccess(_ state: Binding<PermissionState>) -> some View {
-        modifier(HelmFullDiskTracker(state: state))
+    func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
+                                  alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmFullDiskTracker(state: state, extra: extra))
     }
 }
 
@@ -136,11 +139,13 @@ public extension EnvironmentValues {
 private struct HelmAccessibilityTracker: ViewModifier {
     @Environment(\.helmGrants) private var grants
     let state: Binding<PermissionState>
+    let extra: Notification.Name?
 
     func body(content: Content) -> some View {
         content
             .task { state.wrappedValue = answer }
             .helmOnAppActive { state.wrappedValue = answer }
+            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in state.wrappedValue = answer }
     }
 
     private var answer: PermissionState {
@@ -158,6 +163,7 @@ private struct HelmAccessibilityTracker: ViewModifier {
 private struct HelmFullDiskTracker: ViewModifier {
     @Environment(\.helmGrants) private var grants
     let state: Binding<PermissionState>
+    let extra: Notification.Name?
 
     func body(content: Content) -> some View {
         content
@@ -169,6 +175,9 @@ private struct HelmFullDiskTracker: ViewModifier {
             .helmOnAppActive {
                 Task { @MainActor in state.wrappedValue = await answer() }
             }
+            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in
+                Task { @MainActor in state.wrappedValue = await answer() }
+            }
     }
 
     /// Not `grants.fullDisk ?? await …`: Swift refuses an `await` on the right of
@@ -177,5 +186,26 @@ private struct HelmFullDiskTracker: ViewModifier {
     private func answer() async -> PermissionState {
         if let named = grants.fullDisk { return named }
         return await PermissionCheck.fullDiskAccess()
+    }
+}
+
+/// The extra moment a caller can add to the two the trackers already keep.
+///
+/// «Helm came back to the front» is the moment a settings page hears about a
+/// grant given in System Settings, and it is not the panel's: `PanelWindow`
+/// takes key focus without activating the app on purpose, so a panel opened
+/// from the menu-bar icon never sees `didBecomeActive`. Without a moment of its
+/// own the panel would read the grants once, at launch, and go on drawing that
+/// answer for the life of the process — which is the reading older than the act
+/// CLAUDE.md names, in the surface most exposed to it.
+///
+/// A publisher rather than an `if` around `onReceive`: a `ViewModifier` cannot
+/// branch on the shape of its body without changing the view's identity, and a
+/// tracker that rebuilt its subtree when a caller passed nil would be a worse
+/// bug than the one it fixes.
+private enum HelmGrantRefresh {
+    static func publisher(_ name: Notification.Name?) -> AnyPublisher<Notification, Never> {
+        guard let name else { return Empty().eraseToAnyPublisher() }
+        return NotificationCenter.default.publisher(for: name).eraseToAnyPublisher()
     }
 }

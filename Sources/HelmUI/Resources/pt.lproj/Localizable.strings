@@ -449,8 +449,6 @@
 "Settings…" = "Ajustes…";
 "Shortcuts" = "Atalhos";
 "Show" = "Mostrar";
-"Show Quit button" = "Mostrar o botão Encerrar";
-"Show Settings button" = "Mostrar o botão Ajustes";
 "Show in Finder" = "Mostrar no Finder";
 "Show it in the menu bar" = "Mostrar na barra de menus";
 "Show remaining time in the menu bar" = "Mostrar o tempo restante na barra de menus";
@@ -672,19 +670,12 @@
 "New tab" = "Nova aba";
 "Close tab" = "Fechar a aba";
 "Tab" = "Aba";
-"Edit widgets" = "Editar os widgets";
-"Show the edit button in the panel" = "Mostrar o botão de edição no painel";
 "Choose what is in the list" = "Escolher os itens da lista";
 "Author" = "Autor";
-"Tab labels" = "Rótulos das abas";
-"Text" = "Texto";
-"Glyph and text" = "Glifo e texto";
-"Glyph" = "Glifo";
 "Icon" = "Ícone";
 "Work" = "Trabalho";
 "Nature" = "Natureza";
 "Category" = "Categoria";
-"All three are also in the menu-bar icon’s right-click menu." = "Os três também estão no menu de contexto do ícone.";
 "Edit panel" = "Editar o painel";
 "Editing the panel" = "Edição do painel";
 "Nothing on this tab yet" = "Esta aba ainda está vazia";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Ao medir a velocidade de uma VPN vê-se em que ponto vai, e o cartão onde o número vai cair avisa que vem aí um. Antes o botão limitava-se a rodar enquanto durasse.";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Os valores da página de VPN ficam à mesma altura por mais longos que sejam os números, e a idade de uma medição vem curta: há 40 min, em vez de uma linha só para ela.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Desativar o modo de tampa fechada, ou simplesmente sair do Helm, agora retira a regra de administrador que ficava guardada, sem pedir a senha de novo. O ajuste diz onde essa regra fica e como removê-la à mão.";
+
+"Show the buttons at the bottom of the panel" = "Mostrar os botões na parte inferior do painel";
+"All three are also in the right-click menu on the menu-bar icon." = "Os três também estão no menu de contexto do ícone da barra de menus.";
+"Menu-bar icon shape" = "Forma do ícone da barra de menus";
+"Menu-bar icon size" = "Tamanho do ícone da barra de menus";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Os três interruptores dos botões Ajustes, editar e Sair do painel são um só. Juntos, só decidiam se o painel tinha uma fila de botões, e quem a tinha continua com ela.";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "As abas do painel decidem os próprios rótulos: nomes enquanto couberem, símbolos quando não. O ajuste que perguntava isso saiu, junto com a resposta que podia deixar uma aba vazia.";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Os ícones de módulo simples agora são simples em todo lugar, painel incluído. O ajuste mudava apenas a barra lateral dos Ajustes.";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "O painel da barra de menus abre sem parar antes para perguntar as permissões ao macOS. No caminho ele lia seus arquivos do Mensagens e do Safari, a cada clique no ícone.";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "O lápis do painel e o menu de contexto chamam a mesma coisa pelo mesmo nome.";

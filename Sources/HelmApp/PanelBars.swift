@@ -22,7 +22,6 @@ struct PanelTabStrip: View {
     /// The tab being looked at, already clamped by the panel.
     let tabIndex: Int
     let editing: Bool
-    let labels: TabLabelStyle
     /// The namespace the selection travels in. Handed down rather than declared
     /// here so it is the panel's, like the one the tiles travel in.
     let selection: Namespace.ID
@@ -37,10 +36,32 @@ struct PanelTabStrip: View {
     let rename: (_ tab: String, _ current: String) -> Void
     let apply: (PanelLayout) -> Void
 
+    /// Every tab's name and glyph, asked once for the whole strip.
+    ///
+    /// A name is `AppStr.tabTitle`, which is a table lookup, and the fit below
+    /// measures each of them — so both are questions about the *strip* and
+    /// neither belongs inside the loop that draws a tab. `tabButton` used to ask
+    /// for its own title again, which made every name two lookups a pass.
+    private var named: [(title: String, glyph: String?)] {
+        layout.tabs.enumerated().map { (AppStr.tabTitle($1, number: $0 + 1), $1.glyph) }
+    }
+
     var body: some View {
-        HStack(spacing: 4) {
+        // Names while they fit the panel, glyphs when they do not — and names
+        // again whenever one tab has no glyph to be recognised by.
+        //
+        // This was `AppSettings.tabLabelStyle`, a pop-up of three on the
+        // settings page. It steered a strip most people never see —
+        // `showsTabBar` is `tabs.count > 1` and a fresh install has one tab —
+        // and one of its three answers drew nothing at all on a tab with no
+        // glyph. Measured rather than asked: `TabStripFit` has the arithmetic,
+        // and the panel's width is the constant it is measured against.
+        let named = self.named
+        let labels = TabStripFit.style(tabs: named, editing: editing,
+                                       available: helmPanelWidth - PanelGrid.padding * 2)
+        return HStack(spacing: 4) {
             ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
-                tabButton(index, tab)
+                tabButton(index, tab, named[index].title, labels)
             }
             if editing {
                 Button {
@@ -83,11 +104,13 @@ struct PanelTabStrip: View {
         }
     }
 
-    private func tabButton(_ index: Int, _ tab: PanelLayout.Tab) -> some View {
-        // Asked once. The label, the tooltip, the accessibility label and the
-        // rename's draft are the same sentence, and it was built four times.
-        let title = AppStr.tabTitle(tab, number: index + 1)
-        return Button {
+    private func tabButton(_ index: Int, _ tab: PanelLayout.Tab,
+                           _ title: String, _ labels: TabLabelStyle) -> some View {
+        // The title is handed in. The label, the tooltip, the accessibility
+        // label and the rename's draft are the same sentence, and it was built
+        // four times — and once more by the fit above, which needs every name to
+        // decide whether any of them is drawn.
+        Button {
             // The strip and the grid move together: the selection slides while
             // the widgets under it cross-fade, on one transaction rather than
             // two.
@@ -273,18 +296,13 @@ struct PanelGallery: View {
 /// more.
 struct PanelFooter: View {
     let editing: Bool
-    let showSettings: Bool
-    let showQuit: Bool
-    let showEdit: Bool
     let configure: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            if showSettings {
-                footerButton(AppStr.settingsPane, "gearshape") {
-                    NotificationCenter.default.post(name: .helmOpenSettings,
-                                                    object: SettingsWindow.settingsPage)
-                }
+            footerButton(AppStr.settingsPane, "gearshape") {
+                NotificationCenter.default.post(name: .helmOpenSettings,
+                                                object: SettingsWindow.settingsPage)
             }
             Spacer(minLength: 8)
             // Only on the way in. While the setup bar is on screen it carries
@@ -301,12 +319,10 @@ struct PanelFooter: View {
             // Both glyphs at the right edge, together. A lone icon floating in
             // the middle of a footer reads as something that lost its label
             // rather than as something that never needed one.
-            if !editing && showEdit {
-                footerGlyph("pencil", AppStr.configurePanel, action: configure)
+            if !editing {
+                footerGlyph("pencil", AppStr.editPanel, action: configure)
             }
-            if showQuit {
-                footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
-            }
+            footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
         }
         .helmPanelCard()
     }

@@ -145,6 +145,29 @@ proven newer than its sources.
   so the sentence cannot name a file the engine stopped writing.
 
 ### Fixed
+- **Nothing the shell draws asks macOS about a permission on the thread that
+  draws it.** Seven module pages were cured of this by
+  `helmTracksFullDiskAccess`; `Sources/HelmApp` never was, and the worst of the
+  three sites was `HelmPanelContent` — the menu-bar panel, which ran it on every
+  click of the icon, once from `.onReceive(.helmPanelDidShow)` and once from
+  `.onAppear`. The general settings page ran it inside a `.task`, which is
+  drained by the very layout pass that draws the first frame, and again on every
+  return to the app; the settings sidebar ran it in both places too.
+  `PermissionCheck.currentFullDiskAccess` is four synchronous `open`s and `read`s
+  of somebody's `chat.db`, Safari bookmarks and address book, and its own
+  declaration says why the milliseconds it measures at are not the point: a
+  blocking syscall answers when it answers.
+
+  The trackers gained one thing they did not have, because the panel needs it:
+  `alsoOn`. `PanelWindow` takes key focus **without activating the app**, on
+  purpose, so opening the panel from the icon posts no `didBecomeActive` — and
+  the panel's view is mounted once at launch, so its `.task` fires once for the
+  life of the process. Without a moment of its own the notice at the top of the
+  panel would report the grants Helm held when it started.
+  `TheShellAsksForAGrantOffTheDrawingThreadTests` is the guard: it reads every
+  file in `Sources/HelmApp`, finds each synchronous probe, and fails when the
+  type enclosing it conforms to `View`. It proves itself on a fixture first, so
+  its silence over the tree is not the silence of a scan that reads nothing.
 - **The window stopped answering for 19 seconds, and the report named the
   arrangement outright.** `HelmApp_2026-08-19-235500_MacBook.hang`, on
   `0.11.0-dev.1`, 61 s after launch: the main thread answering
@@ -237,6 +260,59 @@ proven newer than its sources.
   both.
 
 ### Changed
+- **Seven controls on the General page are four, and one of them now means what
+  its label says.**
+
+  The panel's footer was three switches — Settings, the pencil, Quit — for one
+  taste: `HelmPanel.showsFooter` was `showSettingsButton || showQuitButton ||
+  showEditButton`, so the only thing the three of them decided together was
+  whether there was a footer at all. They are one switch, and the migration is
+  that same expression (`PanelFooterSetting.folded`): each of the three
+  defaulted to true, so an absent key is a button that was shown, and a panel
+  loses its footer only if all three were turned off by hand. `AppSettings`
+  reads the old keys once and `ObsoleteDefaults` retires them, in that order and
+  inside one function — `migrateAndPurge` — because a purge that ran first would
+  hand every panel the default instead of the arrangement its owner chose.
+
+  **The caption under them stays.** Helm is `LSUIElement`: no Dock icon, no
+  application menu, so the footer's Settings button and the right-click menu are
+  the entire set of doors, and this caption is one of exactly two places the app
+  says that menu exists. What it promised was false about one name — the footer
+  button says «Edit panel», the menu item said «Edit widgets», for the same mode,
+  in eight languages each. `AppStr.editPanel` is read by both now, so the caption
+  cannot be right about the function and wrong about the word.
+
+  **«Tab labels» is deleted and answered instead.** It steered a strip most
+  people never see — `PanelLayout.showsTabBar` is `tabs.count > 1` and a fresh
+  install has one tab — and its own type doc argued against it: the right answer
+  «depends on things the app cannot see: how many tabs there are, how long their
+  names came out, and whether the person named them at all», and all three are in
+  `PanelLayout`. `TabStripFit` measures the names against the panel's 320 pt and
+  answers text or glyph-only. One of the three deleted answers drew *nothing*:
+  `.glyph` on a tab with no glyph rendered an empty padded button, and chosen
+  rather than set that state cannot be reached — a strip falls back to names
+  whenever one tab has no glyph to stand in for its name. `TabLabelStyle` is two
+  cases now and has no `init(stored:)`.
+
+- **«Module icons: Plain» reaches the panel, which is the surface it was chosen
+  for.** Its only reader was the settings sidebar, which drew the plain look by
+  hand; the panel's widget headers, its gallery, its utility rows and every page
+  header asked `descriptor.moduleTint.colour` directly, so someone who chose
+  Plain to quiet the app down still got colour plates everywhere they looked.
+  `HelmIconPlate` answers it now — one plate, nine call sites — off
+  `EnvironmentValues.helmModuleIconStyle`, which defaults to `.colour` so a
+  surface that has not been told draws exactly what it drew before. The sidebar's
+  hand-drawn branch is deleted, and `.helmSidebarStyleChanged` moved to `HelmUI`
+  beside the type it announces rather than staying a name one target could
+  change alone.
+
+- **The menu-bar icon size had two defaults that disagreed.**
+  `AppSettings.menuBarIconSize` supplied `"small"` — 15 pt, «L» — while
+  `MenuBarIconSize(stored:)` fell back to `.extraSmall`, 13 pt and «M». Nobody
+  saw it because the only reader always passed a non-empty string, and the next
+  person to follow the pattern `sidebarStyle` documents one property above would
+  have moved every default install from L to M without touching a number. The
+  setting is typed now and the answer is the type's, once.
 - **The page header is not fenced off from the page, and it lights under the
   pointer.** Measured at the settings window's 846 pt pane, macOS 27, both
   appearances: the background above the rule and below it was the same to the

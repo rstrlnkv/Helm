@@ -449,8 +449,6 @@
 "Settings…" = "Настройки…";
 "Shortcuts" = "Сочетания клавиш";
 "Show" = "Показать";
-"Show Quit button" = "Показывать кнопку «Завершить»";
-"Show Settings button" = "Показывать кнопку «Настройки»";
 "Show in Finder" = "Показать в Finder";
 "Show it in the menu bar" = "Показывать в строке меню";
 "Show remaining time in the menu bar" = "Показывать оставшееся время в строке меню";
@@ -672,19 +670,12 @@
 "New tab" = "Новая вкладка";
 "Close tab" = "Закрыть вкладку";
 "Tab" = "Вкладка";
-"Edit widgets" = "Редактировать виджеты";
-"Show the edit button in the panel" = "Показывать кнопку редактирования панели";
 "Choose what is in the list" = "Выбрать пункты списка";
 "Author" = "Автор";
-"Tab labels" = "Подписи вкладок";
-"Text" = "Текст";
-"Glyph and text" = "Глиф и текст";
-"Glyph" = "Глиф";
 "Icon" = "Значок";
 "Work" = "Работа";
 "Nature" = "Природа";
 "Category" = "Категория";
-"All three are also in the menu-bar icon’s right-click menu." = "Все три есть и в меню по правому клику на иконку.";
 "Edit panel" = "Редактировать панель";
 "Editing the panel" = "Редактирование панели";
 "Nothing on this tab yet" = "На этой вкладке пока пусто";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Замер скорости VPN показывает, на какой он стадии, а карточка, куда ляжет число, предупреждает о нём. Раньше кнопка просто крутилась столько, сколько шёл замер.";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Показания на странице VPN стоят на одной высоте, какими бы длинными ни были числа, а возраст замера пишется коротко — 40 мин. назад, а не отдельной строкой.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Выключение режима с закрытой крышкой — или просто выход из Helm — теперь убирает оставленное правило администратора и не спрашивает пароль во второй раз. В настройке написано, где это правило лежит и как удалить его вручную.";
+
+"Show the buttons at the bottom of the panel" = "Показывать кнопки внизу панели";
+"All three are also in the right-click menu on the menu-bar icon." = "Все три есть в меню по правому клику на значке в строке меню.";
+"Menu-bar icon shape" = "Форма значка в строке меню";
+"Menu-bar icon size" = "Размер значка в строке меню";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Три переключателя для кнопок «Настройки», «Редактировать» и «Завершить» стали одним. Вместе они решали лишь одно — есть ли внизу панели строка кнопок; у кого она была, у того и осталась.";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Вкладки панели сами решают, как подписываться: названия, пока они помещаются, и значки, когда нет. Настройка, которая об этом спрашивала, убрана — вместе с вариантом, при котором вкладка оставалась пустой.";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Простые значки модулей теперь простые везде, включая панель. Раньше настройка меняла только боковое меню настроек.";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "Панель в строке меню открывается, не останавливаясь на вопросах к macOS о разрешениях. Раньше при каждом клике по значку она по пути читала ваши файлы Сообщений и Safari.";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "Карандаш на панели и меню по правому клику называют одно и то же одинаково.";

@@ -14,18 +14,18 @@ struct MenuBarSettingsView: View {
     /// composer sheet this very page opens.
     @ObservedObject private var host = ModuleHost.shared
     @State private var composing = false
-    @State private var style: String = AppSettings.menuBarIconStyle
-    @State private var size: String = AppSettings.menuBarIconSize
+    /// The pickers' own currency is a rawValue, and the setting is typed — so
+    /// the conversion happens here, at the one boundary, rather than the page
+    /// carrying a second opinion about what an unrecognised value means.
+    @State private var style = AppSettings.menuBarIconStyle.rawValue
+    @State private var size = AppSettings.menuBarIconSize.rawValue
     /// The state macOS is in, not the answer the switch was given — and
     /// re-probed on activation like the permission rows below it.
     @State private var launchAtLogin: LoginItemState = LoginItem.current()
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
-    @State private var tabLabels = AppSettings.tabLabelStyle
-    @State private var showPanelEditButton = AppSettings.showPanelEditButton
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var showFooter = AppSettings.showPanelFooter
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
@@ -330,11 +330,15 @@ struct MenuBarSettingsView: View {
                 // and a labelled control inside a labelled row says it twice.
                 // Given the chosen size, so its glyph is the icon as it will
                 // be drawn in the bar rather than a sample at a fixed size.
-                IconShapePicker(selection: $style, title: AppStr.iconShape, size: size)
-                    .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
-                LabeledContent(AppStr.iconSize) {
+                IconShapePicker(selection: $style, title: AppStr.menuBarIconShape, size: size)
+                    .onChange(of: style) { _, v in
+                        AppSettings.menuBarIconStyle = MenuBarIconStyle(stored: v)
+                    }
+                LabeledContent(AppStr.menuBarIconSize) {
                     IconSizePicker(selection: $size)
-                        .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
+                        .onChange(of: size) { _, v in
+                            AppSettings.menuBarIconSize = MenuBarIconSize(stored: v)
+                        }
                 }
                 Text(AppStr.menuBarNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -343,29 +347,14 @@ struct MenuBarSettingsView: View {
             // The panel keeps its own arrangement, so there is exactly one
             // thing about it to decide here: whether the way in is on it.
             Section(header: HelmSectionTitle(AppStr.panel)) {
-                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
-                    .onChange(of: showSettingsButton) { _, v in
-                        AppSettings.showSettingsButton = v
-                    }
-                Toggle(AppStr.showPanelEditButton, isOn: $showPanelEditButton)
-                    .onChange(of: showPanelEditButton) { _, v in
-                        AppSettings.showPanelEditButton = v
-                    }
-                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
-                    .onChange(of: showQuitButton) { _, v in
-                        AppSettings.showQuitButton = v
-                    }
-                Text(AppStr.panelEditButtonNote)
+                Toggle(AppStr.showPanelFooter, isOn: $showFooter)
+                    .onChange(of: showFooter) { _, v in AppSettings.showPanelFooter = v }
+                // Kept, and kept here. Helm is `LSUIElement`: no Dock icon, no
+                // application menu, so the footer's Settings button and this
+                // menu are the whole set of doors — and this sentence is one of
+                // exactly two places the app says the menu exists.
+                Text(AppStr.panelFooterNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                // Here rather than in the panel's own edit mode: it is how the
-                // panel *looks*, decided once, and that mode is about which
-                // widgets are on it.
-                Picker(AppStr.tabLabels, selection: $tabLabels) {
-                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
-                        Text(AppStr.tabLabelStyle(style)).tag(style)
-                    }
-                }
-                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
             }
 
             // Only when there is one. `neededPermissions` filters to what the
@@ -430,10 +419,6 @@ struct MenuBarSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
-            // The user grants in System Settings and comes back; the row has
-            // to notice without being told.
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
             // A background scan runs when the person is away, which is exactly
             // the interval this window spends inactive: coming back is when
             // «hasn't run yet» can have stopped being true.
@@ -444,9 +429,15 @@ struct MenuBarSettingsView: View {
             // remembers survives only while the system still agrees with it.
             launchAtLogin = LoginItem.current(refused: launchAtLogin == .refused)
         }
+        // The two grants through the trackers rather than through this page's own
+        // `.task` and its `didBecomeActive`: the disk probe is four blocking file
+        // reads, and both of those run on the thread that draws — the `.task`
+        // continuation is drained by the very layout pass that builds the first
+        // frame. The trackers do the same «once, and again when Helm comes back»
+        // off the cooperative pool, and let a reading name the grants instead.
+        .helmTracksFullDiskAccess($diskAccess)
+        .helmTracksAccessibility($accessibility)
         .task {
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
             // Not in the state's initial value, and not awaited here either.
             // A `.task` continuation is drained by the very layout pass that
             // draws the page, so awaiting the keychain inside it delayed the

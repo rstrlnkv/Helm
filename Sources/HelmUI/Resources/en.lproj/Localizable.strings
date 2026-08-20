@@ -449,8 +449,6 @@
 "Settings…" = "Settings…";
 "Shortcuts" = "Shortcuts";
 "Show" = "Show";
-"Show Quit button" = "Show Quit button";
-"Show Settings button" = "Show Settings button";
 "Show in Finder" = "Show in Finder";
 "Show it in the menu bar" = "Show it in the menu bar";
 "Show remaining time in the menu bar" = "Show remaining time in the menu bar";
@@ -672,19 +670,12 @@
 "New tab" = "New tab";
 "Close tab" = "Close tab";
 "Tab" = "Tab";
-"Edit widgets" = "Edit widgets";
-"Show the edit button in the panel" = "Show the edit button in the panel";
 "Choose what is in the list" = "Choose what is in the list";
 "Author" = "Author";
-"Tab labels" = "Tab labels";
-"Text" = "Text";
-"Glyph and text" = "Glyph and text";
-"Glyph" = "Glyph";
 "Icon" = "Icon";
 "Work" = "Work";
 "Nature" = "Nature";
 "Category" = "Category";
-"All three are also in the menu-bar icon’s right-click menu." = "All three are also in the menu-bar icon’s right-click menu.";
 "Edit panel" = "Edit panel";
 "Editing the panel" = "Editing the panel";
 "Nothing on this tab yet" = "Nothing on this tab yet";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took.";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand.";
+
+"Show the buttons at the bottom of the panel" = "Show the buttons at the bottom of the panel";
+"All three are also in the right-click menu on the menu-bar icon." = "All three are also in the right-click menu on the menu-bar icon.";
+"Menu-bar icon shape" = "Menu-bar icon shape";
+"Menu-bar icon size" = "Menu-bar icon size";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it.";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it.";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else.";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon.";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "The panel’s pencil and the right-click menu call the same thing by the same name.";

@@ -474,38 +474,45 @@ enum AppStr {
     static var moduleIcons: String { L("Module icons") }
     static var moduleIconsColour: String { L("Colour") }
     static var moduleIconsPlain: String { L("Plain") }
-    static var iconShape: String { L("Icon shape") }
-    static var iconSize: String { L("Icon size") }
+    /// The two menu-bar rows, and they say **menu bar** because nothing else in
+    /// their section does. They sat under «Appearance» beside the theme and the
+    /// module icons as «Icon shape» and «Icon size», with no word anywhere on the
+    /// page saying which icon — and the app's own term for it is one Keep Awake
+    /// already uses as a heading over the same picker. `IconShapePicker`'s own
+    /// default title stays as it is: it is titled by that heading there.
+    static var menuBarIconShape: String { L("Menu-bar icon shape") }
+    static var menuBarIconSize: String { L("Menu-bar icon size") }
     static var settings: String { L("Settings…") }
     static var panel: String { L("Panel") }
     static var utilities: String { L("Utilities") }
 
     // MARK: - The panel, arranged
 
-    static var configurePanel: String { L("Edit panel") }
-    static var editWidgets: String { L("Edit widgets") }
-    static var showPanelEditButton: String { L("Show the edit button in the panel") }
-    static var showSettingsButton: String { L("Show Settings button") }
-    static var showQuitButton: String { L("Show Quit button") }
-    /// Why any of these may be hidden at all: none of them is the only way to
-    /// what it does.
-    static var panelEditButtonNote: String {
-        L("All three are also in the menu-bar icon’s right-click menu.")
+    /// The name of the panel’s setup mode, in the **two** places that offer it:
+    /// the footer’s pencil and the menu-bar icon’s right-click menu.
+    ///
+    /// One property because they were two — «Edit panel» on the button and «Edit
+    /// widgets» in the menu, for the same mode, in eight languages each. The
+    /// caption under the panel’s switch tells people the buttons are also in
+    /// that menu, which is a promise about a name and was false about one of
+    /// them. Read from one place it cannot drift, which is the fix
+    /// `VPNStr.secretNeedsAPress` is built the same way for.
+    static var editPanel: String { L("Edit panel") }
+    static var showPanelFooter: String { L("Show the buttons at the bottom of the panel") }
+    /// Why the footer may be hidden at all: none of its three buttons is the
+    /// only way to what it does. This caption is also one of exactly two places
+    /// the app teaches the right-click menu, and Helm is `LSUIElement` — no Dock
+    /// icon, no application menu — so those two places are the whole set of
+    /// doors somebody can be told about.
+    static var panelFooterNote: String {
+        L("All three are also in the right-click menu on the menu-bar icon.")
     }
     static var panelSetup: String { L("Editing the panel") }
     static var removeWidget: String { L("Remove widget") }
     static var widgetSize: String { L("Widget size") }
     static var addWidget: String { L("Add widget") }
     static var chooseUtilities: String { L("Choose what is in the list") }
-    static var tabLabels: String { L("Tab labels") }
     static var tabIcon: String { L("Icon") }
-    static func tabLabelStyle(_ style: TabLabelStyle) -> String {
-        switch style {
-        case .text: L("Text")
-        case .glyphAndText: L("Glyph and text")
-        case .glyph: L("Glyph")
-        }
-    }
     static var newTab: String { L("New tab") }
     static var closeTab: String { L("Close tab") }
     static var tabLabel: String { L("Tab") }

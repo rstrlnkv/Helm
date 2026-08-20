@@ -120,6 +120,11 @@ public extension View {
 /// the same drawing at 20, 22 and 26 pt, which had been copy-pasted at three
 /// sites with their own radii and glyph sizes.
 public struct HelmIconPlate: View {
+    /// How the person asked for module icons to be drawn. Read from the
+    /// environment rather than taken as a parameter: this is the app's one
+    /// module icon, drawn at nine call sites, and a preference passed at each of
+    /// them is a preference eight of them can forget.
+    @Environment(\.helmModuleIconStyle) private var style
     let symbol: String
     let tint: Color
     var size: CGFloat = 44
@@ -174,7 +179,34 @@ public struct HelmIconPlate: View {
     private var shadowRadius: CGFloat { size * 0.09 }
     private var shadowOffset: CGFloat { size * 0.045 }
 
+    /// A bare glyph at the plate's own frame, for the person who asked for
+    /// plain module icons.
+    ///
+    /// **Not the module's colour at a smaller dose**: a tinted glyph on the
+    /// surface's own background reads as neither plate nor text. The plain look
+    /// is grey, and the shape does the distinguishing — which is why it is
+    /// bigger than the glyph inside a plate. 0.59 of the frame against the
+    /// plate's 0.47, so a 22 pt row draws it at 13, the size the settings
+    /// sidebar drew by hand for four months.
+    ///
+    /// Corrected by `SymbolInk` like the plate is: without it one point size is
+    /// 28% of visual size across this set — `keyboard` paints 1,27 of its square
+    /// and `lock.shield` 0,99 — and the icon that relies on shape alone is the
+    /// one that can least afford the shapes to be different sizes.
+    private var plain: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.59 * SymbolInk.correction(for: symbol),
+                          weight: .medium))
+            .foregroundStyle(active ? HelmText.quiet : HelmText.quiet.opacity(0.45))
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+
     public var body: some View {
+        if style == .plain { plain } else { plated }
+    }
+
+    private var plated: some View {
         Image(systemName: symbol)
             .font(.system(size: glyphSize, weight: .semibold))
             .foregroundStyle(.white)

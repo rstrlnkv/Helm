@@ -44,10 +44,7 @@ struct HelmPanelContent: View {
     @State private var revealed = true
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
-    @State private var showEditButton = AppSettings.showPanelEditButton
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
-    @State private var tabLabels = AppSettings.tabLabelStyle
+    @State private var showFooter = AppSettings.showPanelFooter
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -603,9 +600,10 @@ struct HelmPanelContent: View {
     /// 38 pt reserved under a footer that had stopped being drawn, and a grid
     /// that had exactly fitted began to scroll.
     private var showsTabStrip: Bool { layout.showsTabBar || editing }
-    /// Nothing pinned means nothing to pin: three hidden buttons would
-    /// otherwise leave an empty card at the foot of the panel.
-    private var showsFooter: Bool { showSettingsButton || showQuitButton || showEditButton }
+    /// One switch, and it was three that only ever answered together — the
+    /// footer was drawn when any of them was on, so what the three of them
+    /// decided was whether there was a footer at all (`PanelFooterSetting`).
+    private var showsFooter: Bool { showFooter }
     /// The setup bar and the footer are measured together, and the setup bar is
     /// there whenever the mode is.
     private var showsFooterBlock: Bool { editing || showsFooter }
@@ -649,6 +647,10 @@ struct HelmPanelContent: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .coordinateSpace(name: Self.stripSpace)
+        // The panel is the surface somebody who chose plain module icons
+        // actually looks at, and until this it drew colour plates whatever they
+        // chose — the setting reached the settings sidebar and nothing else.
+        .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
         // Above everything and clipped by nothing. It used to live inside the
         // scroll view, whose bounds cut the carried tile off at the grid's
         // edge — a thing in your hand disappearing behind the furniture it is
@@ -672,10 +674,7 @@ struct HelmPanelContent: View {
             reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
-            showEditButton = AppSettings.showPanelEditButton
-            showSettingsButton = AppSettings.showSettingsButton
-            showQuitButton = AppSettings.showQuitButton
-            tabLabels = AppSettings.tabLabelStyle
+            showFooter = AppSettings.showPanelFooter
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -698,12 +697,9 @@ struct HelmPanelContent: View {
             // `.helmModuleEnabled`, not `.helmModuleOrderChanged`: without this
             // its widget had no slot until the next launch, and the store's own
             // comment promises it appears the first time the panel is opened.
-            // The two probes because a grant given — or taken back — while the
-            // app was running was never noticed, so the notice at the top of
-            // the panel outlived the thing it was reporting.
+            // The grants are re-read on this same notification, by the trackers
+            // at the foot of this chain rather than by two blocking lines here.
             reload()
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
             DispatchQueue.main.async {
                 withAnimation(HelmMotion.panelEntrance) { revealed = true }
             }
@@ -728,8 +724,8 @@ struct HelmPanelContent: View {
                 emptyState("square.grid.2x2", AppStr.noModules, AppStr.noModulesHint)
             } else if items.isEmpty && !editing {
                 emptyState("rectangle.on.rectangle", AppStr.nothingOnThisTab,
-                           showEditButton ? AppStr.nothingOnThisTabHint
-                                          : AppStr.nothingOnThisTabHintNoButton)
+                           showFooter ? AppStr.nothingOnThisTabHint
+                                      : AppStr.nothingOnThisTabHintNoButton)
             } else {
                 grid(items)
                     // Keyed to the tab, so switching is a swap the transition
@@ -796,7 +792,7 @@ struct HelmPanelContent: View {
             // 20 pt above its first widget where every other edge has 12.
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
-                              labels: tabLabels, selection: tabSelection,
+                              selection: tabSelection,
                               activeTab: $activeTab, pickingGlyph: $pickingGlyph,
                               rename: { tab, current in
                                   draftName = current
@@ -862,8 +858,7 @@ struct HelmPanelContent: View {
                     }
                 }
                 if showsFooter {
-                    PanelFooter(editing: editing, showSettings: showSettingsButton,
-                                showQuit: showQuitButton, showEdit: showEditButton) {
+                    PanelFooter(editing: editing) {
                         // The same curve the card's measured height animates on.
                         // Entering the mode grows every cell by 8 pt and adds
                         // two controls to each, so the grid's height changes
@@ -904,11 +899,15 @@ struct HelmPanelContent: View {
             }
             Button(AppStr.cancel, role: .cancel) { renaming = nil }
         }
-        .onAppear {
-            reload()
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
-        }
+        .onAppear { reload() }
+        // `alsoOn` because the panel has a moment neither of the tracker's own
+        // two is: it takes key focus without activating the app, so opening it
+        // from the icon posts no `didBecomeActive` — and this view is mounted
+        // once at launch, so `.task` fires once for the life of the process.
+        // Without `.helmPanelDidShow` the notice at the top of the panel would
+        // report the grants Helm held when it started.
+        .helmTracksFullDiskAccess($diskAccess, alsoOn: .helmPanelDidShow)
+        .helmTracksAccessibility($accessibility, alsoOn: .helmPanelDidShow)
         // Liquid Glass, and no border of our own: glass supplies its specular
         // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
         // rather than 20 so the radius is concentric with the 14 pt tile cards

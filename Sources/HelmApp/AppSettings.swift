@@ -6,10 +6,6 @@ import HelmUI
 extension Notification.Name {
     /// Posted when the host menu-bar icon style changes so the status item redraws.
     static let helmMenuBarStyleChanged = Notification.Name("helmMenuBarStyleChanged")
-    /// Posted when the sidebar's appearance changes, so an open window redraws.
-    /// The setting is written from the window it changes, so nothing would
-    /// notice on its own: the sidebar reads a value SwiftUI cannot observe.
-    static let helmSidebarStyleChanged = Notification.Name("helmSidebarStyleChanged")
     /// Posted when the language override changes. Strings are computed on
     /// every read, so what needs telling is not the values but the views: a
     /// window already drawn keeps whatever it built.
@@ -236,69 +232,73 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
-    /// Whether the panel's footer carries these at all.
+    /// Whether the panel draws its footer: Settings, the pencil and Quit, which
+    /// are one row of the card and were three switches.
     ///
-    /// **Default true**, which is the whole difference from the version of
-    /// these settings that was deleted. Those defaulted to *false*, so a clean
-    /// install got a panel with no way into settings and no way to find the
-    /// switch that would have added one. The switches were never the problem.
+    /// **Default true**, which is the whole difference from the version of these
+    /// settings that was deleted. Those defaulted to *false*, so a clean install
+    /// got a panel with no way into settings and no way to find the switch that
+    /// would have added one. The switch was never the problem.
     ///
-    /// Safe to hide now because none of the three is the only way to what it
+    /// Safe to hide because none of the three buttons is the only way to what it
     /// does: the menu-bar icon's right-click menu carries all of them, and that
-    /// menu cannot be switched off.
-    static var showSettingsButton: Bool {
-        get { store.bool("showSettingsButton", default: true) }
+    /// menu cannot be switched off. `PanelFooterSetting` has the fold.
+    static var showPanelFooter: Bool {
+        get {
+            PanelFooterSetting.folded(stored: store.object(PanelFooterSetting.key) as? Bool,
+                                      settings: written(.settings), quit: written(.quit),
+                                      edit: written(.edit))
+        }
         set {
-            store.set(newValue, for: "showSettingsButton")
+            store.set(newValue, for: PanelFooterSetting.key)
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }
 
-    static var showQuitButton: Bool {
-        get { store.bool("showQuitButton", default: true) }
-        set {
-            store.set(newValue, for: "showQuitButton")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
+    /// What one of the three keys this replaced says, or nil if it never said
+    /// anything.
+    private static func written(_ key: PanelFooterSetting.Replaced) -> Bool? {
+        store.object(key.rawValue) as? Bool
     }
 
-    /// Whether the panel's footer offers the way into its setup mode.
+    /// Reads what the retired keys still have to say, then lets them go.
     ///
-    /// Optional in a way the settings and quit buttons were not: those were the
-    /// only way in from a panel that had never been configured, and this one
-    /// has a twin in the menu-bar icon's right-click menu. Hiding it costs
-    /// nothing but the glyph.
-    static var showPanelEditButton: Bool {
-        get { store.bool("showPanelEditButton", default: true) }
+    /// **One function because the order is the whole of it.** The fold that
+    /// answers `showPanelFooter` reads three keys `ObsoleteDefaults` is about to
+    /// delete, so a purge that ran first would hand every panel the default
+    /// instead of the arrangement its owner chose — and two calls at the call
+    /// site is an ordering somebody has to remember. There is nothing to
+    /// remember here.
+    static func migrateAndPurge() {
+        if store.object(PanelFooterSetting.key) == nil {
+            // Written even when it comes out true, which is the point: after
+            // this the three old keys have said everything they will ever say.
+            store.set(showPanelFooter, for: PanelFooterSetting.key)
+        }
+        ObsoleteDefaults.purge(from: UserDefaults.standard)
+    }
+
+    /// The shape Helm wears in the menu bar. Typed, so the fallback for a value
+    /// this build does not know lives on `MenuBarIconStyle` and nowhere else.
+    static var menuBarIconStyle: MenuBarIconStyle {
+        get { MenuBarIconStyle(stored: store.string("menuBarIconStyle", default: "")) }
         set {
-            store.set(newValue, for: "showPanelEditButton")
+            store.set(newValue.rawValue, for: "menuBarIconStyle")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }
 
-    /// How the panel's tabs are labelled. App-wide rather than per tab: it is
-    /// a question about the strip, and a strip where one tab shows a word and
-    /// the next shows a symbol is not a strip.
-    static var tabLabelStyle: TabLabelStyle {
-        get { TabLabelStyle(stored: store.string("tabLabelStyle", default: TabLabelStyle.text.rawValue)) }
+    /// The same, and it is the reason this one is typed too. It read
+    /// `default: "small"` here while `MenuBarIconSize(stored:)` fell back to
+    /// `.extraSmall`: 15 pt and «L» against 13 pt and «M», two defaults for one
+    /// setting. Nobody saw it, because the only reader always passed a non-empty
+    /// string — and the next person to follow `sidebarStyle`'s pattern, which is
+    /// written one property above, would have moved everybody from L to M
+    /// without touching a number. The answer is `MenuBarIconSize`'s, once.
+    static var menuBarIconSize: MenuBarIconSize {
+        get { MenuBarIconSize(stored: store.string("menuBarIconSize", default: "")) }
         set {
-            store.set(newValue.rawValue, for: "tabLabelStyle")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
-
-    static var menuBarIconStyle: String {
-        get { store.string("menuBarIconStyle", default: "ring") }
-        set {
-            store.set(newValue, for: "menuBarIconStyle")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
-
-    static var menuBarIconSize: String {
-        get { store.string("menuBarIconSize", default: "small") }
-        set {
-            store.set(newValue, for: "menuBarIconSize")
+            store.set(newValue.rawValue, for: "menuBarIconSize")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }

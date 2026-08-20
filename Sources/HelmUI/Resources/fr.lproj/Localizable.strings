@@ -449,8 +449,6 @@
 "Settings…" = "Réglages…";
 "Shortcuts" = "Raccourcis";
 "Show" = "Afficher";
-"Show Quit button" = "Afficher le bouton Quitter";
-"Show Settings button" = "Afficher le bouton Réglages";
 "Show in Finder" = "Afficher dans le Finder";
 "Show it in the menu bar" = "L’afficher dans la barre des menus";
 "Show remaining time in the menu bar" = "Afficher le temps restant dans la barre des menus";
@@ -672,19 +670,12 @@
 "New tab" = "Nouvel onglet";
 "Close tab" = "Fermer l’onglet";
 "Tab" = "Onglet";
-"Edit widgets" = "Modifier les widgets";
-"Show the edit button in the panel" = "Afficher le bouton de modification dans le panneau";
 "Choose what is in the list" = "Choisir les éléments de la liste";
 "Author" = "Auteur";
-"Tab labels" = "Libellés des onglets";
-"Text" = "Texte";
-"Glyph and text" = "Glyphe et texte";
-"Glyph" = "Glyphe";
 "Icon" = "Icône";
 "Work" = "Travail";
 "Nature" = "Nature";
 "Category" = "Catégorie";
-"All three are also in the menu-bar icon’s right-click menu." = "Les trois sont aussi dans le menu contextuel de l’icône.";
 "Edit panel" = "Modifier le panneau";
 "Editing the panel" = "Modification du panneau";
 "Nothing on this tab yet" = "Cet onglet est encore vide";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "La mesure du débit d’un VPN indique où elle en est, et la carte où le chiffre va se poser annonce qu’il arrive. Le bouton se contentait de tourner le temps que ça dure.";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Les valeurs de la page VPN restent à la même hauteur, quelle que soit la longueur des chiffres, et l’âge d’une mesure s’écrit court : il y a 40 min, au lieu d’une ligne à part.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Désactiver le mode capot fermé, ou simplement quitter Helm, retire désormais la règle administrateur conservée, sans redemander votre mot de passe. Le réglage indique où se trouve cette règle et comment la supprimer à la main.";
+
+"Show the buttons at the bottom of the panel" = "Afficher les boutons en bas du panneau";
+"All three are also in the right-click menu on the menu-bar icon." = "Les trois figurent aussi dans le menu contextuel de l’icône de la barre des menus.";
+"Menu-bar icon shape" = "Forme de l’icône de la barre des menus";
+"Menu-bar icon size" = "Taille de l’icône de la barre des menus";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Les trois interrupteurs des boutons Réglages, modifier et Quitter du panneau n’en font qu’un. À eux trois ils ne décidaient que d’une chose : le panneau a-t-il une rangée de boutons. Qui l’avait la garde.";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Les onglets du panneau choisissent eux-mêmes leur étiquette : le nom tant qu’il tient, un symbole sinon. Le réglage qui posait la question a disparu, avec la réponse qui pouvait laisser un onglet vide.";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Les icônes de module sobres le sont désormais partout, panneau compris. Le réglage ne changeait que la barre latérale des réglages.";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "Le panneau de la barre des menus s’ouvre sans s’arrêter d’abord pour interroger macOS sur les autorisations. Il lisait au passage vos fichiers Messages et Safari, à chaque clic sur l’icône.";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "Le crayon du panneau et le menu contextuel appellent la même chose du même nom.";

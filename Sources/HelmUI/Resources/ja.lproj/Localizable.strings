@@ -449,8 +449,6 @@
 "Settings…" = "設定…";
 "Shortcuts" = "ショートカット";
 "Show" = "表示";
-"Show Quit button" = "“終了”ボタンを表示";
-"Show Settings button" = "“設定”ボタンを表示";
 "Show in Finder" = "Finderに表示";
 "Show it in the menu bar" = "メニューバーに表示";
 "Show remaining time in the menu bar" = "残り時間をメニューバーに表示";
@@ -672,19 +670,12 @@
 "New tab" = "新しいタブ";
 "Close tab" = "タブを閉じる";
 "Tab" = "タブ";
-"Edit widgets" = "ウィジェットを編集";
-"Show the edit button in the panel" = "パネルに編集ボタンを表示";
 "Choose what is in the list" = "一覧の項目を選ぶ";
 "Author" = "作者";
-"Tab labels" = "タブの表示";
-"Text" = "文字";
-"Glyph and text" = "記号と文字";
-"Glyph" = "記号";
 "Icon" = "アイコン";
 "Work" = "仕事";
 "Nature" = "自然";
 "Category" = "カテゴリ";
-"All three are also in the menu-bar icon’s right-click menu." = "三つともメニューバーアイコンの右クリックメニューにあります。";
 "Edit panel" = "パネルを編集";
 "Editing the panel" = "パネルの編集";
 "Nothing on this tab yet" = "このタブにはまだ何もありません";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "VPN の速度を測るとき、どこまで進んだかが分かり、数値が入るカードがそれを予告します。以前は、かかる間ボタンが回るだけでした。";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 画面の値は、桁が伸びても高さが揃います。測定からの経過時間も短く、行を分けずに 40 分前のように出ます。";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "ふたを閉じたまま維持する設定をオフにしたとき、あるいは Helm を終了したときに、残していた管理者ルールを取り消すようになりました。パスワードの再入力は不要です。設定画面には、そのルールの場所と手動で削除する方法が書かれています。";
+
+"Show the buttons at the bottom of the panel" = "パネル下部のボタンを表示";
+"All three are also in the right-click menu on the menu-bar icon." = "3 つともメニューバーアイコンの右クリックメニューにもあります。";
+"Menu-bar icon shape" = "メニューバーアイコンの形";
+"Menu-bar icon size" = "メニューバーアイコンの大きさ";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "パネルの“設定”“編集”“終了”ボタンの 3 つのスイッチが 1 つになりました。3 つそろってもボタンの列があるかどうかしか決めていません。これまで表示されていた方はそのままです。";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "パネルのタブが表示の仕方を自分で決めます。名前が収まるうちは名前を、収まらなくなったら記号を。設定は不要になり、タブが空になり得た選択肢もなくなりました。";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "モジュールアイコンの“シンプル”がパネルを含めどこでもシンプルになりました。これまでは設定のサイドバーだけが変わっていました。";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "メニューバーのパネルが、開く前に macOS へ権限を尋ねて止まることはなくなりました。これまではアイコンをクリックするたび、その途中でメッセージや Safari のファイルを読んでいました。";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "パネルの鉛筆と右クリックメニューが、同じものを同じ名前で呼ぶようになりました。";

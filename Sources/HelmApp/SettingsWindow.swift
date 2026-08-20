@@ -151,6 +151,7 @@ final class SettingsSplitViewController: NSSplitViewController {
         let sidebar = NSHostingController(
             rootView: SettingsSidebar(model: model, host: model.host)
                 .modifier(RebuiltOnLanguageChange(model: model))
+                .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
                 // The window survives closing (`isReleasedWhenClosed = false`),
                 // so without this both panes went on re-rendering — and keeping
                 // memory — for every engine event for as long as the app ran.
@@ -185,6 +186,10 @@ final class SettingsSplitViewController: NSSplitViewController {
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
                 .modifier(RebuiltOnLanguageChange(model: model))
+                // The pane as well as the sidebar: a module page's header plate
+                // and its empty state are module icons too, and «Module icons»
+                // is what the switch says.
+                .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
                 // Same reason as the sidebar's, and this pane is the expensive
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.
@@ -285,10 +290,6 @@ private struct SettingsSidebar: View {
     /// `isEnabled` reads the store rather than `live`, so this is not about
     /// where the value comes from — it is about being redrawn at all.
     @ObservedObject var host: ModuleHost
-    /// Re-read on notification rather than observed: the value lives in
-    /// `UserDefaults` through `AppSettings`, which SwiftUI cannot watch.
-    @State private var style = AppSettings.sidebarStyle
-
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 44)   // traffic-light strip + breathing room
@@ -402,17 +403,12 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
-        .onReceive(NotificationCenter.default.publisher(for: .helmSidebarStyleChanged)) { _ in
-            style = AppSettings.sidebarStyle
-        }
-        .task {
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
-        }
-        .helmOnAppActive {
-            diskAccess = PermissionCheck.currentFullDiskAccess()
-            accessibility = PermissionCheck.currentAccessibility()
-        }
+        // The trackers, not the two synchronous lines this replaced: the disk
+        // probe is four blocking file reads and the sidebar took them on the
+        // thread that draws, once as it appeared and again on every return to
+        // the app.
+        .helmTracksFullDiskAccess($diskAccess)
+        .helmTracksAccessibility($accessibility)
     }
 
     /// The arrangement the person composed. Read rather than cached: it is
@@ -449,32 +445,13 @@ private struct SettingsSidebar: View {
                 }
             }
         } icon: {
-            switch style {
-            case .colour:
-                HelmIconPlate(symbol: symbol, tint: color, size: 22)
-            case .plain:
-                // Not the module's colour at a smaller dose: a tinted glyph on
-                // the sidebar's own background reads as neither plate nor text.
-                // The plain look is grey, and the shape does the distinguishing.
-                //
-                // Corrected by `SymbolInk`, as the plate is. Without it one point
-                // size is 28% of visual size across this set — `keyboard` paints
-                // 1,27 of its square and `lock.shield` 0,99 — and the row that
-                // relies on shape alone is the row that can least afford the
-                // shapes to be different sizes.
-                //
-                // The base is 13, not the 14 this row used before the correction
-                // and not the 15 it was first given with it. Correction
-                // normalises to the table's mean of 1,088, so every glyph paints
-                // `base × 1,088` of ink: 14 reproduced the old *average* of 15,2
-                // and 15 came out at 16,3 — bigger than most of these symbols had
-                // ever been drawn, which is what "the same size, but too big"
-                // was. 13 paints 14,1, near the smallest the old row had.
-                Image(systemName: symbol)
-                    .font(.system(size: 13 * SymbolInk.correction(for: symbol), weight: .medium))
-                    .foregroundStyle(HelmText.quiet)
-                    .frame(width: 22, height: 22)
-            }
+            // One plate, either way. The plain look was drawn here by hand — a
+            // grey `SymbolInk`-corrected glyph at 13 in a 22 pt frame — and that
+            // hand-drawing was the whole reach of a setting labelled «Module
+            // icons»: the panel, the gallery and every page header went on
+            // asking for the module's colour directly. `HelmIconPlate` answers
+            // the question now, so the setting means what it says.
+            HelmIconPlate(symbol: symbol, tint: color, size: 22)
         }
         // The mockup's row is 28 tall around a 22 pt plate; `.sidebar` style
         // gives a taller one, and eleven rows of it is why the column read as

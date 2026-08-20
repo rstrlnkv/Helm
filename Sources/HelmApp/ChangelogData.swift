@@ -71,6 +71,11 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.0", date: "2026-08-20", items: [
+                ChangeItem(kind: .upd, text: L("The three switches for the panel\u{2019}s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it.")),
+                ChangeItem(kind: .upd, text: L("The panel\u{2019}s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it.")),
+                ChangeItem(kind: .upd, text: L("Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else.")),
+                ChangeItem(kind: .fix, text: L("The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon.")),
+                ChangeItem(kind: .fix, text: L("The panel\u{2019}s pencil and the right-click menu call the same thing by the same name.")),
                 ChangeItem(kind: .fix, text: L("Removing an app that is still running now says so instead of reporting success. macOS lets a running app be moved to the Trash and the app keeps going, so the files it writes afterwards come back.")),
                 ChangeItem(kind: .fix, text: L("A disk scan you stopped is no longer saved and reopened as though it had finished. It used to come back labelled with the time it was measured, over folders the scan never reached.")),
                 ChangeItem(kind: .fix, text: L("A volume scan you come back to draws the free space again. Reopened, every slice of the ring was a share of the wrong total.")),

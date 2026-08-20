@@ -17,13 +17,16 @@ enum HostsStr {
     /// meanings, and its own key from the first day.
     static var hostsFile: String { L("hosts file") }
     static var tableView: String { L("Table") }
-    /// **Not `L("Text")`, and the collision was already in the tree.** That key
-    /// belongs to the panel's tab-label style — a tab labelled with a word
+    /// **Not the bare word, and the collision was already in the tree.** That key
+    /// belonged to the panel's tab-label style — a tab labelled with a word
     /// rather than with a glyph — and Japanese and Chinese spell that sense
     /// «文字», which means *characters* and not *this file as it is written*.
-    /// One English key means one thing, so this sense gets its own; the word
+    /// One English key means one thing, so this sense got its own; the word
     /// itself is macOS's, read out of TextEdit's and Mail's own tables rather
-    /// than translated a second time.
+    /// than translated a second time. The tab-label setting is gone since
+    /// 2026-08-21 — the strip measures its own names — and the key with it, so
+    /// the collision is now only the reason this property is spelled the way it
+    /// is.
     static var textView: String { L("Plain text") }
     /// The two tabs. **`hostsFile` is not reused for the tab**: it is the
     /// file's name in a sentence («the hosts file could not be read»), and a

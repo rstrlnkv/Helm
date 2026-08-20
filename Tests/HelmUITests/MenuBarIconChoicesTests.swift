@@ -47,9 +47,18 @@ final class MenuBarIconChoicesTests: XCTestCase {
 
     /// A value from a build that has not been written yet — what a downgrade
     /// looks like — is the one case where falling back is right.
-    func testSomethingUnrecognisedFallsBack() {
-        XCTAssertEqual(MenuBarIconSize(stored: "enormous"), .extraSmall)
-        XCTAssertEqual(MenuBarIconSize(stored: ""), .extraSmall)
+    ///
+    /// **And this is where the shipped default lives**, which is why the empty
+    /// string is asserted beside the nonsense one: `AppSettings.menuBarIconSize`
+    /// passes `""` for «never chosen», so this fallback is what a fresh install
+    /// wears. It answered `.extraSmall` while `AppSettings` supplied `"small"`
+    /// separately — 13 pt and «M» against 15 pt and «L» — and the disagreement
+    /// was reachable the moment anybody followed `sidebarStyle`'s pattern here.
+    func testSomethingUnrecognisedFallsBackToTheShippedDefault() {
+        XCTAssertEqual(MenuBarIconSize(stored: "enormous"), .small)
+        XCTAssertEqual(MenuBarIconSize(stored: ""), .small)
+        XCTAssertEqual(MenuBarIconSize(stored: "").points, 15)
+        XCTAssertEqual(MenuBarIconSize(stored: "").label, "L")
     }
 
     // MARK: - Shapes

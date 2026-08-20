@@ -449,8 +449,6 @@
 "Settings…" = "Ajustes…";
 "Shortcuts" = "Atajos";
 "Show" = "Mostrar";
-"Show Quit button" = "Mostrar el botón Salir";
-"Show Settings button" = "Mostrar el botón Ajustes";
 "Show in Finder" = "Mostrar en el Finder";
 "Show it in the menu bar" = "Mostrarlo en la barra de menús";
 "Show remaining time in the menu bar" = "Mostrar el tiempo restante en la barra de menús";
@@ -672,19 +670,12 @@
 "New tab" = "Pestaña nueva";
 "Close tab" = "Cerrar la pestaña";
 "Tab" = "Pestaña";
-"Edit widgets" = "Editar los widgets";
-"Show the edit button in the panel" = "Mostrar el botón de edición en el panel";
 "Choose what is in the list" = "Elegir los elementos de la lista";
 "Author" = "Autor";
-"Tab labels" = "Etiquetas de pestañas";
-"Text" = "Texto";
-"Glyph and text" = "Icono y texto";
-"Glyph" = "Icono";
 "Icon" = "Icono";
 "Work" = "Trabajo";
 "Nature" = "Naturaleza";
 "Category" = "Categoría";
-"All three are also in the menu-bar icon’s right-click menu." = "Los tres están también en el menú contextual del icono.";
 "Edit panel" = "Editar el panel";
 "Editing the panel" = "Edición del panel";
 "Nothing on this tab yet" = "Esta pestaña está vacía";
@@ -1062,3 +1053,13 @@
 "Measuring a VPN’s speed says how far along it is, and the card the figure will land in says one is coming. The button used to simply turn for as long as the run took." = "Al medir la velocidad de una VPN se ve por dónde va, y la tarjeta donde caerá la cifra avisa de que viene una. Antes el botón simplemente giraba mientras durase.";
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Las cifras de la página de VPN quedan a la misma altura por largas que sean, y la antigüedad de una medición se escribe corta: hace 40 min, en vez de ocupar una línea propia.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Desactivar el modo con la tapa cerrada, o simplemente salir de Helm, ahora retira la regla de administración que quedaba, sin volver a pedir la contraseña. El ajuste indica dónde está esa regla y cómo quitarla a mano.";
+
+"Show the buttons at the bottom of the panel" = "Mostrar los botones en la parte inferior del panel";
+"All three are also in the right-click menu on the menu-bar icon." = "Los tres están también en el menú contextual del icono de la barra de menús.";
+"Menu-bar icon shape" = "Forma del icono de la barra de menús";
+"Menu-bar icon size" = "Tamaño del icono de la barra de menús";
+"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Los tres interruptores de los botones Ajustes, editar y Salir del panel son uno solo. Juntos solo decidían si el panel tenía o no una fila de botones, y quien la tenía la conserva.";
+"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Las pestañas del panel deciden sus propias etiquetas: nombres mientras quepan, símbolos cuando no. El ajuste que lo preguntaba ha desaparecido, y con él la opción que dejaba una pestaña vacía.";
+"Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Los iconos de módulo sencillos ahora son sencillos en todas partes, panel incluido. El ajuste solo cambiaba la barra lateral de Ajustes.";
+"The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "El panel de la barra de menús se abre sin detenerse antes a preguntar a macOS por los permisos. Al subir leía tus archivos de Mensajes y Safari, cada vez que pulsabas el icono.";
+"The panel’s pencil and the right-click menu call the same thing by the same name." = "El lápiz del panel y el menú contextual llaman a lo mismo por el mismo nombre.";
