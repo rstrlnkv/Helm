@@ -89,15 +89,19 @@ public protocol SSHKeysPort: Sendable {
     /// from. On the protocol for the reason `SSHConfigPort.url` is: the engine
     /// has to be able to ask «where would this land» before anything lands.
     var directory: URL { get }
-    /// The file names in the directory, or nil when the directory could not be
-    /// read at all — missing, or one this process may not search. Nil is not an
-    /// empty directory: a Mac with no keys yet is a page that says «no keys»,
-    /// and a directory nobody could open is a page that must say something
-    /// else.
-    func names() -> [String]?
-    /// The four readings behind one row. Gathered here because they come from
-    /// four different system calls; decided in `KeyRow.row(from:agent:)`, which
-    /// is pure and can be asked about the missing ones.
+    /// What is in the directory and which of those names are directories, or
+    /// nil when the directory could not be read at all — missing, or one this
+    /// process may not search. Nil is not an empty directory: a Mac with no keys
+    /// yet is a page that says «no keys», and a directory nobody could open is a
+    /// page that must say something else.
+    ///
+    /// The directory flag rides with the listing rather than being asked per
+    /// name: it is one question about the group, and `KeyInventory.Listing`
+    /// carries why it has to be asked at all.
+    func names() -> KeyInventory.Listing?
+    /// The readings behind one row. Gathered here because they come from
+    /// several different system calls; decided in `KeyRow.row(from:agent:)`,
+    /// which is pure and can be asked about the missing ones.
     func facts(for pair: KeyInventory.Pair) -> KeyFacts
     /// `~/.ssh`'s own mode. `sshd` refuses an `authorized_keys` under a
     /// group-writable directory, and the row for the directory is drawn from

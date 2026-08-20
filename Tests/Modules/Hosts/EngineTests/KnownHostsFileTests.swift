@@ -63,7 +63,8 @@ final class KnownHostsFileTests: XCTestCase {
     func testForgettingDropsOneLineAndNothingElse() {
         let document = KnownHostsFile.parse(file())
         let target = document.entries[0]
-        let rendered = KnownHostsFile.render(KnownHostsFile.forget(target.index, in: document))
+        let rendered = KnownHostsFile.render(KnownHostsFile.forget(line: target.raw,
+                                                                    in: document))
         XCTAssertFalse(rendered.contains("github.com"))
         XCTAssertTrue(rendered.contains("# a comment somebody wrote"))
         XCTAssertTrue(rendered.contains("old.example.com"))

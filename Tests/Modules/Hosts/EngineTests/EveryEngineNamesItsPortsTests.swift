@@ -14,10 +14,23 @@ import HelmTestSupport
 /// Derived from the source rather than from a list beside a list: every
 /// `HostsEngine(` under this module's tests is a subject, so a construction
 /// added later cannot quietly take a default.
+///
+/// **`generator:` and `home:` are on the list, and were not.** The engine takes
+/// ten things and the check asked for seven, so the two that were left out are
+/// the two nobody was reminded of — and they are not decoration:
+///
+/// - `generator:` defaults to `SystemKeyGenerator`, which is the real
+///   `/usr/bin/ssh-keygen` on a real pty. A test that gets past the engine's
+///   refusals spawns it, pointed at whatever path the keys port composes.
+/// - `home:` defaults to **this Mac's own home directory**, and it is the
+///   reference `SSHFileScope` judges every write against. A construction that
+///   forgets it is a test asking the gate about the owner's `~/.ssh` while
+///   claiming to be about a scratch directory — and the verdict it gets is
+///   about neither.
 final class EveryEngineNamesItsPortsTests: XCTestCase {
 
     private static let required = ["file:", "privileged:", "backups:", "sshConfig:",
-                                   "knownHosts:", "keys:", "agent:"]
+                                   "knownHosts:", "keys:", "agent:", "generator:", "home:"]
 
     func testEveryConstructionInTheseTestsNamesEveryPort() throws {
         let root = RepoSource.root.appendingPathComponent("Tests/Modules/Hosts")

@@ -42,6 +42,11 @@ struct HostsUIWire {
                                  backups: MemoryBackups(backups),
                                  sshConfig: WireSSHConfig(),
                                  knownHosts: WireKnownHosts(), keys: keys, agent: agent,
+                                 generator: WireKeyGenerator(),
+                                 // The gate's reference, and `/nowhere` is where
+                                 // every port above lives. Defaulted it is this
+                                 // Mac's own home directory.
+                                 home: URL(fileURLWithPath: "/nowhere"),
                                  now: { Date(timeIntervalSince1970: 0) },
                                  transport: transport)
         return HostsUIWire(engine: engine, transport: transport, privileged: root,
@@ -96,24 +101,26 @@ final class WireKeys: SSHKeysPort, @unchecked Sendable {
     /// «press Fix and the row changes» needs the row to be able to change. A
     /// fixed keyring could only ever show one verdict, and the control under it
     /// would be proved by nothing.
-    private let listing: [String]?
+    private let listing: KeyInventory.Listing?
 
     /// `names: nil` is a folder that could not be read at all, which is not a
     /// folder with no keys — the distinction the page draws two different
     /// sentences for, and one a fake without it could not put a test behind.
     init(mode: mode_t = 0o600,
-         names: [String]? = ["id_ed25519", "id_ed25519.pub", "known_hosts"]) {
+         names: KeyInventory.Listing? = ["id_ed25519", "id_ed25519.pub", "known_hosts"]) {
         self.mode = mode
         self.listing = names
     }
 
-    func names() -> [String]? { listing }
+    func names() -> KeyInventory.Listing? { listing }
     func facts(for pair: KeyInventory.Pair) -> KeyFacts {
         KeyFacts(pair: pair,
-                 describeLine: "256 SHA256:abc123 me@mac (ED25519)",
+                 // The ending is the tool's; see `FakeSSHKeys.init`.
+                 describeLine: "256 SHA256:abc123 me@mac (ED25519)\n",
                  mode: lock.withLock { mode },
                  modified: Date(timeIntervalSince1970: 1_700_000_000),
-                 publicText: "ssh-ed25519 AAAA me@mac\n")
+                 publicText: "ssh-ed25519 AAAA me@mac\n",
+                 isDirectory: listing?.directories.contains(pair.name) ?? false)
     }
     func directoryMode() -> mode_t? { 0o700 }
     func chmod(_ name: String, to newMode: mode_t) -> Bool {
@@ -154,6 +161,21 @@ struct WireKnownHosts: KnownHostsPort {
     let url = URL(fileURLWithPath: "/nowhere/.ssh/known_hosts")
     func read() -> String? { "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5 me@mac\n" }
     func write(_ text: String) -> Bool { true }
+}
+
+/// `ssh-keygen`, named at every construction so that no test in this target
+/// takes the default and runs the real `/usr/bin/ssh-keygen` on a real pty,
+/// pointed at whatever path the keys port composes.
+///
+/// It refuses, because nothing here is about a key being made — and it still
+/// zeroes what it was handed, as the real one does, so «the caller's buffer is
+/// empty afterwards» stays true on this path too.
+struct WireKeyGenerator: KeyGeneratorPort {
+    func generate(_ arguments: [String], answering secret: inout Data) -> Int32 {
+        secret.resetBytes(in: secret.startIndex..<secret.endIndex)
+        secret = Data()
+        return 1
+    }
 }
 
 /// `~/.ssh/config` for the pages in this target. Named at the construction so

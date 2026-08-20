@@ -31,6 +31,7 @@ final class KeysEngineTests: XCTestCase {
                                     text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(),
                                  keys: keys, agent: agent,
+                                 generator: FakeGenerator(),
                                  home: home,
                                  transport: transport)
         return Bench(engine: engine, keys: keys, agent: agent, transport: transport)

@@ -233,7 +233,7 @@ final class FakeSSHConfig: SSHConfigPort, @unchecked Sendable {
 /// engine that would otherwise have nothing behind it.
 final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
     private let lock = NSLock()
-    private var listing: [String]?
+    private var listing: KeyInventory.Listing?
     private var modes: [String: mode_t]
     private var lines: [String: String]
     private var publics: [String: String]
@@ -246,9 +246,17 @@ final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
     /// `~/.ssh` is how a test starts writing to somebody's keys.
     let directory = URL(fileURLWithPath: "/nowhere/.ssh")
 
-    init(names: [String]? = ["id_ed25519", "id_ed25519.pub"],
+    /// **`Listing`, not `[String]`, so a directory in the keyring is a state
+    /// this fake can be in.** `~/.ssh` holds folders — `sockets` for a
+    /// `ControlPath`, `config.d` for an `Include` — and a fake that could only
+    /// hold file names could not fail the way the port does.
+    init(names: KeyInventory.Listing? = ["id_ed25519", "id_ed25519.pub"],
          modes: [String: mode_t] = ["id_ed25519": 0o600],
-         lines: [String: String] = ["id_ed25519": "256 SHA256:abc123 me@mac (ED25519)"],
+         // With the ending `ssh-keygen -l` really writes. A fake tidier than
+         // the port cannot fail the way the port does, and this one was: the
+         // parser refused every real key on the machine while every test built
+         // on this line stayed green.
+         lines: [String: String] = ["id_ed25519": "256 SHA256:abc123 me@mac (ED25519)\n"],
          publics: [String: String] = ["id_ed25519": "ssh-ed25519 AAAA me@mac\n"],
          stamps: [String: Date] = [:],
          directoryMode: mode_t? = 0o700) {
@@ -270,7 +278,7 @@ final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
     /// `chmod` refuses from now on: an immutable flag, a read-only volume.
     func refusesToChangeModes() { lock.withLock { refuses = true } }
 
-    func names() -> [String]? { lock.withLock { listing } }
+    func names() -> KeyInventory.Listing? { lock.withLock { listing } }
 
     func facts(for pair: KeyInventory.Pair) -> KeyFacts {
         lock.withLock {
@@ -278,7 +286,8 @@ final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
                      describeLine: pair.hasPublicHalf ? lines[pair.name] : nil,
                      mode: modes[pair.name],
                      modified: stamps[pair.name],
-                     publicText: pair.hasPublicHalf ? publics[pair.name] : nil)
+                     publicText: pair.hasPublicHalf ? publics[pair.name] : nil,
+                     isDirectory: listing?.directories.contains(pair.name) ?? false)
         }
     }
 

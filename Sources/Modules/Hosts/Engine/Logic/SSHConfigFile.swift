@@ -85,10 +85,41 @@ public enum SSHConfigFile {
         public internal(set) var value: String
         /// Everything after the value, its line ending included.
         let trailing: String
-        /// Which host block this line belongs to, or nil for a field before
-        /// the first `Host` line — legal, and applied to every connection.
-        public let host: Int?
+        /// Where this line sits — and **the answers are three, not two.**
+        ///
+        /// This was `host: Int?`, and its `nil` meant both «before the first
+        /// `Host` line» and «under a `Match`». Those are opposites: a preamble
+        /// field applies to *every* connection, and a `Match` field applies to
+        /// none this module can name, because the condition that selects it is
+        /// a grammar this parser does not read. One `nil` for both is the fold
+        /// ARCHITECTURE.md § A nil from a system read is about, and it made the
+        /// preamble unreachable — while any attempt to reach it swept the
+        /// `Match` block's key into the host above.
+        public let scope: Scope
+        /// The host block this line belongs to, or nil when it belongs to none.
+        /// What an editor may write to; `scope` is what says *why* when it is
+        /// nil.
+        public var host: Int? {
+            if case .host(let index) = scope { return index }
+            return nil
+        }
         public let index: Int
+    }
+
+    /// Which part of the file a field sits in.
+    public enum Scope: Equatable, Sendable {
+        /// Before the first `Host` line. Legal, and applied to every
+        /// connection — and applied *first*, so it wins over a block that sets
+        /// the same parameter.
+        case preamble
+        /// Inside the `Host` block with this index.
+        case host(Int)
+        /// Inside a `Match` block. It applies when the match condition holds,
+        /// and this module can neither show that condition nor evaluate it — so
+        /// the field is copied and attributed to nobody. Attributing it to the
+        /// `Host` block above would tell somebody a host uses a key it only
+        /// uses sometimes.
+        case match
     }
 
     public struct Document: Equatable, Sendable {
@@ -105,8 +136,46 @@ public enum SSHConfigFile {
 
         /// The rows the table draws: one host, with the four fields Helm knows
         /// about that were found inside it.
+        ///
+        /// The block's **own** lines, which is what an editor may write to. For
+        /// what `ssh` will actually use, see `fieldsReaching(host:)`.
         public func fields(ofHost index: Int) -> [Field] {
             fields.filter { $0.host == index }
+        }
+
+        /// **Whether the file hands part of itself to files this module has not
+        /// read.**
+        ///
+        /// `Include` is `ssh_config`'s way of splitting a config across a
+        /// directory, and everything in those files is invisible here — so a
+        /// document carrying one cannot support the sentence «not used by
+        /// anything here», which on the keys tab is read as «safe to delete».
+        /// The positive answers are unaffected: a key this file names is named
+        /// by it whatever else is included.
+        ///
+        /// `Include` is not one of the four directives this module edits, so it
+        /// is a `verbatim` line and is recognised by its keyword.
+        public var includesOtherFiles: Bool {
+            lines.contains { line in
+                guard case .verbatim(let text) = line else { return false }
+                return parts(text).map { $0.keyword.lowercased() == "include" } ?? false
+            }
+        }
+
+        /// Every field `ssh` reads for this host, in the order it reads them:
+        /// **the preamble first, then the block's own lines.**
+        ///
+        /// A directive before the first `Host` line is not «in no block», it is
+        /// «in every block» — `Field.scope` says so in its own documentation and
+        /// the join dropped every such field on the floor, so a key the whole
+        /// file logs in with read as «not used by anything here», which on that
+        /// page is the sentence meaning «safe to delete».
+        ///
+        /// The preamble comes first because `ssh` reads the file top to bottom
+        /// and **the first value obtained for a parameter is the one used** —
+        /// so a preamble line does not merely apply, it wins.
+        public func fieldsReaching(host index: Int) -> [Field] {
+            fields.filter { $0.scope == .preamble || $0.scope == .host(index) }
         }
     }
 
@@ -116,25 +185,27 @@ public enum SSHConfigFile {
         var lines: [Line] = []
         var hostIndex = 0
         var fieldIndex = 0
-        var currentHost: Int?
+        var scope: Scope = .preamble
         for raw in splitKeepingEndings(text) {
             let body = raw.body
             if let host = host(from: body, ending: raw.ending, index: hostIndex) {
                 lines.append(.host(host))
-                currentHost = hostIndex
+                scope = .host(hostIndex)
                 hostIndex += 1
                 continue
             }
             // A `Match` closes the block above it without opening one this
             // parser will offer to edit: fields under it belong to nobody, and
-            // are copied rather than shown.
+            // are copied rather than shown. **Its own scope, not the
+            // preamble's** — the preamble reaches every host and a `Match`
+            // reaches none this module can name.
             if opensAMatch(body) {
-                currentHost = nil
+                scope = .match
                 lines.append(.verbatim(body + raw.ending))
                 continue
             }
             if let field = field(from: body, ending: raw.ending,
-                                 host: currentHost, index: fieldIndex) {
+                                 scope: scope, index: fieldIndex) {
                 lines.append(.field(field))
                 fieldIndex += 1
                 continue
@@ -218,20 +289,34 @@ public enum SSHConfigFile {
     }
 
     private static func field(from body: String, ending: String,
-                              host: Int?, index: Int) -> Field? {
+                              scope: Scope, index: Int) -> Field? {
         guard let parts = parts(body), let name = FieldName.named(parts.keyword),
               !parts.rest.isEmpty else { return nil }
         let (value, trailing) = split(value: parts.rest)
         return Field(name: name, keyword: parts.keyword, indent: parts.indent,
                      separator: parts.separator, value: value,
-                     trailing: trailing + ending, host: host, index: index)
+                     trailing: trailing + ending, scope: scope, index: index)
     }
 
-    /// The value, and what follows it. A value runs to the first whitespace
-    /// that is followed by a `#`, or to the end of the line — `ssh` takes the
-    /// rest of the line, and a trailing comment is what people put there.
+    /// The value, and what follows it.
+    ///
+    /// **A `#` opens a comment only where a token begins**, and is an ordinary
+    /// character inside one. Measured against this Mac's own `ssh`, which is
+    /// the only authority on it:
+    ///
+    /// ```
+    /// $ printf 'Host box\n  IdentityFile ~/.ssh/my#key\n' > cfg; ssh -G -F cfg box
+    /// identityfile ~/.ssh/my#key
+    /// $ printf 'Host box\n  IdentityFile ~/.ssh/plain # note\n' > cfg; ssh -G -F cfg box
+    /// identityfile ~/.ssh/plain
+    /// ```
+    ///
+    /// Cutting at the first `#` outright was one condition short, and both
+    /// halves of the mistake showed at once: the host's row marked a key that
+    /// is gone (there is no `my`) and the key `ssh` really uses read «not used
+    /// by anything here» — the sentence that means «safe to delete».
     private static func split(value rest: String) -> (value: String, trailing: String) {
-        guard let hash = rest.firstIndex(of: "#") else {
+        guard let hash = commentStart(in: rest) else {
             // Trailing whitespace belongs to the trailing part, so an edit does
             // not silently strip it.
             let value = String(rest.reversed().drop { $0 == " " || $0 == "\t" }.reversed())
@@ -240,6 +325,22 @@ public enum SSHConfigFile {
         let head = String(rest[rest.startIndex..<hash])
         let value = String(head.reversed().drop { $0 == " " || $0 == "\t" }.reversed())
         return (value, String(rest.dropFirst(value.count)))
+    }
+
+    /// Where a comment starts: a `#` that opens a token, meaning the line
+    /// begins with it or a space or tab sits in front of it. A `#` anywhere
+    /// else is part of the value.
+    private static func commentStart(in rest: String) -> String.Index? {
+        var previous: Character?
+        var index = rest.startIndex
+        while index < rest.endIndex {
+            if rest[index] == "#", previous == nil || previous == " " || previous == "\t" {
+                return index
+            }
+            previous = rest[index]
+            index = rest.index(after: index)
+        }
+        return nil
     }
 
     // MARK: - Writing

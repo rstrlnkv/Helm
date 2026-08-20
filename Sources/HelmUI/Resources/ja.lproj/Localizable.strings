@@ -1005,6 +1005,7 @@
 "Used by every host" = "すべてのホストが使用";
 "Used by default — ssh tries this name" = "既定で使用 — ssh がこの名前を試します";
 "Not used by anything here" = "ここでは使われていません";
+"Not named here — an included file may use it" = "ここには記載なし — インクルードされたファイルが使用している可能性";
 "This key is missing" = "この鍵がありません";
 "The known hosts file could not be read" = "既知のホストのファイルを読み込めませんでした";
 "Forget" = "忘れる";

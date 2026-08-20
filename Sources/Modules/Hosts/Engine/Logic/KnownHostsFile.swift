@@ -116,10 +116,22 @@ public enum KnownHostsFile {
         document.lines.map(\.raw).joined(separator: "\n")
     }
 
-    /// The document without that line. The only edit this file has.
-    public static func forget(_ index: Int, in document: Document) -> Document {
+    /// The document without the line that reads exactly this. The only edit
+    /// this file has.
+    ///
+    /// **By the line's own bytes, never by its position.** A position is a fact
+    /// about the reading it came from, and this is the one file in the module
+    /// that grows under the app: `ssh` appends to it from any terminal the
+    /// moment somebody trusts a new machine, so the index a page took minutes
+    /// ago names a different line by the time Forget is pressed. The bytes name
+    /// the same trust in any reading of the file — and `ssh` only ever appends,
+    /// so a line that was there is there unchanged or is gone.
+    ///
+    /// Every copy goes, because two identical lines are one trust written
+    /// twice, and leaving the second would make Forget look inert.
+    public static func forget(line raw: String, in document: Document) -> Document {
         Document(lines: document.lines.filter {
-            if case .entry(let entry) = $0 { return entry.index != index }
+            if case .entry(let entry) = $0 { return entry.raw != raw }
             return true
         })
     }

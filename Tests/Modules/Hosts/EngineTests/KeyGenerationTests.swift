@@ -64,7 +64,7 @@ final class KeyGenerationTests: XCTestCase {
         let transport: LocalTransport
     }
 
-    private func bench(names: [String]? = ["id_ed25519", "id_ed25519.pub"],
+    private func bench(names: KeyInventory.Listing? = ["id_ed25519", "id_ed25519.pub"],
                        status: Int32 = 0) -> Bench {
         let transport = LocalTransport()
         let hosts = FakeHostsFile()

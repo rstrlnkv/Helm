@@ -208,8 +208,15 @@ enum PTYProcess {
     /// Overwrite the bytes and drop them. `resetBytes` writes through the
     /// buffer rather than replacing the value, which is the difference between
     /// zeroing a secret and abandoning one.
+    ///
+    /// **The range is the value's own indices, not `0..<count`.** A `Data` that
+    /// is a *slice* does not start at zero: its `startIndex` is wherever the
+    /// slice begins, so `0..<count` writes over bytes in front of it and leaves
+    /// its own tail — the part still holding the passphrase — untouched. No
+    /// caller here hands over a slice today, which is why nothing has caught
+    /// it; one `dropFirst` anywhere upstream is all it would take.
     private static func zero(_ secret: inout Data) {
-        secret.resetBytes(in: 0..<secret.count)
+        secret.resetBytes(in: secret.startIndex..<secret.endIndex)
         secret = Data()
     }
 

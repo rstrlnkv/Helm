@@ -205,6 +205,8 @@ final class HostsApplyTests: XCTestCase {
         let engine = HostsEngine(file: file, privileged: privileged, backups: backups,
                                  sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/.ssh/config"), text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                                 generator: FakeGenerator(),
+                                 home: URL(fileURLWithPath: "/nowhere"),
                                  now: { Date(timeIntervalSince1970: 1_755_000_000) },
                                  transport: LocalTransport())
         let outcome = try await restore(engine, otherCase)
@@ -256,7 +258,7 @@ final class HostsApplyTests: XCTestCase {
         let outcome = try await applying.value
         XCTAssertEqual(outcome, .applied)
         let settled = try await events.operation(where: { !$0.running }, timeout: 5)
-        XCTAssertEqual(settled.lastOutcome, HostsOutcome.applied.rawValue)
+        XCTAssertEqual(settled.lastOutcome, .applied)
     }
 
     /// The state goes out again when the write is over — the transport replays
@@ -299,6 +301,11 @@ private final class Hosts {
         engine = HostsEngine(file: file, privileged: privileged, backups: backups,
                              sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/.ssh/config"), text: "Host a\n"),
                              knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                             generator: FakeGenerator(),
+                             // Every ssh port here is at `/nowhere`, and the home
+                             // the gate compares them against says so too — a
+                             // defaulted `home:` would be this Mac's.
+                             home: URL(fileURLWithPath: "/nowhere"),
                              now: { Date(timeIntervalSince1970: 1_755_000_000) },
                              transport: transport)
     }

@@ -32,15 +32,18 @@ final class KnownHostsApplyTests: XCTestCase {
                                     url: URL(fileURLWithPath: "/nowhere/.ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: port, keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                                 generator: FakeGenerator(),
                                  home: home, transport: transport)
         return Bench(engine: engine, port: port, transport: transport)
     }
 
-    private func apply(_ transport: LocalTransport, _ text: String) async throws
+    /// The act is one line, by its own bytes — the engine reads the file again
+    /// and removes it from what it finds there.
+    private func forget(_ transport: LocalTransport, _ line: String) async throws
         -> SSHConfigOutcome {
         let reply = try await transport.send(EngineCommand(
-            name: HostsCommand.applyKnownHosts.rawValue,
-            payload: try JSONEncoder().encode(KnownHostsApply(text: text))))
+            name: HostsCommand.forgetKnownHost.rawValue,
+            payload: try JSONEncoder().encode(KnownHostsForget(line: line))))
         return try JSONDecoder().decode(SSHConfigOutcome.self, from: reply)
     }
 
@@ -53,14 +56,16 @@ final class KnownHostsApplyTests: XCTestCase {
     func testForgettingAHostLandsInTheFile() async throws {
         let b = bench(text: "github.com ssh-ed25519 AAAAB3 me@mac\nold.example ssh-rsa AAAAB3\n")
         b.engine.activate()
-        let document = KnownHostsFile.parse(b.port.read() ?? "")
-        let pruned = KnownHostsFile.render(
-            KnownHostsFile.forget(document.entries[0].index, in: document))
+        let line = KnownHostsFile.parse(b.port.read() ?? "").entries[0].raw
 
-        let outcome = try await apply(b.transport, pruned)
+        let outcome = try await forget(b.transport, line)
         XCTAssertEqual(outcome, .applied)
-        XCTAssertEqual(b.port.read(), pruned)
         XCTAssertFalse(b.port.read()?.contains("github.com") ?? true)
+        XCTAssertTrue(b.port.read()?.contains("old.example") ?? false,
+                      "the line beside it went too")
+        // An engine that matched no line ever would report `.applied` over an
+        // untouched file; the count is what keeps that from passing.
+        XCTAssertEqual(b.port.writeCount, 1, "the file was not written at all")
     }
 
     /// **A write that reports success over a file it did not change is believed
@@ -69,7 +74,7 @@ final class KnownHostsApplyTests: XCTestCase {
     func testAPortThatLiesAboutTheWriteIsCaught() async throws {
         let b = bench(behaviour: .lie)
         b.engine.activate()
-        let outcome = try await apply(b.transport, "")
+        let outcome = try await forget(b.transport, "github.com ssh-ed25519 AAAAB3 me@mac")
         XCTAssertEqual(outcome, .notVerified)
         XCTAssertEqual(b.port.writeCount, 1, "precondition: the write was attempted")
     }
@@ -77,7 +82,7 @@ final class KnownHostsApplyTests: XCTestCase {
     func testAWriteThePortRefusesIsAFailure() async throws {
         let b = bench(behaviour: .refuse)
         b.engine.activate()
-        let outcome = try await apply(b.transport, "")
+        let outcome = try await forget(b.transport, "github.com ssh-ed25519 AAAAB3 me@mac")
         XCTAssertEqual(outcome, .failed)
     }
 
@@ -105,9 +110,10 @@ final class KnownHostsApplyTests: XCTestCase {
                                     url: URL(fileURLWithPath: "/nowhere/.ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: port, keys: FakeSSHKeys(), agent: FakeSSHAgent(),
+                                 generator: FakeGenerator(),
                                  home: home, transport: transport)
         engine.activate()
-        let outcome = try await apply(transport, "anything")
+        let outcome = try await forget(transport, "anything")
         XCTAssertEqual(outcome, .outOfScope)
         XCTAssertEqual(port.writeCount, 0, "a refused path was written to anyway")
     }

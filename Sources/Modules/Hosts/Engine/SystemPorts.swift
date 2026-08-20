@@ -97,9 +97,12 @@ public struct SystemSSHConfig: SSHConfigPort {
         return String(data: data, encoding: .utf8)
     }
 
+    /// `.whatItLeadsTo`, because this file is very often a link into a dotfiles
+    /// checkout — the case `SSHFileScope` goes out of its way to admit, and the
+    /// case the atomic rename quietly took away.
     public func write(_ text: String) -> Bool {
         guard let data = text.data(using: .utf8) else { return false }
-        return PrivateFile.write(data, to: url)
+        return PrivateFile.write(data, to: url, destination: .whatItLeadsTo)
     }
 }
 
@@ -125,14 +128,30 @@ public struct SystemSSHKeys: SSHKeysPort {
         self.deadline = deadline
     }
 
-    public func names() -> [String]? {
-        try? FileManager.default.contentsOfDirectory(atPath: directory.path)
+    /// One listing, with the directory flag prefetched for every entry —
+    /// `includingPropertiesForKeys` fills the cache during the enumeration, so
+    /// this stays one question about the folder rather than a `stat` per name.
+    public func names() -> KeyInventory.Listing? {
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.isDirectoryKey])
+        else { return nil }
+        var names: [String] = []
+        var directories: Set<String> = []
+        for entry in entries {
+            let name = entry.lastPathComponent
+            names.append(name)
+            if (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                directories.insert(name)
+            }
+        }
+        return KeyInventory.Listing(names: names, directories: directories)
     }
 
     public func facts(for pair: KeyInventory.Pair) -> KeyFacts {
         let path = directory.appendingPathComponent(pair.name).path
         let publicPath = path + ".pub"
         let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+        let isDirectory = (attributes?[.type] as? FileAttributeType) == .typeDirectory
         let publicText = pair.hasPublicHalf
             ? (try? Data(contentsOf: URL(fileURLWithPath: publicPath)))
                 .flatMap { String(data: $0, encoding: .utf8) }
@@ -147,7 +166,8 @@ public struct SystemSSHKeys: SSHKeysPort {
                         describeLine: described,
                         mode: (attributes?[.posixPermissions] as? NSNumber).map { mode_t($0.uint16Value) },
                         modified: attributes?[.modificationDate] as? Date,
-                        publicText: publicText)
+                        publicText: publicText,
+                        isDirectory: isDirectory)
     }
 
     public func directoryMode() -> mode_t? {
@@ -273,8 +293,10 @@ public struct SystemKnownHosts: KnownHostsPort {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return String(data: data, encoding: .utf8)
     }
+    /// Linked into a dotfiles checkout less often than a config and linked all
+    /// the same — and Forget rewrites the whole file, so one press was enough.
     public func write(_ text: String) -> Bool {
         guard let data = text.data(using: .utf8) else { return false }
-        return PrivateFile.write(data, to: url)
+        return PrivateFile.write(data, to: url, destination: .whatItLeadsTo)
     }
 }

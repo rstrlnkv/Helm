@@ -33,6 +33,11 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// The home directory the gate judges against — injected so a test can own
     /// a home of its own rather than the machine's.
     private let home: URL
+    /// Where the reading `activate()` asks for runs, and the item it is, held so
+    /// teardown can cancel one that has not begun. See `activate()`.
+    private let readings = DispatchQueue(label: "helm.hosts.readings", qos: .userInitiated)
+    private let firstReadingLock = NSLock()
+    private var firstReading: DispatchWorkItem?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -68,13 +73,33 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         wireTransport()
     }
 
+    /// **The thread that draws asks for the reading and does not wait for it.**
+    ///
+    /// `ModuleHost` is `@MainActor` and calls this from `enable(_:)` at every
+    /// launch, so whatever happens here happens before the menu bar is drawn.
+    /// `emitState()` is not a cheap call to make there: `ssh-add -l` is a round
+    /// trip to a socket bounded at 5 s, and one `ssh-keygen -l` per key is
+    /// bounded at 5 s each — deadlines that exist *because* both tools can sit,
+    /// on a dead `SSH_AUTH_SOCK` or a stalled network mount. Every other
+    /// engine's `activate()` is empty or a store read.
+    ///
+    /// The state still goes out, before any view model exists, and the
+    /// transport replays it to whoever subscribes afterwards — so nothing is
+    /// lost by the caller not waiting. The item is held rather than dropped:
+    /// once the reading has begun it holds this engine for its own duration,
+    /// and a reading that has not begun must not start after teardown.
     public func activate() {
-        // The state goes out during activate, before any view model exists —
-        // the transport replays it to whoever subscribes afterwards.
-        emitState()
+        let reading = DispatchWorkItem { [weak self] in _ = self?.emitState() }
+        firstReadingLock.withLock { firstReading = reading }
+        readings.async(execute: reading)
     }
 
-    public func deactivate() {}
+    public func deactivate() {
+        firstReadingLock.withLock {
+            firstReading?.cancel()
+            firstReading = nil
+        }
+    }
 
     // MARK: - Reading
 
@@ -210,9 +235,12 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// A load runs on a terminal (`PTYProcess`), because `ssh-add` asks for a
     /// passphrase the way `ssh-keygen` does and has no flag that would take one
-    /// safely. The secret arrives as `Data`, is handed to the port `inout`, and
-    /// the port zeroes it.
-    func load(_ name: String, passphrase: Data) async -> KeyOutcome {
+    /// safely. The secret arrives in a `Secret` — a reference to the one buffer
+    /// the decode produced — is moved out of it into the `inout` argument, and
+    /// the port zeroes it. **A `Data` parameter here was the defect**: the
+    /// parameter stayed alive beside `var carried = passphrase`, so the buffer
+    /// was never unique and `resetBytes` zeroed a copy.
+    func load(_ name: String, passphrase: Secret) async -> KeyOutcome {
         defer { emitState() }
         guard selected(name) != nil else {
             HelmLog.shared.warn(Self.moduleID, "an agent act named a key that is not there")
@@ -226,7 +254,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         // type, and the pty read blocks for all of it. A pool thread must not
         // be the one waiting — the rule `apply` follows for the password dialog.
         let outcome = await offTheCooperativePool { [agent] in
-            var carried = passphrase
+            // `take()` and not a copy: what goes in is the buffer the JSON
+            // decode produced, and nothing else refers to it by the time the
+            // port zeroes it.
+            var carried = passphrase.take()
             defer { carried = Data() }
             return agent.load(name, answering: &carried)
         }
@@ -263,14 +294,15 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// answer given to a question the person never saw is how a key is
     /// destroyed. So Helm never points it at a name that is already there.
     ///
-    /// **The secret is `inout` all the way down** and the port zeroes it, so
-    /// this function holds nothing to leak after the call returns. The request
-    /// itself is not logged — the log carries no names, and a comment is
-    /// somebody's address.
-    func generate(_ request: KeyGeneration.Request) async -> GenerateOutcome {
-        var request = request
-        defer { request = KeyGeneration.Request(type: request.type, name: request.name,
-                                                comment: request.comment, passphrase: Data()) }
+    /// **The secret travels in a `Secret` and is moved, never copied**, so the
+    /// buffer the port zeroes is the buffer the person's passphrase was decoded
+    /// into and nothing else refers to it. This used to be `let secret =
+    /// request.passphrase` with the request alive beside it, which is two
+    /// references to a copy-on-write buffer — so `resetBytes` allocated, zeroed
+    /// the allocation, and left the passphrase where it was. The request itself
+    /// is not logged — the log carries no names, and a comment is somebody's
+    /// address.
+    func generate(_ request: KeyGeneration.Request, secret: Secret) async -> GenerateOutcome {
         guard claimGeneration() else { return .alreadyRunning }
         defer { releaseGeneration(); emitState() }
 
@@ -288,24 +320,26 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID, "a key was not made: \(refusal.rawValue)")
             return GenerateOutcome.of(refusal)
         case .success(let arguments):
-            emitOperation(HostsOperation(running: true))
+            // **Nothing is emitted on `HostsEvent.operation` here.** That event
+            // is `/etc/hosts`'s, and a generation spoke on it: `running` is
+            // what disables Apply and draws the unsaved bar, and the outcome
+            // arrived as the hosts file's own word because the two enums spell
+            // `failed` alike. The page learns how a generation went from this
+            // call's reply, which is where `HostsViewModel.generated` already
+            // takes it from, and that it is running from its own `makingKey` —
+            // a generation is started by the page, so no other reader has to be
+            // told about it.
+            //
             // `ssh-keygen` on an RSA 4096 key is seconds of work and the pty
             // read blocks for all of them. A pool thread must not be the one
             // waiting — the rule `apply` follows for the password dialog.
-            //
-            // The buffer the port zeroes is the one made inside the closure:
-            // a `var` captured from out here would be shared with a thread this
-            // one no longer controls, which the compiler refuses and which is
-            // the wrong shape for a secret anyway.
-            let secret = request.passphrase
             let status = await offTheCooperativePool { [generator] in
-                var carried = secret
+                var carried = secret.take()
                 defer { carried = Data() }
                 return generator.generate(arguments, answering: &carried)
             }
             let outcome: GenerateOutcome = status == 0 ? .done : .failed
             HelmLog.shared.info(Self.moduleID, "generate: \(outcome.rawValue)")
-            emitOperation(HostsOperation(running: false, lastOutcome: outcome.rawValue))
             return outcome
         }
     }
@@ -344,13 +378,39 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// would be a second contract about which line, decided on one side of the
     /// wire and acted on at the other after the file may have changed — and the
     /// thing being removed is somebody's record of a host they trust.
-    private func applyKnownHosts(_ text: String) -> SSHConfigOutcome {
-        HelmActivity.phase("hosts.knownHosts.apply") {
+    /// Gate, **read the file again**, drop the line, write, read back.
+    ///
+    /// The reading the page acts from is minutes old by the time somebody
+    /// presses Forget, and `known_hosts` is the one file here that grows under
+    /// the app: `ssh` appends a line to it from any terminal the moment a new
+    /// machine is trusted. Rendering the whole document from the page's
+    /// snapshot wrote every one of those away, and the read-back could not
+    /// see it — it compares what was sent with what was written, and those two
+    /// agree exactly. So the act names a line and the removal happens against
+    /// the file as it is now.
+    ///
+    /// A line no longer there is `.applied` with nothing written: what Forget
+    /// asked for — that this host is not trusted — already holds, and a failure
+    /// over it would be a false alarm on a second press. `testForgetting…`
+    /// asserts the write count on the ordinary case, so an implementation that
+    /// matched nothing ever would fail rather than report success everywhere.
+    private func forgetKnownHost(_ line: String) -> SSHConfigOutcome {
+        HelmActivity.phase("hosts.knownHosts.forget") {
             defer { emitState() }
             guard mayWriteKnownHosts() else {
                 HelmLog.shared.warn(Self.moduleID,
                                     "the known_hosts path is outside what may be written")
                 return .outOfScope
+            }
+            guard let current = knownHosts.read() else {
+                HelmLog.shared.warn(Self.moduleID, "known_hosts could not be read to forget from")
+                return .failed
+            }
+            let text = KnownHostsFile.render(
+                KnownHostsFile.forget(line: line, in: KnownHostsFile.parse(current)))
+            guard text != current else {
+                HelmLog.shared.info(Self.moduleID, "the host to forget is already not trusted")
+                return .applied
             }
             guard knownHosts.write(text) else {
                 HelmLog.shared.warn(Self.moduleID, "known_hosts could not be written")
@@ -465,7 +525,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// return an outcome the page never hears about.
     private func finish(_ outcome: HostsOutcome) -> HostsOutcome {
         HelmLog.shared.info(Self.moduleID, "apply: \(outcome.rawValue)")
-        emitOperation(HostsOperation(running: false, lastOutcome: outcome.rawValue))
+        emitOperation(HostsOperation(running: false, lastOutcome: outcome))
         return outcome
     }
 
@@ -507,10 +567,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = EngineReply.decode(SSHConfigApply.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(self.applySSH(request.text), for: command)
-            case .applyKnownHosts:
-                guard let request = EngineReply.decode(KnownHostsApply.self, from: command)
+            case .forgetKnownHost:
+                guard let request = EngineReply.decode(KnownHostsForget.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(self.applyKnownHosts(request.text), for: command)
+                return EngineReply.encode(self.forgetKnownHost(request.line), for: command)
             case .fixKeyPermissions:
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }
@@ -518,18 +578,24 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
             case .fixDirectoryPermissions:
                 return EngineReply.encode(self.fixDirectoryPermissions(), for: command)
             case .agentLoad:
-                guard let request = EngineReply.decode(KeyLoad.self, from: command)
+                // The bytes come out of the decoded payload here, at the one
+                // place they arrive, and the payload keeps none: a passphrase
+                // left in two places cannot be zeroed in either. See `Secret`.
+                guard var request = EngineReply.decode(KeyLoad.self, from: command)
                 else { return Data() }
+                let given = Secret(taking: &request.passphrase)
                 return EngineReply.encode(
-                    await self.load(request.name, passphrase: request.passphrase), for: command)
+                    await self.load(request.name, passphrase: given), for: command)
             case .agentUnload:
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(self.unload(request.name), for: command)
             case .generateKey:
-                guard let request = EngineReply.decode(KeyGeneration.Request.self, from: command)
+                guard var request = EngineReply.decode(KeyGeneration.Request.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(await self.generate(request), for: command)
+                let typed = Secret(taking: &request.passphrase)
+                return EngineReply.encode(await self.generate(request, secret: typed),
+                                          for: command)
             case .agentRefresh:
                 return EngineReply.encode(self.emitState(), for: command)
             case .settingsChanged:

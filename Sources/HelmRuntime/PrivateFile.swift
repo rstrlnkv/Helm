@@ -20,6 +20,35 @@ import Foundation
 /// left at 0755 stays there for ever unless it is set again.
 public enum PrivateFile {
 
+    /// **What a symlink at the destination means to this write**, which is a
+    /// question the caller owns and no default can answer for both kinds of
+    /// file this app writes.
+    ///
+    /// An atomic write is a temporary file `rename`d over the destination, and
+    /// `rename` replaces the *name*. For Helm's own caches and journals that is
+    /// exactly right — a link planted where a cache goes is not an arrangement
+    /// to honour, and replacing the name is what stops a write being redirected
+    /// out of the support folder. For a file that belongs to the person it is
+    /// wrong in a way nothing reports: `~/.ssh/config` is very often a link
+    /// into a dotfiles checkout, and the first Apply turned it into an ordinary
+    /// file — the checkout kept the old text, `git status` said nothing, and
+    /// every later edit there silently stopped reaching `ssh`.
+    ///
+    /// **A hard link is the other half of the same question and answers the
+    /// other way.** A second name for one inode is not a redirection anybody
+    /// arranged and no resolution can see it, so the rename stays a rename:
+    /// `.theName` and `.whatItLeadsTo` both write through a new inode at the
+    /// name they end on, and neither ever writes into a file a hard link
+    /// reaches out of the home directory.
+    public enum Destination: Sendable {
+        /// The name is the file. A symlink there is replaced by this write.
+        case theName
+        /// The name may only point at the file, and then the file is the
+        /// target. Every symlink in the path is resolved first, so the link
+        /// survives the write and what it points at receives it.
+        case whatItLeadsTo
+    }
+
     /// Encode, write atomically, set 0600.
     ///
     /// - Returns: whether it landed. These files are caches, journals and
@@ -32,18 +61,25 @@ public enum PrivateFile {
         return write(data, to: url)
     }
 
-    /// The same for bytes that are not JSON — the log's redaction salt.
+    /// The same for bytes that are not JSON — the log's redaction salt, and the
+    /// two files in `~/.ssh` that may be links into somebody's dotfiles.
     @discardableResult
-    public static func write(_ data: Data, to url: URL) -> Bool {
+    public static func write(_ data: Data, to url: URL,
+                             destination: Destination = .theName) -> Bool {
+        let path: String
+        switch destination {
+        case .theName: path = url.path
+        case .whatItLeadsTo: path = PathCanonical.resolvingWholePath(url.path)
+        }
         do {
-            try data.write(to: url, options: .atomic)
+            try data.write(to: URL(fileURLWithPath: path), options: .atomic)
         } catch {
             return false
         }
         // Every write. The file this replaced may have been private; the one
         // that just took its place is a different inode with the umask's mode.
         try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: url.path)
+                                               ofItemAtPath: path)
         return true
     }
 

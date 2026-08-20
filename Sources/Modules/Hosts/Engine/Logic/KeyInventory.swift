@@ -31,6 +31,40 @@ public enum KeyInventory {
         }
     }
 
+    /// **One reading of the directory: the names in it, and which of them are
+    /// directories.**
+    ///
+    /// The names alone cannot answer it, and the list of exclusions below is a
+    /// list of names — so a folder passed every one of them and drew a key row
+    /// with a Fix button that `chmod 600`s it. `~/.ssh/sockets` is what every
+    /// guide about `ControlPath` tells people to make and `~/.ssh/config.d` is
+    /// what an `Include` points at; a directory at 0600 cannot be entered by
+    /// anybody, its owner included.
+    ///
+    /// **Asked of the directory once, not of each name.** The port reads the
+    /// listing with the directory flag already prefetched, so this is one
+    /// question about the group rather than a `stat` per file — the shape a
+    /// «is this writable» asked per file cost 3.000 ms against 0.004 ms.
+    ///
+    /// `ExpressibleByArrayLiteral` because most tests are about the names and
+    /// say so with a literal; a literal has no directories in it, which is the
+    /// honest reading of a list of bare names.
+    public struct Listing: Equatable, Sendable, Sequence, ExpressibleByArrayLiteral {
+        public let names: [String]
+        public let directories: Set<String>
+
+        public init(names: [String], directories: Set<String> = []) {
+            self.names = names
+            self.directories = directories
+        }
+
+        public init(arrayLiteral elements: String...) {
+            self.init(names: elements)
+        }
+
+        public func makeIterator() -> IndexingIterator<[String]> { names.makeIterator() }
+    }
+
     /// The names `ssh` keeps in that directory that are not keys, whatever they
     /// look like. `environment` and `rc` are in the list because `ssh` reads
     /// them and a person may well have them.
@@ -44,12 +78,15 @@ public enum KeyInventory {
     ///
     /// An orphan `.pub` — a public half whose private key is gone — is **not** a
     /// pair: there is nothing to load into an agent and nothing to `chmod`, and
-    /// a row for it would offer both.
-    public static func pairs(in names: [String]) -> [Pair] {
+    /// a row for it would offer both. A **directory** is not a pair for the same
+    /// two reasons and a worse one — see `Listing`.
+    public static func pairs(in listing: Listing) -> [Pair] {
+        let names = listing.names
         let all = Set(names)
         let publics = Set(names.filter { $0.hasSuffix(".pub") })
         let privates = all.subtracting(publics)
             .filter { !furniture.contains($0) }
+            .filter { !listing.directories.contains($0) }
             // A backup or an editor's leftover is not a key. `.old` and `~`
             // are what the tools in this area actually leave behind.
             .filter { !$0.hasSuffix(".old") && !$0.hasSuffix("~") }
@@ -67,8 +104,19 @@ public enum KeyInventory {
     /// fields would otherwise be assigned in the wrong order — a fingerprint in
     /// the comment column is what an over-eager parser produces, and it is
     /// worse than an empty column because a person reads it as fact.
+    ///
+    /// **The line's own ending is not one of its fields.** `ssh-keygen -l`
+    /// writes `(ED25519)\n` and `HelmProcess.run` hands that over as it came,
+    /// so a split on the space character alone left the newline attached to the
+    /// last field and the `)` test refused every real key on the machine — no
+    /// fingerprint, no type, and `inAgent` false for ever, because the badge is
+    /// asked by a fingerprint the parse had thrown away. The ending is stripped
+    /// here rather than at the port because the shape of a line is this type's
+    /// question; the split stays on the space alone so that a comment's own
+    /// spacing survives into the column that shows it.
     public static func described(_ line: String) -> Description? {
-        let parts = line.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        let body = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = body.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         guard parts.count >= 3, let bits = Int(parts[0]),
               parts[1].hasPrefix("SHA256:") || parts[1].hasPrefix("MD5:") else { return nil }
         // The type is the last field, in brackets. The comment is everything

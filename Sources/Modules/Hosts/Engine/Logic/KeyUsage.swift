@@ -43,6 +43,19 @@ public enum KeyUsage {
         case byDefaultName
         /// Nothing names it and nothing will reach for it.
         case unused
+        /// Nothing **in the file Helm read** names it, and the file hands part
+        /// of itself to files Helm has not read — an `Include`.
+        ///
+        /// **Its own answer rather than `unused`, and that is a decision.**
+        /// `KeyUsage` already names one limit — `IdentitiesOnly yes` is not
+        /// parsed — and settles it by pointing the safe way: overstating use
+        /// keeps a key that could have gone. `Include` is the same limit
+        /// pointing the *unsafe* way, because it makes the module understate
+        /// use, and the sentence it understates into is the one somebody
+        /// deletes a key on. So the reading that cannot be completed says so,
+        /// which is the same shape as `AgentList.unreachable` and
+        /// `KeyRow.Permission.unknown`: «cannot say» is not «nothing».
+        case cannotSay
     }
 
     /// The names `ssh` tries when a host names no identity of its own.
@@ -60,18 +73,39 @@ public enum KeyUsage {
         "id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk", "id_dsa",
     ]
 
-    /// The identities each host block names, by the block's index, in the order
-    /// the file writes them. A host that names none answers with an empty list.
+    /// The identities each host uses, by the block's index, in the order the
+    /// file writes them — **the preamble's included.** A host that reaches none
+    /// answers with an empty list.
+    ///
+    /// A field before the first `Host` line applies to every connection, so a
+    /// block naming no identity of its own still logs in with the preamble's
+    /// key; a row that left the line blank would say «this host names no key»,
+    /// which is a different fact from the one the file carries.
     public static func ofHosts(_ document: SSHConfigFile.Document,
                                keys: [String], home: String) -> [Int: [Identity]] {
         let known = Set(keys)
         var out: [Int: [Identity]] = [:]
         for host in document.hosts {
-            out[host.index] = document.fields(ofHost: host.index)
+            out[host.index] = document.fieldsReaching(host: host.index)
                 .filter { $0.name == .identityFile }
                 .map { identity(of: $0.value, keys: known, home: home) }
         }
         return out
+    }
+
+    /// The identities named before the first `Host` line.
+    ///
+    /// Asked separately from `ofHosts` because what they mean *to a key* is a
+    /// different answer: a preamble key is not «named by these two blocks», it
+    /// is lent to every connection the file describes — including one to a host
+    /// the file never mentions, which is why a config with a preamble key and
+    /// no `Host` block at all still has a key in use.
+    static func ofPreamble(_ document: SSHConfigFile.Document,
+                           keys: [String], home: String) -> [Identity] {
+        let known = Set(keys)
+        return document.fields
+            .filter { $0.scope == .preamble && $0.name == .identityFile }
+            .map { identity(of: $0.value, keys: known, home: home) }
     }
 
     /// What each key in the inventory is used for. **Every key gets an answer**
@@ -81,6 +115,12 @@ public enum KeyUsage {
         let identities = ofHosts(document, keys: keys, home: home)
         var everywhere: Set<String> = []
         var namedBy: [String: [String]] = [:]
+        // The preamble is `Host *` by another spelling — it reaches every
+        // connection — so its keys go straight into `everywhere`, which
+        // outranks any block that also happens to name them.
+        for identity in ofPreamble(document, keys: keys, home: home) {
+            if case .named(let name) = identity { everywhere.insert(name) }
+        }
         for host in document.hosts {
             let names = (identities[host.index] ?? []).compactMap { identity -> String? in
                 if case .named(let name) = identity { return name } else { return nil }
@@ -88,7 +128,12 @@ public enum KeyUsage {
             for name in names {
                 if isEveryHost(host.patterns) {
                     everywhere.insert(name)
-                } else {
+                } else if !(namedBy[name] ?? []).contains(host.patterns) {
+                    // Once per host, not once per line that mentions the key.
+                    // Two blocks with the same patterns are ordinary — people
+                    // keep a second `Host box` for an override — and the row
+                    // said «Used by box, box». A host is not two hosts because
+                    // its file says so twice.
                     namedBy[name, default: []].append(host.patterns)
                 }
             }
@@ -100,8 +145,13 @@ public enum KeyUsage {
                 out[key] = .everyHost
             } else if let blocks = namedBy[key] {
                 out[key] = .namedBy(blocks)
+            } else if defaultNames.contains(key) {
+                // Independent of the config: `ssh` tries this name whatever any
+                // included file says, so an `Include` takes nothing away from
+                // it.
+                out[key] = .byDefaultName
             } else {
-                out[key] = defaultNames.contains(key) ? .byDefaultName : .unused
+                out[key] = document.includesOtherFiles ? .cannotSay : .unused
             }
         }
     }

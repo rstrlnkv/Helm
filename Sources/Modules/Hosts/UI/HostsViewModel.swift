@@ -213,7 +213,7 @@ import Module_Hosts_Engine
             guard let op = try? JSONDecoder().decode(HostsOperation.self, from: event.payload)
             else { return }
             applying = op.running
-            lastOutcome = op.lastOutcome.flatMap(HostsOutcome.init(rawValue:))
+            lastOutcome = op.lastOutcome
         case nil:
             return
         }
@@ -430,7 +430,12 @@ import Module_Hosts_Engine
     /// asking everybody for a secret they may not have is the wrong door. The
     /// engine comes back with `needsPassphrase` when `ssh-add` asked, and the
     /// row opens then.
-    func load(_ name: String, passphrase: String) async {
+    /// - Returns: whether the act was taken. **`false` is the busy gate
+    ///   refusing**, and the caller has to be able to see it: the row empties
+    ///   its `SecureField` when it presses, so a refusal it cannot read is the
+    ///   typed passphrase lost with nothing said.
+    @discardableResult
+    func load(_ name: String, passphrase: String) async -> Bool {
         await busy(name) {
             let outcome: KeyOutcome? = await self.client.request(
                 HostsCommand.agentLoad,
@@ -482,11 +487,16 @@ import Module_Hosts_Engine
         await busy(name) { await self.client.request(command, encoding: KeyName(name: name)) }
     }
 
-    private func busy(_ row: String, _ body: () async -> KeyOutcome?) async {
-        guard busyKey == nil else { return }
+    /// - Returns: whether the body ran. A gate that refuses silently is a gate
+    ///   the caller cannot tell from a gate that let the act through, and one
+    ///   of this module's callers is holding a secret it is about to discard.
+    @discardableResult
+    private func busy(_ row: String, _ body: () async -> KeyOutcome?) async -> Bool {
+        guard busyKey == nil else { return false }
         busyKey = row
         defer { busyKey = nil }
         keyOutcome = await body()
+        return true
     }
 
     /// Make a key.
@@ -518,17 +528,18 @@ import Module_Hosts_Engine
 
     /// Forget one host.
     ///
-    /// **The whole file crosses the wire**, exactly as an Apply on the config
-    /// does. An index would be a second contract about which line — decided
-    /// here and acted on there, after the file may have changed underneath —
-    /// and what is being dropped is somebody's record of a host they trust.
+    /// **The line crosses the wire, not the file.** This page's copy of
+    /// `known_hosts` is as old as its last snapshot, and `ssh` appends to that
+    /// file from any terminal while the page is open — so sending the whole
+    /// document back deleted every trust that had arrived in between, and said
+    /// «applied», because the engine's read-back compares what was sent with
+    /// what was written. The engine reads the file again and takes this line
+    /// out of *that*.
     func forget(_ entry: KnownHostsFile.Entry) async {
         guard forgetting == nil else { return }
         forgetting = entry.index
         defer { forgetting = nil }
-        let document = KnownHostsFile.parse(knownHostsText)
-        let text = KnownHostsFile.render(KnownHostsFile.forget(entry.index, in: document))
-        knownHostsOutcome = await client.request(HostsCommand.applyKnownHosts,
-                                                 encoding: KnownHostsApply(text: text))
+        knownHostsOutcome = await client.request(HostsCommand.forgetKnownHost,
+                                                 encoding: KnownHostsForget(line: entry.raw))
     }
 }

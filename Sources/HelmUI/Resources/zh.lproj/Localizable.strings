@@ -1005,6 +1005,7 @@
 "Used by every host" = "所有主机都在使用";
 "Used by default — ssh tries this name" = "默认使用 — ssh 会尝试此名称";
 "Not used by anything here" = "这里没有任何配置使用它";
+"Not named here — an included file may use it" = "此处未指定 — 可能由 Include 的文件使用";
 "This key is missing" = "此密钥不存在";
 "The known hosts file could not be read" = "无法读取已知主机文件";
 "Forget" = "忘记";

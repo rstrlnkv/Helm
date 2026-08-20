@@ -6,7 +6,7 @@ import XCTest
 /// touches a private key.
 final class KeyInventoryTests: XCTestCase {
 
-    private let realDirectory = ["config", "known_hosts", "known_hosts.old",
+    private let realDirectory: KeyInventory.Listing = ["config", "known_hosts", "known_hosts.old",
                                  "id_ed25519", "id_ed25519.pub",
                                  "id_rsa", "id_rsa.pub",
                                  "authorized_keys", ".DS_Store"]

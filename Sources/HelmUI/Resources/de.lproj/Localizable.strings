@@ -1005,6 +1005,7 @@
 "Used by every host" = "Von allen Hosts verwendet";
 "Used by default — ssh tries this name" = "Standardmäßig verwendet — ssh probiert diesen Namen";
 "Not used by anything here" = "Wird hier von nichts verwendet";
+"Not named here — an included file may use it" = "Hier nicht genannt — eine eingebundene Datei kann ihn verwenden";
 "This key is missing" = "Dieser Schlüssel fehlt";
 "The known hosts file could not be read" = "Die Datei der bekannten Hosts konnte nicht gelesen werden";
 "Forget" = "Vergessen";

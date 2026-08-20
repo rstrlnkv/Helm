@@ -90,13 +90,17 @@ enum HostsStr {
 
     // MARK: - Which key opens which host
 
-    /// What a key is used for, in four sentences — **and they are four, not
+    /// What a key is used for, in five sentences — **and they are five, not
     /// three.**
     ///
     /// `byDefaultName` is the one that must never read as `unused`: `ssh` tries
     /// `id_ed25519` and its siblings without being told to, so a key nothing
     /// mentions may be the one somebody logs in with everywhere. Collapsing the
     /// pair writes «you can delete this» over it.
+    ///
+    /// `cannotSay` is the same distinction one step further out: the config
+    /// `Include`s files this module has not read, so «nothing names it» is a
+    /// claim about an incomplete reading and must not be spelled as a fact.
     ///
     /// Exhaustive, with no `default`: a state added to `KeyUsage.OfKey` is a
     /// build error here rather than a row that says nothing.
@@ -107,6 +111,8 @@ enum HostsStr {
         case .everyHost: return L("Used by every host", language: language)
         case .byDefaultName: return L("Used by default — ssh tries this name", language: language)
         case .unused: return L("Not used by anything here", language: language)
+        case .cannotSay:
+            return L("Not named here — an included file may use it", language: language)
         }
     }
 

@@ -33,7 +33,12 @@ public enum KeyGeneration {
         /// Empty means no passphrase — which `ssh-keygen` asks for in the same
         /// words and accepts as an empty answer, so there is one path through
         /// the terminal rather than two.
-        public let passphrase: Data
+        ///
+        /// **`var`, so the engine can move the bytes out of the decoded payload
+        /// rather than copy them.** See `Secret`: a copy is a second reference,
+        /// and a second reference is what made every `resetBytes` in this
+        /// module zero a copy.
+        public var passphrase: Data
 
         public init(type: KeyType, name: String, comment: String, passphrase: Data) {
             self.type = type

@@ -156,16 +156,25 @@ public enum HostsOutcome: String, Codable, Sendable {
     case tooLarge
 }
 
-/// Whether a write is in flight, and what the last one came to.
+/// Whether a **privileged write of `/etc/hosts`** is in flight, and what the
+/// last one came to.
 ///
 /// Its own event rather than a field of `HostsState`: the transport replays the
 /// last event *per name*, and a page reopened mid-write needs both the file and
 /// «a write is in flight». One slot hands it whichever arrived last, which is
 /// what left Homebrew's page idle with an operation running behind it.
+///
+/// **One subject, and the type says which.** `lastOutcome` was a `String?`, and
+/// making a key emitted on this same event with a `GenerateOutcome` in it —
+/// whose `failed` spells the same word `HostsOutcome.failed` does. So a key
+/// that could not be made drew «the hosts file could not be written», over a
+/// file the act never opened, and `running` disabled Apply for as long as an
+/// RSA 4096 key takes. A typed field makes the mistake a build error instead
+/// of a sentence, which is the same reason `HostsCommand` has no `default`.
 public struct HostsOperation: Codable, Sendable, Equatable {
     public var running: Bool
-    public var lastOutcome: String?
-    public init(running: Bool, lastOutcome: String? = nil) {
+    public var lastOutcome: HostsOutcome?
+    public init(running: Bool, lastOutcome: HostsOutcome? = nil) {
         self.running = running
         self.lastOutcome = lastOutcome
     }

@@ -19,14 +19,21 @@ public struct KeyFacts: Sendable, Equatable {
     /// in the state at all — Copy is then a pasteboard write in the UI and no
     /// engine command.
     public let publicText: String?
+    /// **Whether the name is a directory**, which the mode cannot say: it
+    /// carries permission bits and no type. `KeyInventory.Listing` keeps a
+    /// directory from becoming a row at all; this is the second half, so that a
+    /// row reached any other way is still never offered a private key's
+    /// `chmod 600` — which on a directory locks its owner out of it.
+    public let isDirectory: Bool
 
     public init(pair: KeyInventory.Pair, describeLine: String? = nil, mode: mode_t? = nil,
-                modified: Date? = nil, publicText: String? = nil) {
+                modified: Date? = nil, publicText: String? = nil, isDirectory: Bool = false) {
         self.pair = pair
         self.describeLine = describeLine
         self.mode = mode
         self.modified = modified
         self.publicText = publicText
+        self.isDirectory = isDirectory
     }
 }
 
@@ -91,14 +98,20 @@ public struct KeyRow: Codable, Sendable, Equatable, Identifiable {
                       hasPublicHalf: facts.pair.hasPublicHalf,
                       described: described,
                       modified: facts.modified,
-                      permission: permission(of: facts.mode),
+                      permission: permission(of: facts.mode, isDirectory: facts.isDirectory),
                       publicText: facts.publicText,
                       inAgent: described.map { agent.holds($0.fingerprint) } ?? false)
     }
 
-    private static func permission(of mode: mode_t?) -> Permission {
+    /// **A directory is judged as a directory.** The two verdicts differ in the
+    /// number they carry, and the private key's is destructive here: 0600 on a
+    /// folder is a folder nobody, its owner included, can enter — so every
+    /// multiplexed connection through a `ControlPath` in it stops, and so does
+    /// the `Include` a `config.d` was made for.
+    private static func permission(of mode: mode_t?, isDirectory: Bool) -> Permission {
         guard let mode else { return .unknown }
-        switch KeyPermissions.privateKey(mode) {
+        let verdict = isDirectory ? KeyPermissions.directory(mode) : KeyPermissions.privateKey(mode)
+        switch verdict {
         case .ok: return .ok
         case .tooOpen(let fix): return .tooOpen(fix: fix)
         }

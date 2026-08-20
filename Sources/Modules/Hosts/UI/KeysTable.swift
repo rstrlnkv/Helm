@@ -234,13 +234,19 @@ private struct KeyCard: View {
         }
     }
 
-    /// The typed answer is dropped as soon as it has been handed over, whatever
-    /// came back. It is a `String` because `SecureField` binds to nothing else —
-    /// the boundary `HostsViewModel.load` states.
+    /// The typed answer is dropped as soon as it **has been** handed over,
+    /// whatever came back. It is a `String` because `SecureField` binds to
+    /// nothing else — the boundary `HostsViewModel.load` states.
+    ///
+    /// **Cleared after the act was taken, not before it was attempted.** It
+    /// used to empty the field first, and `load` opens with a busy gate that
+    /// refuses silently — so a second press while the first was in flight lost
+    /// what somebody had typed, leaving «this key is locked» over an empty box
+    /// with nothing said. The button is disabled while an act runs; the field's
+    /// own `onSubmit` is not, so two quick Returns are two presses.
     private func unlock() {
         let given = passphrase
-        passphrase = ""
-        Task { await hvm.load(row.name, passphrase: given) }
+        Task { if await hvm.load(row.name, passphrase: given) { passphrase = "" } }
     }
 
     private var controls: some View {

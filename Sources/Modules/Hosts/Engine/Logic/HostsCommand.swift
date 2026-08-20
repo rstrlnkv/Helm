@@ -13,9 +13,17 @@ public enum HostsCommand: String, CaseIterable, Sendable {
     case restoreHosts
     /// Write `~/.ssh/config`. No dialog: it is the person's own file.
     case applySSHConfig
-    /// Write `~/.ssh/known_hosts`. Payload: the whole file, as the person means
-    /// it to be — which in this file only ever means «with one line gone».
-    case applyKnownHosts
+    /// Drop one line from `~/.ssh/known_hosts`. Payload: the line's own bytes.
+    ///
+    /// **Not the whole file, and that is the difference between this file and
+    /// the two beside it.** `/etc/hosts` and `~/.ssh/config` are documents a
+    /// person edits and saves, so sending back what they now say is the act.
+    /// `known_hosts` is a file `ssh` **appends to**, from any terminal, while
+    /// this page is open — so a whole-file payload rendered from the page's
+    /// last snapshot takes out every trust that arrived in between, silently,
+    /// and reports success because the read-back finds exactly what was sent.
+    /// The engine reads the file again and removes the named line from *that*.
+    case forgetKnownHost
     /// `chmod` one key to the mode `ssh` will accept. Payload: which key.
     case fixKeyPermissions
     /// `chmod` `~/.ssh` itself. **Its own case rather than a reserved name in
@@ -65,8 +73,11 @@ public struct KeyName: Codable, Sendable {
 /// is the way to say so.
 public struct KeyLoad: Codable, Sendable {
     public let name: String
-    /// Empty until `ssh-add` has asked. The engine zeroes it after the run.
-    public let passphrase: Data
+    /// Empty until `ssh-add` has asked. **`var`, so the engine can move the
+    /// bytes out of the decoded payload into the one buffer that travels** —
+    /// see `Secret`. Leaving them here as well is the second reference that
+    /// makes the port's zeroing land on a copy.
+    public var passphrase: Data
     public init(name: String, passphrase: Data = Data()) {
         self.name = name
         self.passphrase = passphrase
@@ -138,15 +149,16 @@ public struct SSHConfigApply: Codable, Sendable {
     public init(text: String) { self.text = text }
 }
 
-/// What `applyKnownHosts` carries.
+/// What `forgetKnownHost` carries: **one line, by its own bytes.**
 ///
-/// Its own type rather than `SSHConfigApply` reused. The two have the same
-/// shape today and mean different things, which is the split this house makes
-/// on sight — and it stops a payload being decoded by the wrong arm and looking
-/// plausible while it writes one file's text into another.
-public struct KnownHostsApply: Codable, Sendable {
-    public let text: String
-    public init(text: String) { self.text = text }
+/// Neither a whole file nor an index. An index is a fact about the reading the
+/// page took, and this file grows underneath it; the bytes name the same trust
+/// in any reading, because `ssh` only ever appends to this file. A line that
+/// this build cannot match is a trust that is already gone, which is the state
+/// Forget was asking for.
+public struct KnownHostsForget: Codable, Sendable {
+    public let line: String
+    public init(line: String) { self.line = line }
 }
 
 /// What writing the config came to.

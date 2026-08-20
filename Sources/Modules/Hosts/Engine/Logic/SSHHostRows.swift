@@ -25,9 +25,11 @@ public enum SSHHostRows {
         /// `user@hostname:port`, with each part left out when the block does
         /// not set it, and empty when the block names no machine at all.
         public let address: String
-        /// The keys the block names, in the order it names them. **Empty means
-        /// «names none», which is ordinary** — never a `missing` standing in
-        /// for silence, which is the fold `KeyUsage.Identity` exists to refuse.
+        /// The keys this host uses, in the order the file names them — the
+        /// preamble's among them, because a directive before the first `Host`
+        /// line applies to every connection. **Empty means «reaches none»,
+        /// which is ordinary** — never a `missing` standing in for silence,
+        /// which is the fold `KeyUsage.Identity` exists to refuse.
         public let identities: [KeyUsage.Identity]
         /// The `known_hosts` lines this block's host name appears in.
         public let trusted: [KnownHostsFile.Entry]
@@ -65,7 +67,10 @@ public enum SSHHostRows {
         let entries = known.entries
         var claimed: Set<Int> = []
         let rows = config.hosts.map { host -> Row in
-            let fields = config.fields(ofHost: host.index)
+            // What `ssh` reads for this host, preamble included — not only the
+            // block's own lines. A row is a claim about what a connection will
+            // do, and a preamble directive is part of every connection.
+            let fields = config.fieldsReaching(host: host.index)
             let name = hostName(of: host, fields: fields)
             let trusted = name.map { name in entries.filter { names(of: $0).contains(name) } } ?? []
             claimed.formUnion(trusted.map(\.index))
@@ -87,9 +92,17 @@ public enum SSHHostRows {
     /// stand for whatever was typed on the command line, and a row that read
     /// one as an address would name a machine that does not exist — the same
     /// mistake `KeyUsage.isEveryHost` avoids one file over.
+    ///
+    /// **The first value, never the last.** `ssh_config(5)` opens with «for
+    /// each parameter, the first obtained value will be used», which is the one
+    /// thing about that file that surprises everybody. A second `HostName` in a
+    /// block is what somebody leaves behind after changing a machine's address
+    /// and keeping the old line: `ssh` ignores it and the row drew it. It is
+    /// also the rule `SSHConfigFile.set` already writes by, so the editor and
+    /// the row now speak about the same line.
     static func hostName(of host: SSHConfigFile.Host,
                          fields: [SSHConfigFile.Field]) -> String? {
-        if let explicit = fields.last(where: { $0.name == .hostName })?.value {
+        if let explicit = fields.first(where: { $0.name == .hostName })?.value {
             return explicit.lowercased()
         }
         let patterns = host.patterns.split(whereSeparator: \.isWhitespace)
@@ -103,8 +116,9 @@ public enum SSHHostRows {
     /// setting the file does not carry.
     private static func address(name: String?, fields: [SSHConfigFile.Field]) -> String {
         guard let name else { return "" }
-        let user = fields.last { $0.name == .user }?.value
-        let port = fields.last { $0.name == .port }?.value
+        // First, for the reason `hostName` carries.
+        let user = fields.first { $0.name == .user }?.value
+        let port = fields.first { $0.name == .port }?.value
         return (user.map { $0 + "@" } ?? "") + name + (port.map { ":" + $0 } ?? "")
     }
 
