@@ -327,10 +327,13 @@ struct KeepAwakeHero: View {
         // same digits.
         let label = TimerProgress.label(remaining: max(0, end.timeIntervalSince(now)))
         return VStack(spacing: 8) {
-            // Monospaced, so the figure does not jitter as the digits change
-            // width — it is redrawn once a second for hours.
+            // Tabular digits, so the figure does not jitter as they change
+            // width — it is redrawn once a second for hours. It was a
+            // monospaced *face*, which bought the same thing and made a
+            // countdown look like code; `.monospacedDigit()` is the property
+            // that was wanted, in the face macOS sets its own timers in.
             Text(label)
-                .font(.system(size: 40, weight: .light, design: .monospaced))
+                .font(.system(size: 40, weight: .light).monospacedDigit())
                 .tracking(-2)
                 .contentTransition(.numericText(countsDown: true))
                 // The half that was missing. A content transition is not an
