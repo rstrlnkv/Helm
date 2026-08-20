@@ -60,7 +60,6 @@ enum LyStr {
         let english = count == 1 ? "word fixed today" : "words fixed today"
         return language == .en ? english : table[language] ?? english
     }
-    static var introTitle: String { L("Keyboard") }
     static var introSubtitle: String { L("Before it starts changing what you type.") }
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
     static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }

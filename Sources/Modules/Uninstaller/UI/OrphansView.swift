@@ -59,17 +59,18 @@ struct OrphansView: View {
         if scanning {
             HelmBusyState(UnStr.scanningOrphans)
         } else if !scanned {
-            // The module's own category tint, not a colour chosen per state:
-            // orange and green here read as a warning and a success on a screen
-            // that is only waiting to be asked. `UninstallerDescriptor.category`
-            // is `.files`.
-            HelmEmptyState(symbol: "clock.arrow.circlepath", tint: ModuleCategory.files.tint,
+            // The module's own tint, not a colour chosen per state: orange and
+            // green here read as a warning and a success on a screen that is
+            // only waiting to be asked. It said `category` until 2026-08-20,
+            // which is a colour four modules share — so this plate was cyan
+            // while the page header 300 pt above it was red.
+            HelmEmptyState(symbol: "clock.arrow.circlepath", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.orphansIntro) {
                 Button(UnStr.scanOrphans) { Task { await scan() } }
                     .buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
-            HelmEmptyState(symbol: "checkmark.circle", tint: ModuleCategory.files.tint,
+            HelmEmptyState(symbol: "checkmark.circle", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.noOrphans) {
                 // Not prominent: looking again for something that was not there
                 // is available, not recommended.

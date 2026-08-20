@@ -28,7 +28,7 @@ struct PresetSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            Text(ApStr.presetsTitle).font(.headline)
+            Text(ApStr.presetsTitle).font(HelmText.sectionHeading)
                 // A heading, so VoiceOver's rotor can jump to it rather than
                 // reading every preset row to find where the section starts.
                 .accessibilityAddTraits(.isHeader)

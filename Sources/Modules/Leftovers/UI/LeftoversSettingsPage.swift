@@ -313,7 +313,7 @@ struct LeftoversSettingsPage: View {
             // explain itself, so the sentence that was in the toolbar is here,
             // under the call to action it belongs to.
             HelmEmptyState(symbol: Self.symbol(for: nothing),
-                           tint: ModuleCategory.utilities.tint,
+                           tint: LeftoversDescriptor.tint.colour,
                            message: LfStr.emptyMessage(nothing),
                            note: nothing == .notScanned ? LfStr.intro : nil) {
                 // **The verb, where the sentence that asks for it is.** The only

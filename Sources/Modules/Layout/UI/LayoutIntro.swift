@@ -22,13 +22,29 @@ struct LayoutIntro: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
-            HStack(spacing: 12) {
-                HelmIconPlate(symbol: "keyboard", tint: .pink, size: 44)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LyStr.introTitle).font(.system(size: 16, weight: .semibold))
-                    Text(LyStr.introSubtitle).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
-                }
-            }
+            // **The block said the page's own name back to it, in a second
+            // colour.**
+            //
+            // This opened with a 44 pt plate carrying the `keyboard` glyph in a
+            // raw `.pink`, and the word `L("Keyboard")` beside it — 140 pt under
+            // a page header drawing the same glyph in the module's magenta over
+            // the same word. Two plates, two colours, one symbol, one screen,
+            // and an introduction whose first line told you which page you were
+            // already on.
+            //
+            // **Both halves of the repeat go, not just the colour.** Tinting the
+            // plate correctly would have left two plates with one glyph on one
+            // screen, which is the picture the finding is about; and the
+            // sentence under it cannot be promoted into the vacancy, because in
+            // seven of the eight languages it is a subordinate clause —
+            // «Before it starts changing what you type.» — that reads as a
+            // subtitle and not as a heading. Only the Russian was ever written
+            // as a whole sentence, and one language is not a reason to set the
+            // other seven as titles. So it stays a preamble, and the block
+            // opens on it.
+            Text(LyStr.introSubtitle)
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 12) {
                 point("textformat.abc", LyStr.introWhat)

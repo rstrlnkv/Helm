@@ -50,6 +50,51 @@ public enum AppsEmpty {
         }
     }
 
+    /// What the footer's status line has to say beside one of these screens.
+    ///
+    /// **One state was being told twice, in two voices.** With the list never
+    /// answered the centre read «Helm could not read the list of applications»
+    /// over a *Reload list* button while the footer 600 pt below read «Counting
+    /// apps…» — a failure and a claim of progress on one screen. The fold is in
+    /// `UnStr.appsCount`, which takes an optional and says «Counting apps…» for
+    /// it: nil means *both* «the reply has not arrived» and «the reply never
+    /// will», and only the first of those is progress.
+    ///
+    /// So this takes the body's **own** `Reason` rather than deriving a second
+    /// answer from the same flags. The two cannot disagree, because there is one
+    /// value — the discipline `listAnswered` was published for and which the
+    /// footer then went around.
+    ///
+    /// Exhaustive with no `default`, like everything else here: a fourth reason
+    /// is a build error rather than a screen quietly given somebody else's
+    /// footer.
+    public enum Status: Equatable, Sendable {
+        /// The list is still on its way. «Counting apps…», which is true.
+        case counting
+        /// Helm knows, and the number is it. An answer of «none» is an answer
+        /// and reads as zero.
+        case counted(Int)
+        /// Nothing came back. The body already says so in the middle of the
+        /// pane; a footer saying it again in other words is one state told
+        /// twice, and saying it in the *wrong* words is what this closes.
+        case silent
+    }
+
+    /// - Parameters:
+    ///   - reason: what the body is drawing, or nil when it is drawing a list.
+    ///   - loading: whether the query is still out. Asked first, because the
+    ///     body draws a spinner while it holds and there is no empty screen yet
+    ///     for the footer to contradict.
+    ///   - apps: what the module holds.
+    public static func status(_ reason: Reason?, loading: Bool, apps: Int) -> Status {
+        if loading { return .counting }
+        guard let reason else { return .counted(apps) }
+        switch reason {
+        case .neverAnswered: return .silent
+        case .noApps, .searchHidesAll: return .counted(apps)
+        }
+    }
+
     /// - Parameters:
     ///   - answered: whether the list has ever been answered — the view model's
     ///     flag, not `apps.isEmpty`, for the reason `appCount` gives.

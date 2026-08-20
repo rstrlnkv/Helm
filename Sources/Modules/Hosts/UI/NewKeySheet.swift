@@ -24,7 +24,7 @@ struct NewKeySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
-            Text(HostsStr.newKeyTitle).font(.headline)
+            Text(HostsStr.newKeyTitle).font(HelmText.sectionHeading)
 
             Form {
                 Picker(HostsStr.keyType, selection: $type) {
@@ -44,7 +44,7 @@ struct NewKeySheet: View {
                 SecureField(HostsStr.keyPassphrase, text: $passphrase)
                 Text(HostsStr.passphraseNote)
                     .font(HelmText.rowDetail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
             }
 
             if let outcome = hvm.generated, let said = HostsStr.sentence(for: outcome) {

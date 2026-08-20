@@ -13,6 +13,14 @@ import Module_Hosts_Engine
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .hosts
 
+    /// **The page draws across the whole pane, so its header must not centre
+    /// itself.** Two tab strips, a table and an unsaved bar, each at
+    /// `HelmLayout.formInset` — not a grouped `Form` anywhere on it. Without
+    /// this the header sat on the 744 pt column while the controls sat at the
+    /// pane's leading edge: measured at an 845 pt pane the plate was at x 70
+    /// with the first control at x 20, and at 1400 the gap was 328 pt.
+    public var pageBleeds: Bool { true }
+
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {

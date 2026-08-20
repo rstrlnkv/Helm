@@ -162,16 +162,32 @@ struct UninstallerSettingsPage: View {
         return uvm.trashWatch.isOn ? UnStr.accessNeededWithWatch : UnStr.removalNeedsAccess
     }
 
-    /// Counts read as a quiet status line instead of a panel of dials.
+    /// Counts read as a quiet status line instead of a panel of dials — or
+    /// nothing at all, when the body above has already said why there is no
+    /// count.
     ///
     /// The count comes from the model — `loading ? nil : apps.count` here said «0
     /// apps» about a list the engine never answered, which is a sentence about
     /// somebody's Mac that Helm did not check.
+    ///
+    /// **And then it said «Counting apps…» about it, under a body reporting a
+    /// failure.** `UnStr.appsCount`'s optional folds two unknowns into one
+    /// sentence: a reply on its way and a reply that never came. So the count
+    /// is derived from `appsEmpty` — the value the body itself draws — and not
+    /// from a second reading of the same flags; `AppsEmpty.Status` is where
+    /// that is decided and tested, and the switch here is exhaustive so a
+    /// fourth answer cannot arrive as a `default`.
+    ///
     /// Internal rather than private: which of `UnStr.appsCount`'s two sentences
     /// stands over a list the engine never answered is the whole of that fix, and a
     /// `body` is not somewhere a test can reach.
-    var statusLine: String {
-        let count = uvm.appCount
+    var statusLine: String? {
+        let count: Int?
+        switch AppsEmpty.status(appsEmpty, loading: loading, apps: apps.count) {
+        case .silent: return nil
+        case .counting: count = nil
+        case .counted(let known): count = known
+        }
         guard !checked.isEmpty else { return UnStr.appsCount(count) }
         return UnStr.appsCountSelected(count, checked.count, sizeText)
     }
@@ -235,8 +251,13 @@ struct UninstallerSettingsPage: View {
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.selectNone) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
-                Text(statusLine)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                // Nothing at all when there is nothing to count: the body above
+                // has said why, and a second sentence down here can only agree
+                // with it or contradict it.
+                if let statusLine {
+                    Text(statusLine)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                }
                 Spacer()
                 Button {
                     Task { await uvm.prepareReview() }
@@ -270,7 +291,7 @@ struct UninstallerSettingsPage: View {
         if AppsEmpty.invites(nothing) {
             // The toolbar's own icon for the toolbar's own act: the button and
             // the round arrow above it ask for the same thing.
-            HelmEmptyState(symbol: "arrow.clockwise", tint: ModuleCategory.files.tint,
+            HelmEmptyState(symbol: "arrow.clockwise", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.emptyMessage(nothing)) {
                 Button(UnStr.refreshList) { Task { await refreshApps() } }
                     .buttonStyle(.borderedProminent)

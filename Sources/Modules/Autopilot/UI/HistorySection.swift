@@ -70,7 +70,7 @@ struct HistorySection: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(ApStr.historyTitle).font(.headline)
+            Text(ApStr.historyTitle).font(HelmText.sectionHeading)
                 // A heading, so the rotor can reach the record without reading
                 // the whole list above it.
                 .accessibilityAddTraits(.isHeader)

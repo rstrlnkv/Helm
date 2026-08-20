@@ -173,8 +173,11 @@ enum UnStr {
                              language: AppLanguage = AppLanguage.current) -> String {
         switch nothing {
         // Not «No applications found.» — nothing was found because nothing was
-        // read, and the footer beside it already refuses that fold
-        // (`UninstallerViewModel.appCount`).
+        // read. This comment used to add that «the footer beside it already
+        // refuses that fold», and the footer did not: it read «Counting apps…»
+        // under this very sentence, a failure and a claim of progress on one
+        // screen. The footer is derived from the same `AppsEmpty.Reason` this
+        // switch is now, and says nothing here.
         case .neverAnswered: return L("Helm could not read the list of applications.", language: language)
         case .noApps: return L("No applications found.", language: language)
         // A claim about the search field, which is on screen directly above this

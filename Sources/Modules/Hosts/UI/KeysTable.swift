@@ -37,7 +37,7 @@ struct KeysTable: View {
         HStack(spacing: HelmSpace.s2) {
             Text(agentSaid)
                 .font(HelmText.rowTitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
             Spacer()
             Button(HostsStr.agentCheck) { Task { await hvm.refreshAgent() } }
                 .buttonStyle(.link)
@@ -123,20 +123,20 @@ private struct KeyCard: View {
     private var title: some View {
         HStack(spacing: HelmSpace.s2) {
             Text(row.name)
-                .font(.headline)
+                .font(HelmText.sectionHeading)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .layoutPriority(1)
             if let described = row.described {
                 HelmBadge(described.type)
-                Text("\(described.bits)").font(HelmText.rowDetail).foregroundStyle(.secondary)
+                Text("\(described.bits)").font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             if row.inAgent { HelmBadge(HostsStr.inAgent, tint: .green) }
             Spacer(minLength: HelmSpace.s2)
             if let modified = row.modified {
                 Text(HelmDates.relative(modified))
                     .font(HelmText.rowDetail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                     .lineLimit(1)
             }
         }
@@ -159,7 +159,7 @@ private struct KeyCard: View {
                 if !described.comment.isEmpty {
                     Text(described.comment)
                         .font(HelmText.rowDetail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HelmText.quiet)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -172,7 +172,7 @@ private struct KeyCard: View {
             // comment are different facts.
             Text(row.hasPublicHalf ? HostsStr.keyUnreadable : HostsStr.noPublicHalf)
                 .font(HelmText.rowDetail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
         }
     }
 
@@ -184,7 +184,7 @@ private struct KeyCard: View {
         case .ok:
             EmptyView()
         case .unknown:
-            Text(HostsStr.keyModeUnknown).font(HelmText.rowDetail).foregroundStyle(.secondary)
+            Text(HostsStr.keyModeUnknown).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
         case .tooOpen(let fix):
             // On the first baseline, because the sentence is the only thing
             // here that wraps: centred, the `chmod` and the button float to the

@@ -127,7 +127,7 @@ struct AutopilotSettingsPage: View {
             // flexible space and the card sits under it.
             VStack(spacing: HelmSpace.s6) {
                 HelmEmptyState(symbol: "location.north.circle",
-                               tint: ModuleCategory.files.tint,
+                               tint: AutopilotDescriptor.tint.colour,
                                message: ApStr.startHint) {
                     Button(ApStr.addFolder) { rvm.addFolder() }
                         .buttonStyle(.borderedProminent)

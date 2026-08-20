@@ -240,7 +240,7 @@ struct DuplicatesSettingsPage: View {
             // A stopped search is a named outcome, not a return to «Pick a
             // folder»: the folder is still chosen and the toolbar shows it, so
             // the hint would read as if nothing had happened.
-            HelmEmptyState(symbol: "doc.on.doc", tint: ModuleCategory.files.tint,
+            HelmEmptyState(symbol: "doc.on.doc", tint: DuplicatesDescriptor.tint.colour,
                            message: dvm.searchStopped ? DupStr.searchStopped() : DupStr.startHint) {
                 // With a folder already remembered the page must not ask for
                 // one again — the toolbar above is showing it. Reading it is

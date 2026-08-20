@@ -180,15 +180,27 @@ struct MenuBarSettingsView: View {
             //
             // Only when something is withheld. A row saying everything is
             // granted is a row teaching people to ignore this space.
+            //
+            // **A `HelmBanner`, and it was the app's third spelling of one.**
+            // It was a bare `HStack` of a mark, a sentence and a button in a
+            // section of its own — which is `HelmBanner`'s description word for
+            // word, and is what `HelmPermissionNote` was rebuilt on for exactly
+            // this reason. Drawn by hand it had no field: sampled at 845 × 700
+            // in light, the ground behind it was rgb 0.975 — *identical* to the
+            // ordinary card 93 pt below, so the one statement on this page that
+            // says something is wrong looked like a row of settings. The same
+            // class of statement on the VPN page has sat on a signal field at
+            // 13 % all along.
+            //
+            // The circle rather than the banner's default triangle, because a
+            // withheld grant is the one notice macOS itself draws and this is
+            // the glyph it uses — the reason `HelmPermissionNote` gives, and
+            // the glyph this row already had.
             if !withheldPermissions.isEmpty {
                 Section {
-                    HStack(spacing: HelmSpace.s5) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundStyle(HelmSignal.warning)
-                        Text(AppStr.permissionsWithheld(count: withheldPermissions.count,
-                                                        modules: affectedModuleCount))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 12)
+                    HelmBanner(AppStr.permissionsWithheld(count: withheldPermissions.count,
+                                                          modules: affectedModuleCount),
+                               symbol: "exclamationmark.circle.fill") {
                         // One withheld grant has one place to go, so go there.
                         // Several do not, and a button that picks one of them
                         // for you is a button that lies about what it opened.

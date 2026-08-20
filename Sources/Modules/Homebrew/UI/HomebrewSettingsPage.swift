@@ -78,11 +78,14 @@ struct HomebrewSettingsPage: View {
     /// spacing against 14, a 20 pt title against 17, a 12 pt body against 13,
     /// and a button pinned to 260 pt. One flick of the switch showed both.
     ///
-    /// The tint is read off the descriptor rather than written as `.pink`,
-    /// which is what the category happens to resolve to today.
+    /// **The tint is the module's, not the category's.** This comment used to
+    /// say the colour was «read off the descriptor rather than written as
+    /// `.pink`» — and it was reading `category.tint`, which is `.pink` reached
+    /// the long way round and shared with two other modules. The plate in the
+    /// page header above it was already green.
     private var installScreen: some View {
         HelmEmptyState(symbol: "shippingbox",
-                       tint: HomebrewDescriptor.category.tint,
+                       tint: HomebrewDescriptor.tint.colour,
                        title: HbStr.notInstalledTitle,
                        message: HbStr.notInstalledBody) {
             Button {

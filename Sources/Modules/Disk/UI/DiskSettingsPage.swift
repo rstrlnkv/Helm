@@ -127,7 +127,7 @@ struct DiskSettingsPage: View {
                 HStack {
                     Image(systemName: "internaldrive")
                         .foregroundStyle(HelmText.quiet)
-                    Text(volume.name).font(.headline)
+                    Text(volume.name).font(HelmText.sectionHeading)
                     Spacer()
                     Text(formatted(volume.usedBytes) + " / " + formatted(volume.totalBytes))
                         .font(HelmText.figureFont)

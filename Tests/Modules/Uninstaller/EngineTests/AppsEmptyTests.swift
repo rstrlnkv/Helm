@@ -48,4 +48,49 @@ final class AppsEmptyTests: XCTestCase {
         XCTAssertFalse(AppsEmpty.invites(.noApps))
         XCTAssertFalse(AppsEmpty.invites(.searchHidesAll))
     }
+
+    // MARK: - What the footer says beside all that
+
+    /// **The page said two contradictory things at once.** The centre read
+    /// «Helm could not read the list of applications» with a *Reload list*
+    /// button while the footer 600 pt below read «Counting apps…» — one state,
+    /// a failure and a claim of progress together. `UnStr.appsCount` takes an
+    /// optional and folds two different unknowns into it: a count still on its
+    /// way, and a count that will never come. The comment over `emptyMessage`
+    /// said «the footer beside it already refuses that fold», and it did not.
+    ///
+    /// So the footer reads the body's own value. It cannot disagree with a
+    /// screen it is derived from.
+    func testTheFooterSaysNothingAboutAListNobodyAnswered() {
+        XCTAssertEqual(AppsEmpty.status(.neverAnswered, loading: false, apps: 0), .silent)
+    }
+
+    /// A query still out is «Counting apps…» whatever the reason would be, and
+    /// it is asked first: the body draws a spinner while `loading` holds, so
+    /// there is no empty screen for the footer to contradict yet.
+    func testAQueryStillOutIsCounting() {
+        XCTAssertEqual(AppsEmpty.status(nil, loading: true, apps: 0), .counting)
+        XCTAssertEqual(AppsEmpty.status(.neverAnswered, loading: true, apps: 0), .counting)
+    }
+
+    /// An answer of «none» is an answer, and it reads as a count of zero — the
+    /// distinction `UninstallerViewModel.appCount` was already making and this
+    /// keeps.
+    func testAnAnswerIsACount() {
+        XCTAssertEqual(AppsEmpty.status(.noApps, loading: false, apps: 0), .counted(0))
+        XCTAssertEqual(AppsEmpty.status(.searchHidesAll, loading: false, apps: 7), .counted(7))
+        XCTAssertEqual(AppsEmpty.status(nil, loading: false, apps: 7), .counted(7))
+    }
+
+    /// The whole point, stated over every reason rather than over the one that
+    /// was wrong: no screen may show a refusal in the centre and a claim of
+    /// progress underneath it.
+    func testNoScreenClaimsProgressWhileItsBodyReportsARefusal() {
+        for reason: AppsEmpty.Reason in [.neverAnswered, .noApps, .searchHidesAll] {
+            let status = AppsEmpty.status(reason, loading: false, apps: 0)
+            XCTAssertNotEqual(status, .counting, """
+                the body says «\(reason)» and the footer beside it is still counting
+                """)
+        }
+    }
 }

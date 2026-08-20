@@ -128,7 +128,16 @@ final class AnUnansweredListIsNotAnEmptyMacTests: XCTestCase {
     /// **And the footer draws it.** The model can be as careful as it likes about
     /// what it does not know while the page derives a count of its own from an
     /// empty list, which is what it did: `loading ? nil : apps.count`.
-    func testTheFooterSaysTheCountIsNotKnownRatherThanZero() async {
+    ///
+    /// **This test asserted `UnStr.appsCount(nil)` here until 2026-08-20, and
+    /// that was the defect written down as a requirement.** «Counting apps…» is
+    /// the honest sentence for a reply on its way and a false one for a reply
+    /// that never came — and the body 600 pt above was already saying «Helm
+    /// could not read the list of applications» with a *Reload list* button
+    /// under it. One state, a failure and a claim of progress at once. The
+    /// footer says nothing now, and the two halves are one value
+    /// (`AppsEmpty.status`), so they cannot drift apart again.
+    func testTheFooterSaysNothingAboutAListNobodyAnswered() async {
         let wire = UninstallerWire(apps: [tool], answering: .nothing)
         let vm = ModuleViewModel(transport: wire)
         let page = UninstallerSettingsPage(vm: vm)
@@ -138,10 +147,12 @@ final class AnUnansweredListIsNotAnEmptyMacTests: XCTestCase {
 
         XCTAssertTrue(wire.commands.contains(.listApps),
                       "precondition: the list really was asked for")
-        XCTAssertEqual(page.statusLine, UnStr.appsCount(nil),
-                       "the footer counts a list nobody answered")
-        XCTAssertNotEqual(page.statusLine, UnStr.appsCount(0),
-                          "«\(UnStr.appsCount(0))» about a Mac Helm never managed to read")
+        XCTAssertEqual(page.appsEmpty, .neverAnswered,
+                       "precondition: the body is drawing the refusal this footer sits under")
+        XCTAssertNil(page.statusLine, """
+            the footer says «\(page.statusLine ?? "")» beside a body reporting that the \
+            list could not be read
+            """)
     }
 
     /// And it reaches the log, which is the one place a person can look

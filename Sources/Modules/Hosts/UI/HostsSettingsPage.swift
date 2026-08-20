@@ -125,9 +125,7 @@ struct HostsSettingsPage: View {
                 // Nothing to show and nothing to edit: an unreadable file is
                 // not an empty one, and offering a table over it would invite
                 // an Apply that overwrites what could not be read.
-                HelmBanner(HostsStr.unreadable)
-                    .padding(HelmSpace.s5)
-                Spacer()
+                empty("doc.text.magnifyingglass", HostsStr.unreadable)
             }
             unsavedBar
         }
@@ -223,14 +221,9 @@ struct HostsSettingsPage: View {
             keysHeader
             Divider()
             if !hvm.keysReadable {
-                HelmBanner(HostsStr.keysUnreadable)
-                    .padding(HelmSpace.s5)
-                Spacer()
+                empty("folder.badge.questionmark", HostsStr.keysUnreadable)
             } else if hvm.keys.isEmpty {
-                Text(HostsStr.noKeys)
-                    .foregroundStyle(.secondary)
-                    .padding(HelmSpace.s5)
-                Spacer()
+                empty("key", HostsStr.noKeys)
             } else {
                 // A host row can send somebody here naming a key, and the list
                 // is longer than the pane — so the row is scrolled to rather
@@ -311,9 +304,7 @@ struct HostsSettingsPage: View {
                 // Missing or not UTF-8. Not an empty config: a table over one
                 // that could not be read would invite a save that overwrites
                 // whatever is actually there.
-                HelmBanner(HostsStr.sshUnreadable)
-                    .padding(HelmSpace.s5)
-                Spacer()
+                empty("doc.text.magnifyingglass", HostsStr.sshUnreadable)
             }
         }
     }
@@ -363,6 +354,26 @@ struct HostsSettingsPage: View {
         case .notVerified: return HostsStr.sshNotVerified
         case .outOfScope: return HostsStr.sshNotWritable
         }
+    }
+
+    /// A tab with nothing on it, drawn the way every other module draws one.
+    ///
+    /// **This page had four of these and none of them was an empty state.**
+    /// Three were a `HelmBanner` padded and pushed up by a `Spacer` and one was
+    /// a bare grey line; measured at 845 × 700 the last ink sat at y 102 with
+    /// 598 pt — 85 % of the pane — empty under it, where every other module
+    /// centres a plate and a sentence. `HelmEmptyState` is that shape, and the
+    /// statement form is the right one of its two: none of these four screens
+    /// has a verb to offer that the toolbar directly above it is not already
+    /// offering.
+    ///
+    /// A refusal drawn as an empty state rather than as a warning field is the
+    /// Uninstaller's answer to the same question — «Helm could not read the list
+    /// of applications» is a plate and a sentence there. What makes it a refusal
+    /// and not an absence is the sentence, which says so, and the glyph, which
+    /// is the one asked for here per screen.
+    private func empty(_ symbol: String, _ said: String) -> some View {
+        HelmEmptyState(symbol: symbol, tint: HostsDescriptor.tint.colour, message: said)
     }
 
     /// A line the page says quietly. One spelling of the step and the ink, so

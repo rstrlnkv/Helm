@@ -48,7 +48,7 @@ struct RuleEditor: View {
     private var header: some View {
         HStack(spacing: HelmSpace.s5) {
             HelmIconPlate(symbol: "location.north.circle",
-                          tint: ModuleCategory.files.tint, size: 26)
+                          tint: AutopilotDescriptor.tint.colour, size: 26)
             TextField(ApStr.ruleName, text: $rule.name)
                 .textFieldStyle(.plain)
                 .font(.system(size: 16, weight: .semibold))
@@ -62,7 +62,7 @@ struct RuleEditor: View {
     private var conditions: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             HStack(spacing: 8) {
-                Text(ApStr.whenLabel).font(.headline)
+                Text(ApStr.whenLabel).font(HelmText.sectionHeading)
                 // "When" is a heading beside it, not this control's name:
                 // headings are not read as labels, so the segmented control
                 // announced only "all"/"any" with nothing to attach them to.
@@ -100,7 +100,7 @@ struct RuleEditor: View {
 
     private var action: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            Text(ApStr.thenLabel).font(.headline)
+            Text(ApStr.thenLabel).font(HelmText.sectionHeading)
             ActionRow(action: $rule.action)
         }
     }
@@ -110,7 +110,7 @@ struct RuleEditor: View {
     private var dryRun: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(ApStr.dryRun).font(.headline)
+                Text(ApStr.dryRun).font(HelmText.sectionHeading)
                 Spacer()
                 // This rule's own count, not the folder's: the list below holds
                 // the rows another rule takes as well, and a figure that counted
