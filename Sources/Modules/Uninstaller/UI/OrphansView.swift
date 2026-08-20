@@ -95,6 +95,11 @@ struct OrphansView: View {
                     } header: {
                         HStack {
                             Text(group.bundleID).font(HelmText.sectionHeading)
+                                // A heading over this bundle's leftovers.
+                                // `Section(header:)` may say so as well; the
+                                // trait is a set, so saying it twice costs
+                                // nothing and saying it never costs the rotor.
+                                .accessibilityAddTraits(.isHeader)
                             Spacer()
                             Text(Bytes(group.totalBytes)).helmFigure().foregroundStyle(HelmText.quiet)
                         }

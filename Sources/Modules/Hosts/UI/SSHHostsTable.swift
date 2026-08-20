@@ -54,6 +54,9 @@ struct SSHHostsTable: View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(HostsStr.otherTrustedHosts)
                 .font(HelmText.sectionHeading)
+                // A heading over the trusts, so the rotor reaches the list
+                // without reading the blocks above it.
+                .accessibilityAddTraits(.isHeader)
             ForEach(hvm.otherTrusted) { entry in
                 TrustLine(hvm: hvm, entry: entry, naming: true)
             }

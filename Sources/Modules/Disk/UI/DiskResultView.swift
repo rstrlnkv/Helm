@@ -561,6 +561,9 @@ private struct AdviceList: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(DkStr.advice)
                 .font(HelmText.sectionHeading)
+                // A heading over the advice rows: the rotor lands on the list
+                // rather than on the first thing in it.
+                .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, HelmSpace.s5).padding(.top, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
             Divider()
             ScrollView {
