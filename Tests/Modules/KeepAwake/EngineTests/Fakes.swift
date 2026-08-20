@@ -22,11 +22,19 @@ final class FakeAssertions: SleepAssertions {
     var lastDisplay: Bool?
     var preventCount = 0
     var releaseCount = 0
-    func preventSleep(display: Bool) {
+    /// Whether IOKit takes the assertion. **A fake that always succeeds makes
+    /// «macOS refused to hold the Mac awake» an unrepresentable state**, which
+    /// is the shape of half the defects in this module: the Mac sleeps, and
+    /// every surface says the session is holding it.
+    var succeeds = true
+    @discardableResult
+    func preventSleep(display: Bool) -> Bool {
+        preventCount += 1
+        guard succeeds else { return false }
         held = true
         displayHeld = display
         lastDisplay = display
-        preventCount += 1
+        return true
     }
     func release() {
         held = false
@@ -147,8 +155,15 @@ final class FakeClamshell: ClamshellPort {
     /// differ: a rule written by something else grants the same capability
     /// under another name, and that is the state the file check could not see.
     var passwordlessGrantExists: Bool?
+    /// How many times the coordinator asked whether it may disable sleep without
+    /// a password — the question that is `sudo -n pmset disablesleep 0`, and
+    /// which it now asks on a queue of its own. «No dialog was raised» has to be
+    /// read *after* the question was answered, or it is green because nobody has
+    /// asked yet, which is the vacuous absence CLAUDE.md warns about.
+    private(set) var grantChecks = 0
     func canDisableSleepWithoutPassword() -> Bool {
-        passwordlessGrantExists ?? sudoersInstalled
+        grantChecks += 1
+        return passwordlessGrantExists ?? sudoersInstalled
     }
     func setDisableSleep(_ on: Bool) -> Bool {
         disableSleepCalls.append(on)

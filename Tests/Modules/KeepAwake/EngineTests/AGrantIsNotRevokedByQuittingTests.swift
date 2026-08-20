@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -58,8 +59,10 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     // MARK: - What quitting may do
 
     /// `applicationWillTerminate` reaches exactly this.
-    func testQuittingPutsSleepBackAndLeavesTheGrantAlone() {
+    @MainActor
+    func testQuittingPutsSleepBackAndLeavesTheGrantAlone() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(engine.clamshellActive, "precondition: sleep is off and the lid is safe")
 
         engine.deactivate()
@@ -75,8 +78,10 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     /// The expensive case, and the reason the order mattered: the restore was
     /// refused, so sleep is off machine-wide and the next launch is the only
     /// thing that can fix it — with the grant it needs still there.
-    func testARefusedRestoreLeavesBothHalvesOfItsOwnRecovery() {
+    @MainActor
+    func testARefusedRestoreLeavesBothHalvesOfItsOwnRecovery() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(guardFlag, "precondition: sleep was really disabled")
 
         clamshell.disableSleepSucceeds = false
@@ -91,8 +96,10 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
 
     /// And the next launch really does use them, so the two assertions above are
     /// guarding something that happens rather than a pair of stored values.
-    func testTheNextLaunchRestoresSleepWithTheGrantThatWasLeftThere() {
+    @MainActor
+    func testTheNextLaunchRestoresSleepWithTheGrantThatWasLeftThere() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         clamshell.disableSleepSucceeds = false
         // The person ended the session, the restore refused, and *then* Helm
         // quit. Ending it first is what keeps this about the recovery: a session
@@ -105,8 +112,12 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
         clamshell.disableSleepSucceeds = true
         clamshell.disableSleepCalls = []
 
-        atLaunch().activate()
+        let next = atLaunch()
+        next.activate()
 
+        // The recovery is two child processes on the lid's own queue, and the
+        // note is cleared last of all.
+        await waitUntil("the lid put sleep back") { !guardFlag }
         XCTAssertEqual(clamshell.disableSleepCalls, [false],
                        "a launch that finds the guard set and sleep disabled puts it back")
         XCTAssertFalse(guardFlag, "…and only then is the note cleared")

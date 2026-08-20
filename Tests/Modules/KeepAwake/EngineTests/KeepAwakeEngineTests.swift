@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -91,11 +92,15 @@ final class KeepAwakeEngineTests: XCTestCase {
         XCTAssertTrue(engine.isActive) // suppression was cleared, so auto re-activates
     }
 
-    func test_clamshell_engage_and_disengage() {
+    @MainActor
+    func test_clamshell_engage_and_disengage() async {
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
         clamshell.sudoersInstalled = true
 
         engine.startSession(minutes: 0)
+        // The grant is asked for off the drawing thread now, so the engage lands
+        // a hop later — see `waitForTheLid`.
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertEqual(clamshell.disableSleepCalls, [true])
         XCTAssertTrue(engine.clamshellActive)
         XCTAssertEqual(backing.raw["module.keep-awake.clamshellGuard"] as? Bool, true)
@@ -106,12 +111,14 @@ final class KeepAwakeEngineTests: XCTestCase {
         XCTAssertEqual(backing.raw["module.keep-awake.clamshellGuard"] as? Bool, false)
     }
 
-    func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() {
+    @MainActor
+    func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() async {
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
         clamshell.sudoersInstalled = false // forces the async installSudoers path
 
         engine.activate()
         engine.startSession(minutes: 0)
+        await waitUntil("the lid asked for the rule") { clamshell.installCompletion != nil }
         XCTAssertNotNil(clamshell.installCompletion, "install should have been requested")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty, "must not disable sleep before install completes")
 
@@ -126,7 +133,8 @@ final class KeepAwakeEngineTests: XCTestCase {
         XCTAssertFalse(store.bool("clamshellGuard", default: false))
     }
 
-    func test_clamshell_recovery_on_activate() {
+    @MainActor
+    func test_clamshell_recovery_on_activate() async {
         store.set(true, for: "clamshellGuard")
         clamshell.pmset = "SleepDisabled 1"
         // The grant, because the recovery *is* `sudo -n pmset disablesleep 0`:
@@ -137,6 +145,10 @@ final class KeepAwakeEngineTests: XCTestCase {
         clamshell.sudoersInstalled = true
 
         engine.activate()
+        // The launch recovery is two child processes on a queue of its own, and
+        // the note is cleared last — waiting on the call itself would judge the
+        // store one hop early.
+        await waitUntil("the lid put sleep back") { !store.bool("clamshellGuard", default: false) }
         XCTAssertEqual(clamshell.disableSleepCalls, [false])
         XCTAssertEqual(backing.raw["module.keep-awake.clamshellGuard"] as? Bool, false)
     }

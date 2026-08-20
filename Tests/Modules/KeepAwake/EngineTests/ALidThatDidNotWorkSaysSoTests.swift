@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -50,12 +51,15 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - macOS refused
 
-    func testARefusalIsPublishedRatherThanLookingLikeNothingHappened() throws {
+    func testARefusalIsPublishedRatherThanLookingLikeNothingHappened() async throws {
         try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
 
         engine.startSession(minutes: 0)
 
+        // The refusal comes back from the lid's own queue — a test that reads
+        // it on the next line is reading a question still on its way to `pmset`.
+        await waitUntil("the lid asked pmset") { clamshell.disableSleepCalls.contains(true) }
         XCTAssertFalse(engine.clamshellActive, "precondition: pmset said no")
         XCTAssertTrue(clamshell.disableSleepCalls.contains(true),
                       "precondition: it was asked at all — an absence proves nothing when the "
@@ -67,33 +71,39 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     /// And it leaves when a later attempt works, so the row reports the state of
     /// the last answer rather than the worst answer it ever had.
-    func testARefusalClearsWhenTheNextAttemptWorks() throws {
+    func testARefusalClearsWhenTheNextAttemptWorks() async throws {
         try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
+        await waitUntil("the lid was refused") { engine.lidRefused }
         XCTAssertTrue(engine.lidRefused, "precondition: it refused once")
 
         engine.stopSession()
         clamshell.disableSleepSucceeds = true
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(engine.clamshellActive, "precondition: this time it worked")
         XCTAssertFalse(engine.lidRefused, "the row would say «macOS refused» for ever")
     }
 
     /// The control: an ordinary session says nothing is wrong.
-    func testAnOrdinarySessionPublishesNoRefusal() {
+    func testAnOrdinarySessionPublishesNoRefusal() async {
         engine.startSession(minutes: 0)
+        // Asserted after the answer, not before it: «nothing is wrong» is true
+        // of a question nobody has asked yet.
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertFalse(engine.lidRefused)
     }
 
     /// It has to cross the wire, or the fact exists only inside the engine — the
     /// defect `StatePayload`'s own doc comment records.
-    func testTheRefusalReachesThePayload() throws {
+    func testTheRefusalReachesThePayload() async throws {
         try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid was refused") { engine.lidRefused }
         let decoded = try roundTrip()
         XCTAssertTrue(decoded.lidRefused, "the engine knew and the screen could not")
     }

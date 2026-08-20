@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -46,8 +47,12 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
 
     /// The control. Everything below is about a refusal, and a test of a
     /// refusal passes trivially if the thing never happened at all.
-    func testTheOrdinaryPathStillDisablesAndRestores() {
+    @MainActor
+    func testTheOrdinaryPathStillDisablesAndRestores() async {
         engine.startSession(minutes: 0)
+        // The grant is asked for on the lid's own queue now, so the answer to a
+        // gesture arrives a hop after the gesture — `waitForTheLid`.
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(engine.clamshellActive, "precondition: it engaged")
         XCTAssertTrue(guardFlag)
 
@@ -58,10 +63,14 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     }
 
     /// A refusal on the way in must not be reported as a lid you may close.
-    func testARefusedDisableIsNotDrawnAsAClosedLidThatIsSafe() {
+    @MainActor
+    func testARefusedDisableIsNotDrawnAsAClosedLidThatIsSafe() async {
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
 
+        // The refusal has to have happened before its absence is read: «the lid
+        // is not claimed safe» is true of a question still on its way to `pmset`.
+        await waitUntil("the lid asked pmset") { clamshell.disableSleepCalls.contains(true) }
         XCTAssertFalse(engine.clamshellActive,
                        "the panel draws «Lid closed — staying awake» from this, and "
                        + "pmset had just refused to disable sleep")
@@ -70,10 +79,12 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
 
     /// …and the guard still says «this app may have touched system sleep», so
     /// the next launch goes and reads `pmset` rather than trusting us.
-    func testARefusedDisableStillLeavesTheNextLaunchSomethingToCheck() {
+    @MainActor
+    func testARefusedDisableStillLeavesTheNextLaunchSomethingToCheck() async {
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid asked pmset") { clamshell.disableSleepCalls.contains(true) }
         XCTAssertTrue(guardFlag,
                       "the flag was cleared on a call whose outcome nobody knows, and the "
                       + "launch-time recovery is guarded on it")
@@ -81,8 +92,10 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
 
     /// The expensive one. Sleep is off machine-wide, the restore fails, and
     /// clearing the flag would mean nothing ever looks again.
-    func testARefusedRestoreKeepsTheFlagThatBringsTheNextLaunchBack() {
+    @MainActor
+    func testARefusedRestoreKeepsTheFlagThatBringsTheNextLaunchBack() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertTrue(guardFlag, "precondition: sleep was really disabled")
 
         clamshell.disableSleepSucceeds = false
@@ -97,12 +110,15 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
 
     /// And the recovery the flag exists for still runs on the next launch, so
     /// the guard above is guarding something that happens.
-    func testTheNextLaunchRestoresWhatTheRefusalLeftBehind() {
+    @MainActor
+    func testTheNextLaunchRestoresWhatTheRefusalLeftBehind() async {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.pmset = "SleepDisabled 1"
 
-        atLaunch().activate()
+        let engine = atLaunch()
+        engine.activate()
 
+        await waitUntil("the lid put sleep back") { clamshell.disableSleepCalls.contains(false) }
         XCTAssertTrue(clamshell.disableSleepCalls.contains(false),
                       "a launch that finds the guard set and sleep disabled has to put it back")
     }
@@ -128,13 +144,16 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     /// Asserted as the flag rather than as a `pmset` call count, for the reason
     /// its sibling gives: the flag is the whole mechanism by which a failure
     /// here is recoverable at all.
-    func testARefusedRecoveryAtLaunchKeepsTheFlagThatBringsTheNextLaunchBack() {
+    @MainActor
+    func testARefusedRecoveryAtLaunchKeepsTheFlagThatBringsTheNextLaunchBack() async {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.pmset = "SleepDisabled 1"
         clamshell.disableSleepSucceeds = false
 
-        atLaunch().activate()
+        let engine = atLaunch()
+        engine.activate()
 
+        await waitUntil("the lid tried to put sleep back") { clamshell.disableSleepCalls.contains(false) }
         // The subject first: a test about a refusal is vacuous if the call never
         // happened. `recoverAtLaunch` short-circuits on the flag *and* on the
         // `pmset` report, and either half missing would leave nothing to refuse.
@@ -157,7 +176,8 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     /// `releaseForBattery`, `reconcileActiveSettings`, `activate`, `deactivate`),
     /// so this is a test of the contract and not of anything visible: asserted
     /// here, one call away, because at engine level it cannot fail.
-    func testARefusedRestoreAnnouncesItselfRatherThanTrustingTheCaller() {
+    @MainActor
+    func testARefusedRestoreAnnouncesItselfRatherThanTrustingTheCaller() async {
         let lid = ClamshellCoordinator(clamshell: clamshell, store: store,
                                        settings: KeepAwakeSettings(store: store))
         lid.sessionIsActive = { true }
@@ -165,13 +185,18 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
         lid.stateChanged = { announcements += 1 }
         clamshell.passwordlessGrantExists = true
         lid.engage(mayPrompt: false)
+        await waitUntil("the lid engaged") { lid.active }
         XCTAssertTrue(lid.active, "precondition: sleep is off, so there is something to restore")
-        XCTAssertEqual(announcements, 0, "precondition: engaging cleanly announces nothing")
+        // Engaging announces its own answer as well now, and for the same reason
+        // the refusal below must: `sudo -n` is asked on the lid's own queue, so
+        // the answer arrives after the caller that would have emitted for it has
+        // returned. Counted from here rather than from zero.
+        let afterEngaging = announcements
 
         clamshell.disableSleepSucceeds = false
         lid.disengage()
 
-        XCTAssertEqual(announcements, 1,
+        XCTAssertEqual(announcements - afterEngaging, 1,
                        "the restore was refused — system sleep is still off — and the class whose "
                        + "whole reason for holding `stateChanged` is «a refusal has to reach the "
                        + "screen» said nothing")

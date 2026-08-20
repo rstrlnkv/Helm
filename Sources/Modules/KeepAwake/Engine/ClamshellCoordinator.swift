@@ -32,6 +32,24 @@ final class ClamshellCoordinator: @unchecked Sendable {
     private let store: NamespacedStore
     private let settings: KeepAwakeSettings
 
+    /// Where this port's child processes go.
+    ///
+    /// Four of its six methods are `HelmProcess.run`, which waits for a child
+    /// with **no deadline** and takes one of eight slots shared with every other
+    /// module — Homebrew's search is two `brew search` runs of about nine
+    /// seconds each. And the callers here are the thread that draws: `activate()`
+    /// is the host's module enable, at launch, and `recompute` runs from the
+    /// display, power and application observers, which all deliver on main. So a
+    /// Mac whose Homebrew page was busy could have its main thread parked inside
+    /// this file before anything was drawn — the same shape
+    /// `fix(settings): the thread that draws never waits for the keychain`
+    /// (4dcc5fb6) took out of `SettingGuard`.
+    ///
+    /// Serial, not `.global()`: one launch asks `pmset` twice and the second
+    /// question only makes sense after the first is answered, and nothing here
+    /// is worth two threads.
+    private let shell = DispatchQueue(label: "helm.keep-awake.pmset", qos: .userInitiated)
+
     /// Is a session running *now* — asked at the moment of use, never captured
     /// as a value. Set by the engine after construction rather than passed in,
     /// because both of these close over the engine and the engine owns this.
@@ -56,15 +74,68 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// answer rather than a memory of the worst one.
     private(set) var refused = false
 
-    /// The option went off, the rule was asked to go with it, and it is still
-    /// there.
+    /// The option is off and the rule is still there.
     ///
     /// A declined administrator dialog is an answer; what it leaves behind is a
     /// permanent passwordless `pmset disablesleep` for this account, which is the
     /// price of a feature nobody is using any more. `removeSudoers`' own `Bool`
     /// was discarded, so the only record of it was a log line blaming somebody
     /// else for a rule Helm wrote.
+    ///
+    /// **It is a reading, not a memory of one call.** Written only in the
+    /// removal's callback, it was a local flag standing in for a live fact about
+    /// `/etc/sudoers.d` — a directory this account cannot write and anything
+    /// with a password can — so an administrator taking the file out by hand
+    /// left the row naming a root grant that was gone, with the only thing it
+    /// offered being a way to remove it again. `lookForTheRule` is the reverse
+    /// channel, and the look it makes is `fileExists`, not a child process.
     private(set) var grantRemains = false
+
+    /// State of ours, on the thread it belongs to.
+    ///
+    /// Called from `shell` it hops; called from the main thread it runs **now**,
+    /// which is not a convenience: `tearDown` is what `applicationWillTerminate`
+    /// reaches, and the last word about system sleep may not be posted to a
+    /// queue the process will not live to drain. The port's own reads
+    /// deliberately do not hop — see `removeGrant`.
+    private func onMain(_ block: @escaping @Sendable () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
+    /// The one writer of `grantRemains`, so a change always reaches the wire.
+    ///
+    /// `releaseIfUnneeded` runs *after* the last `emitState` of a
+    /// `settingsChanged`, so a value set there and not announced would sit in
+    /// the engine until something else happened to emit.
+    private func noteGrantRemains(_ value: Bool) {
+        guard grantRemains != value else { return }
+        grantRemains = value
+        stateChanged()
+    }
+
+    /// Is our rule on disk — and say so while we are looking.
+    ///
+    /// Every caller wanted the same fact and only the removal's callback ever
+    /// published it. The stat is the one `recoverAtLaunch` already pays for; its
+    /// answer is now kept rather than dropped. Callable from either thread: the
+    /// look belongs to the port and stays where it was asked from, the verdict
+    /// is ours and lands on main.
+    ///
+    /// The read and the write are therefore not one critical section, and the
+    /// cost is stated rather than engineered away: the launch look runs on
+    /// `shell` while a settings edit looks on main, so an edit made in the same
+    /// instant as the launch could have its verdict overtaken by the launch's
+    /// older one. What that costs is one stale row until the next edit, and the
+    /// alternative — a second `fileExists` on the main thread per launch — buys
+    /// nothing else.
+    private func lookForTheRule() -> Bool {
+        let installed = clamshell.isSudoersInstalled()
+        let optionOn = settings.clamshellEnabled
+        // The complaint is only about a rule nobody is using: while the option
+        // is on, the same file is the feature working.
+        onMain { [self] in noteGrantRemains(installed && !optionOn) }
+        return installed
+    }
 
     /// An admin password prompt is on screen and has not been answered.
     ///
@@ -113,14 +184,26 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// second half of this guard is never evaluated, which is what a Mac that has
     /// never had the lid option switched on wants — the whole cost of it there is
     /// two reads of local state.
+    ///
+    /// **And when there is an anchor, the two child processes it leads to run on
+    /// `shell`.** This is `activate()`, which the host calls on the main thread
+    /// while it is putting the app together; `pmset -g` and `sudo pmset
+    /// disablesleep 0` are two waits with no deadline behind a semaphore shared
+    /// with `brew`, and nothing is drawn until they answer.
     func recoverAtLaunch() {
-        let mayHaveLeftSleepOff = store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false)
-            || clamshell.isSudoersInstalled()
-        guard mayHaveLeftSleepOff,
-              ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
-        else { return }
-        restoreSleep(refused: "closed-lid sleep could not be restored at launch",
-                     restored: "closed-lid sleep restored at launch")
+        let noted = store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false)
+        shell.async { [self] in
+            // Asked first rather than as the second half of an `||`, so the
+            // launch that finds the note set still looks at the rule: this is
+            // the reading the lid row draws, and short-circuiting it left the
+            // page with nothing to say until the first settings edit.
+            let ruleOnDisk = lookForTheRule()
+            guard noted || ruleOnDisk,
+                  ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
+            else { return }
+            restoreSleep(refused: "closed-lid sleep could not be restored at launch",
+                         restored: "closed-lid sleep restored at launch")
+        }
     }
 
     /// Put system sleep back, and keep the note if `pmset` refused.
@@ -138,22 +221,32 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// survived its own fix on the other path.
     /// The sentences are the caller's, so a refusal cannot be reported by one
     /// path and swallowed by the other — which is the defect, not the wording.
+    ///
+    /// **The call runs wherever it is called from and the state always lands on
+    /// main.** Off `shell` at launch; on the caller's own thread from
+    /// `disengage`, because that is what `tearDown` reaches from
+    /// `applicationWillTerminate` — a restore posted to a queue is a restore a
+    /// dying process may never make, and a Mac left unable to sleep is this
+    /// module's worst failure.
     private func restoreSleep(refused: String, restored: String) {
-        guard clamshell.setDisableSleep(false) else {
-            HelmLog.shared.warn(KeepAwakeEngine.moduleID, refused)
-            // Told, for the same reason `reallyEngage`'s refusal tells: this
-            // class does not get to assume its callers emit. Every one of them
-            // does today — `recompute`, `releaseForBattery`,
-            // `reconcileActiveSettings`, `deactivate` and `activate` all end in
-            // `emitState()` — so this changes nothing observable now, and it is
-            // the contract that `stateChanged` exists for rather than a habit of
-            // five call sites.
+        let putBack = clamshell.setDisableSleep(false)
+        onMain { [self] in
+            guard putBack else {
+                HelmLog.shared.warn(KeepAwakeEngine.moduleID, refused)
+                // Told, for the same reason `reallyEngage`'s refusal tells: this
+                // class does not get to assume its callers emit. Every one of
+                // them does today — `recompute`, `releaseForBattery`,
+                // `reconcileActiveSettings`, `deactivate` and `activate` all end
+                // in `emitState()` — and the launch recovery no longer does,
+                // because it answers after `activate()` has returned.
+                stateChanged()
+                return
+            }
+            store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
+            active = false
+            HelmLog.shared.info(KeepAwakeEngine.moduleID, restored)
             stateChanged()
-            return
         }
-        store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
-        active = false
-        HelmLog.shared.info(KeepAwakeEngine.moduleID, restored)
     }
 
     /// The module is being switched off, or Helm is quitting. **Sleep goes back;
@@ -198,7 +291,21 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // a predecessor, an admin, a migration — grants exactly this, and
         // asking about the file made Helm request a password to install what
         // was already there.
-        guard !clamshell.canDisableSleepWithoutPassword() else {
+        //
+        // It is also `sudo -n pmset disablesleep 0`: a child process, asked
+        // *before* anything about a gesture is decided, from a recompute a
+        // watched app launching causes. So it is asked on `shell` and every
+        // decision that follows is made on main with the answer in hand.
+        shell.async { [self] in
+            let alreadyGranted = clamshell.canDisableSleepWithoutPassword()
+            onMain { self.engage(mayPrompt: mayPrompt, alreadyGranted: alreadyGranted) }
+        }
+    }
+
+    /// The half of `engage` that touches state of ours, with the one question
+    /// that needed a child process already answered.
+    private func engage(mayPrompt: Bool, alreadyGranted: Bool) {
+        guard !alreadyGranted else {
             reallyEngage()
             return
         }
@@ -230,7 +337,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
         installInFlight = false
         guard granted else { return }
         reallyEngage()
-        releaseIfUnneeded()
+        // `switchedOff: true`, and it is not a guess: a prompt stands for
+        // minutes, and if the option went off while it was up, the falling edge
+        // that carried the decision arrived when there was no file yet to
+        // remove. A rule that lands for an option nobody has any more is the
+        // same gesture, answered late.
+        releaseIfUnneeded(switchedOff: !settings.clamshellEnabled)
     }
 
     private func reallyEngage() {
@@ -261,11 +373,17 @@ final class ClamshellCoordinator: @unchecked Sendable {
         refused = false
         // A grant that is being used is not a grant left behind. The complaint
         // only makes sense while the option is off.
-        grantRemains = false
+        noteGrantRemains(false)
         // A change to the system's own sleep setting, made through sudo and
         // outliving the process — the one thing here a crash can leave behind.
         // Both ends of it belong in the trail.
         HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep disabled")
+        // Every route here now arrives after its caller has emitted — the
+        // grant is asked for on `shell`, and the install prompt takes minutes —
+        // so «the lid is safe to close» reaches the screen from here or not at
+        // all. It used to ride on `recompute`'s own emit, which is one frame
+        // earlier than the answer.
+        stateChanged()
     }
 
     func disengage() {
@@ -275,27 +393,59 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     // MARK: - Settings
 
-    /// Reconcile against the current setting, and answer whether this was the
-    /// switch's **rising edge**.
+    /// What the option's switch did since the last `settingsChanged`.
     ///
     /// The edge, not the value: `settingsChanged` arrives for every control the
     /// page draws, and `clamshellEnabled` stays true after a password dialog is
     /// *declined* — so acting on the value put a dialog in front of somebody for
-    /// every later edit of an unrelated setting.
+    /// every later edit of an unrelated setting. Both directions are answered
+    /// here, from one reading, because both cost an administrator password and
+    /// the two halves of a reconcile must not each take their own.
     ///
     /// Read before the caller's own «is a session running» guard, so an edge
     /// that happens while the module is idle is *consumed* rather than saved up
     /// for whichever unrelated edit arrives after a rule starts a session.
-    func consumeRisingEdge() -> Bool {
-        let switchedOn = settings.clamshellEnabled && !lastSetting
-        lastSetting = settings.clamshellEnabled
-        return switchedOn
+    func consumeEdge() -> Edge {
+        let now = settings.clamshellEnabled
+        defer { lastSetting = now }
+        guard now != lastSetting else { return .none }
+        return now ? .rising : .falling
+    }
+
+    /// Which way the option's switch moved. Three cases and no `default`
+    /// anywhere: «nothing moved» is a case, and it is the common one.
+    enum Edge {
+        case none
+        /// Switched on — the one gesture that may ask for the rule.
+        case rising
+        /// Switched off — the one gesture that may ask for it back.
+        case falling
     }
 
     /// Switching the option off takes the passwordless rule back out. The rule
     /// is the price of the feature, not of having installed Helm.
-    func releaseIfUnneeded() {
-        guard !settings.clamshellEnabled else { return }
+    ///
+    /// **Only the falling edge asks.** This runs on `settingsChanged`, which the
+    /// page sends for every control it draws, and the battery floor is a
+    /// `Slider` whose binding saves on every distinct rounded value: one drag
+    /// from 20 % to 50 % is six of these. Asking on the *value* — the option is
+    /// off, our file is there — made each one an administrator password dialog
+    /// for a decision already answered, and a declined removal leaves precisely
+    /// that state on disk for every future launch, so it was six dialogs a drag
+    /// for ever. `removalInFlight` only ever covered the seconds one dialog was
+    /// up. The install side reached this answer first (`consumeEdge`), and the
+    /// row's own words are already «Switch this on and off again to remove it».
+    ///
+    /// - Parameter switchedOff: the option's falling edge — the gesture that
+    ///   means «take that rule away». A decline is never final: switching it on
+    ///   and off again asks again.
+    func releaseIfUnneeded(switchedOff: Bool) {
+        // The look is not the ask, and it happens on every settings change: it
+        // is a `fileExists` on a 0755 directory, no child process and no
+        // password. It is also the only thing that can ever *unsay* the row's
+        // claim about a rule this app cannot see change.
+        let installed = lookForTheRule()
+        guard switchedOff, installed else { return }
         removeGrant()
     }
 
@@ -313,13 +463,17 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// The setting is left where it is: somebody who switches the module back on
     /// asked for the lid option once and will be asked for the password again,
     /// which is the same round trip switching the option off and on already makes.
-    func releaseOnModuleDisabled() { removeGrant() }
+    func releaseOnModuleDisabled() {
+        guard lookForTheRule() else { return }
+        removeGrant()
+    }
 
     /// Silent on a declined prompt in the log's terms — that is an answer, not a
     /// fault — and **not** silent on screen: what a decline leaves behind is a
     /// permanent grant for a feature nobody is using.
+    /// Both callers have looked already (`lookForTheRule`), which is what keeps
+    /// the row's claim and the decision to ask one reading rather than two.
     private func removeGrant() {
-        guard clamshell.isSudoersInstalled() else { return }
         guard !removalInFlight else { return }
         removalInFlight = true
         clamshell.removeSudoers { [weak self] removed in
@@ -355,8 +509,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
             // the life of the process.
             Task { @MainActor in
                 self.removalInFlight = false
-                self.grantRemains = ours
-                self.stateChanged()
+                self.noteGrantRemains(ours)
             }
         }
     }

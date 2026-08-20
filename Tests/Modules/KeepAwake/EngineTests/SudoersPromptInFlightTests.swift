@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -25,7 +26,16 @@ private final class PromptClamshell: ClamshellPort {
     private(set) var removeCount = 0
     private var pending: [(Bool) -> Void] = []
 
-    func canDisableSleepWithoutPassword() -> Bool { sudoersInstalled }
+    /// How many times the coordinator asked whether it may disable sleep
+    /// without a password. It asks that on a queue of its own now, so «the
+    /// dialog was not raised a second time» has to be read *after* the second
+    /// question was answered — otherwise it is green because nobody has asked
+    /// yet.
+    private(set) var grantChecks = 0
+    func canDisableSleepWithoutPassword() -> Bool {
+        grantChecks += 1
+        return sudoersInstalled
+    }
     func isSudoersInstalled() -> Bool { sudoersInstalled }
 
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
@@ -104,9 +114,12 @@ final class SudoersPromptInFlightTests: XCTestCase {
     }
 
     /// Puts a prompt on screen and leaves it there.
-    private func startSessionWithPromptUp() {
+    private func startSessionWithPromptUp() async {
         engine.activate()
         engine.startSession(minutes: 0)
+        // The question that decides whether to prompt is `sudo -n`, asked off
+        // the drawing thread — see `waitForTheLid`.
+        await waitUntil("the lid asked for the rule") { clamshell.installCount == 1 }
         XCTAssertEqual(clamshell.installCount, 1, "precondition: one password prompt is up")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty,
                       "precondition: nothing has been granted yet")
@@ -128,7 +141,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// feature the person has switched off — "a grant nobody is holding", and
     /// the one Helm's predecessor left on this machine.
     func testARuleThatLandsAfterTheOptionIsOffIsTakenBackOut() async throws {
-        startSessionWithPromptUp()
+        await startSessionWithPromptUp()
 
         // The person changes their mind while the prompt is up.
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
@@ -148,7 +161,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// made by weakening it: the rule landing late must not disable sleep for a
     /// feature nobody has turned on.
     func testARuleThatLandsAfterTheOptionIsOffDisablesNoSleep() async throws {
-        startSessionWithPromptUp()
+        await startSessionWithPromptUp()
 
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
@@ -169,12 +182,16 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// The person now has two admin password dialogs for one decision, and both
     /// of them are `osascript` writing the same staging file inside
     /// `/etc/sudoers.d`.
-    func testStartingASessionAgainDoesNotAskForThePasswordTwice() {
-        startSessionWithPromptUp()
+    func testStartingASessionAgainDoesNotAskForThePasswordTwice() async {
+        await startSessionWithPromptUp()
 
+        let asked = clamshell.grantChecks
         engine.stopSession()
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid asked again whether it needs a password") {
+            clamshell.grantChecks > asked
+        }
         XCTAssertEqual(clamshell.installCount, 1,
                        "a second admin password prompt was stacked on the one already up")
     }
@@ -185,10 +202,14 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// while it is up asks again: the display toggle, the jiggle interval, a
     /// battery threshold.
     func testASettingsChangeWhileThePromptIsUpDoesNotAskAgain() async throws {
-        startSessionWithPromptUp()
+        await startSessionWithPromptUp()
 
+        let asked = clamshell.grantChecks
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
 
+        await waitUntil("the lid asked again whether it needs a password") {
+            clamshell.grantChecks > asked
+        }
         XCTAssertEqual(clamshell.installCount, 1,
                        "changing an unrelated setting put a second password prompt on screen")
     }
@@ -199,7 +220,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// installed and sleep is disabled — so none of the above can be satisfied
     /// by never installing anything.
     func testAnAnsweredPromptStillEngagesTheClamshellGuard() async {
-        startSessionWithPromptUp()
+        await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: true)
         await drainMain()
@@ -215,13 +236,14 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// guard the tests above ask for must *not* break: "a prompt is up" and "a
     /// prompt was declined" are different states.
     func testADeclinedPromptCanBeAskedAgainOnTheNextSession() async {
-        startSessionWithPromptUp()
+        await startSessionWithPromptUp()
 
         clamshell.answerAllPrompts(granted: false)
         await drainMain()
         engine.stopSession()
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid asked for the rule a second time") { clamshell.installCount == 2 }
         XCTAssertEqual(clamshell.installCount, 2,
                        "the person declined once and can no longer turn the feature on")
     }

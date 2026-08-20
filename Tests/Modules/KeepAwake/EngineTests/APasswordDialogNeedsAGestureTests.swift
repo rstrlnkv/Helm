@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -45,17 +46,32 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
     }
 
+    /// Every settings edit asks `sudo -n` again, on the lid's own queue. This is
+    /// what makes «and it did *not* ask for a password» a statement about an
+    /// answered question rather than about one still in the post.
+    @MainActor
+    private func waitForTheQuestion(after asked: Int,
+                                    file: StaticString = #filePath,
+                                    line: UInt = #line) async {
+        await waitUntil("the lid ask whether it needs a password", file: file, line: line) {
+            clamshell.grantChecks > asked
+        }
+    }
+
     /// The control. Pressing a button still asks — otherwise every assertion
     /// below passes with the feature deleted.
-    func testStartingASessionByHandStillAsksForTheRule() {
+    @MainActor
+    func testStartingASessionByHandStillAsksForTheRule() async {
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1,
                        "a deliberate start is the one place a password dialog belongs")
     }
 
     /// The expensive one. A rule fires, the Mac is held awake, and no dialog.
-    func testARuleFiringDoesNotRaiseAPasswordDialog() {
+    @MainActor
+    func testARuleFiringDoesNotRaiseAPasswordDialog() async {
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
         power.says(.mains)
@@ -65,8 +81,10 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
                                     apps: apps, pointer: FakePointer(),
                                     clamshell: clamshell, clock: FakeClock())
 
+        let asked = clamshell.grantChecks
         ruled.activate()
 
+        await waitForTheQuestion(after: asked)
         XCTAssertTrue(ruled.isActive,
                       "precondition: the rule really did start a session — a test that a "
                       + "dialog did not appear passes trivially if nothing happened")
@@ -77,7 +95,8 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
     /// And the feature is not quietly broken for the automatic path: where the
     /// grant is already there, the lid still works with no dialog to raise.
-    func testAnAutomaticSessionStillDisablesLidSleepWhenTheGrantExists() {
+    @MainActor
+    func testAnAutomaticSessionStillDisablesLidSleepWhenTheGrantExists() async {
         clamshell.passwordlessGrantExists = true
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
@@ -90,6 +109,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
         ruled.activate()
 
+        await waitUntil("the lid disabled sleep") { ruled.clamshellActive }
         XCTAssertEqual(clamshell.installCalls, 0)
         XCTAssertTrue(ruled.clamshellActive,
                       "nothing had to be asked, so nothing should have been withheld")
@@ -99,16 +119,20 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     /// control the page draws, and `clamshellEnabled` stays true after a dialog
     /// is *declined* — so asking on the value meant a password dialog for every
     /// later edit of an unrelated setting.
-    func testEditingAnUnrelatedSettingDoesNotAskAgain() {
+    @MainActor
+    func testEditingAnUnrelatedSettingDoesNotAskAgain() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: the first ask happened")
         // Declined: the file is still absent and the setting is still on.
         clamshell.finishInstall(granted: false)
         drainMain()
 
-        engine.settingsChangedForTests()
-        engine.settingsChangedForTests()
-        engine.settingsChangedForTests()
+        for _ in 0..<3 {
+            let asked = clamshell.grantChecks
+            engine.settingsChangedForTests()
+            await waitForTheQuestion(after: asked)
+        }
 
         XCTAssertEqual(clamshell.installCalls, 1,
                        "three unrelated edits produced three administrator dialogs")
@@ -116,8 +140,10 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
     /// …and switching the setting off and on again is a fresh decision, so it
     /// does ask. Without this the guard above would be «never ask twice».
-    func testTurningTheSettingOffAndOnAsksAgain() {
+    @MainActor
+    func testTurningTheSettingOffAndOnAsksAgain() async {
         engine.startSession(minutes: 0)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         clamshell.finishInstall(granted: false)
         drainMain()
 
@@ -126,6 +152,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
         engine.settingsChangedForTests()
 
+        await waitUntil("the lid asked for the rule a second time") { clamshell.installCalls == 2 }
         XCTAssertEqual(clamshell.installCalls, 2,
                        "somebody switched it on again and nothing happened")
     }

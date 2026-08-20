@@ -56,9 +56,17 @@ extension KeepAwakeEngine {
         /// `PanelLayout.Tab.init(from:)` is the same repair for the same reason,
         /// one target over.
         ///
-        /// The six fields that were there from the first version are decoded
-        /// outright: a payload without `isActive` is not an older payload, it is
-        /// not this payload.
+        /// **The list of «original» fields is five, and `suppressed` is not one
+        /// of them.** `git show v0.9.0` has the released declaration —
+        /// `isActive`, `conditions`, `clamshellActive`, `endDate`, `startDate`
+        /// — and this comment said six while `suppressed`, which arrived three
+        /// weeks after that tag, was decoded with `try decode`: the very
+        /// document this decoder was written to accept was the one it threw on.
+        /// The three non-optional ones stay required, because a payload without
+        /// `isActive` is not an older payload, it is not this payload; the two
+        /// dates are `nil` in every version of it.
+        /// `APayloadFromTheLastReleaseDecodesTests` fails on the next field that
+        /// arrives without a default, so the list is checked rather than read.
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             isActive = try c.decode(Bool.self, forKey: .isActive)
@@ -66,7 +74,7 @@ extension KeepAwakeEngine {
             clamshellActive = try c.decode(Bool.self, forKey: .clamshellActive)
             endDate = try c.decodeIfPresent(Date.self, forKey: .endDate)
             startDate = try c.decodeIfPresent(Date.self, forKey: .startDate)
-            suppressed = try c.decode(Bool.self, forKey: .suppressed)
+            suppressed = try c.decodeIfPresent(Bool.self, forKey: .suppressed) ?? false
             triggeredConditions = try c.decodeIfPresent([String].self,
                                                         forKey: .triggeredConditions) ?? []
             holdingApps = try c.decodeIfPresent([String].self, forKey: .holdingApps) ?? []

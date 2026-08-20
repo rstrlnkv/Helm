@@ -71,6 +71,18 @@ private final class RemovalPromptClamshell: ClamshellPort {
 /// With the option off and the rule still on disk, each of those is another
 /// `osascript` asking for an administrator password for the one decision the
 /// person already made.
+///
+/// **What asks is the switch, not the message.** This file used to send bare
+/// `settingsChanged`es with the option *never having been on* — so what it
+/// called «turning the option off» was «the option is off», which is the
+/// reading `ADeclinedRemovalIsNotAskedForEverTests` showed the cost of: it is
+/// true from the first edit of every future launch, and the battery floor's
+/// `Slider` sends one of these per rounded value it passes. The ask follows the
+/// option's **falling edge** now (`ClamshellCoordinator.releaseIfUnneeded`), the
+/// same shape the install side already had, so every case here drives the
+/// switch rather than repeating a message that says nothing changed. Nothing
+/// asserted here was given up: a decline can still be asked again, it just takes
+/// the gesture that means «take that rule away» rather than any edit at all.
 @MainActor
 final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
@@ -82,14 +94,15 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = RemovalPromptClamshell()
+        // The option is on and its rule is installed, which is where somebody
+        // who has used the feature starts — and it is what makes switching it
+        // off below an *edge* rather than a value that was always false.
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: clamshell, clock: FakeClock())
-        // The state this is all about: the feature is off and its rule is still
-        // installed, which is exactly what switching the toggle off produces.
-        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         engine.activate()
     }
 
@@ -99,10 +112,16 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
             EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
     }
 
+    /// The gesture: the switch moves, and the page says so the only way it can.
+    private func switchTheOption(_ on: Bool) async {
+        KeepAwakeSettings(store: store).setClamshellEnabled(on)
+        await settingsChanged()
+    }
+
     /// The control, first: a test about asking twice is worth nothing if the
     /// first ask never happened.
     func testTurningTheOptionOffAsksToRemoveTheRule() async {
-        await settingsChanged()
+        await switchTheOption(false)
 
         XCTAssertEqual(clamshell.removeCount, 1,
                        "a NOPASSWD line for a feature that is off is a grant nobody is holding")
@@ -112,7 +131,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// and while it is up they carry on with the page — the battery floor, a
     /// swatch, the jiggle interval. Every one of those is a `settingsChanged`.
     func testAChangeMadeWhileTheRemovalPromptIsUpDoesNotAskAgain() async {
-        await settingsChanged()
+        await switchTheOption(false)
         XCTAssertEqual(clamshell.removeCount, 1, "precondition: one prompt is up")
 
         await settingsChanged()
@@ -125,21 +144,48 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
     /// And it is not two: the page sends this command on every control it has.
     func testFourMoreSettingsChangesDoNotStackFourMorePrompts() async {
-        for _ in 0..<5 { await settingsChanged() }
+        await switchTheOption(false)
+        for _ in 0..<4 { await settingsChanged() }
 
         XCTAssertEqual(clamshell.removeCount, 1,
                        "five ordinary edits on the settings page, five password dialogs")
+    }
+
+    /// The same question asked of the *gesture*, which is what the in-flight
+    /// guard is left holding once unrelated edits no longer ask: somebody
+    /// flicking the switch while the dialog waits gets one dialog, not three.
+    ///
+    /// Here because without it `removalInFlight` is guarded by nothing a test
+    /// can see — every other case above is now answered by the edge, and a flag
+    /// no test can fail is a flag the next reader deletes.
+    func testFlickingTheSwitchWhileThePromptIsUpDoesNotStackPrompts() async {
+        await switchTheOption(false)
+        XCTAssertEqual(clamshell.removeCount, 1, "precondition: one prompt is up")
+
+        await switchTheOption(true)
+        await switchTheOption(false)
+
+        XCTAssertEqual(clamshell.removeCount, 1,
+                       "a second administrator dialog was stacked on the one already up, for a "
+                       + "rule that is still on disk because nobody has answered the first")
+        // Answered, so nothing is left waiting on a completion this test owns.
+        clamshell.answerRemovalPrompts(granted: true)
     }
 
     /// The other end, which no in-flight flag may cost: once the prompt has been
     /// answered and the rule is gone, nothing asks again — and nothing keeps
     /// asking for ever either.
     func testOnceTheRuleIsGoneNothingAsksAgain() async {
-        await settingsChanged()
+        await switchTheOption(false)
         clamshell.answerRemovalPrompts(granted: true)
         XCTAssertFalse(clamshell.sudoersInstalled, "precondition: the rule is off disk")
 
         await settingsChanged()
+        // And not only an unrelated edit: the gesture itself finds nothing to
+        // ask about, which is what stops «switch it off again» from being a
+        // password dialog for a file that is not there.
+        await switchTheOption(true)
+        await switchTheOption(false)
 
         XCTAssertEqual(clamshell.removeCount, 1)
     }
@@ -149,12 +195,18 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// decision of theirs may well be yes. This is what the guard the tests
     /// above ask for must not break — the same distinction the install side
     /// already keeps (`testADeclinedPromptCanBeAskedAgainOnTheNextSession`).
+    ///
+    /// What asks again is the switch, not the next edit of anything on the page:
+    /// «any settings change» is the trigger that made one drag of the battery
+    /// floor six administrator dialogs, and it never stopped, because a declined
+    /// removal leaves the file exactly where the next launch finds it.
     func testADeclinedRemovalCanBeAskedAgain() async {
-        await settingsChanged()
+        await switchTheOption(false)
         clamshell.answerRemovalPrompts(granted: false)
         XCTAssertTrue(clamshell.sudoersInstalled, "precondition: Cancel leaves the rule on disk")
 
-        await settingsChanged()
+        await switchTheOption(true)
+        await switchTheOption(false)
 
         XCTAssertEqual(clamshell.removeCount, 2,
                        "the person clicked Cancel once and the rule can never be removed again")
@@ -170,11 +222,10 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// `APmsetThatRefusedIsNotASuccessTests` demands when the rule disappears
     /// behind the app's back for any other reason.
     func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgain() async {
-        await settingsChanged()
+        await switchTheOption(false)
         XCTAssertEqual(clamshell.removeCount, 1, "precondition: a removal is in flight")
 
-        KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        await settingsChanged()
+        await switchTheOption(true)
         // …and only now does the person answer the dialog that is still up.
         clamshell.answerRemovalPrompts(granted: true)
         XCTAssertFalse(clamshell.sudoersInstalled, "precondition: the rule is gone")

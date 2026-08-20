@@ -3,7 +3,18 @@ import Foundation
 import HelmRuntime
 
 public protocol SleepAssertions: AnyObject {   // IOKit
-    func preventSleep(display: Bool)
+    /// Whether the Mac is now being held awake — **everything that was asked
+    /// for**, so `display: true` answers no if only the system half went up.
+    ///
+    /// It answered `Void`, and `IOPMAssertionCreateWithName`'s `IOReturn` was
+    /// read for one thing only: whether to keep the id. So a refused assertion
+    /// left the engine setting `isActive`, writing «holding sleep» and lighting
+    /// the menu bar for a Mac that then slept on schedule — the same «a refusal
+    /// that is not a success» the clamshell half of this module was corrected
+    /// for, on the port that could not even say it. A state a port has no word
+    /// for is a state no fake can stand in and no test can be written about.
+    @discardableResult
+    func preventSleep(display: Bool) -> Bool
     func release()
 }
 

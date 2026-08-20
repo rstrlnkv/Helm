@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
@@ -31,23 +32,28 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     }
 
     /// The control: with no grant of any kind, the first session asks.
-    func testWithNoGrantAtAllTheFirstSessionAsksForOne() {
+    @MainActor
+    func testWithNoGrantAtAllTheFirstSessionAsksForOne() async {
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
 
         engine.startSession(minutes: 0)
 
+        // The grant question is `sudo -n`, asked off the drawing thread now.
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: this is the path that prompts")
     }
 
     /// Somebody else's file, granting exactly this. Nothing to install, and no
     /// reason to put an administrator dialog in front of anybody.
-    func testAGrantSomebodyElseWroteIsNotAskedForAgain() {
+    @MainActor
+    func testAGrantSomebodyElseWroteIsNotAskedForAgain() async {
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = true
 
         engine.startSession(minutes: 0)
 
+        await waitUntil("the lid disabled sleep") { engine.clamshellActive }
         XCTAssertEqual(clamshell.installCalls, 0,
                        "a password was requested to install a rule that already grants this")
         XCTAssertTrue(engine.clamshellActive, "and the feature works, because the grant is there")

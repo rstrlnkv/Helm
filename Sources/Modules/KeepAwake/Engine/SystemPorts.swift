@@ -24,7 +24,12 @@ public final class IOKitSleepAssertions: SleepAssertions {
     /// the settings page saying Keep Awake was off.
     deinit { release() }
 
-    public func preventSleep(display: Bool) {
+    /// - Returns: whether everything asked for is now held. The `IOReturn` was
+    ///   read only to decide whether to keep the id, and thrown away as an
+    ///   *answer*: a refusal here is a Mac that sleeps while every surface says
+    ///   Helm is holding it awake.
+    @discardableResult
+    public func preventSleep(display: Bool) -> Bool {
         if !hasSystemAssertion {
             var assertionID: IOPMAssertionID = 0
             let result = IOPMAssertionCreateWithName(
@@ -64,6 +69,11 @@ public final class IOKitSleepAssertions: SleepAssertions {
             displayAssertionID = 0
             hasDisplayAssertion = false
         }
+        // Everything that was asked for, not «something went up»: with the
+        // display setting on, a system assertion alone is a screen that goes
+        // dark on a Mac being held awake, which is not what the person switched
+        // on.
+        return hasSystemAssertion && (!display || hasDisplayAssertion)
     }
 
     public func release() {

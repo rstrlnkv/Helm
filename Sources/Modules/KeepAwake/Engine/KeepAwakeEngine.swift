@@ -297,6 +297,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public func resumeAutomation() {
         guard suppressed else { return }
         suppressed = false
+        // Lifting it is as much a decision as setting it, and the store has to
+        // hear both or the next launch puts back a pause the person has ended.
+        rememberSession()
         HelmLog.shared.info(Self.moduleID, "automation resumed by hand")
         recompute()
     }
@@ -354,6 +357,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // the screen is about to be told about.
         if suppressed && triggeredConditions.isEmpty {
             suppressed = false
+            // The other way a pause ends — the trigger it was set against
+            // dropped. Written down inside the `if`, so this costs one store
+            // write per lift rather than one per recompute, and a relaunch a
+            // moment later does not find a pause whose rule is long gone.
+            rememberSession()
         }
 
         var inputs = Conditions.Inputs()
@@ -374,9 +382,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // is for.
         if r.isActive && !isActive {
             isActive = true
-            assertions.preventSleep(display: settings.keepDisplayOn)
             HelmLog.shared.info(Self.moduleID, "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
+            noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
             if MacHardware.hasLid, settings.clamshellEnabled {
                 lid.engage(mayPrompt: byGesture)
             }
@@ -396,14 +404,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// Re-apply live-tunable side effects to current settings while a session is
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
-    private func reconcileActiveSettings() {
-        // Consumed before the `isActive` guard — see `consumeRisingEdge`.
-        let switchedOn = lid.consumeRisingEdge()
-        guard isActive else { return }
+    ///
+    /// Answers the lid option's edge, because the *release* needs the same
+    /// reading and there is only one of it per `settingsChanged` — see
+    /// `ClamshellCoordinator.consumeEdge`.
+    private func reconcileActiveSettings() -> ClamshellCoordinator.Edge {
+        // Consumed before the `isActive` guard — see `consumeEdge`.
+        let edge = lid.consumeEdge()
+        guard isActive else { return edge }
         assertions.release()
-        assertions.preventSleep(display: settings.keepDisplayOn)
+        noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
         if settings.clamshellEnabled, !lid.active {
-            lid.engage(mayPrompt: switchedOn)
+            lid.engage(mayPrompt: edge == .rising)
         } else if !settings.clamshellEnabled, lid.active {
             lid.disengage()
         }
@@ -413,6 +425,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             jiggleToken = nil
         }
         emitState()
+        return edge
+    }
+
+    /// IOKit would not take the assertion, so the Mac will sleep on schedule
+    /// while every surface here says it is being held.
+    ///
+    /// The trail is where this lands and **the screen is not, yet**: saying it
+    /// on the page is a field on `StatePayload` and a sentence in eight
+    /// languages, and the eight files are `HelmUI`'s. Written beside «holding
+    /// sleep» rather than instead of it, because both are true — the session is
+    /// running, and it is not holding what it says.
+    private func noteIfTheAssertionWasRefused(_ held: Bool) {
+        guard !held else { return }
+        HelmLog.shared.warn(Self.moduleID, "the sleep assertion could not be taken; "
+                            + "this Mac will sleep on its own schedule")
     }
 
     private func externalDisplayCondition() -> Bool {
@@ -489,87 +516,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     "timer ended; automation suppressed until the trigger returns")
             }
             stopSession()
-        }
-    }
-
-    // MARK: - A session across the end of the process
-
-    /// Not private, so the tests that plant a session name the same keys the
-    /// engine reads rather than spelling them a second time.
-    enum SessionKey {
-        static let on = "sessionOn"
-        static let startedAt = "sessionStartedAt"
-        static let endsAt = "sessionEndsAt"
-    }
-
-    /// Written wherever the person's intent changes, and **not** in
-    /// `deactivate()`.
-    ///
-    /// `deactivate()` looks like the place for it and is the one place it must not
-    /// go: `applicationWillTerminate` calls it on every live engine
-    /// (`HelmApp/AppDelegate.swift:237`), so recording "off" there would erase the
-    /// session on every quit — including the silent updater's, which is the
-    /// relaunch this whole thing exists for. It would have been a fix that
-    /// changed nothing.
-    ///
-    /// The cost of that choice, stated: `deactivate()` also runs when the module
-    /// is switched off in Settings, and it cannot tell the two callers apart. So
-    /// switching Keep Awake off and on again resumes a session that has not
-    /// expired. Of the two possible mistakes, forgetting what the person asked for
-    /// is the one that was reported.
-    /// Stored against 2001 and not 1970, which is not a style choice: a `Date`
-    /// *is* a `Double` of seconds since the reference date, so that round-trips
-    /// exactly, while going through `timeIntervalSince1970` adds and then
-    /// subtracts 978 307 200 and loses the low-order bits. The restored deadline
-    /// then differs from the stored one by a fraction of a second — enough for a
-    /// re-scheduled expiry to miss the interval it was scheduled for, and enough
-    /// to make a test of it pass or fail on the fractional part of `Date()`.
-    private func rememberSession() {
-        store.set(manualOn, for: SessionKey.on)
-        store.set(startDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.startedAt)
-        store.set(endDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.endsAt)
-    }
-
-    private func restoreSession() {
-        let stamp = { (seconds: Double) -> Date? in
-            seconds > 0 ? Date(timeIntervalSinceReferenceDate: seconds) : nil
-        }
-        let storedStart = stamp(store.double(SessionKey.startedAt, default: 0))
-        let storedEnd = stamp(store.double(SessionKey.endsAt, default: 0))
-
-        switch SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
-                                     startDate: storedStart, endDate: storedEnd,
-                                     now: clock.now()) {
-        case .none:
-            let hadOne = store.bool(SessionKey.on, default: false)
-            manualOn = false
-            startDate = nil
-            endDate = nil
-            // The record goes with it, so a later launch cannot find the same
-            // spent deadline and weigh it again.
-            rememberSession()
-            // Worth a line precisely because nothing visible happens: this is the
-            // answer to "why did my Mac sleep" when the app was gone longer than
-            // the session had left.
-            if hadOne {
-                HelmLog.shared.info(Self.moduleID, "a stored session had already ended")
-            }
-        case .indefinite:
-            manualOn = true
-            startDate = nil
-            endDate = nil
-            HelmLog.shared.info(Self.moduleID, "restored a session with no deadline")
-        case .remaining(let left):
-            manualOn = true
-            startDate = storedStart
-            // The deadline the module decided on, not the one it read. The two
-            // differ wherever the decision bounded the stored pair — a clock
-            // that moved, or a pair that is credible as a duration and absurd
-            // as dates — and the countdown every surface draws is this date
-            // minus now, converted to an `Int`.
-            endDate = clock.now().addingTimeInterval(left)
-            scheduleExpiry(after: left)
-            HelmLog.shared.info(Self.moduleID, "restored a session: \(Int(left / 60)) min left")
         }
     }
 
@@ -679,16 +625,19 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
     }
 
-    /// The `settingsChanged` path, reachable without a transport hop.
-    ///
-    /// The command handler does these three in this order, and a test of what
-    /// happens when a setting changes should not have to encode a JSON payload
-    /// to say so.
-    func settingsChangedForTests() {
+    /// What a settings edit does, in the order it does it — **the one spelling
+    /// of it**. It was written out twice, here and in the command handler, so
+    /// the lid's edge could reach one of them and not the other.
+    private func settingsChanged() {
         recompute()
-        reconcileActiveSettings()
-        lid.releaseIfUnneeded()
+        let edge = reconcileActiveSettings()
+        lid.releaseIfUnneeded(switchedOff: edge == .falling)
     }
+
+    /// The `settingsChanged` path, reachable without a transport hop: a test of
+    /// what happens when a setting changes should not have to encode a JSON
+    /// payload to say so.
+    func settingsChangedForTests() { settingsChanged() }
 
     private func cancelTimers() {
         jiggleToken = nil
@@ -722,9 +671,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             case .resumeAutomation:
                 self.resumeAutomation()
             case .settingsChanged:
-                self.recompute()
-                self.reconcileActiveSettings()
-                self.lid.releaseIfUnneeded()
+                self.settingsChanged()
             }
             }
             return Data()
@@ -745,6 +692,121 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     lidRefused: lidRefused,
                                     lidGrantRemains: lidGrantRemains)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
+    }
+}
+
+// MARK: - A session across the end of the process
+
+/// Where a session is written down, and what the next launch makes of what it
+/// finds.
+///
+/// An extension rather than more of the class above, for the reason the
+/// notification one below gives: this is a concern of its own — three keys, two
+/// methods, and the only part of this engine addressed to a process five minutes
+/// in the future. Same file, because every field it writes is `private` to it.
+extension KeepAwakeEngine {
+    /// Not private, so the tests that plant a session name the same keys the
+    /// engine reads rather than spelling them a second time.
+    enum SessionKey {
+        static let on = "sessionOn"
+        static let startedAt = "sessionStartedAt"
+        static let endsAt = "sessionEndsAt"
+        /// The pause, which is the other half of what Stop can mean.
+        static let suppressed = "sessionSuppressed"
+    }
+
+    /// Written wherever the person's intent changes, and **not** in
+    /// `deactivate()`.
+    ///
+    /// `deactivate()` looks like the place for it and is the one place it must not
+    /// go: `applicationWillTerminate` calls it on every live engine
+    /// (`HelmApp/AppDelegate.swift:237`), so recording "off" there would erase the
+    /// session on every quit — including the silent updater's, which is the
+    /// relaunch this whole thing exists for. It would have been a fix that
+    /// changed nothing.
+    ///
+    /// The cost of that choice, stated: `deactivate()` also runs when the module
+    /// is switched off in Settings, and it cannot tell the two callers apart. So
+    /// switching Keep Awake off and on again resumes a session that has not
+    /// expired. Of the two possible mistakes, forgetting what the person asked for
+    /// is the one that was reported.
+    /// Stored against 2001 and not 1970, which is not a style choice: a `Date`
+    /// *is* a `Double` of seconds since the reference date, so that round-trips
+    /// exactly, while going through `timeIntervalSince1970` adds and then
+    /// subtracts 978 307 200 and loses the low-order bits. The restored deadline
+    /// then differs from the stored one by a fraction of a second — enough for a
+    /// re-scheduled expiry to miss the interval it was scheduled for, and enough
+    /// to make a test of it pass or fail on the fractional part of `Date()`.
+    ///
+    /// **The pause is written here too, and it is the half that was missing.**
+    /// Pressing Stop while a *rule* holds the Mac ends no session — there is
+    /// none — it silences the rule, and that decision reached the store as
+    /// `manualOn = false`, which was already true. The updater then relaunched
+    /// the app and the rule took the Mac straight back, five minutes after
+    /// somebody paused it, with nobody having touched anything.
+    private func rememberSession() {
+        store.set(manualOn, for: SessionKey.on)
+        store.set(startDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.startedAt)
+        store.set(endDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.endsAt)
+        store.set(suppressed, for: SessionKey.suppressed)
+    }
+
+    private func restoreSession() {
+        // Before the switch below, because two of its branches write the record
+        // back and would otherwise store a pause the flag has not been given
+        // yet. A pause outlives the process for the same reason a session does,
+        // and lifts on the same event it always lifted on: the trigger dropping
+        // and coming back, which the recompute after this decides.
+        suppressed = store.bool(SessionKey.suppressed, default: false)
+        let stamp = { (seconds: Double) -> Date? in
+            seconds > 0 ? Date(timeIntervalSinceReferenceDate: seconds) : nil
+        }
+        let storedStart = stamp(store.double(SessionKey.startedAt, default: 0))
+        let storedEnd = stamp(store.double(SessionKey.endsAt, default: 0))
+
+        switch SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
+                                     startDate: storedStart, endDate: storedEnd,
+                                     now: clock.now()) {
+        case .none:
+            let hadOne = store.bool(SessionKey.on, default: false)
+            manualOn = false
+            startDate = nil
+            endDate = nil
+            // The record goes with it, so a later launch cannot find the same
+            // spent deadline and weigh it again.
+            rememberSession()
+            // Worth a line precisely because nothing visible happens: this is the
+            // answer to "why did my Mac sleep" when the app was gone longer than
+            // the session had left.
+            if hadOne {
+                HelmLog.shared.info(Self.moduleID, "a stored session had already ended")
+            }
+        case .indefinite:
+            manualOn = true
+            startDate = nil
+            endDate = nil
+            HelmLog.shared.info(Self.moduleID, "restored a session with no deadline")
+        case .remaining(let left):
+            manualOn = true
+            startDate = storedStart
+            // The deadline the module decided on, not the one it read. The two
+            // differ wherever the decision bounded the stored pair — a clock
+            // that moved, or a pair that is credible as a duration and absurd
+            // as dates — and the countdown every surface draws is this date
+            // minus now, converted to an `Int`.
+            endDate = clock.now().addingTimeInterval(left)
+            scheduleExpiry(after: left)
+            // The countdown every surface draws, not a second reading of the
+            // same number. `Int(left / 60)` printed «0 min left» for anything
+            // under a minute — so a session with 39 seconds of it left was
+            // reported as over, on the line immediately above «holding sleep»,
+            // in the trail that exists to explain a Mac that would not sleep.
+            // It cost a reader a morning. `TimerProgress.label` is what the menu
+            // bar, the tile and the page all show, so the log and the screen now
+            // say the same thing about the same session.
+            HelmLog.shared.info(Self.moduleID,
+                                "restored a session: \(TimerProgress.label(remaining: left)) left")
+        }
     }
 }
 
