@@ -1014,3 +1014,4 @@
 "This key has a passphrase" = "此密钥设置了口令";
 "That passphrase was not accepted" = "该口令未被接受";
 "Unlock and add" = "解锁并添加";
+"A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes." = "发生变化的图标现在会变形为下一个，而不是直接闪现 — 将文件标记为待删除时，加号会变成对勾；授予权限时，警告会变成对勾。开启“减弱动态效果”时，它只是直接切换。";

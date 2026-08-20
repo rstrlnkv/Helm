@@ -1014,3 +1014,4 @@
 "This key has a passphrase" = "この鍵にはパスフレーズがあります";
 "That passphrase was not accepted" = "そのパスフレーズは受け付けられませんでした";
 "Unlock and add" = "解除して追加";
+"A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes." = "変わるシンボルが、切り替わるのではなく次の形へ変形するようになりました。ファイルを削除対象にするとプラスがチェックマークに、アクセス権を許可すると警告がチェックマークになります。“視覚効果を減らす”がオンのときは、そのまま入れ替わります。";

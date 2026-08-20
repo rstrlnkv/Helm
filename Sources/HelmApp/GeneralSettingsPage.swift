@@ -90,8 +90,13 @@ struct MenuBarSettingsView: View {
 
     private func permissionRow(_ title: String, detail: String, granted: Bool,
                                action: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: HelmSpace.s5) {
-            Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+        // The two share their circle, so the mark inside it is what changes
+        // and the ring stays put — the swap is worth having here rather than a
+        // cut precisely because the grant arriving is news.
+        let symbol = granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+        return HStack(alignment: .top, spacing: HelmSpace.s5) {
+            Image(systemName: symbol)
+                .helmSymbolSwap(symbol)
                 .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

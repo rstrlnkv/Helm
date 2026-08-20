@@ -1014,3 +1014,4 @@
 "This key has a passphrase" = "У этого ключа есть парольная фраза";
 "That passphrase was not accepted" = "Эта парольная фраза не подошла";
 "Unlock and add" = "Разблокировать и добавить";
+"A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes." = "Значок, который меняется, теперь перетекает в следующий, а не моргает — плюс становится галочкой, когда вы отмечаете файл к удалению, предупреждение — когда вы даёте разрешение. С включённым «Уменьшением движения» он просто меняется.";

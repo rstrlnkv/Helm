@@ -1014,3 +1014,4 @@
 "This key has a passphrase" = "Dieser Schlüssel hat eine Passphrase";
 "That passphrase was not accepted" = "Diese Passphrase wurde nicht angenommen";
 "Unlock and add" = "Entsperren und hinzufügen";
+"A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes." = "Ein Symbol, das sich ändert, geht jetzt in das nächste über, statt zu springen — aus dem Plus wird ein Haken, wenn Sie eine Datei zum Löschen markieren, aus der Warnung ein Haken, wenn Sie eine Berechtigung erteilen. Bei aktivierter Bewegungsreduzierung wechselt es einfach.";

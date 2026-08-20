@@ -71,6 +71,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .upd, text: L("A glyph that changes now turns into the next one instead of blinking \u{2014} the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.")),
                 ChangeItem(kind: .new, text: L("Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names \u{2014} which is how macOS keeps it \u{2014} still lists every entry, and forgetting still works.")),
                 ChangeItem(kind: .upd, text: L("The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed.")),
                 ChangeItem(kind: .new, text: L("Hosts & Keys has a third tab: the SSH keys in your .ssh folder. Each key shows its type, fingerprint and comment, says when its permissions are too open for ssh to use it — with a button that fixes them — and can be put into the ssh-agent or taken back out.")),

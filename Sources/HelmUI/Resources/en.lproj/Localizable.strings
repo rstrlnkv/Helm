@@ -1014,3 +1014,4 @@
 "This key has a passphrase" = "This key has a passphrase";
 "That passphrase was not accepted" = "That passphrase was not accepted";
 "Unlock and add" = "Unlock and add";
+"A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes." = "A glyph that changes now turns into the next one instead of blinking — the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.";

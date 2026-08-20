@@ -146,14 +146,16 @@ public struct HelmSettingRow<Trailing: View>: View {
     /// `Image` now: which symbol, what colour, whether it is drawn at all, and
     /// how wide the column it sits in is. Every one of those interpolates.
     ///
-    /// `.contentTransition(.symbolEffect(.replace))` is what carries clock →
-    /// tick, which is a *replacement* of one glyph by another rather than a
-    /// reveal — the house rule about growing applies to blocks arriving, not to
-    /// a 14 pt symbol changing what it says.
+    /// `helmSymbolSwap` is what carries clock → tick, which is a *replacement*
+    /// of one glyph by another rather than a reveal — the house rule about
+    /// growing applies to blocks arriving, not to a 14 pt symbol changing what
+    /// it says. This was a bare `.contentTransition(.symbolEffect(.replace))`
+    /// until the token existed; the two symbols share a ring, so it is Magic
+    /// Replace that carries them now and only the hands inside move.
     private var markView: some View {
         Image(systemName: symbolName)
             .foregroundStyle(markInk)
-            .contentTransition(.symbolEffect(.replace))
+            .helmSymbolSwap(symbolName)
             // Nothing to say, but the column may still have to hold its width:
             // `.space` is drawn and invisible rather than absent, so the labels
             // of a mixed card keep one left edge.
