@@ -5,6 +5,162 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.11.0-dev.2] — 2026-08-20
+
+> The version number is written here; cutting the release is a separate step.
+> Two hangs on the owner's own Mac opened this one, and the second was found by
+> looking for the first one's family rather than by waiting for a report.
+
+### Fixed
+- **The window stopped answering for 19 seconds, and the report named the
+  arrangement outright.** `HelmApp_2026-08-19-235500_MacBook.hang`, on
+  `0.11.0-dev.1`, 61 s after launch: the main thread answering
+  `didBecomeActive` read `AppSettings.disabledScans` → `SettingGuard.verdict`
+  → `SealKeyCache.key()` → `_pthread_mutex_firstfit_lock_slow`, *blocked by
+  turnstile … waiting for … thread 0x1bc925* — which was
+  `SettingGuard.warmKey()` inside `SecItemCopyMatching`, parked in securityd
+  behind the modal authorization dialog every ad-hoc build earns.
+
+  Warming the key off the main thread was never the same as the main thread not
+  waiting for it, and the app shipped believing it was. `SealKeyCache` held one
+  lock across the source's own call, deliberately, so two callers arriving
+  together cost one dialog rather than two. What it also did, unasked, was make
+  every other caller wait for that dialog — and `AppSettings` is `@MainActor`,
+  so every reader of a sealed setting is the thread that draws.
+
+  Two jobs, two locks: `fetching` still serialises the round trip, `held` guards
+  the material and is never held across a call out of the file. `keyIfWarm()`
+  takes only the second. Its nil is a **third answer** — «not yet» — kept apart
+  from `.broken`, which means somebody rewrote the file; folding them would
+  report forged settings because a keychain was slow. Above it,
+  `SettingGuard.isWarm` and `AppSettings.disabledScansIfWarm`, and every reader
+  in the app goes through the latter.
+
+- **The Duplicates page opened the same door, and nothing was watching it.**
+  `DuplicatesViewModel.init` is `@MainActor` and read a sealed setting whose
+  guard had no `SealKeyCache` in front of it at all — a `SecItemCopyMatching`
+  per read, inside an initialiser. The rule CLAUDE.md already states («`init`
+  means any `init`») arriving through a door nobody had checked. The guard now
+  has the cache, the policy starts at its standard value, and a held
+  `firstLoad` task reads it once the key is in hand.
+
+- **A VPN that blinked cost Helm the tunnel, so the next real drop was never
+  announced.** `VPNDropSettle` deferred the *announcement* and not the
+  *forgetting*: `_cameUp` and `_autoConnected` were emptied on the first
+  `--nc list` read showing the tunnel down — the read the settle window exists
+  to distrust — and the re-adopt loop was gated on the book that read had just
+  cleared. Twice in two days of the owner's log. The forgetting moved to
+  `settleDrops`'s `.announce` branch.
+
+- **A refused speed measurement was swallowed by its own duplicate filter**, so
+  the spinner on the page turned for ever. `emitState(force:)` on that branch.
+
+- **One network notification was one `scutil` subprocess.** Measured 20 out of
+  20, and the owner's log carries 542 of these lines with bursts of seven in a
+  second. A 0.25 s settle behind `_networkChangePending`, with the log line
+  behind the same gate.
+
+- **The routing flag was frozen at the first status read.** The cached
+  `VPNStatusParser.Reading` was justified by the one field that holds still —
+  a tunnel's `utunN` — and carried `isPrimaryInterface` beside it, which is
+  whether traffic is actually leaving through the tunnel and moves without the
+  tunnel moving. The dangerous direction is the route leaving while the green
+  tick stays. It is re-read while the store cannot answer, which is the branch
+  the flag exists for; where the store answers, the cache stands.
+
+- **A status read that never reached the tunnel's own line answered a decoy.**
+  «The outermost `InterfaceName` wins» was implemented as «the shallowest one
+  seen», so a decoy that is the only candidate is the shallowest — and the
+  parser answered `en0`, the interface traffic leaves *around* the tunnel by.
+  Anchored on the `IPv4` dictionary's own indent. **This input was not captured
+  from the live tool**; the claim is about the function's contract and
+  `scutil`'s field ordering.
+
+- **`VPNWorkQueue.inline` was not serial and the real queue is** — a fake freer
+  than the port it stands for, read from the other side. The shipped app was
+  never exposed; the suite was, and `TheInterfaceComesFromTheToolTests` flaked
+  on it under load.
+
+### Added
+- **Hosts & Keys is an SSH manager: keys first, and which of them is dead.**
+  The module read three files and drew each in its own tab with no line between
+  them, so a person could see that a key exists and that a host exists, and not
+  the only thing they came for. `KeyUsage` is the join, and it is not a string
+  comparison: `IdentityFile` writes one key five ways, a `Host *` block lends
+  its key to every host in the file, and **a key nothing names at all may still
+  be the one somebody logs in with** — `ssh` tries `id_ed25519` and its siblings
+  without being told. So a key's usage is four states and not a count, and
+  `byDefaultName` is its own answer rather than `unused`: the difference
+  between «safe to delete» and «this is how you get in». A host's side has the
+  matching third answer — a name in `~/.ssh` with no key behind it is broken, a
+  host with no `IdentityFile` is ordinary.
+
+  `known_hosts` stops being a tab; a trusted fingerprint is a fact about a host
+  and sits in the host's row, with the trusts belonging to no block gathered
+  under «Other trusted hosts». No row in the module imposes a width any more —
+  `HostsTable`'s 220, `KeysTable`'s 240 and `SSHConfigTable`'s 96 are gone, and
+  rows are two lines the way macOS list rows are. A fingerprint is 47 characters
+  and a host name is whatever somebody's employer calls it; no width survives
+  both.
+
+### Changed
+- **The page header is not fenced off from the page, and it lights under the
+  pointer.** Measured at the settings window's 846 pt pane, macOS 27, both
+  appearances: the background above the rule and below it was the same to the
+  byte — luma 255.0 light, 30.0 dark — so the rule covered no change of
+  surface, and it was the only full-bleed element on the pages that had it.
+  System Settings and Finder were measured the same day at luma 30.0 with a
+  largest row-to-row step of 1.6 and 1.7 — dither, where a `Divider` measures
+  22. The background the owner asked for was already identical; only the line
+  differed.
+
+  What macOS does instead is light the whole top 52 pt of the content pane when
+  the pointer is over it — dark 30.0 → 37.8, flat to ±0.1 over all 51 rows,
+  with a one-point rule appearing at the bottom edge at 46.0. Not the control
+  under the pointer: a button inside the strip moved +3.0 while the strip moved
+  +7.8. A fill and not a material — glyph coverage solved to k = 0.100 at rest
+  against 0.0999 lit — which is the only reason it is verifiable offscreen.
+  Lit only while the window is key, in 0,19 s and out 0,33 s.
+
+  So «no line» and «light on hover» are one behaviour, not two requests in
+  tension: macOS draws **no line at rest and a line on hover**.
+  `WhatsNewView` keeps its rule and is named in the guard with the reason — it
+  is a sheet with no card, where the contrast across that edge is 0.
+
+- **Figures are set in the interface face, and SF Mono means code.** SF Mono is
+  an Apple face, so «only the system fonts» was never the argument against it;
+  the argument is what it means everywhere else in this app — an `ssh_config`
+  keyword, a `brew` line, a path. A byte size in a settings row is not code.
+  `figureFont` and `metricFont` move to SF Pro and carry `monospacedDigit()`
+  **on the token**, because seven call sites spell `.font(HelmText.figureFont)`
+  without reaching for `helmFigure()` and would have lost it silently — and
+  `helmMetricFigure()` never asked for tabular digits at all. `HelmUI` holds no
+  monospaced face now; five sites in the modules keep it because they really
+  are code or literal text.
+
+- **SF Rounded is gone.** It is watchOS's face and the Mac interface uses it
+  nowhere, and it had reached the two most-repeated marks in the app: every
+  prominent `HelmBadge` and every panel widget's value.
+
+- **The settings type scale is named rather than numbered.** `rowTitle` and
+  `rowDetail` were the same face at a size that never moved, so a Mac whose
+  owner had raised the interface text size got a window that did not.
+  `.headline` is deliberately not the heading: on macOS it is 13 **bold**, not
+  semibold, and mapping `sectionHeading` onto it would have weighted every
+  heading in the app a step heavier with the size unchanged — invisible to any
+  layout test, because the size is what a layout measures.
+
+- **The ladder is guarded where it was most absent.** `TypeScaleRatchetTests`
+  read `HelmUI` and the module pages and not `Sources/HelmApp`, where twelve
+  hand-typed sizes were sitting uncounted. Eleven of them size an
+  `Image(systemName:)` — a symbol is drawn against the font's metrics, so that
+  is how big to draw a glyph and not which step of a type scale a word sits on.
+  Counted as type they would have made the check fail for a reason it does not
+  mean, and the way to satisfy it would have been to resize icons to suit a
+  ladder about text. The file set widens and the subject narrows in the same
+  commit; the recorded number goes 3 → 4, which a ratchet is not supposed to do,
+  and says why at the constant: the tree did not drift, the scan grew.
+
 ## [0.11.0-dev.1] — 2026-08-19
 
 > The version number is written here; cutting the release is a separate step,
