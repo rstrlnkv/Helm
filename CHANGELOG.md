@@ -138,11 +138,14 @@ proven newer than its sources.
   **One case stays open and is not papered over.** Deleting Helm while it is
   still running leaves the rule, and nothing closes that without a Developer ID
   and a privileged helper the system removes with the app — the fifth thing that
-  purchase is blocking. Until then the answer is a sentence: the setting's own
-  note names `/etc/sudoers.d/helm-keepawake` and the `sudo rm` that removes it,
-  in all eight languages, *before* the password is asked for rather than after.
+  purchase is blocking. Until then the answer is on the screen that asks for the
+  password: the row names `/etc/sudoers.d`, and the ⓘ beside it carries the rest
+  — that quitting takes the rule too, what a crash leaves behind, and
+  `sudo rm /etc/sudoers.d/helm-keepawake` as a command to copy rather than a
+  path inside a sentence. In all eight languages, and *before* the password is
+  asked for rather than after.
   `TheNoteNamesTheFileItLeavesBehindTests` reads the path out of `SudoersRule`,
-  so the sentence cannot name a file the engine stopped writing.
+  so neither half can name a file the engine stopped writing.
 
 ### Fixed
 - **`PrivateFile.write` answers whether it landed and eight callers dropped the
@@ -423,6 +426,34 @@ proven newer than its sources.
   both.
 
 ### Changed
+- **A settings row says what the decision needs, and an ⓘ beside it holds the
+  rest.** Keep Awake's lid row explained a passwordless `sudo pmset` grant in
+  606 characters of German — seven drawn lines under one switch, 3.5× the
+  next-longest caption on the same page, and the longest piece of copy in the
+  product outside What's New. None of it was padding: it is a rule in
+  `/etc/sudoers.d`, and the person about to type a password is owed every word.
+  The mistake was the place.
+
+  `HelmExplainer` is the vocabulary for it, and `HelmSettingRow(explainer:)` is
+  how a row takes one: the caption keeps what a person needs to *decide* — a
+  password is asked for, a rule is kept in `/etc/sudoers.d`, switching this off
+  removes it — and the glyph opens what follows from deciding, as points rather
+  than as a paragraph, with `sudo rm /etc/sudoers.d/helm-keepawake` drawn as a
+  command to select and copy. A popover and not an inline reveal, because the
+  row sits in a scrolling `Form` whose label column is *narrower* than the row:
+  an inline block grows the column that is already the constraint. The content
+  is `[Block]`, so a picture is one case and one line the day one is drawn.
+
+  Measured after: the collapsed caption is **two lines in German and two in
+  Russian**, in both appearances, read off a render. The rule has a guard in two
+  parts — `TheLidCaptionFitsUnderTheSwitchTests` holds the repaired row under
+  200 characters in all eight languages (200 is `lidRefused` at 188 plus
+  headroom, the longest caption its page draws), and
+  `CopyTooLongForARowIsCountedTests` counts every piece of UI copy over that
+  ceiling app-wide: **4**, only ever lowered. Two of the four are the halves of
+  Layout's tap-key caption, which composes to 554 characters in German and is
+  the next case for this rule — found by measuring rather than by reading, and
+  left for its own change.
 - **The fast walker is everybody's now, and «Counting apps…» is under a second.**
 
   Disk walked a tree with `getattrlistbulk` across eight threads while

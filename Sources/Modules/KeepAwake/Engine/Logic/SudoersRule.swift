@@ -13,10 +13,16 @@ import HelmRuntime
 /// process running as this user could swap the file for
 /// `<user> ALL=(ALL) NOPASSWD: ALL`, pass the check and be handed permanent
 /// passwordless root. The content travels now; no user-writable path is named.
-enum SudoersRule {
+public enum SudoersRule {
     /// Where sudo reads the rule from. `/etc/sudoers.d` is root-owned, so every
     /// file this command touches is one only root can write.
-    static let installedPath = "/etc/sudoers.d/helm-keepawake"
+    ///
+    /// `public` because the screen that asks for the password names it: the row
+    /// says where the grant lands and the explanation behind it carries the
+    /// `sudo rm` that takes it away by hand. That is one path spelled on both
+    /// sides of a target boundary if it is typed twice, and a command naming a
+    /// file this engine stopped writing is worse than no command at all.
+    public static let installedPath = "/etc/sudoers.d/helm-keepawake"
 
     /// Written first under this name so sudo never reads a half-written or
     /// unchecked file: the move into place is a rename on the same filesystem.

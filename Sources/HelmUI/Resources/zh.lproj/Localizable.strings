@@ -85,7 +85,6 @@
 "Clear the marks" = "清除标记";
 "Clipboard" = "剪贴板";
 "Close" = "关闭";
-"Collapsed" = "已折叠";
 "Command" = "Command";
 "Connect system VPNs, automatically per app" = "按应用自动连接系统 VPN";
 "Connected" = "已连接";
@@ -184,7 +183,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "每个布局现在都有真正的旗帜：MIT 许可的 flag-icons（本页已署名）。矩形、准确，最小尺寸下依然清晰。没有国家归属的布局仍保持字母显示。";
 "Everything" = "全部";
 "Everything is up to date." = "全部已是最新。";
-"Expanded" = "已展开";
 "Extension" = "扩展名";
 "Extensions, separated by commas" = "扩展名，用逗号分隔";
 "External display" = "外接显示器";
@@ -758,7 +756,10 @@
 "Until you stop it" = "直到你停止";
 "While an external display is connected" = "接着外接显示器时";
 "While the Mac is on power" = "Mac 接着电源时";
-"macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "首次启用时 macOS 会要求输入管理员密码，并在 /etc/sudoers.d/helm-keepawake 保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。该规则允许删除自身，因此关掉此设置会移除它，无需再输一次密码；退出 Helm 时也一样。若 Helm 仍在运行时被删除，规则会留下：请用 sudo rm /etc/sudoers.d/helm-keepawake 移除。退出 Helm 会重新开启睡眠；若 Helm 崩溃或被强制退出，下次启动会重新开启。";
+"macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password." = "macOS 会要求输入管理员密码，并在 /etc/sudoers.d 保留一条规则。关闭此设置会移除该规则，无需再次输入密码。";
+"The rule allows its own removal, so quitting Helm takes it out as well — and sleep comes back on. After a crash or a force quit, sleep comes back at the next launch." = "该规则允许删除自身，因此退出 Helm 时也会一并移除，睡眠随之恢复。若发生崩溃或被强制退出，睡眠会在下次启动时恢复。";
+"Delete Helm while it is still running and the rule stays behind. To remove it by hand:" = "若 Helm 仍在运行时被删除，规则会留下。手动移除的命令：";
+"More Info" = "更多信息";
 "Developer" = "开发";
 "Interface language" = "界面语言";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "仅限 dev 版本，用于以这台 Mac 未设置的语言阅读应用。";

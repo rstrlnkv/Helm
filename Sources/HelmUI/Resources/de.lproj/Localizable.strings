@@ -85,7 +85,6 @@
 "Clear the marks" = "Markierungen entfernen";
 "Clipboard" = "Zwischenablage";
 "Close" = "Schließen";
-"Collapsed" = "Zugeklappt";
 "Command" = "Befehl";
 "Connect system VPNs, automatically per app" = "Verbindet System-VPNs, automatisch pro App";
 "Connected" = "Verbunden";
@@ -184,7 +183,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Jede Belegung hat jetzt eine echte Flagge: flag-icons unter MIT-Lizenz (auf dieser Seite genannt). Rechteckig, korrekt und bis zur kleinsten Größe lesbar. Eine Belegung ohne Land behält ihre Buchstaben.";
 "Everything" = "Alles";
 "Everything is up to date." = "Alles ist aktuell.";
-"Expanded" = "Aufgeklappt";
 "Extension" = "Endung";
 "Extensions, separated by commas" = "Endungen, durch Komma getrennt";
 "External display" = "Externer Bildschirm";
@@ -758,7 +756,10 @@
 "Until you stop it" = "Bis Sie es beenden";
 "While an external display is connected" = "Solange ein externer Bildschirm angeschlossen ist";
 "While the Mac is on power" = "Solange der Mac am Netzstrom hängt";
-"macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "Beim ersten Mal fragt macOS nach einem Adminpasswort und behält unter /etc/sudoers.d/helm-keepawake eine Regel, mit der Helm den Ruhezustand künftig ohne Nachfrage ausschalten darf. Die Regel erlaubt ihre eigene Entfernung: Wird dies ausgeschaltet, verschwindet sie ohne zweites Passwort, beim Beenden von Helm ebenso. Wird Helm gelöscht, während es noch läuft, bleibt die Regel zurück; entfernen lässt sie sich mit sudo rm /etc/sudoers.d/helm-keepawake. Beim Beenden von Helm wird der Ruhezustand wieder eingeschaltet; stürzt Helm ab oder wird es sofort beendet, schaltet ihn der nächste Start wieder ein.";
+"macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password." = "macOS fragt nach einem Adminpasswort und behält eine Regel in /etc/sudoers.d. Wird dies ausgeschaltet, verschwindet die Regel ohne zweites Passwort.";
+"The rule allows its own removal, so quitting Helm takes it out as well — and sleep comes back on. After a crash or a force quit, sleep comes back at the next launch." = "Die Regel erlaubt ihre eigene Entfernung: Beim Beenden von Helm verschwindet sie ebenfalls, und der Ruhezustand kehrt zurück. Nach einem Absturz oder einem sofortigen Beenden kehrt er beim nächsten Start zurück.";
+"Delete Helm while it is still running and the rule stays behind. To remove it by hand:" = "Wird Helm gelöscht, während es noch läuft, bleibt die Regel zurück. So lässt sie sich von Hand entfernen:";
+"More Info" = "Weitere Infos";
 "Developer" = "Entwicklung";
 "Interface language" = "Sprache der Oberfläche";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Nur für Dev-Builds, um die App in einer Sprache zu lesen, die auf diesem Mac nicht eingestellt ist.";

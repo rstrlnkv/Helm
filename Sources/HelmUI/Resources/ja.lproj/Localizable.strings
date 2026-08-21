@@ -85,7 +85,6 @@
 "Clear the marks" = "削除予定を解除";
 "Clipboard" = "クリップボード";
 "Close" = "閉じる";
-"Collapsed" = "折りたたみ済み";
 "Command" = "Command";
 "Connect system VPNs, automatically per app" = "システム VPN をアプリごとに自動接続";
 "Connected" = "接続済み";
@@ -184,7 +183,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "すべての配列に本物の旗が付きました。MIT ライセンスの flag-icons です（このページに表示）。長方形で正確、最小サイズでも読み取れます。国が定まらない配列は文字のままです。";
 "Everything" = "すべて";
 "Everything is up to date." = "すべて最新です。";
-"Expanded" = "展開済み";
 "Extension" = "拡張子";
 "Extensions, separated by commas" = "拡張子（カンマ区切り）";
 "External display" = "外部ディスプレイ";
@@ -758,7 +756,10 @@
 "Until you stop it" = "停止するまで";
 "While an external display is connected" = "外部ディスプレイが接続されている間";
 "While the Mac is on power" = "Mac が電源に接続されている間";
-"macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープをオフにできるルールを /etc/sudoers.d/helm-keepawake に残します。このルールは自分自身の削除を許可しているため、この設定をオフにすると二度目のパスワードなしで消え、Helm を終了したときも同じです。Helm が動いたまま削除された場合はルールが残ります。sudo rm /etc/sudoers.d/helm-keepawake で削除してください。Helm を終了するとスリープはオンに戻ります。Helm がクラッシュしたり強制終了された場合は、次回の起動でオンに戻ります。";
+"macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password." = "macOS が管理者パスワードを求め、/etc/sudoers.d にルールを残します。この設定をオフにすると、二度目のパスワードなしでルールは削除されます。";
+"The rule allows its own removal, so quitting Helm takes it out as well — and sleep comes back on. After a crash or a force quit, sleep comes back at the next launch." = "このルールは自分自身の削除を許可しているため、Helm を終了したときにも削除され、スリープは元に戻ります。クラッシュや強制終了のあとは、次回の起動でスリープが戻ります。";
+"Delete Helm while it is still running and the rule stays behind. To remove it by hand:" = "Helm が動いたまま削除された場合、ルールは残ります。手動で削除するコマンド：";
+"More Info" = "詳しい情報";
 "Developer" = "開発";
 "Interface language" = "インターフェイスの言語";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "dev ビルド専用。この Mac に設定されていない言語でアプリを読むためのものです。";

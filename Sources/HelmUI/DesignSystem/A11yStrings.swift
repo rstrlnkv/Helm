@@ -29,6 +29,13 @@ public enum HelmA11y {
     public static var showInFinder: String {
         L("Show in Finder")
     }
+    /// The ⓘ beside a settings row's name (`HelmExplainer`). macOS's own word
+    /// for this control, read out of its tables rather than translated: «More
+    /// Info» is «Подробнее», «Weitere Infos», «En savoir plus», «Más
+    /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
+    public static var moreInfo: String {
+        L("More Info")
+    }
 
     /// A segmented picker that narrows what a list is showing. Three modules
     /// have one and none of them labelled it, because on screen the segments

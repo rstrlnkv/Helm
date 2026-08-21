@@ -21,7 +21,10 @@ import Foundation
 ///
 /// Out here rather than in the `@ViewBuilder` for the reason `RuleNote` is: the
 /// same four lines inside a view body are four lines nothing can pin.
-public enum LidRowNote: Equatable, Sendable {
+/// `CaseIterable` so the guard on the row's caption length is a fact about the
+/// enum rather than a list of four names in a test: a fifth state is measured
+/// the day somebody writes it.
+public enum LidRowNote: CaseIterable, Equatable, Sendable {
     /// macOS was asked to turn sleep off and said no.
     case refused
     /// The option is off and its `/etc/sudoers.d` rule is still there.

@@ -68,13 +68,21 @@ public struct HelmSettingRow<Trailing: View>: View {
 
     private let title: String
     private let note: String?
+    private let explainer: HelmExplainer.Content?
     private let mark: HelmRowMark
     private let trailing: Trailing
 
-    public init(_ title: String, note: String? = nil, mark: HelmRowMark = .none,
+    /// - Parameter explainer: what an ⓘ beside the row's name opens, for a
+    ///   setting whose full story does not fit a caption. The rule and the
+    ///   reason the row is not the place for it are on `HelmExplainer`; the
+    ///   short version is that the note answers «should I switch this on» and
+    ///   the explainer answers «what happens if I do».
+    public init(_ title: String, note: String? = nil,
+                explainer: HelmExplainer.Content? = nil, mark: HelmRowMark = .none,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.title = title
         self.note = note
+        self.explainer = explainer
         self.mark = mark
         self.trailing = trailing()
     }
@@ -88,10 +96,31 @@ public struct HelmSettingRow<Trailing: View>: View {
         HStack(spacing: 0) {
             markView
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s2) {
+                    Text(title)
+                        // Title and note are one thought, and VoiceOver stopped
+                        // on each of them separately: «External display» — next
+                        // — «Applies right now» — next — the switch. Three stops
+                        // for one row, over a page of them.
+                        //
+                        // Said here rather than with
+                        // `.accessibilityElement(children: .combine)` on the
+                        // stack, which is what this was: `.combine` folds *every*
+                        // child in, and the ⓘ beside the name is a control a
+                        // person navigates **to**. The sentence is one element
+                        // and the button is its own — the same reason the row's
+                        // trailing control was left outside the combine.
+                        .accessibilityLabel(spoken)
+                    if let explainer { HelmExplainer(explainer) }
+                }
                 if let note {
                     Text(note)
-                        .font(.system(size: 11))
+                        // The line under a row's name, in the token that is
+                        // that. It was `.system(size: 11)` — the same face at a
+                        // size that never moves, so a Mac whose owner had
+                        // raised the interface text size got a row whose title
+                        // grew and whose note did not.
+                        .font(HelmText.rowDetail)
                         // Literal, not `.secondary`: these rows sit in blocks
                         // that animate, where hierarchical styles re-resolve.
                         .foregroundStyle(HelmText.quiet)
@@ -116,25 +145,28 @@ public struct HelmSettingRow<Trailing: View>: View {
                         // identity is what lets a transition fire, and it is
                         // also what stops anything travelling.
                         .contentTransition(.opacity)
+                        // The words are already in the title's label above.
+                        // Left readable here they would be read twice — once as
+                        // part of the sentence and once on their own.
+                        .accessibilityHidden(true)
                 }
             }
             // The label is the subject of the row and gives way last. Without a
             // floor it is the part a fixed-width control on the right squeezes
             // to nothing — measured once already, at one character per line.
             .layoutPriority(1)
-            // Title and note are one thought, and VoiceOver stopped on each of
-            // them separately: «External display» — next — «Applies right now»
-            // — next — the switch. Three stops for one row, over a page of
-            // them. Combined here rather than across the whole row: `.combine`
-            // on an element containing a control folds the control's own
-            // announcement into the sentence too, and the switch is the part a
-            // person navigates *to*.
-            .accessibilityElement(children: .combine)
             // 12, which is what the stack's own spacing used to contribute
             // here before it went to 0 for the mark column's sake.
             Spacer(minLength: 12)
             HStack(spacing: 8) { trailing }
         }
+    }
+
+    /// The row as one sentence: the name, then what it is doing. A full stop
+    /// between them, because two clauses run together are read as one.
+    private var spoken: String {
+        guard let note, !note.isEmpty else { return title }
+        return "\(title). \(note)"
     }
 
     /// **One view for all four marks, not a `switch` over them.**

@@ -69,7 +69,10 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
         RowTitle(file: "Sources/Modules/Hosts/UI/HostsSettingsPage.swift", subject: "HostsStr.unsaved",
                  why: "a row's title with its own note under it, not a heading over rows"),
         RowTitle(file: "Sources/Modules/Autopilot/UI/AutopilotSettingsPage.swift", subject: "Redact.path(folder.path)",
-                 why: "the watched folder in its row, between the switch that names it and the buttons")
+                 why: "the watched folder in its row, between the switch that names it and the buttons"),
+        RowTitle(file: "Sources/HelmUI/DesignSystem/HelmExplainer.swift", subject: "content.title",
+                 why: "the same judgement as the custom-duration popover above: an explanation's "
+                     + "single title, over the points it introduces and nothing to jump between")
     ]
 
     // MARK: - The finding

@@ -286,6 +286,12 @@ struct KeepAwakeSettingsPage: View {
                 // column's clock (`enabledRules`), a sentence has no column.
                 HelmSettingRow(KAStr.keepAwakeLidClosed,
                                note: KAStr.lidNote(vm.lidRowNote),
+                               // What a passwordless `sudo pmset` rule costs is
+                               // four sentences, and four sentences under a
+                               // switch is a wall (`HelmExplainer`). The row
+                               // keeps what the decision needs; the ⓘ beside the
+                               // name holds what follows from it.
+                               explainer: KAStr.lidExplainer(vm.lidRowNote),
                                mark: shownEnabled.lidHolding
                                    ? .holding
                                    : .spacer(inCardWithMarks: shownMarksPossible)) {

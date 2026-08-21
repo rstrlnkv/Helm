@@ -30,22 +30,6 @@ enum KAStr {
     /// ellipsis, which is Apple's spelling in all three apps that carry it.
     static var customTime: String { L("Other…") }
     static var done: String { L("OK") }
-    /// The state of the ⋯ disclosure, read after its name.
-    ///
-    /// Said in words because there is no other way to say it: SwiftUI's
-    /// `AccessibilityTraits` has no expanded member on any platform, and AppKit's
-    /// `NSAccessibilityExpanded` — which VoiceOver would voice in the user's own
-    /// language — is not reachable from a SwiftUI view. So the button was a
-    /// control whose entire purpose is showing and hiding a block, and read
-    /// aloud it never said which of the two it had just done. These eight are
-    /// the one set of strings in this file not taken from a system table:
-    /// macOS does not ship these adjectives anywhere readable.
-    static var disclosureExpanded: String {
-        L("Expanded")
-    }
-    static var disclosureCollapsed: String {
-        L("Collapsed")
-    }
     /// Short forms used under the "Automatically" heading, where the context is
     /// already given by the group title.
     static var onExternalDisplay: String { L("With an external display") }
@@ -165,6 +149,31 @@ enum KAStr {
         case .grantRemains: return lidGrantRemains
         case .sleepIsOff: return sleepIsOffNote
         case .whatItCosts: return adminNote
+        }
+    }
+    /// What the ⓘ beside the row's name opens, per state — `nil` where the row
+    /// has said everything there is.
+    ///
+    /// Only the state in which a password is about to be asked for offers one.
+    /// `refused` and `grantRemains` are about a rule that is already there and
+    /// both name the gesture that deals with it, which the app can still carry
+    /// out; `sleepIsOff` is a report. The state that needs the long answer is
+    /// the one where somebody is deciding — which is also the only one where the
+    /// hand-removal command can still be read *before* it is needed, since the
+    /// case it is for is a Helm that has been deleted and cannot draw anything.
+    static func lidExplainer(_ note: LidRowNote) -> HelmExplainer.Content? {
+        switch note {
+        case .refused, .grantRemains, .sleepIsOff:
+            return nil
+        case .whatItCosts:
+            return HelmExplainer.Content(title: keepAwakeLidClosed, blocks: [
+                .text(L("The rule allows its own removal, so quitting Helm takes it out as well — and sleep comes back on. After a crash or a force quit, sleep comes back at the next launch.")),
+                .text(L("Delete Helm while it is still running and the rule stays behind. To remove it by hand:")),
+                // The path from the engine that writes it, never typed again
+                // here: a command naming a file Helm stopped writing is worse
+                // than no command at all.
+                .command("sudo rm \(SudoersRule.installedPath)"),
+            ])
         }
     }
     /// The reason line under the figure: «External display · Safari».
@@ -454,9 +463,21 @@ enum KAStr {
     /// does — and the last of those is a real case: deleting Helm while it is
     /// running leaves the rule behind, and nothing in the app can reach it then
     /// (`ClamshellCoordinator.withdrawAtQuit`).
+    ///
+    /// **All of which was true, and all of it was in the row.** 507 characters in
+    /// English and 606 in German — seven drawn lines under one switch, against 188
+    /// for the next-longest caption on the same page. Nothing above is retracted:
+    /// the sentence keeps what the *decision* needs — a password, a rule, and the
+    /// fact that switching this off takes the rule away — and everything that
+    /// follows from the decision moved into `lidExplainer`, behind the ⓘ beside the
+    /// row's name (`HelmExplainer` carries the rule and the reason for it).
+    ///
+    /// «The first time» went with it, and not for length: the rule is removed when
+    /// the switch goes off, so off-and-on asks again, and «the first time» is the
+    /// same claim as the «once» this comment already records as wrong. Saying
+    /// nothing about how often is the only version that is true at every press.
     static var adminNote: String {
-        // swiftlint:disable:next line_length
-        L("macOS asks for an administrator password the first time, and keeps a rule at /etc/sudoers.d/helm-keepawake that lets Helm turn sleep off without asking again. The rule permits its own removal, so switching this off takes it out without a second password, and so does quitting Helm. If Helm is deleted while it is still running, the rule stays behind: remove it with sudo rm /etc/sudoers.d/helm-keepawake. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on.")
+        L("macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password.")
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well. Says «too» because the timer already ends the session it started —
