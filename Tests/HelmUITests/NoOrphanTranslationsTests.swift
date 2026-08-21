@@ -61,6 +61,15 @@ final class NoOrphanTranslationsTests: XCTestCase {
     ///
     /// Neither half of that reading is optional, and neither is the sharing.
     ///
+    /// **This sentence was here before the sharing was.** It was an instance
+    /// method with no memo, and XCTest builds an instance per test case — so
+    /// «both tests read this» described one walk and one parse of `Sources/`
+    /// each, and the class cost 14.9 s of a suite whose other hundred-odd
+    /// classes are milliseconds. A promise written in prose with no test under
+    /// it reads as a fact, which is exactly how it survived: the reading is
+    /// `SwiftSource.uncommented(under:)` now, cached once a process, and
+    /// `TheTreeIsReadOnceAProcessTests` is the test this paragraph owed.
+    ///
     /// *Raw* — which is what both scans did until 2026-08-21 — a key named in
     /// prose reads as asked for. This repository writes backticked names inside
     /// doc comments on purpose (`DocumentsNameTheTreeTests` exists to read them
@@ -83,10 +92,89 @@ final class NoOrphanTranslationsTests: XCTestCase {
     ///
     /// Escapes are decoded **after** this, never before: `\"` is what ends a
     /// literal, so a decoded source parses to a different place.
-    private func uncommentedSources() throws -> [(path: String, text: String)] {
-        try RepoSource.swiftFiles(under: "Sources").map {
-            ($0, SwiftSource.uncommented(try RepoSource.text(of: $0)))
+    private func uncommentedSources() throws -> [SwiftSource.Read] {
+        try SwiftSource.uncommented(under: "Sources")
+    }
+
+    /// **A fast yes, and never a fast no.**
+    ///
+    /// The scan below asks `swift.contains("\"\(key)\"")` of a thousand keys
+    /// against 1.84 million characters, and that — not the walk, not the parse
+    /// — is what this class costs: measured 2026-08-21, read and parse
+    /// `Sources/` 0.883 s, decode and join 0.089 s, load the table 0.006 s,
+    /// **and the thousand searches 23.114 s**.
+    ///
+    /// So the searches get an index, and it is one-way on purpose. Every run of
+    /// text between two *consecutive* quote characters is a key the source
+    /// demonstrably asks for: if `source[i]` and `source[j]` are quotes with
+    /// nothing quoted in between, then `source[i...j]` **is** `"key"`, so a hit
+    /// here is a hit there and no orphan can hide behind it. A miss is not an
+    /// answer at all — the caller still runs the original `contains`, which
+    /// stays the authority. That asymmetry is the whole design: the index can
+    /// only ever save work, never decide anything.
+    ///
+    /// The obvious version of this — split on `"` and keep the odd pieces —
+    /// was tried and is wrong, by 160 keys of 1059. `decodingEscapes` turns
+    /// `\"` into `"` before this ever runs, so the quotes do not alternate and
+    /// a parity walk loses its place at the first escaped one. Consecutive
+    /// pairs, overlapping, is the reading that survives it: `"a"b"` really does
+    /// contain both `"a"` and `"b"`.
+    static func runsBetweenConsecutiveQuotes(of source: String) -> Set<String> {
+        var out: Set<String> = []
+        var run = ""
+        var open = false
+        for character in source {
+            guard character != "\"" else {
+                if open { out.insert(run) }
+                run = ""
+                open = true
+                continue
+            }
+            if open { run.append(character) }
         }
+        return out
+    }
+
+    /// The property the fallback rests on, on input the tree does not contain:
+    /// **whatever this index says is there, is there.**
+    ///
+    /// Not «the index agrees with `contains`» — it does not, and must not be
+    /// asked to. It is allowed to miss. It is not allowed to invent, and an
+    /// invention is what would turn a live key into a silent pass.
+    /// The tail is the point of the fixture. `decodingEscapes` has already
+    /// turned every `\"` into `"` by the time the scan runs, so the quote count
+    /// of the joined source is arbitrary and a walk that assumes it alternates
+    /// finishes one quote out of step — claiming the text after the last
+    /// unmatched quote is a key. Here that is `neverClosed`, which nothing in
+    /// the source asks for.
+    func testTheIndexNeverClaimsAKeyTheSourceDoesNotAskFor() {
+        let source = #"let a = "one"; let b = "two"say "three" and "sp ace" then ""x "neverClosed"#
+        let runs = Self.runsBetweenConsecutiveQuotes(of: source)
+
+        XCTAssertFalse(runs.isEmpty, "the index found nothing, so the check below is vacuous")
+        for run in runs {
+            XCTAssertTrue(source.contains("\"\(run)\""),
+                          "the index claims «\(run)» is asked for and the source does not "
+                          + "say so — a live key could pass as an orphan-free one")
+        }
+        // And the readings a parity walk gets wrong, which is why this is not
+        // one: `"two"say "three"` has a run between the closing quote of one
+        // literal and the opening quote of the next.
+        XCTAssertTrue(runs.contains("one"))
+        XCTAssertTrue(runs.contains("three"), "an overlapping pair was missed")
+        XCTAssertTrue(runs.contains("sp ace"))
+        XCTAssertTrue(runs.contains(""), "two adjacent quotes are an empty run")
+    }
+
+    /// And the direction that matters for the saving rather than for the
+    /// safety: a key the source really does ask for is found by the index, so
+    /// the slow path is reached only by the keys about to be reported.
+    func testTheIndexFindsWhatIsThereSoTheSlowPathIsForOrphansOnly() {
+        let source = #"L("Off") and L("Very small")"#
+        let runs = Self.runsBetweenConsecutiveQuotes(of: source)
+        XCTAssertTrue(runs.contains("Off"))
+        XCTAssertTrue(runs.contains("Very small"))
+        XCTAssertFalse(runs.contains("Medium"))
     }
 
     func testNoTranslationIsKeptForAKeyNothingAsksFor() throws {
@@ -103,7 +191,14 @@ final class NoOrphanTranslationsTests: XCTestCase {
         // An interpolated string keeps its table at the call site and never
         // reaches these files, so every key here is one somebody wrote as a
         // literal and one a literal should still be asking for.
-        let orphans = english.keys.filter { !swift.contains("\"\($0)\"") }.sorted()
+        //
+        // The index answers «yes» or «ask properly», never «no», so the
+        // predicate is still `swift.contains("\"key\"")` and the only keys that
+        // pay for it are the ones about to be reported.
+        let asked = Self.runsBetweenConsecutiveQuotes(of: swift)
+        let orphans = english.keys
+            .filter { !asked.contains($0) && !swift.contains("\"\($0)\"") }
+            .sorted()
 
         XCTAssertTrue(orphans.isEmpty,
                       "\(orphans.count) key(s) carry seven translations that nothing asks "
