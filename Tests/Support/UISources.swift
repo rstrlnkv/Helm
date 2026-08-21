@@ -173,6 +173,37 @@ public enum UISources {
         hits.filter { !ladder.contains(abs($0.value)) }
     }
 
+    /// The hits that size **type**, with the ones sizing a *symbol* dropped.
+    ///
+    /// A symbol is drawn against the font's metrics — `HelmSurfaces.swift` says
+    /// so at the place it does it — so `.font(.system(size: 12))` on an `Image`
+    /// states how big to draw a glyph, not which step of a type scale a word is
+    /// set on. Left in, they make a type scan fail for a reason it does not
+    /// mean, and the way to satisfy it is to resize icons to suit a ladder that
+    /// is about text. A check that fails for the wrong reason is worse than
+    /// none, because somebody will fix it.
+    ///
+    /// Read from the hit's line and the two above it, because SwiftUI puts the
+    /// `Image` and the `.font` on separate lines far more often than not, and a
+    /// scan that only read its own line would call every one of them type.
+    ///
+    /// **Per file, not per hit.** `TypeScaleRatchetTests` had this privately and
+    /// re-read the whole file for every hit in it; `EveryHeroIsSetInOneFontTests`
+    /// wanted the same five lines, which is the point at which one of them is a
+    /// copy. The grouping is the other half — the question belongs to the file
+    /// and was being asked of each match in it.
+    public static func sizingType(_ hits: [Hit]) throws -> [Hit] {
+        var keep: [Hit] = []
+        for (file, found) in Dictionary(grouping: hits, by: \.file) {
+            let lines = try RepoSource.lines(of: file)
+            keep += found.filter { hit in
+                !lines[max(0, hit.line - 3)..<hit.line]
+                    .contains { RepoSource.code($0).contains("Image(systemName:") }
+            }
+        }
+        return keep.sorted { ($0.file, $0.line) < ($1.file, $1.line) }
+    }
+
     /// Grouped for the failure message: which value, how often, and where it is
     /// worst — a bare number tells the next person nothing about where to start.
     public static func summary(_ hits: [Hit]) -> String {

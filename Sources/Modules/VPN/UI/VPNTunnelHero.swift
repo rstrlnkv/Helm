@@ -454,7 +454,7 @@ struct VPNTunnelHero: View {
     @ViewBuilder
     private func headline(_ strip: VPNTunnelStrip) -> some View {
         Text(strip.verdict)
-            .font(.system(size: 40, weight: .light))
+            .font(HelmText.heroFont)
             .helmHeroSentence()
         if let caption = caption(strip) {
             Text(caption)
@@ -631,7 +631,7 @@ struct VPNTunnelHero: View {
     private var empty: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(VPNStr.noTunnelUp)
-                .font(.system(size: 40, weight: .light))
+                .font(HelmText.heroFont)
                 .foregroundStyle(HelmText.quiet)
                 .helmHeroSentence()
             Text(VPNStr.noTunnelUpNote)

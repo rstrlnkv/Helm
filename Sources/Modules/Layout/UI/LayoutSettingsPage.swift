@@ -146,14 +146,15 @@ struct LayoutSettingsPage: View {
     /// STATE and TODAY, which is a label for a number nobody needs labelled and
     /// a second word for the badge in the page header. The count of words put
     /// right today is the one thing here worth a glance, and the type scale's
-    /// top step is what it is set in — the same 40 pt light monospaced figure
-    /// Keep Awake's hero draws, so two pages of this app do not measure their
-    /// own heroes differently.
+    /// top step is what it is set in — `HelmText.heroFigureFont`, the same
+    /// token Keep Awake's countdown draws, so two pages of this app cannot
+    /// measure their own heroes differently. That last clause was prose here
+    /// with nothing under it until the token existed.
     private var hero: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
                 Text("\(lvm.state.conversionsToday)")
-                    .font(.system(size: 40, weight: .light).monospacedDigit())
+                    .font(HelmText.heroFigureFont)
                     .tracking(-2)
                     // A count that changes while the page is open changes by
                     // one, and the digits should roll rather than cut.

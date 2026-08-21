@@ -89,12 +89,7 @@ public struct HelmDurationField: View {
             VStack(spacing: 2) {
                 Text(hourLabel).font(.system(size: 11, weight: .semibold)).hidden()
                 Text(":")
-                    // 34 is on no step, and the step it means does not exist:
-                    // the scale goes 22 · 40 and this is «the hero's figure,
-                    // one down». 40 is the hero itself and 22 halves the
-                    // field. Recorded by `TypeScaleRatchetTests` as an
-                    // exception rather than swept into a screen redrawn.
-                    .font(.system(size: 34, weight: .light).monospacedDigit())
+                    .font(Self.digitFont)
                     .foregroundStyle(HelmText.faint)
                     .frame(height: fieldHeight)
             }
@@ -121,10 +116,7 @@ public struct HelmDurationField: View {
             TextField("", text: text)
                 .textFieldStyle(.plain)
                 .multilineTextAlignment(.center)
-                // The hero's own figure, one step down: this is the same number
-                // in the same module and it should not arrive in a different
-                // voice from the countdown it is about to become.
-                .font(.system(size: 34, weight: .light).monospacedDigit())
+                .font(Self.digitFont)
                 .frame(width: 62, height: fieldHeight)
                 .focused($focus, equals: field)
                 .accessibilityLabel(label)
@@ -138,6 +130,17 @@ public struct HelmDurationField: View {
     /// One number for the boxes and for the colon beside them, so the three
     /// cannot drift apart when the type size is next touched.
     private var fieldHeight: CGFloat { 52 }
+
+    /// One font for the same three, for the same reason — it was spelled twice
+    /// in this file, once at the colon and once at the boxes.
+    ///
+    /// **`HelmText.heroFont`, one step down.** This is the number the countdown
+    /// is about to become, and it should not arrive in a different voice from
+    /// it; tabular digits for the same reason the hero's figure has them. 34 is
+    /// on no step of the scale — it goes 22 · 40, and 22 halves the field — so
+    /// it is recorded by `TypeScaleRatchetTests` as an exception rather than
+    /// swept into a screen redrawn.
+    private static let digitFont = Font.system(size: 34, weight: .light).monospacedDigit()
 
     private func digits(_ text: String) -> Int {
         Int(text.filter(\.isNumber).prefix(6)) ?? 0

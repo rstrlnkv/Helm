@@ -394,6 +394,36 @@ public enum HelmText {
     /// SF Mono and would have cost a headline figure that jumps as it counts
     /// the moment it stopped being.
     public static let metricFont = Font.system(size: 16, weight: .medium).monospacedDigit()
+
+    /// The scale's top step: the one line a page leads with, whatever it says.
+    ///
+    /// Keep Awake's four states, VPN's verdict and its empty slot, Layout's
+    /// count — three modules, seven sites, each of which typed
+    /// `.system(size: 40, weight: .light)` where it stood. `LayoutSettingsPage`
+    /// wrote the reason down as a sentence — «the same 40 pt light figure Keep
+    /// Awake's hero draws, so two pages of this app do not measure their own
+    /// heroes differently» — with nothing under it, which is what a token is
+    /// for. `EveryHeroIsSetInOneFontTests` is the rest of that sentence.
+    ///
+    /// Held rather than built at the call site for the ordinary reason a value
+    /// with no argument is: it is one value and there is one of it. What that
+    /// saves is small and was measured rather than assumed — 330 ns and no
+    /// retained bytes per build, so this is a duplication fix and not a
+    /// performance one.
+    ///
+    /// The size does not travel with `helmHeroSentence()`, which says so at
+    /// itself: what the three slots share is how a line behaves when it wraps.
+    public static let heroFont = Font.system(size: 40, weight: .light)
+
+    /// The same step when the hero is a *number*: a countdown, a count of
+    /// things put right today.
+    ///
+    /// Tabular digits for the reason `figureFont` has them — a figure redrawn
+    /// once a second must not shuffle the digits beside it as they change
+    /// width. It was a monospaced *face* until 2026-08-20, which bought the
+    /// same thing and made a countdown look like code.
+    public static let heroFigureFont = heroFont.monospacedDigit()
+
     // MARK: - The settings type scale
     //
     // **Four sizes, because the window had six.** Counted across the settings

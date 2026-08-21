@@ -286,7 +286,7 @@ struct KeepAwakeHero: View {
     private var idle: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroIdle)
-                .font(.system(size: 40, weight: .light))
+                .font(HelmText.heroFont)
                 .foregroundStyle(HelmText.quiet)
                 .helmHeroSentence()
             // Why *this module* is not holding the Mac. It used to have a
@@ -334,13 +334,11 @@ struct KeepAwakeHero: View {
         // same digits.
         let label = TimerProgress.label(remaining: max(0, end.timeIntervalSince(now)))
         return VStack(spacing: HelmSpace.s4) {
-            // Tabular digits, so the figure does not jitter as they change
-            // width — it is redrawn once a second for hours. It was a
-            // monospaced *face*, which bought the same thing and made a
-            // countdown look like code; `.monospacedDigit()` is the property
-            // that was wanted, in the face macOS sets its own timers in.
+            // The hero's step with tabular digits, because this hero is a
+            // number: `HelmText.heroFigureFont` carries both, and carries them
+            // for the page in Layout that draws the same figure.
             Text(label)
-                .font(.system(size: 40, weight: .light).monospacedDigit())
+                .font(HelmText.heroFigureFont)
                 .tracking(-2)
                 // The one figure in this block that is a number rather than a
                 // sentence, and it takes the same treatment: a countdown does
@@ -391,7 +389,7 @@ struct KeepAwakeHero: View {
     private var indefinite: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroAwake)
-                .font(.system(size: 40, weight: .light))
+                .font(HelmText.heroFont)
                 .helmHeroSentence()
             Text(KAStr.heroUntilYouStop)
                 .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
@@ -410,7 +408,7 @@ struct KeepAwakeHero: View {
     private func automatic(_ conditions: Set<ActiveCondition>) -> some View {
         VStack(spacing: HelmSpace.s4) {
             Text(KAStr.heroAwake)
-                .font(.system(size: 40, weight: .light))
+                .font(HelmText.heroFont)
                 .helmHeroSentence()
             Text(KAStr.conditionsLine(conditions, appNames: appNames))
                 .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
