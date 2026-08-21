@@ -65,8 +65,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     // MARK: - The rule
 
     func testEveryTestConstructionNamesThePortsThatWouldReachTheKeychain() throws {
-        let found = try PortsAtConstruction.misses(of: Self.subjects(), under: "Tests")
-        let unported = found.misses
+        let unported = try Self.scanOfTests().misses
             .filter { Self.allowed[$0.where_] == nil }
             .map { "\($0.where_) \($0.type)(…) leaves "
                    + $0.missing.sorted().map { "\($0):" }.joined(separator: " ")
@@ -100,8 +99,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
                        "DuplicatesViewModel's settings: default is gone, or the scan is not "
                        + "reading Sources — it found \(subjects.keys.sorted())")
 
-        let constructions = try PortsAtConstruction.misses(of: subjects,
-                                                           under: "Tests").constructions
+        let constructions = try Self.scanOfTests().constructions
         XCTAssertGreaterThanOrEqual(constructions, 15, """
             \(constructions) constructions of \(subjects.keys.sorted()) in Tests/, where the \
             tree has well over a dozen — the walk, the extension filter or the balance reader \
@@ -156,6 +154,27 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         let source = #"let m = DuplicatesViewModel(vm: v, note: "a) b", settings: g)"#
         XCTAssertEqual(SwiftSource.callSites(of: "DuplicatesViewModel", in: source).map(\.names),
                        [["vm", "note", "settings"]])
+    }
+
+    /// The property under `callSites`' own early return: **a source that never
+    /// spells `Type(` holds no call of it.**
+    ///
+    /// The walk looks for exactly that substring and then asks what precedes
+    /// it, so the guard is the same question asked before the source is copied
+    /// into `[Character]` — it can save the copy, never an answer. Asserted
+    /// rather than assumed, because it is what lets every scan in this suite
+    /// skip a file unread: a guard that could say no to a source holding a call
+    /// site would take offences out of all of them at once, with nothing on
+    /// screen to say so.
+    func testAFileThatNeverSpellsTheTypeHoldsNoConstructionOfIt() {
+        let source = SwiftSource.code("""
+        let a = SomethingElse(store: s, keys: k)
+        // AutopilotEngine(store: s) — named in prose, and prose is blanked
+        """)
+        XCTAssertFalse(source.contains("AutopilotEngine("),
+                       "the guard would have let this source through, so the case below "
+                       + "proves nothing")
+        XCTAssertEqual(SwiftSource.callSites(of: "AutopilotEngine", in: source).count, 0)
     }
 
     /// And a longer name ending with a subject's is not the subject:
@@ -234,8 +253,26 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
                        [["store", "keys"]])
     }
 
-
     // MARK: - Deriving the subjects
+
+    /// **Every derivation below is computed once a process, and the reason is
+    /// XCTest's own shape.** It builds a fresh instance per test case, so an
+    /// instance's worth of scanning is paid by every case in the class — this
+    /// one has twelve, and three of them start a whole-tree derivation. Before
+    /// these three memos it walked and parsed `Sources/` five times over and
+    /// `Tests/` twice more, and the class cost 11.1 s of a suite whose other
+    /// hundred-odd classes are milliseconds.
+    ///
+    /// A `static let` is the memo because Swift computes one lazily and exactly
+    /// once, however many cases race for it, and `Result` is what lets a
+    /// throwing derivation live in one. `SwiftSource.code(under:)` underneath
+    /// does the same for the reading itself, so the two derivations that both
+    /// read `Sources/` load it once between them.
+    private static let namesOnce = Result { try deriveKeychainNames() }
+    private static let subjectsOnce = Result { try deriveSubjects() }
+    private static let scanOfTestsOnce = Result {
+        try PortsAtConstruction.misses(of: subjects(), under: "Tests")
+    }
 
     /// Every static declaration in `Sources/` whose value reaches the keychain,
     /// by name — so a default naming one of them is recognised as a port however
@@ -243,10 +280,23 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     ///
     /// Two hops is all the tree has (`guardOfScanSettings` → `SettingGuard` →
     /// `KeychainSealKey`); the fixed point below would find a third.
-    static func keychainNames() throws -> Set<String> {
+    static func keychainNames() throws -> Set<String> { try namesOnce.get() }
+
+    /// Every type in `Sources/` with an `init` parameter defaulted to a keychain
+    /// port, and the labels those parameters carry.
+    static func subjects() throws -> [String: [String]] { try subjectsOnce.get() }
+
+    /// The offending constructions and how many were seen at all — one reading
+    /// of `Tests/` for the two cases that ask.
+    static func scanOfTests() throws
+    -> (misses: [PortsAtConstruction.Miss], constructions: Int) {
+        try scanOfTestsOnce.get()
+    }
+
+    private static func deriveKeychainNames() throws -> Set<String> {
         var bodies: [String: String] = [:]
-        for file in try RepoSource.swiftFiles(under: "Sources") {
-            merge(&bodies, from: SwiftSource.code(try RepoSource.text(of: file)))
+        for file in try SwiftSource.code(under: "Sources") {
+            merge(&bodies, from: file.text)
         }
         var reaching = Set(bodies.filter { $0.value.contains("Keychain") }.keys)
         var grew = true
@@ -261,15 +311,18 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         return reaching
     }
 
+    /// Hoisted out of `merge`, which is called once per file: the pattern was
+    /// compiled 483 times a pass and there is one pattern.
+    private static let declaration = try? NSRegularExpression(
+        pattern: #"static\s+(?:let|var)\s+([A-Za-z_]\w*)\s*(?::[^=]+)?=\s*(.*)$"#,
+        options: .anchorsMatchLines)
+
     /// `static let x = <value>` and what its value says, with three following
     /// lines because these declarations spill. A longer one is simply not
     /// recognised, which errs towards reporting a call site rather than excusing
     /// it.
     private static func merge(_ bodies: inout [String: String], from source: String) {
-        guard let declaration = try? NSRegularExpression(
-            pattern: #"static\s+(?:let|var)\s+([A-Za-z_]\w*)\s*(?::[^=]+)?=\s*(.*)$"#,
-            options: .anchorsMatchLines)
-        else { return }
+        guard let declaration = Self.declaration else { return }
         let lines = source.components(separatedBy: "\n")
         for (index, line) in lines.enumerated() {
             let range = NSRange(line.startIndex..., in: line)
@@ -280,14 +333,14 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         }
     }
 
-    /// Every type in `Sources/` with an `init` parameter defaulted to a keychain
-    /// port, and the labels those parameters carry.
-    static func subjects() throws -> [String: [String]] {
+    private static func deriveSubjects() throws -> [String: [String]] {
         let reaching = try keychainNames()
         var out: [String: [String]] = [:]
-        for file in try RepoSource.swiftFiles(under: "Sources") {
-            for (owner, labels) in ports(in: SwiftSource.code(try RepoSource.text(of: file)),
-                                         reaching: reaching) {
+        // The same reading `keychainNames` walked; it had its own second walk
+        // of `Sources/` here, so one call to this cost two loads and two parses
+        // of the tree.
+        for file in try SwiftSource.code(under: "Sources") {
+            for (owner, labels) in ports(in: file.text, reaching: reaching) {
                 out[owner, default: []] += labels
             }
         }

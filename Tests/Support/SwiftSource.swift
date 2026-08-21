@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Swift read as text, for the checks that pin something no type system says.
 ///
@@ -163,6 +164,102 @@ public enum SwiftSource {
         return String(out)
     }
 
+    // MARK: - The whole of a directory, read once a process
+
+    /// One file of the repository and the reading of it that was asked for.
+    public struct Read: Sendable, Equatable {
+        /// Repo-relative, because that is what a finding has to name.
+        public let path: String
+        public let text: String
+    }
+
+    /// Every `.swift` file under a repository directory, read as `code(_:)`
+    /// reads one — **walked, loaded and parsed once a process**, however many
+    /// test cases ask for it.
+    ///
+    /// **XCTest builds an instance per test case.** An instance method that
+    /// reads the tree therefore reads it once per *case*, not once per class,
+    /// and three whole-tree scans in a twelve-case class is thirty-six walks.
+    /// Measured on 2026-08-21, the two classes that did this cost 11.1 s and
+    /// 14.9 s of a suite whose other hundred-odd classes are milliseconds.
+    ///
+    /// The tree does not change while the suite runs, so the answer is the same
+    /// every time and the second walk buys nothing. `TheTreeIsReadOnceAProcessTests`
+    /// is the promise: it counts the files taken off disk and asks the reader
+    /// twice.
+    public static func code(under directory: String) throws -> [Read] {
+        try files(under: directory, keepingStrings: false)
+    }
+
+    /// The same, read as `uncommented(_:)` reads one — comments blanked,
+    /// literals kept.
+    ///
+    /// **Cached apart from `code(under:)` and not merely alongside it.** One
+    /// cache keyed on the directory would serve whichever caller came second
+    /// the first one's text, and that failure is silent in the direction that
+    /// matters: every `L("Off")` in the tree arrives as `L("")` and the orphan
+    /// scan condemns all thousand-odd keys at once.
+    public static func uncommented(under directory: String) throws -> [Read] {
+        try files(under: directory, keepingStrings: true)
+    }
+
+    /// How many files the two readers above have taken off disk in this
+    /// process.
+    ///
+    /// A counter is the only way to write «and not again» down as an assertion.
+    /// Timing it would be a test of this Mac's mood, and comparing the two
+    /// answers proves only that the reader is a function.
+    public static var filesRead: Int { counter.value }
+
+    /// **`LockedMemo` rather than a fifth hand-rolled one.** It is `HelmRuntime`'s,
+    /// it is one lock and one dictionary with the build under the lock, and its
+    /// own documentation is the account of the four copies that existed before
+    /// it — three of them under one name and already not the same thing. This
+    /// was written as a sixth before that was noticed.
+    ///
+    /// The value is a `Result` so the throwing read fits a non-throwing memo,
+    /// and a failure is remembered on purpose: the subject is a fixed tree, so
+    /// a directory that could not be read once cannot be read now either, and
+    /// re-asking would only walk it again to fail again.
+    private static let tree = LockedMemo<String, Result<[Read], any Error>>()
+
+    private static func files(under directory: String, keepingStrings: Bool) throws -> [Read] {
+        // The reading is half the key. A directory read both ways is two
+        // answers, and they are not interchangeable.
+        let key = (keepingStrings ? "kept:" : "code:") + directory
+        return try tree.value(for: key) {
+            Result {
+                let read = try RepoSource.swiftFiles(under: directory).map {
+                    Read(path: $0, text: self.read(try RepoSource.text(of: $0),
+                                                   keepingStrings: keepingStrings))
+                }
+                counter.add(read.count)
+                return read
+            }
+        }.get()
+    }
+
+    private static let counter = Counter()
+
+    /// An accumulator, which is why it is not `ProgressBox` next door: that one
+    /// records the *last* value a progress callback reported, and this adds.
+    private final class Counter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var total = 0
+
+        func add(_ n: Int) {
+            lock.lock()
+            total += n
+            lock.unlock()
+        }
+
+        var value: Int {
+            lock.lock()
+            defer { lock.unlock() }
+            return total
+        }
+    }
+
     // MARK: - Call sites
 
     /// One call, with its arguments split at the commas of its own depth.
@@ -207,6 +304,18 @@ public enum SwiftSource {
     ///   by something.
     public static func callSites(of callee: String, in source: String,
                                  wholeWords: Bool = true) -> [Call] {
+        // **A fast no, before the copy.** The walk below needs the whole source
+        // as `[Character]` before it can look at anything, and a call site *is*
+        // an occurrence of `callee(` — so a source without that substring has
+        // none, exactly rather than probably
+        // (`testAFileThatNeverSpellsTheTypeHoldsNoConstructionOfIt`).
+        //
+        // It belongs here and not at a caller: every scan that asks about
+        // several callees over one tree was paying a copy per callee, and
+        // `PortsAtConstruction` — three subjects over all of `Tests/` — made
+        // three of every file for answers two of them could not hold. Measured
+        // 2026-08-21, that scan went 2.421 s to 0.200 s.
+        guard source.contains(callee + "(") else { return [] }
         var out: [Call] = []
         let characters = Array(source)
         let needle = Array(callee + "(")

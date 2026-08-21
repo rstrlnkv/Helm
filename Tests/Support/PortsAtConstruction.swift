@@ -101,14 +101,18 @@ public enum PortsAtConstruction {
         var found: [Miss] = []
         var constructions = 0
 
-        for relative in try RepoSource.swiftFiles(under: directory) {
-            let source = SwiftSource.code(try RepoSource.text(of: relative))
+        // The shared reading rather than a walk of its own. XCTest builds an
+        // instance per test case, and the keychain guard next door calls this
+        // from two of them — which was two walks, two loads and two parses of
+        // the whole of `Tests/` for an answer the tree cannot have changed in
+        // between.
+        for file in try SwiftSource.code(under: directory) {
             for (type, required) in subjects {
-                for call in SwiftSource.callSites(of: type, in: source) {
+                for call in SwiftSource.callSites(of: type, in: file.text) {
                     constructions += 1
                     let missing = required.filter { !call.names.contains($0) }
                     guard !missing.isEmpty else { continue }
-                    found.append(Miss(file: relative, type: type,
+                    found.append(Miss(file: file.path, type: type,
                                       line: call.line, missing: missing))
                 }
             }
