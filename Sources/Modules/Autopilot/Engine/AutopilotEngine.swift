@@ -47,6 +47,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private var watcher: FolderWatcher?
     private var sweepTimer: DispatchSourceTimer?
 
+    /// Where an unattended pass's one banner goes — nil in every test that is
+    /// not about it. It owns the task that waits on macOS as well as the port,
+    /// so `deactivate` has one thing to cancel and not a second field to forget.
+    private let sweepNotice: SweepNotifier?
+
     /// Hourly. The events cover anything that happens; this only exists for
     /// conditions that come true by themselves, which is a scale of hours.
     private static let sweepInterval: TimeInterval = 3600
@@ -59,7 +64,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     public init(store: NamespacedStore, transport: LocalTransport = LocalTransport(),
                 home: String = NSHomeDirectory(),
                 keys: RuleKeyPort = KeychainRuleKey(),
-                sequence: RuleSequencePort = KeychainRuleSequence()) {
+                sequence: RuleSequencePort = KeychainRuleSequence(),
+                sweepNotice: SweepNotifier? = nil) {
+        self.sweepNotice = sweepNotice
         self.runner = RuleRunner(home: home)
         self.undoer = UndoRunner(home: home)
         self.store = store
@@ -129,6 +136,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
         sweepTimer?.cancel()
         sweepTimer = nil
+        sweepNotice?.cancel()
     }
 
     /// On the engine's queue, including the *read*.
@@ -369,9 +377,20 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     /// `manual` is the trigger, and it decides the sweep's voice alone —
     /// `SweepAnnouncement` holds the condition, and `runNow` is the only caller
-    /// that passes `true`.
+    /// that passes `true`. It decides the *banner* too, by not reaching one: the
+    /// person pressing Run now is looking at the page the answer is drawn on.
     @discardableResult
     public func sweep(_ folder: WatchedFolder, manual: Bool = false) -> SweepReport {
+        swept(folder, manual: manual).report
+    }
+
+    /// The sweep, with the records it wrote — the banner is decided from those
+    /// while the log line is decided from the report, and a sweep of three
+    /// folders is one banner rather than three. `SweepReport` could not carry
+    /// the tally without a field the wire has no use for, and the FSEvents leg
+    /// builds no report at all.
+    private func swept(_ folder: WatchedFolder,
+                       manual: Bool) -> (report: SweepReport, records: [ActionRecord]) {
         let reading = reader.reading(in: folder.path, depth: folder.depth)
         let files = reading.files
         let plans = RulePlan.decide(files, rules: folder.activeRules)
@@ -412,7 +431,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID,
                                 "\(Redact.path(folder.path)) could not be swept: \(reading.state.rawValue)")
         }
-        return report
+        return (report, records)
     }
 
     /// One folder, because a person asked — and answered out loud, always.
@@ -445,12 +464,16 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// (docs/superpowers/plans/2026-07-29-third-pass.md has the trail).
     @discardableResult
     public func sweepAll() -> [SweepReport] {
-        let reports = HelmActivity.phase("autopilot.sweep") {
-            folders.filter(\.enabled).map { sweep($0) }
+        let passes = HelmActivity.phase("autopilot.sweep") {
+            folders.filter(\.enabled).map { swept($0, manual: false) }
         }
-        guard !reports.isEmpty else { return reports }
+        guard !passes.isEmpty else { return [] }
         HelmLog.shared.memory("autopilot.sweep")
-        return reports
+        // One banner for the whole hour, never one per watched folder: «what did
+        // Helm do while I was away» is a question about the pass. `runNow` does
+        // not come through here, which is how it stays silent.
+        sweepNotice?.tell(passes.flatMap(\.records))
+        return passes.map(\.report)
     }
 
     /// One event's worth of work. The paths FSEvents reports are files, and the
@@ -499,6 +522,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                     HelmLog.shared.info(Self.moduleID,
                                         "watcher acted on \(acted) of \(Set(changed).count)")
                 }
+                // The other unattended leg, same rule: a file binned a moment
+                // after it arrived is the same loss as one the sweep takes.
+                self.sweepNotice?.tell(records)
                 // Only a batch that did something is read: events coalesce to
                 // about one batch a second while files are being written, and a
                 // batch where no rule matched must not fill the one trail that

@@ -145,6 +145,25 @@ proven newer than its sources.
   so the sentence cannot name a file the engine stopped writing.
 
 ### Fixed
+- **An unattended disk scan no longer writes `~/Library` paths into its
+  journal.** The same laundering the duplicate finder's descent gate closed the
+  day before, in a narrower shape: `DiskScanner(unattended:)` refuses only an
+  application's own database, so the boot-volume walk enters `~/Library` — as it
+  must, since «where did the space go» cannot be answered with the largest folder
+  on the volume left out — and `DiskAdvisor` then named paths inside it in a file
+  written at 0600, readable by any process running as this user including ones
+  macOS refuses. Measured on the owner's machine on 2026-08-20: 12 items in the
+  disk journal, **1** under `~/Library`, no iPhone backups that day. Real, and
+  far smaller than the duplicate leak.
+
+  The repair is therefore not the same repair. `UnattendedAdvice.report` filters
+  at the **report**, not at the descent, and derives the entry's `bytes` and
+  `count` from what survived — filtering the list and totalling the original
+  leaves a journal entry whose figure disagrees with its own list, and the figure
+  is what the settings row draws and what `ScanNews` measures a banner against.
+  A hand-started scan still reports everything the person asked about; the
+  distinction is unattended versus asked-for.
+
 - **Nothing the shell draws asks macOS about a permission on the thread that
   draws it.** Seven module pages were cured of this by
   `helmTracksFullDiskAccess`; `Sources/HelmApp` never was, and the worst of the
@@ -238,6 +257,54 @@ proven newer than its sources.
   on it under load.
 
 ### Added
+- **Helm says what it found while nobody was watching, and the notice budget
+  moved to the modules that touch files.** Three modules walked the volume twice
+  a day, `ScanJournal.change(module:)` computed what had turned up since last
+  time — and **nothing in `Sources/` called it**: not `change(module:)`, not
+  `list(module:_:)`. The entire user-visible product of all that reading was a
+  relative date on a settings page, while the banner port was spent on Keep
+  Awake and VPN, the two modules that touch no files at all. `ScanNews.finding`
+  is the rule that was missing: a delta the journal is willing to vouch for
+  (`hadPrevious`, so a first scan is silent), measured on what **appeared**
+  alone, over a floor of a gigabyte. Space that *went* says nothing — a rule
+  written against `ScanChange.isSomething` congratulates somebody for emptying
+  their own Downloads folder.
+
+  **The wording is a finding, never a claim of action.** «7 items since the last
+  check — 34,2 GB», with the module's own name as the title. Helm did not clean
+  anything; it looked, and a banner claiming otherwise is what a channel like
+  this cannot come back from. `TheScanSaysWhatTurnedUpWhileYouWereAwayTests`
+  holds that as a guard rather than as prose: every one of the eight languages is
+  scanned for the words that would claim an act.
+
+  `ScanEntry.startedByHand` is **gone** rather than made real. One writer,
+  passing `false`, and no reader anywhere — `periphery` had it filed as
+  written-never-read. The distinction it named is kept by construction: the
+  journal has exactly one writer and it is the unattended coordinator, so
+  anything read back out of it is about work nobody watched. Older
+  `journal.json` files carry the key and still decode, `JSONDecoder` ignoring
+  one it has no property for.
+
+- **Autopilot's hourly sweep says when it has binned something.** The one thing
+  this app does unattended that it cannot take back was announced to a log file
+  and nowhere else. It speaks now when a pass **trashed** something, or refused,
+  or failed — and stays silent for a move it can undo and has already written
+  into History, because an hourly sentinel that announces itself is an hourly
+  banner and a channel switched off before it says the one thing that matters.
+  `SweepNews` is that rule, over the `[ActionRecord]` **both** unattended legs
+  already build, so the timer's sweep and the FSEvents batch cannot drift into
+  different ideas of what is news. Run now stays quiet: the person is looking at
+  the page, and the answer it owes them is on it.
+
+  One conversation with macOS underneath all three channels now —
+  `NoticeChannel.tell` (HelmRuntime), which was `BatteryVetoNews`'s and is
+  shared rather than copied. Read the permission, ask once if macOS has never
+  been asked, post if it may, and never trust a remembered `authorized`: it can
+  be withdrawn in System Settings with nothing telling the app. Worth knowing
+  and now written at the type: **notification authorization is keyed to the
+  bundle identifier, not to the cdhash**, so unlike Full Disk Access and
+  Accessibility it survives every ad-hoc rebuild.
+
 - **Hosts & Keys is an SSH manager: keys first, and which of them is dead.**
   The module read three files and drew each in its own tab with no line between
   them, so a person could see that a key exists and that a host exists, and not

@@ -11,9 +11,18 @@ import HelmUI
 @MainActor
 final class ScanCoordinator {
     private let host: ModuleHost
-    private let journal = ScanJournal()
+    private let journal: ScanJournal
+    /// Where the one thing these scans have to say goes. Injected so a test can
+    /// drive the channel without a notification centre — the real
+    /// `UNUserNotificationCenter` raises an ObjC exception outside an app
+    /// bundle, and that ends the whole run rather than failing a case.
+    private let notices: AutomationNoticePort
     private var tick: RepeatingTick?
     private var nudgeObserver: NSObjectProtocol?
+    /// Cancelled by `stop()`: `requestAuthorization` waits for the person to
+    /// answer a system prompt, which can be minutes, and this object is torn
+    /// down at `applicationWillTerminate`.
+    private var noticeTask: Task<Void, Never>?
 
     /// Scans running right now.
     ///
@@ -37,7 +46,19 @@ final class ScanCoordinator {
     /// with a comment saying a test read it through here; no test ever did.
     private static var scannableModules: [String] { ScanRunner.scannableModules }
 
-    init(host: ModuleHost) { self.host = host }
+    init(host: ModuleHost,
+         journal: ScanJournal = ScanJournal(),
+         notices: AutomationNoticePort = SystemAutomationNotice(area: ScanCoordinator.logArea)) {
+        self.host = host
+        self.journal = journal
+        self.notices = notices
+    }
+
+    /// The one category the app layer files a module's story under, and the area
+    /// the notice port names itself with. `LogCategoriesAreModuleIdsTests`
+    /// records it as the single shared category on purpose; a literal spelled
+    /// five times in this file is the same name with five chances to drift.
+    static let logArea = "scan"
 
     func start() {
         // Keep Awake's nudge resets the system idle counter, and its default
@@ -61,6 +82,8 @@ final class ScanCoordinator {
         tick = nil
         if let nudgeObserver { NotificationCenter.default.removeObserver(nudgeObserver) }
         nudgeObserver = nil
+        noticeTask?.cancel()
+        noticeTask = nil
     }
 
     private var lastOwnNudge: Date?
@@ -204,7 +227,7 @@ final class ScanCoordinator {
             // heartbeat is what makes a log unreadable.
             if lastLogged[id] != verdict {
                 lastLogged[id] = verdict
-                HelmLog.shared.info("scan", "\(id): \(verdict)")
+                HelmLog.shared.info(Self.logArea, "\(id): \(verdict)")
             }
             guard case .run = verdict else { continue }
             await run(id)
@@ -253,16 +276,67 @@ final class ScanCoordinator {
             // Nil is not an empty report. A refused root or a cancelled walk
             // must not be written down as «проверено, чисто» about a folder
             // nobody read.
-            HelmLog.shared.info("scan", "\(id): no answer after \(Int(seconds))s")
+            HelmLog.shared.info(Self.logArea, "\(id): no answer after \(Int(seconds))s")
             return
         }
         // Only here: a completion is what holds the module for the day.
         AppSettings.lastScanAt[id] = Date()
         journal.record(ScanEntry(at: Date(), bytes: report.bytes, count: report.count,
-                                 seconds: seconds, startedByHand: false),
+                                 seconds: seconds),
                        items: report.items, module: id)
-        HelmLog.shared.info("scan",
+        HelmLog.shared.info(Self.logArea,
                             "\(id) finished in \(Int(seconds))s — \(report.count) items")
+        tellSomebodyWhatAppeared(in: id)
+    }
+
+    /// A banner about what turned up while nobody was looking, or silence.
+    ///
+    /// **This is the call the journal was written for and never got.**
+    /// `ScanJournal.change(module:)` and `list(module:_:)` had no caller
+    /// anywhere in `Sources/`: three modules walked the volume twice a day, the
+    /// delta was computed and thrown away, and the whole product of it was a
+    /// relative date on a settings page.
+    ///
+    /// **A finding, never a claim of action** — «Duplicates / 7 items since the
+    /// last check — 34,2 GB», not «cleaned» and not «freed». Helm did not clean
+    /// anything here; it looked. `ScanNews` decides whether the delta is worth
+    /// saying and `AppStr` says it, in the eight languages and with the words
+    /// that would claim an act held out by a test; what is left here is asking,
+    /// which is why it is this short.
+    ///
+    /// Internal rather than private because it is the seam a test drives:
+    /// reaching it through `run` would need a live module and a walk of the
+    /// volume, which is a test of the filesystem.
+    ///
+    /// The log line beside it carries counts and a size and no path — the
+    /// journal it read names every file the scan found, and `HelmLog` carries no
+    /// names. The banner may name the person's folder; the log may not.
+    func tellSomebodyWhatAppeared(in id: String) {
+        guard let finding = ScanNews.finding(in: journal.change(module: id)) else { return }
+        let name = ModuleRegistry.descriptor(id)?.moduleMetadata.name ?? id
+        let words = AppStr.scanFindingNotice(module: name, finding: finding)
+        let port = notices
+        // One task, replaced rather than accumulated: the modules are scanned
+        // one after another and a prompt standing through the next scan is the
+        // only way two can overlap, which macOS answers once and for all anyway.
+        noticeTask?.cancel()
+        noticeTask = Task {
+            switch await NoticeChannel.tell(port, words) {
+            case .posted:
+                // English outright, the way every other line in this file is
+                // written: the log is read by whoever is diagnosing a Mac,
+                // which is not always the person whose Mac it is.
+                HelmLog.shared.info(Self.logArea,
+                                    "\(id): told about \(finding.count) new, "
+                                    + "\(HelmBytes.string(finding.bytes, language: "en"))")
+            case .notAllowed:
+                HelmLog.shared.info(Self.logArea, "\(id): what turned up was not announced — "
+                                    + "macOS says banners are not allowed")
+            // The app is going away; `stop()` is the account of that.
+            case .cancelled:
+                break
+            }
+        }
     }
 
     /// Yesterday's budget is not today's. Whether the day turned is

@@ -31,7 +31,7 @@ final class ScanJournalRecordBenchmark: XCTestCase {
 
     private func entry(_ seconds: TimeInterval) -> ScanEntry {
         ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
-                  bytes: 12_000_000, count: 6900, seconds: 10.1, startedByHand: false)
+                  bytes: 12_000_000, count: 6900, seconds: 10.1)
     }
 
     private func bench(itemCount: Int, calls: Int) throws {

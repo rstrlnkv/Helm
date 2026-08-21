@@ -21,7 +21,7 @@ final class ScanJournalInterruptedTests: XCTestCase {
 
     private func entry(_ bytes: Int, at seconds: TimeInterval = 0) -> ScanEntry {
         ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
-                  bytes: bytes, count: 1, seconds: 1.5, startedByHand: false)
+                  bytes: bytes, count: 1, seconds: 1.5)
     }
 
     private func item(_ path: String, _ bytes: Int) -> ScanItem {

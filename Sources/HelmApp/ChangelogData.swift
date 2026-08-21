@@ -71,6 +71,9 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.0", date: "2026-08-20", items: [
+                ChangeItem(kind: .new, text: L("Helm now says what its background scans found while you were away. A notice appears only when something large has turned up since the last look, and it says what is there \u{2014} nothing is ever removed on its own.")),
+                ChangeItem(kind: .new, text: L("Autopilot tells you when its hourly sweep has put files in the Trash, or when a rule could not run. The moves it can undo stay quiet: they are already on the page, one press from going back.")),
+                ChangeItem(kind: .fix, text: L("The record Helm keeps of an unattended disk scan no longer names anything inside your Library folder. The scan still measures it, so the picture of your disk is unchanged.")),
                 ChangeItem(kind: .upd, text: L("The Uninstaller no longer spends four seconds counting before it can show you anything: measuring what an application occupies is about four times faster. Leftovers and duplicate searches walk the same way now.")),
                 ChangeItem(kind: .upd, text: L("The three switches for the panel\u{2019}s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it.")),
                 ChangeItem(kind: .upd, text: L("The panel\u{2019}s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it.")),

@@ -25,7 +25,15 @@ import SwiftUI
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        AutopilotEngine(store: store)
+        // The sweep runs hourly with nobody at the desk and it trashes files,
+        // which makes it the one thing this module does that a person is owed
+        // out loud. The sentence comes from here, because `L()` is `HelmUI`'s
+        // and the engine cannot see it — the shape Keep Awake's battery veto
+        // already has.
+        AutopilotEngine(store: store,
+                        sweepNotice: SweepNotifier(
+                            port: SystemAutomationNotice(area: AutopilotEngine.moduleID),
+                            words: { ApStr.sweepNotice($0) }))
     }
 
     /// Not a utility any more: how many folders it watches and what it did

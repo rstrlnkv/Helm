@@ -20,28 +20,12 @@ public struct BatteryVetoChannel: Sendable {
     }
 }
 
-/// Whether the battery veto's arrival is worth interrupting somebody for, and
-/// what to do about the permission that would carry it.
+/// Whether the battery veto's arrival is worth interrupting somebody for.
 ///
-/// Pure, and separate from the engine that calls it, because both halves are
-/// rules rather than side effects: the arrival that is *not* news is the whole
-/// difference between a notification and a nuisance.
+/// Pure, and separate from the engine that calls it, because it is a rule rather
+/// than a side effect: the arrival that is *not* news is the whole difference
+/// between a notification and a nuisance.
 enum BatteryVetoNews {
-
-    /// What to do with a notification macOS may never have been asked about.
-    ///
-    /// Three cases and no `default`: a fourth authorization state has to be
-    /// decided here rather than falling into whichever of these the compiler
-    /// reaches first. Nested, because it is this rule's answer and not a noun the
-    /// rest of the engine target has any use for.
-    enum Step {
-        /// Nobody has been asked yet, and something wants to be said now.
-        case ask
-        /// Say it.
-        case post
-        /// Refused. Not asked again — macOS would not prompt a second time anyway.
-        case stayQuiet
-    }
 
     /// Did the veto take anything away?
     ///
@@ -59,47 +43,33 @@ enum BatteryVetoNews {
         active || manual || hasDeadline
     }
 
-    /// The permission, at the moment something wants it.
+    /// The permission, at the moment something wants it — and this module's own
+    /// reason for asking *here*.
     ///
     /// VPN asks when the person picks the banner mode, which is a gesture with
     /// somebody present. This guard has no such gesture: it ships **on**, so the
     /// people it protects are mostly people who never opened its row, and a
-    /// permission asked for at launch is the one people learn to refuse. So it is
-    /// asked here, the first time there is something to say — and only ever
+    /// permission asked for at launch is the one people learn to refuse. So it
+    /// is asked at the first moment there is something to say — and only ever
     /// once, because that is all macOS allows.
-    static func step(given: NoticeAuthorization) -> Step {
-        switch given {
-        case .notDetermined: return .ask
-        case .authorized: return .post
-        case .denied: return .stayQuiet
-        }
-    }
-
-    /// The whole conversation with macOS, in the order the permission allows.
     ///
-    /// Here rather than in the engine because every line of it is `step`'s rule
-    /// applied twice — once to what macOS already says, once to what the person
-    /// answers — and an engine method spelling that out again is the second copy
-    /// of a decision.
-    ///
-    /// **The permission is read, never remembered.** It can be revoked in System
-    /// Settings at any moment and nothing tells the app, and this is the one
-    /// instant where being wrong costs somebody the news.
+    /// The conversation itself is `NoticeChannel.tell`'s, in `HelmRuntime` —
+    /// read the permission, ask once if macOS has never been asked, post if it
+    /// may — since the scan and sweep channels ask macOS the same question in
+    /// the same order. What stays here is the reason above, and the line below:
+    /// a silence because macOS refuses and a silence because the module was
+    /// switched off while the prompt stood are different facts, and only the
+    /// first is worth saying.
     static func tell(_ port: AutomationNoticePort, _ words: NoticeText) async {
-        var heard = await port.authorizationState()
-        if step(given: heard) == .ask { heard = await port.requestAuthorization() }
-        // A prompt can stand on screen for minutes; the module may be switched
-        // off in that time, and the caller cancels this task when it is.
-        guard !Task.isCancelled else { return }
-        switch step(given: heard) {
-        case .post:
-            await port.post(title: words.title, body: words.body)
-        // `.ask` here is macOS answering «not determined» to a request, which
-        // cannot happen — folded in rather than given a `default`, so a fourth
-        // authorization state stays a build error in `step` above.
-        case .ask, .stayQuiet:
+        switch await NoticeChannel.tell(port, words) {
+        case .notAllowed:
             HelmLog.shared.info(KeepAwakeEngine.moduleID, "the battery guard's stop was not announced: "
                                 + "macOS says banners are not allowed")
+        // Nothing to say about either: the banner arrived, or the module was
+        // switched off while the prompt stood and its own teardown is the
+        // account of that. No `default` — a fourth outcome is a decision.
+        case .posted, .cancelled:
+            break
         }
     }
 }

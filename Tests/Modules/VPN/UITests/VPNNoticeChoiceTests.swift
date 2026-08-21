@@ -4,6 +4,7 @@
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI

@@ -1,5 +1,6 @@
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_KeepAwake_Engine
 
 /// The battery veto is the one thing this app does with nobody in front of the
@@ -47,23 +48,13 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
 
     // MARK: - What to do about a permission
 
-    /// Asked at the moment something wants it, which is this one: the guard
-    /// ships **on**, so a person who never opens its settings row would never
-    /// reach a gesture to hang the question on, and a permission asked for at
-    /// launch is the one people learn to refuse.
-    func testAPermissionNobodyHasAskedForIsAskedForNow() {
-        XCTAssertEqual(BatteryVetoNews.step(given: .notDetermined), .ask)
-    }
-
-    /// And a refusal is not asked again — macOS would not prompt anyway, and the
-    /// answer to «post?» is no.
-    func testARefusalIsNotAskedAgainAndPostsNothing() {
-        XCTAssertEqual(BatteryVetoNews.step(given: .denied), .stayQuiet)
-    }
-
-    func testAGrantedPermissionPosts() {
-        XCTAssertEqual(BatteryVetoNews.step(given: .authorized), .post)
-    }
+    // The three cases that were here — nobody asked yet, refused, granted — are
+    // `NoticeChannel.step`'s now, with the scan and sweep channels asking macOS
+    // the same question in the same order, and they are held in
+    // `Tests/HelmRuntimeTests/OneConversationWithMacOSAboutABannerTests.swift`.
+    // What this module still owns is *why* it asks from an unattended moment at
+    // all, which is prose at `BatteryVetoNews.tell` — and the engine cases below,
+    // which drive the whole conversation through this module's own path.
 
     // MARK: - The engine, with a notification centre it can reach
 
@@ -119,10 +110,6 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
 
     private func waitForPosts(_ wanted: Int) async {
         await waitUntil { notices.posted.count >= wanted }
-    }
-
-    private func grace() async {
-        try? await Task.sleep(nanoseconds: 150_000_000)
     }
 
     /// A hand-started session, and then the charge falls under the floor with

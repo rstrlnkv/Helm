@@ -61,15 +61,21 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     /// paths worth reclaiming: caches past their threshold, big downloads
     /// nobody has touched in a month, huge files untouched for half a year.
     ///
+    /// **And the advice is filtered before it is written down.** The walk enters
+    /// `~/Library` on purpose and the 0600 journal may not name what is in
+    /// there — `UnattendedAdvice.report` is that gate, and it is the report's
+    /// rather than the descent's for a reason it carries.
+    ///
     /// **No `ScanRoot` gate**, and not by omission. That gate guards a folder
     /// the person chose and Helm stored, where a rewritten plist would redirect
     /// an unattended reader. The root here is the boot volume, named in this
     /// line rather than read from anywhere.
     public func backgroundScan() async -> ScanReport? {
         guard let result = await scan(path: "/", unattended: true) else { return nil }
-        let items = result.advice.map { ScanItem(path: $0.path, bytes: $0.bytes) }
-        return ScanReport(bytes: items.reduce(0) { $0 + $1.bytes },
-                          count: items.count, items: items)
+        // The walk measured `~/Library` — it has to, or «where did the space go»
+        // omits the largest folder on the volume — and the journal may not
+        // record what it found there. `UnattendedAdvice` has the reasoning.
+        return UnattendedAdvice.report(of: result.advice)
     }
 
     /// - Parameter unattended: nobody is watching, so the walk stops at an

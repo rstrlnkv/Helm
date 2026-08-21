@@ -4,6 +4,7 @@
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
@@ -51,7 +52,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// because the two disagree the moment someone revokes the permission in
     /// System Settings, and the app hears nothing when they do.
     private func announce(notice: VPNNotice, mirror: Bool, macOS: NoticeAuthorization)
-        async -> (banner: [(String, String)], label: String?) {
+        async -> (banner: [NoticeText], label: String?) {
         let transport = LocalTransport()
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: transport)
@@ -67,7 +68,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     func testTheAuthorizedBannerModePostsTheBanner() async {
         let said = await announce(notice: .system, mirror: true, macOS: .authorized)
         XCTAssertEqual(said.banner.count, 1, "the mode that asks to be told loudly said nothing")
-        XCTAssertTrue(said.banner[0].1.contains("Office"),
+        XCTAssertTrue(said.banner[0].body.contains("Office"),
                       "the banner did not name the connection: \(said.banner)")
     }
 

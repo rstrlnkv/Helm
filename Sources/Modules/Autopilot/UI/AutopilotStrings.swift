@@ -452,4 +452,57 @@ enum ApStr {
         case .changedSinceCheck: L("refused: the path changed underneath", language: language)
         }
     }
+
+    // MARK: - The banner for a pass nobody watched
+
+    /// What the hourly sweep says out loud, and the only surface this module has
+    /// that reaches somebody who is not looking at it.
+    ///
+    /// **The Trash is why it exists.** Everything else Autopilot does is a move
+    /// it can undo, recorded in History, one press from being put back — and a
+    /// banner about that turns an hourly sentinel into an hourly banner, which
+    /// is a channel switched off before it ever says the one thing that
+    /// matters. `SweepNews` holds that rule; this is only its voice.
+    ///
+    /// Titled with the module's name because a notification with no title is
+    /// drawn as the app's name and a body, and «Helm» does not say which of ten
+    /// modules is speaking — the reasoning `KAStr.batteryVetoNotice` already
+    /// carries one module over.
+    static func sweepNotice(_ tally: SweepNews.Tally,
+                            language: AppLanguage = AppLanguage.current) -> NoticeText {
+        // Two clauses at most, and each stands alone: what went to the Trash,
+        // and what a rule could not act on. A single sentence adding them would
+        // read «4 things happened», which sends the person to the log to find
+        // out which — and the log is where the per-file detail already is.
+        let clauses = [
+            tally.trashed > 0 ? sweepTrashed(tally.trashed, language: language) : nil,
+            tally.refused + tally.failed > 0
+                ? sweepNotActedOn(tally.refused + tally.failed, language: language) : nil,
+        ].compactMap { $0 }
+        return NoticeText(title: L("Autopilot", language: language),
+                          body: clauses.joined(separator: " · "))
+    }
+
+    /// Interpolated, so the table is inline: the lookup happens after the number
+    /// is already in the string — which is also why the word for the Trash is
+    /// written out here rather than composed. It is copied from the eight
+    /// translations of `L("Move to Trash")`, which are macOS's own spellings, so
+    /// a person is not shown two words for one folder; the copy is the price of
+    /// the interpolation and is the one thing in this pair to check against
+    /// those files if either ever moves.
+    static func sweepTrashed(_ count: Int,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        func files(_ code: String) -> String { Plural.files(count, language: code) }
+        return L("Moved \(files("en")) to the Trash", [.ru: "В Корзину отправлено \(files("ru"))", .es: "\(files("es")) a la papelera", .fr: "\(files("fr")) dans la corbeille", .de: "\(files("de")) in den Papierkorb gelegt", .ja: "\(files("ja"))をゴミ箱に移動しました", .zh: "已将\(files("zh"))移到废纸篓", .pt: "\(files("pt")) para o Lixo"], language: language)
+    }
+
+    /// Refusals and failures under one clause, deliberately. They are different
+    /// facts — the gate held, the filesystem said no — and the log keeps them
+    /// apart under the same pass; what a banner owes the person is that a rule
+    /// they wrote did not run, because every screen otherwise looks well.
+    static func sweepNotActedOn(_ count: Int,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        func files(_ code: String) -> String { Plural.files(count, language: code) }
+        return L("\(files("en")) a rule could not act on", [.ru: "Правило не смогло обработать \(files("ru"))", .es: "Una regla no pudo actuar sobre \(files("es"))", .fr: "Une règle n’a pas pu traiter \(files("fr"))", .de: "Eine Regel konnte \(files("de")) nicht verarbeiten", .ja: "ルールが\(files("ja"))を処理できませんでした", .zh: "规则无法处理\(files("zh"))", .pt: "Uma regra não pôde tratar \(files("pt"))"], language: language)
+    }
 }

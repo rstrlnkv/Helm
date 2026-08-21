@@ -4,6 +4,7 @@
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
@@ -22,7 +23,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
     /// and answers what the person was actually shown.
     private func announce(kind: VPNAutomation.Kind,
                           rules: VPNNotice, drop: VPNNotice) async
-        -> (banner: [(String, String)], label: String?) {
+        -> (banner: [NoticeText], label: String?) {
         let transport = LocalTransport()
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: transport)
@@ -65,7 +66,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
         // has to *report* it, and an index into an empty array ends the whole
         // xctest process — which is how a mutation run comes back as a crash
         // with nothing said about the guard.
-        XCTAssertEqual(said.banner.first?.1.contains("Office"), true,
+        XCTAssertEqual(said.banner.first?.body.contains("Office"), true,
                        "the banner did not name the connection: \(said.banner)")
     }
 
@@ -125,7 +126,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
 
         XCTAssertEqual(dropped.banner.count, 1)
         XCTAssertEqual(byRule.banner.count, 1)
-        XCTAssertNotEqual(dropped.banner.first?.0, byRule.banner.first?.0,
+        XCTAssertNotEqual(dropped.banner.first?.title, byRule.banner.first?.title,
                           "a tunnel that fell over and a rule taking one down were announced "
                           + "in the same words")
     }

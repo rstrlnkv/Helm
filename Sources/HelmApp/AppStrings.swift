@@ -281,6 +281,51 @@ enum AppStr {
            .ja: "前回: \(when)", .zh: "上次\(when)", .pt: "Última vez \(when)"],
           language: language)
     }
+
+    // MARK: - What a scan nobody watched turned up
+
+    /// The banner three modules share, and the only thing a background scan
+    /// ever says out loud.
+    ///
+    /// **A finding, never a claim of action.** «Duplicates / 7 items since the
+    /// last check — 34,2 GB» — not «cleaned», and not «freed». Helm did not
+    /// clean anything: it walked the volume while the Mac was idle and this is
+    /// what it saw. A banner claiming an act the person did not ask for is the
+    /// one thing a channel like this cannot come back from, so the words that
+    /// would claim one are held out of all eight languages by a test rather than
+    /// by this paragraph.
+    ///
+    /// Titled with the module's name, because a notification with no title is
+    /// drawn as the app's name and a body, and «Helm» does not say which of ten
+    /// modules is speaking. The name comes from the registry rather than being
+    /// written again here — `ScanCoordinator` passes what the sidebar shows.
+    ///
+    /// Interpolated, so the table is inline: the lookup happens after the
+    /// numbers are already in the string.
+    static func scanFindingNotice(module: String, finding: ScanNews.Finding,
+                                  language: AppLanguage = AppLanguage.current) -> NoticeText {
+        NoticeText(title: module,
+                   body: scanFindingBody(finding, language: language))
+    }
+
+    /// The body alone, so a test can read the sentence in a language without
+    /// having to build the pair around it — and so the eight-language check is
+    /// of the words rather than of the assembly.
+    static func scanFindingBody(_ finding: ScanNews.Finding,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        func items(_ code: String) -> String { Plural.items(finding.count, language: code) }
+        func size(_ code: String) -> String { HelmBytes.string(finding.bytes, language: code) }
+        return L("\(items("en")) since the last check — \(size("en"))",
+                 [.ru: "\(items("ru")) с прошлой проверки — \(size("ru"))",
+                  .es: "\(items("es")) desde la última comprobación — \(size("es"))",
+                  .fr: "\(items("fr")) depuis la dernière vérification — \(size("fr"))",
+                  .de: "\(items("de")) seit der letzten Prüfung — \(size("de"))",
+                  .ja: "前回の確認以降 \(items("ja")) — \(size("ja"))",
+                  .zh: "自上次检查以来 \(items("zh")) — \(size("zh"))",
+                  .pt: "\(items("pt")) desde a última verificação — \(size("pt"))"],
+                 language: language)
+    }
+
     /// «in your menu bar» was false and had been since the panel: Helm is also
     /// a panel, a settings window and a sidebar the person arranges. A tagline
     /// under the wordmark is the app's own claim about itself, so it names the

@@ -13,17 +13,29 @@ public struct ScanEntry: Codable, Equatable, Sendable {
     /// How long it took, so a page can say whether a re-scan is a moment or a
     /// walk away.
     public let seconds: TimeInterval
-    /// A person pressed the button, rather than the timer coming round.
-    public let startedByHand: Bool
 
-    public init(at: Date, bytes: Int, count: Int, seconds: TimeInterval,
-                startedByHand: Bool) {
+    public init(at: Date, bytes: Int, count: Int, seconds: TimeInterval) {
         self.at = at
         self.bytes = bytes
         self.count = count
         self.seconds = seconds
-        self.startedByHand = startedByHand
     }
+
+    // There was a `startedByHand` here, and it went on 2026-08-21.
+    //
+    // One writer — `ScanCoordinator`, which is the unattended path — passing
+    // `false`, and no reader anywhere; `periphery` had already filed it as
+    // written-never-read. It was a flag standing in for a fact the structure
+    // already guarantees: the journal has exactly one writer, so anything read
+    // back out of it is by construction about work nobody watched, which is
+    // what `ScanNews` relies on when it decides whether to post a banner. The
+    // day an interactive scan writes here too, the distinction it named is a
+    // *decision* to take then rather than a field that has been quietly false
+    // for a year.
+    //
+    // Older `journal.json` files carry the key. `JSONDecoder` ignores one it
+    // has no property for, so they keep decoding — the opposite direction from
+    // an *added* key, which the synthesized `Decodable` would demand.
 }
 
 /// What a module's scans left behind: the numbers for the last thirty, and the

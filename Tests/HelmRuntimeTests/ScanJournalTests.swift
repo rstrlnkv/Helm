@@ -13,10 +13,9 @@ final class ScanJournalTests: XCTestCase {
         journal = ScanJournal(directory: directory)
     }
 
-    private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0,
-                       byHand: Bool = false) -> ScanEntry {
+    private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
         ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
-                  bytes: bytes, count: count, seconds: 1.5, startedByHand: byHand)
+                  bytes: bytes, count: count, seconds: 1.5)
     }
 
     func testAModuleThatNeverScannedHasNothing() {
@@ -26,7 +25,7 @@ final class ScanJournalTests: XCTestCase {
     }
 
     func testAnEntryRoundTrips() {
-        let one = entry(2_480_000_000, 184, byHand: true)
+        let one = entry(2_480_000_000, 184)
         journal.record(one, items: [ScanItem(path: "/a", bytes: 10)], module: "duplicates")
         XCTAssertEqual(journal.entries(module: "duplicates"), [one])
         XCTAssertEqual(journal.list(module: "duplicates", .current),
