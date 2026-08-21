@@ -148,6 +148,46 @@ proven newer than its sources.
   so neither half can name a file the engine stopped writing.
 
 ### Fixed
+- **Four settings pages took the scroll wheel only over the middle of the
+  pane.** The pages built on a SwiftUI `Form` — Keep Awake, Keyboard, VPN and
+  General — are pages whose `Form` *is* the scroll view, and `helmSettingsColumn()`
+  was applied to the `Form` itself. That made the scroller 744 pt wide and centred
+  inside an infinite outer frame, so on the default 1060 pt window the 50 pt down
+  each side of the page belonged to nothing and the wheel there reached no
+  scroller. Measured on the AppKit tree: the scroller ran x 50.5…794.5 of an 845
+  pt pane, and 202.5…946.5 of a 1149 pt one.
+
+  **The cap had also stopped buying anything.** A grouped `Form` on macOS 27 caps
+  its own content at 704 pt and centres it, so the card lands in the same place
+  capped or not — measured on the three real pages at 679, 845 and 1149 pt panes,
+  identical to the tenth of a point either way (20.0…659.0, 70.5…774.5,
+  222.5…926.5). The doc comment on the modifier recorded a contrary measurement
+  from an earlier system; it is corrected. The four pages call
+  `helmIdlesOffScreen()` directly now, which is the half of that modifier they
+  actually needed, and the scroller fills the pane.
+
+  **Widening the scroller is not the repair, and that is half the lesson.**
+  `safeAreaPadding` gives the `NSScrollView` the full width of the pane and the
+  sides stay dead, because SwiftUI hit-tests a scroll view's *content* region and
+  not its frame — so a check that asserted the scroller's width would have blessed
+  it. `ThePaneTakesTheWheelAtItsEdgesTests` asks where the wheel lands instead,
+  by hit-testing each rendered page at both edges of the pane, and reads the
+  modifier chains in `Sources` for the shape as well, because the General page
+  cannot be rendered in a test (its `.task` warms a sealed setting out of the
+  login keychain). Hit testing was validated against real `CGEvent` scroll wheels
+  delivered to an on-screen window before it was relied on: 24 cells over three
+  arrangements and four x positions, all 24 in agreement, both outcomes present,
+  and the same answers offscreen.
+
+  **Two more pages have the same defect, 12 pt wide, and are recorded rather than
+  fixed.** Homebrew and Leftovers put `.padding(.horizontal, 12)` on the `List`
+  that scrolls: at an 845 pt pane, x 4 and x 10 are dead and x 422 is live. Every
+  repair that restores the wheel also moves the row's content, and the amount is
+  not measurable with the instruments here — `cacheDisplay` does not composite a
+  table-backed `List` and returns only the scroll view's background, the row
+  backing view spans the clip view whatever the content does, and `screencapture`
+  wants a Screen Recording grant. They are named in the guard's `knownDead`, which
+  is two-sided: a page on that list that starts reaching its edges fails too.
 - **`PrivateFile.write` answers whether it landed and eight callers dropped the
   answer**, which is «a refusal that is not a success» — the family this
   repository already names for `pmset`, for `launchctl` and for a removal that

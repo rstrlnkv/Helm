@@ -115,17 +115,23 @@ enum ModulePageRender {
         /// fails a precondition (`scanned` is false on a model nobody scanned),
         /// which is the direction a wrong assumption should fail in.
         let viewModel: ModuleViewModel
+        /// The hosting view the page was drawn into, for the questions a layer
+        /// walk cannot answer. Hit testing is one: which view a scroll wheel
+        /// would be delivered to is a fact about the AppKit tree and shows up
+        /// in no bitmap (`ThePaneTakesTheWheelAtItsEdgesTests`).
+        let host: NSView
         /// Held so the objects behind the measurement outlive it.
         private let keepAlive: [AnyObject]
 
         init(id: String, layers: [Drawn], controls: [Control],
              transport: FixtureTransport, viewModel: ModuleViewModel,
-             keepAlive: [AnyObject]) {
+             host: NSView, keepAlive: [AnyObject]) {
             self.id = id
             self.layers = layers
             self.controls = controls
             self.transport = transport
             self.viewModel = viewModel
+            self.host = host
             self.keepAlive = keepAlive
         }
     }
@@ -283,7 +289,7 @@ enum ModulePageRender {
         if let work = prime(id, viewModel) { drive(work, in: view) }
         settle(view)
         return Page(id: id, layers: layers(of: view), controls: controls(of: view, module: id),
-                    transport: transport, viewModel: viewModel,
+                    transport: transport, viewModel: viewModel, host: view,
                     keepAlive: [engine, viewModel, view, window])
     }
 

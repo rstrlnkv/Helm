@@ -174,7 +174,7 @@ struct VPNSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmSettingsColumn()
+        .helmIdlesOffScreen()
         // The engine is asked once in `init` and the view model is cached for
         // the app's lifetime, so without these the page showed whatever the
         // system said at launch.

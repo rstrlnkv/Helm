@@ -77,7 +77,7 @@ struct LayoutSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmSettingsColumn()
+        .helmIdlesOffScreen()
         .helmTracksAccessibility($accessibility)
         // The two things on this page that arrive rather than being drawn once.
         // The indicator's own block is 174.5 pt and appeared instantly under the

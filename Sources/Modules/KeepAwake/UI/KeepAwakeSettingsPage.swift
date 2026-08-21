@@ -132,7 +132,7 @@ struct KeepAwakeSettingsPage: View {
             shortcutSection
         }
         .formStyle(.grouped)
-        .helmSettingsColumn()
+        .helmIdlesOffScreen()
         // Where the engine's values land, and the only place they are animated.
         .onChange(of: vm.activeConditions) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shownConditions = arrived }

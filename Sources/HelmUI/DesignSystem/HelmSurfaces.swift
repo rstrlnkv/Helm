@@ -233,22 +233,29 @@ public struct HelmIconPlate: View {
 /// and whatever control belongs at the far end (usually the on/off switch).
 /// The width of a settings page's content, and where it sits.
 ///
-/// A grouped `Form` on macOS caps its own content at about 704 pt and centres
-/// what is left over. Measured on a 950 pt page: uncapped, the card came out
-/// 684 pt wide starting 383 pt from the left, so its leading edge walked away
-/// from the header as the window grew. Capping the form and pinning it left
-/// fixed the drift and left the whole surplus as one empty band down the right
-/// side of the window, which reads as a page that failed to lay out.
+/// A grouped `Form` on macOS caps its own content at 704 pt and centres what is
+/// left over, so a page built on one is on this column already. The header is
+/// centred on the same column, and the page reads as one deliberate column
+/// rather than as content stuck to one edge — which is what System Settings
+/// does with its own window. The column cannot be made wider: that limit is the
+/// form style's, not ours.
 ///
-/// The column cannot be made wider — that limit is the form style's, not ours.
-/// So it is centred, with the header centred on the same column, and the page
-/// reads as one deliberate column rather than as content stuck to one edge.
-/// This is what System Settings does with its own window.
+/// **Never on a `Form`, because the `Form` is the scroll view.** Four pages
+/// applied it to theirs, which made the scroller 744 pt wide and centred in the
+/// pane: on the default 1060 pt window, 50 pt down each side belonged to nothing
+/// and the wheel there moved nothing. It bought nothing either — measured at
+/// 679, 845, 1149 and 1400 pt panes, a bare grouped `Form` puts its card in the
+/// same place, to the point, as a capped one. What is left for this is content
+/// that is not itself a scroller and would otherwise take the whole pane.
+/// `ThePaneTakesTheWheelAtItsEdgesTests` guards it, and reads the modifier
+/// chains as well as the rendered pages, because the other half of the lesson is
+/// that *widening* the scroller is not the repair: SwiftUI hit-tests a scroll
+/// view's content region, so `safeAreaPadding` leaves the sides as dead.
 public extension View {
-    /// …and the page idles while its window is off screen, wherever it is
-    /// mounted (`OffScreenIdle` has the numbers). The pages that do not cap
-    /// themselves here are covered a level up, by the settings window's own
-    /// hosting roots — this call is what covers a page mounted anywhere else.
+    /// …and the content idles while its window is off screen, wherever it is
+    /// mounted (`OffScreenIdle` has the numbers). A page whose root is a `Form`
+    /// calls `helmIdlesOffScreen()` on its own, for the same reason and without
+    /// the column.
     func helmSettingsColumn() -> some View {
         frame(maxWidth: HelmLayout.settingsColumn)
             .frame(maxWidth: .infinity)

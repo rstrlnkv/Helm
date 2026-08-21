@@ -451,13 +451,13 @@ struct MenuBarSettingsView: View {
             SidebarComposerSheet(host: ModuleHost.shared)
         }
         .formStyle(.grouped)
-        // A grouped Form caps its content at 704 pt and centres it, so past a
-        // 994 pt window its leading edge walks away from everything Helm draws
-        // itself — measured at 36 pt on a 1070 pt window, 181 pt on 1360.
-        // Capping it at 704 + 2×20 keeps the system on the branch where the
-        // inset is a constant 20, which is what the page header uses.
-        .helmSettingsColumn()
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // The `Form` is this page's scroll view, so nothing here caps it: a
+        // capped scroller leaves the pane either side of it dead to the wheel,
+        // and the 704 pt column is the grouped form style's own anyway
+        // (`helmSettingsColumn`, and `ThePaneTakesTheWheelAtItsEdgesTests`).
+        // What the page does still want is the idling, which is the half of that
+        // modifier this call is.
+        .helmIdlesOffScreen()
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
             // A background scan runs when the person is away, which is exactly
