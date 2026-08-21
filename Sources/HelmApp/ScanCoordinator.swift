@@ -311,6 +311,24 @@ final class ScanCoordinator {
     /// The log line beside it carries counts and a size and no path — the
     /// journal it read names every file the scan found, and `HelmLog` carries no
     /// names. The banner may name the person's folder; the log may not.
+    ///
+    /// **`change` reads back off disk what `record` has just written, and that
+    /// is deliberate — measured and kept.** `ScanNewsAfterRecordBenchmark`
+    /// prices it, three runs each: at 6900 items `record` costs 0.0080 s a call
+    /// and this reading 0.0321–0.0322 s; at 69 000, 0.0743–0.0746 s against
+    /// 0.3260–0.3263 s. Four times the write, once per completed background
+    /// scan — against a scan that walked the volume for minutes, off the
+    /// drawing thread, twice a day a module.
+    ///
+    /// Handing `change` what `record` held in memory would buy back less than
+    /// half of that and cost the property the banner rests on. Half, because
+    /// `record` never holds the *previous* list: it renames a file, so a caller
+    /// wanting both lists in memory has to read `previous.json` anyway. And the
+    /// property, because `PrivateFile.write` reports failure in a `Bool` that
+    /// `ScanJournal` drops — so an in-memory delta announces what the journal
+    /// may not actually record, and the next tick, comparing against a
+    /// `previous` that never rotated, announces the same items over again. This
+    /// reading is the one thing that knows the write landed.
     func tellSomebodyWhatAppeared(in id: String) {
         guard let finding = ScanNews.finding(in: journal.change(module: id)) else { return }
         let name = ModuleRegistry.descriptor(id)?.moduleMetadata.name ?? id
