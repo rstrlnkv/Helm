@@ -37,7 +37,7 @@ final class HeroTickCostBenchmark: XCTestCase {
         var body: some View {
             KeepAwakeHero(state: box.state, now: box.tick, anyRuleOn: true,
                           defaultDurationMinutes: 60, suppressed: box.suppressed,
-                          ruleHolds: true,
+                          ruleHolds: true, timerEndsAutomation: false,
                           // Passed although both default: what a defaulted
                           // battery input costs is written down in
                           // `BothNoticesShareOneSlotTests`. A guard in force

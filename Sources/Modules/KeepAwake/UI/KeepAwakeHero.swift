@@ -89,6 +89,13 @@ struct KeepAwakeHero: View {
     /// which Stop silences the rule as well as ending the session — see
     /// `KeepAwakeEngine.ruleHolds`.
     let ruleHolds: Bool
+    /// «The timer pauses the automation rules when it finishes», the setting.
+    ///
+    /// A property of the block rather than of the page, because the button's
+    /// word depends on it: with that switch on, Stop hands the second half back
+    /// to the person instead of taking it — `StopPress` has the reasoning, and
+    /// this block and the engine both spell the decision from it.
+    let timerEndsAutomation: Bool
     /// The battery guard is holding everything down. When it is, it is the
     /// only thing worth saying: a paused rule is a detail beside «nothing this
     /// module does will run until you plug in».
@@ -161,8 +168,13 @@ struct KeepAwakeHero: View {
     /// every input here they are the two whose default *looks like* «nothing is
     /// wrong», so the compiler is the only reader that can catch a call site
     /// dropping them.
+    ///
+    /// `timerEndsAutomation` is a third of the same kind and carries none for the
+    /// same reason: `false` is today's one-press Stop, so a call site forgetting
+    /// it would leave the two-step switched off with everything still compiling.
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, ruleHolds: Bool, appNames: [String] = [],
+         suppressed: Bool, ruleHolds: Bool, timerEndsAutomation: Bool,
+         appNames: [String] = [],
          batteryStopped: Bool, batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
@@ -174,6 +186,7 @@ struct KeepAwakeHero: View {
         self.defaultDurationMinutes = defaultDurationMinutes
         self.suppressed = suppressed
         self.ruleHolds = ruleHolds
+        self.timerEndsAutomation = timerEndsAutomation
         self.appNames = appNames
         self.batteryStopped = batteryStopped
         self.batteryFloor = batteryFloor
@@ -496,7 +509,41 @@ struct KeepAwakeHero: View {
     /// whose row is the three lengths and «Indefinite». The caption offered to
     /// pause a rule by pressing something that is not there, over a banner saying
     /// nothing will run until the charger goes in.
-    private var saysWhatStopWouldDo: Bool { ruleHolds && !suppressed && !batteryStopped }
+    ///
+    /// And only while one press really does both. Once Stop is two of them the
+    /// sentence is false on the first — the rule goes on holding the Mac — and
+    /// redundant on the second, where the button has stopped saying «Stop» and
+    /// says what it does instead.
+    var saysWhatStopWouldDo: Bool {
+        stopPress == .stopEverything && ruleHolds && !suppressed && !batteryStopped
+    }
+
+    /// What the next press of the stopping button does, from what is true right
+    /// now — the same call the engine makes when the press arrives, so the word
+    /// on the button and the act behind it are one decision.
+    ///
+    /// Recomputed on every rebuild, which the page's `TimelineView` does once a
+    /// second. That is the whole of the button's memory: the second step is
+    /// offered while the state that means it is true, and stops being offered
+    /// the moment it is not — a rule that quits, a timer that runs out, a fresh
+    /// session, a relaunch.
+    ///
+    /// Read from `state` and not from the drawn `shownState`, so the word
+    /// belongs to the press that would land — the caption below is drawn from
+    /// the live values for the same reason. What that costs is 300 ms in which
+    /// the outgoing copy of a cross-fade carries the new word, at an opacity on
+    /// its way to nothing; what the other spelling would cost is a button that
+    /// says one thing and does another for exactly as long.
+    ///
+    /// Internal rather than private, and so is the caption's flag above: both
+    /// are read by `TheStopButtonSaysWhatThePressWillDoTests`, which cannot ask
+    /// the render which word is on a button. The pixel checks in the same file
+    /// are the other half — this seam says what the block decided, they say
+    /// what it drew.
+    var stopPress: StopPress {
+        StopPress.next(sessionRunning: state.sessionRunning, ruleHolds: ruleHolds,
+                       timerEndsAutomation: timerEndsAutomation)
+    }
 
     private var stopNote: some View {
         Text(KAStr.heroStopSuppresses)
@@ -574,8 +621,14 @@ struct KeepAwakeHero: View {
             .disabled(batteryStopped)
     }
 
+    /// One button, and its word is whichever press it is about to be.
+    ///
+    /// Not two buttons and an `if`: the act on the other end is one command
+    /// (`KeepAwakeCommand.stop`), and the engine decides what that press means
+    /// from the same three facts this label is spelled from. A second control
+    /// would be a second decision to keep in step with the first.
     private var stopButton: some View {
-        Button(KAStr.stop, action: stop)
+        Button(KAStr.stopWord(stopPress), action: stop)
             .controlSize(.large)
     }
 

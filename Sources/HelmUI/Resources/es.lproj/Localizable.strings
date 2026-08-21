@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS se negó a desactivar el reposo, así que el Mac entrará en reposo al cerrar la tapa. Puede que la regla en /etc/sudoers.d haya cambiado";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "La regla en /etc/sudoers.d sigue ahí. Activa y desactiva este ajuste de nuevo para eliminarla";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm no puede leer las reglas de apps guardadas, así que ninguna app mantiene el Mac despierto. Añade las apps de nuevo";
-"A timer pauses the rule too" = "El temporizador también pausa la regla";
+"The timer pauses the automation rules when it finishes" = "El temporizador pausa las reglas de automatización cuando termina";
+"Switch off" = "Desactivar";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "El interruptor que deja que un temporizador pause tus reglas de automatización ahora lo dice con claridad: es el temporizador, son las reglas de automatización y ocurre cuando el temporizador termina.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "Mientras el interruptor que deja que un temporizador pause tus reglas de automatización esté activado, Detener son dos pulsaciones. La primera termina el temporizador y deja tus reglas funcionando; luego el botón ofrece desactivar también las reglas. Un temporizador termina cuando no estás delante, y Detener lo pulsas tú, así que el segundo paso queda en tus manos. Con ese interruptor desactivado, Detener sigue siendo la única pulsación de siempre.";
 "Move the pointer" = "Mover el puntero";
 "Keep the display on" = "No apagar la pantalla";
 "Active icon colour" = "Color del icono activo";

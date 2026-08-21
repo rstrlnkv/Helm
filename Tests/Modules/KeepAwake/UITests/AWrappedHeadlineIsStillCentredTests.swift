@@ -53,6 +53,7 @@ final class AWrappedHeadlineIsStillCentredTests: XCTestCase {
         let hero = KeepAwakeHero(state: .idle, now: Date(timeIntervalSince1970: 1_700_000_000),
                                  anyRuleOn: true, defaultDurationMinutes: 60,
                                  suppressed: false, ruleHolds: false,
+                                 timerEndsAutomation: false,
                                  batteryStopped: false, batteryFloor: 20,
                                  timedNote: { _ in "" },
                                  start: { _ in }, stop: {}, resume: {}, announce: { _ in })

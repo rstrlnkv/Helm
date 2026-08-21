@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS 拒绝关闭睡眠，因此合盖后 Mac 仍会进入睡眠。/etc/sudoers.d 中的规则可能已被更改";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "/etc/sudoers.d 中的规则仍然存在。将此设置开启后再关闭即可移除";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm 无法读取已保存的 App 规则，因此没有 App 让 Mac 保持唤醒。请重新添加这些 App";
-"A timer pauses the rule too" = "计时结束也暂停规则";
+"The timer pauses the automation rules when it finishes" = "计时结束时暂停自动化规则";
+"Switch off" = "关闭";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "让计时器暂停自动化规则的那个开关，现在说得很清楚：是计时器，是自动化规则，发生在计时结束时。";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "让计时器暂停自动化规则的开关打开时，“停止”分两步。第一次结束计时，规则继续生效；随后按钮会提供关闭规则的选项。计时结束通常发生在你不在时，而“停止”是你亲手按下的，所以第二步交给你决定。该开关关闭时，“停止”仍是一次按下。";
 "Move the pointer" = "移动指针";
 "Keep the display on" = "不熄屏";
 "Active icon colour" = "激活时的图标颜色";

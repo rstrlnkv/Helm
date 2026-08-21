@@ -466,6 +466,43 @@ proven newer than its sources.
   both.
 
 ### Changed
+- **A switch that named none of the three things it decides, and a Stop that
+  decided one of them for you.** Keep Awake's «A timer pauses the rule too» is
+  «The timer pauses the automation rules when it finishes». Which timer — the
+  module has a countdown, a default duration and a «+15». Which rule — the page
+  has four rows of them. And when — «too» says a second thing happens, not that
+  it happens at zero.
+
+  The switch is about being *away*: a timer runs out while somebody is asleep or
+  out of the room, and the rules stand down with nobody there to be asked. So
+  pressing Stop, which is somebody at the Mac, no longer means the same thing.
+  With the switch on it is two presses — the first ends the session and leaves
+  the rules holding, the second ends the rules, and the button reads «Switch off»
+  («Отключить») in between. With the switch off the timer never touches the rules, so there is
+  no second step to offer and Stop is the one press it has always been;
+  `StopPress` carries that reasoning at the code, because the next reader will
+  see two controls that switch automation off and try to unify them.
+
+  **The step is derived, never stored.** `StopPress.next` takes «a session is
+  running», «a rule holds» and the setting, and the button's word is the name of
+  what pressing it does *now* rather than a mode the last press put it into —
+  which is the whole answer to «how long does it stay ‹Отключить›»: exactly as
+  long as that state is true. A rule that quits between the two presses takes
+  the second step with it, a rule that fires between them is one the second
+  press ends, a fresh session puts the reader back at the first step, and a
+  relaunch remembers nothing because there is nothing to remember. The hero and
+  the engine call the same function, so the word read and the act got cannot
+  drift.
+
+  Three callers end a session and only one of them is a person: `handleExpiry`
+  and `toggleSession` go on ending both halves at once — the timer because that
+  is its promise, the one-gesture toggle because ⌥⌘K and the panel's header
+  switch read as on/off and a switch needing two presses to go off would spring
+  back in front of the reader. The panel's countdown Stop is drawn only while a
+  session runs, which is exactly the state that rules out the second step, so
+  its word never changes. And «Stop pauses the rule until it applies again» is
+  withheld wherever one press no longer does both: false on the first step,
+  redundant on the second.
 - **A settings row says what the decision needs, and an ⓘ beside it holds the
   rest.** Keep Awake's lid row explained a passwordless `sudo pmset` grant in
   606 characters of German — seven drawn lines under one switch, 3.5× the

@@ -138,7 +138,7 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     private func hero(suppressed: Bool, batteryStopped: Bool) -> some View {
         KeepAwakeHero(state: .idle, now: Self.now, anyRuleOn: true,
                       defaultDurationMinutes: 60, suppressed: suppressed,
-                      ruleHolds: false,
+                      ruleHolds: false, timerEndsAutomation: false,
                       batteryStopped: batteryStopped, batteryFloor: 20,
                       timedNote: { _ in "until 15:42" },
                       start: { _ in }, stop: {}, resume: {})

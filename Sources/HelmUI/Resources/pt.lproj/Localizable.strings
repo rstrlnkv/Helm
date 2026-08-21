@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "O macOS recusou-se a desligar o repouso, então o Mac entra em repouso ao fechar a tampa. A regra em /etc/sudoers.d pode ter sido alterada";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "A regra em /etc/sudoers.d ainda está lá. Ative e desative este ajuste de novo para removê-la";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "O Helm não consegue ler as regras de apps salvas, então nenhum app mantém o Mac acordado. Adicione os apps de novo";
-"A timer pauses the rule too" = "O timer também pausa a regra";
+"The timer pauses the automation rules when it finishes" = "O timer pausa as regras de automação quando termina";
+"Switch off" = "Desativar";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "O ajuste que deixa um timer pausar suas regras de automação agora diz isso com clareza: é o timer, são as regras de automação, e acontece quando o timer termina.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "Enquanto o ajuste que deixa um timer pausar suas regras de automação estiver ativado, Parar leva dois toques. O primeiro termina o timer e deixa suas regras funcionando; depois o botão oferece desativar também as regras. Um timer termina enquanto você está longe, e Parar é você quem toca — então o segundo passo fica com você. Com esse ajuste desativado, Parar continua sendo o toque único de sempre.";
 "Move the pointer" = "Mover o ponteiro";
 "Keep the display on" = "Não apagar a tela";
 "Active icon colour" = "Cor do ícone ativo";

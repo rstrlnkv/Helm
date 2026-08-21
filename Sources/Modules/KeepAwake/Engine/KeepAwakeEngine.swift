@@ -230,9 +230,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// session by hand, so the shortcut oscillated between «rule paused» and
     /// «held by hand for ever» and could never reach «just the rule». Off,
     /// then on, has to be where you started.
+    ///
+    /// **Which is why this one is not the stepped Stop below.** ⌥⌘K, the panel's
+    /// header switch and the menu-bar item all read as on/off, and a switch that
+    /// needed two presses to go off would spring back once in front of the person
+    /// pressing it. A sequence needs a control that can show which step it is on;
+    /// this one has nowhere to show it.
     public func toggleSession() {
         if isActive {
-            stopSession()
+            endSession(pausingRules: currentAutoConditionHolds())
         } else if suppressed {
             resumeAutomation()
         } else {
@@ -275,10 +281,39 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         recompute(byGesture: true)
     }
 
+    /// The Stop button, and the one press of it that is happening now.
+    ///
+    /// Which of the two things Stop can do this press does is `StopPress`'s, and
+    /// the sentence about who is where is written there. The three inputs are
+    /// read at the moment of the press and nothing is kept between two of them:
+    /// a rule that quit in between takes its own second step away, and a rule
+    /// that fired in between is one this press ends.
+    ///
+    /// The same three facts are what the button spells itself from, so the word
+    /// somebody read and the act they got come from one function.
     public func stopSession() {
-        if currentAutoConditionHolds() {
-            suppressed = true
+        // One reading of the world for both halves of the decision. Asked twice
+        // it would be two readings, and the second could differ from the one the
+        // step was chosen against.
+        let ruleHolds = currentAutoConditionHolds()
+        switch StopPress.next(sessionRunning: manualOn, ruleHolds: ruleHolds,
+                              timerEndsAutomation: settings.timerEndsAutomation) {
+        case .stopEverything, .turnAutomationOff:
+            endSession(pausingRules: ruleHolds)
+        case .stopSessionOnly:
+            // The rules keep going. The person is here; the next press is theirs
+            // to take or leave.
+            endSession(pausingRules: false)
         }
+    }
+
+    /// End the hand-started session, and pause the rules or leave them running.
+    ///
+    /// The one place a session is put down, so the three callers that end one —
+    /// the person's Stop, the one-gesture toggle, and the timer running out —
+    /// cannot come to disagree about what else goes with it.
+    private func endSession(pausingRules: Bool) {
+        if pausingRules { suppressed = true }
         manualOn = false
         endDate = nil
         startDate = nil
@@ -513,11 +548,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // reads, from outside, exactly like one ending because the timer
             // ran out — and the two leave the Mac in different states: this one
             // leaves an automatic condition true and deliberately ignored.
-            if settings.timerEndsAutomation && currentAutoConditionHolds() {
+            let ruleHolds = currentAutoConditionHolds()
+            if settings.timerEndsAutomation && ruleHolds {
                 HelmLog.shared.info(Self.moduleID,
                                     "timer ended; automation suppressed until the trigger returns")
             }
-            stopSession()
+            // **Not the person's `stopSession()`**, which hands the second half
+            // back to whoever is at the keyboard. This is the timer keeping the
+            // promise its own switch made, and its whole point is that it keeps
+            // it with nobody there — see `StopPress`.
+            endSession(pausingRules: ruleHolds)
         }
     }
 

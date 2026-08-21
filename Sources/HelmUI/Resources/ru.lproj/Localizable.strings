@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS отказалась выключить режим сна, поэтому с закрытой крышкой Mac всё равно заснёт. Возможно, правило в /etc/sudoers.d изменили";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "Правило в /etc/sudoers.d осталось. Включите и снова выключите эту настройку, чтобы его убрать";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm не может прочитать сохранённые правила приложений, поэтому ни одно приложение не мешает Mac заснуть. Добавьте приложения заново";
-"A timer pauses the rule too" = "Таймер ставит на паузу и правило";
+"The timer pauses the automation rules when it finishes" = "Таймер ставит на паузу правила автоматизации после завершения";
+"Switch off" = "Отключить";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "Переключатель, из-за которого таймер ставит правила автоматизации на паузу, теперь называется прямо: речь о таймере, о правилах автоматизации и о моменте, когда таймер закончится.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "Пока переключатель, из-за которого таймер ставит правила автоматизации на паузу, включён, «Стоп» — это два нажатия. Первое останавливает таймер и оставляет правила работать, а кнопка после этого предлагает отключить и правила. Таймер заканчивается, когда вас нет рядом, а «Стоп» вы нажимаете сами — поэтому второй шаг остаётся за вами. С выключенным переключателем «Стоп» работает как раньше, в одно нажатие.";
 "Move the pointer" = "Двигать курсор";
 "Keep the display on" = "Не гасить дисплей";
 "Active icon colour" = "Цвет активного значка";

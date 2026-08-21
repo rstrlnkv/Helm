@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS がスリープをオフにするのを拒否したため、ふたを閉じると Mac はスリープ状態になります。/etc/sudoers.d のルールが変更されている可能性があります";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "/etc/sudoers.d のルールがまだ残っています。この設定をオンにして再度オフにすると削除できます";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm が保存されたアプリのルールを読み取れないため、どのアプリも Mac を起きたままにしていません。アプリをもう一度追加してください";
-"A timer pauses the rule too" = "タイマーはルールも一時停止する";
+"The timer pauses the automation rules when it finishes" = "タイマーの終了時に自動化ルールを一時停止する";
+"Switch off" = "オフにする";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "タイマーが自動化ルールを一時停止する設定の名前が、はっきりしました。どのタイマーか、どのルールか、そしてタイマーが終わったときに起きることか。";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "タイマーが自動化ルールを一時停止する設定がオンのあいだ、停止は2段階になります。1回目はタイマーを終わらせ、ルールはそのまま動き続けます。ボタンはそのあと、ルールもオフにするかを尋ねます。タイマーは席を外しているあいだに終わりますが、停止を押すのはあなた自身なので、2つ目の判断はあなたに残されます。設定がオフなら、停止はこれまでどおり1回です。";
 "Move the pointer" = "ポインタを動かす";
 "Keep the display on" = "ディスプレイを消さない";
 "Active icon colour" = "アクティブ時のアイコンの色";

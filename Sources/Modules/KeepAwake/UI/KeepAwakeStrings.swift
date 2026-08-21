@@ -17,7 +17,7 @@ enum KAStr {
     /// The button that opens the free-form duration field.
     ///
     /// **Not «Timer».** That word is already this module's name for the running
-    /// countdown — `KAStr.timer`, «Timer colour», «A timer pauses the rule too»
+    /// countdown — `KAStr.timer`, «Timer colour», `KAStr.timerEndsAutomation`
     /// — and the three buttons beside this one *are* timers, so naming only the
     /// fourth one that would say the other three are not. One word, two meanings
     /// on one screen, which is the collision the localization rule exists for.
@@ -480,9 +480,37 @@ enum KAStr {
         L("macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password.")
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
-    /// well. Says «too» because the timer already ends the session it started —
-    /// what the setting adds is the second half.
-    static var timerEndsAutomation: String { L("A timer pauses the rule too") }
+    /// well.
+    ///
+    /// **It used to say «A timer pauses the rule too», and none of the three
+    /// facts a reader needs were in it.** Which timer — this module has a
+    /// countdown, a default duration and a «+15», and «a timer» could be any of
+    /// them. Which rule — «the rule» is one of four rows on the same page.
+    /// And when — «too» says only that a second thing happens, not that it
+    /// happens at zero. All three are in the name now, and the row's note keeps
+    /// what follows from it.
+    static var timerEndsAutomation: String {
+        L("The timer pauses the automation rules when it finishes")
+    }
+    /// The Stop button's word for the press it is about to be.
+    ///
+    /// The switch above and this button are the two ways automation is switched
+    /// off, and the difference is where the person is — `StopPress` has the
+    /// sentence. The mapping is here, exhaustive, because the word and the act
+    /// are one decision: a case added to `StopPress` without a word for it is a
+    /// build error rather than a button that goes on saying «Stop» while doing
+    /// something else.
+    static func stopWord(_ press: StopPress) -> String {
+        switch press {
+        case .stopEverything, .stopSessionOnly: return stop
+        case .turnAutomationOff: return switchOff
+        }
+    }
+    /// **Not `L("Turn off")`.** That key is Leftovers', for switching off a
+    /// login item, and it reads «Выключить» — one English key means one thing,
+    /// and a second meaning hung on it would drag that module's seven
+    /// translations here with it.
+    static var switchOff: String { L("Switch off") }
     /// The same words as the state it produces. It used to say «until the app
     /// is launched again», which is the way back for one of the three rules
     /// and false for the other two — a display rule comes back when the display

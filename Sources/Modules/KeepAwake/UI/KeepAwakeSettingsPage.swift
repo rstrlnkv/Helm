@@ -179,6 +179,11 @@ struct KeepAwakeSettingsPage: View {
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
                 ruleHolds: vm.ruleHolds,
+                // The switch three cards down, because the same setting decides
+                // what pressing Stop does — see `StopPress`. The mirrored
+                // `@State`, so a change made on this page reaches the button on
+                // the same frame it reaches the row.
+                timerEndsAutomation: timerEndsAutomation,
                 // Resolved here, not in the hero: the hero is rebuilt once a
                 // second by its `TimelineView`, and a Launch Services lookup
                 // per tick for a string that changes when an app launches is

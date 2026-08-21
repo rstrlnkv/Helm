@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again";
-"A timer pauses the rule too" = "A timer pauses the rule too";
+"The timer pauses the automation rules when it finishes" = "The timer pauses the automation rules when it finishes";
+"Switch off" = "Switch off";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been.";
 "Move the pointer" = "Move the pointer";
 "Keep the display on" = "Keep the display on";
 "Active icon colour" = "Active icon colour";

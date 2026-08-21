@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS a refusé de désactiver la veille, donc le Mac se met en veille quand vous fermez le couvercle. La règle dans /etc/sudoers.d a peut-être été modifiée";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "La règle dans /etc/sudoers.d est toujours là. Activez puis désactivez ce réglage pour la supprimer";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm ne peut pas lire les règles d’apps enregistrées, donc aucune app ne maintient le Mac éveillé. Ajoutez à nouveau les apps";
-"A timer pauses the rule too" = "Le minuteur met aussi la règle en pause";
+"The timer pauses the automation rules when it finishes" = "Le minuteur met en pause les règles d’automatisation lorsqu’il se termine";
+"Switch off" = "Désactiver";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "Le réglage qui laisse un minuteur mettre vos règles d’automatisation en pause le dit maintenant clairement : c’est le minuteur, ce sont les règles d’automatisation, et cela se produit lorsque le minuteur se termine.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "Tant que le réglage qui laisse un minuteur mettre vos règles d’automatisation en pause est activé, Arrêter se fait en deux fois. La première arrête le minuteur et laisse vos règles actives ; le bouton propose ensuite de désactiver les règles aussi. Un minuteur se termine en votre absence, alors qu’Arrêter, c’est vous — le second geste vous revient donc. Ce réglage désactivé, Arrêter reste l’unique appui qu’il a toujours été.";
 "Move the pointer" = "Bouger le pointeur";
 "Keep the display on" = "Garder l’écran allumé";
 "Active icon colour" = "Couleur de l’icône active";

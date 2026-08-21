@@ -489,6 +489,14 @@ struct KeepAwakePanelTile: View {
                 .controlSize(.small)
                 // Ends the timed session; the header toggle is the all-or-nothing
                 // switch, this stops just the countdown.
+                //
+                // **The word never changes here, and it does not need to.** This
+                // button is drawn only while a countdown is running, and a
+                // session running is precisely what rules out `StopPress`'s
+                // second step — so this press is `.stopEverything` or
+                // `.stopSessionOnly`, and «Стоп» is the word for both. The page
+                // spells its button from `KAStr.stopWord` because its Stop
+                // outlives the countdown; this one does not.
                 Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
                     .controlSize(.small)
                 // The automation controls must stay reachable while a timer runs.

@@ -38,6 +38,21 @@ public enum SessionHero: Equatable, Sendable {
         return automatic.isEmpty ? .indefinite : .automatic(automatic)
     }
 
+    /// Whether what is holding the Mac is a session somebody started — the
+    /// engine's `manualOn`, read back off the state it published.
+    ///
+    /// Answered here rather than by whoever draws, because a session is exactly
+    /// what the first press of a two-step Stop ends (`StopPress`): with none
+    /// running there is no first step left to take, and the button is the
+    /// second one. Exhaustive on purpose — a fifth state would be a build error
+    /// here rather than a button quietly reading as the wrong step.
+    public var sessionRunning: Bool {
+        switch self {
+        case .idle, .automatic: return false
+        case .timed, .indefinite: return true
+        }
+    }
+
     /// What will still be holding the Mac when the countdown reaches zero, or
     /// nil when nothing will.
     ///
@@ -55,10 +70,11 @@ public enum SessionHero: Equatable, Sendable {
     /// Three answers, not two. It used to be an optional condition, and `nil`
     /// folded together the two cases that differ most: «nothing is holding this
     /// Mac, so it goes to sleep» and «a rule is holding it and this timer is
-    /// about to pause that rule». The second is the whole point of «A timer
-    /// pauses the rule too» — and with that switch on, the one state where it
-    /// matters was the one state the page said nothing in, because the note
-    /// degenerated to «Timer until 16:03» and stopped there.
+    /// about to pause that rule». The second is the whole point of «The timer
+    /// pauses the automation rules when it finishes» — and with that switch on,
+    /// the one state where it matters was the one state the page said nothing
+    /// in, because the note degenerated to «Timer until 16:03» and stopped
+    /// there.
     public enum AfterTimer: Equatable, Sendable {
         /// No rule applies; the session simply ends.
         case nothing

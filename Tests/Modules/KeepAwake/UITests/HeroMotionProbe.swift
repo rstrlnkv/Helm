@@ -59,6 +59,7 @@ final class HeroMotionProbe: XCTestCase {
                               defaultDurationMinutes: 60,
                               suppressed: box.suppressed,
                               ruleHolds: true,
+                              timerEndsAutomation: false,
                               // Spelled out although they default, and the
                               // default is why: the page's own call omitted
                               // both for a release and drew a notice nothing

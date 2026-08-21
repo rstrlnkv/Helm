@@ -49,6 +49,7 @@ final class AVetoedScreenOffersNothingAndSaysSoTests: XCTestCase {
             VStack(spacing: 0) {
                 KeepAwakeHero(state: .idle, now: now, anyRuleOn: true,
                               defaultDurationMinutes: 60, suppressed: false, ruleHolds: false,
+                              timerEndsAutomation: false,
                               batteryStopped: veto.stopped, batteryFloor: floor,
                               timedNote: { _ in "" },
                               start: { _ in }, stop: {}, resume: {}, announce: announce)

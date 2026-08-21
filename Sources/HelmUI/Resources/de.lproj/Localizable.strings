@@ -738,7 +738,10 @@
 "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS hat es abgelehnt, den Ruhezustand auszuschalten, daher geht der Mac bei geschlossenem Deckel wie gewohnt in den Ruhezustand. Die Regel in /etc/sudoers.d wurde möglicherweise geändert";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "Die Regel in /etc/sudoers.d ist noch da. Schalte diese Einstellung ein und wieder aus, um sie zu entfernen";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm kann die gespeicherten App-Regeln nicht lesen, daher hält keine App den Mac wach. Füge die Apps erneut hinzu";
-"A timer pauses the rule too" = "Ein Timer pausiert auch die Regel";
+"The timer pauses the automation rules when it finishes" = "Der Timer pausiert die Automatisierungsregeln, wenn er abläuft";
+"Switch off" = "Ausschalten";
+"The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes." = "Der Schalter, mit dem ein Timer Ihre Automatisierungsregeln pausiert, sagt es jetzt deutlich: Es geht um den Timer, um die Automatisierungsregeln und um den Moment, in dem der Timer abläuft.";
+"While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here — so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been." = "Solange der Schalter an ist, mit dem ein Timer Ihre Automatisierungsregeln pausiert, besteht Stopp aus zwei Schritten. Der erste beendet den Timer und lässt Ihre Regeln weiterlaufen; danach bietet die Taste an, auch die Regeln auszuschalten. Ein Timer läuft ab, während Sie weg sind, Stopp drücken Sie selbst — der zweite Schritt bleibt also Ihnen überlassen. Ist der Schalter aus, bleibt Stopp der eine Druck, der er immer war.";
 "Move the pointer" = "Zeiger bewegen";
 "Keep the display on" = "Display an lassen";
 "Active icon colour" = "Farbe des aktiven Symbols";

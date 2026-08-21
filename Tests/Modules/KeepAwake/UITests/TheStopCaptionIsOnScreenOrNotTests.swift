@@ -34,7 +34,7 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
                       suppressed: Bool = false, batteryStopped: Bool = false) -> some View {
         KeepAwakeHero(state: state, now: Self.now, anyRuleOn: true,
                       defaultDurationMinutes: 60, suppressed: suppressed,
-                      ruleHolds: ruleHolds,
+                      ruleHolds: ruleHolds, timerEndsAutomation: false,
                       batteryStopped: batteryStopped, batteryFloor: 20,
                       timedNote: { _ in "until 15:42" },
                       start: { _ in }, stop: {}, resume: {})
