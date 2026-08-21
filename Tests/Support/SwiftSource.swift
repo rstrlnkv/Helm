@@ -28,51 +28,139 @@ public enum SwiftSource {
     /// this repository writes its regular expressions that way and they are full
     /// of the punctuation every scan below counts.
     public static func code(_ source: String) -> String {
-        var out = ""
-        var characters = Array(source)[...]
-        func take(_ count: Int) -> String {
-            let taken = String(characters.prefix(count))
-            characters = characters.dropFirst(count)
-            return taken
+        read(source, keepingStrings: false)
+    }
+
+    /// `source` with comments blanked and the insides of string literals **kept**
+    /// — the other half of the same walk, for a scan whose subject is a literal.
+    ///
+    /// **`code` is the wrong reading for one family of check and it is not
+    /// obviously wrong.** The orphan-translation scan asks whether anything in
+    /// the tree still says `L("Off")`; run over `code` output that line reads
+    /// `L("")` and all 1054 keys report as dead at once, which at least fails
+    /// loudly. Run over the **raw** file it reads the opposite way and fails
+    /// silently: this repository writes backticked names inside doc comments on
+    /// purpose — `DocumentsNameTheTreeTests` exists to read them back — so
+    /// `Sources/HelmApp/AppStrings.swift`'s «Not `L("Off")`» keeps the key «Off»
+    /// alive by explaining why nothing uses it there.
+    ///
+    /// Not a second walk, and it could not be one: a `//` inside a string is not
+    /// a comment, so blanking comments correctly already requires parsing every
+    /// literal. It is the same parse with the copying turned back on.
+    ///
+    /// Escapes come back **as written**: `\"` stays `\"`. A caller that decodes
+    /// them does it afterwards, because decoding first would end a literal at
+    /// the first escaped quote.
+    public static func uncommented(_ source: String) -> String {
+        read(source, keepingStrings: true)
+    }
+
+    /// The delimiters, hoisted. They were `Array("…")` literals inside the loop
+    /// — seven of them built at **every character position**, beside a `String`
+    /// allocated per character by `take(1)`, and that is where the whole cost
+    /// was. Measured over every file of `Sources/` on 2026-08-21, three readings
+    /// each: **3.728 / 3.734 / 3.743 s before, 0.557 / 0.559 / 0.558 s after**,
+    /// with the output byte-identical on every file of `Sources/` and `Tests/`
+    /// and on the corpus of unterminated literals, raw blocks, CRLF and emoji
+    /// that `ACommentIsNotAUseOfAKeyTests` keeps. Worth having because XCTest
+    /// builds an instance per test case, so a class of ten whole-tree scans paid
+    /// the old cost ten times.
+    private static let lineComment: [Character] = ["/", "/"]
+    private static let blockOpen: [Character] = ["/", "*"]
+    private static let blockClose: [Character] = ["*", "/"]
+    private static let rawBlockOpen: [Character] = ["#", "\"", "\"", "\""]
+    private static let rawBlockClose: [Character] = ["\"", "\"", "\"", "#"]
+    private static let rawOpen: [Character] = ["#", "\""]
+    private static let rawClose: [Character] = ["\"", "#"]
+    private static let block: [Character] = ["\"", "\"", "\""]
+    private static let quote: [Character] = ["\""]
+    private static let newline: [Character] = ["\n"]
+
+    /// The three characters any delimiter above can begin with. Ordinary code
+    /// is none of them, so one comparison sends the common character straight
+    /// through instead of putting it past six pattern matches.
+    private static func opensADelimiter(_ character: Character) -> Bool {
+        character == "/" || character == "\"" || character == "#"
+    }
+
+    /// One walk, two readings: comments always go, literals go or stay.
+    ///
+    /// Written against an index into `[Character]` rather than a consuming
+    /// slice, so that recognising a delimiter compares characters in place
+    /// instead of building an array to compare against — and accumulating into
+    /// `[Character]`, which appends without re-encoding, rather than into a
+    /// `String` grown one grapheme at a time.
+    private static func read(_ source: String, keepingStrings: Bool) -> String {
+        let characters = Array(source)
+        let count = characters.count
+        var out: [Character] = []
+        out.reserveCapacity(count)
+        var index = 0
+
+        /// Whether `characters` reads `pattern` at `index`.
+        func matches(_ pattern: [Character]) -> Bool {
+            guard index + pattern.count <= count else { return false }
+            for offset in 0..<pattern.count where characters[index + offset] != pattern[offset] {
+                return false
+            }
+            return true
         }
-        /// Everything up to `close`, blanked but for its newlines.
-        func skip(to close: [Character], escaping: Bool) {
-            while !characters.isEmpty {
-                if escaping, characters.first == "\\" {
-                    _ = take(2)
+        /// The next `width` characters, copied or dropped.
+        func delimiter(_ width: Int, keeping: Bool) {
+            if keeping { for offset in 0..<width where index + offset < count {
+                out.append(characters[index + offset])
+            } }
+            index += width
+        }
+        /// Everything up to and including `close`. Kept verbatim, or blanked
+        /// but for its newlines — which stay so a finding can still name a line.
+        func skip(to close: [Character], escaping: Bool, keeping: Bool) {
+            while index < count {
+                if escaping, characters[index] == "\\" {
+                    delimiter(2, keeping: keeping)
                     continue
                 }
-                if characters.starts(with: close) {
-                    _ = take(close.count)
+                if matches(close) {
+                    delimiter(close.count, keeping: keeping)
                     return
                 }
-                if take(1) == "\n" { out.append("\n") }
+                if keeping { out.append(characters[index]) }
+                else if characters[index] == "\n" { out.append("\n") }
+                index += 1
             }
         }
-        while !characters.isEmpty {
-            if characters.starts(with: Array("//")) {
-                skip(to: ["\n"], escaping: false)
+
+        while index < count {
+            let head = characters[index]
+            guard opensADelimiter(head) else {
+                out.append(head)
+                index += 1
+                continue
+            }
+            if matches(lineComment) {
+                skip(to: newline, escaping: false, keeping: false)
                 out.append("\n")
-            } else if characters.starts(with: Array("/*")) {
-                _ = take(2)
-                skip(to: Array("*/"), escaping: false)
-            } else if characters.starts(with: Array("#\"\"\"")) {
-                _ = take(4)
-                skip(to: Array("\"\"\"#"), escaping: false)
-            } else if characters.starts(with: Array("#\"")) {
-                _ = take(2)
-                skip(to: Array("\"#"), escaping: false)
-            } else if characters.starts(with: Array("\"\"\"")) {
-                _ = take(3)
-                skip(to: Array("\"\"\""), escaping: true)
-            } else if characters.first == "\"" {
-                _ = take(1)
-                skip(to: ["\""], escaping: true)
+            } else if matches(blockOpen) {
+                index += 2
+                skip(to: blockClose, escaping: false, keeping: false)
+            } else if matches(rawBlockOpen) {
+                delimiter(4, keeping: keepingStrings)
+                skip(to: rawBlockClose, escaping: false, keeping: keepingStrings)
+            } else if matches(rawOpen) {
+                delimiter(2, keeping: keepingStrings)
+                skip(to: rawClose, escaping: false, keeping: keepingStrings)
+            } else if matches(block) {
+                delimiter(3, keeping: keepingStrings)
+                skip(to: block, escaping: true, keeping: keepingStrings)
+            } else if head == "\"" {
+                delimiter(1, keeping: keepingStrings)
+                skip(to: quote, escaping: true, keeping: keepingStrings)
             } else {
-                out.append(take(1))
+                out.append(head)
+                index += 1
             }
         }
-        return out
+        return String(out)
     }
 
     // MARK: - Call sites

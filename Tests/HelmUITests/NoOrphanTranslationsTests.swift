@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmUI
 
 /// The other direction of `StringsCoverageTests`.
@@ -55,25 +56,45 @@ final class NoOrphanTranslationsTests: XCTestCase {
         return out + rest
     }
 
-    func testNoTranslationIsKeptForAKeyNothingAsksFor() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmUITests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources")
-
-        var swift = ""
-        var scanned = 0
-        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            scanned += 1
-            swift += decodingEscapes(source) + "\n"
+    /// **Every source file with its comments blanked and its literals kept, and
+    /// both tests below read this and nothing else.**
+    ///
+    /// Neither half of that reading is optional, and neither is the sharing.
+    ///
+    /// *Raw* — which is what both scans did until 2026-08-21 — a key named in
+    /// prose reads as asked for. This repository writes backticked names inside
+    /// doc comments on purpose (`DocumentsNameTheTreeTests` exists to read them
+    /// back), so `AppStrings.swift` really does say «Not `L("Off")`», and that
+    /// one sentence really did keep the key «Off» alive by explaining why
+    /// nothing uses it. Measured over the whole tree the day this changed, the
+    /// two readings differed by **0 keys and 0 literals** — this is the hole
+    /// closed before something fell in it.
+    ///
+    /// `SwiftSource.code` is the opposite mistake and the one that looks right:
+    /// it blanks the insides of literals too, so every `L("Off")` becomes
+    /// `L("")` and all 1055 keys orphan at once.
+    ///
+    /// **And the two scans must read the same text or they can contradict each
+    /// other.** They point opposite ways at the same line: on a raw reading a
+    /// commented-out `L("Old name")` is a literal the tables are *required* to
+    /// carry, while on a stripped reading it is a key nothing asks for and the
+    /// tables are required *not* to carry it. Split the reading between them and
+    /// there is a line of source that no state of the eight files can satisfy.
+    ///
+    /// Escapes are decoded **after** this, never before: `\"` is what ends a
+    /// literal, so a decoded source parses to a different place.
+    private func uncommentedSources() throws -> [(path: String, text: String)] {
+        try RepoSource.swiftFiles(under: "Sources").map {
+            ($0, SwiftSource.uncommented(try RepoSource.text(of: $0)))
         }
-        XCTAssertGreaterThan(scanned, 100,
-                             "only \(scanned) source files were read, so a pass means nothing")
+    }
+
+    func testNoTranslationIsKeptForAKeyNothingAsksFor() throws {
+        let sources = try uncommentedSources()
+        let swift = sources.map { decodingEscapes($0.text) }.joined(separator: "\n")
+        XCTAssertGreaterThan(sources.count, 100,
+                             "only \(sources.count) source files were read, so a pass "
+                             + "means nothing")
 
         let path = try XCTUnwrap(Localized.stringsFile(for: .en)?.path)
         let english = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
@@ -101,25 +122,19 @@ final class NoOrphanTranslationsTests: XCTestCase {
     /// seven. Found the way these things are always found — five changelog
     /// strings were added, the whole suite stayed green, and the only reason
     /// they were translated at all is that somebody went looking.
+    ///
+    /// **On the same reading as the scan above, for the reason
+    /// `uncommentedSources()` gives**: an `L("…")` inside a comment is prose
+    /// about the app, not a call the app makes, and demanding a key for it puts
+    /// the two scans in a state neither the source nor the tables can leave.
     func testEveryLiteralInTheSourceHasAKeyInTheTables() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Sources")
-
         // `L("…")` on one line, which is how every literal in this codebase is
         // written — a key split across lines by string concatenation is not a
         // key any table could carry either.
         let call = try NSRegularExpression(pattern: #"\bL\(\s*"((?:[^"\\]|\\.)*)"#)
         var used = Set<String>()
-        var scanned = 0
-        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            scanned += 1
+        let sources = try uncommentedSources()
+        for source in sources.map(\.text) {
             let range = NSRange(source.startIndex..., in: source)
             for match in call.matches(in: source, range: range) {
                 guard let r = Range(match.range(at: 1), in: source) else { continue }
@@ -134,8 +149,9 @@ final class NoOrphanTranslationsTests: XCTestCase {
                 used.insert(decodingEscapes(literal))
             }
         }
-        XCTAssertGreaterThan(scanned, 100,
-                             "only \(scanned) source files were read, so a pass means nothing")
+        XCTAssertGreaterThan(sources.count, 100,
+                             "only \(sources.count) source files were read, so a pass "
+                             + "means nothing")
         XCTAssertGreaterThan(used.count, 100,
                              "the pattern matched \(used.count) literals, which is not this "
                              + "app — the regex has stopped finding L() calls")
