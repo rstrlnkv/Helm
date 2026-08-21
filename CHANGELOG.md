@@ -543,6 +543,24 @@ proven newer than its sources.
   past the rule. The offer button carries an explicit 30 pt height — without it
   a second tunnel coming up moved the block by 1 pt.
 
+### Internal
+
+- **The harness's scratch directory now waits on the clock instead of on
+  turns.** Its teardown removes the directory, waits and removes again, because
+  a view model saves from a task of its own and the save can land after the
+  removal — that shape cost 7621 directories and 69 MB of `$TMPDIR` once. The
+  wait was `Task.yield()`, two hundred times, and a yield buys a *turn* on the
+  cooperative pool rather than any elapsed time: on a loaded machine all two
+  hundred passes finished before the detached writer was scheduled once, and
+  `ScratchDirectoryDrainTests` failed 1 full run in 3, leaving 19 of its 20
+  files behind — the teardown really not reclaiming, not merely a flaky test.
+  Measured with nothing coming back, the two hundred yielding passes were
+  **4.6 ms** of watching; the loop now sleeps 2 ms a pass and ends only once the
+  directory has *stayed* gone across eight readings, which is 25 ms and extends
+  itself whenever a write does arrive. A writer 10 ms late leaked 10 runs out of
+  10 before and 0 out of 10 after. Same family as the Disk test that waited for
+  a file with 200 yields: a yield is not a wait.
+
 ## [0.11.0-dev.1] — 2026-08-19
 
 > The version number is written here; cutting the release is a separate step,
