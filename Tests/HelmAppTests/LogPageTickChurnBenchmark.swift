@@ -105,17 +105,54 @@ final class LogPageTickChurnBenchmark: XCTestCase {
         }
     }
 
-    /// A tail nothing is writing to — the owner's machine between log lines.
-    /// The page still pays per second: this is the cost of watching a log that
-    /// says nothing.
-    func testAQuietTailStillChurnsEverySecond() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        let box = TailBox(Self.fixtureTail())
+    /// **Long enough that the first lap measures the page and not the
+    /// process.**
+    ///
+    /// XCTest runs a class's cases in one process and in alphabetical order, so
+    /// whichever sorts first pays for CoreText, the glyph caches and the first
+    /// full render of a thousand rows — and at the 3 s this used to be, the
+    /// growing-tail case was still handing memory back three laps later.
+    /// Measured 2026-08-21, three runs: it reported −1987 KB on lap 1, −93 KB
+    /// on lap 2 and +9 KB on lap 3, which averages to **−141 KB kept per
+    /// tick**. That number is about warm-up settling, no ceiling could be
+    /// derived from it, and it is why the case below had no ceiling at all —
+    /// the quiet case looked honest only because it sorts second and inherited
+    /// a warm process.
+    ///
+    /// At 15 s both settle before the first lap, and the two read 0.6–2.5 KB a
+    /// tick instead of one reading 1.2 KB and the other −141 KB.
+    private static let warmUpSeconds: TimeInterval = 15
+
+    /// **The page must not *keep* memory per tick**, whatever the tail is
+    /// doing. Transient churn is timing-dependent and is the printed half; a
+    /// sustained keep is the hidden-page ratchet, and that is what both cases
+    /// fail on.
+    ///
+    /// One constant and not a number written twice: the two cases ask the same
+    /// question of the same page, so a ceiling that drifted between them would
+    /// be two different promises wearing one name.
+    ///
+    /// **Both ends of it are measured, 2026-08-21.** Settled, the page keeps
+    /// 0.6 KB a tick on the quiet tail and 1.7–2.5 KB on the growing one, so
+    /// 64 KB is twenty-five times the worse reading and will not fail on noise.
+    /// And it sits *under* the defect it exists for: made to retain the tail
+    /// once per poll — the ratchet, planted in `TailBox.read` — the growing
+    /// case reported **115 738 B/tick** and failed here. A ceiling between the
+    /// two readings is a ceiling that can fail; one above 115 KB would have
+    /// been a number that merely looked like a guard.
+    private static let keptPerTickCeiling = 64 * 1024
+
+    /// Three five-second laps of the page's own tick, and what it kept per one.
+    ///
+    /// The two cases differ in what the tail does between polls and in nothing
+    /// else, so the lap loop is one function. Written twice it was two chances
+    /// for the warm-up, the floor or the ceiling to stop agreeing — which is
+    /// exactly what had happened to all three.
+    private func keptPerTick(of box: TailBox, called label: String) -> Int {
         let (view, window) = mountedLogPage(box)
         defer { window.contentView = nil }
 
-        // Warm-up: CoreText, glyph caches, the first full render of 1000 rows.
-        letThePageTick(seconds: 3, view: view)
+        letThePageTick(seconds: Self.warmUpSeconds, view: view)
         let ticksBefore = box.calls
 
         var laps: [(kept: Int, peak: Int)] = []
@@ -133,50 +170,41 @@ final class LogPageTickChurnBenchmark: XCTestCase {
             "the page's own 1 Hz tick fired \(ticks) times across 15 s of run loop; " +
             "the measurement below would be of silence")
 
-        let perTickKept = laps.map(\.kept).reduce(0, +) / max(ticks, 1)
+        let kept = laps.map(\.kept).reduce(0, +) / max(ticks, 1)
         let peakLine = laps.map { String(format: "kept %+d KB, transient peak %d KB",
                                          $0.kept / 1024, $0.peak / 1024) }
             .joined(separator: "; ")
-        print("log page, quiet tail of 1000: \(ticks) ticks in 3×5 s laps — \(peakLine); "
-              + String(format: "%.0f B kept per tick", Double(perTickKept)))
+        print("log page, \(label): \(ticks) ticks in 3×5 s laps — \(peakLine); "
+              + String(format: "%.0f B kept per tick", Double(kept)))
+        return kept
+    }
 
-        // Report plus one deterministic bound: a page polling an unchanged tail
-        // must not *keep* memory per tick. Transient churn is timing-dependent
-        // and is the printed half; a sustained keep would be the hidden-page
-        // ratchet all over again, and that it fails on.
-        XCTAssertLessThan(perTickKept, 64 * 1024,
-            "the log page kept \(perTickKept) bytes per tick of a tail nobody wrote to")
+    /// A tail nothing is writing to — the owner's machine between log lines.
+    /// The page still pays per second: this is the cost of watching a log that
+    /// says nothing.
+    func testAQuietTailStillChurnsEverySecond() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
+        let kept = keptPerTick(of: TailBox(Self.fixtureTail()), called: "quiet tail of 1000")
+        XCTAssertLessThan(kept, Self.keptPerTickCeiling,
+            "the log page kept \(kept) bytes per tick of a tail nobody wrote to")
     }
 
     /// A tail that grows one line per poll — the busiest the real page gets
     /// outside an operation, since `LogTail` is written per event and the page
     /// polls once a second.
-    func testAGrowingTailPerTickCost() throws {
+    ///
+    /// **It was `testAGrowingTailPerTickCost` and it asserted nothing about the
+    /// cost it was named for.** The figure was printed for a person to read,
+    /// which is the shape `ReleaseDigestFootprintTests` had while a real leak
+    /// sat behind it: a test that exists to catch a regression has to fail on
+    /// one. What was missing first was not the assertion but a number worth
+    /// asserting — see `warmUpSeconds`.
+    func testAGrowingTailKeepsNothingPerTickEither() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
         let box = TailBox(Self.fixtureTail())
         box.appendPerCall = true
-        let (view, window) = mountedLogPage(box)
-        defer { window.contentView = nil }
-
-        letThePageTick(seconds: 3, view: view)
-        let ticksBefore = box.calls
-
-        var laps: [(kept: Int, peak: Int)] = []
-        for _ in 0..<3 {
-            let before = AllocatorBooks.allocatedBytes()
-            let (_, peak) = AllocatorPeak.during {
-                letThePageTick(seconds: 5, view: view)
-            }
-            laps.append((AllocatorBooks.allocatedBytes() - before, peak))
-        }
-        let ticks = box.calls - ticksBefore
-        XCTAssertGreaterThanOrEqual(ticks, 9, "the tick fired \(ticks) times; too few to measure")
-
-        let perTickKept = laps.map(\.kept).reduce(0, +) / max(ticks, 1)
-        let peakLine = laps.map { String(format: "kept %+d KB, transient peak %d KB",
-                                         $0.kept / 1024, $0.peak / 1024) }
-            .joined(separator: "; ")
-        print("log page, growing tail at cap: \(ticks) ticks in 3×5 s laps — \(peakLine); "
-              + String(format: "%.0f B kept per tick", Double(perTickKept)))
+        let kept = keptPerTick(of: box, called: "growing tail at cap")
+        XCTAssertLessThan(kept, Self.keptPerTickCeiling,
+            "the log page kept \(kept) bytes per tick of a tail gaining a line a poll")
     }
 }
