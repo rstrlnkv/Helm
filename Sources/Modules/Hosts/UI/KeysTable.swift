@@ -133,8 +133,11 @@ private struct KeyCard: View {
             }
             if row.inAgent { HelmBadge(HostsStr.inAgent, tint: .green) }
             Spacer(minLength: HelmSpace.s2)
-            if let modified = row.modified {
-                Text(HelmDates.relative(modified))
+            // A key file's date comes off the disk, so it can be ahead of this
+            // Mac's clock — and a key `ssh-keygen` has just written is younger
+            // than the second the formatter needs. Neither has an age to draw.
+            if let modified = row.modified, let age = HelmDates.age(modified) {
+                Text(age)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .lineLimit(1)

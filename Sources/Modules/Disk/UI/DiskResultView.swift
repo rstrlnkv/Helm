@@ -270,9 +270,11 @@ private struct BreadcrumbBar: View {
                     .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
             }
         case .measured:
-            // A restored tree is a memory, not a measurement: say when.
-            if let savedAt = dvm.completedAt {
-                Text(DkStr.measured(HelmDates.relative(savedAt)))
+            // A restored tree is a memory, not a measurement: say when — and
+            // say nothing at all for a stamp with no age to word, rather than
+            // «Измерено » with the sentence stopping where the age should be.
+            if let savedAt = dvm.completedAt, let age = HelmDates.age(savedAt) {
+                Text(DkStr.measured(age))
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
         case .scanned:

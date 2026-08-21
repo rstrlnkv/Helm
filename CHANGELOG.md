@@ -145,6 +145,33 @@ proven newer than its sources.
   so the sentence cannot name a file the engine stopped writing.
 
 ### Fixed
+- **A date drawn under a reading could read as a time still to come, and two
+  ways in led to it.** `HelmDates.relative` refused nothing, and all five of its
+  callers draw an *age* — «Checked …», «Measured …», «Last scan …», a key
+  file's date, a speed reading's date. A stamp ahead of the clock is the
+  obvious one: a key file copied from a Mac whose clock runs fast, a scan row an
+  NTP step has stepped over. The second needs no skew at all —
+  `RelativeDateTimeFormatter` rounds to the nearest second and renders a rounded
+  zero in the **future** voice, so anything younger than one second comes back
+  «через 0 секунд», "in 0 seconds", "0秒钟后" in all eight languages, and only at
+  a full second does it say «1 секунду назад». A key `ssh-keygen` has just
+  written and the scan row redrawn the moment a background scan comes back both
+  sit inside that first second. Two call sites gated the first case for
+  themselves and neither would have caught the second.
+
+  The refusal is in the type: `HelmDates.age` answers `String?` and `nil` where
+  there is no age to word, and the five callers each hang an `if let` on it —
+  the scan row loses its second line, Disk's «measured» line and the key
+  table's date column are simply not drawn, and About falls to «Not checked
+  yet», the note it already shows for a stamp it will not trust. **Not a
+  clamp**, and not an empty string: «just now» for a file dated next March is
+  wrong in a way nothing on screen can show, and `DkStr.measured("")` draws
+  «Измерено » with the sentence stopping where the age should be. Pinned by
+  `AForecastIsNotAnAgeTests` across eight languages and both age styles, with a
+  floor test so «draw nothing, always» cannot pass, and by
+  `AScanRowWithNoAgeSaysNothingTests` for the row that must not answer «never»
+  about a scan that ran.
+
 - **An unattended disk scan no longer writes `~/Library` paths into its
   journal.** The same laundering the duplicate finder's descent gate closed the
   day before, in a narrower shape: `DiskScanner(unattended:)` refuses only an

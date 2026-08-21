@@ -250,7 +250,7 @@ struct VPNTunnelStrip {
                     // readings. `HelmDates.AgeStyle` has two cases so the third
                     // cannot be asked for here.
                     note: VPNStr.speedNote(facts.speedShowsItsAge
-                        ? HelmDates.relative(speed.at, to: now, style: .short) : nil))
+                        ? HelmDates.age(speed.at, to: now, style: .short) : nil))
     }
 }
 

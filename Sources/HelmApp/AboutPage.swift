@@ -511,10 +511,15 @@ struct AboutHelmView: View {
         // The same reading `checkOnLaunch` makes of the same key, so the line
         // cannot say "checked 2 hours ago" about a number that stopped the
         // check from running.
-        guard let when = UpdateCheck.lastChecked(stored: stamp, now: Date()) else {
+        // Two refusals, one door: a stamp ahead of the clock is one the check
+        // itself will not have, and a stamp with no age to word is one this
+        // line cannot finish. Both fall to the note that also carries the
+        // button — «Проверялось » with nothing after it would not.
+        guard let when = UpdateCheck.lastChecked(stored: stamp, now: Date()),
+              let age = HelmDates.age(when) else {
             return AppStr.neverChecked
         }
-        return AppStr.lastChecked(HelmDates.relative(when))
+        return AppStr.lastChecked(age)
     }
 
     /// Always spinning: every state that draws this line is work in flight. It

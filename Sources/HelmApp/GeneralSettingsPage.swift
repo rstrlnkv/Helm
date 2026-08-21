@@ -122,12 +122,30 @@ struct MenuBarSettingsView: View {
                                     set: { setScan(row.id, on: $0) })) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(module?.moduleMetadata.name ?? row.id)
-                Text(row.lastRun.map { AppStr.scanLastRun(HelmDates.relative($0)) }
-                        ?? AppStr.scanNeverRun)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                if let caption = Self.scanCaption(lastRun: row.lastRun) {
+                    Text(caption)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                }
             }
         }
+    }
+
+    /// The line under a scan's name: when it last came back, «never», or —
+    /// for a stamp with no age to draw — nothing at all.
+    ///
+    /// **Not `AppStr.scanNeverRun` for that third case.** The scan did run; a
+    /// stamp this side of a second old, or one an NTP step has left ahead of
+    /// the clock, is only a stamp `HelmDates.age` will not word. Saying «never»
+    /// there would contradict the switch on the same row.
+    ///
+    /// Static and beside `scanRows` for the same reason that one is: a decision
+    /// with three answers, reachable without a window.
+    static func scanCaption(lastRun: Date?, now: Date = Date(),
+                            language: AppLanguage = AppLanguage.current) -> String? {
+        guard let lastRun else { return AppStr.scanNeverRun(language: language) }
+        return HelmDates.age(lastRun, to: now, language: language.rawValue)
+            .map { AppStr.scanLastRun($0, language: language) }
     }
 
     /// Write, then read back — the reverse channel this switch would otherwise

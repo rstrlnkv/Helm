@@ -231,19 +231,62 @@ public enum HelmDates {
         }
     }
 
-    /// "2 hours ago", «2 часа назад» — for a timestamp whose distance is the
-    /// point, not its calendar position.
+    /// "2 hours ago", «2 часа назад» — **an age, or nothing at all** for a
+    /// stamp that has none.
+    ///
+    /// Every caller of this draws how old something is: «Checked …»,
+    /// «Measured …», «Last scan …», a key file's date, a speed reading's date.
+    /// Not one of them ever wants a time still to come, and there are two ways
+    /// the system formatter writes one:
+    ///
+    /// 1. A stamp genuinely **ahead of the clock**. A file copied from a Mac
+    ///    whose clock runs fast carries a modification date in the future, and
+    ///    so does a scan row that an NTP step has stepped over.
+    /// 2. A stamp **behind the clock by less than a second**, which needs no
+    ///    skew at all. Measured on macOS 27 in all eight languages:
+    ///    `RelativeDateTimeFormatter` rounds the interval to the nearest second
+    ///    and renders a rounded zero in the *future* voice — 0.9 s ago comes
+    ///    back «через 0 секунд», "in 0 seconds", "0秒钟后", and only at a full
+    ///    second does it say «1 секунду назад». A key file `ssh-keygen` has
+    ///    just written, and a scan row redrawn the moment its scan comes back,
+    ///    both sit inside that first second.
+    ///
+    /// **`nil`, and never a clamp.** «Just now» for a file dated next March is
+    /// wrong in a way nothing on screen can show and no test can catch, because
+    /// «just now» is also what a true fresh reading says; the absence is the
+    /// only answer a reader can tell apart. It is what the rest of the tree
+    /// already does with the same input — `HelmExpectedWait.Claim.at` falls to
+    /// `.unknown`, `UpdateCheck.lastChecked` answers `nil`, and the VPN tile
+    /// leaves the unit standing alone.
     ///
     /// `style` defaults to what the four callers that predate it already drew:
     /// a scan row, the update check, Disk's «measured» line and the key table
     /// each have a full row's width, and only the VPN speed tile — 143 pt at the
     /// default window and 91 at the narrowest — asks for the short form.
+    public static func age(_ date: Date, to now: Date = Date(),
+                           style: AgeStyle = .full,
+                           language: String = AppLanguage.current.rawValue) -> String? {
+        guard now.timeIntervalSince(date) >= youngestAgeWrittenAsPast else { return nil }
+        return cache.relative(language: language, style: style)
+            .localizedString(for: date, relativeTo: now)
+    }
+
+    /// The same age with the refusal flattened to an empty string.
+    ///
+    /// `age` is what a screen draws — all five of them already have an `if let`
+    /// to hang the absence on, and `DkStr.measured("")` draws «Измерено » with
+    /// nothing after it. This is for a comparison that has already established
+    /// the stamp is a real age and wants the spelling of it.
     public static func relative(_ date: Date, to now: Date = Date(),
                                 style: AgeStyle = .full,
                                 language: String = AppLanguage.current.rawValue) -> String {
-        cache.relative(language: language, style: style)
-            .localizedString(for: date, relativeTo: now)
+        age(date, to: now, style: style, language: language) ?? ""
     }
+
+    /// The seam, measured rather than assumed: below a full second every one of
+    /// the eight writes the rounded zero as a forecast, and at one second every
+    /// one of them says «ago».
+    private static let youngestAgeWrittenAsPast: TimeInterval = 1
 
     /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
     ///
