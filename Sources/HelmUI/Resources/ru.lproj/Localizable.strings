@@ -670,6 +670,14 @@
 "New tab" = "Новая вкладка";
 "Close tab" = "Закрыть вкладку";
 "Tab" = "Вкладка";
+"Show Settings button" = "Показывать кнопку «Настройки»";
+"Show the edit button in the panel" = "Показывать кнопку редактирования панели";
+"Show Quit button" = "Показывать кнопку «Завершить»";
+"Tab labels" = "Подписи вкладок";
+"Automatic" = "Автоматически";
+"Names only" = "Только названия";
+"Names and icons" = "Названия и значки";
+"Icons only" = "Только значки";
 "Choose what is in the list" = "Выбрать пункты списка";
 "Author" = "Автор";
 "Icon" = "Значок";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Показания на странице VPN стоят на одной высоте, какими бы длинными ни были числа, а возраст замера пишется коротко — 40 мин. назад, а не отдельной строкой.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Выключение режима с закрытой крышкой — или просто выход из Helm — теперь убирает оставленное правило администратора и не спрашивает пароль во второй раз. В настройке написано, где это правило лежит и как удалить его вручную.";
 
-"Show the buttons at the bottom of the panel" = "Показывать кнопки внизу панели";
 "All three are also in the right-click menu on the menu-bar icon." = "Все три есть в меню по правому клику на значке в строке меню.";
 "Menu-bar icon shape" = "Форма значка в строке меню";
 "Menu-bar icon size" = "Размер значка в строке меню";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Три переключателя для кнопок «Настройки», «Редактировать» и «Завершить» стали одним. Вместе они решали лишь одно — есть ли внизу панели строка кнопок; у кого она была, у того и осталась.";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Вкладки панели сами решают, как подписываться: названия, пока они помещаются, и значки, когда нет. Настройка, которая об этом спрашивала, убрана — вместе с вариантом, при котором вкладка оставалась пустой.";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Простые значки модулей теперь простые везде, включая панель. Раньше настройка меняла только боковое меню настроек.";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "Панель в строке меню открывается, не останавливаясь на вопросах к macOS о разрешениях. Раньше при каждом клике по значку она по пути читала ваши файлы Сообщений и Safari.";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "Карандаш на панели и меню по правому клику называют одно и то же одинаково.";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "Дата, которая показывает, сколько времени прошло, больше не читается как время в будущем. Если этого не определить — файл помечен временем впереди часов Mac или записан только что, — строка не показывается.";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "Обновление не начнётся, пока Helm не запишет, что оно идёт. Именно эта запись сообщает о неудавшемся обновлении — без неё сорвавшееся обновление возвращалось так, будто ничего и не пробовали.";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "Когда Helm не может сохранить то, что держит для себя, — последний замер диска, работу поиска дубликатов — он теперь так и говорит, а не делает вид, что сохранил. Ничто из того, что вы просили, из-за этого не срывается.";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "У подписей вкладок появился четвёртый вариант — «Автоматически»: названия, пока они помещаются в панель, и значки, когда нет. А вкладка без своего значка сохраняет название при любом выборе — раньше она рисовалась пустой кнопкой.";

@@ -11,15 +11,14 @@ import XCTest
 /// absence — no names in a tab, no plate under a glyph — passes when the window
 /// server drew nothing.
 ///
-/// **What is deliberately not here** is a count of the switches in the settings
+/// **What is deliberately not here** is a count of the controls in the settings
 /// page's panel section. The first version of this file drew a *copy* of that
-/// section and counted one switch in it, which is a check on the copy: the page
-/// could grow a second switch tomorrow and this would stay green. What holds the
-/// fold is `OneSwitchAnswersForThreeTests`, which is about the migration, and
-/// the compiler — `AppSettings.showSettingsButton` and its two siblings do not
-/// exist, so a second switch cannot be written against them. The caption under
-/// it is held by `NoOrphanTranslationsTests`, which fails on a translation
-/// nothing in the source asks for.
+/// section and counted the switches in it, which is a check on the copy: the
+/// page could grow another one tomorrow and this would stay green. What holds
+/// those settings is `ThreeSwitchesComeBackFromOneTests`, which is about the
+/// keys they are stored under. The caption under them is held by
+/// `NoOrphanTranslationsTests`, which fails on a translation nothing in the
+/// source asks for.
 @MainActor
 final class WhatThePanelSectionDrawsTests: XCTestCase {
 
@@ -37,12 +36,14 @@ final class WhatThePanelSectionDrawsTests: XCTestCase {
         let names = ["Everything I keep an eye on daily",
                      "The other things I check less often"]
         let available = helmPanelWidth - PanelGrid.padding * 2
-        XCTAssertEqual(TabStripFit.style(tabs: [("Main", "star"), ("Disk", "gear")],
-                                         editing: false, available: available), .text,
-                       "two short names do not fit the panel, measured at the strip's own font")
-        XCTAssertEqual(TabStripFit.style(tabs: [(names[0], "star"), (names[1], "gear")],
-                                         editing: false, available: available), .glyph,
-                       "two names of \(names.map(\.count)) characters fit a 296 pt strip")
+        XCTAssertEqual(TabStripFit.face(for: .automatic,
+                                        tabs: [("Main", "star"), ("Disk", "gear")],
+                                        editing: false, available: available), .text,
+                       "two short names fit the panel, measured at the strip's own font")
+        XCTAssertEqual(TabStripFit.face(for: .automatic,
+                                        tabs: [(names[0], "star"), (names[1], "gear")],
+                                        editing: false, available: available), .glyph,
+                       "two names of \(names.map(\.count)) characters do not fit a 296 pt strip")
 
         let long = strip(names: names)
         XCTAssertGreaterThan(long.layers.count, 3,
@@ -106,8 +107,10 @@ private struct TabStripProbe: View {
     }
 
     var body: some View {
-        PanelTabStrip(layout: layout, tabIndex: 0, editing: false, selection: selection,
-                      activeTab: $activeTab, pickingGlyph: $picking,
+        // `.automatic`, because what is drawn here is the measurement: it is
+        // the one answer whose result the arithmetic decides.
+        PanelTabStrip(layout: layout, tabIndex: 0, editing: false, labels: .automatic,
+                      selection: selection, activeTab: $activeTab, pickingGlyph: $picking,
                       rename: { _, _ in }, apply: { _ in })
     }
 }

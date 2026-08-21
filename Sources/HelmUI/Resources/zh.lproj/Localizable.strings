@@ -670,6 +670,14 @@
 "New tab" = "新建标签页";
 "Close tab" = "关闭标签页";
 "Tab" = "标签页";
+"Show Settings button" = "显示“设置”按钮";
+"Show the edit button in the panel" = "在面板中显示编辑按钮";
+"Show Quit button" = "显示“退出”按钮";
+"Tab labels" = "标签页样式";
+"Automatic" = "自动";
+"Names only" = "仅名称";
+"Names and icons" = "名称与图标";
+"Icons only" = "仅图标";
 "Choose what is in the list" = "选择列表中的项目";
 "Author" = "作者";
 "Icon" = "图标";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 页面上的数值无论多长都保持同一高度，测量的时间也写得简短．40 分钟前，而不占单独一行。";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "关闭合盖模式，或者直接退出 Helm，现在都会撤回此前保留的管理员规则，且无需再次输入密码。设置中会说明该规则的位置以及如何手动删除。";
 
-"Show the buttons at the bottom of the panel" = "显示面板底部的按钮";
 "All three are also in the right-click menu on the menu-bar icon." = "这三个也都在菜单栏图标的右键菜单里。";
 "Menu-bar icon shape" = "菜单栏图标形状";
 "Menu-bar icon size" = "菜单栏图标大小";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "面板上“设置”“编辑”“退出”三个开关合成了一个。它们合起来只决定面板底部有没有那一排按钮，原本有的仍然有。";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "面板的标签页自己决定怎么标注：名称放得下就用名称，放不下就用符号。原来问你的那个设置没有了，连同那个会让标签页空白的选项。";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "模块图标的“朴素”现在在任何地方都是朴素的，面板也包括在内。此前这个设置只改变设置窗口的侧栏。";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "菜单栏面板打开时不再先停下来向 macOS 询问权限。此前每次点击图标，它都会在打开途中读取你的“信息”和 Safari 文件。";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "面板上的铅笔和右键菜单，现在用同一个名字称呼同一件事。";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "显示已过去多久的日期，不会再读作将来的时间。无法判断时——文件的时间早于 Mac 的时钟，或刚刚写入——这一行不再显示。";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "在 Helm 能先记下“正在更新”之前，更新不会开始。正是这条记录在报告失败的更新；没有它，失败的更新回来时就像什么都没试过。";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "当 Helm 无法保存它自己留着的东西 — 磁盘的最后一次测量、重复项搜索的成果 — 它现在会直说，而不是当作已经保存好了。你所请求的事情不会因此失败。";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "面板的标签页样式增加了第四个选项：“自动”——名称放得下时显示名称，放不下时显示图标。而没有图标的标签页无论选哪一项都会保留名称，以前它会画成一个空按钮。";

@@ -670,6 +670,14 @@
 "New tab" = "Nouvel onglet";
 "Close tab" = "Fermer l’onglet";
 "Tab" = "Onglet";
+"Show Settings button" = "Afficher le bouton Réglages";
+"Show the edit button in the panel" = "Afficher le bouton de modification dans le panneau";
+"Show Quit button" = "Afficher le bouton Quitter";
+"Tab labels" = "Libellés des onglets";
+"Automatic" = "Automatique";
+"Names only" = "Noms seuls";
+"Names and icons" = "Noms et icônes";
+"Icons only" = "Icônes seules";
 "Choose what is in the list" = "Choisir les éléments de la liste";
 "Author" = "Auteur";
 "Icon" = "Icône";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Les valeurs de la page VPN restent à la même hauteur, quelle que soit la longueur des chiffres, et l’âge d’une mesure s’écrit court : il y a 40 min, au lieu d’une ligne à part.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Désactiver le mode capot fermé, ou simplement quitter Helm, retire désormais la règle administrateur conservée, sans redemander votre mot de passe. Le réglage indique où se trouve cette règle et comment la supprimer à la main.";
 
-"Show the buttons at the bottom of the panel" = "Afficher les boutons en bas du panneau";
 "All three are also in the right-click menu on the menu-bar icon." = "Les trois figurent aussi dans le menu contextuel de l’icône de la barre des menus.";
 "Menu-bar icon shape" = "Forme de l’icône de la barre des menus";
 "Menu-bar icon size" = "Taille de l’icône de la barre des menus";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Les trois interrupteurs des boutons Réglages, modifier et Quitter du panneau n’en font qu’un. À eux trois ils ne décidaient que d’une chose : le panneau a-t-il une rangée de boutons. Qui l’avait la garde.";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Les onglets du panneau choisissent eux-mêmes leur étiquette : le nom tant qu’il tient, un symbole sinon. Le réglage qui posait la question a disparu, avec la réponse qui pouvait laisser un onglet vide.";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Les icônes de module sobres le sont désormais partout, panneau compris. Le réglage ne changeait que la barre latérale des réglages.";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "Le panneau de la barre des menus s’ouvre sans s’arrêter d’abord pour interroger macOS sur les autorisations. Il lisait au passage vos fichiers Messages et Safari, à chaque clic sur l’icône.";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "Le crayon du panneau et le menu contextuel appellent la même chose du même nom.";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "Une date qui indique l’ancienneté de quelque chose ne se lit plus comme un moment à venir. Lorsque l’ancienneté ne peut pas être établie — un fichier daté en avance sur l’horloge du Mac, ou écrit à l’instant même — la ligne n’est pas affichée.";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "Une mise à jour ne démarre pas tant que Helm ne peut pas noter qu’elle est en cours. C’est cette note qui signale une mise à jour ratée ; sans elle, une mise à jour échouée revenait comme si rien n’avait été tenté.";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "Quand Helm ne peut pas enregistrer ce qu’il garde pour lui — la dernière mesure de votre disque, le travail d’une recherche de doublons — il le dit désormais au lieu de faire comme s’il l’avait fait. Rien de ce que vous avez demandé n’échoue pour autant.";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "Les libellés des onglets ont une quatrième réponse : « Automatique », qui garde les noms tant qu’ils tiennent dans le panneau et affiche les icônes sinon. Et un onglet sans icône garde son nom quel que soit le choix — il était auparavant dessiné comme un bouton vide.";

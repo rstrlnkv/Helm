@@ -1,18 +1,18 @@
 import AppKit
 
-/// Whether the panel's tab strip has room for its tabs' names.
+/// Turns the tab-label setting into the face a strip wears.
 ///
-/// This is the answer that replaced a setting. «Tab labels» offered text, glyph
-/// and both, and `TabLabelStyle`'s own documentation said why that was the wrong
-/// shape: the right one «depends on things the app cannot see: how many tabs
-/// there are, how long their names came out, and whether the person named them
-/// at all» — and every one of those three is in `PanelLayout`. The panel is a
-/// fixed 320 pt, so the question has an answer rather than a taste, and the strip
-/// that would have needed the setting is the one that is already too full to read.
+/// Two jobs, and they are one function because both end in the same refusal.
+/// It answers `TabLabelStyle.automatic` by measuring: the panel is a fixed
+/// 320 pt, so «do these names fit» is a question with an answer rather than a
+/// taste, and the strip that would have needed a setting is the one already too
+/// full to read. And it stands in front of `.glyph` however that answer arrived
+/// — a strip where one tab has no glyph draws that tab as an empty padded
+/// button, which is nothing to look at and nothing to read.
 ///
-/// **Every tab or none.** A strip where one tab shows a word and the next shows a
-/// symbol is not a strip, so the measurement is of the whole row: the names fit,
-/// or none of them is drawn.
+/// **Every tab or none.** A strip where one tab shows a word and the next shows
+/// a symbol is not a strip, so the measurement is of the whole row: the names
+/// fit, or none of them is drawn.
 public enum TabStripFit {
 
     /// 8 pt of padding either side of a tab's content — `PanelTabStrip`'s own
@@ -25,7 +25,7 @@ public enum TabStripFit {
     /// The «+» that makes a tab: a 12 pt symbol in the same 8 pt padding.
     static let addButton: CGFloat = 28
 
-    /// The style the strip should draw.
+    /// The face the strip should draw.
     ///
     /// **One array of pairs, not a name array beside a glyph array.** Two
     /// parallel arrays let a caller hand over four names and three glyphs, and
@@ -35,17 +35,31 @@ public enum TabStripFit {
     /// - Parameter widthOfName: a seam, so the arithmetic can be tested without
     ///   this Mac's font deciding the answer. Production takes the default,
     ///   which measures at the font the strip draws.
-    public static func style(tabs: [(title: String, glyph: String?)], editing: Bool,
-                             available: CGFloat,
-                             widthOfName: (String) -> CGFloat = TabStripFit.ink) -> TabLabelStyle {
-        guard !tabs.isEmpty else { return .text }
-        let names = width(of: tabs.map { widthOfName($0.title) + padding }, editing: editing)
-        if names <= available { return .text }
-        // Names that do not fit are only worth giving up if every tab has
-        // something to be recognised by. One tab without a glyph would draw as
-        // an empty padded button, which is the state the deleted pop-up could
-        // be put into by hand.
-        return tabs.allSatisfy { $0.glyph != nil } ? .glyph : .text
+    public static func face(for choice: TabLabelStyle,
+                            tabs: [(title: String, glyph: String?)], editing: Bool,
+                            available: CGFloat,
+                            widthOfName: (String) -> CGFloat = TabStripFit.ink) -> TabLabelFace {
+        // No `default`: a fourth answer on the settings page has to be answered
+        // here, and a build error is how that gets said.
+        switch choice {
+        case .text: return .text
+        case .glyphAndText: return .glyphAndText
+        case .glyph: return everyTabIsRecognisable(tabs) ? .glyph : .text
+        case .automatic:
+            guard !tabs.isEmpty else { return .text }
+            let names = width(of: tabs.map { widthOfName($0.title) + padding }, editing: editing)
+            if names <= available { return .text }
+            // Names that do not fit are only worth giving up if every tab has
+            // something to be recognised by.
+            return everyTabIsRecognisable(tabs) ? .glyph : .text
+        }
+    }
+
+    /// Whether a glyph-only strip would have something on every tab. An empty
+    /// strip is not recognisable by symbols it does not have, so it keeps the
+    /// answer a strip of one unnamed tab would get.
+    private static func everyTabIsRecognisable(_ tabs: [(title: String, glyph: String?)]) -> Bool {
+        !tabs.isEmpty && tabs.allSatisfy { $0.glyph != nil }
     }
 
     /// A row of tabs of the given widths, with the gaps between them and the

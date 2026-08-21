@@ -65,11 +65,26 @@ public extension Notification.Name {
 }
 
 public final class NamespacedStore {
+    private let namespace: String
     private let prefix: String
     private let backing: KeyValueStore
     public init(namespace: String, backing: KeyValueStore) {
+        self.namespace = namespace
         self.prefix = "module.\(namespace)."
         self.backing = backing
+    }
+
+    /// The same namespace over a different store.
+    ///
+    /// A migration needs both halves — this view to read and write its own keys,
+    /// and the raw store `ObsoleteDefaults.purge` walks by full key — so it is
+    /// handed the raw one and asks for this. Written here rather than as a second
+    /// `NamespacedStore(namespace:)` at the call site: that would be the prefix
+    /// spelled twice, and two spellings drifting is a migration writing where
+    /// nothing reads. It is also the only way a test can point the app's own
+    /// namespaced view at a store of its own.
+    public func over(_ other: KeyValueStore) -> NamespacedStore {
+        NamespacedStore(namespace: namespace, backing: other)
     }
     private func k(_ key: String) -> String { prefix + key }
     public func set(_ value: Any?, for key: String) {

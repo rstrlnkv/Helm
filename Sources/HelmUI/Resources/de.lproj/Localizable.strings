@@ -670,6 +670,14 @@
 "New tab" = "Neuer Tab";
 "Close tab" = "Tab schließen";
 "Tab" = "Tab";
+"Show Settings button" = "Schaltfläche „Einstellungen“ anzeigen";
+"Show the edit button in the panel" = "Bearbeiten-Taste im Panel zeigen";
+"Show Quit button" = "Schaltfläche „Beenden“ anzeigen";
+"Tab labels" = "Tab-Beschriftung";
+"Automatic" = "Automatisch";
+"Names only" = "Nur Namen";
+"Names and icons" = "Namen und Symbole";
+"Icons only" = "Nur Symbole";
 "Choose what is in the list" = "Einträge der Liste wählen";
 "Author" = "Autor";
 "Icon" = "Symbol";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Die Werte auf der VPN-Seite stehen auf gleicher Höhe, wie lang die Zahlen auch werden, und das Alter einer Messung steht kurz da – vor 40 Min. statt in einer eigenen Zeile.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Wird der Modus bei geschlossenem Deckel ausgeschaltet oder Helm einfach beendet, wird die dafür hinterlegte Administratorregel wieder entfernt — ohne erneute Passwortabfrage. In den Einstellungen steht, wo diese Regel liegt und wie sie sich von Hand entfernen lässt.";
 
-"Show the buttons at the bottom of the panel" = "Die Schaltflächen am unteren Rand des Panels anzeigen";
 "All three are also in the right-click menu on the menu-bar icon." = "Alle drei sind auch im Kontextmenü des Symbols in der Menüleiste.";
 "Menu-bar icon shape" = "Form des Menüleistensymbols";
 "Menu-bar icon size" = "Größe des Menüleistensymbols";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Die drei Schalter für die Panel-Schaltflächen Einstellungen, Bearbeiten und Beenden sind einer. Gemeinsam entschieden sie nur, ob das Panel überhaupt eine Schaltflächenzeile hat — wer eine hatte, hat sie weiterhin.";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Die Tabs des Panels bestimmen ihre Beschriftung selbst: Namen, solange sie passen, sonst Symbole. Die Einstellung, die danach fragte, ist weg — und mit ihr die Antwort, die einen Tab leer lassen konnte.";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Schlichte Modulsymbole sind jetzt überall schlicht, auch im Panel. Die Einstellung änderte nur die Seitenleiste der Einstellungen.";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "Das Menüleisten-Panel öffnet sich, ohne vorher macOS nach Berechtigungen zu fragen. Bei jedem Klick auf das Symbol las es unterwegs aus Ihren Nachrichten- und Safari-Dateien.";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "Der Stift im Panel und das Kontextmenü nennen dasselbe beim selben Namen.";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "Ein Datum, das das Alter von etwas angibt, liest sich nicht mehr wie ein Zeitpunkt in der Zukunft. Lässt sich das Alter nicht bestimmen — eine Datei mit einem Zeitstempel vor der Uhr des Mac oder in dieser Sekunde geschrieben —, entfällt die Zeile.";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "Ein Update startet erst, wenn Helm festhalten kann, dass eines läuft. Dieser Vermerk ist es, der ein fehlgeschlagenes Update meldet — ohne ihn kam ein gescheitertes Update zurück, als wäre nichts versucht worden.";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "Wenn Helm etwas nicht sichern kann, das es für sich behält — die letzte Messung Ihrer Festplatte, die Arbeit einer Duplikatsuche — sagt es das jetzt, statt so zu tun, als hätte es gesichert. Nichts, worum Sie gebeten haben, scheitert deswegen.";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "Die Tab-Beschriftung hat eine vierte Antwort: „Automatisch“ – Namen, solange sie ins Panel passen, und Symbole, wenn nicht. Und ein Tab ohne eigenes Symbol behält seinen Namen, was immer gewählt ist; früher wurde es als leere Schaltfläche gezeichnet.";

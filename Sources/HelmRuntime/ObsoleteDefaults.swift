@@ -19,16 +19,11 @@ public enum ObsoleteDefaults {
         // The panel's width was a setting for one night. 480 pt buys a third
         // column, and that is not a reason to ask.
         "module.app.panelWidth",
-        // Three switches for one taste: the panel drew a footer when any of
-        // them was on, which is `module.app.showPanelFooter` now.
-        // `AppSettings.migrateAndPurge` folds them before this list reaches
-        // them, and it is one function for exactly that reason.
-        "module.app.showSettingsButton",
-        "module.app.showPanelEditButton",
-        "module.app.showQuitButton",
-        // The panel's tab labels were a pop-up of three; the strip measures its
-        // own names now and shows glyphs only when they do not fit.
-        "module.app.tabLabelStyle",
+        // The panel's three footer switches spent one unreleased build folded
+        // into this. They are three settings again; `PanelFooterSetting.unfolded`
+        // reads this key before the list reaches it, and
+        // `AppSettings.migrateAndPurge` is one function for exactly that reason.
+        "module.app.showPanelFooter",
     ]
 
     public static func purge(from store: KeyValueStore) {

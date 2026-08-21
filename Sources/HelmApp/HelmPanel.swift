@@ -44,7 +44,10 @@ struct HelmPanelContent: View {
     @State private var revealed = true
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
-    @State private var showFooter = AppSettings.showPanelFooter
+    @State private var showEditButton = AppSettings.showPanelEditButton
+    @State private var showSettingsButton = AppSettings.showSettingsButton
+    @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -600,10 +603,9 @@ struct HelmPanelContent: View {
     /// 38 pt reserved under a footer that had stopped being drawn, and a grid
     /// that had exactly fitted began to scroll.
     private var showsTabStrip: Bool { layout.showsTabBar || editing }
-    /// One switch, and it was three that only ever answered together — the
-    /// footer was drawn when any of them was on, so what the three of them
-    /// decided was whether there was a footer at all (`PanelFooterSetting`).
-    private var showsFooter: Bool { showFooter }
+    /// Nothing pinned means nothing to pin: three hidden buttons would
+    /// otherwise leave an empty card at the foot of the panel.
+    private var showsFooter: Bool { showSettingsButton || showQuitButton || showEditButton }
     /// The setup bar and the footer are measured together, and the setup bar is
     /// there whenever the mode is.
     private var showsFooterBlock: Bool { editing || showsFooter }
@@ -674,7 +676,10 @@ struct HelmPanelContent: View {
             reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
-            showFooter = AppSettings.showPanelFooter
+            showEditButton = AppSettings.showPanelEditButton
+            showSettingsButton = AppSettings.showSettingsButton
+            showQuitButton = AppSettings.showQuitButton
+            tabLabels = AppSettings.tabLabelStyle
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -724,8 +729,8 @@ struct HelmPanelContent: View {
                 emptyState("square.grid.2x2", AppStr.noModules, AppStr.noModulesHint)
             } else if items.isEmpty && !editing {
                 emptyState("rectangle.on.rectangle", AppStr.nothingOnThisTab,
-                           showFooter ? AppStr.nothingOnThisTabHint
-                                      : AppStr.nothingOnThisTabHintNoButton)
+                           showEditButton ? AppStr.nothingOnThisTabHint
+                                          : AppStr.nothingOnThisTabHintNoButton)
             } else {
                 grid(items)
                     // Keyed to the tab, so switching is a swap the transition
@@ -792,7 +797,7 @@ struct HelmPanelContent: View {
             // 20 pt above its first widget where every other edge has 12.
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
-                              selection: tabSelection,
+                              labels: tabLabels, selection: tabSelection,
                               activeTab: $activeTab, pickingGlyph: $pickingGlyph,
                               rename: { tab, current in
                                   draftName = current
@@ -858,7 +863,8 @@ struct HelmPanelContent: View {
                     }
                 }
                 if showsFooter {
-                    PanelFooter(editing: editing) {
+                    PanelFooter(editing: editing, showSettings: showSettingsButton,
+                                showQuit: showQuitButton, showEdit: showEditButton) {
                         // The same curve the card's measured height animates on.
                         // Entering the mode grows every cell by 8 pt and adds
                         // two controls to each, so the grid's height changes

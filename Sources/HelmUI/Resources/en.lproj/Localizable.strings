@@ -670,6 +670,14 @@
 "New tab" = "New tab";
 "Close tab" = "Close tab";
 "Tab" = "Tab";
+"Show Settings button" = "Show Settings button";
+"Show the edit button in the panel" = "Show the edit button in the panel";
+"Show Quit button" = "Show Quit button";
+"Tab labels" = "Tab labels";
+"Automatic" = "Automatic";
+"Names only" = "Names only";
+"Names and icons" = "Names and icons";
+"Icons only" = "Icons only";
 "Choose what is in the list" = "Choose what is in the list";
 "Author" = "Author";
 "Icon" = "Icon";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand.";
 
-"Show the buttons at the bottom of the panel" = "Show the buttons at the bottom of the panel";
 "All three are also in the right-click menu on the menu-bar icon." = "All three are also in the right-click menu on the menu-bar icon.";
 "Menu-bar icon shape" = "Menu-bar icon shape";
 "Menu-bar icon size" = "Menu-bar icon size";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it.";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it.";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else.";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon.";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "The panel’s pencil and the right-click menu call the same thing by the same name.";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead.";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried.";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it.";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button.";

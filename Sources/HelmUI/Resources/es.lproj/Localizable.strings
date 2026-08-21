@@ -670,6 +670,14 @@
 "New tab" = "Pestaña nueva";
 "Close tab" = "Cerrar la pestaña";
 "Tab" = "Pestaña";
+"Show Settings button" = "Mostrar el botón Ajustes";
+"Show the edit button in the panel" = "Mostrar el botón de edición en el panel";
+"Show Quit button" = "Mostrar el botón Salir";
+"Tab labels" = "Etiquetas de pestañas";
+"Automatic" = "Automático";
+"Names only" = "Solo nombres";
+"Names and icons" = "Nombres e iconos";
+"Icons only" = "Solo iconos";
 "Choose what is in the list" = "Elegir los elementos de la lista";
 "Author" = "Autor";
 "Icon" = "Icono";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "Las cifras de la página de VPN quedan a la misma altura por largas que sean, y la antigüedad de una medición se escribe corta: hace 40 min, en vez de ocupar una línea propia.";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "Desactivar el modo con la tapa cerrada, o simplemente salir de Helm, ahora retira la regla de administración que quedaba, sin volver a pedir la contraseña. El ajuste indica dónde está esa regla y cómo quitarla a mano.";
 
-"Show the buttons at the bottom of the panel" = "Mostrar los botones en la parte inferior del panel";
 "All three are also in the right-click menu on the menu-bar icon." = "Los tres están también en el menú contextual del icono de la barra de menús.";
 "Menu-bar icon shape" = "Forma del icono de la barra de menús";
 "Menu-bar icon size" = "Tamaño del icono de la barra de menús";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "Los tres interruptores de los botones Ajustes, editar y Salir del panel son uno solo. Juntos solo decidían si el panel tenía o no una fila de botones, y quien la tenía la conserva.";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "Las pestañas del panel deciden sus propias etiquetas: nombres mientras quepan, símbolos cuando no. El ajuste que lo preguntaba ha desaparecido, y con él la opción que dejaba una pestaña vacía.";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "Los iconos de módulo sencillos ahora son sencillos en todas partes, panel incluido. El ajuste solo cambiaba la barra lateral de Ajustes.";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "El panel de la barra de menús se abre sin detenerse antes a preguntar a macOS por los permisos. Al subir leía tus archivos de Mensajes y Safari, cada vez que pulsabas el icono.";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "El lápiz del panel y el menú contextual llaman a lo mismo por el mismo nombre.";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "Una fecha que indica la antigüedad de algo ya no se lee como un momento futuro. Cuando la antigüedad no puede determinarse —un archivo fechado por delante del reloj del Mac, o escrito en este mismo segundo— la línea deja de aparecer.";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "Una actualización no empieza hasta que Helm puede anotar que hay una en curso. Esa nota es lo que informa de una actualización fallida; sin ella, una que fallaba volvía como si no se hubiera intentado nada.";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "Cuando Helm no puede guardar algo que conserva para sí — la última medición de su disco, el trabajo de una búsqueda de duplicados — ahora lo dice en lugar de seguir como si lo hubiera guardado. Nada de lo que usted pidió falla por ello.";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "Las etiquetas de pestañas tienen una cuarta respuesta: “Automático”, que conserva los nombres mientras quepan en el panel y muestra iconos cuando no. Y una pestaña sin icono propio conserva su nombre elijas lo que elijas: antes se dibujaba como un botón vacío.";

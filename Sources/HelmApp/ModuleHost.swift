@@ -46,7 +46,7 @@ import HelmUI
     /// whatever the person is typing. The `deinit`s are the backstop for the
     /// routes nobody remembers; not building the orphan is the fix.
     func bootstrap() {
-        AppSettings.migrateAndPurge()
+        AppSettings.migrateAndPurge(in: UserDefaults.standard)
         for d in ModuleRegistry.all
         where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
     }

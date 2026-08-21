@@ -25,7 +25,10 @@ struct MenuBarSettingsView: View {
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
-    @State private var showFooter = AppSettings.showPanelFooter
+    @State private var tabLabels = AppSettings.tabLabelStyle
+    @State private var showPanelEditButton = AppSettings.showPanelEditButton
+    @State private var showSettingsButton = AppSettings.showSettingsButton
+    @State private var showQuitButton = AppSettings.showQuitButton
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
@@ -362,17 +365,37 @@ struct MenuBarSettingsView: View {
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
 
-            // The panel keeps its own arrangement, so there is exactly one
-            // thing about it to decide here: whether the way in is on it.
+            // The panel keeps its own arrangement, so what is decided here is
+            // how it is dressed: which of the three ways out are on it, and how
+            // its tabs are labelled.
             Section(header: HelmSectionTitle(AppStr.panel)) {
-                Toggle(AppStr.showPanelFooter, isOn: $showFooter)
-                    .onChange(of: showFooter) { _, v in AppSettings.showPanelFooter = v }
-                // Kept, and kept here. Helm is `LSUIElement`: no Dock icon, no
-                // application menu, so the footer's Settings button and this
-                // menu are the whole set of doors — and this sentence is one of
-                // exactly two places the app says the menu exists.
+                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
+                    .onChange(of: showSettingsButton) { _, v in
+                        AppSettings.showSettingsButton = v
+                    }
+                Toggle(AppStr.showPanelEditButton, isOn: $showPanelEditButton)
+                    .onChange(of: showPanelEditButton) { _, v in
+                        AppSettings.showPanelEditButton = v
+                    }
+                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
+                    .onChange(of: showQuitButton) { _, v in
+                        AppSettings.showQuitButton = v
+                    }
+                // Helm is `LSUIElement`: no Dock icon, no application menu, so
+                // the footer's Settings button and this menu are the whole set
+                // of doors — and this sentence is one of exactly two places the
+                // app says the menu exists.
                 Text(AppStr.panelFooterNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                // Here rather than in the panel's own edit mode: it is how the
+                // panel *looks*, decided once, and that mode is about which
+                // widgets are on it.
+                Picker(AppStr.tabLabels, selection: $tabLabels) {
+                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
+                        Text(AppStr.tabLabelStyle(style)).tag(style)
+                    }
+                }
+                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
             }
 
             // Only when there is one. `neededPermissions` filters to what the

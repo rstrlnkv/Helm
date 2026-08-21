@@ -459,19 +459,47 @@ proven newer than its sources.
   and would have left with the enumerator, silently — and the three walkers are
   read off the source to check they all still go through the shared walk.
 
-- **Seven controls on the General page are four, and one of them now means what
-  its label says.**
+- **«Tab labels» has a fourth answer, and none of the four can leave a tab
+  blank.**
 
-  The panel's footer was three switches — Settings, the pencil, Quit — for one
-  taste: `HelmPanel.showsFooter` was `showSettingsButton || showQuitButton ||
-  showEditButton`, so the only thing the three of them decided together was
-  whether there was a footer at all. They are one switch, and the migration is
-  that same expression (`PanelFooterSetting.folded`): each of the three
-  defaulted to true, so an absent key is a button that was shown, and a panel
-  loses its footer only if all three were turned off by hand. `AppSettings`
-  reads the old keys once and `ObsoleteDefaults` retires them, in that order and
-  inside one function — `migrateAndPurge` — because a purge that ran first would
-  hand every panel the default instead of the arrangement its owner chose.
+  `TabLabelStyle` gains `automatic`, which hands the question to `TabStripFit`:
+  the panel is a fixed 320 pt, so «do these names fit» has an answer, and a
+  strip whose names have run out of room is drawn as icons instead. The other
+  three — names, names and icons, icons — are kept whatever the arithmetic would
+  have said, because that is what choosing one means. **The default stays
+  `text`**, what the panel has drawn since it shipped: automatic is offered, not
+  assumed.
+
+  What the setting could do and now cannot is leave a tab with nothing on it.
+  `.glyph` on a strip where one tab has no icon rendered that tab as an empty
+  padded button — a control with nothing in it and nothing to read.
+  `TabStripFit.face` is the only place a face is decided, so that refusal stands
+  in front of the chosen answer as well as the measured one, and the strip falls
+  back to names. The two enums exist to keep it that way: `TabLabelStyle` is what
+  is asked and `TabLabelFace` is what a tab wears, so «work it out» is not a face
+  a strip can be handed and the empty state is unrepresentable rather than
+  defended.
+
+  **And the pop-up drew the wrong word until it was looked at.** Its first
+  English for the names case was `Names`, and `HostsStr.names` has held that key
+  since the hosts file's table shipped — «Имена», the column of hostnames. Eight
+  files linted clean and `StringsCoverageTests` passed, because every reader of a
+  `.strings` file — that test, `plutil`, and macOS itself — goes through
+  `NSDictionary`, which resolves a repeated key silently and keeps the last.
+  «One English key means one thing» had nothing under it for that case;
+  `NoKeyIsWrittenTwiceTests` reads the eight files as **lines** and is that
+  guard, proving on a fixture first that it can see a duplicate at all. The
+  options are `Names only`, `Names and icons` and `Icons only`.
+
+  The three footer switches — Settings, the pencil, Quit — are three switches.
+  They spent one unreleased build folded into a single `showPanelFooter`, and
+  `PanelFooterSetting.unfolded` is the way back: folding was lossless one way
+  only, so `false` — the one arrangement somebody had to choose by hand — is
+  restored to all three, and a fold that says `true`, or says nothing, is the
+  shipped default and writes no key at all. `AppSettings.migrateAndPurge` reads
+  that key and `ObsoleteDefaults` retires it, in that order and inside one
+  function, because a purge that ran first would hand every panel a footer its
+  owner had turned off.
 
   **The caption under them stays.** Helm is `LSUIElement`: no Dock icon, no
   application menu, so the footer's Settings button and the right-click menu are
@@ -480,18 +508,6 @@ proven newer than its sources.
   button says «Edit panel», the menu item said «Edit widgets», for the same mode,
   in eight languages each. `AppStr.editPanel` is read by both now, so the caption
   cannot be right about the function and wrong about the word.
-
-  **«Tab labels» is deleted and answered instead.** It steered a strip most
-  people never see — `PanelLayout.showsTabBar` is `tabs.count > 1` and a fresh
-  install has one tab — and its own type doc argued against it: the right answer
-  «depends on things the app cannot see: how many tabs there are, how long their
-  names came out, and whether the person named them at all», and all three are in
-  `PanelLayout`. `TabStripFit` measures the names against the panel's 320 pt and
-  answers text or glyph-only. One of the three deleted answers drew *nothing*:
-  `.glyph` on a tab with no glyph rendered an empty padded button, and chosen
-  rather than set that state cannot be reached — a strip falls back to names
-  whenever one tab has no glyph to stand in for its name. `TabLabelStyle` is two
-  cases now and has no `init(stored:)`.
 
 - **«Module icons: Plain» reaches the panel, which is the surface it was chosen
   for.** Its only reader was the settings sidebar, which drew the plain look by

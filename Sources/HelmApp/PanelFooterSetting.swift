@@ -1,46 +1,78 @@
-import Foundation
+import HelmRuntime
 
-/// Whether the panel draws its footer — folded out of the three switches that
-/// used to ask it separately.
+/// The three buttons at the foot of the panel — Settings, the pencil, Quit —
+/// each its own switch, and the one key they were folded into for a build.
 ///
-/// «Show Settings button», «Show the edit button in the panel» and «Show Quit
-/// button» were three rows for one taste. The panel never treated them as three:
-/// its `showsFooter` was `showSettingsButton || showQuitButton || showEditButton`,
-/// because a footer with all three hidden is an empty card, and the arithmetic
-/// that takes the footer's height off the grid has already shipped one defect for
-/// exactly that reason — hiding the last button left 38 pt reserved under a
-/// footer that was no longer drawn, and a panel that had fitted began to scroll.
+/// **The fold is undone, and undoing it is not symmetrical.** Folding was
+/// lossless in one direction only: `showsFooter` was
+/// `showSettingsButton || showQuitButton || showEditButton`, so three switches
+/// turned off by hand became `false`, and every other arrangement became `true`.
+/// Coming back, `false` is therefore the one answer that was really given, and
+/// the only one worth writing: it is restored to all three. `true`, or a key
+/// never written at all, is the shipped default said out loud, and the three
+/// keys are left alone to say it themselves.
 ///
-/// **The fold is that expression**, so the switch a person had is the switch they
-/// have. Each of the three defaulted to *true* — the version of these settings
-/// before them defaulted to false, which gave a clean install a panel with no way
-/// into settings and no way to find the switch that would have added one — so an
-/// absent key is a button that was shown, and only three deliberate «off»s make a
-/// panel that had no footer keep none.
+/// The keys are named here rather than at each property, so the switch that
+/// reads one, the migration that writes it and the purge list that must **not**
+/// name it are looking at the same string.
 enum PanelFooterSetting {
 
-    /// The stored key, named here so the property that reads it and the
-    /// migration that writes it cannot be renamed apart.
-    static let key = "showPanelFooter"
+    /// The key the three were folded into. Read once more at every launch, by
+    /// the migration, and retired in the same pass — `ObsoleteDefaults.retired`
+    /// names it again, namespaced, because a purge must be able to reach a key
+    /// whose code is gone.
+    static let foldedKey = "showPanelFooter"
 
-    /// The keys this replaced. They are read exactly once, by the migration, and
-    /// retired in the same launch — `ObsoleteDefaults.retired` names them again,
-    /// because a purge must be able to reach a key whose code is gone.
-    ///
-    /// An enum rather than three strings positionally: the fold takes three
+    /// An enum rather than three strings positionally: the unfold takes three
     /// `Bool?`s that are indistinguishable at a call site.
-    enum Replaced: String, CaseIterable {
+    enum Button: String, CaseIterable {
         case settings = "showSettingsButton"
         case edit = "showPanelEditButton"
         case quit = "showQuitButton"
     }
 
+    /// Whether one of the three is drawn.
+    ///
+    /// **Default true**, which is the whole difference from the first version of
+    /// these settings, deleted long before the fold: those defaulted to *false*,
+    /// so a clean install got a panel with no way into settings and no way to
+    /// find the switch that would have added one. Safe to hide, because none of
+    /// the three is the only way to what it does — the menu-bar icon's
+    /// right-click menu carries all of them and cannot be switched off.
+    ///
+    /// Takes the store rather than reaching for `AppSettings`', so the answer a
+    /// panel draws from can be asked of a store a test owns.
+    static func shows(_ button: Button, in store: NamespacedStore) -> Bool {
+        store.bool(button.rawValue, default: true)
+    }
+
+    /// What the three keys should be written as when the fold is undone, or nil
+    /// when there is nothing to write.
+    ///
     /// - Parameters:
-    ///   - stored: the new key, or nil if it has never been written.
-    ///   - settings, quit, edit: the three old keys, each nil if never written.
-    static func folded(stored: Bool?, settings: Bool?, quit: Bool?, edit: Bool?) -> Bool {
-        if let stored { return stored }
-        // Every one of the three defaulted to true, so nil is «shown».
-        return (settings ?? true) || (quit ?? true) || (edit ?? true)
+    ///   - folded: the key of the build that had one switch, or nil.
+    ///   - settings, quit, edit: the three keys as they stand, each nil if never
+    ///     written. Any one of them present means this Mac has already been
+    ///     through the restoration and has been answering for itself since; a
+    ///     stale fold must not speak over it.
+    static func unfolded(folded: Bool?, settings: Bool?, quit: Bool?, edit: Bool?) -> Bool? {
+        guard settings == nil, quit == nil, edit == nil else { return nil }
+        // Only the deliberate «off» survived the fold. Everything else is the
+        // default, and the default needs no key.
+        return folded == false ? false : nil
+    }
+
+    /// Puts the three keys back from the fold, if there is anything to put back.
+    ///
+    /// Here rather than in `AppSettings` because the keys are here: a caller
+    /// that had to spell `Button.settings.rawValue` to read one is a second
+    /// place the storage layout is written down.
+    static func restore(in store: NamespacedStore) {
+        func written(_ button: Button) -> Bool? { store.object(button.rawValue) as? Bool }
+        guard let value = unfolded(folded: store.object(foldedKey) as? Bool,
+                                   settings: written(.settings), quit: written(.quit),
+                                   edit: written(.edit))
+        else { return }
+        for button in Button.allCases { store.set(value, for: button.rawValue) }
     }
 }

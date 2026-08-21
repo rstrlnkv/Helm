@@ -543,12 +543,14 @@ enum AppStr {
     /// them. Read from one place it cannot drift, which is the fix
     /// `VPNStr.secretNeedsAPress` is built the same way for.
     static var editPanel: String { L("Edit panel") }
-    static var showPanelFooter: String { L("Show the buttons at the bottom of the panel") }
-    /// Why the footer may be hidden at all: none of its three buttons is the
-    /// only way to what it does. This caption is also one of exactly two places
-    /// the app teaches the right-click menu, and Helm is `LSUIElement` — no Dock
-    /// icon, no application menu — so those two places are the whole set of
-    /// doors somebody can be told about.
+    static var showSettingsButton: String { L("Show Settings button") }
+    static var showPanelEditButton: String { L("Show the edit button in the panel") }
+    static var showQuitButton: String { L("Show Quit button") }
+    /// Why any of the three may be hidden at all: none of them is the only way
+    /// to what it does. This caption is also one of exactly two places the app
+    /// teaches the right-click menu, and Helm is `LSUIElement` — no Dock icon,
+    /// no application menu — so those two places are the whole set of doors
+    /// somebody can be told about.
     static var panelFooterNote: String {
         L("All three are also in the right-click menu on the menu-bar icon.")
     }
@@ -557,7 +559,30 @@ enum AppStr {
     static var widgetSize: String { L("Widget size") }
     static var addWidget: String { L("Add widget") }
     static var chooseUtilities: String { L("Choose what is in the list") }
+    static var tabLabels: String { L("Tab labels") }
     static var tabIcon: String { L("Icon") }
+    /// The pop-up's four answers.
+    ///
+    /// **Names and icons, not «Text» and «Glyph».** Glyph is the word this
+    /// codebase uses among itself; the app's own word for the thing on a tab is
+    /// the one `tabIcon` above already says, and the Russian was «Глиф» — a
+    /// transliteration of jargon in a settings pop-up. What is being chosen
+    /// between is a tab's name and a tab's icon, and those are the words.
+    ///
+    /// **«only», because a bare «Names» was already taken.** `HostsStr.names` is
+    /// the hosts file's own column of hostnames — «Имена» — and one English key
+    /// means one thing, so the two would have shared a translation and the
+    /// pop-up drew «Имена» until it was looked at. `NoKeyIsWrittenTwiceTests`
+    /// is the guard that was missing: every reader of these files goes through
+    /// `NSDictionary`, which resolves a repeated key silently.
+    static func tabLabelStyle(_ style: TabLabelStyle) -> String {
+        switch style {
+        case .automatic: L("Automatic")
+        case .text: L("Names only")
+        case .glyphAndText: L("Names and icons")
+        case .glyph: L("Icons only")
+        }
+    }
     static var newTab: String { L("New tab") }
     static var closeTab: String { L("Close tab") }
     static var tabLabel: String { L("Tab") }

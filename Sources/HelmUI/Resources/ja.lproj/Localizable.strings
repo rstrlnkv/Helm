@@ -670,6 +670,14 @@
 "New tab" = "新しいタブ";
 "Close tab" = "タブを閉じる";
 "Tab" = "タブ";
+"Show Settings button" = "“設定”ボタンを表示";
+"Show the edit button in the panel" = "パネルに編集ボタンを表示";
+"Show Quit button" = "“終了”ボタンを表示";
+"Tab labels" = "タブの表示";
+"Automatic" = "自動";
+"Names only" = "名前のみ";
+"Names and icons" = "名前とアイコン";
+"Icons only" = "アイコンのみ";
 "Choose what is in the list" = "一覧の項目を選ぶ";
 "Author" = "作者";
 "Icon" = "アイコン";
@@ -1054,12 +1062,9 @@
 "The readings on the VPN page stand at one height however long the figures get, and the age of a speed reading is written short — 40 min ago, rather than a line of its own." = "VPN 画面の値は、桁が伸びても高さが揃います。測定からの経過時間も短く、行を分けずに 40 分前のように出ます。";
 "Turning off closed-lid mode, or simply quitting Helm, now takes back the administrator rule it kept — without asking for your password again. The setting says where that rule lives and how to remove it by hand." = "ふたを閉じたまま維持する設定をオフにしたとき、あるいは Helm を終了したときに、残していた管理者ルールを取り消すようになりました。パスワードの再入力は不要です。設定画面には、そのルールの場所と手動で削除する方法が書かれています。";
 
-"Show the buttons at the bottom of the panel" = "パネル下部のボタンを表示";
 "All three are also in the right-click menu on the menu-bar icon." = "3 つともメニューバーアイコンの右クリックメニューにもあります。";
 "Menu-bar icon shape" = "メニューバーアイコンの形";
 "Menu-bar icon size" = "メニューバーアイコンの大きさ";
-"The three switches for the panel’s Settings, edit and Quit buttons are one switch. They only ever decided whether the panel had a row of buttons at all, and a panel that had one still has it." = "パネルの“設定”“編集”“終了”ボタンの 3 つのスイッチが 1 つになりました。3 つそろってもボタンの列があるかどうかしか決めていません。これまで表示されていた方はそのままです。";
-"The panel’s tabs work out their own labels: names while they fit the panel, symbols when they do not. The setting that used to ask you is gone, along with the answer that could leave a tab with nothing on it." = "パネルのタブが表示の仕方を自分で決めます。名前が収まるうちは名前を、収まらなくなったら記号を。設定は不要になり、タブが空になり得た選択肢もなくなりました。";
 "Plain module icons are plain everywhere now, the panel included. The setting changed the settings sidebar and nothing else." = "モジュールアイコンの“シンプル”がパネルを含めどこでもシンプルになりました。これまでは設定のサイドバーだけが変わっていました。";
 "The menu-bar panel opens without stopping to ask macOS about permissions first. It read from your Messages and Safari files on the way up, every time you clicked the icon." = "メニューバーのパネルが、開く前に macOS へ権限を尋ねて止まることはなくなりました。これまではアイコンをクリックするたび、その途中でメッセージや Safari のファイルを読んでいました。";
 "The panel’s pencil and the right-click menu call the same thing by the same name." = "パネルの鉛筆と右クリックメニューが、同じものを同じ名前で呼ぶようになりました。";
@@ -1070,3 +1075,4 @@
 "A date that says how old something is no longer reads as a time still to come. Where the age cannot be told — a file stamped ahead of your Mac’s clock, or one written this very second — the line is left out instead." = "経過時間を示す日付が、これからの時刻のように表示されることはなくなりました。経過時間がわからない場合 — Mac の時計より先の日時が付いたファイルや、たった今書かれたファイル — は、その行を表示しません。";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "アップデートは、実行中であることを Helm が書き留められるまで始まりません。失敗したアップデートを知らせるのはこの控えで、これがないと、失敗したアップデートは何も試されなかったかのように戻っていました。";
 "When Helm cannot save something it keeps for itself — the last measurement of your disk, the work a duplicate search did — it now says so instead of carrying on as though it had. Nothing you asked for fails because of it." = "Helm が自分のために保っているものを保存できないとき — ディスクの最後の計測や、重複検索の結果 — 保存したふりをせず、そう伝えるようになりました。あなたが頼んだことがそれで失敗することはありません。";
+"The panel’s tab labels have a fourth answer: Automatic, which keeps the names while they fit the panel and shows icons when they do not. And a tab with no icon of its own keeps its name whatever you choose — it used to be drawn as an empty button." = "タブの表示に4つ目の選択肢が加わりました。“自動”は、名前がパネルに収まるあいだは名前を、収まらなくなればアイコンを表示します。また、アイコンを持たないタブは何を選んでも名前を保ちます — 以前は空のボタンとして描かれていました。";

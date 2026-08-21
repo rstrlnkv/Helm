@@ -14,6 +14,11 @@ extension Notification.Name {
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
 @MainActor enum AppSettings {
+    /// The literal stays a literal, and `StoreNamespacesAreModuleIdsTests` says
+    /// why: it is the host's own namespace, it names no module, and it is the
+    /// one place that scan has left to find. A migration that needs the same
+    /// namespace over another store asks this one for it (`over(_:)`) rather
+    /// than spelling «app» a second time.
     static let store = NamespacedStore(namespace: "app", backing: UserDefaults.standard)
 
     /// Light, dark, or the system's choice. Applied to `NSApp`, which covers
@@ -232,50 +237,55 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
-    /// Whether the panel draws its footer: Settings, the pencil and Quit, which
-    /// are one row of the card and were three switches.
-    ///
-    /// **Default true**, which is the whole difference from the version of these
-    /// settings that was deleted. Those defaulted to *false*, so a clean install
-    /// got a panel with no way into settings and no way to find the switch that
-    /// would have added one. The switch was never the problem.
-    ///
-    /// Safe to hide because none of the three buttons is the only way to what it
-    /// does: the menu-bar icon's right-click menu carries all of them, and that
-    /// menu cannot be switched off. `PanelFooterSetting` has the fold.
-    static var showPanelFooter: Bool {
-        get {
-            PanelFooterSetting.folded(stored: store.object(PanelFooterSetting.key) as? Bool,
-                                      settings: written(.settings), quit: written(.quit),
-                                      edit: written(.edit))
-        }
+    /// The three buttons at the foot of the panel, each its own switch.
+    /// `PanelFooterSetting` holds their keys, their default and the migration
+    /// out of the one key they spent a build folded into.
+    static var showSettingsButton: Bool {
+        get { PanelFooterSetting.shows(.settings, in: store) }
+        set { show(.settings, newValue) }
+    }
+
+    static var showPanelEditButton: Bool {
+        get { PanelFooterSetting.shows(.edit, in: store) }
+        set { show(.edit, newValue) }
+    }
+
+    static var showQuitButton: Bool {
+        get { PanelFooterSetting.shows(.quit, in: store) }
+        set { show(.quit, newValue) }
+    }
+
+    private static func show(_ button: PanelFooterSetting.Button, _ on: Bool) {
+        store.set(on, for: button.rawValue)
+        NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+    }
+
+    /// How the panel's tabs are labelled. App-wide rather than per tab: it is a
+    /// question about the strip, and a strip where one tab shows a word and the
+    /// next shows a symbol is not a strip. `TabStripFit` turns the answer into
+    /// what a tab actually wears, which is not always the same thing.
+    static var tabLabelStyle: TabLabelStyle {
+        get { TabLabelStyle(stored: store.string("tabLabelStyle", default: "")) }
         set {
-            store.set(newValue, for: PanelFooterSetting.key)
+            store.set(newValue.rawValue, for: "tabLabelStyle")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }
 
-    /// What one of the three keys this replaced says, or nil if it never said
-    /// anything.
-    private static func written(_ key: PanelFooterSetting.Replaced) -> Bool? {
-        store.object(key.rawValue) as? Bool
-    }
-
     /// Reads what the retired keys still have to say, then lets them go.
     ///
-    /// **One function because the order is the whole of it.** The fold that
-    /// answers `showPanelFooter` reads three keys `ObsoleteDefaults` is about to
-    /// delete, so a purge that ran first would hand every panel the default
-    /// instead of the arrangement its owner chose — and two calls at the call
-    /// site is an ordering somebody has to remember. There is nothing to
-    /// remember here.
-    static func migrateAndPurge() {
-        if store.object(PanelFooterSetting.key) == nil {
-            // Written even when it comes out true, which is the point: after
-            // this the three old keys have said everything they will ever say.
-            store.set(showPanelFooter, for: PanelFooterSetting.key)
-        }
-        ObsoleteDefaults.purge(from: UserDefaults.standard)
+    /// **One function because the order is the whole of it.** The unfold reads
+    /// `showPanelFooter`, which `ObsoleteDefaults` is about to delete, so a purge
+    /// that ran first would hand every panel the default instead of the
+    /// arrangement its owner chose — and two calls at the call site is an
+    /// ordering somebody has to remember. There is nothing to remember here.
+    ///
+    /// **The store is a parameter, never a default.** A forgetful call taking
+    /// `UserDefaults.standard` would make every test of this an edit of the
+    /// settings the test is about.
+    static func migrateAndPurge(in backing: KeyValueStore) {
+        PanelFooterSetting.restore(in: store.over(backing))
+        ObsoleteDefaults.purge(from: backing)
     }
 
     /// The shape Helm wears in the menu bar. Typed, so the fallback for a value
