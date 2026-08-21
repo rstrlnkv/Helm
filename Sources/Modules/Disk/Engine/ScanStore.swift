@@ -46,11 +46,30 @@ public final class ScanStore: @unchecked Sendable {
     /// private, but that is the enclosing folder's doing, not this one's.
     ///
     /// A cache that cannot be written is a missed optimisation, never a reason
-    /// to fail the scan the user asked for, so the result is dropped rather than
-    /// raised.
+    /// to fail the scan the user asked for, so it is not raised — but it is not
+    /// dropped either.
+    ///
+    /// **This is the file the module reopens on**, so a refusal here is a whole
+    /// measurement lost: the next launch draws the tree from an older save, or
+    /// draws the empty ring and a minute-long progress bar, and the person who
+    /// waited out the walk is never told their walk was not kept. The label
+    /// beside the ring does not lie about it — `completedAt` comes from the
+    /// *file* on a restore, so it says the older time — which is exactly why
+    /// nothing on the screen would ever mention it.
+    ///
+    /// It reports to the log rather than upward. There is nobody upward:
+    /// `saveDetached` is the app's only caller and it is a detached task with no
+    /// continuation, by construction and for a good reason — the encode is 81 ms
+    /// of a full index of the volume and it used to run on the main actor. The
+    /// log is a surface the person can open (`LogView` shows the tail live), so
+    /// a refusal reaches somebody without a new sentence in eight languages
+    /// claiming a failure they cannot act on.
     public func save(_ result: ScanResult, at date: Date = Date()) {
-        PrivateFile.directory(at: directory)
-        PrivateFile.write(Cached(result: result, savedAt: date), to: fileURL)
+        if !PrivateFile.writeMakingTheFolder(Cached(result: result, savedAt: date), at: fileURL) {
+            HelmLog.shared.warn(DiskEngine.moduleID,
+                                "the measured tree could not be saved — the next launch opens on "
+                                + "an older measurement, or on none")
+        }
     }
 
     public func load() -> Cached? {

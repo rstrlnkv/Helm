@@ -178,10 +178,20 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         return try? JSONDecoder().decode(HashCache.self, from: data)
     }
 
+    /// A refusal here costs the whole prize of the sweep that just ran.
+    ///
+    /// The digests are what makes the *next* sweep quick — it is the one part of
+    /// this module that reads every candidate file end to end — so a cache that
+    /// never lands means the next run hashes, again, everything this one just
+    /// hashed, and the run after that as well. Nothing about the report is
+    /// wrong, which is why it would never be noticed: the module is simply
+    /// always as slow as its first run. Said out loud so the log answers the
+    /// question somebody eventually asks.
     static func saveCache(_ cache: HashCache) {
-        let url = cacheURL()
-        PrivateFile.directory(at: url.deletingLastPathComponent())
-        PrivateFile.write(cache, to: url)
+        if !PrivateFile.writeMakingTheFolder(cache, at: cacheURL()) {
+            HelmLog.shared.warn(moduleID, "the digest cache could not be saved — the next sweep "
+                                + "re-reads every file this one already read")
+        }
     }
 
     /// The same search the page runs, started by the timer instead of a person.

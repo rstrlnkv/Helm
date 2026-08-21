@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Diagnostics for dev builds. Every prerelease ships with the log on: the
 /// file is the evidence trail we triage against before a build graduates to
@@ -215,7 +216,10 @@ public final class HelmLog: @unchecked Sendable {
         // but a file an earlier build created keeps its 0644 for ever otherwise —
         // which is what `~/Library/Logs/Helm/helm.log` was measured at, inside
         // the 0700 folder that was doing all of the protecting.
-        queue.async { Self.allFileURLs.forEach { PrivateFile.harden(at: $0) } }
+        // Discarded: `harden` answers whether there was a file to tighten, and
+        // "there was not" is the ordinary case — this runs before the first line
+        // is written, and the paragraph above says so.
+        queue.async { Self.allFileURLs.forEach { _ = PrivateFile.harden(at: $0) } }
         guard on else { return }
         write(.info, "app", "Helm \(version) started")
     }
@@ -239,7 +243,12 @@ public final class HelmLog: @unchecked Sendable {
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
             for url in Self.allFileURLs { try? fm.removeItem(at: url) }
-            PrivateFile.directory(at: Self.directory)
+            // Discarded: the `createFile` below is what this block is for and it
+            // has its own answer; a folder that could not be made is a marker
+            // that cannot land, and an unlanded marker retries at the next
+            // launch — which is a repeated deletion of a log that is already
+            // empty. See `append` for why nothing here can be logged.
+            _ = PrivateFile.directory(at: Self.directory)
             fm.createFile(atPath: marker.path, contents: Data())
         }
     }
@@ -409,13 +418,34 @@ public final class HelmLog: @unchecked Sendable {
 
     // MARK: - IO (always on the private queue)
 
+    /// **A log that cannot write cannot log that it cannot write**, which is why
+    /// the only refusal in this file goes somewhere else.
+    ///
+    /// Every other caller of `PrivateFile` in the app answers a refusal with a
+    /// line here. This one cannot: the line would be appended by the call that
+    /// just failed, and a line about the failure would fail in turn, on the
+    /// queue that is already running the first one. A flag saying «the file is
+    /// unwritable» would be worse than silence — it is the family this house has
+    /// a name for, a local boolean standing in for a live external fact, with
+    /// nothing to tell it the disk came back.
+    ///
+    /// Two things are true instead. `LogView`'s tail already has the line: it is
+    /// appended in `write` before this runs, so the surface a person can open is
+    /// unaffected and only the *file* — the one "Copy log" hands to a bug report
+    /// — is missing what the screen is showing. And `os.Logger` is a different
+    /// port on a different store, so the refusal is said in the unified log,
+    /// where `log show --predicate 'subsystem == "com.helm.app"'` finds it. Not
+    /// rate-limited by hand: the system does that, and the alternative to some
+    /// noise while a disk is full is a log that quietly stops.
     private func append(_ text: String) {
-        let fm = FileManager.default
         let url = Self.fileURL
         // On every append: the folder may predate this rule, and `attributes:`
         // on a create call only covers a folder that call made. The log is
         // diagnostic, not public — no other account needs to read it.
-        PrivateFile.directory(at: Self.directory)
+        //
+        // Discarded: a folder that could not be made is a write that cannot
+        // land, and the writes below report for both.
+        _ = PrivateFile.directory(at: Self.directory)
         guard let data = text.data(using: .utf8) else { return }
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }
@@ -426,14 +456,28 @@ public final class HelmLog: @unchecked Sendable {
                 // Both branches that *create* the file go through `PrivateFile`:
                 // a bare write takes the umask, which is 0644 here, and the file
                 // then keeps it for as long as it is appended to.
-                PrivateFile.write(data, to: url)
+                if !PrivateFile.write(data, to: url) { Self.sayOutOfBand() }
                 return
             }
             try? handle.write(contentsOf: data)
-        } else {
-            PrivateFile.write(data, to: url)
+        } else if !PrivateFile.write(data, to: url) {
+            Self.sayOutOfBand()
         }
     }
+
+    /// The one channel left when the log's own file is the thing refusing.
+    ///
+    /// No path and no message text: this says that the file is not taking lines,
+    /// and the lines it is not taking are the ones that carry Helm's redaction.
+    /// Sending them through a second store would be handing the unified log
+    /// content that was written for a file with a `0600` mode on it.
+    private static func sayOutOfBand() {
+        // One literal and no interpolation: `Logger` takes an `OSLogMessage`,
+        // which a concatenation is not, and there is nothing here to interpolate.
+        outOfBand.error("the diagnostics log could not be written; this session's lines are in the app's live log view only, and not in the file Copy log hands over")
+    }
+
+    private static let outOfBand = Logger(subsystem: "com.helm.app", category: "log")
 
     private func rotate() {
         let fm = FileManager.default

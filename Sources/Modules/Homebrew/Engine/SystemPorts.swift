@@ -224,9 +224,17 @@ public struct FileOpMarker: OpMarker {
         url = directory.appendingPathComponent("homebrew-operation")
     }
 
+    /// A marker that does not land is the calm the protocol above exists to
+    /// prevent: brew goes on changing the Cellar after Helm quits, and the next
+    /// launch has nothing to report it with. Nothing can be done about it here —
+    /// the write is the whole mechanism — so it is said, and the label is not,
+    /// because the label is a brew command with a package name in it.
     public func write(_ label: String) {
-        _ = PrivateFile.directory(at: url.deletingLastPathComponent())
-        _ = PrivateFile.write(Data(label.utf8), to: url)
+        if !PrivateFile.writeMakingTheFolder(Data(label.utf8), at: url) {
+            HelmLog.shared.warn(HomebrewEngine.moduleID,
+                                "the running operation could not be written down — a quit before "
+                                + "it finishes will not be reported at the next launch")
+        }
     }
 
     public func clear() {

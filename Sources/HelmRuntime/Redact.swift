@@ -107,6 +107,17 @@ public enum Redact {
     /// equal to a line from today — is untouched, while a tag copied into a bug
     /// report no longer means anything on anyone else's machine.
     public static func tag(_ value: String, prefix: String) -> String {
+        tag(value, prefix: prefix, salt: salt)
+    }
+
+    /// The same digest over a salt named outright.
+    ///
+    /// The public call above reads a `static let` that is decided once per
+    /// process, which is right for the app and leaves a test no way to ask what
+    /// a *different* salt would give — and «the same name tags the same way in
+    /// two launches that could not save the salt» is a question about two
+    /// salts. Nothing else about the digest changes.
+    static func tag(_ value: String, prefix: String, salt: [UInt8]) -> String {
         var hash: UInt32 = 2_166_136_261
         for byte in salt {
             hash ^= UInt32(byte)
@@ -134,7 +145,16 @@ public enum Redact {
     // MARK: - Salt
 
     /// Read once per process: `tag` runs on every logged name.
-    private static let salt: [UInt8] = loadOrCreateSalt()
+    ///
+    /// The ports are named here rather than defaulted inside the function, so a
+    /// test cannot reach the real log directory by forgetting to mention it —
+    /// which is how eleven engine tests once rolled back the owner's Autopilot.
+    private static let salt: [UInt8] = loadOrCreateSalt(
+        at: HelmLog.directory.appendingPathComponent("salt"),
+        // `return` outright: a closure hands its one expression back with no
+        // word for it, which reads exactly like a dropped answer — see
+        // `ARefusalFromTheDiskIsNotASuccessTests`, which says so and means this.
+        writing: { data, url in return PrivateFile.writeMakingTheFolder(data, at: url) })
 
     /// The salt file sits beside the log, `0600`, and is created on first use.
     ///
@@ -144,9 +164,17 @@ public enum Redact {
     /// would buy. If the file cannot be written the tags stay stable and
     /// unsalted rather than changing every launch, because a tag that means
     /// nothing across restarts is useless for the triage it exists for.
-    private static func loadOrCreateSalt() -> [UInt8] {
-        let url = HelmLog.directory.appendingPathComponent("salt")
-        let fm = FileManager.default
+    ///
+    /// **That last sentence was false for as long as it stood.** The write's
+    /// answer was dropped and the fresh bytes were used whatever it said, so a
+    /// salt file that could not be written salted every launch differently —
+    /// which is precisely the outcome the sentence rules out, and the one that
+    /// costs the tag the only property it has. `app#1a2f` on Monday and
+    /// `app#c40b` on Tuesday are one application, and the log cannot say so.
+    /// The two properties pull against each other and only one survives an
+    /// unwritable disk; the paragraph had already chosen, and the code now
+    /// obeys it. `ASaltThatCannotBeSavedIsNotASaltTests` holds the promise.
+    static func loadOrCreateSalt(at url: URL, writing write: (Data, URL) -> Bool) -> [UInt8] {
         if let existing = try? Data(contentsOf: url), existing.count == 16 {
             return [UInt8](existing)
         }
@@ -154,8 +182,17 @@ public enum Redact {
         guard SecRandomCopyBytes(kSecRandomDefault, fresh.count, &fresh) == errSecSuccess else {
             return []
         }
-        PrivateFile.directory(at: HelmLog.directory)
-        PrivateFile.write(Data(fresh), to: url)
+        guard write(Data(fresh), url) else {
+            // Said out loud, because unsalted tags are a fact about how much
+            // this log can be trusted to hide and whoever triages it should not
+            // have to guess. No name reaches the line — there is none to reach
+            // it — and the log's own writer is a different port from this one,
+            // so a disk that refused the salt may still take the line.
+            HelmLog.shared.warn("log", "the redaction salt could not be saved — tags stay "
+                                + "comparable across launches but are unsalted, so anyone "
+                                + "holding this log can invert them against a list of names")
+            return []
+        }
         return fresh
     }
 }

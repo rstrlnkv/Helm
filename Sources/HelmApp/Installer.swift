@@ -12,6 +12,13 @@ enum Installer {
         /// The swap script could not be started. `HelmProcess` has already
         /// logged why; this is what the caller shows.
         case couldNotHandOver
+        /// The note that says an update is in flight could not be written, so
+        /// nothing was handed over. **Refusing is the safe direction here**, and
+        /// it is the only one available: the note's absence is what reports a
+        /// failed swap, so proceeding without it makes a swap that destroys the
+        /// installed bundle indistinguishable from one that worked — and by then
+        /// this process is gone. `UpdateHandoff.note` says the rest.
+        case couldNotRecordHandover
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
@@ -80,7 +87,13 @@ enum Installer {
         // anything: this process is about to end and the script has no screen.
         // The script removes it when the copy landed, so what a failure leaves
         // behind is the note itself (`UpdateHandoff`).
-        UpdateHandoff.note(version: version)
+        guard UpdateHandoff.note(version: version) else {
+            // Before the spawn, so there is nothing handed over to undo — only
+            // the script this function just wrote, which nothing will delete
+            // now that nothing will run it.
+            try? FileManager.default.removeItem(at: scriptURL)
+            throw InstallError.couldNotRecordHandover
+        }
 
         // Not `HelmProcess.run`: that runner reads the child to EOF and waits
         // for its status, and this child is waiting for *this* process to exit

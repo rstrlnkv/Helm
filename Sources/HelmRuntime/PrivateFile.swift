@@ -18,6 +18,19 @@ import Foundation
 /// Directories have the matching trap one level up: the `attributes:` argument
 /// applies only to directories *this call* creates, so a folder an earlier build
 /// left at 0755 stays there for ever unless it is set again.
+///
+/// **Every call here answers, and none of them is `@discardableResult`.** It
+/// was, on all four, and eight callers took the invitation — the tree Disk
+/// reopens on, the salt the log's tags are derived from, the note that says an
+/// update is in flight, the scan journal, the digest cache, a marker and the log
+/// itself. A refusal that is not a success is a defect this house already names
+/// for `pmset`, for `launchctl` and for a removal that got no answer; it had
+/// simply not reached the filesystem, because `write(x, to: y)` and
+/// `_ = write(x, to: y)` differ by four characters and nothing could tell a
+/// decision from an oversight. So the compiler objects now, and
+/// `ARefusalFromTheDiskIsNotASuccessTests` reads `Sources` for the rest: use the
+/// answer, or discard it with `_ =` and write beside it why the refusal does not
+/// matter there.
 public enum PrivateFile {
 
     /// **What a symlink at the destination means to this write**, which is a
@@ -54,16 +67,41 @@ public enum PrivateFile {
     /// - Returns: whether it landed. These files are caches, journals and
     ///   salts — a write that cannot happen is a missed optimisation, never a
     ///   reason to fail the work that asked for it — so the caller is told and
-    ///   decides, rather than being thrown at.
-    @discardableResult
+    ///   decides, rather than being thrown at. Deciding is not optional: see the
+    ///   type's own note above.
     public static func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
         guard let data = try? JSONEncoder().encode(value) else { return false }
         return write(data, to: url)
     }
 
+    /// The folder first, then the file.
+    ///
+    /// **Six call sites had spelled this pair out, and each carried the same
+    /// comment explaining the `&&`** — Disk's saved tree, the Duplicates digest
+    /// cache, the Homebrew and VPN markers, the log's salt and the update note.
+    /// That is the shape this whole type was extracted for the first time: the
+    /// note at the top of the file says three places hand-rolled the write and
+    /// each named the other two. A pairing repeated six times under one repeated
+    /// sentence is the same confession.
+    ///
+    /// Both answers spent on one, because they are one question: a folder that
+    /// could not be made is a write that cannot land, so `&&` short-circuits and
+    /// the caller has a single thing to decide about.
+    ///
+    /// `HelmLog.append` keeps its own pair and is not a seventh: it makes the
+    /// folder once and then writes in either of two branches, so there is no one
+    /// answer for the two to share.
+    public static func writeMakingTheFolder<T: Encodable>(_ value: T, at url: URL) -> Bool {
+        return directory(at: url.deletingLastPathComponent()) && write(value, to: url)
+    }
+
+    /// The same for bytes that are not JSON.
+    public static func writeMakingTheFolder(_ data: Data, at url: URL) -> Bool {
+        return directory(at: url.deletingLastPathComponent()) && write(data, to: url)
+    }
+
     /// The same for bytes that are not JSON — the log's redaction salt, and the
     /// two files in `~/.ssh` that may be links into somebody's dotfiles.
-    @discardableResult
     public static func write(_ data: Data, to url: URL,
                              destination: Destination = .theName) -> Bool {
         let path: String
@@ -94,7 +132,6 @@ public enum PrivateFile {
     ///
     /// - Returns: whether there was a file to tighten. Absent is not a failure —
     ///   the log is hardened before anything has been written to it.
-    @discardableResult
     public static func harden(at url: URL) -> Bool {
         let fm = FileManager.default
         var isDirectory: ObjCBool = false
@@ -106,7 +143,11 @@ public enum PrivateFile {
     }
 
     /// Create at 0700, and re-apply it to what was already there.
-    @discardableResult
+    ///
+    /// - Returns: whether there is a private directory there now. A caller that
+    ///   is about to write into it usually spends this on the write's own answer
+    ///   — a folder that could not be made is a write that cannot land — which
+    ///   is why so many sites read `directory(at:) && write(…)`.
     public static func directory(at url: URL) -> Bool {
         let fm = FileManager.default
         try? fm.createDirectory(at: url, withIntermediateDirectories: true,

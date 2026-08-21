@@ -100,7 +100,9 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
         let new = work.appendingPathComponent("Helm.app")
         try bundle(install, saying: "old")
         try bundle(new, saying: "new")
-        UpdateHandoff.note(version: "0.9.9")
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"),
+                      "the note was never planted, so what this test reads back "
+                      + "about it proves nothing")
 
         let result = try run(new: new, install: install, work: work, in: scratch)
 
@@ -125,7 +127,9 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
         let new = work.appendingPathComponent("Helm.app")
         try bundle(install, saying: "old")
         try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
-        UpdateHandoff.note(version: "0.9.9")
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"),
+                      "the note was never planted, so what this test reads back "
+                      + "about it proves nothing")
 
         let result = try run(new: new, install: install, work: work, in: scratch)
 
@@ -175,7 +179,9 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
         let new = work.appendingPathComponent("Helm.app")
         try bundle(install, saying: "old")
         try bundle(new, saying: "new")
-        UpdateHandoff.note(version: "0.9.9")
+        XCTAssertTrue(UpdateHandoff.note(version: "0.9.9"),
+                      "the note was never planted, so what this test reads back "
+                      + "about it proves nothing")
         try FileManager.default.setAttributes([.posixPermissions: 0o500],
                                               ofItemAtPath: applications.path)
         // Or the scratch teardown cannot drain the directory it just locked.

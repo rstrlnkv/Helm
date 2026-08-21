@@ -145,6 +145,75 @@ proven newer than its sources.
   so the sentence cannot name a file the engine stopped writing.
 
 ### Fixed
+- **`PrivateFile.write` answers whether it landed and eight callers dropped the
+  answer**, which is «a refusal that is not a success» — the family this
+  repository already names for `pmset`, for `launchctl` and for a removal that
+  got no reply — pointed at the filesystem, where it had never reached. The
+  eight: the tree Disk reopens on, the salt the log's tags are derived from, the
+  note that says an update is in flight, the scan journal, the Duplicates digest
+  cache, a VPN marker and the log itself twice. `PrivateFile.directory` was the
+  same shape at eight more sites and `harden` at one.
+
+  **What let it survive is that a decision and an oversight are the same four
+  characters.** All four entry points were `@discardableResult`, so
+  `write(x, to: y)` compiled in silence, and no reader could tell a caller who
+  had weighed the failure from one who never saw the value. The attribute is
+  gone from all four, so the compiler objects at the call site, and
+  `ARefusalFromTheDiskIsNotASuccessTests` reads every statement in `Sources` for
+  the rest: use the answer, or discard it with `_ =` and a comment saying, in
+  the word «Discarded», why the refusal does not matter there. The scan folds
+  continuation lines before judging them — its first version reported seven
+  correct sites, a `guard` continued onto the next line among them, and a check
+  that reports careful code is a check somebody switches off. It requires an
+  explicit `return` where a body is one expression, because nothing short of a
+  type-checker can tell `{ PrivateFile.write(x, to: y) }` handing a `Bool` back
+  from the same four words throwing one away.
+
+  The sites were judged one at a time and they did not want one answer.
+  `KeepAwake`'s `preventSleep` kept the attribute too — both its callers happen
+  to use the answer, so it was a standing permission to commit the defect its
+  own doc comment records, and it is gone as well.
+
+- **The redaction salt's own paragraph promised the opposite of what the code
+  did.** It said that a salt file that could not be written leaves the tags
+  «stable and unsalted rather than changing every launch, because a tag that
+  means nothing across restarts is useless for the triage it exists for».
+  `loadOrCreateSalt` drew sixteen fresh random bytes, handed them to
+  `PrivateFile.write`, dropped the answer and salted with them regardless — so
+  an unwritable salt file gave *every launch a different salt*, which is exactly
+  the outcome the sentence rules out and the one that costs `Redact.tag` the
+  only property it has. `app#1a2f` on Monday and `app#c40b` on Tuesday are one
+  application and nothing in the log can say so. Measured as the mutation that
+  proves the guard: two launches, `app#9ccf` and `app#9af8`, one name.
+
+  The two properties pull against each other and only one survives a disk that
+  will not take the file; the paragraph had already chosen and the code obeys it
+  now, with a line in the log saying the tags are unsalted so whoever triages is
+  not guessing. `ASaltThatCannotBeSavedIsNotASaltTests` holds the promise —
+  the shape ARCHITECTURE.md keeps finding, a promise written in prose with no
+  test under it.
+
+- **An update is refused rather than started when the note that reports it
+  cannot be written.** `UpdateHandoff`'s absence *is* the report of a successful
+  swap — the script removes the note only when the copy landed — so a note that
+  never existed says «the update worked» about one that has not been attempted,
+  and a swap that then fails is reported by nobody. There is no second chance to
+  write it: by then the process is gone and the script has no screen. The one
+  site of the eight where refusing is the right direction, and it refuses before
+  the spawn, so nothing is handed over to undo.
+
+  The other five report to the log, which is a surface a person can open
+  (`LogView`), rather than to a screen: Disk's saved tree, the scan journal, the
+  Duplicates digest cache, and the Homebrew and VPN markers each have exactly
+  one caller and it is a detached task or a launch-time purge with nobody left
+  upward to tell. `HelmLog` is the one that cannot use its own channel — a log
+  that cannot write cannot log that it cannot write, and a flag saying «the file
+  is unwritable» would be the local-flag-for-a-live-fact family in a new place —
+  so it says so through `os.Logger`, a different port on a different store,
+  where `log show --predicate 'subsystem == "com.helm.app"'` finds it. The tail
+  `LogView` draws is filled before the file write, so the screen keeps the lines
+  the file lost.
+
 - **A date drawn under a reading could read as a time still to come, and two
   ways in led to it.** `HelmDates.relative` refused nothing, and all five of its
   callers draw an *age* — «Checked …», «Measured …», «Last scan …», a key

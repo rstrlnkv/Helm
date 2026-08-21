@@ -13,7 +13,12 @@ public protocol SleepAssertions: AnyObject {   // IOKit
     /// that is not a success» the clamshell half of this module was corrected
     /// for, on the port that could not even say it. A state a port has no word
     /// for is a state no fake can stand in and no test can be written about.
-    @discardableResult
+    ///
+    /// Which is why it is not `@discardableResult`. It was, and both callers
+    /// happened to use the answer anyway — so the attribute was a standing
+    /// permission to commit the defect the paragraph above records, left on a
+    /// port whose refusal means a Mac sleeps while the menu bar says it will
+    /// not. `PrivateFile` was the same permission taken up eight times.
     func preventSleep(display: Bool) -> Bool
     func release()
 }

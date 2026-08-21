@@ -25,7 +25,7 @@ final class PrivateFileTests: XCTestCase {
 
     func testAFreshWriteIsPrivate() throws {
         let url = directory.appendingPathComponent("fresh.json")
-        PrivateFile.write(["a", "b"], to: url)
+        XCTAssertTrue(PrivateFile.write(["a", "b"], to: url))
         XCTAssertEqual(try mode(of: url), 0o600)
         XCTAssertEqual(try JSONDecoder().decode([String].self, from: Data(contentsOf: url)),
                        ["a", "b"])
@@ -39,7 +39,7 @@ final class PrivateFileTests: XCTestCase {
         FileManager.default.createFile(atPath: url.path, contents: Data("[]".utf8),
                                        attributes: [.posixPermissions: 0o644])
         XCTAssertEqual(try mode(of: url), 0o644)
-        PrivateFile.write(["later"], to: url)
+        XCTAssertTrue(PrivateFile.write(["later"], to: url))
         XCTAssertEqual(try mode(of: url), 0o600)
     }
 
@@ -47,14 +47,14 @@ final class PrivateFileTests: XCTestCase {
         let url = directory.appendingPathComponent("salt.bin")
         FileManager.default.createFile(atPath: url.path, contents: Data([0]),
                                        attributes: [.posixPermissions: 0o644])
-        PrivateFile.write(Data([1, 2, 3]), to: url)
+        XCTAssertTrue(PrivateFile.write(Data([1, 2, 3]), to: url))
         XCTAssertEqual(try mode(of: url), 0o600)
         XCTAssertEqual(try Data(contentsOf: url), Data([1, 2, 3]))
     }
 
     func testANewDirectoryIsPrivate() throws {
         let url = directory.appendingPathComponent("new/deeper")
-        PrivateFile.directory(at: url)
+        XCTAssertTrue(PrivateFile.directory(at: url))
         XCTAssertEqual(try mode(of: url), 0o700)
     }
 
@@ -65,7 +65,7 @@ final class PrivateFileTests: XCTestCase {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o755])
         XCTAssertEqual(try mode(of: url), 0o755)
-        PrivateFile.directory(at: url)
+        XCTAssertTrue(PrivateFile.directory(at: url))
         XCTAssertEqual(try mode(of: url), 0o700)
     }
 

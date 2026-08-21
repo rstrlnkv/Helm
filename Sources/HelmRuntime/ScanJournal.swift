@@ -140,10 +140,22 @@ public final class ScanJournal: @unchecked Sendable {
     /// what `previous` held is gone. Doing it the other way round leaves the two
     /// files equal after the first scan, and the comparison then reads as
     /// "nothing changed" forever.
+    ///
+    /// **What a refused write does to the next tick, and why it is said out
+    /// loud.** The rotation has already happened by the time the list is
+    /// written, so a write that does not land leaves `current` absent and
+    /// `previous` holding the scan before it. `change` answers "nothing is
+    /// known" for that — `list` returns nil and the comparison is not run — so
+    /// no false delta reaches a banner; `ScanCoordinator.tellSomebodyWhatAppeared`
+    /// reads back off disk for exactly this reason and carries the measurement
+    /// that says the read is worth its cost. The structure is therefore already
+    /// safe, and what is left is that nobody could tell it was happening: a
+    /// module whose journal never lands announces nothing, for ever, and looks
+    /// like a module with nothing to announce. That is the line below.
     public func record(_ entry: ScanEntry, items: [ScanItem], module: String) {
         writes.sync {
             let directory = self.directory(module: module)
-            makePrivateDirectory(directory)
+            var landed = PrivateFile.directory(at: directory)
 
             let current = listURL(module: module, .current)
             let previous = listURL(module: module, .previous)
@@ -151,7 +163,10 @@ public final class ScanJournal: @unchecked Sendable {
                 try? FileManager.default.removeItem(at: previous)
                 try? FileManager.default.moveItem(at: current, to: previous)
             }
-            write(items, to: current)
+            // `&& landed` on the right, so the write always runs: the entries
+            // below are worth writing whether or not the list arrived, and
+            // `&&` would skip them.
+            landed = write(items, to: current) && landed
 
             // **The entry just recorded always survives the trim.** Sorting
             // everything by date and cutting the tail loses it in two ordinary
@@ -168,16 +183,21 @@ public final class ScanJournal: @unchecked Sendable {
             let older = entries(module: module)
                 .filter { $0 != entry }
                 .sorted { $0.at > $1.at }
-            write(Array(([entry] + older).prefix(Self.limit)),
-                  to: entriesURL(module: module))
+            landed = write(Array(([entry] + older).prefix(Self.limit)),
+                           to: entriesURL(module: module)) && landed
+
+            guard !landed else { return }
+            // The module id, never a path: this file names every file the scan
+            // found and the log names none of them.
+            HelmLog.shared.warn(module, "the scan journal could not be written — this scan is "
+                                + "not in the history, and nothing new will be announced until "
+                                + "one lands")
         }
     }
 
-    private func makePrivateDirectory(_ url: URL) { PrivateFile.directory(at: url) }
-
     /// These files name every path a scan found; `PrivateFile` is why the mode
     /// is set on every write rather than once at creation.
-    private func write<T: Encodable>(_ value: T, to url: URL) {
-        PrivateFile.write(value, to: url)
+    private func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
+        return PrivateFile.write(value, to: url)
     }
 }

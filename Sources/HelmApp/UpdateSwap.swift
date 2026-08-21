@@ -103,9 +103,22 @@ enum UpdateHandoff {
     /// with everything else (`ResetPlan.roots`).
     static var file: URL { HelmSupport.directory.appendingPathComponent("update-handoff") }
 
-    static func note(version: String) {
-        PrivateFile.directory(at: HelmSupport.directory)
-        PrivateFile.write(Data(version.utf8), to: file)
+    /// - Returns: whether the note is on disk.
+    ///
+    /// **A note that was not written inverts the whole arrangement.** The
+    /// absence of this file *is* the report of a successful swap — the script
+    /// removes it only when the copy landed — so a note that never existed says
+    /// "the update worked" about an update that has not been attempted yet, and
+    /// a swap that then fails is reported by nobody. There is no second chance
+    /// to write it: by the time anything goes wrong this process is gone and
+    /// the script has no screen.
+    ///
+    /// So the answer travels, and `Installer.launchSwapScript` refuses the
+    /// handover on a refusal — the one site of the eight where that is the right
+    /// direction, because what cannot be recorded here is the safety net under
+    /// the most destructive thing this app does.
+    static func note(version: String) -> Bool {
+        return PrivateFile.writeMakingTheFolder(Data(version.utf8), at: file)
     }
 
     static func clear() {

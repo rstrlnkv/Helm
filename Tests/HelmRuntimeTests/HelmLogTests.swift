@@ -75,7 +75,7 @@ final class TheLogFileIsAsPrivateAsItsFolderTests: XCTestCase {
     /// tighten it.
     func testLaunchTightensALogAnEarlierBuildLeftReadableToEverybody() throws {
         let fm = FileManager.default
-        PrivateFile.directory(at: HelmLog.directory)
+        XCTAssertTrue(PrivateFile.directory(at: HelmLog.directory))
         fm.createFile(atPath: HelmLog.resetMarkerURL.path, contents: Data())
         try? fm.removeItem(at: HelmLog.fileURL)
         fm.createFile(atPath: HelmLog.fileURL.path, contents: Data("old line\n".utf8),

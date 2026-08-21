@@ -223,10 +223,18 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // done first would leave the readable-by-anything item in place forever,
         // which is the one thing this exists to prevent.
         guard status == errSecSuccess || status == errSecItemNotFound else { return }
-        PrivateFile.directory(at: marker.deletingLastPathComponent())
-        PrivateFile.write(Data(), to: marker)
+        let recorded = PrivateFile.writeMakingTheFolder(Data(), at: marker)
         if status == errSecSuccess {
             HelmLog.shared.info(VPNEngine.moduleID, "cleared the old credential cache")
+        }
+        // The refusal fails in the safe direction — an unrecorded purge runs
+        // again, and the second `SecItemDelete` finds nothing and marks itself
+        // done — so this is not a warning about the secrets. It is a warning
+        // about the line above it, which would otherwise announce the same
+        // clearing at every launch with nothing anywhere to say why.
+        if !recorded {
+            HelmLog.shared.warn(VPNEngine.moduleID, "the credential-cache purge could not be "
+                                + "recorded — it will run again at the next launch")
         }
     }
 
