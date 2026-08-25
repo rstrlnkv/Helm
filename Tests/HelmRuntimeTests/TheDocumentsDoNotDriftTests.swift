@@ -102,8 +102,21 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         paths += briefs.filter { $0.hasPrefix("helm-") && $0.hasSuffix(".md") }
                        .sorted().map { ".claude/agents/\($0)" }
 
+        // **The skip asks about the disk, and the assertion asks about the
+        // reader.** These are two questions and the first version folded them
+        // into one: it skipped when the *corpus* came out thin, so raising
+        // `shortestBlock` until the reader saw nothing produced
+        // «3 tests skipped and 0 failures» — a suite passing, in a check
+        // written to stop exactly that. An absent submodule is a fact about the
+        // checkout; a thin corpus over documents that are present is a broken
+        // reader, and it is not allowed to look like one.
+        let present = paths.filter {
+            FileManager.default.fileExists(atPath: root.appendingPathComponent($0).path)
+        }
+        try XCTSkipIf(present.count < 3, "the standing documents are not in this checkout")
+
         var out: [Block] = []
-        for path in paths {
+        for path in present {
             guard let text = try? String(contentsOf: root.appendingPathComponent(path),
                                          encoding: .utf8) else { continue }
             let name = path.split(separator: "/").last.map(String.init) ?? path
@@ -115,11 +128,11 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
                 }
             }
         }
-        // A checkout without the private submodule has almost none of these.
-        // Skipped out loud: a green result over an empty corpus would claim a
-        // comparison that never ran.
-        try XCTSkipIf(Set(out.map(\.document)).count < 3,
-                      "the standing documents are not in this checkout")
+        XCTAssertGreaterThanOrEqual(Set(out.map(\.document)).count, present.count - 1, """
+            \(present.count) documents on disk but only \(Set(out.map(\.document)).count) \
+            produced any prose. The reader stopped seeing them; every verdict below \
+            would be over a corpus that is not the documents.
+            """)
         return out
     }
 
