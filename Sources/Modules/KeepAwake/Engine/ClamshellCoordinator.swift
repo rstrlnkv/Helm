@@ -567,6 +567,21 @@ final class ClamshellCoordinator: @unchecked Sendable {
         }
     }
 
+    /// Everything this coordinator has queued has run.
+    ///
+    /// `removeGrant` ends in `shell.async`, so a caller that awaits the command
+    /// and then counts is counting a subject still in motion: the ask happens on
+    /// `shell`, not on the thread that sent the command. On an idle machine the
+    /// queue wins that race and on a loaded one it does not, which is how
+    /// `TheRemovalPromptIsAPromptTooTests` failed once in a full suite on
+    /// 2026-08-25 and never once alone — and, worse, how its «no second dialog»
+    /// assertions could pass over a second dialog that simply had not happened
+    /// yet. `shell` is serial, so a block enqueued after the work runs after it:
+    /// an ordering fact, not a sleep, the same shape as the file's `drainMain`.
+    func drainForTests() async {
+        await withCheckedContinuation { done in shell.async { done.resume() } }
+    }
+
     /// The one place a removal's answer is read, whichever route made it.
     private func finishedRemoving(_ removed: Bool) {
         // **Which rule survived decides who is being talked about.** Both

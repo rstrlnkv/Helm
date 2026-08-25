@@ -681,6 +681,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// payload to say so.
     func settingsChangedForTests() { settingsChanged() }
 
+    /// Everything the lid coordinator queued has run — the removal prompt is
+    /// asked for on its own queue, so a test that counts the asks must wait for
+    /// it. See `ClamshellCoordinator.drainForTests`.
+    func drainClamshellForTests() async { await lid.drainForTests() }
+
     private func cancelTimers() {
         jiggleToken = nil
         batteryToken = nil
