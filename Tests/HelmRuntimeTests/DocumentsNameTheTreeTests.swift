@@ -50,6 +50,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "IOPMCopySystemPowerSettings": "IOKit's reader, named because Swift does not export it",
         "dlsym": "the loader's own lookup, named as the way those symbols are reachable at all",
         "ctypes": "Python's foreign-function module, which is what the probe used in the end",
+        "GetFileInfo": "the Xcode command-line tool that reads a file's Finder info, named in the account of the provider that stamped it",
         "AppleLanguages": "the defaults key macOS resolves a bundle's language from — named because the value on this machine is what made a language mutation pass",
         "backupd": "a macOS daemon, named in the measurement of which processes hold sleep",
         "sharingd": "the same measurement — the one that answers NSRunningApplication and still is not an app",
@@ -142,8 +143,23 @@ final class DocumentsNameTheTreeTests: XCTestCase {
 
     // MARK: - The documents
 
+    /// The documents this reads. It was `ARCHITECTURE.md` and `CLAUDE.md` alone
+    /// until 2026-08-25, when an audit of the rest found a public module table
+    /// nine rows long over a registry of ten and a digest rule naming one of
+    /// the two scripts that print it — neither a name this check would have
+    /// caught, but both in files it was not looking at, which is the weaker
+    /// reason and still a reason.
+    ///
+    /// **The crew's own README and briefs are not here.** They live in a
+    /// sibling repository, are not reachable by a repo-relative path from a
+    /// worktree, and `check-in-step.sh` already reads them — the boundary each
+    /// document's contract now states out loud.
+    private static let standing = [
+        "ARCHITECTURE.md", "CLAUDE.md", "README.md", "VERSIONING.md",
+    ]
+
     private func documents() throws -> [(name: String, lines: [String])] {
-        let found = ["ARCHITECTURE.md", "CLAUDE.md"].compactMap { name -> (String, [String])? in
+        let found = Self.standing.compactMap { name -> (String, [String])? in
             guard let text = try? String(contentsOf: root.appendingPathComponent(name),
                                          encoding: .utf8) else { return nil }
             return (name, text.components(separatedBy: .newlines))
