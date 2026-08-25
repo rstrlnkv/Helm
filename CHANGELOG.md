@@ -11,7 +11,7 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > Two hangs on the owner's own Mac opened this one, and the second was found by
 > looking for the first one's family rather than by waiting for a report.
 
-### The eight-module sweep
+### The ten-module sweep
 
 Every module was given to an adversarial tester and then to an engineer: **41
 defects found, 41 fixed**, each pinned by a test that was red first and each
