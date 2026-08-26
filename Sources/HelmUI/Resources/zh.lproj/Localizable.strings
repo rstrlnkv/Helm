@@ -113,6 +113,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
 "Helm got no answer, so this may not be every volume." = "Helm 未收到回应，这里可能不是全部宗卷。";
+"Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";

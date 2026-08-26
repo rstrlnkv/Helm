@@ -113,6 +113,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm got no answer, so it does not know what moved. The list above still shows where the files were before.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm got no answer, so the list above is still from the previous scan.";
 "Helm got no answer, so this may not be every volume." = "Helm got no answer, so this may not be every volume.";
+"Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it.";
 "Last change (undone)" = "Last change (undone)";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.";
 "Menu bar" = "Menu bar";

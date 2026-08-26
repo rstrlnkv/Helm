@@ -113,6 +113,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
 "Helm got no answer, so this may not be every volume." = "Helm n’a reçu aucune réponse, certains volumes manquent peut-être.";
+"Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm vous prévient maintenant quand une nouvelle version est disponible. La vérification avait déjà lieu chaque jour, mais la réponse restait sur la page À propos de Helm, en attendant que vous alliez la voir.";
 "Last change (undone)" = "Dernier changement (annulé)";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agents de lancement, fichiers de réglages, modules et extensions système. Seuls les restes peuvent aller à la corbeille.";
 "Menu bar" = "Barre des menus";

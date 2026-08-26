@@ -81,6 +81,38 @@ enum AppStr {
         L("The download did not match what the release published, so Helm did not install it.")
     }
     static var updateFailed: String { L("Update failed") }
+
+    /// The banner for a release the daily check found with nobody watching.
+    ///
+    /// The title is `updateReady`, the card's own words rather than a second
+    /// spelling of them: two sentences for one state is how the app came to say
+    /// «Configure panel» about a button that says «Edit panel».
+    static func updateFoundNotice(version: String,
+                                  language: AppLanguage = AppLanguage.current) -> NoticeText {
+        NoticeText(title: updateReady, body: updateFoundBody(version: version, language: language))
+    }
+
+    /// The body alone, so the eight-language check is of the words rather than
+    /// of the assembly — the same split as `scanFindingBody`.
+    ///
+    /// **It is the version and the way to it, and no verb.** A banner is not a
+    /// button: nothing in Helm answers a click on one, so a sentence that says
+    /// «install it» describes something the banner itself cannot do. The path is
+    /// spelled in each language exactly as that language's own `Settings` and
+    /// `About Helm` are spelled, since those two are what the person will be
+    /// reading when they go looking.
+    static func updateFoundBody(version: String,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        L("\(version) — Settings → About Helm",
+          [.ru: "\(version) — Настройки → О Helm",
+           .es: "\(version) — Ajustes → Acerca de Helm",
+           .fr: "\(version) — Réglages → À propos de Helm",
+           .de: "\(version) — Einstellungen → Über Helm",
+           .ja: "\(version) — 設定 → Helm について",
+           .zh: "\(version) — 设置 → 关于 Helm",
+           .pt: "\(version) — Ajustes → Sobre o Helm"],
+          language: language)
+    }
     static var edit: String { L("Edit") }
     static var done: String { L("Done") }
     static var permissionsChanged: String { L("Helm is missing permissions it needs") }

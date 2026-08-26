@@ -120,7 +120,7 @@ import Module_Uninstaller_UI
             }
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
-        UpdateService.shared.checkOnLaunch()
+        UpdateService.shared.startChecking()
 
         HelmLog.shared.memory("launch")
         startFootprintWatch()

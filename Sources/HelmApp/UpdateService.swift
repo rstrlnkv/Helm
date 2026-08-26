@@ -60,12 +60,43 @@ import HelmRuntime
     /// branch nothing could draw. Nothing in the app calls this; `shared` is
     /// what the app uses, and a service in a named state is what a test needs.
     init(available: Release? = nil, installState: InstallState = .idle,
-         aheadOfChannel: String? = nil, note: Note? = nil) {
+         aheadOfChannel: String? = nil, note: Note? = nil,
+         notices: AutomationNoticePort = SystemAutomationNotice(area: UpdateService.logArea),
+         store: NamespacedStore = AppSettings.store) {
         self.available = available
         self.installState = installState
         self.aheadOfChannel = aheadOfChannel
         self.note = note
+        self.notices = notices
+        self.store = store
     }
+
+    /// Where the two stamps this service keeps are written — when it last
+    /// looked, and what it last said out loud.
+    ///
+    /// **Injected, because a test that drives the announcement writes one of
+    /// them.** `UserDefaults.standard` is the shared test domain that had
+    /// accumulated 3028 keys, and a default naming the app's own store makes
+    /// every forgetful construction a test that leaves something behind. Pass
+    /// `AppSettings.store.over(InMemoryKeyValueStore())` from a test: the
+    /// namespace stays the app's, the backing does not.
+    private let store: NamespacedStore
+
+    /// The area every line in this file is filed under, and the name the notice
+    /// port carries into the log when macOS says banners are not allowed.
+    static let logArea = "update"
+
+    private let notices: AutomationNoticePort
+
+    /// One task, replaced rather than accumulated: the permission prompt can
+    /// stand for minutes, and the only thing that can arrive behind it is the
+    /// next day's check — which macOS would answer with the same standing
+    /// decision anyway.
+    private var noticeTask: Task<Void, Never>?
+
+    /// The tag last said out loud, so the daily check does not say it again.
+    /// The tag as published, never a parsed version: see `UpdateNews.version`.
+    static let lastAnnouncedKey = "lastAnnouncedUpdate"
 
     /// The release cannot be installed from inside Helm, and the browser has
     /// been sent to the page instead.
@@ -98,7 +129,7 @@ import HelmRuntime
         // launch, and `now - last` on two `Int`s overflows and traps for a
         // stored `Int.min`. A stamp that is not a moment we checked at means we
         // have never checked, so the check runs.
-        let stored = AppSettings.store.int(Self.lastCheckKey, default: 0)
+        let stored = store.int(Self.lastCheckKey, default: 0)
         if let last = UpdateCheck.lastChecked(stored: stored, now: now),
            now.timeIntervalSince(last) <= 24 * 3600 { return }
         // The stamp is written by `performCheck` once it has an answer. Written
@@ -108,6 +139,42 @@ import HelmRuntime
     }
 
     func checkNow() { Task { await performCheck(manual: true) } }
+
+    /// How often the day's check is given a chance to happen. Not how often it
+    /// happens — `checkOnLaunch` still refuses inside 24 hours.
+    static let recheckEvery: TimeInterval = 3600
+
+    /// Look now, and go on looking.
+    ///
+    /// **Launch was the only moment there was**, and this is a menu-bar app: it
+    /// is launched at login and then runs for weeks. A check that happens once
+    /// per launch, in a process that is not restarted, is a check that happens
+    /// once — and the banner behind it would have been dead for exactly the
+    /// people who never quit Helm.
+    ///
+    /// The tick is hourly and the daily guard is left where it was, in
+    /// `checkOnLaunch`: an hourly *tick* and a daily *check* is one rule in one
+    /// place, where two intervals agreeing with each other would be two.
+    func startChecking() {
+        checkOnLaunch()
+        let tick = RepeatingTick(interval: Self.recheckEvery) { [weak self] in
+            self?.checkOnLaunch()
+        }
+        tick.set(active: true)
+        recheck = tick
+    }
+
+    /// Whether the hourly tick is armed. Read by a test; the app never asks.
+    var isWatchingForUpdates: Bool { recheck?.isRunning == true }
+
+    /// A test leaves nothing behind, and a `Timer` the run loop holds outlives
+    /// whoever forgot it. The app never calls this — it stops when the app does.
+    func stopChecking() {
+        recheck?.set(active: false)
+        recheck = nil
+    }
+
+    private var recheck: RepeatingTick?
 
     /// One-click silent update: download the release zip, swap the bundle, relaunch.
     /// On success the app terminates (the swap script relaunches it), so this never
@@ -213,7 +280,7 @@ import HelmRuntime
                                            currentVersion: currentVersion, channel: channel)
             // An answer, of either kind, is what "last checked" means.
             if case .error = outcome {} else {
-                AppSettings.store.set(Int(Date().timeIntervalSince1970), for: Self.lastCheckKey)
+                store.set(Int(Date().timeIntervalSince1970), for: Self.lastCheckKey)
             }
             switch outcome {
             case .upToDate:
@@ -245,9 +312,52 @@ import HelmRuntime
                                     notes: r.notes)
                 // No note either: the offer itself is what the card draws.
                 note = nil
+                // …and the card is the whole of what the offer was, until now:
+                // one view, on the About page, inside a window a menu-bar app
+                // never opens by itself.
+                tellSomebodyAboutIt(r.version, startedByHand: manual)
             }
         } catch {
             if manual { note = .checkFailed }
+        }
+    }
+
+    /// Say out loud that there is a new build, for the person who is not in the
+    /// About page looking for one.
+    ///
+    /// Internal rather than private because it is the seam a test drives:
+    /// reaching it through `performCheck` would need GitHub.
+    ///
+    /// **The stamp is written when the banner was actually posted, and only
+    /// then.** A refusal from macOS is not an announcement, and recording one as
+    /// if it were means the person who grants Helm notifications tomorrow is
+    /// never told about the release that was waiting for them — the silence
+    /// would have spent itself against a permission dialog nobody answered.
+    func tellSomebodyAboutIt(_ version: String, startedByHand: Bool) {
+        let told = store.object(Self.lastAnnouncedKey) as? String
+        guard let saying = UpdateNews.version(toAnnounce: version,
+                                              lastAnnounced: told,
+                                              startedByHand: startedByHand)
+        else { return }
+        let words = AppStr.updateFoundNotice(version: saying)
+        let port = notices
+        noticeTask?.cancel()
+        noticeTask = Task {
+            switch await NoticeChannel.tell(port, words) {
+            case .posted:
+                self.store.set(saying, for: Self.lastAnnouncedKey)
+                // English outright, like every other line in this file: the log
+                // is read by whoever is diagnosing a Mac, which is not always
+                // the person whose Mac it is. A version is not a name, so it is
+                // free of `Redact`.
+                HelmLog.shared.info(Self.logArea, "told about \(saying)")
+            case .notAllowed:
+                HelmLog.shared.info(Self.logArea,
+                                    "\(saying) was not announced — macOS says banners are not allowed")
+            // The app is going away, or the check was replaced by a later one.
+            case .cancelled:
+                break
+            }
         }
     }
 }
