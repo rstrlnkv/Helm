@@ -20,19 +20,40 @@ import HelmRuntime
 /// So this one holds the completion, and `isSudoersInstalled()` goes on
 /// answering yes until the prompt is answered. That is the state the real port
 /// is in for minutes at a time.
-private final class RemovalPromptClamshell: ClamshellPort {
-    var sudoersInstalled = true
-    var pmset = ""
-    private(set) var removeCount = 0
-    private(set) var installCount = 0
+/// **Every field here is written on one thread and read on another.** The ask
+/// runs inside `shell.async` on the coordinator's own queue; the test reads the
+/// counts on the main actor. One lock and the fields behind it, the shape
+/// `ProgressBox` carries for the same reason — the barrier below orders the two,
+/// and the lock is what makes the read of a plain `Int` legal rather than merely
+/// lucky.
+private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var installed = true
+    private var removes = 0
+    private var installs = 0
+    private var report = ""
     private var pendingRemovals: [(Bool) -> Void] = []
 
-    func canDisableSleepWithoutPassword() -> Bool { sudoersInstalled }
-    func isSudoersInstalled() -> Bool { sudoersInstalled }
+    private func locked<T>(_ body: () -> T) -> T {
+        lock.lock(); defer { lock.unlock() }; return body()
+    }
+
+    var sudoersInstalled: Bool {
+        get { locked { installed } }
+        set { locked { installed = newValue } }
+    }
+    var pmset: String {
+        get { locked { report } }
+        set { locked { report = newValue } }
+    }
+    var removeCount: Int { locked { removes } }
+    var installCount: Int { locked { installs } }
+
+    func canDisableSleepWithoutPassword() -> Bool { locked { installed } }
+    func isSudoersInstalled() -> Bool { locked { installed } }
 
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        installCount += 1
-        sudoersInstalled = true
+        locked { installs += 1; installed = true }
         done(true)
     }
 
@@ -45,21 +66,26 @@ private final class RemovalPromptClamshell: ClamshellPort {
 
     /// The prompt goes up and stays up. The file is still there.
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
-        removeCount += 1
-        pendingRemovals.append(done)
+        locked { removes += 1; pendingRemovals.append(done) }
     }
 
     /// The person typed their password (or clicked Cancel). Only now does the
     /// file go — and only if they said yes.
     func answerRemovalPrompts(granted: Bool) {
-        let waiting = pendingRemovals
-        pendingRemovals = []
-        if granted { sudoersInstalled = false }
+        // The completions are called outside the lock: each one re-enters this
+        // fake through `finishedRemoving`, and a lock held across that is a
+        // deadlock waiting for the first port that answers on the same thread.
+        let waiting: [(Bool) -> Void] = locked {
+            let held = pendingRemovals
+            pendingRemovals = []
+            if granted { installed = false }
+            return held
+        }
         for done in waiting { done(granted) }
     }
 
     func setDisableSleep(_ on: Bool) -> Bool { true }
-    func pmsetReport() -> String { pmset }
+    func pmsetReport() -> String { locked { report } }
 }
 
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo
@@ -113,10 +139,26 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         engine.activate()
     }
 
-    /// What the settings page sends when anything on it moves.
+    /// What the settings page sends when anything on it moves — **and the app
+    /// having finished acting on it**, which is not the same instant.
+    ///
+    /// `send` awaits the command handler, and the handler is done once it has
+    /// put the removal on the coordinator's own queue. The ask itself — the
+    /// thing every assertion in this file counts — happens on that queue
+    /// afterwards. Counting straight after the `await` counted a subject still
+    /// in motion: it failed once in a full suite on 2026-08-25 and passed 5/5
+    /// alone, 5/5 as a class and 3/3 as a bundle, because an idle queue always
+    /// won the race. Slowing the queue by 50 ms failed **all seven** tests here,
+    /// which is the measure of how little the green had been worth.
+    ///
+    /// The barrier belongs here rather than at each assertion so the negative
+    /// cases get it too: «no second dialog» over a second dialog that had not
+    /// happened yet is an absence assertion passing on a subject that never
+    /// occurred.
     private func settingsChanged() async {
         _ = try? await engine.transport.send(
             EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+        await engine.drainClamshellForTests()
     }
 
     /// The gesture: the switch moves, and the page says so the only way it can.
@@ -238,6 +280,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         XCTAssertFalse(clamshell.sudoersInstalled, "precondition: the rule is gone")
 
         engine.startSession(minutes: 0)
+        await engine.drainClamshellForTests()
         await drainMain()
 
         XCTAssertEqual(clamshell.installCount, 1,
