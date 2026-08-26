@@ -70,7 +70,8 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.11.0", date: "2026-08-20", items: [
+            ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .new, text: L("Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it.")),
                 ChangeItem(kind: .new, text: L("Helm now says what its background scans found while you were away. A notice appears only when something large has turned up since the last look, and it says what is there \u{2014} nothing is ever removed on its own.")),
                 ChangeItem(kind: .new, text: L("Autopilot tells you when its hourly sweep has put files in the Trash, or when a rule could not run. The moves it can undo stay quiet: they are already on the page, one press from going back.")),
                 ChangeItem(kind: .fix, text: L("A date that says how old something is no longer reads as a time still to come. Where the age cannot be told \u{2014} a file stamped ahead of your Mac\u{2019}s clock, or one written this very second \u{2014} the line is left out instead.")),
