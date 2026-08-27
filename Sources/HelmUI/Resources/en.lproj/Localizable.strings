@@ -131,6 +131,7 @@
 "Spin the menu-bar icon" = "Turn the menu-bar icon";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key.";
+"The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "The rules stored on this Mac were not written by Helm, so none of them are running.";
 "This folder is no longer there" = "This folder is no longer there";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "This is not there any more, so nothing was moved. Scan again to see what is left.";

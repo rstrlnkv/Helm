@@ -109,9 +109,25 @@ import Module_Layout_Engine
     /// has two by design; a module cannot add one from the outside, and this is
     /// not the place to decide the app should have it. The page says that state
     /// in words where it can be acted on: an empty state for a missing grant, a
-    /// note for the pause secure input causes.
+    /// note for the pause secure input causes. What that means for the badge is
+    /// below — coarser than the page, never against it.
     public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
-        LayoutViewModel.shared(vm: vm).state.enabled ? .active : .idle
+        let state = LayoutViewModel.shared(vm: vm).state
+        return Self.activity(enabled: state.enabled, suspended: state.suspended)
+    }
+
+    /// The rule itself, pure so a test can reach it: the method above needs a
+    /// `ModuleViewModel`, which needs a transport and an engine, and none of
+    /// that is the subject.
+    ///
+    /// **The header may be coarser than the page. It may not say the
+    /// opposite.** `suspended` was left out here, and the tap stays live
+    /// through a pause — so with a password field in front the header drew a
+    /// green «Active» pill 56 pt above the page's orange «Paused» one. Two
+    /// marks about one module, in two signal colours, disagreeing on one
+    /// screen. A pause reports as idle, and the page keeps the word for it.
+    static func activity(enabled: Bool, suspended: Bool) -> ModuleActivity {
+        enabled && !suspended ? .active : .idle
     }
 
     /// Without this the header reads the badge once and never again: the tap

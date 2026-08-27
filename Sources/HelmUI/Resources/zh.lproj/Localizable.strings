@@ -131,6 +131,7 @@
 "Spin the menu-bar icon" = "转动菜单栏图标";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "单独按下再松开。若已选中文本则修正选区——再次选中即可改回；否则修正上一个词，再按一次还原。按住不放或与其他键同时按下时仍是普通修饰键。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
+"The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "“键盘”名称旁的标记不再显示为运行中，而下方页面却说已暂停。密码输入框在前时，模块会有意保持沉默，现在两处说法一致。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "这台 Mac 上保存的规则不是 Helm 写入的，因此没有任何规则在运行。";
 "This folder is no longer there" = "此文件夹已不存在";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
