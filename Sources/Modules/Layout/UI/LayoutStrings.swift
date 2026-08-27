@@ -83,14 +83,14 @@ enum LyStr {
         let undo: [AppLanguage: String]
         if let gesture {
             undo = [
-                .en: "Every change can be undone — press \(gesture) again, in the app it happened in.",
-                .ru: "Любую замену можно отменить — нажмите \(gesture) ещё раз в том приложении, где она произошла.",
-                .es: "Cada cambio se puede deshacer: pulsa \(gesture) otra vez, en la app donde ocurrió.",
-                .fr: "Chaque changement peut être annulé — appuyez de nouveau sur \(gesture), dans l’app où c’est arrivé.",
-                .de: "Jede Änderung lässt sich widerrufen — \(gesture) erneut drücken, in der App, in der sie passiert ist.",
-                .pt: "Cada alteração pode ser desfeita — pressione \(gesture) novamente, no app em que aconteceu.",
-                .ja: "変更はいつでも元に戻せます。同じアプリで \(gesture) をもう一度押してください。",
-                .zh: "每次更改都可以撤销——在发生更改的应用中再按一次 \(gesture)。",
+                .en: "Every change can be undone — press \(gesture) again, before you type anything else, in the app it happened in.",
+                .ru: "Любую замену можно отменить — нажмите «\(gesture)» ещё раз, до того, как наберёте что-то ещё, в том приложении, где она произошла.",
+                .es: "Cada cambio se puede deshacer: pulsa \(gesture) otra vez antes de escribir nada más, en la app donde ocurrió.",
+                .fr: "Chaque changement peut être annulé — appuyez de nouveau sur \(gesture) avant de taper autre chose, dans l’app où c’est arrivé.",
+                .de: "Jede Änderung lässt sich widerrufen — \(gesture) erneut drücken, bevor du etwas anderes tippst, in der App, in der sie passiert ist.",
+                .pt: "Cada alteração pode ser desfeita — pressione \(gesture) novamente antes de digitar mais nada, no app em que aconteceu.",
+                .ja: "変更は元に戻せます。何か入力する前に、同じアプリで \(gesture) をもう一度押してください。",
+                .zh: "每次更改都可以撤销——请在继续输入之前，在发生更改的应用中再按一次 \(gesture)。",
             ]
         } else {
             undo = [
@@ -214,15 +214,15 @@ enum LyStr {
     /// Interpolated, so it keeps its own table.
     static func undoHint(gesture: String, language: AppLanguage = AppLanguage.current) -> String {
         let table: [AppLanguage: String] = [
-            .ru: "Чтобы отменить, нажмите \(gesture) ещё раз — в том приложении, где это произошло.",
-            .es: "Para deshacerlo, pulsa \(gesture) otra vez, en la app donde ocurrió.",
-            .fr: "Pour annuler, appuyez de nouveau sur \(gesture), dans l’app où c’est arrivé.",
-            .de: "Zum Widerrufen \(gesture) erneut drücken, in der App, in der es passiert ist.",
-            .pt: "Para desfazer, pressione \(gesture) novamente, no app em que aconteceu.",
-            .ja: "元に戻すには、同じアプリで \(gesture) をもう一度押してください。",
-            .zh: "要撤销，请在发生更改的应用中再按一次 \(gesture)。",
+            .ru: "Чтобы отменить, нажмите «\(gesture)» ещё раз — до того, как наберёте что-то ещё, в том приложении, где это произошло.",
+            .es: "Para deshacerlo, pulsa \(gesture) otra vez antes de escribir nada más, en la app donde ocurrió.",
+            .fr: "Pour annuler, appuyez de nouveau sur \(gesture) avant de taper autre chose, dans l’app où c’est arrivé.",
+            .de: "Zum Widerrufen \(gesture) erneut drücken, bevor du etwas anderes tippst, in der App, in der es passiert ist.",
+            .pt: "Para desfazer, pressione \(gesture) novamente antes de digitar mais nada, no app em que aconteceu.",
+            .ja: "元に戻すには、何か入力する前に、同じアプリで \(gesture) をもう一度押してください。",
+            .zh: "要撤销，请在继续输入之前，在发生更改的应用中再按一次 \(gesture)。",
         ]
-        let english = "Undo it by pressing \(gesture) again, in the app it happened in."
+        let english = "Undo it by pressing \(gesture) again — before you type anything else, in the app it happened in."
         return language == .en ? english : table[language] ?? english
     }
     /// The honest line for the state the old hint lied about: no tap key and
@@ -255,14 +255,14 @@ enum LyStr {
             .zh: "已修正：\(before) → \(after)。",
         ]
         let tail: [AppLanguage: String] = [
-            .en: "Tap the key again to undo.",
-            .ru: "Нажмите клавишу ещё раз, чтобы отменить.",
-            .es: "Pulsa la tecla otra vez para deshacer.",
-            .fr: "Appuyez de nouveau sur la touche pour annuler.",
-            .de: "Taste erneut antippen, um zu widerrufen.",
-            .pt: "Toque na tecla novamente para desfazer.",
-            .ja: "もう一度キーを押すと元に戻せます。",
-            .zh: "再按一次该键即可撤销。",
+            .en: "Tap the key again to undo, before you type anything else.",
+            .ru: "Нажмите клавишу ещё раз, до того, как наберёте что-то ещё, чтобы отменить.",
+            .es: "Pulsa la tecla otra vez antes de escribir nada más para deshacer.",
+            .fr: "Appuyez de nouveau sur la touche avant de taper autre chose pour annuler.",
+            .de: "Taste erneut antippen, bevor du etwas anderes tippst, um zu widerrufen.",
+            .pt: "Toque na tecla novamente antes de digitar mais nada para desfazer.",
+            .ja: "何か入力する前にもう一度キーを押すと元に戻せます。",
+            .zh: "在继续输入之前再按一次该键即可撤销。",
         ]
         let head = fixed[language] ?? fixed[.en] ?? ""
         guard undoable, let more = tail[language] ?? tail[.en] else { return head }

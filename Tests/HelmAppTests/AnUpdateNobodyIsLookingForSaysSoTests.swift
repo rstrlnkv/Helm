@@ -21,25 +21,38 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
     /// The store is a namespace of the app's own over an in-memory backing: the
     /// stamp this writes is a real setting, and `UserDefaults.standard` is the
     /// shared test domain that had 3028 keys in it.
+    private var store: NamespacedStore!
+
     private func build(_ port: FakeAutomationNotice = FakeAutomationNotice(state: .authorized)) {
         notices = port
-        service = UpdateService(notices: port,
-                                store: AppSettings.store.over(InMemoryKeyValueStore()))
+        store = AppSettings.store.over(InMemoryKeyValueStore())
+        service = UpdateService(notices: port, store: store)
     }
 
     /// The banner is posted from a task of its own — the check does not wait for
     /// macOS — so a read taken straight afterwards would pass an absence for
     /// free. Every `grace()` below is paired with a control that proves the same
     /// path still speaks.
-    private func waitForPosts(_ wanted: Int) async {
+    ///
+    /// **Posted is not finished, and counting one against the other is counting
+    /// a moving subject.** The stamp that makes the next check quiet is written
+    /// after `NoticeChannel.tell` returns, so between «the fake holds a banner»
+    /// and «the service has recorded it» there is a window a second call fits
+    /// through — which is exactly what made this file fail once in a full run
+    /// while passing alone. Waiting on the record rather than on the banner
+    /// closes it, and asserts the stronger fact besides.
+    private func waitForPosts(_ wanted: Int, recorded version: String) async {
         await waitUntil("\(wanted) banner(s)") { self.notices.posted.count >= wanted }
+        await waitUntil("the announcement recorded") {
+            self.store.object(UpdateService.lastAnnouncedKey) as? String == version
+        }
     }
 
     func testAReleaseFoundWithNobodyWatchingIsAnnounced() async throws {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1)
+        await waitForPosts(1, recorded: "v0.12.0")
 
         let said = try XCTUnwrap(notices.posted.first)
         // The card's own words, not a second spelling of them.
@@ -55,7 +68,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         build()
 
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1)
+        await waitForPosts(1, recorded: "v0.12.0")
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
         await grace()
 
@@ -64,7 +77,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control: silence above is a decision about that version, not a
         // channel that has stopped working.
         service.tellSomebodyAboutIt("v0.12.1", startedByHand: false)
-        await waitForPosts(2)
+        await waitForPosts(2, recorded: "v0.12.1")
         XCTAssertEqual(notices.posted.count, 2)
     }
 
@@ -84,7 +97,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // The control, and the second thing this holds: pressing the button did
         // not spend the announcement either.
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1)
+        await waitForPosts(1, recorded: "v0.12.0")
         XCTAssertEqual(notices.posted.count, 1)
     }
 
@@ -101,7 +114,7 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // System Settings, the only way this ever changes.
         notices.state = .authorized
         service.tellSomebodyAboutIt("v0.12.0", startedByHand: false)
-        await waitForPosts(1)
+        await waitForPosts(1, recorded: "v0.12.0")
 
         XCTAssertEqual(notices.posted.count, 1)
     }
