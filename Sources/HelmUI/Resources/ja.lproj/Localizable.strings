@@ -125,6 +125,7 @@
 "Only an administrator can move this" = "移動できるのは管理者のみです";
 "Option" = "Option";
 "Other…" = "その他…";
+"Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "選択したテキストの修正が文全体で働くようになりました。選択のどこかに空白や読点、数字があると全体がそのまま残り、修正できるのは一語だけでした。";
 "Shift" = "shift";
 "Show Input Source Name" = "入力ソース名を表示";
 "Spin the menu-bar icon" = "メニューバーのアイコンを回す";

@@ -125,6 +125,7 @@
 "Only an administrator can move this" = "Переместить может только администратор";
 "Option" = "Option";
 "Other…" = "Другое…";
+"Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "Исправление выделенного текста теперь работает на целом предложении. Пробел, запятая или цифра где угодно внутри выделения оставляли нетронутым всё, так что исправить удавалось только одно слово.";
 "Shift" = "Shift";
 "Show Input Source Name" = "Показывать имя источника ввода";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";

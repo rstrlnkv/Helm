@@ -33,6 +33,7 @@ only once it has no known problems left.
 - **UPD** Turning off closed-lid mode, or quitting Helm, takes back the administrator rule it kept — without asking for your password again.
 - **UPD** The switch that lets a timer pause your automation rules now says plainly what it is and when it happens.
 - **UPD** While that switch is on, Stop takes two presses: the first ends the timer, the second offers to switch the rules off as well.
+- **FIX** Putting selected text right works on a whole sentence. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way.
 - **FIX** A date that says how old something is no longer reads as a time still to come.
 - **FIX** The record Helm keeps of an unattended disk scan no longer names anything inside your Library folder.
 - **FIX** The menu-bar panel opens without asking macOS about permissions first — it used to read your Messages and Safari files on the way up.

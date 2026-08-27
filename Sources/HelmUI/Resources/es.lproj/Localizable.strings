@@ -125,6 +125,7 @@
 "Only an administrator can move this" = "Solo un administrador puede moverlo";
 "Option" = "Opción";
 "Other…" = "Otro…";
+"Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "Corregir el texto seleccionado ahora funciona con una frase entera. Un espacio, una coma o un dígito en cualquier parte de la selección dejaban todo sin tocar, así que solo se podía corregir una palabra.";
 "Shift" = "Mayúsculas";
 "Show Input Source Name" = "Mostrar nombre de fuentes de entrada";
 "Spin the menu-bar icon" = "Girar el icono de la barra de menús";

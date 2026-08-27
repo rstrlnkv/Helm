@@ -379,21 +379,15 @@ public struct TISLayoutSources: LayoutSourcePort {
 public struct UCTranslation: TranslationPort {
     public init() {}
 
+    /// The tables are this type's business; what a string becomes is
+    /// `KeyRemap`'s, where a test can reach it without a keyboard. The loop
+    /// that used to be here refused the whole string at the first character the
+    /// table had no key for — and the tables hold letters only, so a selection
+    /// with a space in it was refused entire.
     public func translate(_ word: String, from: String, to: String) -> String? {
         guard let fromTable = Self.characterTable(from),
               let toTable = Self.characterTable(to) else { return nil }
-        var out = ""
-        for character in word {
-            // `Character(_:)` traps on a string that is not one grapheme, and
-            // uppercasing is not one-to-one: "ß".uppercased() is "SS". A crash
-            // inside a keyboard hook takes the whole app down, so the string
-            // form is appended as it comes.
-            guard let lower = character.lowercased().first,
-                  let code = fromTable.first(where: { $0.value == lower })?.key,
-                  let mapped = toTable[code] else { return nil }
-            out.append(character.isUppercase ? mapped.uppercased() : String(mapped))
-        }
-        return out
+        return KeyRemap.map(word, from: fromTable, to: toTable)
     }
 
     /// keyCode → the character it types, for the printable letter range.
