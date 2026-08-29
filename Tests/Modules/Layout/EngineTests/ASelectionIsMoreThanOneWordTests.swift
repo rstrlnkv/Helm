@@ -57,10 +57,27 @@ final class ASelectionIsMoreThanOneWordTests: XCTestCase {
         XCTAssertNil(KeyRemap.map("12:34 — ...", from: latin, to: cyrillic))
     }
 
-    /// A letter this layout does not carry stays as it is, rather than taking
-    /// the whole string down with it. A selection can hold a name, an emoji or
-    /// a word in a third language.
-    func testAnUnknownLetterDoesNotRefuseTheRest() {
-        XCTAssertEqual(KeyRemap.map("ghbdtn ñ", from: latin, to: cyrillic), "привет ñ")
+    /// **A letter it cannot map refuses the whole string, and that is the line
+    /// between this and punctuation.** Passing an unmappable *letter* through
+    /// produced a mixed-script word — measured on this Mac, `дфых` came back
+    /// `lasх` with a Cyrillic х on the end, because х sits on the `[` key and
+    /// `[` is not a letter in the latin table. `NSSpellChecker` accepts `lasх`
+    /// as an English word, so the verdict then converted somebody's word into
+    /// a broken one. A space or a comma carries no reading in another layout
+    /// and is simply kept; a letter carries exactly the reading this is about,
+    /// so one it cannot read means it cannot read the word.
+    func testAnUntranslatableLetterRefusesTheWholeString() {
+        XCTAssertNil(KeyRemap.map("ghbdtn ñ", from: latin, to: cyrillic),
+                     "a letter with no key in this layout was passed through")
+        // The measured case, in miniature: `х` has no latin key.
+        let ruWithGap: [UInt16: Character] = [0: "д", 1: "ф", 2: "ы", 9: "х"]
+        XCTAssertNil(KeyRemap.map("дфых", from: ruWithGap, to: latin),
+                     "a mixed-script word was handed to the spell checker")
+    }
+
+    /// And the control: everything that is not a letter still passes, or the
+    /// selection path is dead again.
+    func testNonLettersStillPass() {
+        XCTAssertEqual(KeyRemap.map("ghbdtn rfr!", from: latin, to: cyrillic), "привет как!")
     }
 }

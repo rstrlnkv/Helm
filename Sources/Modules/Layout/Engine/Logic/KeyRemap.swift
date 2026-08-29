@@ -46,6 +46,21 @@ enum KeyRemap {
                   let code = from.first(where: { $0.value == lower })?.key,
                   let mapped = to[code]
             else {
+                // **A letter it cannot map refuses the whole string; anything
+                // else is kept.** That line is the whole of this type's
+                // judgement, and passing a letter through was measured doing
+                // real damage: `дфых` came back `lasх` with a Cyrillic х on
+                // the end, because х sits on the `[` key and `[` is not a
+                // letter, so it is absent from the latin table. NSSpellChecker
+                // accepts `lasх` as an English word — so the verdict, which
+                // asks only «is the translation a word», converted somebody's
+                // word into a broken one.
+                //
+                // A space or a comma carries no reading in another layout and
+                // is kept because the person put it there. A letter carries
+                // exactly the reading this whole type is about, so one it
+                // cannot read means it cannot read the word.
+                guard !character.isLetter else { return nil }
                 out.append(character)
                 continue
             }
