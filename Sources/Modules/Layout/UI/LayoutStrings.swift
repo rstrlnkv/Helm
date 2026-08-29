@@ -235,6 +235,94 @@ enum LyStr {
     static var lastChangeUndone: String { L("Last change (undone)") }
     /// Under the triggers when all three are off: no ending ever confirms a
     /// word, so «Fix as I type» is dead however green the badge above is.
+    /// The period segment, and the metric the hero is showing.
+    ///
+    /// The five are drawn as words rather than as glyphs: «7 дней» and
+    /// «Всё время» are not a picture anybody would recognise, and a segment of
+    /// five unlabelled marks is a puzzle. The metric beside it *is* two glyphs —
+    /// a letter and a clock — because those two are.
+    static func periodName(_ period: ConversionPeriod,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        switch period {
+        case .today: return L("Today", language: language)
+        case .week: return L("Week", language: language)
+        case .month: return L("Month", language: language)
+        case .year: return L("Year", language: language)
+        case .allTime: return L("All time", language: language)
+        }
+    }
+
+    /// The two segments' own names. A segmented picker with no label is «pop up
+    /// button» to VoiceOver, and `NamedControlsTests` scans the source for it.
+    static var whatTheFigureShows: String { L("What the figure shows") }
+    static var period: String { L("Period") }
+
+    /// The two glyph buttons. Named, because a glyph without a name is invisible
+    /// to anybody using VoiceOver — and `NamedControlsTests` scans for exactly
+    /// this shape.
+    static var showWords: String { L("Words put right") }
+    static var showMinutes: String { L("Time saved") }
+
+    /// Under the figure when it is showing words: how many, and over what.
+    ///
+    /// The Russian declines the participle with the noun. «слова исправлено» —
+    /// a plural noun under a neuter singular short participle — was wrong for
+    /// counts of 2, 3 and 4, which is the bucket a light user sees most.
+    static func wordsIn(_ period: ConversionPeriod, count: Int,
+                        language: AppLanguage = AppLanguage.current) -> String {
+        let name = periodName(period, language: language).lowercased()
+        let table: [AppLanguage: String] = [
+            .ru: Plural.russian(count, "слово исправлено", "слова исправлены", "слов исправлено")
+                + " · \(name)",
+            .es: (count == 1 ? "palabra corregida" : "palabras corregidas") + " · \(name)",
+            .fr: (count <= 1 ? "mot corrigé" : "mots corrigés") + " · \(name)",
+            .de: (count == 1 ? "Wort korrigiert" : "Wörter korrigiert") + " · \(name)",
+            .pt: (count == 1 ? "palavra corrigida" : "palavras corrigidas") + " · \(name)",
+            .ja: "語を修正 · \(name)",
+            .zh: "个词已修正 · \(name)",
+        ]
+        let english = (count == 1 ? "word put right" : "words put right") + " · \(name)"
+        return language == .en ? english : table[language] ?? english
+    }
+
+    /// And when it is showing time. «Не ушло на перенабор» rather than «сэкономлено»:
+    /// the module did not save time, it removed work that would have been done.
+    static func timeIn(_ period: ConversionPeriod,
+                       language: AppLanguage = AppLanguage.current) -> String {
+        let name = periodName(period, language: language).lowercased()
+        return L("not spent typing again · \(name)",
+                 [.ru: "не ушло на перенабор · \(name)",
+                  .es: "no gastado en volver a escribir · \(name)",
+                  .fr: "non passé à retaper · \(name)",
+                  .de: "nicht mit Neutippen verbracht · \(name)",
+                  .pt: "não gasto redigitando · \(name)",
+                  .ja: "打ち直しに使わずに済んだ時間 · \(name)",
+                  .zh: "省下的重新输入时间 · \(name)"],
+                 language: language)
+    }
+
+    /// The line that is always occupied, so the hero does not change height when
+    /// the metric does. It simply says something different.
+    static var estimateNote: String {
+        L("An estimate: about 3 seconds a word — noticing, clearing, switching, typing it again.")
+    }
+
+    /// When counting began, under «all time». A figure with no scale is worse
+    /// than no figure.
+    static func countingSince(_ when: String,
+                              language: AppLanguage = AppLanguage.current) -> String {
+        L("counted since \(when)",
+          [.ru: "считается с \(when)", .es: "contado desde \(when)",
+           .fr: "compté depuis \(when)", .de: "gezählt seit \(when)",
+           .pt: "contado desde \(when)", .ja: "\(when)から集計",
+           .zh: "自 \(when) 起统计"], language: language)
+    }
+
+    /// The hero when nothing has been put right yet — the state no edition of
+    /// the redesign ever drew, and the one a fresh install sees.
+    static var nothingYet: String { L("Watching your words") }
+    static var nothingYetNote: String { L("Nothing has needed putting right so far.") }
+
     static var noTriggers: String { L("Nothing is switched on — words will not be fixed as you type.") }
 
     /// Under the same card when macOS has no dictionary for a layout somebody

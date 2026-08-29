@@ -56,32 +56,10 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         days.sort { $0.day < $1.day }
     }
 
-    /// How far back a figure reaches.
-    ///
-    /// **The windows slide; they do not follow the calendar.** «This month» on
-    /// the first of the month is a figure that collapses overnight through
-    /// nothing the reader did — the same complaint `DailyCount` was written for
-    /// one scale down. Only `today` is a calendar day, because «today» means
-    /// that and nothing else.
-    enum Period: String, CaseIterable, Codable, Sendable {
-        case today, week, month, year, allTime
-
-        /// Days back from today, inclusive. Nil is «everything there is».
-        var days: Int? {
-            switch self {
-            case .today: return 1
-            case .week: return 7
-            case .month: return 30
-            case .year: return 365
-            case .allTime: return nil
-            }
-        }
-    }
-
     /// The two figures for a period: how many words, and how many characters
     /// they held. A day stamped in the future is left out rather than counted —
     /// a clock that went backwards must not make today unreachable.
-    func total(over period: Period, now: Date,
+    func total(over period: ConversionPeriod, now: Date,
                calendar: Calendar = .current) -> (words: Int, characters: Int) {
         let today = calendar.startOfDay(for: now)
         let floor: Date? = period.days.flatMap {
@@ -99,7 +77,7 @@ struct ConversionLedger: Codable, Equatable, Sendable {
     /// and a round trip to the engine per press would make the segment feel
     /// like a network. Five pairs of integers is nothing to carry.
     func totals(now: Date, calendar: Calendar = .current) -> ConversionTotals {
-        func figures(_ period: Period) -> LedgerFigures {
+        func figures(_ period: ConversionPeriod) -> LedgerFigures {
             let sum = total(over: period, now: now, calendar: calendar)
             return LedgerFigures(words: sum.words, characters: sum.characters)
         }

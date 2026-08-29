@@ -29,4 +29,9 @@ public enum LayoutKey {
     /// indicator: the layout's name in the menu bar instead of its badge.
     public static let indicatorShowsName = "indicatorShowsName"
     public static let introSeen = "introSeen"
+    /// What the hero was last showing. A view preference rather than a setting
+    /// that changes what the module does — kept so the page opens where it was
+    /// left, the way the sidebar width is.
+    public static let heroPeriod = "heroPeriod"
+    public static let heroMetric = "heroMetric"
 }

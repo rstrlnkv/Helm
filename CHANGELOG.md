@@ -13,6 +13,7 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **NEW** The Keyboard page opens with what it has put right over a period you choose — today, a week, a month, a year or all of it — and how much typing that saved. The count now outlives a relaunch.
 - **NEW** Helm tells you when a new version is out — the daily check's answer used to sit on the About page, waiting for you to go and find it.
 - **NEW** Helm says what its background scans found while you were away — only when something large has turned up, and nothing is ever removed on its own.
 - **NEW** Autopilot tells you when its hourly sweep has put files in the Trash, or when a rule could not run.

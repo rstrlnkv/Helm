@@ -25,6 +25,8 @@ struct LayoutSettingsPage: View {
     @State private var newShort = ""
     @State private var newLong = ""
     @State private var fixCapitals: Bool
+    @State private var heroPeriod: ConversionPeriod
+    @State private var heroMetric: HeroMetric
 
     init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
@@ -47,6 +49,10 @@ struct LayoutSettingsPage: View {
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
         _abbreviations = State(initialValue: AutoReplaceStore.load(store))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
+        _heroPeriod = State(initialValue: ConversionPeriod(
+            rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
+        _heroMetric = State(initialValue: HeroMetric(
+            rawValue: store.string(LayoutKey.heroMetric, default: "")) ?? .words)
     }
 
     var body: some View {
@@ -55,10 +61,17 @@ struct LayoutSettingsPage: View {
             // than in a queue of notices at first launch that nobody reads.
             if !introSeen { introSection }
             if accessibility == .denied {
-                // Nothing below this works without the grant, and the module
-                // says so once instead of drawing 1867 pt of settings macOS
-                // ignores. The indicator is the exception and stays: it reads
-                // the input source through TIS and needs no grant at all.
+                // **The hero stays and speaks.** It used to go with the page,
+                // and VPN's and Keep Awake's never do — a module that vanishes
+                // when it cannot work leaves nothing to read but an empty
+                // screen. So the figure says «Not watching», and the empty
+                // state arrives *under* it rather than instead of it.
+                //
+                // The settings below are still not drawn: 1867 pt of controls
+                // macOS ignores, dimmed, reads as «broken»; absent reads as
+                // «this first». The indicator is the exception and stays — it
+                // reads the input source through TIS and needs no grant.
+                Section(header: heroAndTitle) { EmptyView() }
                 deniedSection
                 indicatorSection
             } else {
@@ -151,26 +164,13 @@ struct LayoutSettingsPage: View {
     /// measure their own heroes differently. That last clause was prose here
     /// with nothing under it until the token existed.
     private var hero: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s2) {
-            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
-                Text("\(lvm.state.totals.today.words)")
-                    .font(HelmText.heroFigureFont)
-                    .tracking(-2)
-                    // A count that changes while the page is open changes by
-                    // one, and the digits should roll rather than cut.
-                    .contentTransition(.numericText())
-                    .animation(HelmMotion.interface, value: lvm.state.totals.today.words)
-                HelmBadge(stateLabel, tint: stateTint)
-            }
-            Text(LyStr.fixedToday(lvm.state.totals.today.words))
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        // One element: the 40 pt figure, its badge and its caption are one
-        // fact, and read apart they are a bare number, a bare word and a
-        // caption with no number in it.
-        .accessibilityElement(children: .combine)
+        LayoutHero(totals: lvm.state.totals,
+                   suspended: lvm.state.suspended,
+                   watching: accessibility != .denied && lvm.state.enabled,
+                   period: $heroPeriod,
+                   metric: $heroMetric)
+        .onChange(of: heroPeriod) { _, new in store.set(new.rawValue, for: LayoutKey.heroPeriod) }
+        .onChange(of: heroMetric) { _, new in store.set(new.rawValue, for: LayoutKey.heroMetric) }
     }
 
     /// The hero rides on the first section's header, for the reason Keep Awake's
@@ -183,11 +183,11 @@ struct LayoutSettingsPage: View {
             hero
             HelmSectionTitle(HelmSectionName.behaviour)
         }
-        // Level with the cards below it: a grouped form insets a header 10 pt
-        // further than the section it belongs to (`groupedHeaderOutset`), and a
-        // 40 pt figure standing 10 pt right of every card on the page is the
-        // sort of thing nobody can name and everybody sees.
-        .padding(.leading, -HelmLayout.groupedHeaderOutset)
+        // **No outset.** It was on this whole block — the figure *and* the
+        // section title — so «Behaviour» sat 9.5 pt left of the other seven
+        // headings on the page, measured. The 10 pt is for a block that draws a
+        // surface; this one is centred text, and Keep Awake's hero, centred for
+        // the same reason, takes none either.
         .padding(.bottom, HelmSpace.s5)
     }
 

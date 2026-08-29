@@ -31,6 +31,30 @@ public struct ConversionEvent: Codable, Equatable, Sendable {
     }
 }
 
+/// How far back a figure reaches.
+///
+/// **The windows slide; they do not follow the calendar.** «This month» on the
+/// first of the month is a figure that collapses overnight through nothing the
+/// reader did — the same complaint `DailyCount` was written for one scale down.
+/// Only `today` is a calendar day, because «today» means that and nothing else.
+///
+/// One type for the engine and the page: the segment somebody presses and the
+/// window the ledger sums over must not be two lists that can disagree.
+public enum ConversionPeriod: String, CaseIterable, Codable, Sendable {
+    case today, week, month, year, allTime
+
+    /// Days back from today, inclusive. Nil is «everything there is».
+    public var days: Int? {
+        switch self {
+        case .today: return 1
+        case .week: return 7
+        case .month: return 30
+        case .year: return 365
+        case .allTime: return nil
+        }
+    }
+}
+
 /// One period's two figures. Characters travel beside words because the time
 /// estimate is taken from the length of what was actually fixed.
 public struct LedgerFigures: Codable, Equatable, Sendable {
@@ -55,6 +79,18 @@ public struct ConversionTotals: Codable, Equatable, Sendable {
     public let year: LedgerFigures
     public let allTime: LedgerFigures
     public let since: Date?
+
+    /// The pair for a period — so the page switches with a value rather than a
+    /// `switch` it has to keep in step with the enum.
+    public func figures(_ period: ConversionPeriod) -> LedgerFigures {
+        switch period {
+        case .today: today
+        case .week: week
+        case .month: month
+        case .year: year
+        case .allTime: allTime
+        }
+    }
 
     public static let none = ConversionTotals(
         today: LedgerFigures(words: 0, characters: 0),
