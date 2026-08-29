@@ -59,7 +59,16 @@ struct LayoutSettingsPage: View {
         Form {
             // Once, and to the person who came looking for the module — rather
             // than in a queue of notices at first launch that nobody reads.
-            if !introSeen { introSection }
+            //
+            // **Not before the grant.** It promises a field to try it in and a
+            // section to pick a key in, and without Accessibility the page
+            // carries neither — so on a fresh install, which is every install,
+            // the first thing somebody read pointed twice at controls that were
+            // not on the screen, directly above «Helm is not watching the
+            // keyboard». It waits: the grant arrives, the page fills in, and
+            // the introduction is still unseen and introduces something that is
+            // actually there.
+            if !introSeen, accessibility != .denied { introSection }
             if accessibility == .denied {
                 // **The hero stays and speaks.** It used to go with the page,
                 // and VPN's and Keep Awake's never do — a module that vanishes
@@ -303,7 +312,8 @@ struct LayoutSettingsPage: View {
             // between the selection and the last word too — so every one of
             // those rows was asking the reader to assemble something the app
             // assembles better.
-            HelmSettingRow(LyStr.tapKey, note: tapKeyNote) {
+            HelmSettingRow(LyStr.tapKey, note: tapKeyNote,
+                           explainer: LyStr.tapKeyExplainer(tapKey)) {
                 Picker(LyStr.tapKey, selection: $tapKey) {
                     ForEach(TapKey.allCases, id: \.self) { key in
                         Text(LyStr.tapKeyName(key)).tag(key)
@@ -334,18 +344,10 @@ struct LayoutSettingsPage: View {
     /// the moment the choice is made rather than discovered later. Both used to
     /// be rows of their own, under the hint, which is three rows and two
     /// hairlines for one control.
+    /// **«Off» has its own sentence.** The row said how to tap a key that is
+    /// not bound to anything: three lines telling somebody to press nothing.
     private var tapKeyNote: String {
-        if tapKey == .globe { return LyStr.tapKeyHint + " " + LyStr.globeNote }
-        // Either Control: a solo Control tap is VoiceOver's own «pause speech»
-        // gesture, and the person choosing it should hear that here, not
-        // discover the collision later. The left one still carries the
-        // typing-key trade as well.
-        if tapKey == .leftControl || tapKey == .rightControl {
-            let habit = tapKey.isFrequentlyUsed ? LyStr.leftKeyNote + " " : ""
-            return LyStr.tapKeyHint + " " + habit + LyStr.controlKeyNote
-        }
-        if tapKey.isFrequentlyUsed { return LyStr.tapKeyHint + " " + LyStr.leftKeyNote }
-        return LyStr.tapKeyHint
+        tapKey == .off ? LyStr.tapKeyOff : LyStr.tapKeyHint
     }
 
     /// The note under «Last change», built from the current binding the way

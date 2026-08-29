@@ -107,6 +107,7 @@
 "Error" = "Ошибка";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "Исправление на лету работает со словами, чьи буквы стоят на клавишах пунктуации другой раскладки. У таких букв не было клавиши вовсе, поэтому большинство русских слов оставались нетронутыми или рвались посередине — и так же вело себя всё, что ставит буквы туда, где на латинской клавиатуре знаки.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Исправление набранного требует универсального доступа: без него Helm не видит нажатий и ничего не меняет. Индикатор языка ниже работает и без разрешения.";
+"Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Зажатая или нажатая вместе с чем-то ещё, она остаётся обычным модификатором — всё, для чего вы её уже используете, работает как прежде.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm не может прочитать ключ, которым подписаны правила, — ни одно из них не выполняется.";
 "Helm cannot read this folder" = "Helm не может прочитать эту папку";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm подключает конфигурации, которые хранит macOS, — вручную или по правилам, когда открывается приложение. Новую добавьте в Системных настройках.";
@@ -125,6 +126,7 @@
 "Month" = "Месяц";
 "Move to Trash…" = "Переместить в Корзину…";
 "No key is assigned — this change can only be put back by hand." = "Клавиша не назначена — эту замену можно вернуть только вручную.";
+"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Клавиша не выбрана — исправить выделенное или последнее слово по требованию нечем. Выберите её или задайте сочетание ниже.";
 "Not watching" = "Не следит";
 "Nothing" = "Ничего";
 "Nothing has needed putting right so far." = "Пока ничего исправлять не понадобилось.";
@@ -138,7 +140,8 @@
 "Shift" = "Shift";
 "Show Input Source Name" = "Показывать имя источника ввода";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";
-"Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Нажмите и отпустите её, ничего больше не нажимая. Если текст выделен — исправит выделенное (вернуть его можно, выделив снова); если нет — последнее слово, и повторное нажатие вернёт замену. Зажатая или нажатая вместе с чем-то ещё, она остаётся обычным модификатором.";
+"Tap again to put the change back, or select the text again to change it back." = "Нажмите ещё раз, чтобы отменить замену, или выделите текст снова, чтобы вернуть его.";
+"Tap it on its own: it fixes the selection, or the last word." = "Нажмите и отпустите её, ничего больше не нажимая: исправит выделенное или последнее слово.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Одиночное нажатие Control также приостанавливает речь VoiceOver. Если вы пользуетесь VoiceOver, выберите другую клавишу.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "Страница «Клавиатуры» открывается тем, что модуль исправил, за выбранный срок — сегодня, неделя, месяц, год или всё время — и сколько это сберегло набора. Пусто — это не ноль: модуль, который весь день смотрел и не нашёл что исправлять, так и говорит.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "Бейдж рядом с названием «Клавиатуры» больше не сообщает, что модуль работает, когда страница под ним говорит о паузе. Пока впереди поле пароля, модуль намеренно молчит — теперь об этом говорят оба места.";

@@ -146,7 +146,36 @@ enum LyStr {
     /// a fixed selection leaves no undo record — the caret's landing place
     /// after a selection replace is the app's business, so a blind reverse
     /// edit could eat text — and the old sentence promised one.
-    static var tapKeyHint: String { L("Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier.") }
+    /// One line under the row. The rest is behind the ⓘ.
+    ///
+    /// **It was the module's whole manual in a caption** — 41 words, three
+    /// sentences, one parenthetical, and seven drawn lines in Russian at the
+    /// 860 pt window. `HelmExplainer` exists for exactly that: its own doc
+    /// names a 606-character German caption as the case it was built for, and
+    /// this page was not using it. What stays here is what the row does; what
+    /// moves is «what happens if I do», which is what an ⓘ answers.
+    static var tapKeyHint: String { L("Tap it on its own: it fixes the selection, or the last word.") }
+
+    /// The one value that means the control does nothing, which the note used
+    /// to describe as if it did.
+    static var tapKeyOff: String {
+        L("No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below.")
+    }
+
+    /// Behind the ⓘ beside «Fix with». Assembled from the key in force, so a
+    /// key with nothing special about it opens two blocks and no warnings.
+    static func tapKeyExplainer(_ key: TapKey) -> HelmExplainer.Content? {
+        guard key != .off else { return nil }
+        var blocks: [HelmExplainer.Block] = [
+            .text(L("Tap again to put the change back, or select the text again to change it back.")),
+            .text(L("Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working.")),
+        ]
+        if key == .globe { blocks.append(.text(globeNote)) }
+        if key.isFrequentlyUsed { blocks.append(.text(leftKeyNote)) }
+        if key == .leftControl || key == .rightControl { blocks.append(.text(controlKeyNote)) }
+        return HelmExplainer.Content(title: tapKey, blocks: blocks)
+    }
+
     /// Shown for either Control. A solo Control tap is VoiceOver's own
     /// «pause speech» gesture, so for a VoiceOver user this binding fires
     /// both at once.

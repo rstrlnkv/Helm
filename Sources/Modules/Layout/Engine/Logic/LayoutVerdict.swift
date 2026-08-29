@@ -58,6 +58,7 @@ enum LayoutVerdict {
         guard !exceptions.contains(word.lowercased()),
               !exceptions.contains(translated.lowercased()) else { return .leave }
         guard !learned else { return .leave }
+        guard !turnsALetterIntoAMark(word, translated) else { return .leave }
         return .convert(translated)
     }
 
@@ -78,7 +79,31 @@ enum LayoutVerdict {
         // be left alone, and that is the later instruction. Same reasoning as
         // the never-list one line above.
         guard !learned else { return .leave }
+        // The dictionary is skipped here, not this: they asked for a word, and
+        // a bracket where a letter was is not the word they asked for.
+        guard !turnsALetterIntoAMark(word, translated) else { return .leave }
         return .convert(translated)
+    }
+
+    /// **A letter may become a letter; it may not become a mark.**
+    ///
+    /// Opening the key table so `,` reads as `б` gave every letter its key in
+    /// the other direction too, and some of those keys type punctuation:
+    /// measured on this Mac, `дфых` translates to `las[` and `срфех` to
+    /// `chat[`, both of which `NSSpellChecker` accepts as English words — a
+    /// trailing mark does not trouble it. Without this guard the verdict, which
+    /// asks only «is the translation a word», rewrites a word into one with a
+    /// bracket on the end.
+    ///
+    /// Asymmetric on purpose. A mark becoming a letter is the repair itself —
+    /// `cgfcb,j` → `спасибо`, where the comma key was pressed for `б`. A letter
+    /// becoming a mark is the opposite, and somebody typing letters meant
+    /// letters.
+    static func turnsALetterIntoAMark(_ word: String, _ translated: String) -> Bool {
+        for (typed, became) in zip(word, translated) where typed.isLetter && !became.isLetter {
+            return true
+        }
+        return false
     }
 
     /// Paths, URLs and addresses are not prose, and each is correct as typed

@@ -107,6 +107,7 @@
 "Error" = "Erro";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "A correção ao digitar funciona em palavras cujas letras ficam em teclas de pontuação do outro leiaute. Essas letras não tinham tecla alguma, então a maioria das palavras russas ficava intacta ou era cortada ao meio.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Corrigir o que você digita precisa de Acessibilidade: sem ela o Helm não vê as teclas e não muda nada. O indicador de idioma abaixo funciona sem ela.";
+"Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Mantida pressionada, ou junto com outra tecla, continua sendo um modificador comum: tudo o que você já faz com ela segue funcionando.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "O Helm não consegue ler a chave que sela as suas regras, por isso nenhuma está a ser executada.";
 "Helm cannot read this folder" = "O Helm não consegue ler esta pasta";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "O Helm conecta as configurações que o macOS mantém — à mão ou por regra, quando um app abre. Adicione uma nos Ajustes do Sistema.";
@@ -125,6 +126,7 @@
 "Month" = "Mês";
 "Move to Trash…" = "Mover para o Lixo…";
 "No key is assigned — this change can only be put back by hand." = "Nenhuma tecla definida — esta alteração só pode ser desfeita à mão.";
+"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Sem tecla: nada corrige a seleção nem a última palavra sob demanda. Escolha uma, ou defina uma combinação abaixo.";
 "Not watching" = "Não observa";
 "Nothing" = "Nada";
 "Nothing has needed putting right so far." = "Até agora nada precisou ser corrigido.";
@@ -138,7 +140,8 @@
 "Shift" = "Shift";
 "Show Input Source Name" = "Mostrar Nome do Layout de Teclado";
 "Spin the menu-bar icon" = "Girar o ícone da barra de menus";
-"Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Pressione e solte sozinha. Com texto selecionado corrige a seleção — selecione-o de novo para reverter; caso contrário, a última palavra, e apertar de novo desfaz. Segurada ou com outra tecla, continua um modificador comum.";
+"Tap again to put the change back, or select the text again to change it back." = "Toque de novo para desfazer a alteração, ou selecione o texto outra vez para revertê-la.";
+"Tap it on its own: it fixes the selection, or the last word." = "Toque nela sozinha: corrige a seleção ou a última palavra.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Tocar em Controle sozinha também pausa a fala do VoiceOver. Se você usa o VoiceOver, escolha outra tecla.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "A página do Teclado abre com o que corrigiu no período que você escolher — hoje, uma semana, um mês, um ano ou tudo — e quanto isso poupou de digitação. Nada ainda não é zero: o módulo diz isso.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "O selo ao lado do nome do Teclado já não diz que está ativo enquanto a página abaixo diz que está em pausa. Com um campo de senha à frente, o módulo fica calado de propósito, e agora ambos os lugares dizem isso.";

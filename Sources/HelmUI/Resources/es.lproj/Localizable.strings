@@ -107,6 +107,7 @@
 "Error" = "Error";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "La corrección al escribir funciona con palabras cuyas letras están en teclas de puntuación de la otra distribución. Esas letras no tenían tecla alguna, así que la mayoría de las palabras rusas se quedaban sin tocar o se partían por la mitad.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Corregir lo que escribes necesita Accesibilidad: sin ella Helm no ve las pulsaciones y no cambia nada. El indicador de idioma de abajo funciona sin ella.";
+"Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Mantenida o pulsada junto con otra tecla, sigue siendo un modificador normal: todo lo que ya haces con ella sigue funcionando.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm no puede leer la clave con la que están selladas las reglas, así que ninguna se está ejecutando.";
 "Helm cannot read this folder" = "Helm no puede leer esta carpeta";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm conecta las configuraciones que guarda macOS, a mano o por reglas cuando se abre una app. Añade una en Ajustes del Sistema.";
@@ -125,6 +126,7 @@
 "Month" = "Mes";
 "Move to Trash…" = "Trasladar a la papelera…";
 "No key is assigned — this change can only be put back by hand." = "No hay tecla asignada: este cambio solo se puede deshacer a mano.";
+"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Sin tecla: nada corrige la selección ni la última palabra a petición. Elige una o define una combinación abajo.";
 "Not watching" = "Sin vigilar";
 "Nothing" = "Nada";
 "Nothing has needed putting right so far." = "Hasta ahora no ha hecho falta corregir nada.";
@@ -138,7 +140,8 @@
 "Shift" = "Mayúsculas";
 "Show Input Source Name" = "Mostrar nombre de fuentes de entrada";
 "Spin the menu-bar icon" = "Girar el icono de la barra de menús";
-"Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Púlsala y suéltala sola. Si hay texto seleccionado corrige la selección — selecciónalo otra vez para devolverlo; si no, la última palabra, y al pulsarla otra vez la devuelve. Mantenida o con otra tecla sigue siendo un modificador normal.";
+"Tap again to put the change back, or select the text again to change it back." = "Púlsala otra vez para deshacer el cambio, o vuelve a seleccionar el texto para revertirlo.";
+"Tap it on its own: it fixes the selection, or the last word." = "Púlsala sola: corrige la selección o la última palabra.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Pulsar Control a solas también pausa la voz de VoiceOver. Si usas VoiceOver, elige otra tecla.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "La página de Teclado abre con lo que ha corregido en el periodo que elijas —hoy, una semana, un mes, un año o todo— y cuánto tecleo ahorró. Nada aún no es un cero: si no hubo nada que corregir, lo dice.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "La insignia junto al nombre de Teclado ya no dice que está activo mientras la página de debajo dice que está en pausa. Con un campo de contraseña delante, el módulo calla a propósito, y ahora ambos sitios lo dicen.";
