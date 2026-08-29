@@ -37,7 +37,29 @@ enum KeyRemap {
     static func map(_ text: String, from: [UInt16: Character], to: [UInt16: Character]) -> String? {
         var out = ""
         var converted = false
-        for character in text {
+        let characters = Array(text)
+        for (index, character) in characters.enumerated() {
+            // **A key is only «punctuation» in the layout you are holding**, and
+            // which reading applies is decided by the neighbour on the right.
+            //
+            // `,` types `б` in Russian, `;` types `ж`, `[` types `х`. The table
+            // used to keep letters only, so seven Cyrillic letters had no key —
+            // and admitting them broke sentences instead: `Ghbdtn, rfr ltkf?`
+            // came back `Приветб как дела?`, measured. Both readings are right.
+            //
+            // A letter after it means the person pressed it for a letter, in
+            // the middle of a word they are still typing (`cgfcb,j`) or at its
+            // start (`[jhjij`). A space, another mark or nothing after it means
+            // they pressed it for the mark and watched it appear (`ghbdtn,`).
+            // The rule is about where the key sits, so it holds for any layout
+            // that puts letters where ANSI puts punctuation.
+            if !character.isLetter {
+                let next = index + 1 < characters.count ? characters[index + 1] : nil
+                if next?.isLetter != true {
+                    out.append(character)
+                    continue
+                }
+            }
             // `Character(_:)` traps on a string that is not one grapheme, and
             // uppercasing is not one-to-one — "ß".uppercased() is "SS". A crash
             // inside a keyboard hook takes the whole app down, so anything this

@@ -103,6 +103,7 @@
 "Custom icon when active" = "Свой значок в активном состоянии";
 "Discard and start again" = "Удалить и начать заново";
 "Error" = "Ошибка";
+"Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "Исправление на лету работает со словами, чьи буквы стоят на клавишах пунктуации другой раскладки. У таких букв не было клавиши вовсе, поэтому большинство русских слов оставались нетронутыми или рвались посередине — и так же вело себя всё, что ставит буквы туда, где на латинской клавиатуре знаки.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Исправление набранного требует универсального доступа: без него Helm не видит нажатий и ничего не меняет. Индикатор языка ниже работает и без разрешения.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm не может прочитать ключ, которым подписаны правила, — ни одно из них не выполняется.";
 "Helm cannot read this folder" = "Helm не может прочитать эту папку";

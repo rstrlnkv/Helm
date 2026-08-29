@@ -103,6 +103,7 @@
 "Custom icon when active" = "激活时使用自定义图标";
 "Discard and start again" = "放弃并重新开始";
 "Error" = "错误";
+"Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "边打边改现在也能处理那些字母落在另一种布局标点键上的单词。这些字母此前根本没有对应的键，所以大多数俄语单词要么原样不动，要么从中间断开。";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "修正输入内容需要无障碍权限：没有它，Helm 读不到按键，也不会更改任何内容。下方的语言指示器无需该权限也能工作。";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm 无法读取用于签名规则的密钥，因此没有任何规则在运行。";
 "Helm cannot read this folder" = "Helm 无法读取此文件夹";

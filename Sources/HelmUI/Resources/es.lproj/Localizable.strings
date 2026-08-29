@@ -103,6 +103,7 @@
 "Custom icon when active" = "Icono propio cuando está activo";
 "Discard and start again" = "Descartar y empezar de nuevo";
 "Error" = "Error";
+"Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "La corrección al escribir funciona con palabras cuyas letras están en teclas de puntuación de la otra distribución. Esas letras no tenían tecla alguna, así que la mayoría de las palabras rusas se quedaban sin tocar o se partían por la mitad.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Corregir lo que escribes necesita Accesibilidad: sin ella Helm no ve las pulsaciones y no cambia nada. El indicador de idioma de abajo funciona sin ella.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm no puede leer la clave con la que están selladas las reglas, así que ninguna se está ejecutando.";
 "Helm cannot read this folder" = "Helm no puede leer esta carpeta";

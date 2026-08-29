@@ -34,6 +34,7 @@ only once it has no known problems left.
 - **UPD** The switch that lets a timer pause your automation rules now says plainly what it is and when it happens.
 - **UPD** While that switch is on, Stop takes two presses: the first ends the timer, the second offers to switch the rules off as well.
 - **FIX** The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused for a password field.
+- **FIX** Fixing as you type works on words whose letters sit on punctuation keys in the other layout — most Russian words were left alone or cut in half mid-word, and every layout that puts letters where a latin keyboard puts marks had the same problem.
 - **FIX** Putting selected text right works on a whole sentence. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way.
 - **FIX** A date that says how old something is no longer reads as a time still to come.
 - **FIX** The record Helm keeps of an unattended disk scan no longer names anything inside your Library folder.

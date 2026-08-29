@@ -422,7 +422,21 @@ public struct UCTranslation: TranslationPort {
                                             &deadKeyState, 4, &length, &characters)
                 guard status == noErr, length > 0,
                       let character = String(utf16CodeUnits: characters, count: length).first,
-                      character.isLetter else { continue }
+                      // Not `isLetter`, and that filter was the defect. A key
+                      // is only «punctuation» in the layout you happen to be
+                      // holding: `,` types `б` in Russian, `;` types `ж`, `[`
+                      // types `х`. Keeping letters only meant seven Cyrillic
+                      // letters had no key at all — measured over 24 ordinary
+                      // Russian words: 6 corrupted mid-word, 18 refused, 0
+                      // converted correctly. The same is true wherever a
+                      // layout puts letters on keys ANSI calls punctuation,
+                      // which is most non-latin layouts, so this is not a
+                      // Russian fix.
+                      //
+                      // Whitespace stays out: a space is the same key in every
+                      // layout, and admitting it would let a word boundary
+                      // translate into a letter.
+                      !character.isWhitespace else { continue }
                 table[code] = character
             }
         }

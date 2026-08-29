@@ -103,6 +103,7 @@
 "Custom icon when active" = "Custom icon when active";
 "Discard and start again" = "Discard and start again";
 "Error" = "Error";
+"Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem.";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm cannot read the key its rules are sealed with, so none of them are running.";
 "Helm cannot read this folder" = "Helm cannot read this folder";

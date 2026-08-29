@@ -103,6 +103,7 @@
 "Custom icon when active" = "アクティブ時にカスタムアイコン";
 "Discard and start again" = "破棄してやり直す";
 "Error" = "エラー";
+"Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "入力中の修正が、別のレイアウトでは記号キーに置かれた文字を含む単語でも働くようになりました。それらの文字にはキーが存在せず、ロシア語の多くの単語はそのまま残るか、途中で切れていました。";
 "Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "入力の修正にはアクセシビリティが必要です。許可がないとキー入力を読み取れず、何も変更しません。下の言語インジケータは許可なしでも動作します。";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "ルールの署名に使う鍵を読み取れません。どのルールも実行されません。";
 "Helm cannot read this folder" = "このフォルダを読み取れません";
