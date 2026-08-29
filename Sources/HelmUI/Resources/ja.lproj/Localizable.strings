@@ -143,6 +143,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "もう一度押すと変更を元に戻せます。選択し直しても戻せます。";
 "Tap it on its own: it fixes the selection, or the last word." = "単独で押すと、選択した文字か直前の語を修正します。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。";
+"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "ターミナルとパスワード管理アプリは最初はオフです。そこでは間違って見える語こそ正しいことが多いからです。必要なものはオンにでき、自分のアプリも追加できます。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "キーボードのページは、選んだ期間（今日・1週間・1か月・1年・全期間）に修正した語と、それで省けた入力時間から始まります。まだ何もない状態はゼロではなく、そう表示されます。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "キーボードの名前の横のバッジが、下のページが一時停止と示している間に“動作中”と表示することはなくなりました。パスワード欄が前面にある間、モジュールは意図的に黙ります。";
 "The language indicator below works without this permission." = "下の言語インジケータはこの許可がなくても動きます。";
@@ -365,7 +366,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Helm が実行するものはハングしなくなりました。Homebrew、VPN の一覧、電源設定が永久に停止し、待っている画面を巻き添えにすることがありました。";
 "Nothing in this folder matches yet." = "今のところ、このフォルダに一致するものはありません。";
 "Nothing in this folder." = "このフォルダには何もありません。";
-"Nothing listed. A few terminals and password managers are left alone already — add any others here." = "一覧は空です。主なターミナルとパスワード管理アプリは最初から対象外です。ほかは自分で追加してください。";
 "Nothing logged yet." = "まだ記録はありません。";
 "Nothing matches these filters." = "この条件に一致する行はありません。";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "ゴミ箱に入れても、実際には何も“解放”されていませんでした——同じボリューム上のゴミ箱に移動しただけです。“ディスク”、“重複”、“ログイン項目と機能拡張”、“アンインストーラ”は今、そのとおりに表示します（“ゴミ箱に入れました — 4 KB”）。“ディスク”もゴミ箱を空にするまで空き容量として数えなくなりました。";
@@ -503,7 +503,6 @@
 "System extensions" = "システム機能拡張";
 "Tag" = "タグ";
 "Tag name" = "タグ名";
-"Terminals and password managers are left alone: there, a wrong-looking word is often exactly right." = "ターミナルとパスワード管理アプリは対象外です。そこでは不自然に見える語こそ正しいことが多いためです。";
 "The Accessibility permission was described as only nudging the pointer for Keep Awake — it’s also what lets the Keyboard module read what you type, in every application, and the caption names both now. The first-launch alert no longer says permissions need granting “again” when none have been granted yet, and Settings no longer asks for a permission none of your enabled modules need." = "アクセシビリティ権限は“スリープ防止”がポインタを動かすためだけ、と説明されていました——実際にはキーボードモジュールがあらゆるアプリで入力内容を読み取るためでもあり、説明文は今、両方を挙げます。初回起動時の通知は、まだ一度も許可していないのに“再度”許可が必要と表示しなくなりました。設定も、有効なモジュールのどれも必要としない権限を求めなくなりました。";
 "The Disk ring now shows Chinese folder names the way Finder does. “Applications” and “Users” stayed in English inside an otherwise Chinese ring." = "ディスクのリングは、Finder と同じように中国語のフォルダ名を表示するようになりました。それまでは、ほかは中国語のリングの中に“Applications”と“Users”だけ英語で残っていました。";
 "The Keyboard gesture no longer acts at the wrong place after an arrow key. Undoing already knew the caret had moved on; converting a word didn’t, and could still retype six characters wherever the caret ended up." = "矢印キーの後、キーボードの操作が違う位置に作用しなくなりました。取り消しはカーソルが動いたことをすでに把握していましたが、単語の変換側はそうではなく、カーソルが移動した先で 6 文字を打ち直すことがありました。";

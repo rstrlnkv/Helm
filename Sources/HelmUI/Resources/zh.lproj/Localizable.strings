@@ -143,6 +143,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "再按一次即可撤销更改，或重新选中文字以还原。";
 "Tap it on its own: it fixes the selection, or the last word." = "单独按一下：修正选中的文字，或最后一个词。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
+"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "终端和密码管理器默认关闭：在那里，看起来写错的词往往正是对的。你可以打开其中任何一个，也可以添加自己的应用。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "“键盘”页面以它在你所选时间段内修正的内容开头——今天、一周、一月、一年或全部——以及由此省下的输入时间。还没有内容并不等于零，页面会直接说明。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "“键盘”名称旁的标记不再显示为运行中，而下方页面却说已暂停。密码输入框在前时，模块会有意保持沉默，现在两处说法一致。";
 "The language indicator below works without this permission." = "下方的语言指示器无需此权限也能使用。";
@@ -365,7 +366,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Helm 运行的东西不会再卡死。Homebrew、VPN 列表和电源设置此前可能永远停住，并拖住等待它们的界面。";
 "Nothing in this folder matches yet." = "目前这个文件夹里没有匹配的内容。";
 "Nothing in this folder." = "这个文件夹里没有内容。";
-"Nothing listed. A few terminals and password managers are left alone already — add any others here." = "列表为空。少数终端和密码管理器已经排除在外，其他的请自行添加。";
 "Nothing logged yet." = "暂无记录。";
 "Nothing matches these filters." = "没有符合这些筛选条件的行。";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "把东西移到废纸篓其实并没有真正“释放”任何空间——它只是移到了同一宗卷上的废纸篓里。“磁盘”“重复文件”“登录项与扩展”和“卸载器”现在都如实显示（“已移到废纸篓 — 4 KB”），“磁盘”也不再把它计入已释放的空间，直到废纸篓真正清空。";
@@ -503,7 +503,6 @@
 "System extensions" = "系统扩展";
 "Tag" = "标签";
 "Tag name" = "标签名称";
-"Terminals and password managers are left alone: there, a wrong-looking word is often exactly right." = "终端和密码管理器不受影响：在那里，看起来奇怪的词往往正是对的。";
 "The Accessibility permission was described as only nudging the pointer for Keep Awake — it’s also what lets the Keyboard module read what you type, in every application, and the caption names both now. The first-launch alert no longer says permissions need granting “again” when none have been granted yet, and Settings no longer asks for a permission none of your enabled modules need." = "此前“辅助功能”权限只被说成是“保持唤醒”移动指针所需——实际上它也是“键盘”模块在任何应用中读取输入内容所需的权限，说明文字现在会同时提及两者。首次启动的提示不会再在从未授权的情况下说需要“重新”授权，“设置”也不会再要求已启用模块都不需要的权限。";
 "The Disk ring now shows Chinese folder names the way Finder does. “Applications” and “Users” stayed in English inside an otherwise Chinese ring." = "“磁盘”环形图现在会像访达一样显示中文文件夹名称。此前原本是中文的环形图里，“Applications”“Users”仍是英文。";
 "The Keyboard gesture no longer acts at the wrong place after an arrow key. Undoing already knew the caret had moved on; converting a word didn’t, and could still retype six characters wherever the caret ended up." = "按下方向键后，键盘手势不会再作用到错误的位置。撤销此前已经能识别光标已移动；但转换单词一直不能，仍可能在光标移到的新位置重新键入六个字符。";

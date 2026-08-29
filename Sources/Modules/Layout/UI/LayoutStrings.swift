@@ -17,7 +17,6 @@ enum LyStr {
     static var onSpace: String { L("When Space is pressed") }
     static var onReturn: String { L("When Return is pressed") }
     static var onPunctuation: String { L("When a punctuation mark is typed") }
-    static var noAppsYet: String { L("Nothing listed. A few terminals and password managers are left alone already — add any others here.") }
     static var addApp: String { L("Add app…") }
     static var ruleOn: String { L("Fix") }
     static var ruleOff: String { L("Don’t fix") }
@@ -27,7 +26,15 @@ enum LyStr {
     /// right thing thirty lines down (`orShortcut`). One name per thing.
     static var shortcuts: String { L("Shortcuts") }
     static var apps: String { L("Rules for specific apps") }
-    static var appsHint: String { L("Terminals and password managers are left alone: there, a wrong-looking word is often exactly right.") }
+    /// One caption for the list, and it explains the rows above it rather than
+    /// describing a rule the page keeps invisible.
+    ///
+    /// It replaces two: an empty state saying «a few terminals and password
+    /// managers are left alone already» and a footer saying almost the same
+    /// thing, neither of which named one of them. The apps are drawn now.
+    static var appsWhy: String {
+        L("Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own.")
+    }
     static var on: String { L("Active") }
     static var notWatching: String { L("Not running") }
     static var paused: String { L("Paused") }

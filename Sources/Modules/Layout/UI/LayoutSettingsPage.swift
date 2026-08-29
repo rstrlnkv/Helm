@@ -25,6 +25,10 @@ struct LayoutSettingsPage: View {
     @State private var newShort = ""
     @State private var newLong = ""
     @State private var fixCapitals: Bool
+    /// The apps Helm leaves alone before any rule is consulted, filtered to
+    /// the ones this Mac actually has. Worked out once: each answer is an
+    /// `NSWorkspace` lookup, and this is read while a form redraws.
+    private let builtInBlocked: [String]
     @State private var heroPeriod: ConversionPeriod
     @State private var heroMetric: HeroMetric
 
@@ -49,6 +53,9 @@ struct LayoutSettingsPage: View {
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
         _abbreviations = State(initialValue: AutoReplaceStore.load(store))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
+        builtInBlocked = AppScope.blockedByDefault.filter {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
+        }
         _heroPeriod = State(initialValue: ConversionPeriod(
             rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
         _heroMetric = State(initialValue: HeroMetric(
@@ -520,20 +527,27 @@ struct LayoutSettingsPage: View {
 
     @ViewBuilder private var appsSection: some View {
         Section {
-            if appRules.isEmpty {
-                Text(LyStr.noAppsYet).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
-            }
-            // By the name the row draws, not by the bundle id it is stored
-            // under: `com.apple.Safari` before `org.mozilla.firefox` reads as
-            // Safari before Firefox, which is an order with no rule in it.
-            ForEach(AppInfo.sortedByName(appRules.keys), id: \.self) { bundleID in
+            // **The built-in list is drawn, not described.** Seven apps were
+            // refused before any rule was consulted and the page said so twice
+            // in different words — «a few terminals and password managers are
+            // left alone already» over an empty card, and «terminals and
+            // password managers are left alone» under it — without naming one
+            // of them. Somebody whose typing is not being fixed in Warp had no
+            // way to learn from this page that Warp was the reason.
+            //
+            // They are ordinary rows now, set to «Don't fix», and switchable
+            // like any other: the rule is visible and it is theirs to overrule.
+            // Only the ones this Mac has — a row for an app nobody installed is
+            // a list of somebody else's software.
+            ForEach(AppInfo.sortedByName(Set(appRules.keys).union(builtInBlocked)),
+                    id: \.self) { bundleID in
                 appRow(bundleID)
             }
             Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }
         } header: {
             HelmSectionTitle(LyStr.apps)
         } footer: {
-            sectionNote(LyStr.appsHint)
+            sectionNote(LyStr.appsWhy)
         }
     }
 

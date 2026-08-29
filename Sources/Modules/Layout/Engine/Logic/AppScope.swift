@@ -6,11 +6,11 @@ import Foundation
 /// `ghbdtn` is as likely to be a filename as a mistake, and a password manager,
 /// where the text is not prose at all. The user can overrule both — it is their
 /// machine — but not by accident.
-struct AppScope: Equatable, Sendable {
+public struct AppScope: Equatable, Sendable {
     /// bundle id → allowed. Absent means "no opinion".
     let rules: [String: Bool]
 
-    static let blockedByDefault: Set<String> = [
+    public static let blockedByDefault: Set<String> = [
         "com.apple.Terminal",
         "com.googlecode.iterm2",
         "dev.warp.Warp-Stable",
