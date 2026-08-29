@@ -275,7 +275,19 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
             guard length > 0,
                   let character = String(utf16CodeUnits: characters, count: length).first
             else { return }
-            handler?(character.isLetter ? .character(character) : .punctuation(character))
+            // **Not «is this a letter», but «is this key a letter anywhere».**
+            // `,` types `б` in Russian, `;` types `ж`, `[` types `х` — and
+            // punctuation confirms a word, so on a latin layout `cgfcb,j` was
+            // cut at the comma: `cgfcb` confirmed and converted, `j` starting
+            // again. Measured over 24 ordinary Russian words: 6 cut mid-word.
+            //
+            // A Mac with only latin layouts installed answers false for every
+            // mark and keeps today's behaviour exactly — the comma goes on
+            // ending an English sentence's last word.
+            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let letter = character.isLetter
+                || UCTranslation.letterKeys(installed: TISLayoutSources().installed()).contains(code)
+            handler?(letter ? .character(character) : .punctuation(character))
         }
     }
 }
@@ -394,6 +406,23 @@ public struct UCTranslation: TranslationPort {
     /// Cached: building it walks fifty keys through Carbon, and it changes only
     /// when the installed layouts do.
     private static let cache = LockedMemo<String, [UInt16: Character]>()
+
+    /// Which keys type a letter in some installed layout.
+    ///
+    /// Built over the same cached tables the translation uses, and cached in
+    /// turn: the tap asks this on every keystroke, and `installed()` alone is
+    /// 6.2 µs measured — small, but paid on the thread that must not be busy.
+    /// The keyboard type is in the key for the reason it is in the table's:
+    /// plugging in an ISO keyboard where an ANSI one was makes every answer
+    /// describe the wrong hardware.
+    static func letterKeys(installed: [String]) -> LetterKeys {
+        let id = installed.sorted().joined(separator: ",") + "#\(LMGetKbdType())"
+        return letterKeyCache.valueOrNothing(for: id) {
+            LetterKeys(tables: installed.compactMap { characterTable($0) })
+        } ?? LetterKeys(tables: [])
+    }
+
+    private static let letterKeyCache = LockedMemo<String, LetterKeys>()
 
     private static func characterTable(_ sourceID: String) -> [UInt16: Character]? {
         // The keyboard type is baked into the table by `UCKeyTranslate`, so it

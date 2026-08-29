@@ -76,12 +76,16 @@ struct LayoutHero: View {
             // Always occupied, never inserted: this is what keeps the four
             // states one height. It says the estimate's assumption while the
             // figure is time, and when counting began while it is words.
-            Text(note)
+            // The placeholder is the longest of the two, so the space it
+            // holds is the space the real one needs.
+            Text(note.isEmpty ? LyStr.estimateNote : note)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, HelmSpace.s3)
+                .opacity(note.isEmpty ? 0 : 1)
+                .accessibilityHidden(note.isEmpty)
 
             if watching {
                 controls.padding(.top, HelmSpace.s6)
@@ -142,14 +146,20 @@ struct LayoutHero: View {
             : LyStr.timeIn(period)
     }
 
-    /// The line that never leaves. With time it names the assumption behind the
-    /// estimate; with words it says when counting began, which is what «all
-    /// time» means to somebody reading it.
+    /// The line that never leaves.
+    ///
+    /// It says the estimate's assumption while the figure is time, and nothing
+    /// while it is words — but it is drawn either way, at `.opacity(0)`, so the
+    /// hero does not change height when somebody presses a glyph. An `if` here
+    /// takes the form under it with it, on an act that was not about the form.
+    ///
+    /// It used to say «counted since 29 August» under the words. True, and not
+    /// worth a line on the page: a start date is something a person needs once
+    /// and never again, and it was standing in the one place the page has for
+    /// something worth saying.
     private var note: String {
-        guard watching, hasFigure else { return "" }
-        if metric == .minutes { return LyStr.estimateNote }
-        guard let since = totals.since else { return "" }
-        return LyStr.countingSince(HelmDates.day(since))
+        guard watching, hasFigure, metric == .minutes else { return "" }
+        return LyStr.estimateNote
     }
 
     // MARK: - The controls

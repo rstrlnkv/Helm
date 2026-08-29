@@ -325,17 +325,6 @@ enum LyStr {
         L("An estimate: about 3 seconds a word — noticing, clearing, switching, typing it again.")
     }
 
-    /// When counting began, under «all time». A figure with no scale is worse
-    /// than no figure.
-    static func countingSince(_ when: String,
-                              language: AppLanguage = AppLanguage.current) -> String {
-        L("counted since \(when)",
-          [.ru: "считается с \(when)", .es: "contado desde \(when)",
-           .fr: "compté depuis \(when)", .de: "gezählt seit \(when)",
-           .pt: "contado desde \(when)", .ja: "\(when)から集計",
-           .zh: "自 \(when) 起统计"], language: language)
-    }
-
     /// The hero when nothing has been put right yet — the state no edition of
     /// the redesign ever drew, and the one a fresh install sees.
     static var nothingYet: String { L("Watching your words") }
