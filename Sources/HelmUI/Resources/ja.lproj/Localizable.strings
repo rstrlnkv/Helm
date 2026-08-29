@@ -120,6 +120,7 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm はパスワードを読みません。システムが保護対象と示した入力欄は丸ごと飛ばします。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
+"Keyboard is back in the menu-bar panel, in all three tile sizes: how many words it put right, the last change with a way to tell it never to touch that word again, and the switch that decides whether it goes on fixing as you type." = "キーボードがメニューバーのパネルに戻りました。3つのサイズすべてで、修正した語数、直前の変更とその語を今後触らせない操作、入力中の修正を続けるかどうかのスイッチを表示します。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Menu bar" = "メニューバー";

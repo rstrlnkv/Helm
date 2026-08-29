@@ -93,16 +93,62 @@ import Module_Layout_Engine
         indicator = nil
     }
 
-    /// Not a utility any more: it has a figure worth a glance — how many
-    /// words it put right today — and that is the whole test for whether a
-    /// module belongs in the panel rather than behind a disclosure in it.
-    /// A row in the utilities list, not a tile.
+    /// **The widget is back, and the reason it was taken away is answered
+    /// rather than forgotten.** It went because it was «a number with no
+    /// question behind it» — true then. Since today the count outlives a
+    /// launch, it answers for a period rather than for one day, and the module
+    /// has verbs that work from a panel.
     ///
-    /// It had a widget for a while — the count of watched folders, the words
-    /// put right today — and both are numbers without a question behind them:
-    /// nobody opens a menu bar to find out how many folders are watched. A tile
-    /// has to earn its 90 pt, and this one was earning it by existing.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// Still `.utility` as well: the row in the utilities list is what a person
+    /// who has not added the tile sees, and it is where the module's switch
+    /// lives.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+        guard let store else { return .utility }
+        return MenuBarContribution(panelTile: AnyView(
+            LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm), store: store,
+                               period: Self.storedPeriod(store), onNever: { Self.never($0, store) })))
+    }
+
+    /// Three sizes, three questions: how many · how many and what to do · why
+    /// that many and whether it goes on happening.
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        guard let store else { return nil }
+        let lvm = LayoutViewModel.shared(vm: vm)
+        switch size {
+        case .compact:
+            return AnyView(LayoutWidgets.Compact(lvm: lvm, period: Self.storedPeriod(store)))
+        case .wide:
+            return AnyView(LayoutWidgets.Wide(lvm: lvm, store: store,
+                                              period: Self.storedPeriod(store),
+                                              onNever: { Self.never($0, store) }))
+        case .tall:
+            return AnyView(LayoutTallWidget(lvm: lvm, store: store,
+                                            onNever: { Self.never($0, store) },
+                                            onAutomatic: { Self.automatic($0, store, vm) }))
+        }
+    }
+
+    /// The period the page was left on: the panel and the window answer the
+    /// same question, so they must not answer it differently.
+    private static func storedPeriod(_ store: NamespacedStore) -> ConversionPeriod {
+        ConversionPeriod(rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today
+    }
+
+    /// Both verbs write where the settings page writes, and tell the engine —
+    /// a list the engine never hears about is a list that does nothing.
+    private static func never(_ word: String, _ store: NamespacedStore) {
+        var words = store.stringArray(LayoutKey.exceptions)
+        let cleaned = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !cleaned.isEmpty, !words.contains(where: { $0.lowercased() == cleaned })
+        else { return }
+        words.append(cleaned)
+        store.set(words, for: LayoutKey.exceptions)
+    }
+
+    private static func automatic(_ on: Bool, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+        store.set(on, for: LayoutKey.automatic)
+        vm.send(LayoutCommand.settingsChanged)
+    }
 
     /// The badge beside the module's name in the page header.
     ///

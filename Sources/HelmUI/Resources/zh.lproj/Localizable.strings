@@ -120,6 +120,7 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm 从不读取密码：系统标记为安全的输入框会被整体跳过。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
+"Keyboard is back in the menu-bar panel, in all three tile sizes: how many words it put right, the last change with a way to tell it never to touch that word again, and the switch that decides whether it goes on fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有：修正了多少词、最近一次替换以及把该词加入不再改动的名单，还有决定是否继续边打边改的开关。";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";
