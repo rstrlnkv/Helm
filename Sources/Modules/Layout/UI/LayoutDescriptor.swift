@@ -134,6 +134,14 @@ import Module_Layout_Engine
         enabled && !suspended ? .active : .idle
     }
 
+    /// Which figure the hero is showing, beside the module's name — see
+    /// `LayoutHeaderMetric` for why it is here rather than in the hero's own
+    /// row of buttons.
+    public func headerAccessory(_ vm: ModuleViewModel) -> AnyView? {
+        guard let store else { return nil }
+        return AnyView(LayoutHeaderMetric(store: store))
+    }
+
     /// Without this the header reads the badge once and never again: the tap
     /// going live, or macOS taking it away, is exactly the case where nothing
     /// else on screen redraws.

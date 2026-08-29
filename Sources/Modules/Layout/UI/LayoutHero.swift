@@ -172,21 +172,10 @@ struct LayoutHero: View {
     /// second colour of its own.
     private var controls: some View {
         HelmWrappingRow {
-            ForEach(HeroMetric.allCases, id: \.self) { option in
-                metricButton(option)
-            }
             ForEach(ConversionPeriod.allCases, id: \.self) { option in
                 periodButton(option)
             }
         }
-    }
-
-    private func metricButton(_ option: HeroMetric) -> some View {
-        chooser(chosen: metric == option) { metric = option } label: {
-            Image(systemName: option.symbol)
-        }
-        .accessibilityLabel(option.name)
-        .help(option.name)
     }
 
     private func periodButton(_ option: ConversionPeriod) -> some View {

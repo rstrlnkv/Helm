@@ -92,6 +92,15 @@ struct LayoutSettingsPage: View {
                 indicatorSection
             }
         }
+        // The metric now lives in the window header, which is a view with no
+        // parent in common with this one. The store is what they share, and
+        // this is the page's half of it: without it the header switches and the
+        // figure under it does not.
+        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { _ in
+            let stored = HeroMetric(
+                rawValue: store.string(LayoutKey.heroMetric, default: "")) ?? .words
+            if stored != heroMetric { heroMetric = stored }
+        }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
         .helmTracksAccessibility($accessibility)
@@ -217,36 +226,7 @@ struct LayoutSettingsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let last = lvm.state.lastConversion {
-                // Shown, not offered. Undoing has to happen in the app the
-                // conversion happened in, and reaching a button here means
-                // bringing Helm forward — which is both the wrong app and, as a
-                // click, the thing that ends the chance to undo. A button that
-                // cannot fire is worse than no button. So the sentence saying
-                // how to undo is this row's own note rather than a row of its
-                // own with a hairline between it and the thing it explains.
-                HelmSettingRow(lvm.state.lastConversionUndone
-                                ? LyStr.lastChangeUndone : LyStr.lastChange,
-                               note: lastChangeNote) {
-                    // A 48-character word used to put «Last change» on two
-                    // lines: inside `HelmSettingRow` the label holds the layout
-                    // priority and a value with a line limit gives way, so the
-                    // long one truncates in the middle and the row keeps its
-                    // height.
-                    Text("\(last.before) → \(last.after)")
-                        .font(HelmText.figureFont)
-                        .lineLimit(1).truncationMode(.middle)
-                    // Unlike undoing, this works from anywhere: it changes
-                    // a list, not somebody else's text. Not for a forced
-                    // conversion, though: there `before` is arbitrary typed
-                    // text the dictionary never vouched for — possibly a field
-                    // nothing recognised as secure — and this button is the
-                    // module's one path from typed text to a file on disk.
-                    if !last.forced {
-                        Button(LyStr.neverThisWord) { addException(last.before) }
-                            .controlSize(.small)
-                            .disabled(exceptionsContain(last.before))
-                    }
-                }
+                lastChangeRow(last)
             }
         }
     }
@@ -373,6 +353,52 @@ struct LayoutSettingsPage: View {
     /// control it names. Three honest states: a gesture exists and is named;
     /// none exists and the hint says the change can only be put back by hand;
     /// the change was already taken back and needs no undo instructions.
+    /// The last change, its explanation, and the one act available from here.
+    ///
+    /// **Stacked rather than a row with a trailing group.** As three things on
+    /// the right of a `HelmSettingRow` — the pair, the arrow, the button — it
+    /// was the trailing side that gave way, because the label column holds the
+    /// layout priority: photographed on the owner's Mac the value read «L…й»
+    /// and the button «Н…», both cut mid-word, in the state this row is
+    /// normally in. Nothing here is optional enough to truncate: the pair is
+    /// what happened, and the button is what to do about it.
+    ///
+    /// Undo is deliberately not offered. It has to happen in the app the
+    /// conversion happened in, and reaching a button here means bringing Helm
+    /// forward — which is both the wrong app and, as a click, the thing that
+    /// ends the chance to undo. So the sentence saying how lives here as the
+    /// note, and the only button is the one that works from anywhere.
+    @ViewBuilder
+    private func lastChangeRow(_ last: ConversionEvent) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
+                Text(lvm.state.lastConversionUndone ? LyStr.lastChangeUndone : LyStr.lastChange)
+                Spacer(minLength: HelmSpace.s5)
+                Text("\(last.before) → \(last.after)")
+                    .font(HelmText.figureFont)
+                    .foregroundStyle(HelmText.quiet)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            if let note = lastChangeNote {
+                Text(note)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Not for a forced conversion: there `before` is arbitrary typed
+            // text the dictionary never vouched for — possibly a field nothing
+            // recognised as secure — and this button is the module's one path
+            // from typed text to a file on disk.
+            if !last.forced {
+                Button(LyStr.neverThisWord) { addException(last.before) }
+                    .controlSize(.small)
+                    .disabled(exceptionsContain(last.before))
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
     private var lastChangeNote: String? {
         if lvm.state.lastConversionUndone { return nil }
         guard let gestureName else { return LyStr.undoImpossible }
