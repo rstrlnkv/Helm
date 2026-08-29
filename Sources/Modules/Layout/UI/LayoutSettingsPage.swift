@@ -112,6 +112,10 @@ struct LayoutSettingsPage: View {
         // parent in common with this one. The store is what they share, and
         // this is the page's half of it: without it the header switches and the
         // figure under it does not.
+        // The hero is 46 pt shorter without its verb row — measured — and that
+        // is the state between the page appearing and the engine's first
+        // `layoutState`. Unanimated it drops the whole form in one frame.
+        .animation(HelmMotion.interface, value: lvm.state.enabled)
         .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { _ in
             let stored = HeroMetric(
                 rawValue: store.string(LayoutKey.heroMetric, default: "")) ?? .words
@@ -218,7 +222,7 @@ struct LayoutSettingsPage: View {
         // headings on the page, measured. The 10 pt is for a block that draws a
         // surface; this one is centred text, and Keep Awake's hero, centred for
         // the same reason, takes none either.
-        .padding(.bottom, HelmSpace.s5)
+
     }
 
     /// What it does, and the last thing it did.
@@ -232,14 +236,15 @@ struct LayoutSettingsPage: View {
                     .labelsHidden()
                     .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
             }
+            HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
+                Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
+                    .labelsHidden()
+                    .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
+            }
             HelmSettingRow(LyStr.audible) {
                 Toggle(LyStr.audible, isOn: $audible)
                     .labelsHidden()
                     .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
-            }
-            if lvm.state.suspended {
-                Text(LyStr.suspended).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             if let last = lvm.state.lastConversion {
                 lastChangeRow(last)
@@ -424,17 +429,17 @@ struct LayoutSettingsPage: View {
             ForEach(abbreviations) { entry in
                 HStack(spacing: HelmSpace.s5) {
                     Text(entry.from)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.system(.body, design: .monospaced))
                         .frame(minWidth: 60, alignment: .leading)
                     Text("→").foregroundStyle(HelmText.faint)
                     Text(entry.to).lineLimit(1).truncationMode(.tail)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: HelmSpace.s4)
                     Button {
                         abbreviations.removeAll { $0.from == entry.from }
                         AutoReplaceStore.save(abbreviations, to: store)
                         lvm.vm.send(LayoutCommand.settingsChanged)
                     } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
+                        Image(systemName: "xmark").foregroundStyle(HelmText.faint)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(HelmA11y.remove), \(entry.from)")
@@ -445,7 +450,7 @@ struct LayoutSettingsPage: View {
                 // survives the merge as the element's action.
                 .accessibilityElement(children: .combine)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: HelmSpace.s4) {
                 // `prompt:` rather than a title, and labels hidden: inside a
                 // `Form` a `TextField`'s title is drawn as a label *beside* the
                 // field, so the placeholder ended up as a two-line word to the
@@ -464,11 +469,6 @@ struct LayoutSettingsPage: View {
                 Button(LyStr.addAbbreviation) { addAbbreviation() }
                     .disabled(newShort.trimmingCharacters(in: .whitespaces).isEmpty
                               || newLong.isEmpty)
-            }
-            HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
-                Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
-                    .labelsHidden()
-                    .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
             }
         } header: {
             HelmSectionTitle(LyStr.autoReplaceSection)
@@ -503,7 +503,7 @@ struct LayoutSettingsPage: View {
     private var exceptionsSection: some View {
         Section {
             TextEditor(text: $exceptions)
-                .font(.system(size: 13, design: .monospaced))
+                .font(.system(.body, design: .monospaced))
                 // The one place a saved word can be removed, and to VoiceOver
                 // it was an anonymous text area: the section header does not
                 // name a bare editor the way it names a labelled control.

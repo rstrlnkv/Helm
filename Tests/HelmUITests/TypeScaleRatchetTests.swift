@@ -270,7 +270,13 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// the small number above readable as a small number.
     func testTheScanStillFindsFontSizesAtAll() throws {
         let all = try hits()
-        XCTAssertGreaterThan(all.count, 30, "the type patterns matched \(all.count) sizes")
+        // The floor is «obviously more than none», not a census: it exists so a
+        // pattern that has stopped matching fails instead of passing for ever.
+        // It came down from 30 when Keyboard's three hand-typed monospaced
+        // faces became `.system(.body, design: .monospaced)` — a size that
+        // follows the Mac's text setting is one fewer size to scan, which is
+        // the direction this whole file wants.
+        XCTAssertGreaterThan(all.count, 20, "the type patterns matched \(all.count) sizes")
         XCTAssertLessThan(UISources.offLadder(all, ladder: Self.ladder).count, all.count / 2,
                           "more than half of every hand-typed size is off the scale — "
                           + "either the scale is wrong or the scan is")

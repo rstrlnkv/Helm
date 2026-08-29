@@ -46,7 +46,7 @@ struct LayoutIntro: View {
                 .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 point("textformat.abc", LyStr.introWhat)
                 point("checkmark.shield", LyStr.introWhen)
                 point("hand.raised", LyStr.introWhere)
@@ -90,10 +90,12 @@ struct LayoutTestField: View {
     @State private var text = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            TextField(LyStr.tryItPlaceholder, text: $text)
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            TextField("", text: $text, prompt: Text(LyStr.tryItPlaceholder))
+                .accessibilityLabel(LyStr.tryItPlaceholder)
+                .labelsHidden()
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13, design: .monospaced))
+                .font(.system(.body, design: .monospaced))
             Text(LyStr.tryItHint)
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)

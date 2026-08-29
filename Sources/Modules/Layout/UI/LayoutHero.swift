@@ -57,8 +57,12 @@ struct LayoutHero: View {
     var body: some View {
         VStack(spacing: 0) {
             figure
-                .font(HelmText.heroFigureFont)
-                .tracking(-2)
+                // A number takes the tabular face and the tracking; a sentence
+                // takes neither — «Not watching» lost 10.9 % of its width to
+                // `tracking(-2)`, measured, and Spanish 13.9 %. Keep Awake
+                // draws the same distinction for the same reason.
+                .font(hasFigure ? HelmText.heroFigureFont : HelmText.heroFont)
+                .tracking(hasFigure ? -2 : 0)
                 // A figure that changes rolls rather than cuts — and the keyed
                 // animation is the half that makes the transition an animation
                 // rather than an instruction for one.
@@ -76,19 +80,22 @@ struct LayoutHero: View {
             // Always occupied, never inserted: this is what keeps the four
             // states one height. It says the estimate's assumption while the
             // figure is time, and when counting began while it is words.
-            // The placeholder is the longest of the two, so the space it
-            // holds is the space the real one needs.
-            Text(note.isEmpty ? LyStr.estimateNote : note)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, HelmSpace.s3)
-                .opacity(note.isEmpty ? 0 : 1)
-                .accessibilityHidden(note.isEmpty)
-
             if watching {
                 controls.padding(.top, HelmSpace.s6)
+                // **Under the verbs, the way `KeepAwakeHero.stopNote` is.**
+                // Between the caption and the buttons it made this hero's
+                // rhythm 38.5 pt where both finished heroes are 26 — measured,
+                // constant across all eight languages and every width. The
+                // always-drawn line is what keeps every state one height; where
+                // it stands is what keeps the app one rhythm.
+                Text(note.isEmpty ? LyStr.estimateNote : note)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, HelmSpace.s3)
+                    .opacity(note.isEmpty ? 0 : 1)
+                    .accessibilityHidden(note.isEmpty)
             } else if let grant {
                 Button(HelmPermissionNote.grantLabel, action: grant)
                     .buttonStyle(.borderedProminent)
