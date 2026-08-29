@@ -21,12 +21,26 @@ private final class CountingSelection: SelectionPort, @unchecked Sendable {
 /// reads «0 words fixed today» on a page describing a day of fixes.
 final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
 
-    /// The last state the engine published — `LocalTransport` replays it, so a
-    /// reader arriving after the fact is handed it rather than waiting.
-    private func published(by engine: LayoutEngine) async -> LayoutState? {
+    /// A state the engine published that answers the question being asked.
+    ///
+    /// **Not «the first one».** `activate()` emits too, so the stream can hold
+    /// the state from before the fix — and taking the first event read that
+    /// one, which is a count taken over a moving subject. It passed alone and
+    /// failed in a full run, which is exactly the shape that habit produces.
+    ///
+    /// Bounded rather than open-ended: a `for await` with no end hangs the
+    /// suite when the fix never lands, and a hung test says far less than a
+    /// failed one.
+    private func published(by engine: LayoutEngine,
+                           matching: @Sendable @escaping (LayoutState) -> Bool)
+    async -> LayoutState? {
+        var seen = 0
         for await event in engine.transport.events
         where event.name == LayoutEvent.layoutState.rawValue {
-            return try? JSONDecoder().decode(LayoutState.self, from: event.payload)
+            seen += 1
+            if let state = try? JSONDecoder().decode(LayoutState.self, from: event.payload),
+               matching(state) { return state }
+            if seen >= 8 { return nil }
         }
         return nil
     }
@@ -47,8 +61,8 @@ final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
                        "precondition: the selection was put right — without a fix the "
                        + "count below is rightly zero")
 
-        let state = await published(by: engine)
-        XCTAssertEqual(state?.conversionsToday, 1, """
+        let state = await published(by: engine) { $0.totals.today.words >= 1 }
+        XCTAssertEqual(state?.totals.today.words, 1, """
             a selection was fixed and the day's count never heard: the page reads \
             «0 words fixed today» after a fix, because `transform` neither counts \
             a success nor emits the state the page draws.

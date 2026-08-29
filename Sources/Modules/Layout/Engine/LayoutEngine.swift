@@ -58,7 +58,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var audible: Bool
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
-    private var conversions = DailyCount()
+    /// The count that outlives a launch. `DailyCount` held one day in memory,
+    /// so the page's figure went back to zero at every launch — and the silent
+    /// updater relaunches the app, which put «0 fixed today» in front of
+    /// somebody who had used it all morning.
+    private let ledger: LedgerStore
     /// Installed layouts macOS has no dictionary for. Asked once at activation
     /// rather than per word: the probe costs about 150 µs and the per-word
     /// decision runs on the tap's own thread, where it already spends 476.
@@ -87,6 +91,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 sound: SoundPort? = nil,
                 announcer: AnnouncePort? = nil,
                 selection: SelectionPort? = nil,
+                ledger: LedgerStore = LedgerStore(),
                 autoReplace: [AutoReplace.Entry] = [],
                 fixCapitals: Bool = false,
                 rules: [String: Bool] = [:],
@@ -105,6 +110,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.sound = sound
         self.announcer = announcer
         self.selection = selection
+        self.ledger = ledger
         self.autoReplace = AutoReplace(entries: autoReplace)
         self.fixCapitals = fixCapitals
         self.scope = AppScope(rules: rules)
@@ -473,11 +479,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
         if audible { sound?.playSwitch() }
-        // A selection put right is a word fixed today: this door used to fix
-        // words without telling the page's one figure about them.
-        lock.lock()
-        _ = conversions.add(on: Date())
-        lock.unlock()
+        // A selection put right is words fixed today: this door used to fix
+        // words without telling the page's one figure about them. Counted as
+        // the words it actually holds — a sentence put right in one gesture is
+        // several switches the person did not have to make, and calling it one
+        // would understate the estimate by exactly that many.
+        let words = replacement.split(whereSeparator: \.isWhitespace)
+        ledger.record(words: max(words.count, 1),
+                      characters: words.reduce(0) { $0 + $1.count },
+                      on: Date())
         emitState()
     }
 
@@ -547,8 +557,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         undo = UndoRecord(event: event, from: from, to: to)
         lastEvent = event
         lastEventUndone = false
-        _ = conversions.add(on: Date())
         lock.unlock()
+        ledger.record(characters: word.count, on: Date())
         // Counts, never content: the words themselves stay out of the log.
         HelmLog.shared.info(Self.moduleID, "converted a word in \(Redact.app(bundleID))")
         // The words *do* go here: an announcement is spoken and gone — the one
@@ -773,7 +783,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 suspended: suspended,
                                 lastConversion: lastEvent,
                                 lastConversionUndone: lastEventUndone,
-                                conversionsToday: conversions.value(on: Date()),
+                                totals: ledger.totals(now: Date()),
                                 noDictionary: noDictionary)
         lock.unlock()
         localTransport.emit(LayoutEvent.layoutState, encoding: state)

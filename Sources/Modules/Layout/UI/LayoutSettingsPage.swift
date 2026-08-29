@@ -153,16 +153,16 @@ struct LayoutSettingsPage: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
-                Text("\(lvm.state.conversionsToday)")
+                Text("\(lvm.state.totals.today.words)")
                     .font(HelmText.heroFigureFont)
                     .tracking(-2)
                     // A count that changes while the page is open changes by
                     // one, and the digits should roll rather than cut.
                     .contentTransition(.numericText())
-                    .animation(HelmMotion.interface, value: lvm.state.conversionsToday)
+                    .animation(HelmMotion.interface, value: lvm.state.totals.today.words)
                 HelmBadge(stateLabel, tint: stateTint)
             }
-            Text(LyStr.fixedToday(lvm.state.conversionsToday))
+            Text(LyStr.fixedToday(lvm.state.totals.today.words))
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)

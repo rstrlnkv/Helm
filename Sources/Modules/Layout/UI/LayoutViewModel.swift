@@ -8,7 +8,7 @@ import Module_Layout_Engine
                                                            suspended: false,
                                                            lastConversion: nil,
                                                            lastConversionUndone: false,
-                                                           conversionsToday: 0)
+                                                           totals: .none)
     public let vm: ModuleViewModel
 
     private var eventsTask: Task<Void, Never>?

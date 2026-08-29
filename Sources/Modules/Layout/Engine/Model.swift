@@ -31,6 +31,49 @@ public struct ConversionEvent: Codable, Equatable, Sendable {
     }
 }
 
+/// One period's two figures. Characters travel beside words because the time
+/// estimate is taken from the length of what was actually fixed.
+public struct LedgerFigures: Codable, Equatable, Sendable {
+    public let words: Int
+    public let characters: Int
+    public init(words: Int, characters: Int) {
+        self.words = words
+        self.characters = characters
+    }
+}
+
+/// Every period the hero can be switched to, answered at once.
+///
+/// `since` is when counting began, which is what «all time» means to the person
+/// reading it — nil until the first word is put right. A figure with no scale
+/// is worse than no figure: forty words is a lot in a week and nothing in three
+/// years.
+public struct ConversionTotals: Codable, Equatable, Sendable {
+    public let today: LedgerFigures
+    public let week: LedgerFigures
+    public let month: LedgerFigures
+    public let year: LedgerFigures
+    public let allTime: LedgerFigures
+    public let since: Date?
+
+    public static let none = ConversionTotals(
+        today: LedgerFigures(words: 0, characters: 0),
+        week: LedgerFigures(words: 0, characters: 0),
+        month: LedgerFigures(words: 0, characters: 0),
+        year: LedgerFigures(words: 0, characters: 0),
+        allTime: LedgerFigures(words: 0, characters: 0), since: nil)
+
+    public init(today: LedgerFigures, week: LedgerFigures, month: LedgerFigures,
+                year: LedgerFigures, allTime: LedgerFigures, since: Date?) {
+        self.today = today
+        self.week = week
+        self.month = month
+        self.year = year
+        self.allTime = allTime
+        self.since = since
+    }
+}
+
 /// What the settings page shows.
 public struct LayoutState: Codable, Equatable, Sendable {
     public let enabled: Bool
@@ -44,7 +87,7 @@ public struct LayoutState: Codable, Equatable, Sendable {
     /// move, but the row on the page — and its «Never this word» button — must
     /// outlive it, or the button is reachable only for changes nobody rejected.
     public let lastConversionUndone: Bool
-    public let conversionsToday: Int
+    public let totals: ConversionTotals
     /// Installed layouts macOS has no spelling dictionary for, by source id.
     ///
     /// Empty on most Macs. When it is not, «Fix as I type» is dead for every
@@ -56,13 +99,13 @@ public struct LayoutState: Codable, Equatable, Sendable {
 
     public init(enabled: Bool, automatic: Bool, suspended: Bool,
                 lastConversion: ConversionEvent?, lastConversionUndone: Bool,
-                conversionsToday: Int, noDictionary: [String] = []) {
+                totals: ConversionTotals = .none, noDictionary: [String] = []) {
         self.enabled = enabled
         self.automatic = automatic
         self.suspended = suspended
         self.lastConversion = lastConversion
         self.lastConversionUndone = lastConversionUndone
-        self.conversionsToday = conversionsToday
+        self.totals = totals
         self.noDictionary = noDictionary
     }
 }

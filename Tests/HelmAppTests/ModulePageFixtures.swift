@@ -400,7 +400,12 @@ extension ModulePageRender {
         lastConversion: ConversionEvent(before: "ghbdtn", after: "привет",
                                         app: "com.example.render", trailing: " "),
         lastConversionUndone: false,
-        conversionsToday: 17)
+        totals: ConversionTotals(today: LedgerFigures(words: 17, characters: 102),
+                                 week: LedgerFigures(words: 61, characters: 366),
+                                 month: LedgerFigures(words: 240, characters: 1440),
+                                 year: LedgerFigures(words: 1284, characters: 7704),
+                                 allTime: LedgerFigures(words: 1284, characters: 7704),
+                                 since: Date(timeIntervalSince1970: 1_755_000_000)))
 
     // MARK: - Leftovers
 
