@@ -154,65 +154,66 @@ struct LayoutHero: View {
 
     // MARK: - The controls
 
-    /// The metric pair, in its own property: written inline it was one
-    /// expression the type-checker refused.
-    private var metricButtons: some View {
-        HStack(spacing: HelmSpace.s1) {
+    /// Every choice on this row is a button, the way Keep Awake's hero is: one
+    /// `HelmWrappingRow` of `.large` buttons that folds instead of truncating.
+    ///
+    /// **Buttons rather than a segmented control, and that is a measurement.**
+    /// A segmented picker draws to its intrinsic width and centres inside
+    /// whatever it is given, so inside a row that proposes `.unspecified` it has
+    /// no headroom at all — measured at 347.5 pt for five words in English,
+    /// 52 pt for the glyph pair, drawn exactly equal to wanted in all eight
+    /// languages. `LongStringGeometryRatchetTests` counts a control with under
+    /// 39 % room as one a longer word breaks, which German and French are.
+    /// A row of buttons wraps to a second line instead, which is what
+    /// `HelmWrappingRow` exists for.
+    ///
+    /// The chosen one is `.borderedProminent`; the rest are ordinary. That is
+    /// the same «this is the one that is on» the panel uses, and it needs no
+    /// second colour of its own.
+    private var controls: some View {
+        HelmWrappingRow {
             ForEach(HeroMetric.allCases, id: \.self) { option in
                 metricButton(option)
             }
+            ForEach(ConversionPeriod.allCases, id: \.self) { option in
+                periodButton(option)
+            }
         }
-        .padding(HelmSpace.s1)
-        .background(RoundedRectangle(cornerRadius: HelmRadius.ctl)
-            .strokeBorder(HelmSurface.hairline))
     }
 
     private func metricButton(_ option: HeroMetric) -> some View {
-        let chosen = metric == option
-        return Button { metric = option } label: {
+        chooser(chosen: metric == option) { metric = option } label: {
             Image(systemName: option.symbol)
-                .frame(width: 30, height: 20)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .background(RoundedRectangle(cornerRadius: HelmRadius.ctl)
-            .fill(chosen ? HelmSurface.wellFill : Color.clear))
         .accessibilityLabel(option.name)
-        .accessibilityAddTraits(chosen ? [.isSelected] : [])
         .help(option.name)
     }
 
-    private var controls: some View {
-        HelmWrappingRow(spacing: HelmSpace.s4, lineSpacing: HelmSpace.s3) {
-            // **Two buttons, not a segmented control**, and that is a
-            // measurement rather than a preference. A segmented picker draws to
-            // its intrinsic width — measured at 52 pt drawn against 52 pt
-            // wanted, in all eight languages — so inside a row that proposes
-            // `.unspecified` it has no headroom by construction, and
-            // `LongStringGeometryRatchetTests` counts a control with none as
-            // one a longer label breaks. Widening the frame does not reach it:
-            // the control centres inside whatever it is given.
-            //
-            // The pair still reads as one choice — same capsule, same size, the
-            // chosen one filled — and each carries its name, because a glyph
-            // with no name is invisible to VoiceOver.
-            metricButtons
-
-            // **A menu, not a segment, and that is a measurement.** Drawn as
-            // five words the segment came to 347.5 pt in English with no
-            // headroom at all, and `LongStringGeometryRatchetTests` counts a
-            // control with less than 39 % room as one a longer word breaks —
-            // which German and French are. A menu shows the chosen word and
-            // costs the width of one, in every language.
-            Picker(LyStr.period, selection: $period) {
-                ForEach(ConversionPeriod.allCases, id: \.self) { option in
-                    Text(LyStr.periodName(option)).tag(option)
-                }
-            }
-            .labelsHidden()
-            .fixedSize()
+    private func periodButton(_ option: ConversionPeriod) -> some View {
+        chooser(chosen: period == option) { period = option } label: {
+            Text(LyStr.periodName(option))
         }
-        .disabled(!watching)
-        .opacity(watching ? 1 : 0)
+    }
+
+    /// One button, filled when it is the one in force.
+    ///
+    /// `.borderedProminent` and `.bordered` are two types, so the choice is a
+    /// branch rather than a value — SwiftUI has no `AnyButtonStyle`, and hiding
+    /// that behind an erased wrapper would cost more than the four lines it
+    /// saves.
+    @ViewBuilder
+    private func chooser<Label: View>(chosen: Bool,
+                                      action: @escaping () -> Void,
+                                      @ViewBuilder label: () -> Label) -> some View {
+        if chosen {
+            Button(action: action, label: label)
+                .controlSize(.large)
+                .buttonStyle(.borderedProminent)
+                .accessibilityAddTraits(.isSelected)
+        } else {
+            Button(action: action, label: label)
+                .controlSize(.large)
+                .buttonStyle(.bordered)
+        }
     }
 }
