@@ -116,6 +116,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
 "Helm got no answer, so this may not be every volume." = "Helm n’a reçu aucune réponse, certains volumes manquent peut-être.";
+"Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm ne lit jamais un mot de passe : un champ marqué comme sécurisé par le système est ignoré en entier.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm vous prévient maintenant quand une nouvelle version est disponible. La vérification avait déjà lieu chaque jour, mais la réponse restait sur la page À propos de Helm, en attendant que vous alliez la voir.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm signale quand macOS n’a pas de dictionnaire pour l’une de vos dispositions. La correction à la frappe ne peut pas y fonctionner, et jusqu’ici l’interrupteur restait activé sans rien corriger. La correction à la touche fonctionne toujours.";
 "Last change (undone)" = "Dernier changement (annulé)";
@@ -124,6 +125,7 @@
 "Month" = "Mois";
 "Move to Trash…" = "Placer dans la corbeille…";
 "No key is assigned — this change can only be put back by hand." = "Aucune touche n’est choisie — ce changement ne peut être rétabli qu’à la main.";
+"Not watching" = "Ne surveille pas";
 "Nothing" = "Rien";
 "Nothing has needed putting right so far." = "Rien n’a eu besoin d’être corrigé jusqu’ici.";
 "Nothing is selected for you: macOS loads every item in this list." = "Rien n’est sélectionné : macOS charge chaque élément de cette liste.";
@@ -140,6 +142,7 @@
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Appuyer sur Contrôle seule met aussi en pause la voix de VoiceOver. Si vous utilisez VoiceOver, choisissez une autre touche.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "La page Clavier s’ouvre sur ce qu’elle a corrigé, sur la période de votre choix — aujourd’hui, une semaine, un mois, une année ou tout — et le temps de frappe ainsi épargné. Rien pour l’instant n’est pas un zéro : le module le dit.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "La pastille à côté du nom de Clavier n’indique plus qu’il est actif alors que la page en dessous le dit en pause. Devant un champ de mot de passe, le module se tait volontairement, et les deux endroits le disent maintenant.";
+"The language indicator below works without this permission." = "L’indicateur de langue ci-dessous fonctionne sans cette autorisation.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Les règles enregistrées sur ce Mac n’ont pas été écrites par Helm : aucune ne s’exécute.";
 "This folder is no longer there" = "Ce dossier n’existe plus";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Réanalysez pour voir ce qui reste.";
@@ -515,6 +518,7 @@
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "La carte du disque répond désormais à VoiceOver : chaque secteur annonce son nom, sa taille et sa part, et peut être ouvert de là. Les dossiers de la liste s’ouvrent aussi via le menu contextuel.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in used to appear all at once at the end of the animation. Now it slides in with the rest." = "L’anneau du disque grandit vers le dossier ouvert : le niveau qui arrivait apparaissait d’un coup à la fin de l’animation, il glisse maintenant avec les autres.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume’s free space alongside the folder’s contents, so a small folder came out as a blank grey circle." = "L’anneau du disque mesurait la mauvaise chose lors de l’analyse d’un dossier : il dessinait l’espace libre du volume à côté du contenu, et un petit dossier devenait un cercle gris vide.";
+"macOS is not delivering keystrokes to Helm" = "macOS ne transmet pas les frappes à Helm";
 "“Scan again” now scans the same place again instead of sending you back to the volume list." = "« Réanalyser » réanalyse maintenant le même endroit.";
 "In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over." = "Dans les doublons, les fichiers refusés restent cochés.";
 "Homebrew search puts the name you typed first." = "La recherche Homebrew place en tête le nom que vous avez tapé.";

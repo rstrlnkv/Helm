@@ -71,7 +71,10 @@ struct LayoutSettingsPage: View {
                 // macOS ignores, dimmed, reads as «broken»; absent reads as
                 // «this first». The indicator is the exception and stays — it
                 // reads the input source through TIS and needs no grant.
-                Section(header: heroAndTitle) { EmptyView() }
+                // The hero alone, with no «Behaviour» over it: there is no
+                // behaviour under it to name, and a section title standing over
+                // a permission notice is a heading for the wrong thing.
+                Section(header: hero) { EmptyView() }
                 deniedSection
                 indicatorSection
             } else {
@@ -168,7 +171,9 @@ struct LayoutSettingsPage: View {
                    suspended: lvm.state.suspended,
                    watching: accessibility != .denied && lvm.state.enabled,
                    period: $heroPeriod,
-                   metric: $heroMetric)
+                   metric: $heroMetric,
+                   grant: accessibility == .denied
+                       ? { PermissionNeed.accessibility.openSettings() } : nil)
         .onChange(of: heroPeriod) { _, new in store.set(new.rawValue, for: LayoutKey.heroPeriod) }
         .onChange(of: heroMetric) { _, new in store.set(new.rawValue, for: LayoutKey.heroMetric) }
     }
@@ -248,15 +253,23 @@ struct LayoutSettingsPage: View {
 
     /// Without the grant the whole page is inert, and it said so in a banner
     /// over 1867 pt of settings macOS ignores.
+    /// What is left to say once the hero has said it.
+    ///
+    /// **It used to say the same thing twice.** The hero drew «Not watching»
+    /// and the whole sentence, and this drew the sentence again under a title
+    /// that repeated it a third time — with the window header's own badge
+    /// making four. So the hero keeps the figure, the reason and the verb, and
+    /// this keeps the two facts the hero has no room for: what the permission
+    /// cannot see, and what still works without it.
     private var deniedSection: some View {
         Section {
-            HelmEmptyState(symbol: "keyboard",
-                           tint: LayoutDescriptor.tint.colour,
-                           title: LyStr.deniedTitle,
-                           message: LyStr.deniedMessage) {
-                Button(HelmPermissionNote.grantLabel) { PermissionNeed.accessibility.openSettings() }
-                    .buttonStyle(.borderedProminent)
+            VStack(alignment: .leading, spacing: HelmSpace.s4) {
+                Text(LyStr.deniedGuarantee)
+                Text(LyStr.indicatorWorksAnyway)
             }
+            .font(HelmText.rowDetail)
+            .foregroundStyle(HelmText.quiet)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 

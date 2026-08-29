@@ -39,6 +39,24 @@ enum LyStr {
     /// works without the grant — the page draws it below this message, and a
     /// message claiming otherwise called its own neighbour a lie.
     static var deniedTitle: String { L("Helm is not watching the keyboard") }
+
+    /// The hero's own words without the grant. Short, because the hero is a
+    /// figure and not a paragraph — the long sentence lives once, under it.
+    ///
+    /// **«Not watching», not «Not running».** The module is running; the tap is
+    /// not. And the window header already says «Not active» in its own words,
+    /// so a third spelling of the same fact on one screen is what this avoids.
+    static var heroNotWatching: String { L("Not watching") }
+    static var heroNotWatchingWhy: String { L("macOS is not delivering keystrokes to Helm") }
+
+    /// What the empty state is for once the hero has said the rest: the two
+    /// things somebody weighing this permission actually wants to know.
+    static var deniedGuarantee: String {
+        L("Helm never reads a password: a field the system marks as secure is skipped whole.")
+    }
+    static var indicatorWorksAnyway: String {
+        L("The language indicator below works without this permission.")
+    }
     static var deniedMessage: String {
         L("Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it.")
     }

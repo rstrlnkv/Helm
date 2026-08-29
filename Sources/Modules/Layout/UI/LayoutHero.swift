@@ -50,6 +50,9 @@ struct LayoutHero: View {
     let watching: Bool
     @Binding var period: ConversionPeriod
     @Binding var metric: HeroMetric
+    /// Offered only when the grant is missing — the hero carries the verb
+    /// rather than repeating itself in a second block below.
+    var grant: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,7 +83,14 @@ struct LayoutHero: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, HelmSpace.s3)
 
-            controls.padding(.top, HelmSpace.s6)
+            if watching {
+                controls.padding(.top, HelmSpace.s6)
+            } else if let grant {
+                Button(HelmPermissionNote.grantLabel, action: grant)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(.top, HelmSpace.s6)
+            }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
@@ -100,7 +110,7 @@ struct LayoutHero: View {
     private var hasFigure: Bool { figures.words > 0 }
 
     private var figureText: String {
-        guard hasFigure else { return watching ? LyStr.nothingYet : LyStr.notWatching }
+        guard hasFigure else { return watching ? LyStr.nothingYet : LyStr.heroNotWatching }
         switch metric {
         case .words: return Decimal(Double(figures.words), decimals: 0)
         case .minutes: return HelmDuration.string(seconds)
@@ -124,7 +134,7 @@ struct LayoutHero: View {
     }
 
     private var caption: String {
-        guard watching else { return LyStr.deniedMessage }
+        guard watching else { return LyStr.heroNotWatchingWhy }
         guard hasFigure else { return LyStr.nothingYetNote }
         if suspended { return LyStr.suspended }
         return metric == .words

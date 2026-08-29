@@ -116,6 +116,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストは移動前の場所を示したままです。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm は応答を受け取れず、上のリストは前回のスキャンのままです。";
 "Helm got no answer, so this may not be every volume." = "Helm は応答を受け取れず、ここにすべてのボリュームが表示されていない可能性があります。";
+"Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm はパスワードを読みません。システムが保護対象と示した入力欄は丸ごと飛ばします。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
@@ -124,6 +125,7 @@
 "Month" = "1か月";
 "Move to Trash…" = "ゴミ箱に入れる…";
 "No key is assigned — this change can only be put back by hand." = "キーが設定されていないため、この変更は手動でしか戻せません。";
+"Not watching" = "監視していません";
 "Nothing" = "なし";
 "Nothing has needed putting right so far." = "これまで修正が必要なものはありません。";
 "Nothing is selected for you: macOS loads every item in this list." = "既定では何も選択されていません。このリストの項目はすべて macOS が読み込みます。";
@@ -140,6 +142,7 @@
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "キーボードのページは、選んだ期間（今日・1週間・1か月・1年・全期間）に修正した語と、それで省けた入力時間から始まります。まだ何もない状態はゼロではなく、そう表示されます。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "キーボードの名前の横のバッジが、下のページが一時停止と示している間に“動作中”と表示することはなくなりました。パスワード欄が前面にある間、モジュールは意図的に黙ります。";
+"The language indicator below works without this permission." = "下の言語インジケータはこの許可がなくても動きます。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
 "This folder is no longer there" = "このフォルダはもうありません";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
@@ -515,6 +518,7 @@
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "ディスクマップが VoiceOver に応答します。各セグメントが名前・サイズ・割合を読み上げ、そこから開けます。隣のリストのフォルダはコンテキストメニューからも開けます。";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in used to appear all at once at the end of the animation. Now it slides in with the rest." = "ディスクのリングが開いたフォルダへ滑らかに入ります。三層目がアニメーションの最後に突然現れることはなくなりました。";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume’s free space alongside the folder’s contents, so a small folder came out as a blank grey circle." = "フォルダをスキャンしたとき、ディスクのリングは中身と一緒にボリュームの空き容量まで描いていたため、小さなフォルダはただの灰色の円になっていました。";
+"macOS is not delivering keystrokes to Helm" = "macOS が Helm にキー入力を渡していません";
 "“Scan again” now scans the same place again instead of sending you back to the volume list." = "“再スキャン”は同じ場所をもう一度測るようになりました。";
 "In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over." = "重複ファイル検索では、移動できなかったファイルのチェックが残ります。";
 "Homebrew search puts the name you typed first." = "Homebrew の検索は入力した名前を先頭に出します。";

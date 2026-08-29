@@ -116,6 +116,7 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше по-прежнему показывает, где они были до перемещения.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm не получил ответа, поэтому список выше остался от прошлого сканирования.";
 "Helm got no answer, so this may not be every volume." = "Helm не получил ответа, поэтому здесь могут быть не все тома.";
+"Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm не читает пароли: поле, помеченное системой как защищённое, он пропускает целиком.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm теперь сам сообщает о новой версии. Проверка и раньше шла каждый день, но ответ оставался на странице «О Helm» и ждал, пока вы туда заглянете.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm сообщает, когда у macOS нет словаря для одной из ваших раскладок. Исправление на лету там невозможно — ему нужен словарь с обеих сторон, — а раньше переключатель оставался включённым, значок зелёным, и ни одно слово не исправлялось. Исправление клавишей работает, и в сообщении об этом сказано.";
 "Last change (undone)" = "Последняя замена (отменена)";
@@ -124,6 +125,7 @@
 "Month" = "Месяц";
 "Move to Trash…" = "Переместить в Корзину…";
 "No key is assigned — this change can only be put back by hand." = "Клавиша не назначена — эту замену можно вернуть только вручную.";
+"Not watching" = "Не следит";
 "Nothing" = "Ничего";
 "Nothing has needed putting right so far." = "Пока ничего исправлять не понадобилось.";
 "Nothing is selected for you: macOS loads every item in this list." = "Ничего не отмечено заранее: macOS загружает каждый объект из этого списка.";
@@ -140,6 +142,7 @@
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Одиночное нажатие Control также приостанавливает речь VoiceOver. Если вы пользуетесь VoiceOver, выберите другую клавишу.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "Страница «Клавиатуры» открывается тем, что модуль исправил, за выбранный срок — сегодня, неделя, месяц, год или всё время — и сколько это сберегло набора. Пусто — это не ноль: модуль, который весь день смотрел и не нашёл что исправлять, так и говорит.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "Бейдж рядом с названием «Клавиатуры» больше не сообщает, что модуль работает, когда страница под ним говорит о паузе. Пока впереди поле пароля, модуль намеренно молчит — теперь об этом говорят оба места.";
+"The language indicator below works without this permission." = "Индикатор языка ниже работает и без этого разрешения.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Правила, сохранённые на этом Mac, записаны не приложением Helm — ни одно из них не выполняется.";
 "This folder is no longer there" = "Этой папки больше нет";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Сканируйте заново, чтобы увидеть, что осталось.";
@@ -515,6 +518,7 @@
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Карта диска теперь отвечает VoiceOver: каждый сегмент называет папку, размер и её долю, и оттуда же в неё можно провалиться. Папки в списке рядом открываются и через контекстное меню — двойной клик работает по-прежнему, но перестал быть единственным способом.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in used to appear all at once at the end of the animation. Now it slides in with the rest." = "Кольцо «Диска» врастает в папку, в которую вы вошли. Оно показывает три уровня сразу, и уровень, появлявшийся при входе, раньше возникал разом в конце анимации. Теперь он въезжает вместе со всеми.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume’s free space alongside the folder’s contents, so a small folder came out as a blank grey circle." = "Кольцо «Диска» мерило не то, когда вы сканировали папку: рядом с содержимым оно рисовало свободное место всего тома, и небольшая папка выходила пустым серым кругом.";
+"macOS is not delivering keystrokes to Helm" = "macOS не отдаёт Helm нажатия клавиш";
 "“Scan again” now scans the same place again instead of sending you back to the volume list." = "«Сканировать заново» теперь и правда сканирует то же самое место, а не возвращает к списку томов.";
 "In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over." = "В поиске дубликатов файлы, которые не удалось переместить, остаются отмеченными — можно устранить причину и повторить, не начиная заново.";
 "Homebrew search puts the name you typed first." = "Поиск в Homebrew ставит первым то имя, которое вы набрали.";
