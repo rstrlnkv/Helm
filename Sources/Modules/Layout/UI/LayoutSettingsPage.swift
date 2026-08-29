@@ -285,6 +285,18 @@ struct LayoutSettingsPage: View {
                         .foregroundStyle(HelmSignal.warning)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                // A layout macOS cannot spell-check. «Fix as I type» is dead
+                // for every pair that includes it, and until now the page said
+                // nothing — the switch stayed on and the badge stayed green.
+                // Named by the system's own name for the source, never by its id.
+                if !lvm.state.noDictionary.isEmpty {
+                    Text(LyStr.noDictionary(layouts: lvm.state.noDictionary
+                                                .map { InputSourceInfo.name(of: $0) }
+                                                .joined(separator: ", ")))
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmSignal.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

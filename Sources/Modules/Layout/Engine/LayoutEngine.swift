@@ -59,6 +59,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
     private var conversions = DailyCount()
+    /// Installed layouts macOS has no dictionary for. Asked once at activation
+    /// rather than per word: the probe costs about 150 µs and the per-word
+    /// decision runs on the tap's own thread, where it already spends 476.
+    private var noDictionary: [String] = []
     private var running = false
     /// Whether the tap is live. Without the grant `start` returns false, and
     /// that answer is what the settings page shows.
@@ -125,6 +129,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // session where the page had been opened, and silently, because `.off`
         // refuses before there is anything to refuse.
         reloadSettings()
+        refreshDictionarySupport()
         startTap()
         // Permission is usually granted while Helm is already running — the
         // note in settings sends people to System Settings and they come back.
@@ -736,6 +741,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// Which installed layouts macOS cannot spell-check, asked once.
+    ///
+    /// The probe word is irrelevant: `isWord` answers `nil` for «no dictionary
+    /// for this language» whatever it is given, and that nil is the whole
+    /// question here. What it must not do is read a `false` as a missing
+    /// dictionary — that is «not a word», which is the module's ordinary case.
+    private func refreshDictionarySupport() {
+        let missing = DictionarySupport.missing(installed: sources.installed()) { source in
+            spell.isWord("a", sourceID: source) != nil
+        }
+        lock.lock()
+        noDictionary = missing
+        lock.unlock()
+        // Counted, never named: a layout is not a secret, but the log carries
+        // no more than it must and a count answers «is this Mac in that state».
+        if !missing.isEmpty {
+            HelmLog.shared.info(Self.moduleID,
+                                "no spelling dictionary for \(missing.count) of "
+                                + "\(sources.installed().count) installed layouts")
+        }
+    }
+
     private func emitState() {
         // Outside the lock: `isSecure` reaches the accessibility server, and a
         // hung app there blocks for the messenger's timeout. Holding the lock
@@ -746,7 +773,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 suspended: suspended,
                                 lastConversion: lastEvent,
                                 lastConversionUndone: lastEventUndone,
-                                conversionsToday: conversions.value(on: Date()))
+                                conversionsToday: conversions.value(on: Date()),
+                                noDictionary: noDictionary)
         lock.unlock()
         localTransport.emit(LayoutEvent.layoutState, encoding: state)
     }

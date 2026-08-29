@@ -237,6 +237,33 @@ enum LyStr {
     /// word, so «Fix as I type» is dead however green the badge above is.
     static var noTriggers: String { L("Nothing is switched on — words will not be fixed as you type.") }
 
+    /// Under the same card when macOS has no dictionary for a layout somebody
+    /// has installed.
+    ///
+    /// **It says what still works.** The gesture asks no dictionary —
+    /// `LayoutVerdict.decideForced` skips it by design — so this is «Helm
+    /// cannot decide for itself here», not «this does not work here». The two
+    /// read very differently to somebody who has just switched a language on.
+    ///
+    /// Interpolated, so it keeps its own table. The names come from
+    /// `InputSourceInfo`, which is macOS's own name for the layout — the same
+    /// rule as the pane names: read the system's spelling rather than invent
+    /// one.
+    static func noDictionary(layouts: String,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        let table: [AppLanguage: String] = [
+            .ru: "macOS не даёт словаря для \(layouts), поэтому сам Helm на этой раскладке ничего не решает. Исправление клавишей работает.",
+            .es: "macOS no tiene diccionario para \(layouts), así que Helm no decide por su cuenta en esa distribución. La corrección con la tecla sigue funcionando.",
+            .fr: "macOS ne fournit pas de dictionnaire pour \(layouts) : Helm ne décide donc rien de lui-même sur cette disposition. La correction à la touche fonctionne toujours.",
+            .de: "macOS hat kein Wörterbuch für \(layouts), deshalb entscheidet Helm auf dieser Belegung nichts von selbst. Die Korrektur per Taste funktioniert weiterhin.",
+            .pt: "O macOS não tem dicionário para \(layouts), então o Helm não decide sozinho nesse leiaute. A correção pela tecla continua funcionando.",
+            .ja: "macOS には \(layouts) の辞書がないため、Helm はこのレイアウトで自分から判断しません。キーによる修正は使えます。",
+            .zh: "macOS 没有 \(layouts) 的词典，所以 Helm 不会在该布局上自行判断。按键修正仍然可用。",
+        ]
+        let english = "macOS has no dictionary for \(layouts), so Helm decides nothing by itself on that layout. Fixing with the key still works."
+        return language == .en ? english : table[language] ?? english
+    }
+
     /// What a VoiceOver reader hears when a word is rewritten in the app they
     /// are typing in. The words themselves are in it — an announcement is
     /// spoken and gone, the one channel with the same lifetime as the memory

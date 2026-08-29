@@ -45,15 +45,24 @@ public struct LayoutState: Codable, Equatable, Sendable {
     /// outlive it, or the button is reachable only for changes nobody rejected.
     public let lastConversionUndone: Bool
     public let conversionsToday: Int
+    /// Installed layouts macOS has no spelling dictionary for, by source id.
+    ///
+    /// Empty on most Macs. When it is not, «Fix as I type» is dead for every
+    /// pair that includes one of these and nothing on the page said so — the
+    /// switch stayed on and the badge stayed green. The ids travel rather than
+    /// the names: naming an input source is the UI's job (`InputSourceInfo`),
+    /// and the engine may not import `HelmUI`.
+    public let noDictionary: [String]
 
     public init(enabled: Bool, automatic: Bool, suspended: Bool,
                 lastConversion: ConversionEvent?, lastConversionUndone: Bool,
-                conversionsToday: Int) {
+                conversionsToday: Int, noDictionary: [String] = []) {
         self.enabled = enabled
         self.automatic = automatic
         self.suspended = suspended
         self.lastConversion = lastConversion
         self.lastConversionUndone = lastConversionUndone
         self.conversionsToday = conversionsToday
+        self.noDictionary = noDictionary
     }
 }

@@ -115,6 +115,7 @@
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
 "Helm got no answer, so this may not be every volume." = "Helm 未收到回应，这里可能不是全部宗卷。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
+"Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";

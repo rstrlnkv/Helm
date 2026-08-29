@@ -115,6 +115,7 @@
 "Helm got no answer, so the list above is still from the previous scan." = "Helm no recibió respuesta, así que la lista de arriba sigue siendo la del escaneo anterior.";
 "Helm got no answer, so this may not be every volume." = "Helm no recibió respuesta, así que puede que no estén todos los volúmenes.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm ahora te avisa cuando hay una nueva versión. Ya comprobaba a diario, pero la respuesta se quedaba en la página Acerca de Helm, esperando a que fueras a verla.";
+"Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm avisa cuando macOS no tiene diccionario para una de tus distribuciones. La corrección al escribir no puede funcionar ahí, y antes el interruptor seguía activado sin corregir nada. La corrección con la tecla sigue funcionando.";
 "Last change (undone)" = "Último cambio (deshecho)";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de inicio, archivos de ajustes, módulos y extensiones del sistema. Solo los restos pueden ir a la papelera.";
 "Menu bar" = "Barra de menús";
