@@ -71,7 +71,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
-                ChangeItem(kind: .new, text: L("Keyboard is back in the menu-bar panel, in all three tile sizes: how many words it put right, the last change with a way to tell it never to touch that word again, and the switch that decides whether it goes on fixing as you type.")),
+                ChangeItem(kind: .new, text: L("Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type.")),
                 ChangeItem(kind: .new, text: L("The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead.")),
                 ChangeItem(kind: .new, text: L("Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it.")),
                 ChangeItem(kind: .new, text: L("Helm now says what its background scans found while you were away. A notice appears only when something large has turned up since the last look, and it says what is there \u{2014} nothing is ever removed on its own.")),

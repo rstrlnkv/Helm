@@ -73,6 +73,24 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         }
     }
 
+    /// The last `days` days, oldest first, one number per day.
+    ///
+    /// **Zero-filled, and that is the whole point.** `days` holds only the days
+    /// something happened on, so a drawing made straight from it spaces five
+    /// bars evenly across a fortnight and a quiet week looks exactly like a busy
+    /// one. This is what the 2×N tile draws to answer «why is it that many» —
+    /// a question a single figure cannot answer, however large the digits.
+    func recent(days count: Int, now: Date,
+                calendar: Calendar = .current) -> [Int] {
+        guard count > 0 else { return [] }
+        let today = calendar.startOfDay(for: now)
+        var byDay: [Date: Int] = [:]
+        for row in days where row.day <= today { byDay[row.day, default: 0] += row.words }
+        return (0..<count).reversed().compactMap { back in
+            calendar.date(byAdding: .day, value: -back, to: today).map { byDay[$0] ?? 0 }
+        }
+    }
+
     /// Every period at once, because the page lets somebody switch between them
     /// and a round trip to the engine per press would make the segment feel
     /// like a network. Five pairs of integers is nothing to carry.
@@ -83,6 +101,7 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         }
         return ConversionTotals(today: figures(.today), week: figures(.week),
                                 month: figures(.month), year: figures(.year),
-                                allTime: figures(.allTime), since: since)
+                                allTime: figures(.allTime), since: since,
+                                recent: recent(days: 14, now: now, calendar: calendar))
     }
 }

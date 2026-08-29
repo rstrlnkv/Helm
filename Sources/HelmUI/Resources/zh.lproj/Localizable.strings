@@ -120,8 +120,9 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm 从不读取密码：系统标记为安全的输入框会被整体跳过。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
-"Keyboard is back in the menu-bar panel, in all three tile sizes: how many words it put right, the last change with a way to tell it never to touch that word again, and the switch that decides whether it goes on fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有：修正了多少词、最近一次替换以及把该词加入不再改动的名单，还有决定是否继续边打边改的开关。";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
 "Last change (undone)" = "最近一次修改（已撤销）";
+"Last fourteen days" = "最近十四天";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";
 "Month" = "一月";
@@ -522,6 +523,7 @@
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in used to appear all at once at the end of the animation. Now it slides in with the rest." = "磁盘环形图会平滑地生长到你打开的文件夹：第三层不再在动画结束时突然出现。";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume’s free space alongside the folder’s contents, so a small folder came out as a blank grey circle." = "扫描文件夹时，磁盘环把整个卷的可用空间和文件夹内容画在一起，小文件夹就成了一个空白的灰圈。";
 "macOS is not delivering keystrokes to Helm" = "macOS 没有把按键传给 Helm";
+"not spent typing again" = "省下的重新输入时间";
 "“Scan again” now scans the same place again instead of sending you back to the volume list." = "“重新扫描”现在会重新扫描同一位置。";
 "In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over." = "重复文件查找中，未能移动的文件保持勾选。";
 "Homebrew search puts the name you typed first." = "Homebrew 搜索会把你输入的名称排在最前。";

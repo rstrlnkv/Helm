@@ -40,6 +40,17 @@ enum LyStr {
     static var paused: String { L("Paused") }
     static var lastChange: String { L("Last change") }
 
+    /// The tile's estimate, without the period on the end: the caption above it
+    /// already carries the period, and saying it twice on a 280 pt tile reads
+    /// as two different spans. `timeIn(_:)` is the page's version, which has to
+    /// carry it because the page has no caption above the figure.
+    static var notSpentTypingAgain: String { L("not spent typing again") }
+
+    /// The bar row's name. A drawing is invisible to VoiceOver unless somebody
+    /// says what it is, and `NamedControlsTests` scans the source for the shape
+    /// of one that nobody did.
+    static var fortnight: String { L("Last fourteen days") }
+
     /// Without the grant the *typing* half can do nothing at all, so the page
     /// says that instead of drawing every setting under a banner. Not «every
     /// setting»: the language indicator reads the input source through TIS and

@@ -79,6 +79,15 @@ public struct ConversionTotals: Codable, Equatable, Sendable {
     public let year: LedgerFigures
     public let allTime: LedgerFigures
     public let since: Date?
+    /// Words put right on each of the last fourteen days, oldest first, with
+    /// a zero for every day nothing happened on.
+    ///
+    /// What the 2×N tile draws. A figure says how many; only the shape of the
+    /// days says why it is that many — and the zeros are the half that carries
+    /// it, or a week off and a week of work draw the same picture. Safe to
+    /// carry with a default because this payload never outlives the build that
+    /// wrote it: it goes engine → UI in one process, and is on disk nowhere.
+    public let recent: [Int]
 
     /// The pair for a period — so the page switches with a value rather than a
     /// `switch` it has to keep in step with the enum.
@@ -97,16 +106,18 @@ public struct ConversionTotals: Codable, Equatable, Sendable {
         week: LedgerFigures(words: 0, characters: 0),
         month: LedgerFigures(words: 0, characters: 0),
         year: LedgerFigures(words: 0, characters: 0),
-        allTime: LedgerFigures(words: 0, characters: 0), since: nil)
+        allTime: LedgerFigures(words: 0, characters: 0), since: nil, recent: [])
 
     public init(today: LedgerFigures, week: LedgerFigures, month: LedgerFigures,
-                year: LedgerFigures, allTime: LedgerFigures, since: Date?) {
+                year: LedgerFigures, allTime: LedgerFigures, since: Date?,
+                recent: [Int] = []) {
         self.today = today
         self.week = week
         self.month = month
         self.year = year
         self.allTime = allTime
         self.since = since
+        self.recent = recent
     }
 }
 
