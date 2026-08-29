@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -15,7 +16,7 @@ final class AForcedWordSaysSoTests: XCTestCase {
             tap: tap, typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), automatic: automatic)
+            secure: FakeSecure(), automatic: automatic, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

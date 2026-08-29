@@ -48,7 +48,11 @@ import Module_Layout_Engine
                             // with nothing checking the two agreed — which is
                             // exactly the asymmetry that hid `tapKey` staying
                             // `.off` on every launch until 283c3cf. One reader.
-                            settings: store)
+                            settings: store,
+                            // The one construction that gets the real keychain,
+                            // and it is the app's. Read lazily and off the
+                            // launch path — `VocabularyStore.warm`.
+                            vocabulary: VocabularyStore(keys: LayoutEngine.saltKeychain))
     }
 
     /// The module's own flag in the menu bar, built when the module starts

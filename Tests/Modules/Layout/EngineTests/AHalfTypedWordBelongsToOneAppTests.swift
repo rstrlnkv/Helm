@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -50,7 +51,7 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure)
+            secure: secure, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

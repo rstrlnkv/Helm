@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -29,7 +30,7 @@ final class TheSecondWordStartsWhereTheFirstLeftItTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет", "руддщ": "hello"]),
             spell: FakeSpell(valid: ["привет", "hello"]),
-            secure: FakeSecure(), automatic: true)
+            secure: FakeSecure(), automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

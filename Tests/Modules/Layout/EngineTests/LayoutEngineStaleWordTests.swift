@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -104,7 +105,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: StaleTranslation(), spell: StaleSpell(),
                                   secure: context, selection: selection,
-                                  autoReplace: autoReplace, fixCapitals: fixCapitals)
+                                  autoReplace: autoReplace, fixCapitals: fixCapitals, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

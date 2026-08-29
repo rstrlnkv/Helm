@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -29,7 +30,7 @@ final class TheSuspensionIsAFactNotASnapshotTests: XCTestCase {
         let engine = LayoutEngine(
             tap: tap, typing: FakeTyping(), sources: FakeSources(),
             translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
-            secure: secure, automatic: true)
+            secure: secure, automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
 
         secure.secure = true

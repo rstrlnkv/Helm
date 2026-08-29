@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -16,7 +17,7 @@ final class TheNeverListOutranksTheGestureTests: XCTestCase {
             spell: FakeSpell(valid: ["привет"]),
             secure: FakeSecure(),
             exceptions: exceptions,
-            automatic: false)
+            automatic: false, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

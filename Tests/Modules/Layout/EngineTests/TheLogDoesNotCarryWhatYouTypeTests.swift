@@ -1,6 +1,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -92,7 +93,7 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(),
             translation: FakeTranslation(table: [typed: replacement]),
             spell: FakeSpell(valid: [replacement]),
-            secure: FakeSecure(), automatic: true)
+            secure: FakeSecure(), automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

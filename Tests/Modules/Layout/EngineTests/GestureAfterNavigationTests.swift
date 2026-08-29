@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -86,7 +87,7 @@ final class GestureAfterNavigationTests: XCTestCase {
         typing = ArrowTyping(); context = ArrowContext(); tap = ArrowTap()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: ArrowSources(),
                                   translation: ArrowTranslation(), spell: ArrowSpell(),
-                                  secure: context)
+                                  secure: context, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

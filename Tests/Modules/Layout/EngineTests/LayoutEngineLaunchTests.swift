@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -101,7 +102,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
                                   autoReplace: autoReplace, fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
                                   automatic: automatic, triggers: triggers,
-                                  audible: audible, settings: settings)
+                                  audible: audible, settings: settings, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

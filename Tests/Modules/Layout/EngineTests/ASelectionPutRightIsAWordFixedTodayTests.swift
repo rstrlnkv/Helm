@@ -1,4 +1,5 @@
 import HelmContract
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -51,7 +52,7 @@ final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), selection: selection)
+            secure: FakeSecure(), selection: selection, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
 
         selection.text = "ghbdtn"

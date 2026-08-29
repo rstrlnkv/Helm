@@ -1,6 +1,7 @@
 import AppKit
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -33,7 +34,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
                      translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
                      secure: FakeSecure(),
                      settings: NamespacedStore(namespace: LayoutEngine.moduleID,
-                                               backing: InMemoryKeyValueStore()))
+                                               backing: InMemoryKeyValueStore()), vocabulary: VocabularyStore(keys: SilentSealKey()))
     }
 
     /// The last state the engine published, which is what the settings page

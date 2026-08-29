@@ -1,6 +1,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -51,7 +52,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: table),
             spell: FakeSpell(valid: Set(table.values)),
-            secure: FakeSecure(), selection: selection)
+            secure: FakeSecure(), selection: selection, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }

@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -19,7 +20,7 @@ final class TheModuleSpeaksWhenItActsTests: XCTestCase {
             tap: tap, typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), announcer: announcer, automatic: automatic)
+            secure: FakeSecure(), announcer: announcer, automatic: automatic, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }
@@ -49,7 +50,7 @@ final class TheModuleSpeaksWhenItActsTests: XCTestCase {
         let engine = LayoutEngine(
             tap: tap, typing: FakeTyping(), sources: FakeSources(),
             translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
-            secure: secure, announcer: announcer, automatic: true)
+            secure: secure, announcer: announcer, automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
 
         secure.secure = true

@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -77,7 +78,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: EdgeTranslation(table: table),
                                   spell: EdgeSpell(), secure: context,
-                                  triggers: triggers, settings: settings)
+                                  triggers: triggers, settings: settings, vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         return engine
     }
@@ -266,7 +267,7 @@ final class SettingsAtStartTests: XCTestCase {
                                   translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
                                   spell: EdgeSpell(), secure: EdgeContext(),
                                   settings: NamespacedStore(namespace: "layout",
-                                                            backing: InMemoryKeyValueStore()))
+                                                            backing: InMemoryKeyValueStore()), vocabulary: VocabularyStore(keys: SilentSealKey()))
         engine.activate()
         // No `settingsChanged`: this is the launch, not a visit to the page.
 

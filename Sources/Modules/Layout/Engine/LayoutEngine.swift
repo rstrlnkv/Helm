@@ -12,6 +12,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// upward — the same direction the command enums travel.
     public static let moduleID = "layout"
 
+    /// Where the salt for the personal vocabulary lives.
+    ///
+    /// A new account, never one already deployed: a keychain item that has
+    /// shipped stays where it is, and a new setting takes a new account rather
+    /// than moving somebody else's. Read lazily and off the launch path — see
+    /// `VocabularyStore`.
+    public static let saltKeychain = KeychainSealKey(service: "com.helm.layout",
+                                                    account: "vocabulary-salt",
+                                                    category: "layout")
+
     private let tap: KeyTapPort
     private let typing: TypingPort
     private let sources: LayoutSourcePort
@@ -63,6 +73,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// updater relaunches the app, which put «0 fixed today» in front of
     /// somebody who had used it all morning.
     private let ledger: LedgerStore
+    /// What the person taught the module by putting words back. Answers false
+    /// until its key arrives, which is the module as it was before it existed —
+    /// never a wait, and never a keychain dialog on the launch path.
+    private let vocabulary: VocabularyStore
     /// Installed layouts macOS has no dictionary for. Asked once at activation
     /// rather than per word: the probe costs about 150 µs and the per-word
     /// decision runs on the tap's own thread, where it already spends 476.
@@ -100,7 +114,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 triggers: ConversionTriggers = .default,
                 audible: Bool = false,
                 settings: NamespacedStore? = nil,
-                transport: LocalTransport = LocalTransport()) {
+                transport: LocalTransport = LocalTransport(),
+                /// **No default, deliberately.** A production port behind a
+                /// default argument is the one case the compiler cannot help
+                /// with, and this module has already paid for it: eleven engine
+                /// tests once took the Mac's real keychain and rolled the
+                /// owner's Autopilot back. Named here, forgetting is a build
+                /// error rather than an item in somebody's login keychain.
+                /// Last in the list so every call site names it at the end,
+                /// where the compiler points.
+                vocabulary: VocabularyStore) {
         self.tap = tap
         self.typing = typing
         self.sources = sources
@@ -111,6 +134,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.announcer = announcer
         self.selection = selection
         self.ledger = ledger
+        self.vocabulary = vocabulary
         self.autoReplace = AutoReplace(entries: autoReplace)
         self.fixCapitals = fixCapitals
         self.scope = AppScope(rules: rules)
@@ -136,6 +160,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // refuses before there is anything to refuse.
         reloadSettings()
         refreshDictionarySupport()
+        // Off the launch path on purpose: this reads the login keychain, and on
+        // an ad-hoc signed build that is a modal dialog on every install.
+        vocabulary.warm()
         startTap()
         // Permission is usually granted while Helm is already running — the
         // note in settings sends people to System Settings and they come back.
@@ -674,6 +701,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lastEvent = record.event
         lastEventUndone = true
         lock.unlock()
+        // **The one thing that teaches the module.** Putting a word back is
+        // somebody saying «I meant what I typed» about that exact word — a
+        // fact, not an inference from how often they type it. Twice before it
+        // becomes a rule; `PersonalVocabulary` holds that.
+        vocabulary.putBack(record.event.before)
         emitState()
     }
 

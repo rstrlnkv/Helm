@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -62,7 +63,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
                         typing: ConcurrentTyping) -> LayoutEngine {
         LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
                      translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), settings: settings)
+                     secure: ConcurrentContext(), settings: settings, vocabulary: VocabularyStore(keys: SilentSealKey()))
     }
 
     /// Two starts would build two taps and leave the first one enabled on the
