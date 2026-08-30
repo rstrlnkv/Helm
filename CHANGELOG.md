@@ -13,6 +13,10 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **FIX** Autopilot: “Run now” is off on a folder you have switched off; it used to report a sweep that never ran.
+- **NEW** The panel’s Disk tile opens the Disk module — a chevron in its header.
+- **FIX** The panel’s Disk tile measures the disk on every opening, and a drive plugged in while the page is open appears in the list.
+- **FIX** About: the update row wraps instead of cutting off “Helm is up to date.”
 - **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
 - **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
 - **NEW** Keyboard opens with a four-step tour: a real field to try it in, and the switches themselves.

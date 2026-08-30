@@ -71,6 +71,9 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .fix, text: L("“Run now” is switched off on a folder you have switched off. It used to be live there, and pressing it came back with a report of a sweep that never ran.")),
+                ChangeItem(kind: .new, text: L("The Disk tile in the panel opens the Disk module. A chevron in its header takes you straight to the page.")),
+                ChangeItem(kind: .fix, text: L("The Disk tile measures your disk each time you open the panel. It used to keep the figure from the first time the panel was ever opened — for the weeks a menu-bar app runs — so a disk filling up never turned the bar red. And a drive you plug in while the page is open now shows up in the list.")),
                 ChangeItem(kind: .upd, text: L("The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one.")),
                 ChangeItem(kind: .upd, text: L("The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them.")),
                 ChangeItem(kind: .new, text: L("The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went.")),
