@@ -36,6 +36,11 @@ public enum ObsoleteDefaults {
         // Keyboard's hero showed one figure at a time behind a glyph. It shows
         // both at once now, so there is nothing left to remember.
         "module.layout.heroMetric",
+        // Keyboard's indicator had a menu-bar size of its own, beside the app's
+        // `menuBarIconSize` in General — two items in one menu bar sized by two
+        // settings, over a four-point range, with the indicator's own menu rows
+        // ignoring both and drawing at `.small`.
+        "module.layout.badgeSize",
     ]
 
     public static func purge(from store: KeyValueStore) {

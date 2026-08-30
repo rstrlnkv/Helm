@@ -38,22 +38,9 @@ final class LanguageBadgeShapeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "ru", region: nil), "РУ")
     }
 
-    /// Every region the layout table can name must be spellable with regional
-    /// indicators, or the emoji style shows letters where the artwork style
-    /// shows a flag — the same layout answering two different ways.
-    func testEveryRegionTheTableNamesHasAnEmojiFlag() {
-        for region in ["RU", "DE", "FR", "IT", "NL", "UA", "PL", "AT", "ES", "BE",
-                       "IE", "SE", "US", "GB", "BR", "KR", "CN", "JP", "CZ", "TR"] {
-            XCTAssertNotNil(LanguageBadge.emojiFlag(region: region), region)
-        }
-    }
-
-    /// Two characters, both ASCII letters. Everything else is not a country
-    /// code however much it looks like one — and the arithmetic behind the flag
-    /// runs off the end of the alphabet for anything that is not.
-    func testOnlyATwoLetterCountryMakesAFlag() {
-        for region in ["R U", "R-", "RÜ", "🇷🇺", "R\u{0301}U", "р", "ру"] {
-            XCTAssertNil(LanguageBadge.emojiFlag(region: region), region)
-        }
-    }
+    /// **Two tests about emoji flags stood here** — that every region in the
+    /// layout table could be spelled with regional indicators, and that only a
+    /// two-letter ASCII code makes one. They went with `BadgeStyle.flagEmoji`:
+    /// Helm draws its own flags from `FlagAsset`, and `FlagAssetTests` is where
+    /// the artwork's own coverage is asserted.
 }

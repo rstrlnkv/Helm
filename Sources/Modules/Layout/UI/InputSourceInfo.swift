@@ -7,7 +7,6 @@ struct InputSourceInfo {
     let id: String
     let name: String
     let badge: String
-    let emojiFlag: String?
     let region: String?
 
     static func all() -> [InputSourceInfo] {
@@ -26,7 +25,7 @@ struct InputSourceInfo {
 
     static func current() -> InputSourceInfo {
         guard let source = InputSources.current(), let info = make(from: source) else {
-            return InputSourceInfo(id: "", name: "", badge: "?", emojiFlag: nil, region: nil)
+            return InputSourceInfo(id: "", name: "", badge: "?", region: nil)
         }
         return info
     }
@@ -42,7 +41,6 @@ struct InputSourceInfo {
         let region = LanguageBadge.region(sourceID: id, language: language)
         return InputSourceInfo(id: id, name: name,
                                badge: LanguageBadge.label(language: language, region: region),
-                               emojiFlag: LanguageBadge.emojiFlag(region: region),
                                region: region)
     }
 

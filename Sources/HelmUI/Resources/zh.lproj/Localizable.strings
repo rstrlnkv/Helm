@@ -218,7 +218,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "每个模块保存的数据和诊断日志会移到废纸篓，你可以从那里取回。设置本身（哪些模块已开启、它们的顺序、你的快捷键）则会被永久遗忘。Helm 会重启，并像第一次那样迎接你。";
 "Early builds with new features — expect rough edges." = "包含新功能的早期版本，可能存在问题。";
 "Edit" = "编辑";
-"Emoji & Symbols" = "表情与符号";
 "Enable a module in Settings." = "在设置中启用一个模块。";
 "Errors" = "错误";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "按 Esc 键即可关闭菜单栏面板，就像关闭 Mac 上的其他菜单一样。此前可以用快捷键打开，却只能用鼠标关闭。";
@@ -240,7 +239,6 @@
 "Fix with" = "修正键";
 "Fixes words typed in the wrong keyboard layout" = "修正用错误键盘布局输入的单词";
 "Flag" = "旗帜";
-"Flag, system" = "旗帜（系统）";
 "Folder" = "文件夹";
 "Folders that keep themselves in order" = "会自己保持整齐的文件夹";
 "Follow" = "跟随";

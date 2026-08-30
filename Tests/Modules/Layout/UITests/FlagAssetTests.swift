@@ -60,7 +60,7 @@ final class FlagAssetTests: XCTestCase {
     /// not the same picture.
     func testTheBadgeIsTheSizeItWasAskedFor() {
         for points in [CGFloat(9), 11, 13, 15, 18] {
-            let badge = BadgeImage.make(label: "JP", flag: nil, region: "JP",
+            let badge = BadgeImage.make(label: "JP", region: "JP",
                                         style: .flagDrawn, points: points)
             XCTAssertEqual(badge.size.height, points, accuracy: 0.01)
             // 4:3, the ratio the source set is drawn in — scaling a flag to
@@ -72,7 +72,7 @@ final class FlagAssetTests: XCTestCase {
     /// A layout with no artwork falls back to letters in a frame, not to a
     /// blank space where an indicator should be.
     func testALayoutWithNoArtworkFallsBackToLetters() {
-        let badge = BadgeImage.make(label: "DV", flag: nil, region: nil,
+        let badge = BadgeImage.make(label: "DV", region: nil,
                                     style: .flagDrawn, points: 15)
         XCTAssertGreaterThan(badge.size.width, 0)
         XCTAssertGreaterThan(badge.size.height, 0)
@@ -98,7 +98,7 @@ final class FlagAssetTests: XCTestCase {
     }
 
     func testTheBadgeHasPixelsInIt() throws {
-        let badge = BadgeImage.make(label: "RU", flag: nil, region: "RU",
+        let badge = BadgeImage.make(label: "RU", region: "RU",
                                     style: .flagDrawn, points: 18)
         let rep = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 48, pixelsHigh: 36,

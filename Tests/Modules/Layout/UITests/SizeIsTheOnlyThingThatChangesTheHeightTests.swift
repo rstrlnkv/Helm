@@ -23,7 +23,7 @@ final class SizeIsTheOnlyThingThatChangesTheHeightTests: XCTestCase {
     func testEveryStyleIsExactlyTheHeightThatWasAskedFor() {
         for size in MenuBarIconSize.allCases {
             for style in BadgeStyle.allCases {
-                let image = BadgeImage.make(label: "RU", flag: "🇷🇺", region: "RU",
+                let image = BadgeImage.make(label: "RU", region: "RU",
                                             style: style, points: size.points)
                 XCTAssertEqual(image.size.height, size.points, accuracy: 0.01,
                                "\(style.rawValue) at \(size.rawValue): asked for "
@@ -38,8 +38,8 @@ final class SizeIsTheOnlyThingThatChangesTheHeightTests: XCTestCase {
     /// flag drawing at all, and that branch has its own canvas.
     func testAFlagWithNoCountryIsTheHeightThatWasAskedFor() {
         for size in MenuBarIconSize.allCases {
-            for style in [BadgeStyle.flagEmoji, .flagDrawn] {
-                let image = BadgeImage.make(label: "RU", flag: nil, region: nil,
+            for style in [BadgeStyle.flagDrawn] {
+                let image = BadgeImage.make(label: "RU", region: nil,
                                             style: style, points: size.points)
                 XCTAssertEqual(image.size.height, size.points, accuracy: 0.01,
                                "\(style.rawValue) with no country at \(size.rawValue)")
@@ -47,19 +47,11 @@ final class SizeIsTheOnlyThingThatChangesTheHeightTests: XCTestCase {
         }
     }
 
-    /// And the two flag styles fall back to the *same* drawing, which is what
-    /// the page's note under both of them promises: «letters in a frame the
-    /// same size as a flag». They differed — 24.0 × 15.0 against 32.4 × 17.0 —
-    /// until 2026-08-30, so under «Флаг, системный» the note was simply false.
-    func testBothFlagStylesFallBackTheSameWay() {
-        for size in MenuBarIconSize.allCases {
-            let emoji = BadgeImage.make(label: "RU", flag: nil, region: nil,
-                                        style: .flagEmoji, points: size.points)
-            let drawn = BadgeImage.make(label: "RU", flag: nil, region: nil,
-                                        style: .flagDrawn, points: size.points)
-            XCTAssertEqual(emoji.size.width, drawn.size.width, accuracy: 0.01,
-                           "at \(size.rawValue) the two flag styles fall back to different "
-                           + "drawings, and the page promises one")
-        }
-    }
+    /// **`flagEmoji` is gone**, and the test that lived here went with it. It
+    /// asserted that the two flag styles fell back to the *same* drawing — they
+    /// differed, 24.0 × 15.0 against 32.4 × 17.0, until 2026-08-30 — because
+    /// the page's note under both of them promised «letters in a frame the same
+    /// size as a flag». There is one flag style now, so the promise has nothing
+    /// to disagree with: «Flag» and «Flag, system» were one idea under two
+    /// names, and nobody could tell them apart from the words.
 }

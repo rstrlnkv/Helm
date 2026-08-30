@@ -2,13 +2,11 @@ import Foundation
 
 /// How the input source is drawn in the menu bar.
 public enum BadgeStyle: String, CaseIterable, Sendable {
-    case plain, filled, outlined, flagEmoji, flagDrawn, sourceName
+    case plain, filled, outlined, flagDrawn, sourceName
 
     /// Whether this style needs a country. Flags do; letters do not — and a
     /// layout with no country falls back to letters rather than showing a gap.
-    public var needsRegion: Bool {
-        self == .flagEmoji || self == .flagDrawn
-    }
+    public var needsRegion: Bool { self == .flagDrawn }
 
     /// The layout's whole name instead of a badge, the way the system's own
     /// indicator draws it under «Show Input Source Name».
@@ -28,6 +26,12 @@ public enum BadgeStyle: String, CaseIterable, Sendable {
     /// layout with no country to name.
     public static let `default` = BadgeStyle.flagDrawn
 
+    /// **A style that no longer exists reads as the default**, which is what
+    /// `flagEmoji` needs: it was a second name for «Flag», drawn from the
+    /// system's emoji rather than from Helm's own artwork, and nobody could
+    /// predict the difference from «Flag» and «Flag, system». The fallback is
+    /// `flagDrawn`, the one that stays — so a person who had chosen the emoji
+    /// one keeps a flag, which is what they were choosing.
     public static func from(_ raw: String?) -> BadgeStyle {
         guard let raw, let value = BadgeStyle(rawValue: raw) else { return .default }
         return value

@@ -218,7 +218,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "Die gespeicherten Daten jedes Moduls und das Diagnoseprotokoll wandern in den Papierkorb — von dort holst du sie zurück. Die Einstellungen selbst (welche Module an sind, ihre Reihenfolge, deine Kurzbefehle) sind endgültig weg. Helm startet neu und begrüßt dich wie beim ersten Mal.";
 "Early builds with new features — expect rough edges." = "Frühe Builds mit neuen Funktionen — Ecken und Kanten möglich.";
 "Edit" = "Bearbeiten";
-"Emoji & Symbols" = "Emoji & Symbole";
 "Enable a module in Settings." = "Aktiviere ein Modul in den Einstellungen.";
 "Errors" = "Fehler";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape schließt das Menüleisten-Panel, so wie es jedes andere Menü am Mac schließt. Es ließ sich per Tastatur öffnen und nur mit der Maus schließen.";
@@ -240,7 +239,6 @@
 "Fix with" = "Korrigieren mit";
 "Fixes words typed in the wrong keyboard layout" = "Korrigiert Wörter, die in der falschen Belegung getippt wurden";
 "Flag" = "Flagge";
-"Flag, system" = "Flagge, System";
 "Folder" = "Ordner";
 "Folders that keep themselves in order" = "Ordner, die sich selbst in Ordnung halten";
 "Follow" = "Mitlaufen";

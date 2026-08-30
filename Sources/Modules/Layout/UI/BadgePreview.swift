@@ -32,7 +32,6 @@ struct BadgePreview: View {
                         // point is that this cannot disagree with the menu bar.
                         Image(nsImage: HelmAppearance.rasterize(
                             BadgeImage.make(label: source.badge,
-                                            flag: source.emojiFlag,
                                             region: source.region,
                                             style: style,
                                             points: size.points),

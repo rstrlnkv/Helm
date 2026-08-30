@@ -71,23 +71,28 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         let menu = built.menu
 
         let tail = sections(of: menu)
-        // **Three, not four: the source-name switch left this menu on
-        // 2026-08-30 and became `BadgeStyle.sourceName`.** It was the one item
-        // here that changed how the indicator *looks*, and it could be reached
-        // from nowhere else — so switching it on left the settings page's Style
-        // picker, Size picker and preview grid all describing a badge that had
-        // stopped being drawn. A setting belongs beside its siblings; this menu
-        // keeps the doors, which is what the rest of it is.
-        XCTAssertEqual(tail.count, 3, """
-            the menu is three sections under two separators: layouts, the emoji \
-            palette, the keyboard settings — the sections macOS's own input menu \
-            draws, minus the Keyboard Viewer (see the class doc for why that door \
-            cannot be opened) and minus the source-name switch, which is a style \
-            on the settings page now.
+        // **Two, and each departure is recorded.** The source-name switch left
+        // on 2026-08-30 and became `BadgeStyle.sourceName`: it was the one item
+        // here that changed how the indicator *looks*, reachable from nowhere
+        // else, so switching it on left the settings page's Style picker and
+        // preview grid describing a badge that had stopped being drawn.
+        //
+        // The emoji palette left next. It was the only part of this menu that
+        // needed Accessibility — an AX press of *another* app's Edit-menu item,
+        // matched by title out of `InputManager.loctable` — while the settings
+        // page draws «the language indicator below works without this
+        // permission» directly above the section offering it. In exactly the
+        // state that sentence was written for, one of three items beeped. Every
+        // Mac opens the same palette with Globe+E.
+        XCTAssertEqual(tail.count, 2, """
+            the menu is two sections under one separator: the layouts and the \
+            keyboard settings — what macOS's own input menu draws, minus the \
+            Keyboard Viewer (see the class doc for why that door cannot be \
+            opened), minus the source-name switch, which is a style on the \
+            settings page now, and minus the emoji palette, which was the one \
+            door here that needed a permission this menu promises not to need.
             """)
-        XCTAssertEqual(try section(menu, 1).map(\.title), [LyStr.showEmojiPanel()],
-                       "the first section under the layouts is the emoji palette door alone")
-        XCTAssertEqual(try section(menu, 2).map(\.title), [LyStr.openKeyboardSettings],
+        XCTAssertEqual(try section(menu, 1).map(\.title), [LyStr.openKeyboardSettings],
                        "and the menu ends with the keyboard settings door")
         for item in tail.dropFirst().flatMap({ $0 }) {
             XCTAssertTrue(item.target === built.indicator,
@@ -97,17 +102,10 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// The system menu draws the emoji door with the palette's own icon — the
-    /// one TIS hands out for `com.apple.CharacterPaletteIM` — and so does Helm.
-    /// Nil here means macOS moved the icon, and the door went bare silently.
-    func testTheEmojiDoorWearsThePalettesOwnIcon() throws {
-        let built = builtMenu()
-        let emoji = try section(built.menu, 1).first
-        XCTAssertNotNil(emoji?.image,
-                        "the emoji door lost the palette's icon TIS hands out for it")
-        XCTAssertEqual(emoji?.image?.isTemplate, true,
-                       "the icon is a template, or it draws black on a dark menu")
-    }
+    /// **The emoji door and its icon test are gone.** It carried the palette's
+    /// own icon, the one TIS hands out for `com.apple.CharacterPaletteIM`, and
+    /// the test said so — but the door itself needed Accessibility on a menu
+    /// whose section on the settings page promises to work without it.
 
     /// Every layout row wears the same badge the menu bar draws for it — the
     /// system menu puts a layout icon on every row, and a row without one reads
@@ -141,30 +139,6 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
     /// The system's phrases are still read for the two doors that remain, and
     /// the tests for those are below.
 
-    /// The emoji door's full title is built the way the system builds it: the
-    /// `Show palette class IM` template around the palette's own name — so the
-    /// sentence cannot drift from the palette it opens. Pinned against the
-    /// system's construction per language.
-    func testTheEmojiDoorSpeaksTheSystemsOwnWords() {
-        let system: [AppLanguage: String] = [
-            .en: "Show Emoji & Symbols",
-            .ru: "Показать панель «Эмодзи и символы»",
-            .es: "Mostrar Emojis y símbolos",
-            .fr: "Afficher Emoji et symboles",
-            .de: "Emoji & Symbole einblenden",
-            .ja: "絵文字と記号を表示",
-            .zh: "显示表情与符号",
-            .pt: "Mostrar Emoji e Símbolos",
-        ]
-        for language in AppLanguage.allCases {
-            XCTAssertEqual(LyStr.showEmojiPanel(language: language), system[language], """
-                \(language) does not build the title the way macOS's own input menu \
-                does (`TextInputMenuCore.bundle`, key `Show palette class IM`, around \
-                AppKit's name for the palette).
-                """)
-        }
-    }
-
     /// The settings door too: the system spells it `Open Keyboard Settings…`
     /// (`TextInputMenuCore.bundle`, key `Open Keyboard Settings`), German with
     /// a no-break space before the ellipsis — read, not retranslated.
@@ -187,27 +161,10 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// The words on the emoji item are macOS's own, read from AppKit's
-    /// `InputManager.loctable` (key `Emoji & Symbols`) — the palette name the
-    /// template above wraps. Pinned separately: the full title's test would
-    /// pass a drifted name if the pinned construction drifted with it.
-    func testThePaletteNameSpeaksTheSystemsOwnWords() {
-        let system: [AppLanguage: String] = [
-            .en: "Emoji & Symbols",
-            .ru: "Эмодзи и символы",
-            .es: "Emojis y símbolos",
-            .fr: "Emoji et symboles",
-            .de: "Emoji & Symbole",
-            .ja: "絵文字と記号",
-            .zh: "表情与符号",
-            .pt: "Emoji e Símbolos",
-        ]
-        for language in AppLanguage.allCases {
-            XCTAssertEqual(L("Emoji & Symbols", language: language), system[language], """
-                \(language) does not say what macOS's own Edit menu says. The name is \
-                AppKit's, from `InputManager.loctable`; Helm's zh follows `zh_CN` and \
-                its pt follows `pt_BR`, the variants the rest of the app follows.
-                """)
-        }
-    }
+    /// **The palette name went with the door.** It was AppKit's own, read from
+    /// `InputManager.loctable` (key `Emoji & Symbols`), and pinned here per
+    /// language so a drift in the name could not hide behind a drift in the
+    /// template that wrapped it. Both are gone: the item needed Accessibility on
+    /// a menu whose section promises to work without it, and Globe+E opens the
+    /// same palette on every Mac.
 }

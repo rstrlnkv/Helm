@@ -20,7 +20,6 @@ public enum LayoutKey {
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
-    public static let badgeSize = "badgeSize"
     /// The system input menu's «Show Input Source Name», for Helm's own
     /// indicator: the layout's name in the menu bar instead of its badge.
     public static let indicatorShowsName = "indicatorShowsName"

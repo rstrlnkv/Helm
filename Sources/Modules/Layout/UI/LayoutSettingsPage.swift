@@ -22,7 +22,6 @@ struct LayoutSettingsPage: View {
     @State private var audible: Bool
     @State private var indicator: Bool
     @State private var badgeStyle: BadgeStyle
-    @State private var badgeSize: MenuBarIconSize
     @State private var tapKey: TapKey
     @State private var introSeen: Bool
     @StateObject private var convertKey: HelmHotkeyRecorder
@@ -43,8 +42,6 @@ struct LayoutSettingsPage: View {
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
         _badgeStyle = State(initialValue:
             BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
-        _badgeSize = State(initialValue:
-            MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small")))
         _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
         _introSeen = State(initialValue: store.bool(LayoutKey.introSeen, default: false))
         _convertKey = StateObject(wrappedValue:
@@ -509,26 +506,25 @@ struct LayoutSettingsPage: View {
                     .fixedSize()
                     .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
                 }
-                // Size and the preview are about a badge, and «Название
-                // раскладки» draws no badge — it draws the layout's name at the
-                // menu bar's own size. They used to stay live and go on
-                // promising «your layouts, as they will look» over an indicator
-                // that had stopped looking like that at all, because the switch
-                // that caused it lived in the status item's menu and nothing
-                // here knew about it.
+                // **The size row is gone; the preview is not.** It was a
+                // second menu-bar icon size, four points wide end to end
+                // (11 → 15) and answered by nobody: the app already has
+                // `AppSettings.menuBarIconSize` in General, this read a key of
+                // its own, and the indicator's *own* menu rows ignored both and
+                // drew at `.small` regardless. Two items side by side in one
+                // menu bar sized by two settings is a question that cannot have
+                // a right answer.
+                //
+                // The preview stays, and it is not a control: it is the only
+                // reason the style above is answerable at all — nobody predicts
+                // «Letters in a frame» from the words.
+                //
+                // «Layout name» draws no badge — it draws the layout's name at
+                // the menu bar's own size — so it has nothing to preview. That
+                // branch used to go on promising «your layouts, as they will
+                // look» over an indicator that had stopped looking like that.
                 if !badgeStyle.isName {
-                    HelmSettingRow(LyStr.badgeSize) {
-                        Picker(LyStr.badgeSize, selection: $badgeSize) {
-                            ForEach(MenuBarIconSize.allCases, id: \.self) { size in
-                                Text(size.label).tag(size)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .fixedSize()
-                        .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
-                    }
-                    BadgePreview(style: badgeStyle, size: badgeSize)
+                    BadgePreview(style: badgeStyle, size: .small)
                 }
             }
         } header: {

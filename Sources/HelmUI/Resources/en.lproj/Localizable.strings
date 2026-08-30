@@ -218,7 +218,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time.";
 "Early builds with new features — expect rough edges." = "Early builds with new features — expect rough edges.";
 "Edit" = "Edit";
-"Emoji & Symbols" = "Emoji & Symbols";
 "Enable a module in Settings." = "Enable a module in Settings.";
 "Errors" = "Errors";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse.";
@@ -240,7 +239,6 @@
 "Fix with" = "Fix with";
 "Fixes words typed in the wrong keyboard layout" = "Fixes words typed in the wrong keyboard layout";
 "Flag" = "Flag";
-"Flag, system" = "Flag, system";
 "Folder" = "Folder";
 "Folders that keep themselves in order" = "Folders that keep themselves in order";
 "Follow" = "Follow";

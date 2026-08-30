@@ -23,19 +23,13 @@ final class LanguageBadgeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "en-GB", region: nil), "EN")
     }
 
-    func testAFlagIsBuiltFromTheCountry() {
-        XCTAssertEqual(LanguageBadge.emojiFlag(region: "RU"), "🇷🇺")
-        XCTAssertEqual(LanguageBadge.emojiFlag(region: "us"), "🇺🇸")
-    }
-
-    /// A language is not a country, and guessing one turns a keyboard layout
-    /// into a statement. No country, no flag — the badge falls back to letters.
-    func testNoCountryMeansNoFlag() {
-        XCTAssertNil(LanguageBadge.emojiFlag(region: nil))
-        XCTAssertNil(LanguageBadge.emojiFlag(region: ""))
-        XCTAssertNil(LanguageBadge.emojiFlag(region: "USA"))
-        XCTAssertNil(LanguageBadge.emojiFlag(region: "1A"))
-    }
+    /// **The flag built from regional indicators is gone** with the
+    /// `flagEmoji` style it drew for. Helm ships its own artwork
+    /// (`FlagAsset`, 50 PNGs), `flagDrawn` is the default and now the only flag
+    /// style, and «Flag» and «Flag, system» were one idea under two names that
+    /// nobody could tell apart from the words. `LanguageBadge.label` still
+    /// carries the rule that matters — a language is not a country, and no
+    /// country means letters rather than a guess.
 }
 
 extension LanguageBadgeTests {
@@ -51,7 +45,6 @@ extension LanguageBadgeTests {
     }
 
     func testOnlyFlagsNeedACountry() {
-        XCTAssertTrue(BadgeStyle.flagEmoji.needsRegion)
         XCTAssertTrue(BadgeStyle.flagDrawn.needsRegion)
         for style in [BadgeStyle.plain, .filled, .outlined] {
             XCTAssertFalse(style.needsRegion)

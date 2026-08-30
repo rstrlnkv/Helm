@@ -94,8 +94,7 @@ import Module_Layout_Engine
     /// The badge and its template flag together — the pair the menu bar and
     /// every menu row draw, so the two cannot disagree about either half.
     private func badge(for source: InputSourceInfo, points: CGFloat) -> NSImage {
-        let image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
-                                    region: source.region, style: badgeStyle,
+        let image = BadgeImage.make(label: source.badge, region: source.region, style: badgeStyle,
                                     points: points)
         image.isTemplate = (badgeStyle == .plain)
         return image
@@ -111,9 +110,13 @@ import Module_Layout_Engine
             button.image = nil
             button.title = source.name
         } else {
-            let size = MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small"))
+            // `.small` outright, which is what the menu rows below have always
+            // drawn and what the removed setting defaulted to. It had a size
+            // key of its own, four points wide end to end, beside the app's own
+            // `menuBarIconSize` in General — two items in one menu bar sized by
+            // two settings, with this one's own menu ignoring both.
             button.title = ""
-            button.image = badge(for: source, points: size.points)
+            button.image = badge(for: source, points: MenuBarIconSize.small.points)
         }
         button.toolTip = source.name
         // The label says what the control is; the value says the one fact it
@@ -142,10 +145,13 @@ import Module_Layout_Engine
             entry.image = badge(for: source, points: MenuBarIconSize.small.points)
             menu.addItem(entry)
         }
-        menu.addItem(.separator())
-        let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))
-        emoji.image = EmojiPalette.icon
-        menu.addItem(emoji)
+        // **No emoji-palette item.** It was the one part of this menu that
+        // needed Accessibility — an AX press of *another* app's Edit-menu item,
+        // matched by title out of `InputManager.loctable` — and the settings
+        // page draws «the language indicator below works without this
+        // permission» directly above the section that offers it. So in exactly
+        // the state that sentence was written for, one of three items beeped.
+        // Every Mac opens the same palette with Globe+E.
         menu.addItem(.separator())
         menu.addItem(actionItem(LyStr.openKeyboardSettings, #selector(openSettings)))
     }
@@ -160,16 +166,6 @@ import Module_Layout_Engine
         guard let id = sender.representedObject as? String else { return }
         TISLayoutSources().select(id)
     }
-
-    /// The palette lands on whichever app holds the keyboard — a status-item
-    /// menu does not take it away, and `EmojiPalette` never activates Helm, so
-    /// the person's focus stays where they were typing. The beep is the
-    /// refusal said out loud: without Accessibility, or in an app whose menus
-    /// carry no such item, a silent press would look like a dead control.
-    @objc private func openEmojiPalette() {
-        if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
-    }
-
 
     @objc private func openSettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")

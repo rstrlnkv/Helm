@@ -218,7 +218,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "各モジュールの保存データと診断ログはゴミ箱に移動するので、あとで戻せます。設定そのもの（オンのモジュール、その並び順、ショートカット）は完全に失われます。Helm は再起動し、初回と同じように迎えます。";
 "Early builds with new features — expect rough edges." = "新機能を含む早期ビルド。不具合があるかもしれません。";
 "Edit" = "編集";
-"Emoji & Symbols" = "絵文字と記号";
 "Enable a module in Settings." = "設定でモジュールを有効にしてください。";
 "Errors" = "エラー";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Esc キーでメニューバーパネルを閉じられます。キーボードで開けるのに、閉じるにはマウスが必要でした。";
@@ -240,7 +239,6 @@
 "Fix with" = "修正するキー";
 "Fixes words typed in the wrong keyboard layout" = "誤った配列で入力した単語を修正します";
 "Flag" = "旗";
-"Flag, system" = "旗（システム）";
 "Folder" = "フォルダ";
 "Folders that keep themselves in order" = "自分で整った状態を保つフォルダ";
 "Follow" = "追従";

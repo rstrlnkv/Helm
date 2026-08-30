@@ -87,19 +87,4 @@ public enum LanguageBadge {
         }
         return code.uppercased()
     }
-
-    /// The two regional-indicator characters that make a flag. Nil when there
-    /// is no country to draw: a language is not a country, and guessing one is
-    /// how a keyboard layout turns into a political statement.
-    public static func emojiFlag(region: String?) -> String? {
-        guard let region, region.count == 2,
-              region.allSatisfy({ $0.isASCII && $0.isLetter }) else { return nil }
-        let base: UInt32 = 0x1F1E6
-        var flag = ""
-        for character in region.uppercased().unicodeScalars {
-            guard let scalar = UnicodeScalar(base + character.value - 65) else { return nil }
-            flag.unicodeScalars.append(scalar)
-        }
-        return flag
-    }
 }
