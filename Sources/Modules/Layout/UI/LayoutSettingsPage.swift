@@ -95,7 +95,12 @@ struct LayoutSettingsPage: View {
                 // combination somebody sets once; the first screen now carries
                 // the figure, what it does, and the field to try it in.
                 behaviourSection
-                tryItSection
+                // **Not while the tour is holding the same field.** Step 2 *is*
+                // `LayoutTestField`, so on a first visit this section drew a
+                // second identical box under it, with the same hint again. The
+                // section is the whole reason the tour can be dismissed at all —
+                // it is where the field lives afterwards.
+                if !showTour { tryItSection }
                 listsSection
                 shortcutsSection
                 indicatorSection
@@ -129,6 +134,33 @@ struct LayoutSettingsPage: View {
             }
             if store.changed(note, is: LayoutKey.appRules) {
                 ruleCount = store.boolTable(LayoutKey.appRules).count
+            }
+            // **And the three switches, which are written from two other
+            // places.** The tour writes them at step 3 and the panel tile
+            // writes `automatic` from its own toggle; this page mirrored all
+            // three into `@State` at `init` and then read the store never
+            // again, so a switch here could sit at «off» over a behaviour that
+            // was on until the window was closed and reopened. This is the
+            // channel `NamespacedStore` documents for exactly that — the page
+            // was already listening on it, for the two counts and nothing else.
+            if store.changed(note, is: LayoutKey.automatic) {
+                automatic = store.bool(LayoutKey.automatic, default: true)
+            }
+            if store.changed(note, is: LayoutKey.fixCapitals) {
+                fixCapitals = store.bool(LayoutKey.fixCapitals, default: false)
+            }
+            if store.changed(note, is: LayoutKey.audible) {
+                audible = store.bool(LayoutKey.audible, default: false)
+            }
+            // **And the period, which the panel tile also chooses.** Found by
+            // the guard rather than by reading: the tile's period menu writes
+            // this key, the page mirrored it at `init`, and so the hero went on
+            // counting over whatever period the page was opened on. The two
+            // surfaces answer the same question, which is the reason the key is
+            // shared at all — the doc at `storedPeriod` says so.
+            if store.changed(note, is: LayoutKey.heroPeriod) {
+                heroPeriod = ConversionPeriod(
+                    rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today
             }
         }
         // Said once, out loud: losing the grant swaps the whole page for the
@@ -201,27 +233,51 @@ struct LayoutSettingsPage: View {
 
     @ViewBuilder private var behaviourSection: some View {
         Section(header: heroAndTitle) {
-            // The way back into the tour, and only once it has been dismissed —
-            // a button that reopens what is already open is a button that does
+            // **One copy of each switch on screen, and while the tour is up it
+            // has them.** Step 3 draws these same three, so a first visit
+            // showed «Fix as I type» twice, a card apart — and the two did not
+            // move together, because each side mirrors the store into `@State`
+            // at `init`. The step's own sentence is «the switches are real:
+            // turn one on here and it is on», with the counter-example twelve
+            // rows below it.
+            //
+            // The way back in takes the same condition from the other side: a
+            // button that reopens what is already open is a button that does
             // nothing, which is worse than no button.
-            if !showTour {
+            if showTour {
+                EmptyView()
+            } else {
                 HelmSettingRow(LyStr.tourTitle) {
-                    Button(LyStr.tourTitle) {
+                    Button(LyStr.showTour) {
                         withAnimation(HelmMotion.interface) { showTour = true }
                     }
                     .controlSize(.small)
                 }
+                HelmSettingRow(LyStr.automatic, note: LyStr.automaticNote) {
+                    Toggle(LyStr.automatic, isOn: $automatic)
+                        .labelsHidden()
+                        .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
+                }
+                HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
+                    Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
+                        .labelsHidden()
+                        .onChange(of: fixCapitals) { _, value in
+                            write(value, LayoutKey.fixCapitals)
+                        }
+                }
+                HelmSettingRow(LyStr.audible) {
+                    Toggle(LyStr.audible, isOn: $audible)
+                        .labelsHidden()
+                        .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
+                }
             }
-            HelmSettingRow(LyStr.automatic, note: LyStr.automaticNote) {
-                Toggle(LyStr.automatic, isOn: $automatic)
-                    .labelsHidden()
-                    .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
-            }
-            // A layout macOS cannot spell-check. «Fix as I type» is dead for
-            // every pair that includes it, and until this line the page said
-            // nothing — the switch stayed on and the badge stayed green. It
-            // used to hang under the three trigger toggles; it belongs to the
-            // switch it is about, which is the one thing above it.
+            // **Outside that gate, deliberately.** A layout macOS cannot
+            // spell-check is a fact about this Mac, not a setting: «Fix as I
+            // type» is dead for every pair that includes it, and until this
+            // line the page said nothing — the switch stayed on and the badge
+            // stayed green. Hiding it behind the tour would mean the one visit
+            // where somebody is being told what the module does is the visit
+            // that withholds the reason it will not work for them.
             // Named by the system's own name for the source, never by its id.
             if !lvm.state.noDictionary.isEmpty {
                 Text(LyStr.noDictionary(layouts: lvm.state.noDictionary
@@ -230,16 +286,6 @@ struct LayoutSettingsPage: View {
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmSignal.warning)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
-                Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
-                    .labelsHidden()
-                    .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
-            }
-            HelmSettingRow(LyStr.audible) {
-                Toggle(LyStr.audible, isOn: $audible)
-                    .labelsHidden()
-                    .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
             }
             if let last = lvm.state.lastConversion {
                 lastChangeRow(last)

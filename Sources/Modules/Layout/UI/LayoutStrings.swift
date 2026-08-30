@@ -125,6 +125,12 @@ enum LyStr {
     static var introLess: String { L("Hide") }
     // MARK: - The tour
 
+    /// The button on the row headed `tourTitle`. A row names, a button acts —
+    /// spelling both with `tourTitle` drew «How it works [How it works]», the
+    /// only `HelmSettingRow` in `Sources/Modules` with a button in its trailing
+    /// slot repeating its own label.
+    static var showTour: String { L("Show") }
+
     static var tourTitle: String { L("How it works") }
     static var tourBack: String { L("Back") }
     static var tourNext: String { L("Next") }

@@ -63,8 +63,30 @@ struct LayoutTour: View {
                 // jumping is a card nobody follows. Measured and animated, the
                 // way a reveal is (ARCHITECTURE.md § Motion).
                 .helmMeasuredHeight($bodyHeight, animation: HelmMotion.disclosure)
+                // **The measurement, drawn.** `helmMeasuredHeight` only writes
+                // the binding — the frame is the caller's, which is why
+                // `KeepAwakeHero` and `VPNTunnelHero` both carry these two
+                // lines together. Without the second one the card fell back on
+                // SwiftUI's default transition between the `switch` arms, which
+                // is `.opacity`: a cross-fade, against the house rule that a
+                // reveal grows and never fades. `bodyHeight` was written and
+                // read by nobody, and the comment above claimed the motion it
+                // was short of.
+                .frame(height: bodyHeight, alignment: .top)
 
             HStack(spacing: HelmSpace.s5) {
+                // **A way out that is not four presses.** «Got it» is the only
+                // thing that puts the tour away and records that it has been
+                // seen, and it lived on the last step alone — so somebody who
+                // opened it to check one thing walked all four, and a keyboard
+                // or VoiceOver reader traversed a live text field and three
+                // live switches to reach the settings underneath, on every
+                // visit. Same word, same act, in the slot «Back» has not taken
+                // yet.
+                if step == 0 {
+                    Button(LyStr.introStart) { onDone() }
+                        .controlSize(.small)
+                }
                 if step > 0 {
                     Button(LyStr.tourBack) {
                         withAnimation(HelmMotion.disclosure) { step -= 1 }
