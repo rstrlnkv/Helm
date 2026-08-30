@@ -29,7 +29,7 @@ final class TheLedgerCountsDaysNotLaunchesTests: XCTestCase {
     func testAnEmptyLedgerHasNothingToSay() {
         let ledger = ConversionLedger()
         XCTAssertEqual(ledger.total(over: .today, now: day("2026-08-27"), calendar: calendar).words, 0)
-        XCTAssertNil(ledger.since)
+        XCTAssertNil(ledger.since(now: day("2026-08-27"), calendar: calendar))
     }
 
     func testTwoConversionsOnOneDayAreOneRow() {
@@ -80,7 +80,8 @@ final class TheLedgerCountsDaysNotLaunchesTests: XCTestCase {
         var ledger = ConversionLedger()
         ledger.add(characters: 3, on: day("2026-03-04"), calendar: calendar)
         ledger.add(characters: 3, on: day("2026-08-27"), calendar: calendar)
-        XCTAssertEqual(ledger.since.map { calendar.startOfDay(for: $0) },
+        XCTAssertEqual(ledger.since(now: day("2026-08-27"), calendar: calendar)
+                        .map { calendar.startOfDay(for: $0) },
                        calendar.startOfDay(for: day("2026-03-04")))
     }
 
@@ -99,6 +100,6 @@ final class TheLedgerCountsDaysNotLaunchesTests: XCTestCase {
         ledger.add(characters: 1, on: day("2026-08-27"), calendar: calendar)
         ledger.add(characters: 1, on: day("2026-08-20"), calendar: calendar)
         XCTAssertEqual(ledger.days.map(\.words), [1, 1])
-        XCTAssertTrue(ledger.days[0].day < ledger.days[1].day, "oldest first")
+        XCTAssertTrue(ledger.days[0].stamp < ledger.days[1].stamp, "oldest first")
     }
 }

@@ -22,12 +22,36 @@ import Foundation
 /// spell checker entirely, which is the one thing the list must never do.
 enum ShortWords {
 
+    /// The one-letter words, which are the ones this list exists for most.
+    ///
+    /// **Russian's commonest words are one letter long, and the module refused
+    /// every one of them.** `LayoutVerdict.minimumLength` was 2 under a comment
+    /// saying «one character is a keystroke, not a word» — true of English,
+    /// where only `a` and `I` qualify, and false of Russian, where `в`, `и`,
+    /// `с`, `к`, `о`, `у`, `а` and `я` are prepositions, conjunctions and a
+    /// pronoun that appear in almost every sentence. Type `d ` on a latin
+    /// layout and it stayed `d`.
+    ///
+    /// By list rather than by dictionary, and more strictly than at two
+    /// letters: a checker asked about a single character is worthless, and the
+    /// latin side of these keys — `d`, `b`, `c`, `r`, `j`, `e`, `f`, `z` — is
+    /// also what variable names, flags, initials and list markers look like.
+    /// Terminals and password managers are refused before any of this runs;
+    /// what remains is a chat about the language C, and the answer to that is
+    /// «take `с` out of the list», which is one line.
+    static let russianSingles: Set<String> = ["а", "в", "и", "к", "о", "с", "у", "я"]
+
+    /// English's are exactly two, and `i` is here lowercased because the rule
+    /// lowercases before it asks — `I` typed on a Russian layout is `Ш`, which
+    /// is the case that started this.
+    static let englishSingles: Set<String> = ["a", "i"]
+
     /// Common Russian words of two and three letters.
     static let russian: Set<String> = [
         // prepositions and conjunctions
         "на", "по", "за", "до", "из", "от", "во", "со", "об", "не", "ни", "но",
         "то", "та", "те", "уж", "же", "ли", "бы", "их", "ей", "ею", "им",
-        "мы", "вы", "он", "да", "ко",
+        "мы", "вы", "ты", "он", "да", "ко", "ну", "ах", "ох", "эх",
         // three letters
         "что", "как", "все", "они", "она", "оно", "его", "её", "нас", "вас",
         "нам", "вам", "них", "был", "три", "два", "сто", "год", "раз",
@@ -36,6 +60,7 @@ enum ShortWords {
         "кто", "где", "чем", "чей", "тот", "эта", "это", "эти", "тем", "том",
         "нет", "две", "дом", "пол", "имя", "час", "миг", "шаг", "сон", "рот",
         "нос", "рук", "ног", "лес", "мир", "вид", "род", "ряд", "бок", "низ",
+        "всё", "вот", "сам", "оба", "обе", "лет", "дня", "сих", "чей", "чьи",
     ]
 
     /// Common English words of two and three letters.
@@ -51,13 +76,22 @@ enum ShortWords {
         "big", "bad", "job", "key", "law", "lot", "map", "net", "war", "win",
     ]
 
-    /// Every word in the list, both languages.
-    static var all: Set<String> { russian.union(english) }
+    /// Every word in the list, both languages and both lengths.
+    static var all: Set<String> {
+        russian.union(english).union(russianSingles).union(englishSingles)
+    }
 
     /// Whether this is a short word common enough to convert towards.
+    ///
+    /// One character is answered from `russianSingles`/`englishSingles` and
+    /// never from the two- and three-letter lists, so a single letter cannot
+    /// borrow confidence from a longer word that happens to start with it.
     static func isCommon(_ word: String) -> Bool {
         let lowered = word.lowercased()
-        guard lowered.count >= 2, lowered.count <= 3 else { return false }
-        return russian.contains(lowered) || english.contains(lowered)
+        switch lowered.count {
+        case 1: return russianSingles.contains(lowered) || englishSingles.contains(lowered)
+        case 2, 3: return russian.contains(lowered) || english.contains(lowered)
+        default: return false
+        }
     }
 }

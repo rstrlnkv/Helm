@@ -151,7 +151,24 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            MainActor.assumeIsolated { self.startTap() }
+            MainActor.assumeIsolated {
+                self.startTap()
+                // **And the layouts, because they change while Helm runs.**
+                // `noDictionary` was a snapshot taken in `activate()` and never
+                // re-asked, so a layout macOS has no spelling for — added in
+                // System Settings and come back from, which is this very
+                // notification — left «Fix as I type» dead for every pair
+                // including it, with the switch on, the badge green, and the
+                // one sentence the page owes for exactly that withheld until
+                // the next launch. Its neighbour `suspended` in the same state
+                // struct is live; this one was not.
+                //
+                // Here rather than on `kTISNotifyEnabledKeyboardInputSources-
+                // Changed`: coming back to the app is when somebody has just
+                // finished changing them, and it costs one `TISCreateInput-
+                // SourceList` per activation rather than a second observer.
+                self.refreshDictionarySupport()
+            }
         }
         emitState()
     }
@@ -445,12 +462,26 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 forward: { self.translation.translate($0, from: current, to: other) },
                 backward: { self.translation.translate($0, from: other, to: current) })
         })
+        lock.lock(); let list = exceptions.words; lock.unlock()
+
         guard let replacement = transform.apply(action, to: text) else {
             // Silence was the whole problem with this path: the gesture fired,
             // the translation declined, and nothing on screen or in the log
             // said so. A count, not the text — the log carries no content.
             HelmLog.shared.info(Self.moduleID,
                                 "selection left alone: no conversion for \(text.count) characters")
+            return
+        }
+
+        // The word path's refusals, applied to the selection — see
+        // `LayoutVerdict.selectionRefused`. This door had none of them: the
+        // never-list is the person's own instruction and the later one, and a
+        // letter turning into a bracket is not the word anybody asked for.
+        guard !LayoutVerdict.selectionRefused(source: text, replacement: replacement,
+                                              exceptions: list) else {
+            HelmLog.shared.info(Self.moduleID,
+                                "selection left alone: \(text.count) characters the never-list "
+                                + "or the letter rule refuses")
             return
         }
 
@@ -648,6 +679,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // the write. `FrontmostApp` is asked rather than `NSWorkspace`
             // precisely so this question is answerable off the main thread.
             let readIn = secure.frontmostBundleID()
+            // **Asked before the field is read, not after it.**
+            //
+            // The page's promise is that a secure field is «skipped whole», and
+            // this path read it first and refused two hops later — inside
+            // `transform`, by which time the password had been pulled out of
+            // the accessibility tree, carried across a queue hop and held as a
+            // `String`. `AXSelection` applies no role check of its own;
+            // `isSecure()` reads `kAXRoleAttribute` off the *same* focused
+            // element. Two questions one round trip apart, asked in the wrong
+            // order — and the expensive one is the case `isSecureInput()`
+            // cannot see: an app's own password field, in a browser that never
+            // escalated.
+            //
+            // Free, and better than free: `transform` paid this round trip on
+            // main, which is the thread this background hop exists to keep
+            // clear and the thread the tap callback runs on. `emitState`
+            // carries the sentence about a hung app blocking for the
+            // messenger's timeout; this is the same call.
+            guard !secure.isSecure() else {
+                HelmLog.shared.info(Self.moduleID, "gesture: the field is secure")
+                return
+            }
             let selected = selection?.selectedTextWithoutClipboard()
             let hasSelection = !(selected ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -818,6 +871,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// for this language» whatever it is given, and that nil is the whole
     /// question here. What it must not do is read a `false` as a missing
     /// dictionary — that is «not a word», which is the module's ordinary case.
+    /// Re-asked whenever the engine is about to judge a word, which is the
+    /// second ordinary moment the installed set can have moved under it — the
+    /// first being coming back to the app. Cheap: `DictionarySupport.missing`
+    /// walks the installed list and asks `isWord` once per source, and the
+    /// answer only changes when somebody edits their layouts.
     private func refreshDictionarySupport() {
         let missing = DictionarySupport.missing(installed: sources.installed()) { source in
             spell.isWord("a", sourceID: source) != nil

@@ -14,9 +14,11 @@
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "全新界面：每个页面以图标和关键数字开场，版式统一。";
 "A replacement an app turns down now leaves your word alone, and leaves it there to fix by hand. It used to delete the word and type nothing in its place." = "被应用拒绝的替换现在不会动你的词，并把它留在那里让你手动修改。以前它会删掉这个词，却不输入任何内容。";
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
+"A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "安全输入框在被读取之前就跳过，而不是之后。并且当 Mac 自行校正时区时，当天的计数不再丢失。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
 "A word to leave alone" = "不要改动的词";
+"A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "加入“不再改动”名单的词，在你选中它时也不会被改。这条路径此前跳过了输入路径的所有拒绝规则。";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "“键盘”不再提供缩写替换。macOS 的“文本替换”提供同样的功能，并在你的设备之间同步。";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "缩写展开。把常打的短写和它代表的内容对应起来，在你打完这个词时展开。已展开的词不会再被转换。还可选修正 Helm 有把握的那一类手误：“NIhao” → “Nihao”——不动故意全大写的词，也不动含数字的词。";
 "About Helm" = "关于 Helm";
@@ -118,6 +120,7 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
 "Hide" = "隐藏";
+"Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "“键盘”现在也修正单字母的词。俄语中最常见的词正是单字母的 в、и、с、к、о、у、а、я，而此前它们全都不被处理。";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "“键盘”更简单了。“何时修正”的三个开关已移除：空格和标点确认一个词，Return 不确认——这本就是它们的设置，也避免聊天工具把错字发出去。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "“键盘”不再向你已经删除的文字里输入。用 Option-Delete 删除一个词后，上一次替换仍被当作可撤销，修复键会把旧词插入光标所在处。";

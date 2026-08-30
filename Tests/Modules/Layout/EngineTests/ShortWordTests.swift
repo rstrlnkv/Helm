@@ -93,10 +93,17 @@ final class ShortWordTests: XCTestCase {
 
     /// Every entry is short: a long word here would silently bypass the spell
     /// checker, which is the one thing this list must never do.
+    ///
+    /// **The floor is one now, not two.** It was two under «too short to
+    /// judge», which is an English sentence about a Russian problem: `в`, `и`,
+    /// `с`, `к`, `о`, `у`, `а` and `я` are prepositions, conjunctions and a
+    /// pronoun, and the module refused all eight. They are judged the way the
+    /// rest of this list is — by being on it — and more strictly, since at one
+    /// letter the list replaces the checker rather than joining it.
     func testEveryEntryIsShort() {
         for word in ShortWords.all {
             XCTAssertLessThanOrEqual(word.count, 3, "\(word) is not a short word")
-            XCTAssertGreaterThanOrEqual(word.count, 2, "\(word) is too short to judge")
+            XCTAssertGreaterThanOrEqual(word.count, 1, "\(word) is not a word at all")
             XCTAssertEqual(word, word.lowercased(), "\(word) is not lowercased")
         }
     }

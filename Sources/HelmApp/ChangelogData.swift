@@ -73,6 +73,9 @@ enum Changelog {
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
                 ChangeItem(kind: .upd, text: L("The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one.")),
                 ChangeItem(kind: .upd, text: L("The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them.")),
+                ChangeItem(kind: .new, text: L("Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone.")),
+                ChangeItem(kind: .fix, text: L("A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes.")),
+                ChangeItem(kind: .fix, text: L("A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone.")),
                 ChangeItem(kind: .fix, text: L("Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of.")),
                 ChangeItem(kind: .fix, text: L("A replacement an app turns down now leaves your word alone, and leaves it there to fix by hand. It used to delete the word and type nothing in its place.")),
                 ChangeItem(kind: .upd, text: L("Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo.")),

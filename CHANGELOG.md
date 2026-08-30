@@ -15,6 +15,11 @@ only once it has no known problems left.
 
 - **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
 - **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
+- **NEW** Keyboard fixes one-letter words — в, и, с, к, о, у, а, я and their English pair — from an explicit list rather than a dictionary.
+- **FIX** Keyboard: the never-list, and the letter-into-a-mark rule, now apply to a selection as well as to a typed word.
+- **FIX** Keyboard: a secure field is skipped before it is read rather than after.
+- **FIX** Keyboard: a time-zone change no longer splits one day into two rows, losing part of the day’s count.
+- **FIX** Keyboard: a layout added while Helm is running is judged for spelling support without a restart.
 - **FIX** Keyboard: Option-Delete no longer leaves the last change undoable, so the fix key cannot type an old word into text you deleted.
 - **FIX** Keyboard: a replacement an app turns down leaves the word untouched and still fixable by hand, instead of deleting it and typing nothing.
 - **UPD** Keyboard: the three “When to fix” switches are gone — space and punctuation confirm a word, Return does not.
