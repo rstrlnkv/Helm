@@ -489,7 +489,20 @@ struct AboutHelmView: View {
         case .upToDate:
             HStack(spacing: HelmSpace.s5) {
                 statusIcon("checkmark.circle.fill", HelmSignal.success)
-                Text(AppStr.upToDate).lineLimit(1)
+                // **The same repair as the two arms above, applied to the two
+                // that were left.** «Установлена последняя версия.» wants 203 pt
+                // and this row leaves it about 197 beside «Проверить» — six
+                // short, so the state somebody sees most often was the one that
+                // read «Установлена последняя верс…». Portuguese is 197 and
+                // French 180, so Russian is the first to fall and not the last.
+                //
+                // The comment on `.checkFailed` measured against «roughly 240 pt
+                // of the row», which is not this row: the column is 380 and the
+                // card takes 12 a side. A number carried in prose about a
+                // neighbour is a number about nothing.
+                Text(AppStr.upToDate)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button(AppStr.checkNow) { updater.checkNow() }
             }
@@ -498,7 +511,12 @@ struct AboutHelmView: View {
             // check happened rather than claiming to be current.
             HStack(spacing: HelmSpace.s5) {
                 statusIcon("arrow.triangle.2.circlepath", .secondary)
-                Text(lastCheckedText).lineLimit(1).foregroundStyle(HelmText.quiet)
+                // «Проверено 2 часа назад» is longer than the line above it in
+                // every language, so if that one did not fit, this one never did.
+                Text(lastCheckedText)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(HelmText.quiet)
                 Spacer()
                 Button(AppStr.checkNow) { updater.checkNow() }
             }

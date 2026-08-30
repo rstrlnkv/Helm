@@ -27,6 +27,11 @@ enum DkStr {
     /// there. Without it the app opened on whatever it measured last, for ever.
     static var chooseAnother: String { L("Choose another…") }
     static var scanAgain: String { L("Scan again") }
+    /// The tile's own door into the page. A verb and the module's name, because
+    /// VoiceOver reads it out of context: «Open» alone answers nothing in a
+    /// panel holding ten tiles.
+    static var openTheModule: String { L("Open Disk") }
+
     static var free: String { L("free") }
     static var moveToTrash: String { L("Move to Trash") }
     /// "Basket" was the only place the English UI used the word: no visible

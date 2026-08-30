@@ -146,6 +146,7 @@
 "Nothing has needed putting right so far." = "これまで修正が必要なものはありません。";
 "Nothing is selected for you: macOS loads every item in this list." = "既定では何も選択されていません。このリストの項目はすべて macOS が読み込みます。";
 "Only an administrator can move this" = "移動できるのは管理者のみです";
+"Open Disk" = "ディスクを開く";
 "Option" = "Option";
 "Other…" = "その他…";
 "Period" = "期間";
