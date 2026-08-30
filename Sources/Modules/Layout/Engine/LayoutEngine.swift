@@ -567,7 +567,20 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private func convert(_ word: String, trailing: Character?, force: Bool) {
         let bundleID = secure.frontmostBundleID()
         lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
-        guard allowed else { return }
+        guard allowed else {
+            // **Said out loud when the person asked for it.** `force` is the
+            // gesture: somebody pressed a key on purpose and nothing happened.
+            // A silent refusal is indistinguishable from a dead key or a lost
+            // permission, and the log is a product surface — `LogView` shows
+            // the tail live. The typing path stays quiet: it declines on most
+            // words by design, and a line per word is a log nobody can read.
+            if force {
+                HelmLog.shared.info(Self.moduleID,
+                                    "gesture declined: \(Redact.app(bundleID)) is on the "
+                                    + "leave-alone list")
+            }
+            return
+        }
         guard !secure.isSecure() else {
             // Not just the buffer. `isSecureInput()` is the cheap check and it
             // is false for an app's own password field, which is why this
@@ -604,7 +617,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 validAsTyped: typedIsWord, validTranslated: translatedIsWord,
                 exceptions: list)
         }
-        guard case .convert(let replacement) = decision else { return }
+        guard case .convert(let replacement) = decision else {
+            // The word itself never reaches the log (§ The log carries no
+            // names); which door refused, and how long the word was, do.
+            if force {
+                HelmLog.shared.info(Self.moduleID,
+                                    "gesture declined: the word is on the never-list, or its "
+                                    + "letters have no twin (\(word.count) characters)")
+            }
+            return
+        }
 
         guard let plan = SwitchPlan.make(replacing: word, with: replacement,
                                          trailing: trailing) else { return }

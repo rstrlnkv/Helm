@@ -666,7 +666,7 @@
 "stays" = "reste";
 "tagged" = "étiqueté";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} et {counter} sont remplacés. L’extension reste toujours celle du fichier.";
-"ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет. Jamais ПРИВЕТ, qui est un cri volontaire, ni un mot contenant un chiffre.";
+"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "BOnjour → Bonjour. Jamais BONJOUR, jamais un mot contenant un chiffre, jamais un mot de trois lettres : CDs n’est pas une faute.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

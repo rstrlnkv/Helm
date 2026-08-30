@@ -144,7 +144,7 @@ enum LyStr {
     /// also borrowed the root of macOS's Sticky Keys («Залипание клавиш»), a
     /// feature that does something else entirely.
     static var fixCapitals: String { L("Fix two capitals at the start of a word") }
-    static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
+    static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip.") }
     static var tryIt: String { L("Try it") }
     static var tryItPlaceholder: String { L("Type ghbdtn and press space") }
     /// **Seventeen words doing one job through a colon.** The step above it

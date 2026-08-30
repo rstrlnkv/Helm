@@ -666,7 +666,7 @@
 "stays" = "残す";
 "tagged" = "タグ";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}、{date}、{counter} が置き換わります。拡張子は常に元のままです。";
-"ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет。ПРИВЕТ は意図した強調なので修正しません。数字を含む語も対象外です。";
+"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет。ПРИВЕТ、数字を含む語、3文字の語は変更しません。CDs は打ち間違いではありません。";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

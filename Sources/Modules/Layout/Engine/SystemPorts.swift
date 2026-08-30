@@ -747,8 +747,27 @@ public struct AXSelection: SelectionPort {
 /// mid-sentence. The selection path bitcast whatever it got. One reader now,
 /// with the check, which is a guard the selection path gains.
 private func systemFocusedElement() -> AXUIElement? {
+    let system = AXUIElementCreateSystemWide()
+    // **A second is the ceiling, not six.** This is the one AX read on the
+    // keystroke path: `AXSecureContext.isSecure` goes through it, `emitState`
+    // calls that, and `emitState` runs from the tap's own callback — on main,
+    // where macOS kills a callback that takes too long (`TapDisabled` exists
+    // because it does). The system-wide element's default messaging timeout is
+    // the global one, and a frozen app in front means Helm waits it out with
+    // the keyboard in its hands.
+    //
+    // The module already knew this call: `EmojiPalette` set exactly this
+    // timeout, with the comment «a hung app must not hang Helm's main thread
+    // with it» — on the one AX path that was *not* on the keystroke route. The
+    // hoisting of `isSecure` out of the lock was half this repair; this is the
+    // other half.
+    //
+    // A refusal here is the safe direction: no focused element reads as «not a
+    // secure field», and the cheap `IsSecureEventInputEnabled` check that runs
+    // first is the one that catches the login window.
+    AXUIElementSetMessagingTimeout(system, 1)
     var focused: CFTypeRef?
-    guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(),
+    guard AXUIElementCopyAttributeValue(system,
                                         kAXFocusedUIElementAttribute as CFString,
                                         &focused) == .success,
           let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()

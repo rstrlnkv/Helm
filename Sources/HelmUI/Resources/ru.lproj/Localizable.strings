@@ -666,7 +666,7 @@
 "stays" = "останется";
 "tagged" = "помечено тегом";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} и {counter} подставляются. Расширение всегда остаётся собственным.";
-"ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет. Никогда ПРИВЕТ — это кричат намеренно — и никогда слово с цифрой.";
+"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет. Не трогает ПРИВЕТ, слова с цифрами и слова из трёх букв: CDs — не опечатка.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
