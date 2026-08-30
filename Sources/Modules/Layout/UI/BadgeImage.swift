@@ -55,8 +55,14 @@ enum BadgeImage {
         let font = NSFont.systemFont(ofSize: points * 0.72, weight: .semibold)
         let size = (label as NSString).size(withAttributes: [.font: font])
         let padding: CGFloat = box == nil ? 0 : points * 0.28
-        let canvas = NSSize(width: ceil(size.width) + padding * 2,
-                            height: max(points, ceil(size.height)) + (box == nil ? 0 : 2))
+        // **Exactly `points` tall, whatever the style.** A framed badge used to
+        // add 2 for the stroke — but the path is already `insetBy(0.5)`, which
+        // is what keeps a 1 pt stroke inside its own rectangle, so the 2 bought
+        // nothing and cost the one thing «Size» is for: at 15 pt requested,
+        // filled and outlined drew 17 while plain drew 15, and the whole Size
+        // range is 11 → 15. A style that moves the badge as far as the size
+        // picker does makes the size picker a suggestion.
+        let canvas = NSSize(width: ceil(size.width) + padding * 2, height: points)
 
         return NSImage(size: canvas, flipped: false) { rect in
             let radius = rect.height * 0.28
@@ -76,10 +82,20 @@ enum BadgeImage {
         }
     }
 
+    /// The system's own flag glyph, at the height that was asked for.
+    ///
+    /// **A glyph's line height is not its point size**, and taking the measured
+    /// height as the canvas is what made this the tallest style in the app:
+    /// 19 pt for a 15 pt badge, taller than «Letters» at any size the size
+    /// picker offers. The font is scaled so the drawn glyph *is* `points` tall,
+    /// and the canvas says so.
     private static func emoji(_ flag: String, points: CGFloat) -> NSImage {
-        let font = NSFont.systemFont(ofSize: points)
+        let measured = (flag as NSString)
+            .size(withAttributes: [.font: NSFont.systemFont(ofSize: points)])
+        let ratio = measured.height > 0 ? points / measured.height : 1
+        let font = NSFont.systemFont(ofSize: points * ratio)
         let size = (flag as NSString).size(withAttributes: [.font: font])
-        return NSImage(size: NSSize(width: ceil(size.width), height: ceil(size.height)),
+        return NSImage(size: NSSize(width: ceil(size.width), height: points),
                        flipped: false) { rect in
             (flag as NSString).draw(in: rect, withAttributes: [.font: font])
             return true

@@ -318,11 +318,8 @@ struct LayoutSettingsPage: View {
             HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
                 Text(lvm.state.lastConversionUndone ? LyStr.lastChangeUndone : LyStr.lastChange)
                 Spacer(minLength: HelmSpace.s5)
-                Text("\(last.before) → \(last.after)")
-                    .font(HelmText.figureFont)
-                    .foregroundStyle(HelmText.quiet)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                ConversionPair(last, undone: lvm.state.lastConversionUndone)
+                    .font(HelmText.rowDetail)
             }
             if let note = lastChangeNote {
                 Text(note)
@@ -345,7 +342,7 @@ struct LayoutSettingsPage: View {
 
     private var lastChangeNote: String? {
         if lvm.state.lastConversionUndone { return nil }
-        guard let gestureName else { return LyStr.undoImpossible }
+        guard let gestureName else { return LyStr.undoImpossible() }
         return LyStr.undoHint(gesture: gestureName)
     }
 

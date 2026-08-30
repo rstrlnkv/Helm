@@ -79,11 +79,22 @@ enum LyStr {
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
     static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }
     static var introWhere: String { L("Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings.") }
-    /// Names the gesture rather than promising «the same key»: an automatic
-    /// conversion is a change the person pressed no key for, so «the same key
-    /// again» named nothing. `gesture` is the bound tap key or the recorded
-    /// chord; nil means neither exists, and the sentence must not promise an
-    /// undo that does not. Interpolated, so it keeps its own table.
+    /// The intro's undo point: the same instruction the page's note gives,
+    /// plus the one thing only the intro can say.
+    ///
+    /// **It used to spell the instruction out again.** Two eight-language
+    /// tables held the same three conditions in the same order — press it
+    /// again, before you type anything else, in the app it happened in — so one
+    /// sentence cost sixteen hand-maintained translations and had two places to
+    /// drift from the control it names. `undoHint` is the sentence;
+    /// `undoImpossible` is the honest version when no key is bound, and it must
+    /// stay honest: a sentence promising an undo that cannot fire is worse than
+    /// no sentence. What is left here is the tail — that this page has a field
+    /// to try it in — which is true of nowhere else and so belongs to nowhere
+    /// else.
+    ///
+    /// `gesture` is the bound tap key or the recorded chord; nil means neither
+    /// exists. Interpolated, so it keeps its own table.
     static func introUndo(gesture: String?, language: AppLanguage = AppLanguage.current) -> String {
         let tryIt: [AppLanguage: String] = [
             .en: "And there is a field on this page to try it in, before it touches anything real.",
@@ -95,34 +106,12 @@ enum LyStr {
             .ja: "実際の文章に触れる前に、このページの入力欄で試せます。",
             .zh: "本页还有一个输入框，可以在触及真实文字之前先试一试。",
         ]
-        let undo: [AppLanguage: String]
-        if let gesture {
-            undo = [
-                .en: "Every change can be undone — press \(gesture) again, before you type anything else, in the app it happened in.",
-                .ru: "Любую замену можно отменить — нажмите «\(gesture)» ещё раз, до того, как наберёте что-то ещё, в том приложении, где она произошла.",
-                .es: "Cada cambio se puede deshacer: pulsa \(gesture) otra vez antes de escribir nada más, en la app donde ocurrió.",
-                .fr: "Chaque changement peut être annulé — appuyez de nouveau sur \(gesture) avant de taper autre chose, dans l’app où c’est arrivé.",
-                .de: "Jede Änderung lässt sich widerrufen — \(gesture) erneut drücken, bevor du etwas anderes tippst, in der App, in der sie passiert ist.",
-                .pt: "Cada alteração pode ser desfeita — pressione \(gesture) novamente antes de digitar mais nada, no app em que aconteceu.",
-                .ja: "変更は元に戻せます。何か入力する前に、同じアプリで \(gesture) をもう一度押してください。",
-                .zh: "每次更改都可以撤销——请在继续输入之前，在发生更改的应用中再按一次 \(gesture)。",
-            ]
-        } else {
-            undo = [
-                .en: "A change can be undone once a fix key is set — pick one under Shortcuts.",
-                .ru: "Отменять замены можно, когда назначена клавиша — выберите её в разделе «Сочетания клавиш».",
-                .es: "Un cambio se puede deshacer cuando hay una tecla asignada: elígela en «Atajos».",
-                .fr: "Un changement peut être annulé dès qu’une touche est choisie — dans la section des raccourcis.",
-                .de: "Eine Änderung lässt sich widerrufen, sobald eine Taste gewählt ist — unter „Kurzbefehle“.",
-                .pt: "Uma alteração pode ser desfeita quando há uma tecla definida — escolha uma em Atalhos.",
-                .ja: "修正キーを設定すると変更を元に戻せます。「ショートカット」で選んでください。",
-                .zh: "设置修复键后即可撤销更改——请在“快捷键”中选择。",
-            ]
-        }
-        guard let head = undo[language] ?? undo[.en],
-              let tail = tryIt[language] ?? tryIt[.en] else { return "" }
+        let head = gesture.map { undoHint(gesture: $0, language: language) }
+            ?? undoImpossible(language: language)
+        guard let tail = tryIt[language] ?? tryIt[.en] else { return head }
         return sentences(head, tail, language: language)
     }
+
     static var introStart: String { L("Got it") }
     static var fixCapitals: String { L("Fix a capital held too long") }
     static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
@@ -265,7 +254,9 @@ enum LyStr {
     /// The honest line for the state the old hint lied about: no tap key and
     /// no chord means no undo exists, and a sentence promising one described
     /// a gesture that could never fire.
-    static var undoImpossible: String { L("No key is assigned — this change can only be put back by hand.") }
+    static func undoImpossible(language: AppLanguage = AppLanguage.current) -> String {
+        L("No key is assigned — this change can only be put back by hand.", language: language)
+    }
     /// The row's own label when the change it names was taken back: the record
     /// outlives the rejection (that is when «Never this word» earns its keep),
     /// and it must say which state it is in.

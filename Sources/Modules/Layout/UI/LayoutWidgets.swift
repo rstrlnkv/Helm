@@ -221,19 +221,8 @@ private struct LastChange: View {
                 Text(state.lastConversionUndone ? LyStr.lastChangeUndone : LyStr.lastChange)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
-                HStack(spacing: 4) {
-                    Text(last.before)
-                        .foregroundStyle(HelmText.quiet)
-                        .strikethrough(!state.lastConversionUndone, pattern: .solid)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(HelmText.faint)
-                    Text(last.after)
-                }
-                .font(HelmText.rowDetail)
-                .monospaced()
-                .lineLimit(1)
-                .truncationMode(.middle)
+                ConversionPair(last, undone: state.lastConversionUndone)
+                    .font(HelmText.rowDetail)
                 // Not «put it back»: that is a blind edit at a caret in another
                 // app, and this panel is in front of it. This one edits a list
                 // and works wherever it is pressed. Absent for a forced
@@ -312,4 +301,42 @@ private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> Str
     let spelled = HelmDuration.string(seconds)
     guard !spelled.isEmpty else { return nil }
     return "≈ " + spelled + " " + LyStr.notSpentTypingAgain()
+}
+
+/// «vtymit → меньше»: the word that was wrong, and the word that replaced it.
+///
+/// **One drawing, because it was three.** The settings page typed the arrow
+/// into a string (`"\(before) → \(after)"`), this tile drew an 8 pt
+/// `arrow.right`, and the abbreviations section drew a third — one relation,
+/// three ways, on one module's screens. The tile's shape is the one that
+/// survived: it keeps the halves apart, so the replaced word can be struck
+/// through and read as replaced rather than as part of a phrase.
+///
+/// The arrow goes through `Text(Image(...))` rather than a bare `Image`, so it
+/// scales with whatever font the caller sets — the page sets a subheadline and
+/// the tile a caption, and a fixed 8 pt would be wrong in one of them.
+struct ConversionPair: View {
+    private let event: ConversionEvent
+    private let undone: Bool
+
+    init(_ event: ConversionEvent, undone: Bool) {
+        self.event = event
+        self.undone = undone
+    }
+
+    var body: some View {
+        HStack(spacing: HelmSpace.s2) {
+            Text(event.before)
+                .foregroundStyle(HelmText.quiet)
+                // Struck through only while the change stands: once it is put
+                // back, the word on the left is what is in the field again.
+                .strikethrough(!undone, pattern: .solid)
+            Text(Image(systemName: "arrow.right"))
+                .foregroundStyle(HelmText.faint)
+            Text(event.after)
+        }
+        .monospaced()
+        .lineLimit(1)
+        .truncationMode(.middle)
+    }
 }
