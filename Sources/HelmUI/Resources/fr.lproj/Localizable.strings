@@ -122,6 +122,7 @@
 "Last change (undone)" = "Dernier changement (annulé)";
 "Last fourteen days" = "Quatorze derniers jours";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agents de lancement, fichiers de réglages, modules et extensions système. Seuls les restes peuvent aller à la corbeille.";
+"Layout name" = "Nom de la disposition";
 "Menu bar" = "Barre des menus";
 "Month" = "Mois";
 "Move to Trash…" = "Placer dans la corbeille…";
@@ -138,7 +139,6 @@
 "Period" = "Période";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "La correction du texte sélectionné fonctionne maintenant sur une phrase entière. Une espace, une virgule ou un chiffre n’importe où dans la sélection laissait tout intact : seul un mot pouvait être corrigé.";
 "Shift" = "Maj";
-"Show Input Source Name" = "Afficher le nom de la source de saisie";
 "Spin the menu-bar icon" = "Faire tourner l’icône de la barre des menus";
 "Tap again to put the change back, or select the text again to change it back." = "Appuyez de nouveau pour annuler le changement, ou resélectionnez le texte pour le rétablir.";
 "Tap it on its own: it fixes the selection, or the last word." = "Appuyez dessus seule : elle corrige la sélection ou le dernier mot.";
@@ -151,6 +151,7 @@
 "The language indicator below works without this permission." = "L’indicateur de langue ci-dessous fonctionne sans cette autorisation.";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "La liste des mots que le Clavier ne doit jamais toucher est une liste, plus un bloc de texte : un mot par ligne avec une croix à côté, et un champ pour en ajouter.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Les règles enregistrées sur ce Mac n’ont pas été écrites par Helm : aucune ne s’exécute.";
+"These are left exactly as you typed them, whatever the dictionary thinks." = "Ces mots restent exactement tels que vous les avez tapés, quoi qu’en pense le dictionnaire.";
 "This folder is no longer there" = "Ce dossier n’existe plus";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Réanalysez pour voir ce qui reste.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Recherchez à nouveau pour voir ce qui reste.";
@@ -380,7 +381,6 @@
 "On power" = "Sur secteur";
 "On quit only" = "À la fermeture seulement";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Une touche pour les deux corrections : choisissez ⌘, ⌥, ⌃ ou ⇧ droite et appuyez seule. La première fois corrige le dernier mot, la suivante le restaure. Maintenue ou combinée, elle reste un modificateur.";
-"One per line." = "Un par ligne.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Uniquement si ce que vous avez tapé n’est pas un mot et en devient un une fois la disposition changée. Ce qui est déjà un mot reste intact.";
 "Open Accessibility…" = "Ouvrir Accessibilité…";
 "Open Extensions…" = "Ouvrir Extensions…";

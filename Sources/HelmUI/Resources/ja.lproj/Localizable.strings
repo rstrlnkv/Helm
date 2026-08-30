@@ -122,6 +122,7 @@
 "Last change (undone)" = "直近の変更（取り消し済み）";
 "Last fourteen days" = "過去14日間";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
+"Layout name" = "入力ソース名";
 "Menu bar" = "メニューバー";
 "Month" = "1か月";
 "Move to Trash…" = "ゴミ箱に入れる…";
@@ -138,7 +139,6 @@
 "Period" = "期間";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "選択したテキストの修正が文全体で働くようになりました。選択のどこかに空白や読点、数字があると全体がそのまま残り、修正できるのは一語だけでした。";
 "Shift" = "shift";
-"Show Input Source Name" = "入力ソース名を表示";
 "Spin the menu-bar icon" = "メニューバーのアイコンを回す";
 "Tap again to put the change back, or select the text again to change it back." = "もう一度押すと変更を元に戻せます。選択し直しても戻せます。";
 "Tap it on its own: it fixes the selection, or the last word." = "単独で押すと、選択した文字か直前の語を修正します。";
@@ -151,6 +151,7 @@
 "The language indicator below works without this permission." = "下の言語インジケータはこの許可がなくても動きます。";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "キーボードが触らない単語の一覧が、テキストの塊ではなくリストになりました。1行に1語、横に×印、追加用の入力欄付きです。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
+"These are left exactly as you typed them, whatever the dictionary thinks." = "ここに入れた語は、辞書が何と言おうと入力したままにします。";
 "This folder is no longer there" = "このフォルダはもうありません";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "これはもう存在しないため、何も移動していません。もう一度検索して残りを確認してください。";
@@ -380,7 +381,6 @@
 "On power" = "電源接続時";
 "On quit only" = "終了時のみ";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "ひとつのキーで両方。右の ⌘ / ⌥ / ⌃ / ⇧ を選んで単独で押すと、1 回目で直前の単語を修正し、もう一度で元に戻します。押しっぱなしや同時押しでは通常の修飾キーのままです。";
-"One per line." = "1行に1つ。";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "入力どおりでは単語でなく、配列を切り替えると単語になる場合だけです。すでに単語であるものには触れません。";
 "Open Accessibility…" = "アクセシビリティを開く…";
 "Open Extensions…" = "機能拡張を開く…";

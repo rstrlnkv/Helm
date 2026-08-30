@@ -127,31 +127,19 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
     /// covering is the carry-over, not a menu item that no longer exists:
     /// `TheOldNameSettingBecomesAStyleTests`.
 
-    /// The words on the items are macOS's own, read from the system's
-    /// `TextInputMenuCore` table (`Localizable.loctable`) — not translated
-    /// again. Pinned per language against that table's spellings, because the
-    /// `.strings` files are where a retranslation would creep in; a check on
-    /// `LyStr` alone would read the same constant from both sides. Helm's zh
-    /// follows `zh_CN` and its pt follows `pt_BR`, the variants the rest of
-    /// the app follows.
-    func testTheSourceNameSwitchSpeaksTheSystemsOwnWords() {
-        let system: [AppLanguage: String] = [
-            .en: "Show Input Source Name",
-            .ru: "Показывать имя источника ввода",
-            .es: "Mostrar nombre de fuentes de entrada",
-            .fr: "Afficher le nom de la source de saisie",
-            .de: "Name der Eingabequelle einblenden",
-            .ja: "入力ソース名を表示",
-            .zh: "显示输入法名称",
-            .pt: "Mostrar Nome do Layout de Teclado",
-        ]
-        for language in AppLanguage.allCases {
-            XCTAssertEqual(L("Show Input Source Name", language: language), system[language], """
-                \(language) does not say what macOS's own input menu says \
-                (`TextInputMenuCore.bundle`, key `Show Name of Source in Menu Bar`).
-                """)
-        }
-    }
+    /// The item this pinned against `TextInputMenuCore` is gone: «Show Input
+    /// Source Name» left the menu and became `BadgeStyle.sourceName`, and the
+    /// style is named «Layout name» rather than the system's phrase.
+    ///
+    /// **Deliberate, and the rule it looks like it breaks it does not.** The
+    /// house rule is to read macOS's spelling for a thing macOS also names —
+    /// and macOS names a *switch* there. Here the words are the value of a
+    /// «Style» picker, so the row read «Вид: Показывать имя источника ввода»,
+    /// an instruction standing where a noun belongs. The rule covers the same
+    /// thing, not the same words in a different grammatical role.
+    ///
+    /// The system's phrases are still read for the two doors that remain, and
+    /// the tests for those are below.
 
     /// The emoji door's full title is built the way the system builds it: the
     /// `Show palette class IM` template around the palette's own name — so the

@@ -11,7 +11,13 @@ enum LyStr {
     static var automaticNote: String { L("A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone.") }
     static var suspended: String { L("Paused — a password field is in front, and Helm never reads one.") }
     static var exceptions: String { L("Never change these words") }
-    static var exceptionsHint: String { L("One per line.") }
+    /// **It said «One per line.» until the list stopped being lines.** That was
+    /// a description of a `TextEditor` — true of the control, and the control is
+    /// gone. A note under a list is the place to say what the list *does*, not
+    /// how it is typed into: the shape is visible and the rule is not.
+    static var exceptionsHint: String {
+        L("These are left exactly as you typed them, whatever the dictionary thinks.")
+    }
     static var addApp: String { L("Add app…") }
     static var ruleOn: String { L("Fix") }
     static var ruleOff: String { L("Don’t fix") }
@@ -200,11 +206,13 @@ enum LyStr {
         case .outlined: return L("Letters in a frame")
         case .flagEmoji: return L("Flag, system")
         case .flagDrawn: return L("Flag")
-        // The system's own name for it, read from `TextInputMenuCore.bundle`
-        // the way `openKeyboardSettings` is — this draws exactly what macOS's
-        // indicator draws under that switch, and inventing a second name for
-        // one behaviour is what CLAUDE.md § Localization warns against.
-        case .sourceName: return showInputSourceName
+        // **Not the system's «Show Input Source Name», though it draws the same
+        // thing.** That is macOS's name for a *switch*, and here it is the value
+        // of a «Style» picker, so the row read «Вид: Показывать имя источника
+        // ввода» — an instruction sitting where a noun belongs. The rule about
+        // reading the system's spelling covers a thing macOS also names; macOS
+        // names the switch, not the style, and this is the style.
+        case .sourceName: return L("Layout name")
         }
     }
     static var badgePreview: String { L("Your layouts, as they will look:") }
@@ -233,9 +241,6 @@ enum LyStr {
         ]
         return language == .en ? "Show \(name)" : table[language] ?? "Show \(name)"
     }
-    /// The system input menu's switch, spelled its way: `TextInputMenuCore.bundle`,
-    /// key `Show Name of Source in Menu Bar`.
-    static var showInputSourceName: String { L("Show Input Source Name") }
     static var neverThisWord: String { L("Never this word") }
     static var noExceptions: String { L("No words yet") }
     /// The field's placeholder and its VoiceOver name at once — a placeholder

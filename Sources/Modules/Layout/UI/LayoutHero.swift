@@ -110,37 +110,44 @@ struct LayoutHero: View {
 
     // MARK: - The controls
 
-    /// The period: a button that opens the list of five, the same control the
-    /// 2×N panel tile carries.
+    /// Five buttons, one filled: the period is a choice, and a choice shows
+    /// which one it is on.
     ///
-    /// **It was five buttons, and the argument for that does not survive being
-    /// checked.** The comment here said «the way Keep Awake's hero is» — but
-    /// every button on that hero is an *action*: start for fifteen minutes,
-    /// extend by an hour, stop. None of them holds a selection. A selection has
-    /// to show which one is selected, and a row of buttons shows that only
-    /// through `.borderedProminent` against `.bordered` — which macOS draws
-    /// identically in a window that is not key. Measured on the running build:
-    /// all five grey, and the only surviving cue was the period's name inside
-    /// the caption.
+    /// **The filling is ours, not `.borderedProminent`'s.** That style takes
+    /// `NSColor.controlAccentColor`, which macOS greys the moment the window
+    /// stops being key — so all five drew identically and the only surviving
+    /// cue was the period's name inside the caption. It is why this row briefly
+    /// became a menu. An explicit fill has no key-state variant, so the choice
+    /// is visible whatever the window's focus, and the row stays a row.
     ///
-    /// A menu's face **is** its value, so the state cannot go missing whatever
-    /// the window's focus. It also spends one line where the buttons spent two
-    /// — the fifth name wrapped alone in every language measured.
-    ///
-    /// Named, because a control whose face is its value alone is «pop up button»
-    /// to VoiceOver, and `NamedControlsTests` scans the source for that shape.
+    /// The shape is Keep Awake's panel tile's — a capsule filled at 0.25 for
+    /// the one in force, `HelmSurface.onPanelFill` for the rest — and this
+    /// hero's own `HelmWrappingRow`, which folds to a second line rather than
+    /// truncating: a segmented control has no headroom inside a row that
+    /// proposes `.unspecified`, measured at 347.5 pt for five English words
+    /// drawn exactly equal to wanted in all eight languages.
     private var controls: some View {
-        Menu {
+        HelmWrappingRow {
             ForEach(ConversionPeriod.allCases, id: \.self) { option in
-                Button(LyStr.periodName(option)) { period = option }
+                chooser(option)
             }
-        } label: {
-            Text(LyStr.periodName(period))
         }
-        .menuStyle(.button)
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .fixedSize()
-        .accessibilityLabel(LyStr.period)
+    }
+
+    @ViewBuilder
+    private func chooser(_ option: ConversionPeriod) -> some View {
+        let chosen = period == option
+        Button { period = option } label: {
+            Text(LyStr.periodName(option))
+                .font(HelmText.rowTitle)
+                .foregroundStyle(chosen ? Color.white : Color.primary)
+                .padding(.horizontal, HelmSpace.s5)
+                .padding(.vertical, HelmSpace.s3)
+                .background(
+                    Capsule().fill(chosen ? Color.accentColor : HelmSurface.onPanelFill)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(chosen ? [.isSelected] : [])
     }
 }
