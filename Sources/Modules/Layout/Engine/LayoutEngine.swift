@@ -685,13 +685,34 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             emitState()
             return
         }
+        // Counts, never content — the same line the conversion path carries,
+        // and for the same reason: a report of «it removed a word too many»
+        // needs the arithmetic that did it, and until now the undo path wrote
+        // nothing at all.
+        HelmLog.shared.info(Self.moduleID,
+                            "put a word back in \(Redact.app(bundleID)): "
+                            + "deleted \(plan.backspaces), typed \(plan.insert.count)")
         sources.select(record.from)
         // `perform` forgot everything, including the page's record. The
         // rejection is exactly when the record earns its keep — «Never this
         // word» answers it — so it comes back, marked as taken back.
+        //
+        // **And the word comes back too, which is what makes the gesture a
+        // toggle rather than a one-way trip.** Reported live: type `d`, tap the
+        // key and get `в`, tap again and get `d` back — and the third tap did
+        // nothing, nor the twelve after it. Fifteen «gesture: last word» lines
+        // in the log against one conversion. `forgetTheWord` had dropped the
+        // buffer, the remembered word and the undo, so the module was holding
+        // no handle at all on text it had just typed itself. It knows exactly
+        // what is in the field: it put it there.
         lock.lock()
         lastEvent = record.event
         lastEventUndone = true
+        lastCompleted = RememberedWord(
+            TypingBuffer.Completion(word: record.event.before,
+                                    ending: record.event.trailing.first),
+            in: bundleID)
+        typingApp = bundleID
         lock.unlock()
         emitState()
     }

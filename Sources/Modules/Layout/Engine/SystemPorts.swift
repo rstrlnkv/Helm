@@ -319,6 +319,19 @@ public struct SynthesisTyping: TypingPort {
                   let up = CGEvent(keyboardEventSource: source,
                                    virtualKey: CGKeyCode(kVK_Delete), keyDown: false)
             else { return false }
+            // **Cleared, not inherited — this is the one that eats words.**
+            // `CGEventSource(stateID: .combinedSessionState)` carries the *live*
+            // modifier state, and the gesture is a tap of a modifier: if the
+            // person is still holding ⌥ when these go out, every one of them is
+            // ⌥Delete, which removes a whole word rather than a character. The
+            // conversion lands and a word beside it disappears — reported as
+            // «it converts the word and deletes one more». ⌘ would be worse: a
+            // synthesised ⌘-letter is a menu command in whatever is in front.
+            //
+            // `send(key:)` in this file sets `.maskCommand` on purpose, which is
+            // what proves these are inherited rather than empty by default.
+            down.flags = []
+            up.flags = []
             events.append(down)
             events.append(up)
         }
@@ -330,6 +343,11 @@ public struct SynthesisTyping: TypingPort {
             else { return false }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+            // The same reason, and the worse half: a held ⌘ turns each of these
+            // into a menu command in the app in front, and a held ⌥ can change
+            // what the key means before the unicode string is read.
+            down.flags = []
+            up.flags = []
             events.append(down)
             events.append(up)
         }
