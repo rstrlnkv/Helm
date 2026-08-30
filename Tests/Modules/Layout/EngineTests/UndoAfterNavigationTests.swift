@@ -75,11 +75,26 @@ final class UndoAfterNavigationTests: XCTestCase {
     private var context = NavContext()
     private var tap = NavTap()
 
-    private func engine() -> LayoutEngine {
+    /// The keycode this suite's «shortcut» is bound to. Any code will do; what
+    /// matters is that the engine has one recorded, because the forgiveness
+    /// exists for the recorded chord and for no other.
+    private static let shortcut: UInt16 = 9        // V, as good as any
+
+    /// Recorded, because a chord is only forgiven when it matches the binding.
+    /// With nothing bound — the shipped default, where the gesture is a tap of
+    /// a single modifier through `deliverModifier` and never reaches `handle` —
+    /// no chord is forgiven at all, and this suite would be asserting about a
+    /// budget that no longer exists.
+    private func engine(shortcutBound: Bool = true) -> LayoutEngine {
         typing = NavTyping(); context = NavContext(); tap = NavTap()
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        if shortcutBound {
+            store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        }
         let engine = LayoutEngine(tap: tap, typing: typing, sources: NavSources(),
                                   translation: NavTranslation(), spell: NavSpell(),
-                                  secure: context)
+                                  secure: context, settings: store)
         engine.activate()
         return engine
     }
@@ -111,7 +126,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord)
+        tap.send(.chord(Self.shortcut))
         tap.send(.navigation)
         engine.undoLast()
 
@@ -125,7 +140,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord)        // the shortcut's keys, seen before Carbon dispatches
+        tap.send(.chord(Self.shortcut))   // its keys, seen before Carbon dispatches
         engine.undoLast()       // …and then the action itself
 
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
@@ -140,11 +155,46 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord)
-        tap.send(.chord)
+        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(Self.shortcut))
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1)
+    }
+
+    /// **A chord that is not the shortcut is not forgiven, and that is the
+    /// repair.** The budget existed because the tap sees the recorded hotkey's
+    /// own keys before Carbon dispatches the action — a reason that covers one
+    /// chord and was being spent by all of them. ⌘V inserts text at the caret;
+    /// the undo is a blind edit of a fixed length, and after a paste the text it
+    /// was measured against is gone.
+    func testAChordThatIsNotTheShortcutIsNotForgiven() {
+        let engine = engine()
+        converted(engine)
+
+        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything else
+        engine.undoLast()
+
+        XCTAssertEqual(typing.performed.count, 1, """
+            the undo fired after a chord that was not the shortcut. Every chord \
+            used to spend the one forgiveness, so a paste — which changes the \
+            text in front of the caret — left the record live over text it was \
+            never measured against.
+            """)
+    }
+
+    /// And with nothing recorded, which is what most people run, no chord is
+    /// forgiven at all: the shipped gesture is a tap of a single modifier and
+    /// goes through `deliverModifier`, which never reaches this path.
+    func testWithNoShortcutBoundNoChordIsForgiven() {
+        let engine = engine(shortcutBound: false)
+        converted(engine)
+
+        tap.send(.chord(Self.shortcut))
+        engine.undoLast()
+
+        XCTAssertEqual(typing.performed.count, 1,
+                       "a chord was forgiven although no shortcut is bound to forgive")
     }
 
     // MARK: - What the two events have in common
@@ -153,7 +203,7 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// them, and a chord that stopped ending the word would put ⌘S's "s" back
     /// in the buffer.
     func testBothEndTheWordAndNeitherConfirmsIt() {
-        for event in [TypingBuffer.Event.chord, .navigation] {
+        for event in [TypingBuffer.Event.chord(Self.shortcut), .navigation] {
             var buffer = TypingBuffer()
             buffer.type("ghbdtn")
             let completion = buffer.accept(event)

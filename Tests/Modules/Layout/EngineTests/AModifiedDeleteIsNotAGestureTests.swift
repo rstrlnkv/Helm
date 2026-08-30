@@ -37,13 +37,20 @@ final class AModifiedDeleteIsNotAGestureTests: XCTestCase {
     }
 
     /// The control that stops «report everything as navigation» from passing:
-    /// an ordinary chord is still a chord, because it may be the recorded
-    /// hotkey arriving before Carbon dispatches it.
-    func testAnOrdinaryChordIsStillAChord() {
+    /// an ordinary chord is still a chord **and carries its keycode**.
+    ///
+    /// This layer does not decide whether a chord may be forgiven — it cannot,
+    /// because that is a comparison against the shortcut the person recorded,
+    /// which lives in the engine's settings. What it must do is hand the code
+    /// on, so that the comparison is possible at all: it used to throw the code
+    /// away the moment it saw a modifier, and ⌘V and ⌘Space became the same
+    /// event.
+    func testAnOrdinaryChordIsStillAChordAndKeepsItsKeycode() {
         for key in [kVK_ANSI_A, kVK_ANSI_V, kVK_ANSI_Z, kVK_Space, kVK_ANSI_S] {
-            XCTAssertEqual(TapEvent.classify(keycode: key, modified: true), .chord,
-                           "keycode \(key) with a modifier is not proof the caret moved, and "
-                           + "treating it as one has the gesture destroy its own precondition")
+            XCTAssertEqual(TapEvent.classify(keycode: key, modified: true),
+                           .chord(UInt16(key)),
+                           "keycode \(key) with a modifier is not proof the caret moved — but "
+                           + "which key it was decides whether the engine may forgive it")
         }
     }
 

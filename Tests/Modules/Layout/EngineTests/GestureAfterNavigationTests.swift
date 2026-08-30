@@ -83,11 +83,19 @@ final class GestureAfterNavigationTests: XCTestCase {
     private var context = ArrowContext()
     private var tap = ArrowTap()
 
+    /// The chord bound as «fix». Only the recorded one is treated as «may have
+    /// been the gesture arriving»; every other chord may have changed the text
+    /// in front of the caret, and the word before it is dropped.
+    private static let shortcut: UInt16 = 9
+
     private func engine() -> LayoutEngine {
         typing = ArrowTyping(); context = ArrowContext(); tap = ArrowTap()
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
         let engine = LayoutEngine(tap: tap, typing: typing, sources: ArrowSources(),
                                   translation: ArrowTranslation(), spell: ArrowSpell(),
-                                  secure: context)
+                                  secure: context, settings: store)
         engine.activate()
         return engine
     }
@@ -165,13 +173,18 @@ final class GestureAfterNavigationTests: XCTestCase {
     // MARK: - …and the gesture still works where it should
 
     /// The control that stops "refuse everything" from passing the tests above.
-    /// A chord is the one boundary that is *not* proof the caret moved — the
-    /// gesture's own keys reach the tap before Carbon dispatches them — so a
-    /// word ended by a chord is still the gesture's to convert.
-    func testAWordEndedByAChordIsStillConverted() {
+    /// The **shortcut's own chord** is the one boundary that is not proof the
+    /// caret moved — its keys reach the tap before Carbon dispatches the action
+    /// — so a word ended by it is still the gesture's to convert.
+    ///
+    /// It used to be every chord, which is how ⌘V came to leave a word
+    /// remembered while the paste changed the text in front of the caret.
+    /// `UndoAfterNavigationTests` holds the other half: a chord that is not the
+    /// shortcut is not forgiven, and with nothing bound none is.
+    func testTheShortcutsOwnChordStillLeavesTheWordConvertible() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord)
+        tap.send(.chord(Self.shortcut))
 
         engine.convertLastWord()
 

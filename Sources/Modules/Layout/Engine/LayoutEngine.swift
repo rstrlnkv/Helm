@@ -58,6 +58,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var audible: Bool
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
+    /// The keycode of the chord the person recorded for «fix», or nil when they
+    /// recorded none — which is the default, because the shipped gesture is a
+    /// tap of a single modifier and goes through `deliverModifier` instead.
+    ///
+    /// The one thing this answers: which chord may be forgiven. See `handle`.
+    private var hotkeyCode: UInt16?
     /// The count that outlives a launch. The day counter this replaced held one
     /// day in memory,
     /// so the page's figure went back to zero at every launch — and the silent
@@ -315,10 +321,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // solo-modifier tap goes through `deliverModifier` and never arrives
         // here. One Left Arrow after a conversion and the gesture typed
         // backspaces into the middle of the sentence.
-        switch event {
-        case .chord: undo?.soften()
-        default: undo?.invalidate()
+        // **Only the chord that may be the shortcut is forgiven.**
+        //
+        // The forgiveness exists because the head-inserted tap sees the
+        // recorded hotkey's own keys before Carbon dispatches the action, so
+        // treating that chord as «the caret moved» would have the gesture
+        // destroy its own precondition. It covered *every* chord, and most
+        // chords are not that: ⌘V inserts text at the caret and ⌥V types `√`,
+        // and both left the word before them remembered while the field changed
+        // underneath it — `ghbdtnhttps://helm.app` became
+        // `ghbdtnhttps://heпривет` on a measured run.
+        //
+        // With nothing recorded — the default, since the shipped gesture is a
+        // tap of a single modifier through `deliverModifier`, which never
+        // reaches here — no chord is forgiven at all, and the budget protects
+        // nothing that needs protecting.
+        let mightBeTheGesture: Bool
+        if case .chord(let code) = event, let hotkeyCode, code == hotkeyCode {
+            mightBeTheGesture = true
+        } else {
+            mightBeTheGesture = false
         }
+        if mightBeTheGesture { undo?.soften() } else { undo?.invalidate() }
         let finished = buffer.accept(event)
         let auto = automatic
         let confirms = triggers.converts(event)
@@ -332,7 +356,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // dropped the word and a bare arrow, Home, End, Tab or Escape *stored*
         // the one it had just ended. Press ←, tap the key, and the conversion
         // landed wherever the arrow had gone.
-        if event.movedTheCaret {
+        // A chord that is not the shortcut goes with the caret moves, for the
+        // same reason it no longer spends the undo's forgiveness: it may have
+        // changed the text in front of the caret, and the remembered word is a
+        // blind edit measured against text that was there before it.
+        if event.movedTheCaret || (isAChord(event) && !mightBeTheGesture) {
             lock.lock(); lastCompleted = nil; lock.unlock()
         } else {
             // An event that ends no word still ends the last one's usefulness:
@@ -806,6 +834,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
         let readAudible = settings.bool(LayoutKey.audible, default: false)
         let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
+        // -1 is the recorder's own «nothing bound», not a keycode. Read out here
+        // with its neighbours: `TheLockIsNeverHeldAcrossAWaitTests` caught this
+        // one inside the critical section the moment it was written, which is
+        // the guard doing exactly what it was built for.
+        let recorded = settings.int("\(LayoutHotkey.storePrefix)KeyCode", default: -1)
+        let readHotkey: UInt16? = recorded >= 0 ? UInt16(recorded) : nil
         let readTapKey = ModifierTap(
             key: TapKey.from(settings.string(LayoutKey.tapKey,
                                              default: TapKey.rightCommand.rawValue)))
@@ -822,6 +856,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // and nothing on the page to turn back on — a stored value outliving
         // the only control that could change it.
         triggers = .default
+        hotkeyCode = readHotkey
         lock.unlock()
         emitState()
     }
@@ -839,6 +874,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// every event before posting any. Keeping state across a refusal while the
     /// port could still half-apply would aim a blind edit at text that is no
     /// longer there, which is worse than the defect it repairs.
+    @discardableResult
+    private func isAChord(_ event: TypingBuffer.Event) -> Bool {
+        if case .chord = event { return true }
+        return false
+    }
+
     @discardableResult
     private func perform(_ plan: SwitchPlan) -> Bool {
         lock.lock(); performing = true; lock.unlock()

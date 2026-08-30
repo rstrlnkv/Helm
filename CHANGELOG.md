@@ -15,6 +15,7 @@ only once it has no known problems left.
 
 - **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
 - **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
+- **FIX** Keyboard: a chord that is not the shortcut you recorded ends the word for good, so the gesture after a paste cannot type the old word into the pasted text.
 - **NEW** Keyboard fixes one-letter words — в, и, с, к, о, у, а, я and their English pair — from an explicit list rather than a dictionary.
 - **FIX** Keyboard: the never-list, and the letter-into-a-mark rule, now apply to a selection as well as to a typed word.
 - **FIX** Keyboard: a secure field is skipped before it is read rather than after.

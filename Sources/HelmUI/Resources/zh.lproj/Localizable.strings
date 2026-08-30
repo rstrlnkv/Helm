@@ -15,6 +15,7 @@
 "A replacement an app turns down now leaves your word alone, and leaves it there to fix by hand. It used to delete the word and type nothing in its place." = "被应用拒绝的替换现在不会动你的词，并把它留在那里让你手动修改。以前它会删掉这个词，却不输入任何内容。";
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "安全输入框在被读取之前就跳过，而不是之后。并且当 Mac 自行校正时区时，当天的计数不再丢失。";
+"A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "粘贴之后再按快捷键，不会再把粘贴前的那个词打进粘贴的文字里。只有你录制的快捷键才被当作“可能是手势”，其他组合键会彻底结束这个词。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
 "A word to leave alone" = "不要改动的词";

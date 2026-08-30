@@ -16,14 +16,23 @@ public struct TypingBuffer {
         /// Arrows, home, end, tab, escape, pressed on their own — the caret
         /// moved, so what came before is no longer adjacent to what comes next.
         case navigation
-        /// A key held with command, control or option. Ends the word exactly as
-        /// navigation does and confirms nothing, and is a separate case for one
-        /// reason: the convert/undo shortcut is itself a chord and the
-        /// head-inserted tap sees its keys before Carbon dispatches the action,
-        /// so a chord cannot be treated as proof the caret moved without the
-        /// shortcut killing its own precondition. A bare arrow carries no such
-        /// ambiguity and must not spend that forgiveness.
-        case chord
+        /// A key held with command, control or option, carrying its keycode.
+        ///
+        /// Ends the word exactly as navigation does and confirms nothing, and is
+        /// a separate case for one reason: the convert/undo shortcut is itself a
+        /// chord and the head-inserted tap sees its keys before Carbon
+        /// dispatches the action, so a chord cannot be treated as proof the
+        /// caret moved without the shortcut killing its own precondition.
+        ///
+        /// **The keycode is here because that reason covers exactly one chord
+        /// and the case stood for all of them.** ⌘V inserts text at the caret
+        /// and ⌥V types `√`, and both were kept as «not proof the caret moved»
+        /// — so the word before them stayed remembered while the field changed
+        /// underneath it. Measured: type `ghbdtn`, ⌘V a link, tap the key, and
+        /// `ghbdtnhttps://helm.app` became `ghbdtnhttps://heпривет`. With the
+        /// code, the engine can compare a chord against the shortcut actually
+        /// bound and forgive that one alone.
+        case chord(UInt16)
         case click
         case focusChange
 
@@ -42,6 +51,11 @@ public struct TypingBuffer {
         public var movedTheCaret: Bool {
             switch self {
             case .navigation, .click, .focusChange: return true
+            // `.chord` answers false here because this property cannot know
+            // which chord: the shortcut's own keys look like everybody else's
+            // until somebody compares them against the binding, and the binding
+            // is the engine's. `LayoutEngine.handle` makes that comparison and
+            // treats every other chord as a caret move.
             case .character, .backspace, .space, .newline, .punctuation, .chord: return false
             }
         }

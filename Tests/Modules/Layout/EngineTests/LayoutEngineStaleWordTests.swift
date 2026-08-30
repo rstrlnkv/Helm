@@ -98,13 +98,36 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     private var sources = StaleSources()
     private var selection = StaleSelection()
 
+    /// The chord bound as «fix». Only the recorded one ends a word and leaves
+    /// it remembered: every other chord may have changed the text in front of
+    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
+    private static let shortcut: UInt16 = 9
+
+    /// A store with that binding in it, because these suites use a chord as the
+    /// boundary that remembers.
+    /// **Every setting this suite varies goes in the store, not only in the
+    /// initialiser.** `activate()` calls `reloadSettings()`, which overwrites
+    /// the initialiser's values with the store's — so once a store exists,
+    /// passing `fixCapitals: true` to the init and nothing to the store leaves
+    /// the flag off. That is the engine reading its own settings at launch,
+    /// which is deliberate (ARCHITECTURE.md § Layout switching); the test has
+    /// to speak to it the way the page does.
+    private static func boundStore(fixCapitals: Bool = false) -> NamespacedStore {
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        store.set(fixCapitals, for: LayoutKey.fixCapitals)
+        return store
+    }
+
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
         typing = StaleTyping(); context = StaleContext()
         tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: StaleTranslation(), spell: StaleSpell(),
                                   secure: context, selection: selection,
- fixCapitals: fixCapitals)
+ fixCapitals: fixCapitals,
+                                  settings: Self.boundStore(fixCapitals: fixCapitals))
         engine.activate()
         return engine
     }
@@ -139,7 +162,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap.type("vjq")
         // A chord, not an arrow: a caret move now forgets the word on its own,
         // and the subject here is what the selection edit leaves behind.
-        tap.send(.chord)          // ends the word without converting; it is remembered
+        tap.send(.chord(Self.shortcut))          // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
@@ -214,7 +237,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord)               // ⌘Tab, as the tap reports it
+        tap.send(.chord(Self.shortcut))               // ⌘Tab, as the tap reports it
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         context.bundle = "com.apple.Mail"
@@ -224,12 +247,40 @@ final class LayoutEngineStaleWordTests: XCTestCase {
                       + "switched to")
     }
 
+    /// **A chord that is not the bound shortcut takes the word with it.**
+    ///
+    /// Measured before the repair, driving a field the plan is applied to: type
+    /// `ghbdtn`, press ⌘V so the app pastes a link, tap the key —
+    /// `ghbdtnhttps://helm.app` became `ghbdtnhttps://heпривет`. Six backspaces
+    /// counted against a word that was six characters upstream of where the
+    /// caret had ended up, and the mislayout left standing.
+    ///
+    /// The forgiveness `.chord` carried existed for one chord — the recorded
+    /// hotkey, whose keys the head-inserted tap sees before Carbon dispatches
+    /// the action — and every chord was spending it. ⌘V pastes and ⌥V types
+    /// `√`; both change the text in front of the caret, and the remembered word
+    /// is a blind edit measured against the text that was there before.
+    func testAChordThatIsNotTheShortcutIsNotAWordTheGestureMayConvert() {
+        let engine = engine()
+        tap.type("ghbdtn")
+        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything that is not the binding
+
+        engine.convertLastWord()
+
+        XCTAssertTrue(typing.performed.isEmpty, """
+            the gesture converted a word that a chord had ended. That chord may have \
+            pasted, typed a character or moved the caret — the module cannot know — and \
+            the backspaces are counted against text that was in front of the caret before \
+            it happened.
+            """)
+    }
+
     /// …and the same word in the app it was typed in is still the gesture's to
     /// convert, so the answer above is not "refuse everything".
     func testTheWordIsStillConvertibleInTheAppItWasTypedIn() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord)
+        tap.send(.chord(Self.shortcut))
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1)
         XCTAssertEqual(typing.performed[0].backspaces, 6)
@@ -251,7 +302,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap.type("ghbdtn")
         // A chord, not an arrow, for the same reason: the subject is the token
         // the buffer refused, not the boundary that set the word up.
-        tap.send(.chord)                // ends the word without converting; it is remembered
+        tap.send(.chord(Self.shortcut))                // ends the word without converting; it is remembered
         tap.type(String(repeating: "g", count: TypingBuffer.maxLength + 6))
         tap.send(.space)                // too long to report — and it is not reported
         XCTAssertTrue(typing.performed.isEmpty, "precondition: the long token was refused")

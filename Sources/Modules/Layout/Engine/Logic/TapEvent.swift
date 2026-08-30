@@ -38,7 +38,7 @@ public enum TapEvent {
     /// text for everyone who deletes a word with ⌥Delete.
     public static func classify(keycode: Int, modified: Bool) -> TypingBuffer.Event? {
         if modified {
-            return caretKeys.contains(keycode) ? .navigation : .chord
+            return caretKeys.contains(keycode) ? .navigation : .chord(UInt16(keycode))
         }
         switch keycode {
         case kVK_Delete: return .backspace

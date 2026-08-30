@@ -81,7 +81,7 @@ final class TypingBufferTests: XCTestCase {
         // A chord is the one boundary that is deliberately not proof: the
         // gesture's own keys reach the tap before Carbon dispatches the action.
         for event in [TypingBuffer.Event.character("a"), .backspace, .space, .newline,
-                      .punctuation("."), .chord] {
+                      .punctuation("."), .chord(9)] {
             XCTAssertFalse(event.movedTheCaret,
                            "\(event) was taken as proof the caret moved")
         }

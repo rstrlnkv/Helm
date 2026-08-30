@@ -1,4 +1,5 @@
 import HelmTestSupport
+import HelmRuntime
 import XCTest
 import HelmContract
 @testable import Module_Layout_Engine
@@ -120,6 +121,20 @@ final class LayoutEngineTests: XCTestCase {
     private var tap = FakeTap()
     private var sources = FakeSources()
 
+    /// The chord bound as «fix». Only the recorded one ends a word and leaves
+    /// it remembered: every other chord may have changed the text in front of
+    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
+    private static let shortcut: UInt16 = 9
+
+    /// A store with that binding in it, because these suites use a chord as the
+    /// boundary that remembers.
+    private static func boundStore() -> NamespacedStore {
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        return store
+    }
+
     private func engine(automatic: Bool = true) -> LayoutEngine {
         typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
         let engine = LayoutEngine(
@@ -127,7 +142,8 @@ final class LayoutEngineTests: XCTestCase {
             translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
                                                  "qqqq": "ййыы"]),
             spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic)
+            secure: secure, automatic: automatic,
+            settings: Self.boundStore())
         engine.activate()
         return engine
     }
@@ -252,7 +268,7 @@ extension LayoutEngineTests {
     func testACommandChordEndsTheWordWithoutConverting() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord)           // what a chord delivers
+        tap.handler?(.chord(Self.shortcut))           // what a chord delivers
         XCTAssertTrue(typing.performed.isEmpty)
 
         // …and the word it ended is still available to the shortcut, which is

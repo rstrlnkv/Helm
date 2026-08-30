@@ -1,4 +1,5 @@
 import HelmTestSupport
+import HelmRuntime
 import XCTest
 @testable import Module_Layout_Engine
 
@@ -43,26 +44,37 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
 
     /// No `settings:` store on purpose — nothing here is about what was saved,
     /// and an engine with no store cannot reach `UserDefaults` to find out.
+    /// The chord these tests use to end a word without converting it — bound,
+    /// because only the recorded shortcut ends a word and leaves it remembered.
+    /// Every other chord may have changed the text in front of the caret (⌘V
+    /// pastes, ⌥V types `√`), so the word before it is dropped.
+    private static let shortcut: UInt16 = 9
+
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure)
+            secure: secure, settings: store)
         engine.activate()
         return engine
     }
 
     // MARK: - The word that most recently ended
 
-    /// ⌘Tab, ⌘S, the module's own shortcut: every chord ends the word without
-    /// converting it, and the word is remembered so the gesture has something to
-    /// work on. Then macOS takes the tap away.
+    /// The module's own shortcut ends the word without converting it, and the
+    /// word is remembered so the gesture has something to work on. (⌘Tab and ⌘S
+    /// end it too, and no longer remember it: any chord but the bound one may
+    /// have changed the text in front of the caret.) Then macOS takes the tap
+    /// away.
     func testAWordRememberedWhenTheGrantWentIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord)
+        tap.handler?(.chord(Self.shortcut))
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing has been converted yet")
 
         tap.macOSTakesItAway()
@@ -84,7 +96,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     func testTheSameWordIsStillTheGesturesToConvertWhileTheTapIsAlive() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord)
+        tap.handler?(.chord(Self.shortcut))
 
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1,
