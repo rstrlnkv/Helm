@@ -311,5 +311,5 @@ private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> Str
     let seconds = TimeSaved.seconds(words: figures.words, characters: figures.characters)
     let spelled = HelmDuration.string(seconds)
     guard !spelled.isEmpty else { return nil }
-    return "≈ " + spelled + " " + LyStr.notSpentTypingAgain
+    return "≈ " + spelled + " " + LyStr.notSpentTypingAgain()
 }

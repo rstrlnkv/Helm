@@ -49,25 +49,8 @@ struct LayoutHero: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, HelmSpace.s4)
 
-            // Always occupied, never inserted: this is what keeps the four
-            // states one height. It says the estimate's assumption while the
-            // figure is time, and when counting began while it is words.
             if watching {
                 controls.padding(.top, HelmSpace.s6)
-                // **Under the verbs, the way `KeepAwakeHero.stopNote` is.**
-                // Between the caption and the buttons it made this hero's
-                // rhythm 38.5 pt where both finished heroes are 26 — measured,
-                // constant across all eight languages and every width. The
-                // always-drawn line is what keeps every state one height; where
-                // it stands is what keeps the app one rhythm.
-                Text(note.isEmpty ? LyStr.notSpentTypingAgain : note)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, HelmSpace.s3)
-                    .opacity(note.isEmpty ? 0 : 1)
-                    .accessibilityHidden(note.isEmpty)
             } else if let grant {
                 Button(HelmPermissionNote.grantLabel, action: grant)
                     .buttonStyle(.borderedProminent)
@@ -102,34 +85,28 @@ struct LayoutHero: View {
             .foregroundStyle(hasFigure ? Color.primary : HelmText.quiet)
     }
 
+    /// What the figure is, over what, and what it came to in typing.
+    ///
+    /// **One line, not two.** The estimate had a line of its own under the
+    /// period buttons — always drawn, at `.opacity(0)` half the time, so that
+    /// pressing a glyph could not move the form. The glyph is gone (§ the
+    /// metric switch), so the line was reserved against nothing, and a figure's
+    /// scale and a figure's consequence are one thought: «23 · words put right ·
+    /// month · ≈ 48 s not spent typing again».
+    ///
+    /// Every state is still one string and therefore one height, which is what
+    /// the reserved line used to buy. `LayoutHeroIsOneHeightTests` measures it
+    /// in all eight languages rather than trusting this comment.
     private var caption: String {
         guard watching else { return LyStr.heroNotWatchingWhy }
         guard hasFigure else { return LyStr.nothingYetNote }
         if suspended { return LyStr.suspended }
-        return LyStr.wordsIn(period, count: figures.words)
+        let counted = LyStr.wordsIn(period, count: figures.words)
+        let spelled = HelmDuration.string(seconds)
+        guard !spelled.isEmpty else { return counted }
+        return counted + " · ≈ " + spelled + " " + LyStr.notSpentTypingAgain()
     }
 
-    /// The line that never leaves: what the count came to in typing time.
-    ///
-    /// **Both numbers at once, which is what the panel tile always did.** They
-    /// used to be one at a time behind a two-glyph switch in the *window
-    /// header* — so the 744 pt page showed one and a 280 pt tile showed both,
-    /// two surfaces disagreeing about what the figure is. The switch also left
-    /// the bottom 19 pt of this hero blank in the state it ships in: measured
-    /// 0 ink in the band 118–137 pt with the figure on words, because the line
-    /// was reserved at `.opacity(0)` so pressing a glyph would not move the
-    /// form. Reserved is right when a switch exists; the answer was to drop the
-    /// switch.
-    ///
-    /// Empty before the first word, so the hero says nothing it has not
-    /// measured — and drawn either way, which is what keeps every state one
-    /// height.
-    private var note: String {
-        guard watching, hasFigure, !suspended else { return "" }
-        let spelled = HelmDuration.string(seconds)
-        guard !spelled.isEmpty else { return "" }
-        return "≈ " + spelled + " " + LyStr.notSpentTypingAgain
-    }
 
     // MARK: - The controls
 

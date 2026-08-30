@@ -36,7 +36,14 @@ enum LyStr {
     /// already carries the period, and saying it twice on a 280 pt tile reads
     /// as two different spans. `timeIn(_:)` is the page's version, which has to
     /// carry it because the page has no caption above the figure.
-    static var notSpentTypingAgain: String { L("not spent typing again") }
+    /// Takes a language rather than reading `AppLanguage.current`, so a guard
+    /// can ask it about German. This machine runs in Russian, so a test that
+    /// reads `.current` exercises exactly one of eight — CLAUDE.md § A test
+    /// parameterized by an explicit language, and the reason a mutation planted
+    /// in an English value once passed.
+    static func notSpentTypingAgain(language: AppLanguage = AppLanguage.current) -> String {
+        L("not spent typing again", language: language)
+    }
 
     /// The bar row's name. A drawing is invisible to VoiceOver unless somebody
     /// says what it is, and `NamedControlsTests` scans the source for the shape
