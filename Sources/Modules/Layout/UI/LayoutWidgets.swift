@@ -100,7 +100,11 @@ struct LayoutTile: View {
                 // deliberately — but it is not watching either, and a green dot
                 // over a silent module is the tile lying at its smallest size.
                 if state.enabled && !state.suspended && size != .compact {
+                    // Decorative to a reader: it carries no text, and exposed
+                    // unnamed it was a stop that said nothing at all — worse
+                    // than silence. What it means is in the tile's own words.
                     Circle().fill(HelmSignal.success).frame(width: 6, height: 6)
+                        .accessibilityHidden(true)
                 }
             }
             if state.enabled {
@@ -192,7 +196,14 @@ struct LayoutTile: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
         .fixedSize()
+        // **Label *and* value.** `accessibilityLabel` replaces the whole label
+        // rather than adding to it, so naming the control dropped the one fact
+        // it exists to show: VoiceOver said «Period, menu button» and never
+        // which period. The comment above is right that a control whose face is
+        // its value alone reads as «pop-up button» — the repair is both, not
+        // the value instead of the name.
         .accessibilityLabel(LyStr.period)
+        .accessibilityValue(LyStr.periodName(period))
     }
 
 }
@@ -274,7 +285,12 @@ private struct Sparkline: View {
         }
         .frame(height: 26, alignment: .bottom)
         .accessibilityElement()
-        .accessibilityLabel(LyStr.fortnight)
+        // **The numbers, not just the span.** Fourteen bars are the tall tile's
+        // whole reason for being — «why is it that many» — and a reader who
+        // cannot see them heard «Last fourteen days» and nothing else. The
+        // label is built from `days`, which this view already has.
+        .accessibilityLabel(LyStr.fortnightSummary(total: days.reduce(0, +),
+                                                   today: days.last ?? 0))
     }
 }
 
@@ -333,10 +349,20 @@ struct ConversionPair: View {
                 .strikethrough(!undone, pattern: .solid)
             Text(Image(systemName: "arrow.right"))
                 .foregroundStyle(HelmText.faint)
+                // A bare glyph inside the combined element below would be read
+                // as one: the arrow's job is done by the word «to» in the label.
+                .accessibilityHidden(true)
             Text(event.after)
         }
         .monospaced()
         .lineLimit(1)
         .truncationMode(.middle)
+        // **One row, not three stops.** Two words and an arrow, uncombined,
+        // gave a reader «vjq», something, «мой», with nothing saying one
+        // replaced the other. `LayoutAnnouncer` says it correctly when the
+        // change *happens*; this is the row read afterwards, in the tile and in
+        // the page's «Last change».
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(LyStr.pairRead(before: event.before, after: event.after))
     }
 }

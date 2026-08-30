@@ -81,7 +81,11 @@ struct LayoutLists: View {
                         Image(systemName: "xmark").foregroundStyle(HelmText.faint)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("\(HelmA11y.remove), \(word)")
+                    // The word alone: the row is combined below, so the `Text`
+                    // beside this already supplies it and naming it here read
+                    // «word, Remove, word». `HelmAppRuleRow` does spell both,
+                    // and correctly — that row is not combined.
+                    .accessibilityLabel(HelmA11y.remove)
                 }
                 // One element per word: read apart it was a word and an unnamed
                 // button, with nothing saying the two belonged together.
