@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 
 /// Every symbol the standing documents name must exist in the tree.
@@ -17,6 +18,19 @@ import XCTest
 /// filename, and the symbol inside it is a lowercase function. A name can be
 /// carried by a file as easily as by a line, and a check that knows only one of
 /// those manufactures work while looking productive.
+///
+/// **A name in a comment is not a name in the tree.** The index counted
+/// *occurrences*, and a doc comment is an occurrence: on 2026-08-30
+/// `Sources/Modules/Layout/Engine/Logic/DailyCount.swift` was deleted with
+/// `DailyCount` still backticked in `ARCHITECTURE.md`, and this check passed,
+/// because three surviving doc comments elsewhere in Layout went on writing the
+/// name. That is worse than an ordinary false negative here: this repository
+/// writes backticked names inside doc comments deliberately and at volume —
+/// `CLAUDE.md` § public says so, and warns in the same breath against answering
+/// "who uses this" with `grep`, which is exactly what the index was doing. So
+/// Swift arrives through `SwiftSource.uncommented`, and what the tree *has* is
+/// what it declares and what it writes in a literal, never what it says about
+/// itself in prose.
 ///
 /// **Only the two standing documents.** `docs/` holds plans, specs and design
 /// records — each is the record of a moment and is *supposed* to keep saying
@@ -60,12 +74,44 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "safeAreaInset": "SwiftUI's modifier, named where the documents say what it costs",
         "usesAutomaticRowHeights": "NSTableView's property, in the passage about the table that is gone",
         "noteHeightOfRows": "NSTableView's method, in the same passage",
-        // The two errno values the launch measurement names. `E2BIG` is not
-        // here because the tree already carries it; these two do not, and both
-        // are POSIX's rather than Helm's — the passage names them to say which
-        // failures `NSTask` returns rather than raises.
+        // The three errno values the launch measurement names, all POSIX's
+        // rather than Helm's — the passage names them to say which failures
+        // `NSTask` returns rather than raises. `E2BIG` sat outside this list
+        // under a note saying the tree already carried it; it carried it in a
+        // doc comment, which is the reading that stopped counting.
         "EMFILE": "POSIX's «too many open files», named in the measurement of which launch failures return an error",
         "EAGAIN": "POSIX's «no more processes», named in the same measurement",
+        "E2BIG": "POSIX's «argument list too long», named in the same measurement and in the account of how large a hosts line may be",
+
+        // The pass that stopped the blob counting comments surfaced
+        // twenty-four of these at once on 2026-08-30 — the twenty-three below
+        // and `E2BIG` above. Nothing about the tree changed and no document was
+        // stale: each is a name macOS, Swift or a tool owns, and each had been
+        // answered by a doc comment explaining what this app deliberately does
+        // *not* use.
+        "NSTableView": "AppKit's table, named where the documents count what two animation systems in one list cost; its property and its method were already here",
+        "NSTextField": "AppKit's field, named where the documents say SwiftUI draws its own text instead",
+        "NSLocalizedString": "Foundation's lookup, named to say what `L` is not and why",
+        "NSWorkspaceApplicationKVOHelper": "AppKit's own KVO shim, read off a crash backtrace",
+        "eventTapMessageHandler": "CoreGraphics' frame in a backtrace of the same family, named in the account of a retain race",
+        "ObservationTracking": "the Observation framework's own record, counted in a live heap",
+        "repeatForever": "SwiftUI's animation member, named where the documents say what it leaves a model holding",
+        "ChildEnvironment.updateValue": "SwiftUI's attribute graph, named from an allocation trace",
+        "PropertyList.prependValue": "the other half of that trace, and SwiftUI's property list rather than Foundation's",
+        "Optional": "Swift's, named where the documents argue why one reading has to be one",
+        "Hasher": "Swift's, named to say why the log's tags are FNV-1a instead",
+        "passRetained": "`Unmanaged`'s member, named in the argument for why the key tap does not use it",
+        "totalFileAllocatedSize": "Foundation's resource value, named where the documents say what it answers for a directory",
+        "URLResourceValues.totalFileAllocatedSize": "the same value in full, named where a migration exposed what it costs",
+        "FileSizeFormatting.loctable": "a macOS resource the app reads unit names out of, like `LoginItems.appex`",
+        "SecurityPrivacyExtension.appex": "the bundle the disk-permission row's own words come from — the pane's table, not its search terms",
+        "execve": "the syscall a written hosts line has to survive, named in the argument about how long one may be",
+        "ifdata": "BSD's `net.link.generic.ifdata`, the sysctl the tunnel counters read",
+        "XCTestConfigurationFilePath": "Xcode's environment variable, named because `swift test` does not set it",
+        "NEVPNManager": "NetworkExtension's manager — one of the four things a Developer ID is blocking, and named for exactly that",
+        "periphery": "the unused-code scanner, a tool like `dmgbuild` and `hdiutil`",
+        "leaks": "the tool, named among the three that found nothing before the leak was found another way",
+        "vmmap": "the tool the framework figures were read from",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a
@@ -80,6 +126,17 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "SleepHoldersPort": "the port behind «something other than Helm is keeping this Mac awake»; the section naming it is about why a correctly-filtered signal was still not one",
         "DuplicatesLayout.barWithCount": "the threshold that hid the duplicates total at every width the window opens at; deleted when the total moved under the floor note, and the passages naming it are that defect's history",
         "barWithCount": "the same constant, named bare in the measuring-script passage",
+
+        // Seven more, surfaced by the same 2026-08-30 pass. Each is Helm's own
+        // and each is genuinely gone; what had been answering for them was a
+        // comment somewhere else explaining the removal well.
+        "consumeRisingEdge": "Keep Awake's edge before the 2026-08-20 rename to `consumeEdge`, and the passage naming it is the account of the stale document this check failed to catch",
+        "offeredSizes": "one of the three places the panel used to read a widget's size from, and the sentence naming it is about what reading all three cost",
+        "showsCount": "the toolbar gate that went with `barWithCount` when the duplicates total moved under the floor note",
+        "VPNRules.unspokenFor": "the filter that kept a locked configuration out of the page-wide banner because a rule's own row already said it; deleted when the rules moved into a popover nobody had opened",
+        "MemoryReclaim.afterHeavyWork": "the reclaim call measured returning 0 MB in nine attempts and deleted on 2026-07-31; both documents name it to say it is gone",
+        "HomebrewViewModel.loadedStatus": "the latched install flag deleted on 2026-08-20 — and the entry this list could not hold while a test's own prose counted as the tree",
+        "FOLDERS": "one of the sixteen orphan translation keys the sweep deleted, named among the words that would otherwise have inherited another control's translations",
     ]
 
     /// This check's own machinery, which the documents describe by name.
@@ -102,8 +159,16 @@ final class DocumentsNameTheTreeTests: XCTestCase {
             .deletingLastPathComponent()    // repo
     }
 
-    /// Every tracked-looking file: its contents where it holds code, and its
-    /// name either way.
+    /// Every tracked-looking file: its code where it holds code, and its name
+    /// either way.
+    ///
+    /// **Swift comes in without its comments.** `SwiftSource.uncommented`
+    /// blanks `//`, `///` and `/* */` and keeps string literals, which is the
+    /// reading this check wants on both counts: a name only a comment writes is
+    /// not in the tree, and a name a literal writes is — command names, store
+    /// namespaces and the source-reading checks' own fixtures all live in
+    /// literals. The other extensions are read whole: `#` is not a comment in a
+    /// plist and `//` is half of every URL in one.
     private func tree() -> (blob: String, names: Set<String>, byName: [String: [URL]]) {
         let skip: Set<String> = [".git", ".build", "build", ".backstage", "DerivedData", ".superpowers"]
         let readable: Set<String> = ["swift", "sh", "py", "plist", "strings", "json", "yml", "entitlements"]
@@ -135,7 +200,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
                 continue
             }
             autoreleasepool {
-                if let text = try? String(contentsOf: url, encoding: .utf8) { blob += text }
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+                blob += url.pathExtension == "swift" ? SwiftSource.uncommented(text) : text
             }
         }
         return (blob, names, byName)
