@@ -19,6 +19,13 @@ import Module_Layout_Engine
 struct LayoutLists: View {
     private let store: NamespacedStore
     private let announce: () -> Void
+    /// **The keyboard's way out, which the window itself cannot give.**
+    /// `HostWindow` supplies no Escape handling — that is the content's job,
+    /// and `TrashedLeftoversView` is the other `HostWindow` in the app that
+    /// does it. Without this the only exit was the red traffic light: Helm
+    /// builds no `NSMenu` anywhere, so ⌘W is bound to nothing, and macOS's
+    /// default Full Keyboard Access leaves window chrome out of the Tab order.
+    private let close: () -> Void
 
     @State private var exceptions: [String]
     @State private var newException = ""
@@ -29,20 +36,32 @@ struct LayoutLists: View {
     /// person can overrule it, which is what this list is for.
     private let builtInBlocked: [String]
 
-    init(store: NamespacedStore, builtInBlocked: [String], announce: @escaping () -> Void) {
+    init(store: NamespacedStore, builtInBlocked: [String],
+         close: @escaping () -> Void, announce: @escaping () -> Void) {
         self.store = store
         self.builtInBlocked = builtInBlocked
+        self.close = close
         self.announce = announce
         _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions))
         _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
     }
 
     var body: some View {
-        Form {
-            wordsSection
-            appsSection
+        VStack(spacing: 0) {
+            Form {
+                wordsSection
+                appsSection
+            }
+            .formStyle(.grouped)
+            Divider()
+            HStack {
+                Spacer()
+                Button(LyStr.listsDone) { close() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, HelmLayout.formInset)
+            .padding(.vertical, HelmSpace.s5)
         }
-        .formStyle(.grouped)
     }
 
     // MARK: - Words
@@ -108,7 +127,8 @@ struct LayoutLists: View {
             // typing is not being fixed in Warp had no way to learn that Warp
             // was the reason. Only the ones this Mac has: a row for an app
             // nobody installed is a list of somebody else's software.
-            ForEach(AppInfo.sortedByName(Set(appRules.keys).union(builtInBlocked)),
+            ForEach(AppInfo.sortedByName(AppScope.listed(rules: appRules,
+                                                         builtIn: builtInBlocked)),
                     id: \.self) { bundleID in
                 appRow(bundleID)
             }

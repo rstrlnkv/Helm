@@ -75,14 +75,23 @@ struct LayoutHero: View {
     /// — the state no edition of the redesign ever drew.
     private var hasFigure: Bool { figures.words > 0 }
 
+    private var state: HeroSentence {
+        HeroSentence(watching: watching, suspended: suspended, hasFigure: hasFigure)
+    }
+
     private var figureText: String {
-        guard hasFigure else { return watching ? LyStr.nothingYet : LyStr.heroNotWatching }
+        guard state.showsFigure else {
+            switch state {
+            case .nothingYet: return LyStr.nothingYet
+            default: return LyStr.heroNotWatching
+            }
+        }
         return Decimal(Double(figures.words), decimals: 0)
     }
 
     private var figure: some View {
         Text(figureText)
-            .foregroundStyle(hasFigure ? Color.primary : HelmText.quiet)
+            .foregroundStyle(state.showsFigure ? Color.primary : HelmText.quiet)
     }
 
     /// What the figure is, over what, and what it came to in typing.
@@ -98,9 +107,12 @@ struct LayoutHero: View {
     /// the reserved line used to buy. `LayoutHeroIsOneHeightTests` measures it
     /// in all eight languages rather than trusting this comment.
     private var caption: String {
-        guard watching else { return LyStr.heroNotWatchingWhy }
-        guard hasFigure else { return LyStr.nothingYetNote }
-        if suspended { return LyStr.suspended }
+        switch state {
+        case .deaf: return LyStr.heroNotWatchingWhy
+        case .paused: return LyStr.suspended
+        case .nothingYet: return LyStr.nothingYetNote
+        case .counting: break
+        }
         let counted = LyStr.wordsIn(period, count: figures.words)
         let spelled = HelmDuration.string(seconds)
         guard !spelled.isEmpty else { return counted }

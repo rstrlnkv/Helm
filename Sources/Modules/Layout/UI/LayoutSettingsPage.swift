@@ -38,7 +38,6 @@ struct LayoutSettingsPage: View {
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
         _exceptionCount = State(initialValue: store.stringArray(LayoutKey.exceptions).count)
-        _ruleCount = State(initialValue: store.boolTable(LayoutKey.appRules).count)
         _showTour = State(initialValue: !store.bool(LayoutKey.introSeen, default: false))
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
@@ -54,6 +53,13 @@ struct LayoutSettingsPage: View {
         builtInBlocked = AppScope.blockedByDefault.filter {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
         }
+        // **The count is of what the window draws, which is not only the
+        // person's own rules.** The window lists their rules *plus* the
+        // built-in refusals this Mac actually has — terminals and password
+        // managers, shown as ordinary rows so the refusal is visible. Counting
+        // the table alone said «No apps» over a list of seven, and «1 app» over
+        // a list of eight. Below `builtInBlocked` because it now needs it.
+        _ruleCount = State(initialValue: Self.ruleCount(store, builtInBlocked))
         _heroPeriod = State(initialValue: ConversionPeriod(
             rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
     }
@@ -133,7 +139,7 @@ struct LayoutSettingsPage: View {
                 exceptionCount = store.stringArray(LayoutKey.exceptions).count
             }
             if store.changed(note, is: LayoutKey.appRules) {
-                ruleCount = store.boolTable(LayoutKey.appRules).count
+                ruleCount = Self.ruleCount(store, builtInBlocked)
             }
             // **And the three switches, which are written from two other
             // places.** The tour writes them at step 3 and the panel tile
@@ -574,9 +580,16 @@ struct LayoutSettingsPage: View {
     }
 
     private var lists: LayoutLists {
-        LayoutLists(store: store, builtInBlocked: builtInBlocked) {
+        LayoutLists(store: store, builtInBlocked: builtInBlocked,
+                    close: { listsWindow?.close() }) {
             lvm.vm.send(LayoutCommand.settingsChanged)
         }
+    }
+
+    /// The number the row says, which is the number of rows the window draws —
+    /// `AppScope.listed` is the set, and `LayoutLists` draws exactly it.
+    private static func ruleCount(_ store: NamespacedStore, _ builtInBlocked: [String]) -> Int {
+        AppScope.listed(rules: store.boolTable(LayoutKey.appRules), builtIn: builtInBlocked).count
     }
 
     private func write(_ value: Any, _ key: String) {

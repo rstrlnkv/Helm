@@ -131,6 +131,11 @@ enum LyStr {
     /// slot repeating its own label.
     static var showTour: String { L("Show") }
 
+    /// The lists window's way out. Six modules already spell `L("Done")` for
+    /// themselves — a string this many screens draw belongs in `HelmUI`, and
+    /// moving it is a sweep of its own rather than a line in a module's polish.
+    static var listsDone: String { L("Done") }
+
     static var tourTitle: String { L("How it works") }
     static var tourBack: String { L("Back") }
     static var tourNext: String { L("Next") }
