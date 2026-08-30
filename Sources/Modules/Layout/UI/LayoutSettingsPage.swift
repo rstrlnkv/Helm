@@ -8,7 +8,8 @@ struct LayoutSettingsPage: View {
     private let store: NamespacedStore
 
     @State private var automatic: Bool
-    @State private var exceptions: String
+    @State private var exceptions: [String]
+    @State private var newException = ""
     @State private var accessibility: PermissionState = .granted
     @State private var appRules: [String: Bool]
     @State private var audible: Bool
@@ -29,7 +30,7 @@ struct LayoutSettingsPage: View {
         lvm = LayoutViewModel.shared(vm: vm)
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
-        _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions).joined(separator: "\n"))
+        _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions))
         _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
@@ -356,24 +357,49 @@ struct LayoutSettingsPage: View {
         Section(header: HelmSectionTitle(LyStr.tryIt)) { LayoutTestField() }
     }
 
-    private var exceptionsSection: some View {
+    /// The words the module must never touch.
+    ///
+    /// **Rows, not a text blob.** It was a `TextEditor`, one word a line, so
+    /// removing a single word meant aiming inside a block of text without
+    /// disturbing its neighbours — and the «Never this word» button beside the
+    /// last change, and the panel tile's, both appended into that same blob. One
+    /// idea, reached three ways, editable only as prose. A row with a cross
+    /// beside it is the shape the abbreviations list used before it was cut, and
+    /// it is the shape everything else on this page that holds a list uses.
+    @ViewBuilder private var exceptionsSection: some View {
         Section {
-            TextEditor(text: $exceptions)
-                .font(.system(.body, design: .monospaced))
-                // The one place a saved word can be removed, and to VoiceOver
-                // it was an anonymous text area: the section header does not
-                // name a bare editor the way it names a labelled control.
-                .accessibilityLabel(LyStr.exceptions)
-                .accessibilityHint(LyStr.exceptionsHint)
-                // **A ceiling, because the list is somebody else's length.** At
-                // 14.55 pt a line, 200 words made the page 4695 pt: an editor
-                // with no maximum grows the whole form instead of scrolling
-                // itself, and it scrolls itself perfectly well.
-                .frame(minHeight: 90, maxHeight: 220)
-                .helmFieldWell()
-                .onChange(of: exceptions) { _, value in
-                    write(value.split(separator: "\n").map(String.init), LayoutKey.exceptions)
+            if exceptions.isEmpty {
+                Text(LyStr.noExceptions)
+                    .font(HelmText.rowTitle)
+                    .foregroundStyle(HelmText.quiet)
+            }
+            ForEach(exceptions, id: \.self) { word in
+                HStack(spacing: HelmSpace.s5) {
+                    Text(word).font(.system(.body, design: .monospaced))
+                    Spacer(minLength: HelmSpace.s4)
+                    Button {
+                        removeException(word)
+                    } label: {
+                        Image(systemName: "xmark").foregroundStyle(HelmText.faint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(HelmA11y.remove), \(word)")
                 }
+                // One element per word: read apart it was a word and an unnamed
+                // button, with nothing saying the two belonged together.
+                .accessibilityElement(children: .combine)
+            }
+            HStack(spacing: HelmSpace.s4) {
+                // `prompt:` rather than a title: inside a `Form` a `TextField`'s
+                // title is drawn as a label beside the field, not inside it.
+                TextField("", text: $newException, prompt: Text(LyStr.exceptionPrompt))
+                    .accessibilityLabel(LyStr.exceptionPrompt)
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                    .onSubmit { addTypedException() }
+                Button(LyStr.addException) { addTypedException() }
+                    .disabled(newException.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
         } header: {
             HelmSectionTitle(LyStr.exceptions)
         } footer: {
@@ -485,15 +511,32 @@ struct LayoutSettingsPage: View {
     }
 
     private func exceptionsContain(_ word: String) -> Bool {
-        Exceptions(words: exceptions.split(separator: "\n").map(String.init)).contains(word)
+        Exceptions(words: exceptions).contains(word)
     }
 
     /// Adds the word as typed. The verdict checks both forms, so one entry
     /// covers the word however it ends up spelled.
+    ///
+    /// Sorted, so a list somebody comes back to is in an order they can search
+    /// — the blob this replaced grew by appending, and a fiftieth word landed
+    /// wherever the last one had.
     private func addException(_ word: String) {
         guard !exceptionsContain(word) else { return }
-        exceptions = exceptions.isEmpty ? word : exceptions + "\n" + word
-        write(exceptions.split(separator: "\n").map(String.init), LayoutKey.exceptions)
+        exceptions.append(word)
+        exceptions.sort()
+        write(exceptions, LayoutKey.exceptions)
+    }
+
+    private func addTypedException() {
+        let word = newException.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !word.isEmpty else { return }
+        addException(word)
+        newException = ""
+    }
+
+    private func removeException(_ word: String) {
+        exceptions.removeAll { $0 == word }
+        write(exceptions, LayoutKey.exceptions)
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<Bool> {

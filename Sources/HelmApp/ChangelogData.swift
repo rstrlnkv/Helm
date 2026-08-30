@@ -71,6 +71,8 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .upd, text: L("The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one.")),
+                ChangeItem(kind: .upd, text: L("The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them.")),
                 ChangeItem(kind: .upd, text: L("Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo.")),
                 ChangeItem(kind: .upd, text: L("Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices.")),
                 ChangeItem(kind: .upd, text: L("The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone.")),

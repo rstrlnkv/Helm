@@ -328,7 +328,14 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // button. Both counts fall, which is the half of the message below that
         // warns about a page quietly stopping drawing — here it is the intended
         // half, and the numbers are re-measured rather than nudged.
-        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1,
+        // **And a second text field back, the same day (2026-08-30).** The
+        // Keyboard page's «never these words» list stopped being a `TextEditor`
+        // — a blob where removing one word meant aiming inside prose — and
+        // became rows with a cross and an «Add…» field. This count *rising* is
+        // the honest direction for that change; it was 3 before the two cut
+        // sections took two away, and this is one of them coming back on
+        // purpose.
+        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 2,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).

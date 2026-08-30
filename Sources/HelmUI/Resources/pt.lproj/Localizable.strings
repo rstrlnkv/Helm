@@ -15,6 +15,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "Uma regra é uma decisão tomada uma vez e executada dali em diante, por isso ela é mostrada antes de ser ligada.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Uma saída do escaneamento em Disco: o módulo abre no que mediu por último, e “Escolher outro…” limpa a tela e esquece o escaneamento salvo.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Uma palavra só muda se não for palavra como digitada e passar a ser após a troca. O que é válido fica.";
+"A word to leave alone" = "Uma palavra para não mexer";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "As abreviaturas saíram do Teclado. O macOS traz o mesmo em Substituição de Texto e sincroniza entre os seus dispositivos.";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "Abreviações. Um atalho curto que você digita com frequência e aquilo em que ele se expande, assim que você termina a palavra. Uma palavra expandida nunca é também convertida. E, opcionalmente, o único erro de digitação que o Helm corrige com segurança: “OLá” → “Olá” — nunca uma palavra em maiúsculas de propósito, nem uma com dígito.";
 "About Helm" = "Sobre o Helm";
@@ -23,6 +24,7 @@
 "Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing." = "A acessibilidade está desligada. O Helm não vê o que você digita: correção de teclado e movimento do ponteiro não funcionam.";
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "A Acessibilidade agora aparece entre as permissões, e o Manter ativo avisa junto ao ajuste do ponteiro — sem ela o macOS ignora o movimento e o interruptor não fazia nada.";
 "Active" = "Ativo";
+"Add" = "Adicionar";
 "Add an app, and Helm connects a VPN when it launches." = "Adicione um app e o Helm conecta uma VPN quando ele abrir.";
 "Add another in System Settings and Helm picks it up." = "Adicione outra nos Ajustes do Sistema e o Helm a detecta.";
 "Add app…" = "Adicionar app…";
@@ -114,6 +116,7 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "O Helm nunca lê senhas: um campo que o sistema marca como seguro é ignorado por inteiro.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "O Helm agora avisa quando há uma nova versão. A verificação já acontecia todos os dias, mas a resposta ficava na página Sobre o Helm, à espera de que você fosse vê-la.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "O Helm avisa quando o macOS não tem dicionário para um dos seus leiautes. A correção ao digitar não funciona ali, e até agora a chave ficava ligada sem corrigir nada. A correção pela tecla continua funcionando.";
+"Hide" = "Ocultar";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "O Teclado voltou ao painel da barra de menus, nos três tamanhos. O grande desenha as últimas duas semanas dia a dia, diz quanta digitação poupou aproximadamente e traz os botões de período, a última alteração com a opção de nunca mais mexer nessa palavra e a chave de corrigir enquanto você digita.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "O Teclado ficou mais simples. Os três interruptores de “Quando corrigir” foram removidos: espaço e pontuação confirmam uma palavra, Return não — que era como estavam e o que evita que um chat envie o seu erro.";
 "Last change (undone)" = "Última alteração (desfeita)";
@@ -124,6 +127,7 @@
 "Move to Trash…" = "Mover para o Lixo…";
 "No key is assigned — this change can only be put back by hand." = "Nenhuma tecla definida — esta alteração só pode ser desfeita à mão.";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Sem tecla: nada corrige a seleção nem a última palavra sob demanda. Escolha uma, ou defina uma combinação abaixo.";
+"No words yet" = "Ainda sem palavras";
 "Not watching" = "Não observa";
 "Nothing" = "Nada";
 "Nothing has needed putting right so far." = "Até agora nada precisou ser corrigido.";
@@ -140,10 +144,12 @@
 "Tap it on its own: it fixes the selection, or the last word." = "Toque nela sozinha: corrige a seleção ou a última palavra.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Tocar em Controle sozinha também pausa a fala do VoiceOver. Se você usa o VoiceOver, escolha outra tecla.";
 "Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "Terminais e gerenciadores de senhas começam desligados: ali, uma palavra que parece errada costuma ser exatamente a certa. Ligue qualquer um, ou adicione um app seu.";
+"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "A introdução do Teclado recolhe-se. Abre numa linha com um botão que desdobra o resto, para que o número e as definições fiquem onde estavam.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "A página do Teclado abre com o que corrigiu no período que você escolher — hoje, uma semana, um mês, um ano ou tudo — e quanto isso poupou de digitação. Nada ainda não é zero: o módulo diz isso.";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "A página do Teclado mostra os dois números de uma vez: quantas palavras corrigiu e quanto isso deu em digitação. O interruptor no cabeçalho da janela que mostrava um de cada vez foi removido.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "O selo ao lado do nome do Teclado já não diz que está ativo enquanto a página abaixo diz que está em pausa. Com um campo de senha à frente, o módulo fica calado de propósito, e agora ambos os lugares dizem isso.";
 "The language indicator below works without this permission." = "O indicador de idioma abaixo funciona sem esta permissão.";
+"The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "A lista de palavras que o Teclado nunca deve mexer agora é uma lista, não um bloco de texto: uma palavra por linha com uma cruz ao lado e um campo para adicionar.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "As regras guardadas neste Mac não foram escritas pelo Helm, por isso nenhuma está a ser executada.";
 "This folder is no longer there" = "Esta pasta não existe mais";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
@@ -154,6 +160,7 @@
 "Warning" = "Aviso";
 "Watching your words" = "De olho nas suas palavras";
 "Week" = "Semana";
+"What it does" = "O que faz";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Com isto desligado e o aviso em “Nada”, uma regra que conecta ou derruba um túnel não dá sinal algum.";
 "Year" = "Ano";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "O macOS não está permitindo notificações do Helm, então o nome aparece na barra de menus.";

@@ -13,6 +13,8 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
+- **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
 - **UPD** Keyboard: the three “When to fix” switches are gone — space and punctuation confirm a word, Return does not.
 - **UPD** Keyboard: abbreviations removed. macOS ships the same thing in Text Replacement and syncs it across devices.
 - **UPD** Keyboard: the page shows both figures at once, and the metric switch in the window header is gone.

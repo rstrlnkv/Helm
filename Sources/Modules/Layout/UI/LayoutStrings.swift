@@ -112,6 +112,11 @@ enum LyStr {
         return sentences(head, tail, language: language)
     }
 
+    /// The two faces of one control, so a reader who opened the points can put
+    /// them away again — a disclosure that only opens is a disclosure that has
+    /// stopped being one.
+    static var introMore: String { L("What it does") }
+    static var introLess: String { L("Hide") }
     static var introStart: String { L("Got it") }
     static var fixCapitals: String { L("Fix a capital held too long") }
     static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
@@ -232,6 +237,12 @@ enum LyStr {
     /// key `Show Name of Source in Menu Bar`.
     static var showInputSourceName: String { L("Show Input Source Name") }
     static var neverThisWord: String { L("Never this word") }
+    static var noExceptions: String { L("No words yet") }
+    /// The field's placeholder and its VoiceOver name at once — a placeholder
+    /// disappears the moment there is a value to read, so it cannot be the only
+    /// thing naming the field.
+    static var exceptionPrompt: String { L("A word to leave alone") }
+    static var addException: String { L("Add") }
     static var audible: String { L("Play a sound when a word is fixed") }
     /// Built from the current binding, never spelled by hand — the same
     /// construction as `VPNStr.secretNeedsAPress`, so the sentence cannot

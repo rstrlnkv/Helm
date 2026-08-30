@@ -20,8 +20,16 @@ struct LayoutIntro: View {
         self.onDone = onDone
     }
 
+    /// Open only when somebody asks. The four points are 306 pt in Russian —
+    /// measured inside a real grouped `Form` at 744 pt, against 274 in English
+    /// — so the module's own figure and every one of its settings started below
+    /// the fold on the one visit where a person is deciding whether to trust it
+    /// at all. The preamble and the verb stay; the explanation is a press away.
+    @State private var open = false
+    @State private var pointsHeight: CGFloat?
+
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s6) {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
             // **The block said the page's own name back to it, in a second
             // colour.**
             //
@@ -46,14 +54,21 @@ struct LayoutIntro: View {
                 .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
 
+            // A reveal grows, never fades: `helmAccordion` measures the block
+            // and animates the frame to it (ARCHITECTURE.md § Motion).
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 point("textformat.abc", LyStr.introWhat)
                 point("checkmark.shield", LyStr.introWhen)
                 point("hand.raised", LyStr.introWhere)
                 point("arrow.uturn.backward", LyStr.introUndo(gesture: gesture))
+                    .padding(.bottom, HelmSpace.s3)
             }
+            .helmAccordion(open: open, height: $pointsHeight)
 
-            HStack {
+            HStack(spacing: HelmSpace.s5) {
+                Button(open ? LyStr.introLess : LyStr.introMore) {
+                    withAnimation(HelmMotion.disclosure) { open.toggle() }
+                }
                 Spacer()
                 Button(LyStr.introStart, action: onDone)
                     .buttonStyle(.borderedProminent)

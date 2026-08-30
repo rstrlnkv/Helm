@@ -15,6 +15,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
+"A word to leave alone" = "不要改动的词";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "“键盘”不再提供缩写替换。macOS 的“文本替换”提供同样的功能，并在你的设备之间同步。";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "缩写展开。把常打的短写和它代表的内容对应起来，在你打完这个词时展开。已展开的词不会再被转换。还可选修正 Helm 有把握的那一类手误：“NIhao” → “Nihao”——不动故意全大写的词，也不动含数字的词。";
 "About Helm" = "关于 Helm";
@@ -23,6 +24,7 @@
 "Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing." = "无障碍已关闭。Helm 无法读取输入，键盘修正与指针移动都不起作用。";
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "无障碍已列入权限，“保持唤醒”也会在指针设置旁提示：没有该权限时 macOS 会忽略移动，开关形同虚设。";
 "Active" = "运行中";
+"Add" = "添加";
 "Add an app, and Helm connects a VPN when it launches." = "添加一个应用，Helm 会在它启动时连接 VPN。";
 "Add another in System Settings and Helm picks it up." = "在“系统设置”中添加后，Helm 会自动识别。";
 "Add app…" = "添加应用…";
@@ -114,6 +116,7 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm 从不读取密码：系统标记为安全的输入框会被整体跳过。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
+"Hide" = "隐藏";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "“键盘”更简单了。“何时修正”的三个开关已移除：空格和标点确认一个词，Return 不确认——这本就是它们的设置，也避免聊天工具把错字发出去。";
 "Last change (undone)" = "最近一次修改（已撤销）";
@@ -124,6 +127,7 @@
 "Move to Trash…" = "移到废纸篓…";
 "No key is assigned — this change can only be put back by hand." = "未指定按键——这次替换只能手动改回。";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "未设置按键——无法按需修正选中的文字或最后一个词。请选择一个按键，或在下方设置组合键。";
+"No words yet" = "还没有词";
 "Not watching" = "未在监看";
 "Nothing" = "无";
 "Nothing has needed putting right so far." = "到目前为止还没有需要修正的内容。";
@@ -140,10 +144,12 @@
 "Tap it on its own: it fixes the selection, or the last word." = "单独按一下：修正选中的文字，或最后一个词。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
 "Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "终端和密码管理器默认关闭：在那里，看起来写错的词往往正是对的。你可以打开其中任何一个，也可以添加自己的应用。";
+"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "“键盘”的介绍可以折叠。它以一行显示，按钮可展开其余内容，页面的数字和设置仍在原处。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "“键盘”页面以它在你所选时间段内修正的内容开头——今天、一周、一月、一年或全部——以及由此省下的输入时间。还没有内容并不等于零，页面会直接说明。";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "“键盘”页面同时显示两个数字：修正了多少词，以及折合多少输入时间。窗口标题栏里那个每次只显示一个的开关已移除。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "“键盘”名称旁的标记不再显示为运行中，而下方页面却说已暂停。密码输入框在前时，模块会有意保持沉默，现在两处说法一致。";
 "The language indicator below works without this permission." = "下方的语言指示器无需此权限也能使用。";
+"The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "“键盘”不得改动的词现在是一份列表，而不是一段文本：每行一个词，旁边有叉号，并有添加用的输入框。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "这台 Mac 上保存的规则不是 Helm 写入的，因此没有任何规则在运行。";
 "This folder is no longer there" = "此文件夹已不存在";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
@@ -154,6 +160,7 @@
 "Warning" = "警告";
 "Watching your words" = "正在留意你的输入";
 "Week" = "一周";
+"What it does" = "它做什么";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
 "Year" = "一年";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
