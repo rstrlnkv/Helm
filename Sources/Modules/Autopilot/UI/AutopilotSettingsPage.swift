@@ -247,7 +247,11 @@ struct AutopilotSettingsPage: View {
             Spacer(minLength: 8)
             Button(ApStr.runNow) { Task { await rvm.runNow(folder) } }
                 .controlSize(.small)
-                .disabled(folder.rules.allSatisfy { !$0.enabled })
+                // The folder's own switch, not only its rules'. Without it the
+                // row read «[off] ~/Downloads [Run now]» with a live button, and
+                // pressing it reported a sweep of a folder that is off.
+                // `activeRules` meant nothing could actually move.
+                .disabled(!folder.enabled || folder.rules.allSatisfy { !$0.enabled })
             Menu {
                 Toggle(ApStr.depth, isOn: Binding(get: { folder.depth > 1 },
                                                   set: { rvm.setDepth($0, folder: folder) }))

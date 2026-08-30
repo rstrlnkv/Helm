@@ -697,6 +697,29 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         guard let payload = EngineReply.decode(WatchedFolderRef.self, from: command),
               let folder = folders.first(where: { $0.id == payload.id })
         else { return Data() }
+        // **A folder that is switched off is not swept, by hand either.**
+        //
+        // «Run now» asked only whether any *rule* was enabled, so the button was
+        // live on a folder the page draws as off — and pressing it answered
+        // «examined N, acted 0», a banner reporting a sweep that did not happen.
+        //
+        // Nothing was at risk: `WatchedFolder.activeRules` is `enabled ? rules
+        // : []`, so no rule could run whatever started the sweep. The first
+        // reading of this said files were moving, and a mutation of the guard
+        // below — with `ASwitchedOffFolderIsNotSweptByHandTests` still passing —
+        // is what corrected it.
+        //
+        // Here rather than only at the button, because this command is a second
+        // door and a check living in a view does not stand in it.
+        //
+        // No `SweepReport` at all rather than an empty one: `FolderState` says
+        // read, missing or refused, and «examined 0» is exactly the sentence
+        // that enum was written to stop being three different facts. The view
+        // model already reads «no reply» as «nothing happened».
+        guard folder.enabled else {
+            HelmLog.shared.info(Self.moduleID, "run now refused: the folder is switched off")
+            return Data()
+        }
         // A walk plus N moves, off the cooperative pool — and serialised with the
         // hourly sweep, which is reachable at the same moment.
         let report = await offQueue { self.runNow(folder) }
