@@ -81,7 +81,6 @@ enum LyStr {
         L("The language indicator below works without this permission.")
     }
 
-    static var introSubtitle: String { L("Before it starts changing what you type.") }
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
     static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }
     static var introWhere: String { L("Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings.") }
@@ -121,8 +120,6 @@ enum LyStr {
     /// The two faces of one control, so a reader who opened the points can put
     /// them away again — a disclosure that only opens is a disclosure that has
     /// stopped being one.
-    static var introMore: String { L("What it does") }
-    static var introLess: String { L("Hide") }
     // MARK: - The tour
 
     /// The button on the row headed `tourTitle`. A row names, a button acts —

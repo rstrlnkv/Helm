@@ -68,7 +68,6 @@
 "BETA" = "BETA";
 "BUILD" = "COMPILACIÓN";
 "Back" = "Atrás";
-"Before it starts changing what you type." = "Antes de que empiece a cambiar lo que escribes.";
 "Beta" = "Beta";
 "Blue" = "Azul";
 "Cache — apps rebuild it" = "Caché — las apps lo vuelven a crear";
@@ -122,7 +121,6 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm nunca lee contraseñas: omite por completo un campo que el sistema marca como seguro.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm ahora te avisa cuando hay una nueva versión. Ya comprobaba a diario, pero la respuesta se quedaba en la página Acerca de Helm, esperando a que fueras a verla.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm avisa cuando macOS no tiene diccionario para una de tus distribuciones. La corrección al escribir no puede funcionar ahí, y antes el interruptor seguía activado sin corregir nada. La corrección con la tecla sigue funcionando.";
-"Hide" = "Ocultar";
 "How it works" = "Cómo funciona";
 "If it gets one wrong" = "Si se equivoca";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "El Teclado corrige palabras de una letra. En ruso las palabras más frecuentes son de una letra — в, и, с, к, о, у, а, я — y hasta ahora las dejaba todas sin tocar.";

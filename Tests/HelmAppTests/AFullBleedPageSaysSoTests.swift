@@ -60,6 +60,21 @@ final class AFullBleedPageSaysSoTests: XCTestCase {
                        "no descriptor declares `pageBleeds`; the registry side is idle")
     }
 
+    /// And the exclusion excludes something, or it is a filter that filters
+    /// nothing and the scan is back to reading a window as a page.
+    func testTheWindowExclusionStillFindsAWindow() throws {
+        var found: [String] = []
+        for module in try UISources.moduleNames() {
+            found += try Self.contentOfAWindow(
+                among: RepoSource.swiftFiles(under: "Sources/Modules/\(module)/UI"))
+        }
+        XCTAssertFalse(found.isEmpty,
+                       "no module UI file reads as a window's content, so the exclusion in "
+                       + "`modulesOwningTheirMargins` is doing nothing — either every "
+                       + "`HostWindow` subclass has left the modules, or `func show(_ x: Type)` "
+                       + "is no longer how one names what it presents")
+    }
+
     // MARK: - The two sides
 
     /// Modules whose UI positions content across the pane itself, by folder.
@@ -75,10 +90,55 @@ final class AFullBleedPageSaysSoTests: XCTestCase {
     private static func modulesOwningTheirMargins() throws -> Set<String> {
         var out: Set<String> = []
         for module in try UISources.moduleNames() {
-            for file in try RepoSource.swiftFiles(under: "Sources/Modules/\(module)/UI") {
+            let files = try RepoSource.swiftFiles(under: "Sources/Modules/\(module)/UI")
+            let windowed = try contentOfAWindow(among: files)
+            for file in files where !windowed.contains(file) {
                 let owns = try RepoSource.lines(of: file).map(RepoSource.code)
                     .contains { $0.contains("HelmLayout.formInset") }
                 if owns { out.insert(module.lowercased()) }
+            }
+        }
+        return out
+    }
+
+    /// The files that are a **window's** content rather than a settings page.
+    ///
+    /// Reading a module's whole UI directory is right — a page that moved its
+    /// layout into a helper must not escape by moving. But a module can also own
+    /// a window, and a window is not on the settings pane at all: `LayoutLists`
+    /// lives in `LayoutListsWindow` at 520 pt of its own, spells
+    /// `HelmLayout.formInset` to line its footer up with the form above it, and
+    /// has no page header to walk away from anything. Counted as a page, it made
+    /// Keyboard read as full-bleed the day that window grew a Done button.
+    ///
+    /// Derived, not listed: a `HostWindow` subclass names the type it presents,
+    /// and the file declaring that type is the one to skip. A second window
+    /// tomorrow is covered without an edit here.
+    static func contentOfAWindow(among files: [String]) throws -> Set<String> {
+        var presented: Set<String> = []
+        var code: [String: String] = [:]
+        for file in files {
+            code[file] = SwiftSource.uncommented(
+                try String(contentsOf: RepoSource.root.appendingPathComponent(file),
+                           encoding: .utf8))
+        }
+        for (_, text) in code where text.contains(": HostWindow") {
+            var rest = Substring(text)
+            while let hit = rest.range(of: "func show(_ ") {
+                let tail = rest[hit.upperBound...]
+                if let colon = tail.firstIndex(of: ":"),
+                   let end = tail[tail.index(after: colon)...]
+                       .firstIndex(where: { $0 == ")" || $0 == "," }) {
+                    presented.insert(tail[tail.index(after: colon)..<end]
+                        .trimmingCharacters(in: .whitespaces))
+                }
+                rest = tail
+            }
+        }
+        var out: Set<String> = []
+        for (file, text) in code {
+            for type in presented where text.contains("struct \(type): View") {
+                out.insert(file)
             }
         }
         return out

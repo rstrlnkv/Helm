@@ -54,7 +54,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let selection: SelectionPort?
     private var fixCapitals: Bool
     private var automatic: Bool
-    private var triggers: ConversionTriggers
     private var audible: Bool
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
@@ -106,7 +105,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
                 automatic: Bool = true,
-                triggers: ConversionTriggers = .default,
                 audible: Bool = false,
                 settings: NamespacedStore? = nil,
                 transport: LocalTransport = LocalTransport()) {
@@ -124,7 +122,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
         self.automatic = automatic
-        self.triggers = triggers
         self.audible = audible
         self.settings = settings
         self.localTransport = transport
@@ -345,7 +342,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         if mightBeTheGesture { undo?.soften() } else { undo?.invalidate() }
         let finished = buffer.accept(event)
         let auto = automatic
-        let confirms = triggers.converts(event)
+        let confirms = ConversionTriggers.converts(event)
         lock.unlock()
         // Ended and meant are different things: leaving the word by clicking or
         // moving the caret ends it without asking for a conversion.
@@ -451,21 +448,31 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// tap's own callback thread, where `selectedText()` can fall through to
     /// the ⌘C route and poll the pasteboard for up to 200 ms. The expensive
     /// probe was paid twice and the second time on the one thread the comment
-    /// above `fix()` says it must never be on. The transport's
-    /// `convertSelection` has nothing read yet and still asks here.
+    /// above `fix()` says it must never be on. `selected` is nil only when
+    /// nobody has read it yet.
     ///
     /// `readIn` is the app the caller read that text out of — the pin the word
     /// path has carried on `RememberedWord` since a word typed in Notes was
     /// converted into Mail. Nil means nobody has read anything yet, so the read
     /// happens here and pins the app it happens in.
-    private func transform(_ action: SelectionAction, selected: String? = nil, readIn: String? = nil) {
+    ///
+    /// **Not `private`, and not a command.** It answered a `LayoutCommand` case
+    /// nothing in the app ever sent — `AppDelegate` registers `fix` and only
+    /// `fix` — while six tests reached it by typing the command's name as a
+    /// *string*. Rename the case and those five would have gone on passing:
+    /// `wireTransport` refuses an unparseable name at the door and returns
+    /// `Data()`, so `selection.replaced` stayed empty, which is exactly what
+    /// they asserted. The door people actually use is `fix()`, one line below,
+    /// and it calls this.
+    func convertSelection(selected: String? = nil, readIn: String? = nil) {
         guard let selection else { return }
         let bundleID = readIn ?? secure.frontmostBundleID()
         lock.lock()
         // A module that was turned off types nothing. The word path has always
-        // asked and this one did not, which showed up as nothing only because
-        // the gesture reaches it through `fix()` and the transport's
-        // `convertSelection` is the second door — both live, both here.
+        // asked and this one did not — it showed up as nothing because the only
+        // way in is `fix()`, which asks. The transport used to be a second door
+        // (`convertSelection`) and nothing ever sent it; the check stays,
+        // because a door that is not there today is not a door nobody adds.
         let live = running
         let allowed = scope.allows(bundleID)
         lock.unlock()
@@ -492,7 +499,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         })
         lock.lock(); let list = exceptions.words; lock.unlock()
 
-        guard let replacement = transform.apply(action, to: text) else {
+        guard let replacement = transform.apply(to: text) else {
             // Silence was the whole problem with this path: the gesture fired,
             // the translation declined, and nothing on screen or in the log
             // said so. A count, not the text — the log carries no content.
@@ -539,7 +546,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); performing = false; forgetTheWord(); lock.unlock()
 
         guard done else {
-            HelmLog.shared.warn(Self.moduleID, "selection \(action.rawValue) refused by \(Redact.app(bundleID))")
+            HelmLog.shared.warn(Self.moduleID, "selection refused by \(Redact.app(bundleID))")
             return
         }
         if audible { sound?.playSwitch() }
@@ -735,7 +742,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             DispatchQueue.main.async { [self] in
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture: \(hasSelection ? "selection" : "last word")")
-                if hasSelection { transform(.convert, selected: selected, readIn: readIn); return }
+                if hasSelection { convertSelection(selected: selected, readIn: readIn); return }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
                 let undoable = undo?.canUndo(in: bundleID) ?? false
@@ -855,7 +862,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // all three off before this build would be left with an inert module
         // and nothing on the page to turn back on — a stored value outliving
         // the only control that could change it.
-        triggers = .default
         hotkeyCode = readHotkey
         lock.unlock()
         emitState()
@@ -899,7 +905,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             guard let name = LayoutCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .fix: self.fix()
-            case .convertSelection: self.transform(.convert)
             case .settingsChanged: self.reloadSettings()
             }
             return Data()

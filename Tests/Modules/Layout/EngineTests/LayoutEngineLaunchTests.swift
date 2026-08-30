@@ -91,7 +91,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
                         rules: [String: Bool] = [:],
                         exceptions: [String] = [],
                         automatic: Bool = true,
-                        triggers: ConversionTriggers = .default,
                         audible: Bool = false) -> LayoutEngine {
         typing = LaunchTyping(); context = LaunchContext()
         tap = LaunchTap(); sources = LaunchSources(); sound = LaunchSound()
@@ -100,7 +99,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
                                   secure: context, sound: sound,
  fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
-                                  automatic: automatic, triggers: triggers,
+                                  automatic: automatic,
                                   audible: audible, settings: settings)
         engine.activate()
         return engine
@@ -190,20 +189,23 @@ final class LayoutEngineLaunchTests: XCTestCase {
 
     /// The documented default beats the initialiser.
     ///
-    /// `ConversionTriggers.default` says Return is off and says why at length:
+    /// `ConversionTriggers` says Return is off and says why at length:
     /// in a chat Return sends the message and empties the field, so the
     /// backspaces delete nothing, the correction is typed into an empty box and
     /// the newline sends it — the other person gets the mistyped word and then
     /// a second message correcting it.
     ///
-    /// The initialiser is handed Return *on* here so that a pass cannot come
-    /// from the initialiser happening to agree. Nothing is in the store: this
-    /// is a fresh install reading its own defaults on its first launch, which
-    /// is the one moment a `settingsChanged` never arrives.
+    /// Nothing is in the store: this is a fresh install reading its own
+    /// defaults on its first launch, which is the one moment a
+    /// `settingsChanged` never arrives.
+    ///
+    /// This used to hand the initialiser Return *on*, so that a pass could not
+    /// come from the initialiser happening to agree. There is no initialiser to
+    /// hand it to now — `ConversionTriggers` is an enum with no state, because
+    /// `reloadSettings` overwrote whatever it was given anyway. The test is the
+    /// same claim with the instrument gone.
     func testAFreshInstallRunsOnTheDocumentedDefaults() {
-        let engine = engine(settings: store(),
-                            triggers: ConversionTriggers(onSpace: true, onReturn: true,
-                                                         onPunctuation: true))
+        let engine = engine(settings: store())
         tap.type("ghbdtn")
         tap.send(.newline)
         XCTAssertTrue(typing.performed.isEmpty,

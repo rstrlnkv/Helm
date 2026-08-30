@@ -17,7 +17,7 @@ private final class CountingSelection: SelectionPort, @unchecked Sendable {
 /// `convert` ends a success with `conversions.add` and `emitState`, so the
 /// counter the descriptor calls the module's reason to be glanced at moves.
 /// `transform` — the same fix, reached through the gesture on a selection or
-/// through `convertSelection` — replaces the text, plays the sound, and ends
+/// through `LayoutEngine.convertSelection` — replaces the text, plays the sound, and ends
 /// there: no count, no emit. Somebody who fixes their words by selecting them
 /// reads «0 words fixed today» on a page describing a day of fixes.
 final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
@@ -56,8 +56,7 @@ final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
         engine.activate()
 
         selection.text = "ghbdtn"
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced, ["привет"],
                        "precondition: the selection was put right — without a fix the "
                        + "count below is rightly zero")

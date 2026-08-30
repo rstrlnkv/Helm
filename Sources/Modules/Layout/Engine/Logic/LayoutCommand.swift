@@ -8,7 +8,6 @@ import Foundation
 /// once at the door instead of falling through a `default` nobody re-reads.
 public enum LayoutCommand: String, CaseIterable, Sendable {
     case fix
-    case convertSelection
     case settingsChanged
 }
 

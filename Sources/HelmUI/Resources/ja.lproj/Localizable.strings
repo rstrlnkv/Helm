@@ -68,7 +68,6 @@
 "BETA" = "BETA";
 "BUILD" = "ビルド";
 "Back" = "戻る";
-"Before it starts changing what you type." = "入力した文字を書き換える前に。";
 "Beta" = "Beta";
 "Blue" = "青";
 "Cache — apps rebuild it" = "キャッシュ — アプリが作り直します";
@@ -122,7 +121,6 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm はパスワードを読みません。システムが保護対象と示した入力欄は丸ごと飛ばします。";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
-"Hide" = "隠す";
 "How it works" = "仕組み";
 "If it gets one wrong" = "間違えたときは";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "キーボードが1文字の語も直します。ロシア語で最も多い語は1文字（в, и, с, к, о, у, а, я）ですが、これまではすべて手つかずでした。";

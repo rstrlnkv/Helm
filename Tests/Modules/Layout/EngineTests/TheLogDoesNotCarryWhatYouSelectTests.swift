@@ -64,8 +64,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
         selection.text = selected
         let engine = engine(selection: selection, table: [:])
 
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
+        engine.convertSelection()
 
         XCTAssertTrue(layoutLines.contains { $0.contains("selection left alone") },
                       "no decline line was written, so this proves nothing: \(layoutLines)")
@@ -86,8 +85,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
                             table: ["ghbdtn": "привет", "xbcnj": "чисто",
                                     selected: replacement])
 
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
+        engine.convertSelection()
 
         XCTAssertTrue(layoutLines.contains { $0.contains("refused") },
                       "no refusal line was written, so this proves nothing: \(layoutLines)")

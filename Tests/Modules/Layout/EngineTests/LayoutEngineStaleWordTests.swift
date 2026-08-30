@@ -166,7 +166,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
-        _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced.count, 1, "precondition: the selection was replaced")
 
         engine.convertLastWord()
@@ -324,7 +324,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.bundle = "com.apple.Terminal"
         selection.text = "ghbdtn"
-        _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+        engine.convertSelection()
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -332,7 +332,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.passwordField = true
         selection.text = "ghbdtn"
-        _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+        engine.convertSelection()
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -342,7 +342,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         for blank in ["", "   ", "\n", "\t\t", " \n "] {
             selection.text = blank
-            _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+            engine.convertSelection()
             XCTAssertTrue(selection.replaced.isEmpty, "selection was \(blank.debugDescription)")
         }
     }
@@ -352,7 +352,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAnAppThatWillNotSayWhatIsSelectedIsLeftAlone() async throws {
         let engine = engine()
         selection.text = nil
-        _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+        engine.convertSelection()
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -366,7 +366,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         selection.text = "ghbdtn"
         engine.deactivate()
-        _ = try await engine.transport.send(EngineCommand(name: "convertSelection"))
+        engine.convertSelection()
         XCTAssertTrue(selection.replaced.isEmpty,
                       "a module that is switched off replaced text in another app")
     }

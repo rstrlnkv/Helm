@@ -175,8 +175,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         selection.text = "ghbdtn"
         selection.whileReading = { [context] in context.bundle = "com.apple.Terminal" }
 
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
+        engine.convertSelection()
 
         XCTAssertEqual(selection.reads, 1,
                        "precondition: the selection was never read, so nothing below is "
@@ -196,8 +195,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         let engine = engine()
         selection.text = "ghbdtn"
 
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
+        engine.convertSelection()
 
         XCTAssertEqual(selection.replaced, ["привет"],
                        "the harness never converts a selection at all")

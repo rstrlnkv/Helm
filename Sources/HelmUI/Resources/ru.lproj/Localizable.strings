@@ -68,7 +68,6 @@
 "BETA" = "BETA";
 "BUILD" = "СБОРКА";
 "Back" = "Назад";
-"Before it starts changing what you type." = "Что оно делает с вашим текстом — до того, как начнёт.";
 "Beta" = "Beta";
 "Blue" = "Синий";
 "Cache — apps rebuild it" = "Кеш — приложения создадут заново";
@@ -122,7 +121,6 @@
 "Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm не читает пароли: поле, помеченное системой как защищённое, он пропускает целиком.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm теперь сам сообщает о новой версии. Проверка и раньше шла каждый день, но ответ оставался на странице «О Helm» и ждал, пока вы туда заглянете.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm сообщает, когда у macOS нет словаря для одной из ваших раскладок. Исправление на лету там невозможно — ему нужен словарь с обеих сторон, — а раньше переключатель оставался включённым, значок зелёным, и ни одно слово не исправлялось. Исправление клавишей работает, и в сообщении об этом сказано.";
-"Hide" = "Скрыть";
 "How it works" = "Как это работает";
 "If it gets one wrong" = "Если ошибётся";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "Клавиатура исправляет однобуквенные слова. В русском самые частые слова — как раз однобуквенные: в, и, с, к, о, у, а, я, — и до сих пор она не трогала ни одно из них.";

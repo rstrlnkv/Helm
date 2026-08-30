@@ -15,12 +15,8 @@ public enum LayoutKey {
     public static let audible = "audible"
     public static let fixCapitals = "fixCapitals"
     public static let tapKey = "tapKey"
-    public static let onSpace = "onSpace"
-    public static let onReturn = "onReturn"
-    public static let onPunctuation = "onPunctuation"
     public static let exceptions = "exceptions"
     public static let appRules = "appRules"
-    public static let autoReplace = "autoReplace"
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
@@ -33,5 +29,4 @@ public enum LayoutKey {
     /// that changes what the module does — kept so the page opens where it was
     /// left, the way the sidebar width is.
     public static let heroPeriod = "heroPeriod"
-    public static let heroMetric = "heroMetric"
 }

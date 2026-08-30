@@ -386,8 +386,16 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
 
     // MARK: - Plumbing
 
+    /// **The harness's own default, not an empty seed.** This wrapper carried
+    /// `{ _, _ in }`, which shadowed `ModulePageRender.page`'s default the day
+    /// that default became `pastFirstRun` — so every page here was still drawn
+    /// on an empty store, and for Keyboard an empty store is a first visit: the
+    /// tour instead of the three switches and the try-it field, 157 layers
+    /// against a floor of 158 recorded on the settled page. A local default that
+    /// repeats a shared one is a default that stops repeating it.
     private func page(for descriptor: any ModuleDescriptor,
-                      seededBy seed: @escaping ModulePageRender.Seed = { _, _ in },
+                      seededBy seed: @escaping ModulePageRender.Seed
+                          = ModulePageRender.pastFirstRun,
                       wiredBy wire: @escaping ModulePageRender.Wiring)
         -> ModulePageRender.Page {
         ModulePageRender.page(for: descriptor, in: .aqua, width: ModulePageRender.pageWidth,

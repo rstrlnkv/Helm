@@ -142,11 +142,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         return engine
     }
 
-    private func convertSelection(_ engine: LayoutEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: LayoutCommand.convertSelection.rawValue))
-    }
-
     // MARK: - The control, first
 
     /// Nothing is asserted below unless this passes: an absence proves nothing
@@ -159,7 +154,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let engine = engine(current: "en", exceptions: [], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
-        try await convertSelection(engine)
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced, ["привет"],
                        "precondition: the selection path converts an ordinary word")
         engine.deactivate()
@@ -178,7 +173,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let engine = engine(current: "en", exceptions: ["ghbdtn"], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
-        try await convertSelection(engine)
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced, [], """
             the word is on «Never change these words» and selecting it was \
             enough to get it converted: the identical gesture with nothing \
@@ -198,7 +193,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let engine = engine(current: "en", exceptions: ["привет"], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
-        try await convertSelection(engine)
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced, [], """
             the list entry names the converted form and the selection was \
             converted into it anyway — the two word paths check both forms for \
@@ -224,7 +219,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let engine = engine(current: "ru", exceptions: [], typing: typing,
                             selection: selection,
                             sources: Sources(current: "ru", installed: ["ru", "en"]))
-        try await convertSelection(engine)
+        engine.convertSelection()
         XCTAssertEqual(selection.replaced, [], """
             four letters were replaced by three letters and a bracket. Both \
             word verdicts refuse this — `decide` and `decideForced` alike — and \

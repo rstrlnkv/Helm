@@ -85,14 +85,13 @@ final class LayoutEngineEdgeTests: XCTestCase {
         return store
     }
 
-    private func engine(triggers: ConversionTriggers = .default,
-                        settings: NamespacedStore? = nil,
+    private func engine(                        settings: NamespacedStore? = nil,
                         table: [String: String] = [:]) -> LayoutEngine {
         typing = EdgeTyping(); context = EdgeContext(); tap = EdgeTap(); sources = EdgeSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: EdgeTranslation(table: table),
                                   spell: EdgeSpell(), secure: context,
-                                  triggers: triggers, settings: settings ?? Self.boundStore())
+                                  settings: settings ?? Self.boundStore())
         engine.activate()
         return engine
     }
@@ -144,7 +143,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
 
     /// The stored default and the documented default are the same default.
     ///
-    /// `ConversionTriggers.default` says Return is off, and says why at length:
+    /// `ConversionTriggers` says Return is off, and says why at length:
     /// in a chat Return sends the message and empties the field, so the
     /// backspaces delete nothing, the replacement is typed into an empty box
     /// and the newline sends it — the other person gets the mistyped word and
@@ -235,7 +234,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
     /// is the source of truth once it has been written to.
     ///
     /// It used to be asserted over `onSpace`, one of three trigger switches
-    /// that no longer exist: the engine takes `ConversionTriggers.default` and
+    /// that no longer exist: the engine takes `ConversionTriggers` and
     /// reads no key for them, precisely so a value stored by an older build
     /// cannot outlive the control that could change it. «Fix as I type» carries
     /// the same claim and is a setting the page still has.

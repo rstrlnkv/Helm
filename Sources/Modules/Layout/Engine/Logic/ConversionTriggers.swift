@@ -15,33 +15,27 @@ import Foundation
 /// which makes them a decision the app owes rather than a question it asks.
 /// Caramba Switcher, the other Mac tool people compare this to, ships one
 /// setting in total for the same reason.
-public struct ConversionTriggers: Equatable, Sendable {
-    public var onSpace: Bool
-    public var onReturn: Bool
-    public var onPunctuation: Bool
+/// **An enum, because there is nothing left to configure.** It was a struct of
+/// three `var`s with an initialiser, and `reloadSettings` assigned `.default`
+/// over whatever it had been given, unconditionally, on every `activate()`. So
+/// the only code that could ever see another combination was a test — and
+/// `ConversionTriggersTests` used that freedom to plant `onReturn: true`, a
+/// state production cannot reach, and prove a branch nothing runs. A fake freer
+/// than the port proves nothing about the port.
+public enum ConversionTriggers {
 
-    /// Return is **off** by default, and that is not timidity. In Slack,
+    /// Return does **not** confirm, and that is not timidity. In Slack,
     /// Telegram and every other chat, Return sends the message and empties the
     /// field: the backspaces then delete nothing, the replacement is typed into
     /// an empty box, and the newline sends it — so the other person receives
     /// the mistyped word and then a second message with the correction. It
-    /// belongs on only where Return means a line break, and the person turning
-    /// it on knows which apps those are.
-    public static let `default` = ConversionTriggers(onSpace: true, onReturn: false,
-                                                     onPunctuation: true)
-
-    public init(onSpace: Bool = true, onReturn: Bool = false, onPunctuation: Bool = true) {
-        self.onSpace = onSpace
-        self.onReturn = onReturn
-        self.onPunctuation = onPunctuation
-    }
-
-
-    public func converts(_ event: TypingBuffer.Event) -> Bool {
+    /// would belong on only where Return means a line break, and no switch can
+    /// know which app that is.
+    public static func converts(_ event: TypingBuffer.Event) -> Bool {
         switch event {
-        case .space: return onSpace
-        case .newline: return onReturn
-        case .punctuation(let character): return onPunctuation && confirms(character)
+        case .space: return true
+        case .newline: return false
+        case .punctuation(let character): return confirms(character)
         // Ending a word by going somewhere else is not confirming it. Nor is a
         // chord: ⌘Space — the gesture someone makes on noticing the wrong
         // layout — used to arrive as a plain space and budget a backspace for a
@@ -60,7 +54,7 @@ public struct ConversionTriggers: Equatable, Sendable {
     /// word was already cut before them. `ghbdtn2024` became `привет2024`, and
     /// `~/ghbdtn/x` became `~/привет/x`. Those endings finish the word and
     /// confirm nothing; only real punctuation does.
-    private func confirms(_ character: Character) -> Bool {
+    private static func confirms(_ character: Character) -> Bool {
         // The curly ones too: macOS substitutes them as you type, so a
         // sentence ending in a typed quote arrives here as “ ” ‘ ’ and used to
         // confirm nothing at all.

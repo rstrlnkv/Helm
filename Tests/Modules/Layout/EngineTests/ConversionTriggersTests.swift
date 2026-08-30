@@ -1,58 +1,67 @@
 import XCTest
 @testable import Module_Layout_Engine
 
-/// The difference between ending a word and meaning it.
+/// Which endings of a word are taken as «I meant that word», and which merely
+/// end it.
+///
+/// **This file used to prove branches production could not reach.**
+/// `ConversionTriggers` was a struct of three `var`s, and `reloadSettings`
+/// assigned `.default` over whatever the engine had been handed, on every
+/// `activate()` — so the only code able to see `onReturn: true` was a test that
+/// constructed it. The tests below were written against that freedom, and every
+/// one of them passed over a combination no Mac could be in. A fake freer than
+/// the port proves nothing about the port; the repair belongs to the type, and
+/// the type is an enum now.
 final class ConversionTriggersTests: XCTestCase {
-    func testSpaceAndPunctuationConfirmByDefault() {
-        let triggers = ConversionTriggers.default
-        XCTAssertTrue(triggers.converts(.space))
-        XCTAssertTrue(triggers.converts(.punctuation(".")))
+
+    func testASpaceConfirmsTheWord() {
+        XCTAssertTrue(ConversionTriggers.converts(.space))
     }
 
-    /// Off by default: in a chat, Return sends the message and empties the
-    /// field, so the correction is typed into an empty box and sent as a second
-    /// message to somebody else.
-    func testReturnDoesNotConfirmByDefault() {
-        XCTAssertFalse(ConversionTriggers.default.converts(.newline))
-        XCTAssertTrue(ConversionTriggers(onReturn: true).converts(.newline))
+    /// Return does not, and the reason is chat clients: Return sends the
+    /// message and empties the field, so the backspaces delete nothing, the
+    /// correction is typed into an empty box, and the newline sends *that* —
+    /// the other person receives the typo and then a second message correcting
+    /// it.
+    func testReturnDoesNotConfirm() {
+        XCTAssertFalse(ConversionTriggers.converts(.newline))
     }
 
-    /// The tap cuts a word at anything that is not a letter, so digits and
-    /// slashes arrive here too — and if they confirmed, the guards against
-    /// digits and paths could never fire: `ghbdtn2024` became `привет2024`.
+    /// Punctuation that ends a sentence confirms; a character that merely is
+    /// not a letter does not. The tap ends a word at anything non-letter, so a
+    /// digit or a slash arrives here too — and if those confirmed, the guards
+    /// in `LayoutVerdict` against digits, paths and addresses could never fire,
+    /// because the word would already have been cut before them.
+    /// `ghbdtn2024` became `привет2024`; `~/ghbdtn/x` became `~/привет/x`.
     func testOnlyRealPunctuationConfirms() {
-        for character in Array(".,!?;:)]}\"'") {
-            XCTAssertTrue(ConversionTriggers.default.converts(.punctuation(character)),
-                          String(character))
+        for mark in ".,!?;:»)]}\"'…«(" {
+            XCTAssertTrue(ConversionTriggers.converts(.punctuation(mark)),
+                          "\(mark) ends a sentence and should confirm")
         }
-        for character in Array("0123456789/\\@~_-=+*&^%$#") {
-            XCTAssertFalse(ConversionTriggers.default.converts(.punctuation(character)),
-                           String(character))
-        }
-    }
-
-    /// Going somewhere else is not confirming; converting then edits text the
-    /// person has already left. Not offered as a choice, so it cannot be turned
-    /// back on by accident.
-    func testLeavingNeverConverts() {
-        for triggers in [ConversionTriggers.default,
-                         ConversionTriggers(onSpace: true, onReturn: true, onPunctuation: true)] {
-            XCTAssertFalse(triggers.converts(.navigation))
-            XCTAssertFalse(triggers.converts(.click))
-            XCTAssertFalse(triggers.converts(.focusChange))
+        for other in "0123456789/@-_+=#$%^&*" {
+            XCTAssertFalse(ConversionTriggers.converts(.punctuation(other)),
+                           "\(other) ends the word without confirming it")
         }
     }
 
-    func testEachEndingCanBeTurnedOffOnItsOwn() {
-        XCTAssertFalse(ConversionTriggers(onSpace: false).converts(.space))
-        XCTAssertTrue(ConversionTriggers(onSpace: false, onReturn: true).converts(.newline))
-        XCTAssertFalse(ConversionTriggers(onReturn: false).converts(.newline))
-        XCTAssertFalse(ConversionTriggers(onPunctuation: false).converts(.punctuation("!")))
+    /// The curly ones too: macOS substitutes them as you type, so a sentence
+    /// ending in a typed quote arrives here as “ ” ‘ ’ and used to confirm
+    /// nothing at all.
+    func testTheQuotesMacOSSubstitutesConfirmToo() {
+        for mark in "“”‘’" {
+            XCTAssertTrue(ConversionTriggers.converts(.punctuation(mark)),
+                          "\(mark) is what macOS types in place of a quote")
+        }
     }
 
-    /// A character is not an ending at all.
-    func testTypingIsNeverATrigger() {
-        XCTAssertFalse(ConversionTriggers.default.converts(.character("a")))
-        XCTAssertFalse(ConversionTriggers.default.converts(.backspace))
+    /// Ending a word by going somewhere else is not confirming it — nor is a
+    /// chord. ⌘Space, the gesture somebody makes on noticing the wrong layout,
+    /// used to arrive as a plain space and budget a backspace for a character
+    /// that never reached the field.
+    func testLeavingIsNotConfirming() {
+        for event in [TypingBuffer.Event.navigation, .chord(49), .click, .focusChange,
+                      .backspace, .character("a")] {
+            XCTAssertFalse(ConversionTriggers.converts(event), "\(event) confirms nothing")
+        }
     }
 }

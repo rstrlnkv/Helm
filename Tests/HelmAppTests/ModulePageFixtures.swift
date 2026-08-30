@@ -59,7 +59,29 @@ extension ModulePageRender {
     /// A `switch`, the shape `answering` takes below: two fixtures reading one
     /// `if` and a `guard` was a line away from the second one silently shadowing
     /// the first.
+    /// **Past the first run, which is where a page spends its life.**
+    ///
+    /// Keyboard's page has two shapes: on a first visit it draws the tour and
+    /// holds back the three switches and the try-it field the tour is already
+    /// showing, and afterwards it draws all of them. An empty store is a first
+    /// visit, so every measurement taken over the default seed was of the
+    /// introduction rather than of the module — and the ratchets said so the
+    /// moment the tour learned to hide the duplicates: three switches and a
+    /// text field short, on a page whose recorded counts were taken before it
+    /// had a tour at all.
+    ///
+    /// The first-visit shape is worth exactly one test rather than every
+    /// measurement, and `TheFirstVisitDrawsTheTourTests` is it.
+    ///
+    /// Applied by *default* and again inside `configured`, because a caller that
+    /// asks for a configured page is not asking to be put back on day one.
+    static let pastFirstRun: Seed = { id, store in
+        guard id == LayoutEngine.moduleID else { return }
+        store.set(true, for: LayoutKey.introSeen)
+    }
+
     static let configured: Seed = { id, store in
+        pastFirstRun(id, store)
         switch id {
         case KeepAwakeEngine.moduleID: configureKeepAwake(store)
         case VPNDescriptor.id.rawValue: configureVPN(store)

@@ -152,7 +152,7 @@ enum ModulePageRender {
     /// arrive in these ratchets without anybody remembering to add it.
     static func pages(in appearance: NSAppearance.Name,
                       width: CGFloat = pageWidth,
-                      seededBy seed: Seed = { _, _ in },
+                      seededBy seed: @escaping Seed = ModulePageRender.pastFirstRun,
                       wiredBy wire: Wiring = answering,
                       primedBy prime: Priming = opened,
                       granting grants: HelmGrants = granted) -> [Page] {
@@ -245,7 +245,7 @@ enum ModulePageRender {
     static let unprimed: Priming = { _, _ in nil }
 
     static func page(for descriptor: any ModuleDescriptor, in appearance: NSAppearance.Name,
-                     width: CGFloat, seededBy seed: Seed = { _, _ in },
+                     width: CGFloat, seededBy seed: @escaping Seed = ModulePageRender.pastFirstRun,
                      wiredBy wire: Wiring = answering,
                      primedBy prime: Priming = opened,
                      granting grants: HelmGrants = granted) -> Page {

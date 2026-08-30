@@ -24,6 +24,18 @@ public enum ObsoleteDefaults {
         // reads this key before the list reaches it, and
         // `AppSettings.migrateAndPurge` is one function for exactly that reason.
         "module.app.showPanelFooter",
+        // Keyboard's three «when to fix» triggers. Space and punctuation
+        // confirm a word and Return does not — which is what they were set to
+        // anyway, and what keeps a chat from sending a typo.
+        "module.layout.onSpace",
+        "module.layout.onReturn",
+        "module.layout.onPunctuation",
+        // Keyboard's abbreviations. macOS ships the same thing in Text
+        // Replacement and syncs it across the person's devices.
+        "module.layout.autoReplace",
+        // Keyboard's hero showed one figure at a time behind a glyph. It shows
+        // both at once now, so there is nothing left to remember.
+        "module.layout.heroMetric",
     ]
 
     public static func purge(from store: KeyValueStore) {

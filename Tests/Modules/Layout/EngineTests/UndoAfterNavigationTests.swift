@@ -209,7 +209,7 @@ final class UndoAfterNavigationTests: XCTestCase {
             let completion = buffer.accept(event)
             XCTAssertEqual(completion?.word, "ghbdtn", "\(event) did not end the word")
             XCTAssertNil(completion?.ending, "\(event) typed a character into the field")
-            XCTAssertFalse(ConversionTriggers.default.converts(event),
+            XCTAssertFalse(ConversionTriggers.converts(event),
                            "\(event) was taken as a confirmation")
         }
     }
