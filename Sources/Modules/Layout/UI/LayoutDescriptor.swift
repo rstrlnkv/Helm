@@ -102,7 +102,7 @@ import Module_Layout_Engine
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(
             LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm),
-                               period: Self.storedPeriod(store), onNever: { Self.never($0, store) })))
+                               period: Self.storedPeriod(store), onNever: { Self.never($0, store, vm) })))
     }
 
     /// Three sizes, three questions: how many · how many and what to do · why
@@ -115,10 +115,10 @@ import Module_Layout_Engine
             return AnyView(LayoutWidgets.Compact(lvm: lvm, period: Self.storedPeriod(store)))
         case .wide:
             return AnyView(LayoutWidgets.Wide(lvm: lvm, period: Self.storedPeriod(store),
-                                              onNever: { Self.never($0, store) }))
+                                              onNever: { Self.never($0, store, vm) }))
         case .tall:
             return AnyView(LayoutWidgets.Tall(lvm: lvm, store: store,
-                                              onNever: { Self.never($0, store) },
+                                              onNever: { Self.never($0, store, vm) },
                                               onAutomatic: { Self.automatic($0, store, vm) }))
         }
     }
@@ -131,13 +131,19 @@ import Module_Layout_Engine
 
     /// Both verbs write where the settings page writes, and tell the engine —
     /// a list the engine never hears about is a list that does nothing.
-    private static func never(_ word: String, _ store: NamespacedStore) {
-        var words = store.stringArray(LayoutKey.exceptions)
-        let cleaned = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !cleaned.isEmpty, !words.contains(where: { $0.lowercased() == cleaned })
+    ///
+    /// **That sentence stood over a verb that did only the first half.** The
+    /// engine holds `exceptions` in a field and refills it in `reloadSettings`,
+    /// which runs on `activate()` and on `settingsChanged` and nowhere else —
+    /// there is no bridge turning a store write into that command. So this
+    /// button wrote the list and the engine went on converting the word until
+    /// some *other* setting was saved or the app was relaunched, which is the
+    /// panel widget's own headline verb doing nothing.
+    private static func never(_ word: String, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+        guard let words = Exceptions.adding(word, to: store.stringArray(LayoutKey.exceptions))
         else { return }
-        words.append(cleaned)
         store.set(words, for: LayoutKey.exceptions)
+        vm.send(LayoutCommand.settingsChanged)
     }
 
     private static func automatic(_ on: Bool, _ store: NamespacedStore, _ vm: ModuleViewModel) {

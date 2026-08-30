@@ -87,11 +87,8 @@ struct LayoutLists: View {
     }
 
     private func addTyped() {
-        let word = newException.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !word.isEmpty,
-              !Exceptions(words: exceptions).contains(word) else { return }
-        exceptions.append(word)
-        exceptions.sort()
+        guard let words = Exceptions.adding(newException, to: exceptions) else { return }
+        exceptions = words
         write(exceptions, LayoutKey.exceptions)
         newException = ""
     }

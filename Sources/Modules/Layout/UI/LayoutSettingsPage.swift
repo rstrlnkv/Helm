@@ -506,10 +506,8 @@ struct LayoutSettingsPage: View {
     /// they can search: the text blob this replaced grew by appending, and a
     /// fiftieth word landed wherever the last one had.
     private func addException(_ word: String) {
-        guard !exceptionsContain(word) else { return }
-        var words = store.stringArray(LayoutKey.exceptions)
-        words.append(word)
-        words.sort()
+        guard let words = Exceptions.adding(word, to: store.stringArray(LayoutKey.exceptions))
+        else { return }
         write(words, LayoutKey.exceptions)
         exceptionCount = words.count
     }
