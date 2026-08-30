@@ -8,6 +8,7 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished.";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures.";
+"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "A real field, not a demonstration. Type ghbdtn, press space, and watch.";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "A filter hides the kinds you are not reviewing — system extensions, for instance.";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "A layout that names no country keeps its letters, in a frame the same size as a flag.";
@@ -106,6 +107,7 @@
 "Custom icon when active" = "Custom icon when active";
 "Discard and start again" = "Discard and start again";
 "Error" = "Error";
+"Every app but the ones Helm leaves alone" = "Every app but the ones Helm leaves alone";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem.";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm cannot read the key its rules are sealed with, so none of them are running.";
@@ -121,10 +123,13 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so.";
 "Hide" = "Hide";
+"How it works" = "How it works";
+"If it gets one wrong" = "If it gets one wrong";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone.";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo.";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of.";
+"Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on.";
 "Last change (undone)" = "Last change (undone)";
 "Last fourteen days" = "Last fourteen days";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.";
@@ -134,6 +139,7 @@
 "Move to Trash…" = "Move to Trash…";
 "No key is assigned — this change can only be put back by hand." = "No key is assigned — this change can only be put back by hand.";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below.";
+"No words set aside" = "No words set aside";
 "No words yet" = "No words yet";
 "Not watching" = "Not watching";
 "Nothing" = "Nothing";
@@ -157,7 +163,9 @@
 "The language indicator below works without this permission." = "The language indicator below works without this permission.";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "The rules stored on this Mac were not written by Helm, so none of them are running.";
+"The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went.";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "These are left exactly as you typed them, whatever the dictionary thinks.";
+"These are live: switch one here and it is switched." = "These are live: switch one here and it is switched.";
 "This folder is no longer there" = "This folder is no longer there";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "This is not there any more, so nothing was moved. Scan again to see what is left.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "This is not there any more, so nothing was moved. Search again to see what is left.";
@@ -168,7 +176,9 @@
 "Watching your words" = "Watching your words";
 "Week" = "Week";
 "What it does" = "What it does";
+"What you can switch on" = "What you can switch on";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.";
+"Words and apps" = "Words and apps";
 "Year" = "Year";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead.";
 "Cyan" = "Cyan";

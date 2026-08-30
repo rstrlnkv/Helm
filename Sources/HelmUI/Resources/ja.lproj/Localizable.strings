@@ -8,6 +8,7 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "スリープ防止のセッションが Helm の再起動後も続くようになりました。以前は、アプリを終了させるもの — たいていは自動更新 — が 2 時間のセッションを取り消していました。メニューバーのカウントダウンは消え、Mac はスリープでき、その説明もありませんでした。いまは残り時間のまま戻り、Helm が動いていない間に終了時刻を過ぎたセッションは、そのまま終了扱いです。";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN はこの Mac の通信すべてを運びます。そのアプリの分だけではありません。トンネルは起動から数秒後につながります。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "アプリ全体のデザインを macOS 26/27 の作法に合わせました。メニューバーパネルの Liquid Glass、どの幅でも下の内容と揃うページ見出し、読める濃さの補助テキスト、そして切り替わらず転がる数字。サイドバーは“ファイル”と“ユーティリティ”に整理されます。";
+"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "デモではなく本物の入力欄です。ghbdtnと入力し、スペースを押して見てください。";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "削除が、確認したフォルダの外へシンボリックリンクをたどり、別のファイルを消してしまうことがありました。もう起きません。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "いま見ていない種類（システム機能拡張など）はフィルタで隠せます。";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "国が定まらない配列は文字のまま、旗と同じ大きさの枠に表示されます。";
@@ -106,6 +107,7 @@
 "Custom icon when active" = "アクティブ時にカスタムアイコン";
 "Discard and start again" = "破棄してやり直す";
 "Error" = "エラー";
+"Every app but the ones Helm leaves alone" = "Helmが触らないアプリを除くすべて";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "入力中の修正が、別のレイアウトでは記号キーに置かれた文字を含む単語でも働くようになりました。それらの文字にはキーが存在せず、ロシア語の多くの単語はそのまま残るか、途中で切れていました。";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "押したままにしたり、他のキーと一緒に押したりしたときは、これまでどおりの修飾キーとして働きます。";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "ルールの署名に使う鍵を読み取れません。どのルールも実行されません。";
@@ -121,10 +123,13 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
 "Hide" = "隠す";
+"How it works" = "仕組み";
+"If it gets one wrong" = "間違えたときは";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "キーボードが1文字の語も直します。ロシア語で最も多い語は1文字（в, и, с, к, о, у, а, я）ですが、これまではすべて手つかずでした。";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "キーボードがメニューバーのパネルに戻りました。3つのサイズすべてで使えます。大きいものは直近14日間を日ごとに描き、節約できたおおよその入力量を示し、期間ボタン、直前の変更とその語を今後触らせない操作、入力中の修正のスイッチを備えます。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "キーボードが簡素になりました。“いつ修正するか”の3つのスイッチは廃止です。スペースと句読点で語を確定し、Returnでは確定しません。もともとその設定でしたし、チャットが打ち間違いを送信せずに済みます。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "キーボードが、すでに削除した文章に入力することはなくなりました。Option+Deleteで単語を消しても直前の変更が取り消し可能なままで、修正キーがカーソル位置に古い語を入れていました。";
+"Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "キーボードは説明ではなく4ステップのツアーで始まります。2つめは実際に試せる入力欄、3つめはスイッチそのもの。ステップに同意することが、そのままオンにすることです。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
 "Last fourteen days" = "過去14日間";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
@@ -134,6 +139,7 @@
 "Move to Trash…" = "ゴミ箱に入れる…";
 "No key is assigned — this change can only be put back by hand." = "キーが設定されていないため、この変更は手動でしか戻せません。";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "キーが未設定です。選択部分や直前の語をその場で修正する手段がありません。キーを選ぶか、下で組み合わせを設定してください。";
+"No words set aside" = "除外した単語なし";
 "No words yet" = "まだ単語はありません";
 "Not watching" = "監視していません";
 "Nothing" = "なし";
@@ -157,7 +163,9 @@
 "The language indicator below works without this permission." = "下の言語インジケータはこの許可がなくても動きます。";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "キーボードが触らない単語の一覧が、テキストの塊ではなくリストになりました。1行に1語、横に×印、追加用の入力欄付きです。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
+"The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "キーボードが触らない単語と、アプリごとのルールは専用のウインドウに移りました。ページには件数付きの行が残るので、語がどこへ行ったかは見えます。";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "ここに入れた語は、辞書が何と言おうと入力したままにします。";
+"These are live: switch one here and it is switched." = "これは実物です。ここでオンにすれば、オンになります。";
 "This folder is no longer there" = "このフォルダはもうありません";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "これはもう存在しないため、何も移動していません。もう一度検索して残りを確認してください。";
@@ -168,7 +176,9 @@
 "Watching your words" = "単語を見ています";
 "Week" = "1週間";
 "What it does" = "何をするか";
+"What you can switch on" = "オンにできること";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";
+"Words and apps" = "単語とアプリ";
 "Year" = "1年";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "Cyan" = "シアン";

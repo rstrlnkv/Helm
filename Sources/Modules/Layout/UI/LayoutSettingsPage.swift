@@ -8,10 +8,17 @@ struct LayoutSettingsPage: View {
     private let store: NamespacedStore
 
     @State private var automatic: Bool
-    @State private var exceptions: [String]
-    @State private var newException = ""
+    /// Counts, not the lists: the window owns those. Kept in `@State` and
+    /// refreshed on the store's own announcement so the rows stay right while
+    /// somebody edits in the window beside this one.
+    @State private var exceptionCount: Int
+    @State private var ruleCount: Int
+    @State private var listsWindow: LayoutListsWindow?
+    /// Separate from `introSeen`, which is the stored fact. This is «is it on
+    /// screen now», so the button can bring it back without unlearning that the
+    /// person has already met the module once.
+    @State private var showTour: Bool
     @State private var accessibility: PermissionState = .granted
-    @State private var appRules: [String: Bool]
     @State private var audible: Bool
     @State private var indicator: Bool
     @State private var badgeStyle: BadgeStyle
@@ -30,8 +37,9 @@ struct LayoutSettingsPage: View {
         lvm = LayoutViewModel.shared(vm: vm)
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
-        _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions))
-        _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
+        _exceptionCount = State(initialValue: store.stringArray(LayoutKey.exceptions).count)
+        _ruleCount = State(initialValue: store.boolTable(LayoutKey.appRules).count)
+        _showTour = State(initialValue: !store.bool(LayoutKey.introSeen, default: false))
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
         _badgeStyle = State(initialValue:
@@ -63,7 +71,7 @@ struct LayoutSettingsPage: View {
             // keyboard». It waits: the grant arrives, the page fills in, and
             // the introduction is still unseen and introduces something that is
             // actually there.
-            if !introSeen, accessibility != .denied { introSection }
+            if showTour, accessibility != .denied { tourSection }
             if accessibility == .denied {
                 // **The hero stays and speaks.** It used to go with the page,
                 // and VPN's and Keep Awake's never do — a module that vanishes
@@ -88,8 +96,7 @@ struct LayoutSettingsPage: View {
                 // the figure, what it does, and the field to try it in.
                 behaviourSection
                 tryItSection
-                exceptionsSection
-                appsSection
+                listsSection
                 shortcutsSection
                 indicatorSection
             }
@@ -112,6 +119,18 @@ struct LayoutSettingsPage: View {
         // row appeared the same way.
         .animation(HelmMotion.interface, value: indicator)
         .animation(HelmMotion.interface, value: lvm.state.lastConversion)
+        // **Filtered by key**, which `NamespacedStore.changed(_:is:)` exists for
+        // and nobody used: two unfiltered mirrors of one setting re-read
+        // themselves on every write anywhere in Helm, which is how the hero and
+        // the window header came to disagree about the same value.
+        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
+            if store.changed(note, is: LayoutKey.exceptions) {
+                exceptionCount = store.stringArray(LayoutKey.exceptions).count
+            }
+            if store.changed(note, is: LayoutKey.appRules) {
+                ruleCount = store.boolTable(LayoutKey.appRules).count
+            }
+        }
         // Said once, out loud: losing the grant swaps the whole page for the
         // empty state, and nothing a VoiceOver reader is on changes its value.
         .helmAnnounces(accessibility == .denied ? LyStr.deniedTitle : nil)
@@ -136,25 +155,28 @@ struct LayoutSettingsPage: View {
     /// nothing at all. A sheet's modality was protecting nothing either — the
     /// module is already running when the page opens, so this explains rather
     /// than asks — and «Got it» does exactly what it did.
-    private var introSection: some View {
+    /// The tour, where the introduction used to be.
+    ///
+    /// **The introduction told you what would happen; this lets you do it.**
+    /// Four steps, each carrying the live control it is about — the real try-it
+    /// field on step two, the three switches on step three — so agreeing with a
+    /// step is switching the thing on rather than reading that you could.
+    ///
+    /// Shown by itself on a first visit and reachable afterwards from the
+    /// button beside the behaviour heading, because somebody who dismissed it
+    /// on day one still has the questions on day thirty.
+    private var tourSection: some View {
         Section {
-            LayoutIntro(gesture: gestureName) {
-                store.set(true, for: LayoutKey.introSeen)
-                withAnimation(HelmMotion.disclosure) { introSeen = true }
+            LayoutTour(gesture: gestureName, store: store) {
+                lvm.vm.send(LayoutCommand.settingsChanged)
+            } onDone: {
+                withAnimation(HelmMotion.interface) { showTour = false }
+                write(true, LayoutKey.introSeen)
+                introSeen = true
             }
         }
     }
 
-    /// The figure this module has, at the size a figure gets.
-    ///
-    /// It was a `HelmMetricStrip` — «Active · 17» over 9 pt capitals reading
-    /// STATE and TODAY, which is a label for a number nobody needs labelled and
-    /// a second word for the badge in the page header. The count of words put
-    /// right today is the one thing here worth a glance, and the type scale's
-    /// top step is what it is set in — `HelmText.heroFigureFont`, the same
-    /// token Keep Awake's countdown draws, so two pages of this app cannot
-    /// measure their own heroes differently. That last clause was prose here
-    /// with nothing under it until the token existed.
     private var hero: some View {
         LayoutHero(totals: lvm.state.totals,
                    suspended: lvm.state.suspended,
@@ -165,11 +187,6 @@ struct LayoutSettingsPage: View {
         .onChange(of: heroPeriod) { _, new in store.set(new.rawValue, for: LayoutKey.heroPeriod) }
     }
 
-    /// The hero rides on the first section's header, for the reason Keep Awake's
-    /// does: a section **header** is the one part of a grouped `Form` that is
-    /// drawn on the bare pane and still scrolls with the page. A row would be
-    /// inside the card, and pinning it above the form would spend a fifth of the
-    /// window on a figure however far down the settings somebody had gone.
     private var heroAndTitle: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
             hero
@@ -180,15 +197,21 @@ struct LayoutSettingsPage: View {
         // headings on the page, measured. The 10 pt is for a block that draws a
         // surface; this one is centred text, and Keep Awake's hero, centred for
         // the same reason, takes none either.
-
     }
 
-    /// What it does, and the last thing it did.
-    ///
-    /// It had no heading at all — a 10 pt gap where every other section has 54 —
-    /// so it and the block above read as one card.
     @ViewBuilder private var behaviourSection: some View {
         Section(header: heroAndTitle) {
+            // The way back into the tour, and only once it has been dismissed —
+            // a button that reopens what is already open is a button that does
+            // nothing, which is worse than no button.
+            if !showTour {
+                HelmSettingRow(LyStr.tourTitle) {
+                    Button(LyStr.tourTitle) {
+                        withAnimation(HelmMotion.interface) { showTour = true }
+                    }
+                    .controlSize(.small)
+                }
+            }
             HelmSettingRow(LyStr.automatic, note: LyStr.automaticNote) {
                 Toggle(LyStr.automatic, isOn: $automatic)
                     .labelsHidden()
@@ -366,87 +389,48 @@ struct LayoutSettingsPage: View {
     /// idea, reached three ways, editable only as prose. A row with a cross
     /// beside it is the shape the abbreviations list used before it was cut, and
     /// it is the shape everything else on this page that holds a list uses.
-    @ViewBuilder private var exceptionsSection: some View {
+    /// The two lists, as two rows that open the window holding them.
+    ///
+    /// **They were sections here and the page is not where they belong.** A
+    /// list of words and a list of apps grow without limit, are visited rarely
+    /// and edited deliberately — and between them they pushed the three
+    /// switches somebody actually reaches for below the fold. `LayoutLists` is
+    /// the same two sections, in `LayoutListsWindow`.
+    ///
+    /// **Each row carries its own count**, which is the one thing a list behind
+    /// a button owes: «Never this word» is pressed from the panel tile and from
+    /// the row above, and somebody who presses it has to be able to see that
+    /// the word went somewhere.
+    @ViewBuilder private var listsSection: some View {
         Section {
-            if exceptions.isEmpty {
-                Text(LyStr.noExceptions)
-                    .font(HelmText.rowTitle)
+            listRow(LyStr.exceptions, LyStr.exceptionsRow(exceptionCount),
+                    symbol: "character.textbox")
+            listRow(LyStr.apps, LyStr.appsRow(ruleCount), symbol: "app.badge.checkmark")
+        } header: {
+            HelmSectionTitle(LyStr.listsWindowTitle)
+        }
+    }
+
+    private func listRow(_ title: String, _ detail: String, symbol: String) -> some View {
+        Button { openLists() } label: {
+            HStack(spacing: HelmSpace.s5) {
+                Image(systemName: symbol)
+                    .frame(width: 18)
                     .foregroundStyle(HelmText.quiet)
+                    .accessibilityHidden(true)
+                Text(title)
+                Spacer(minLength: HelmSpace.s4)
+                Text(detail).foregroundStyle(HelmText.quiet)
+                Image(systemName: "chevron.right")
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.faint)
+                    .accessibilityHidden(true)
             }
-            ForEach(exceptions, id: \.self) { word in
-                HStack(spacing: HelmSpace.s5) {
-                    Text(word).font(.system(.body, design: .monospaced))
-                    Spacer(minLength: HelmSpace.s4)
-                    Button {
-                        removeException(word)
-                    } label: {
-                        Image(systemName: "xmark").foregroundStyle(HelmText.faint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(HelmA11y.remove), \(word)")
-                }
-                // One element per word: read apart it was a word and an unnamed
-                // button, with nothing saying the two belonged together.
-                .accessibilityElement(children: .combine)
-            }
-            HStack(spacing: HelmSpace.s4) {
-                // `prompt:` rather than a title: inside a `Form` a `TextField`'s
-                // title is drawn as a label beside the field, not inside it.
-                TextField("", text: $newException, prompt: Text(LyStr.exceptionPrompt))
-                    .accessibilityLabel(LyStr.exceptionPrompt)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .onSubmit { addTypedException() }
-                Button(LyStr.addException) { addTypedException() }
-                    .disabled(newException.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        } header: {
-            HelmSectionTitle(LyStr.exceptions)
-        } footer: {
-            sectionNote(LyStr.exceptionsHint)
+            .contentShape(Rectangle())
         }
-    }
-
-    @ViewBuilder private var appsSection: some View {
-        Section {
-            // **The built-in list is drawn, not described.** Seven apps were
-            // refused before any rule was consulted and the page said so twice
-            // in different words — «a few terminals and password managers are
-            // left alone already» over an empty card, and «terminals and
-            // password managers are left alone» under it — without naming one
-            // of them. Somebody whose typing is not being fixed in Warp had no
-            // way to learn from this page that Warp was the reason.
-            //
-            // They are ordinary rows now, set to «Don't fix», and switchable
-            // like any other: the rule is visible and it is theirs to overrule.
-            // Only the ones this Mac has — a row for an app nobody installed is
-            // a list of somebody else's software.
-            ForEach(AppInfo.sortedByName(Set(appRules.keys).union(builtInBlocked)),
-                    id: \.self) { bundleID in
-                appRow(bundleID)
-            }
-            Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }
-        } header: {
-            HelmSectionTitle(LyStr.apps)
-        } footer: {
-            sectionNote(LyStr.appsWhy)
-        }
-    }
-
-    private func appRow(_ bundleID: String) -> some View {
-        HelmAppRuleRow(bundleID: bundleID) {
-            // The picker carries the app's name: "Off, pop-up button" answers
-            // nothing when there are five of these in a list.
-            Picker(AppInfo.resolve(bundleID).name, selection: ruleBinding(bundleID)) {
-                Text(LyStr.ruleOff).tag(false)
-                Text(LyStr.ruleOn).tag(true)
-            }
-            .labelsHidden()
-            .fixedSize()
-        } remove: {
-            appRules.removeValue(forKey: bundleID)
-            write(appRules, LayoutKey.appRules)
-        }
+        .buttonStyle(.plain)
+        // Read apart it was a name, a count and two unnamed glyphs.
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private var indicatorSection: some View {
@@ -511,49 +495,44 @@ struct LayoutSettingsPage: View {
     }
 
     private func exceptionsContain(_ word: String) -> Bool {
-        Exceptions(words: exceptions).contains(word)
+        Exceptions(words: store.stringArray(LayoutKey.exceptions)).contains(word)
     }
 
-    /// Adds the word as typed. The verdict checks both forms, so one entry
-    /// covers the word however it ends up spelled.
+    /// Adds the word as typed, straight to the store — the list itself lives in
+    /// `LayoutLists` now, and this page holds only the count.
     ///
-    /// Sorted, so a list somebody comes back to is in an order they can search
-    /// — the blob this replaced grew by appending, and a fiftieth word landed
-    /// wherever the last one had.
+    /// The verdict checks both forms, so one entry covers the word however it
+    /// ends up spelled. Sorted, so a list somebody comes back to is in an order
+    /// they can search: the text blob this replaced grew by appending, and a
+    /// fiftieth word landed wherever the last one had.
     private func addException(_ word: String) {
         guard !exceptionsContain(word) else { return }
-        exceptions.append(word)
-        exceptions.sort()
-        write(exceptions, LayoutKey.exceptions)
+        var words = store.stringArray(LayoutKey.exceptions)
+        words.append(word)
+        words.sort()
+        write(words, LayoutKey.exceptions)
+        exceptionCount = words.count
     }
 
-    private func addTypedException() {
-        let word = newException.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !word.isEmpty else { return }
-        addException(word)
-        newException = ""
-    }
-
-    private func removeException(_ word: String) {
-        exceptions.removeAll { $0 == word }
-        write(exceptions, LayoutKey.exceptions)
-    }
-
-    private func ruleBinding(_ bundleID: String) -> Binding<Bool> {
-        Binding(get: { appRules[bundleID] ?? false },
-                set: { value in
-                    appRules[bundleID] = value
-                    write(appRules, LayoutKey.appRules)
-                })
-    }
-
-    /// A rule is added switched **off**: someone reaching for this list is
-    /// almost always trying to stop conversions somewhere, not start them.
-    private func pickApps() {
-        for bundleID in AppPicker.choose() where appRules[bundleID] == nil {
-            appRules[bundleID] = false
+    /// One window, held for as long as it is up.
+    ///
+    /// The holder is cleared by `HostWindow`'s own `onClose`, however the window
+    /// goes away — the pattern `TrashedLeftoversWindow` uses, and the reason
+    /// that type exists rather than each caller keeping a flag of its own.
+    private func openLists() {
+        if let listsWindow {
+            listsWindow.show(lists)
+            return
         }
-        write(appRules, LayoutKey.appRules)
+        let window = LayoutListsWindow { listsWindow = nil }
+        listsWindow = window
+        window.show(lists)
+    }
+
+    private var lists: LayoutLists {
+        LayoutLists(store: store, builtInBlocked: builtInBlocked) {
+            lvm.vm.send(LayoutCommand.settingsChanged)
+        }
     }
 
     private func write(_ value: Any, _ key: String) {

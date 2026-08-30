@@ -6,6 +6,13 @@ import SwiftUI
 
 /// A window the host owns on somebody else's behalf.
 ///
+/// **In `HelmUI`, not `HelmApp`, so a module can have one too.** It moved when
+/// Keyboard needed to put two growing lists somewhere other than its settings
+/// page: the alternative was a new `ModuleDescriptor` member for one module of
+/// ten, which is exactly what `headerAccessory` was and why it was deleted the
+/// same day. A shape three windows share belongs where they can all reach it —
+/// and this file names nothing from the app shell, only AppKit and SwiftUI.
+///
 /// ARCHITECTURE.md § «A window a module needs and the host owns» calls
 /// `TrashedLeftoversWindow` the pattern, and there were two hand-written copies
 /// of it — that one and `WelcomeWindow`. Both held an `NSWindow`, a closing
@@ -31,18 +38,18 @@ import SwiftUI
 /// What it does **not** own is the content or the title: subclasses hand those
 /// over, and for a module's window the title is the module's to spell
 /// (`TrashedAppOffer.windowTitle`) even though the `NSWindow` is the host's.
-@MainActor class HostWindow: NSObject, NSWindowDelegate {
+@MainActor open class HostWindow: NSObject, NSWindowDelegate {
     private(set) var window: NSWindow?
     private let onClose: () -> Void
     /// Guards `onClose` against the second call — see the note above.
     private var closed = false
 
-    init(onClose: @escaping () -> Void) {
+    public init(onClose: @escaping () -> Void) {
         self.onClose = onClose
     }
 
     /// Puts `view` up in a window this object owns and comes forward with it.
-    func present(_ view: some View, title: String,
+    public func present(_ view: some View, title: String,
                  styleMask: NSWindow.StyleMask = [.titled, .closable],
                  transparentTitlebar: Bool = false) {
         let window = NSWindow(contentViewController: NSHostingController(rootView: view))
@@ -65,11 +72,11 @@ import SwiftUI
     /// The way out a view is handed. It closes the window, which is what calls
     /// `windowWillClose` — the answer is recorded there and nowhere else, so
     /// pressing Done and pressing the red button end the same way.
-    func close() {
+    public func close() {
         window?.close()
     }
 
-    func windowWillClose(_ notification: Notification) {
+    public func windowWillClose(_ notification: Notification) {
         guard !closed else { return }
         closed = true
         NSApp.setActivationPolicy(.accessory)

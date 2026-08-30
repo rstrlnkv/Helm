@@ -335,7 +335,13 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // the honest direction for that change; it was 3 before the two cut
         // sections took two away, and this is one of them coming back on
         // purpose.
-        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 2,
+        // **And back to one text field the same day (2026-08-30).** Keyboard's
+        // two growing lists — the never-list and the per-app rules — left the
+        // settings page for a window of their own, and the «add a word» field
+        // went with them. The fixture renders pages, not the windows a page can
+        // open, so a control that moved out of view here has moved out of this
+        // count by definition.
+        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).

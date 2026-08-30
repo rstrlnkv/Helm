@@ -591,6 +591,12 @@ extension ModulePageRender.Page {
     /// back to the default floor of 9 and is measured like the rest: a real page
     /// under a floor of 1 is a page whose content can vanish entirely with
     /// nothing going red, which is the failure this floor exists to prevent.
+    /// **Layout fell again, 197 → 158, when its two lists moved into a window.**
+    /// The never-list and the per-app rules are `LayoutLists` in
+    /// `LayoutListsWindow` now; this fixture renders pages, so a section that
+    /// left the page left this count with it. 158 is a card's worth under the
+    /// 172 the page draws, by the arithmetic below.
+    ///
     /// **Layout fell from 230 to 197 when two sections were cut**, and the
     /// number moved because the page really is smaller: «When to fix» (three
     /// switches, a heading and two footnotes) and «Abbreviations» (a list, two
@@ -601,6 +607,6 @@ extension ModulePageRender.Page {
     /// left. Lowered on the measurement, not to make a red test green.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 70,
-        "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 197,
+        "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

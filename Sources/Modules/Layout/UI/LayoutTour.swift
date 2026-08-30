@@ -1,0 +1,161 @@
+import HelmRuntime
+import HelmUI
+import SwiftUI
+import Module_Layout_Engine
+
+/// What the module does, in four steps you can act on rather than read.
+///
+/// **The introduction it replaces was four sentences and a «Got it».** It said
+/// what would happen and left somebody to find the switches afterwards, which
+/// is a manual rather than a start. Every step here carries the live control it
+/// is about, so agreeing with a step *is* switching the thing on, and the
+/// second step carries the real field — type `ghbdtn`, press space, watch it.
+///
+/// **On the page, not in a window.** The lists went to a window because a
+/// button opens that one; this appears by itself on a first visit, and a view
+/// that opens a window when it appears opens one on every offscreen render too.
+/// That is not a guess: this module's introduction was a `.sheet` until
+/// somebody counted «five extra `NSWindow`s per offscreen render, and nothing
+/// of the first screen a new user meets inside the page's own layers».
+struct LayoutTour: View {
+
+    /// The gesture as it is actually bound, so every sentence naming it is
+    /// built from the binding rather than repeating a key name that can drift.
+    let gesture: String?
+    let store: NamespacedStore
+    var onSettingsChanged: () -> Void
+    var onDone: () -> Void
+
+    @State private var step = 0
+    @State private var automatic: Bool
+    @State private var fixCapitals: Bool
+    @State private var audible: Bool
+    @State private var bodyHeight: CGFloat?
+
+    init(gesture: String?, store: NamespacedStore,
+         onSettingsChanged: @escaping () -> Void, onDone: @escaping () -> Void) {
+        self.gesture = gesture
+        self.store = store
+        self.onSettingsChanged = onSettingsChanged
+        self.onDone = onDone
+        _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
+        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
+        _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
+    }
+
+    private var lastStep: Int { 3 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
+            Text(title)
+                .font(HelmText.sectionHeading)
+                // Each step's title introduces the step's own controls, so the
+                // rotor can jump between them — which is the only way somebody
+                // reading with VoiceOver knows the card changed at all.
+                .accessibilityAddTraits(.isHeader)
+            Text(explanation)
+                .font(HelmText.rowTitle)
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
+
+            content
+                // Every step is a different height, and a card that resizes by
+                // jumping is a card nobody follows. Measured and animated, the
+                // way a reveal is (ARCHITECTURE.md § Motion).
+                .helmMeasuredHeight($bodyHeight, animation: HelmMotion.disclosure)
+
+            HStack(spacing: HelmSpace.s5) {
+                if step > 0 {
+                    Button(LyStr.tourBack) {
+                        withAnimation(HelmMotion.disclosure) { step -= 1 }
+                    }
+                }
+                Spacer()
+                Text(LyStr.tourStep(step + 1, of: lastStep + 1))
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.faint)
+                    .monospacedDigit()
+                Button(step == lastStep ? LyStr.introStart : LyStr.tourNext) {
+                    if step == lastStep { onDone() }
+                    else { withAnimation(HelmMotion.disclosure) { step += 1 } }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - The four steps
+
+    private var title: String {
+        switch step {
+        case 0: return LyStr.tourWhatTitle
+        case 1: return LyStr.tryIt
+        case 2: return LyStr.tourSwitchesTitle
+        default: return LyStr.tourUndoTitle
+        }
+    }
+
+    private var explanation: String {
+        switch step {
+        case 0: return LyStr.introWhat
+        case 1: return LyStr.tourTryBody
+        case 2: return LyStr.tourSwitchesBody
+        default: return LyStr.introUndo(gesture: gesture)
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch step {
+        case 0:
+            // What it refuses is the half people are wary of, and it is the
+            // half a sentence about what it *does* cannot carry.
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                point("checkmark.shield", LyStr.introWhen)
+                point("hand.raised", LyStr.introWhere)
+            }
+        case 1:
+            // The real field, not a demonstration: it works here exactly as it
+            // does anywhere else, which is the point of putting it in a tour.
+            LayoutTestField()
+        case 2:
+            VStack(spacing: 0) {
+                toggle(LyStr.automatic, LyStr.automaticNote, $automatic, LayoutKey.automatic)
+                Divider().padding(.vertical, HelmSpace.s2)
+                toggle(LyStr.fixCapitals, LyStr.fixCapitalsNote, $fixCapitals, LayoutKey.fixCapitals)
+                Divider().padding(.vertical, HelmSpace.s2)
+                toggle(LyStr.audible, nil, $audible, LayoutKey.audible)
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    private func point(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: HelmSpace.s5) {
+            Image(systemName: symbol)
+                .frame(width: 18)
+                .foregroundStyle(HelmText.quiet)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(HelmText.rowTitle)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// A live control, not a picture of one: agreeing with the step is the
+    /// switching. The write goes where the page's writes go, and tells the
+    /// engine, so a tour left halfway still leaves what was switched switched.
+    private func toggle(_ title: String, _ note: String?,
+                        _ value: Binding<Bool>, _ key: String) -> some View {
+        HelmSettingRow(title, note: note) {
+            Toggle(title, isOn: value)
+                .labelsHidden()
+                .onChange(of: value.wrappedValue) { _, new in
+                    store.set(new, for: key)
+                    onSettingsChanged()
+                }
+        }
+    }
+}

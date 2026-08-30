@@ -8,6 +8,7 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "防止睡眠的会话现在能在 Helm 重启后继续。此前任何结束应用的操作 —— 通常是静默更新 —— 都会取消两小时的会话：菜单栏的倒计时消失，Mac 可以入睡，而且没有任何提示。现在它会带着剩余时间回来；若结束时间在 Helm 不在期间已过，会话保持结束状态。";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN 承载这台 Mac 的全部流量，不只是该应用的，而且隧道要在应用启动几秒后才建立。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "对整个应用做了一次符合 macOS 26/27 风格的设计调整：菜单栏面板采用 Liquid Glass，页面标题在任何窗口宽度下都与下方内容对齐，次要文字在变淡的同时保持可读，数字滚动而不是硬切。侧边栏按“文件”和“实用工具”分组。";
+"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "这是真实的输入框，不是演示。输入 ghbdtn，按空格，看看会怎样。";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "删除可能沿着符号链接离开你确认过的文件夹，删掉另一个文件。现在不会了。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "筛选器可隐藏你当前不查看的类型，例如系统扩展。";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "没有国家归属的布局保持字母显示，边框与旗帜同样大小。";
@@ -106,6 +107,7 @@
 "Custom icon when active" = "激活时使用自定义图标";
 "Discard and start again" = "放弃并重新开始";
 "Error" = "错误";
+"Every app but the ones Helm leaves alone" = "除 Helm 不处理的应用之外的全部";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "边打边改现在也能处理那些字母落在另一种布局标点键上的单词。这些字母此前根本没有对应的键，所以大多数俄语单词要么原样不动，要么从中间断开。";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "按住不放，或与其他键一起按时，它仍是普通的修饰键——你原本的用法照旧。";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm 无法读取用于签名规则的密钥，因此没有任何规则在运行。";
@@ -121,10 +123,13 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "有新版本时 Helm 会主动告诉你。以前它同样每天检查，但结果只显示在“关于 Helm”页面上，要自己去看才知道。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "当 macOS 没有你某个键盘布局的词典时，Helm 会说明这一点。在那里边打边改无法工作，而此前开关一直开着却什么也不改。按键修正仍然可用。";
 "Hide" = "隐藏";
+"How it works" = "工作方式";
+"If it gets one wrong" = "如果它弄错了";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "“键盘”现在也修正单字母的词。俄语中最常见的词正是单字母的 в、и、с、к、о、у、а、я，而此前它们全都不被处理。";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "“键盘”更简单了。“何时修正”的三个开关已移除：空格和标点确认一个词，Return 不确认——这本就是它们的设置，也避免聊天工具把错字发出去。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "“键盘”不再向你已经删除的文字里输入。用 Option-Delete 删除一个词后，上一次替换仍被当作可撤销，修复键会把旧词插入光标所在处。";
+"Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "“键盘”以四步导览开场，而不是一段介绍。第二步是可以真的试一试的输入框，第三步就是开关本身——同意这一步就是把它打开。";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Last fourteen days" = "最近十四天";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
@@ -134,6 +139,7 @@
 "Move to Trash…" = "移到废纸篓…";
 "No key is assigned — this change can only be put back by hand." = "未指定按键——这次替换只能手动改回。";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "未设置按键——无法按需修正选中的文字或最后一个词。请选择一个按键，或在下方设置组合键。";
+"No words set aside" = "没有排除任何词";
 "No words yet" = "还没有词";
 "Not watching" = "未在监看";
 "Nothing" = "无";
@@ -157,7 +163,9 @@
 "The language indicator below works without this permission." = "下方的语言指示器无需此权限也能使用。";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "“键盘”不得改动的词现在是一份列表，而不是一段文本：每行一个词，旁边有叉号，并有添加用的输入框。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "这台 Mac 上保存的规则不是 Helm 写入的，因此没有任何规则在运行。";
+"The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "“键盘”不得改动的词和按应用的规则移到了独立窗口。页面保留各自一行并显示数量，你仍然能看到某个词去了哪里。";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "这些词无论词典怎么判断，都会保持你输入时的样子。";
+"These are live: switch one here and it is switched." = "这些是真实开关：在这里打开就是打开了。";
 "This folder is no longer there" = "此文件夹已不存在";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "它已不存在，因此没有移动任何内容。请重新搜索以查看还剩下什么。";
@@ -168,7 +176,9 @@
 "Watching your words" = "正在留意你的输入";
 "Week" = "一周";
 "What it does" = "它做什么";
+"What you can switch on" = "可以开启什么";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
+"Words and apps" = "词与应用";
 "Year" = "一年";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "Cyan" = "青色";

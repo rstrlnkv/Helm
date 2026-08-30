@@ -123,6 +123,30 @@ enum LyStr {
     /// stopped being one.
     static var introMore: String { L("What it does") }
     static var introLess: String { L("Hide") }
+    // MARK: - The tour
+
+    static var tourTitle: String { L("How it works") }
+    static var tourBack: String { L("Back") }
+    static var tourNext: String { L("Next") }
+    /// «2 of 4». Interpolated, so it keeps its own table.
+    static func tourStep(_ index: Int, of total: Int,
+                         language: AppLanguage = AppLanguage.current) -> String {
+        L("\(index) of \(total)",
+          [.ru: "\(index) из \(total)", .es: "\(index) de \(total)",
+           .fr: "\(index) sur \(total)", .de: "\(index) von \(total)",
+           .pt: "\(index) de \(total)", .ja: "\(total)分の\(index)",
+           .zh: "第\(index)步，共\(total)步"],
+          language: language)
+    }
+    static var tourWhatTitle: String { L("What it does") }
+    static var tourSwitchesTitle: String { L("What you can switch on") }
+    static var tourSwitchesBody: String {
+        L("These are live: switch one here and it is switched.")
+    }
+    static var tourUndoTitle: String { L("If it gets one wrong") }
+    static var tourTryBody: String {
+        L("A real field, not a demonstration. Type ghbdtn, press space, and watch.")
+    }
     static var introStart: String { L("Got it") }
     static var fixCapitals: String { L("Fix a capital held too long") }
     static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
@@ -241,6 +265,42 @@ enum LyStr {
         ]
         return language == .en ? "Show \(name)" : table[language] ?? "Show \(name)"
     }
+    /// The window's own title. Not «Settings» and not the module's name — the
+    /// window holds two lists and says so, because a window titled «Keyboard»
+    /// beside a settings window titled «Keyboard» is two of one thing.
+    static var listsWindowTitle: String { L("Words and apps") }
+    /// The rows on the page that open the window, each carrying its own count
+    /// so the page still answers «how many» without it being opened — which is
+    /// the one thing a list behind a button owes the person who put a word
+    /// there by pressing «Never this word» somewhere else.
+    ///
+    /// The counted nouns come from `Plural`, which already declines them in all
+    /// eight languages; the empty case is its own sentence, because «0 words»
+    /// is a count where «none» is a state.
+    static func exceptionsRow(_ count: Int,
+                              language: AppLanguage = AppLanguage.current) -> String {
+        guard count > 0 else { return L("No words set aside", language: language) }
+        let table: [AppLanguage: String] = [
+            .ru: Plural.russian(count, "слово", "слова", "слов"),
+            .es: count == 1 ? "palabra" : "palabras",
+            .fr: count <= 1 ? "mot" : "mots",
+            .de: count == 1 ? "Wort" : "Wörter",
+            .pt: count == 1 ? "palavra" : "palavras",
+            .ja: "\(count)語",
+            .zh: "\(count)个词",
+        ]
+        let english = count == 1 ? "word" : "words"
+        guard language != .en, let counted = table[language] else { return "\(count) " + english }
+        return language == .ja || language == .zh ? counted : "\(count) " + counted
+    }
+
+    static func appsRow(_ count: Int,
+                        language: AppLanguage = AppLanguage.current) -> String {
+        guard count > 0 else { return L("Every app but the ones Helm leaves alone",
+                                        language: language) }
+        return Plural.apps(count, language: language.rawValue)
+    }
+
     static var neverThisWord: String { L("Never this word") }
     static var noExceptions: String { L("No words yet") }
     /// The field's placeholder and its VoiceOver name at once — a placeholder

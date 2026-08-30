@@ -73,6 +73,8 @@ enum Changelog {
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
                 ChangeItem(kind: .upd, text: L("The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one.")),
                 ChangeItem(kind: .upd, text: L("The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them.")),
+                ChangeItem(kind: .new, text: L("The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went.")),
+                ChangeItem(kind: .new, text: L("Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on.")),
                 ChangeItem(kind: .fix, text: L("A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good.")),
                 ChangeItem(kind: .new, text: L("Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone.")),
                 ChangeItem(kind: .fix, text: L("A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes.")),

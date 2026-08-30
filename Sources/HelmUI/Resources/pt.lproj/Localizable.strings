@@ -8,6 +8,7 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "Uma sessão de Manter Acordado agora sobrevive ao reinício do Helm. Antes, qualquer coisa que encerrasse o app — geralmente uma atualização silenciosa — cancelava uma sessão de duas horas: a contagem desaparecia da barra de menus, o Mac podia dormir e nada avisava. Ela volta com o tempo que restava, e uma sessão cujo fim passou enquanto o Helm esteve fora permanece encerrada.";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "Uma VPN leva todo o tráfego deste Mac, não só o desse app, e o túnel leva alguns segundos para subir depois que ele abre.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "Uma passagem de design por todo o app, no idioma do macOS 26/27: Liquid Glass no painel, títulos alinhados com o conteúdo em qualquer largura, texto atenuado que continua legível e números que rolam em vez de cortar. A barra lateral agrupa em Arquivos e Utilitários.";
+"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "Um campo real, não uma demonstração. Escreva ghbdtn, carregue no espaço e veja.";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "Uma remoção podia seguir um link simbólico para fora da pasta que você confirmou e apagar outro arquivo. Não pode mais.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "Um filtro oculta os tipos que você não está revisando — extensões do sistema, por exemplo.";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "Um layout sem país mantém as letras, numa moldura do tamanho de uma bandeira.";
@@ -106,6 +107,7 @@
 "Custom icon when active" = "Ícone personalizado quando ativo";
 "Discard and start again" = "Descartar e recomeçar";
 "Error" = "Erro";
+"Every app but the ones Helm leaves alone" = "Todos os apps exceto os que o Helm não toca";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "A correção ao digitar funciona em palavras cujas letras ficam em teclas de pontuação do outro leiaute. Essas letras não tinham tecla alguma, então a maioria das palavras russas ficava intacta ou era cortada ao meio.";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Mantida pressionada, ou junto com outra tecla, continua sendo um modificador comum: tudo o que você já faz com ela segue funcionando.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "O Helm não consegue ler a chave que sela as suas regras, por isso nenhuma está a ser executada.";
@@ -121,10 +123,13 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "O Helm agora avisa quando há uma nova versão. A verificação já acontecia todos os dias, mas a resposta ficava na página Sobre o Helm, à espera de que você fosse vê-la.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "O Helm avisa quando o macOS não tem dicionário para um dos seus leiautes. A correção ao digitar não funciona ali, e até agora a chave ficava ligada sem corrigir nada. A correção pela tecla continua funcionando.";
 "Hide" = "Ocultar";
+"How it works" = "Como funciona";
+"If it gets one wrong" = "Se errar";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "O Teclado corrige palavras de uma letra. Em russo as palavras mais comuns têm uma letra — в, и, с, к, о, у, а, я — e até agora ficavam todas intactas.";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "O Teclado voltou ao painel da barra de menus, nos três tamanhos. O grande desenha as últimas duas semanas dia a dia, diz quanta digitação poupou aproximadamente e traz os botões de período, a última alteração com a opção de nunca mais mexer nessa palavra e a chave de corrigir enquanto você digita.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "O Teclado ficou mais simples. Os três interruptores de “Quando corrigir” foram removidos: espaço e pontuação confirmam uma palavra, Return não — que era como estavam e o que evita que um chat envie o seu erro.";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "O Teclado já não escreve num texto que você já tinha apagado. Apagar uma palavra com Opção-Delete deixava a última alteração como desfazível, e a tecla de correção punha a palavra antiga onde estivesse o cursor.";
+"Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "O Teclado abre com um percurso de quatro passos em vez de uma introdução. O passo dois é um campo real para experimentar, o três são os próprios interruptores: concordar com o passo é ativá-lo.";
 "Last change (undone)" = "Última alteração (desfeita)";
 "Last fourteen days" = "Últimos catorze dias";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema. Só os restos podem ir para o Lixo.";
@@ -134,6 +139,7 @@
 "Move to Trash…" = "Mover para o Lixo…";
 "No key is assigned — this change can only be put back by hand." = "Nenhuma tecla definida — esta alteração só pode ser desfeita à mão.";
 "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Sem tecla: nada corrige a seleção nem a última palavra sob demanda. Escolha uma, ou defina uma combinação abaixo.";
+"No words set aside" = "Nenhuma palavra reservada";
 "No words yet" = "Ainda sem palavras";
 "Not watching" = "Não observa";
 "Nothing" = "Nada";
@@ -157,7 +163,9 @@
 "The language indicator below works without this permission." = "O indicador de idioma abaixo funciona sem esta permissão.";
 "The list of words Keyboard must never touch is a list now, not a block of text — a word a line with a cross beside it, and a field to add one." = "A lista de palavras que o Teclado nunca deve mexer agora é uma lista, não um bloco de texto: uma palavra por linha com uma cruz ao lado e um campo para adicionar.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "As regras guardadas neste Mac não foram escritas pelo Helm, por isso nenhuma está a ser executada.";
+"The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "As palavras que o Teclado nunca deve mexer e as regras por app têm uma janela própria. A página mantém uma linha para cada uma com a contagem, para continuar a ver onde foi parar uma palavra.";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "Estas ficam exatamente como você as digitou, pense o dicionário o que pensar.";
+"These are live: switch one here and it is switched." = "São reais: ative aqui e fica ativado.";
 "This folder is no longer there" = "Esta pasta não existe mais";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Isto já não existe, então nada foi movido. Busque de novo para ver o que restou.";
@@ -168,7 +176,9 @@
 "Watching your words" = "De olho nas suas palavras";
 "Week" = "Semana";
 "What it does" = "O que faz";
+"What you can switch on" = "O que pode ativar";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Com isto desligado e o aviso em “Nada”, uma regra que conecta ou derruba um túnel não dá sinal algum.";
+"Words and apps" = "Palavras e apps";
 "Year" = "Ano";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "O macOS não está permitindo notificações do Helm, então o nome aparece na barra de menus.";
 "Cyan" = "Ciano";
