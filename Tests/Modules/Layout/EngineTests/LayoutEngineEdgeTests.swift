@@ -78,7 +78,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: EdgeTranslation(table: table),
                                   spell: EdgeSpell(), secure: context,
-                                  triggers: triggers, settings: settings, vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                  triggers: triggers, settings: settings)
         engine.activate()
         return engine
     }
@@ -217,17 +217,23 @@ final class LayoutEngineEdgeTests: XCTestCase {
                        "and it must not undo into an app either")
     }
 
-    /// A trigger the user switched off stays off across a settings reload —
-    /// the store is the source of truth once it has been written to.
+    /// A choice the user made stays made across a settings reload — the store
+    /// is the source of truth once it has been written to.
+    ///
+    /// It used to be asserted over `onSpace`, one of three trigger switches
+    /// that no longer exist: the engine takes `ConversionTriggers.default` and
+    /// reads no key for them, precisely so a value stored by an older build
+    /// cannot outlive the control that could change it. «Fix as I type» carries
+    /// the same claim and is a setting the page still has.
     func testAStoredChoiceSurvivesTheReload() async throws {
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: "layout", backing: backing)
-        store.set(false, for: "onSpace")
+        store.set(false, for: LayoutKey.automatic)
         let engine = engine(settings: store, table: ["ghbdtn": "привет"])
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
         tap.type("ghbdtn")
         tap.send(.space)
-        XCTAssertTrue(typing.performed.isEmpty, "the user switched the space off")
+        XCTAssertTrue(typing.performed.isEmpty, "the user switched fixing as you type off")
     }
 }
 
@@ -267,7 +273,7 @@ final class SettingsAtStartTests: XCTestCase {
                                   translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
                                   spell: EdgeSpell(), secure: EdgeContext(),
                                   settings: NamespacedStore(namespace: "layout",
-                                                            backing: InMemoryKeyValueStore()), vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                                            backing: InMemoryKeyValueStore()))
         engine.activate()
         // No `settingsChanged`: this is the launch, not a visit to the page.
 

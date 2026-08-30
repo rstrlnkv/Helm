@@ -2,7 +2,8 @@ import Foundation
 
 /// What the module has put right, by day, so the figure outlives a launch.
 ///
-/// `DailyCount` holds one day in memory, so the page's one figure went back to
+/// The day counter this replaced held one day in memory, so the page's one
+/// figure went back to
 /// zero at every launch — and the silent updater relaunches the app, which
 /// means «words fixed today» could be zero at four in the afternoon for
 /// somebody who had used it all morning.

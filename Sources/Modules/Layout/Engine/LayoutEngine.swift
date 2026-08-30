@@ -12,15 +12,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// upward — the same direction the command enums travel.
     public static let moduleID = "layout"
 
-    /// Where the salt for the personal vocabulary lives.
-    ///
-    /// A new account, never one already deployed: a keychain item that has
-    /// shipped stays where it is, and a new setting takes a new account rather
-    /// than moving somebody else's. Read lazily and off the launch path — see
-    /// `VocabularyStore`.
-    public static let saltKeychain = KeychainSealKey(service: "com.helm.layout",
-                                                    account: "vocabulary-salt",
-                                                    category: "layout")
 
     private let tap: KeyTapPort
     private let typing: TypingPort
@@ -61,14 +52,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var scope: AppScope
     private var exceptions: Exceptions
     private let selection: SelectionPort?
-    private var autoReplace: AutoReplace
     private var fixCapitals: Bool
     private var automatic: Bool
     private var triggers: ConversionTriggers
     private var audible: Bool
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
-    /// The count that outlives a launch. `DailyCount` held one day in memory,
+    /// The count that outlives a launch. The day counter this replaced held one
+    /// day in memory,
     /// so the page's figure went back to zero at every launch — and the silent
     /// updater relaunches the app, which put «0 fixed today» in front of
     /// somebody who had used it all morning.
@@ -76,7 +67,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// What the person taught the module by putting words back. Answers false
     /// until its key arrives, which is the module as it was before it existed —
     /// never a wait, and never a keychain dialog on the launch path.
-    private let vocabulary: VocabularyStore
     /// Installed layouts macOS has no dictionary for. Asked once at activation
     /// rather than per word: the probe costs about 150 µs and the per-word
     /// decision runs on the tap's own thread, where it already spends 476.
@@ -106,7 +96,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 announcer: AnnouncePort? = nil,
                 selection: SelectionPort? = nil,
                 ledger: LedgerStore = LedgerStore(),
-                autoReplace: [AutoReplace.Entry] = [],
                 fixCapitals: Bool = false,
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
@@ -114,16 +103,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 triggers: ConversionTriggers = .default,
                 audible: Bool = false,
                 settings: NamespacedStore? = nil,
-                transport: LocalTransport = LocalTransport(),
-                /// **No default, deliberately.** A production port behind a
-                /// default argument is the one case the compiler cannot help
-                /// with, and this module has already paid for it: eleven engine
-                /// tests once took the Mac's real keychain and rolled the
-                /// owner's Autopilot back. Named here, forgetting is a build
-                /// error rather than an item in somebody's login keychain.
-                /// Last in the list so every call site names it at the end,
-                /// where the compiler points.
-                vocabulary: VocabularyStore) {
+                transport: LocalTransport = LocalTransport()) {
         self.tap = tap
         self.typing = typing
         self.sources = sources
@@ -134,8 +114,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.announcer = announcer
         self.selection = selection
         self.ledger = ledger
-        self.vocabulary = vocabulary
-        self.autoReplace = AutoReplace(entries: autoReplace)
         self.fixCapitals = fixCapitals
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
@@ -160,9 +138,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // refuses before there is anything to refuse.
         reloadSettings()
         refreshDictionarySupport()
-        // Off the launch path on purpose: this reads the login keychain, and on
-        // an ad-hoc signed build that is a modal dialog on every install.
-        vocabulary.warm()
         startTap()
         // Permission is usually granted while Helm is already running — the
         // note in settings sends people to System Settings and they come back.
@@ -373,14 +348,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         convert(completed.word, trailing: completed.ending, force: false)
     }
 
-    /// An abbreviation or a held capital. True when the word was dealt with and
-    /// the layout conversion must not also look at it.
+    /// A capital held too long. True when the word was dealt with and the
+    /// layout conversion must not also look at it.
+    ///
+    /// It used to expand abbreviations as well, which is why it is a separate
+    /// path from `convert` at all: two edits to one word would be one edit the
+    /// undo shortcut cannot take back in a single press.
     private func replaceWord(_ completed: TypingBuffer.Completion) -> Bool {
         lock.lock()
-        let expansion = autoReplace.expansion(for: completed.word)
-        let habit = fixCapitals ? TypingHabits.corrected(completed.word) : nil
+        let replacement = fixCapitals ? TypingHabits.corrected(completed.word) : nil
         lock.unlock()
-        guard let replacement = expansion ?? habit else { return false }
+        guard let replacement else { return false }
 
         let bundleID = secure.frontmostBundleID()
         lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
@@ -701,11 +679,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lastEvent = record.event
         lastEventUndone = true
         lock.unlock()
-        // **The one thing that teaches the module.** Putting a word back is
-        // somebody saying «I meant what I typed» about that exact word — a
-        // fact, not an inference from how often they type it. Twice before it
-        // becomes a rule; `PersonalVocabulary` holds that.
-        vocabulary.putBack(record.event.before)
         emitState()
     }
 
@@ -742,20 +715,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         scope = AppScope(rules: rules)
         audible = settings.bool(LayoutKey.audible, default: false)
         fixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
-        // Decoded here rather than in the page: the engine is the only thing
-        // that acts on the table, so it is the thing that has to have the
-        // current one — a page that pushed entries would leave the engine
-        // holding yesterday's list whenever the window had never been opened.
-        if let data = settings.data(LayoutKey.autoReplace),
-           let entries = try? JSONDecoder().decode([AutoReplace.Entry].self, from: data) {
-            autoReplace = AutoReplace(entries: entries)
-        } else {
-            autoReplace = AutoReplace(entries: [])
-        }
         tapKey = ModifierTap(key: TapKey.from(settings.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
-        triggers = ConversionTriggers(onSpace: settings.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace),
-                                      onReturn: settings.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn),
-                                      onPunctuation: settings.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation))
+        // **Not read from the store any more, and that is the point.** The three
+        // switches that wrote these keys are gone, so a person who had turned
+        // all three off before this build would be left with an inert module
+        // and nothing on the page to turn back on — a stored value outliving
+        // the only control that could change it.
+        triggers = .default
         lock.unlock()
         emitState()
     }

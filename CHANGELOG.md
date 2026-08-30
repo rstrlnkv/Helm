@@ -13,6 +13,9 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **UPD** Keyboard: the three “When to fix” switches are gone — space and punctuation confirm a word, Return does not.
+- **UPD** Keyboard: abbreviations removed. macOS ships the same thing in Text Replacement and syncs it across devices.
+- **UPD** Keyboard: the page shows both figures at once, and the metric switch in the window header is gone.
 - **NEW** Keyboard is back in the menu-bar panel in all three tile sizes — the last fortnight day by day, the typing it saved, the period buttons, «never this word», and the switch for fixing as you type.
 - **NEW** The Keyboard page opens with what it has put right over a period you choose — today, a week, a month, a year or all of it — and how much typing that saved. The count now outlives a relaunch.
 - **NEW** Helm tells you when a new version is out — the daily check's answer used to sit on the About page, waiting for you to go and find it.

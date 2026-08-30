@@ -17,7 +17,7 @@ final class TheNeverListOutranksTheGestureTests: XCTestCase {
             spell: FakeSpell(valid: ["привет"]),
             secure: FakeSecure(),
             exceptions: exceptions,
-            automatic: false, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            automatic: false)
         engine.activate()
         return engine
     }

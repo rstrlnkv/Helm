@@ -87,7 +87,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
     /// The initialiser arguments here are deliberately the *opposite* of what
     /// each test writes to the store.
     private func engine(settings: NamespacedStore,
-                        autoReplace: [AutoReplace.Entry] = [],
                         fixCapitals: Bool = false,
                         rules: [String: Bool] = [:],
                         exceptions: [String] = [],
@@ -99,10 +98,10 @@ final class LayoutEngineLaunchTests: XCTestCase {
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: LaunchTranslation(), spell: LaunchSpell(),
                                   secure: context, sound: sound,
-                                  autoReplace: autoReplace, fixCapitals: fixCapitals,
+ fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
                                   automatic: automatic, triggers: triggers,
-                                  audible: audible, settings: settings, vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                  audible: audible, settings: settings)
         engine.activate()
         return engine
     }
@@ -131,22 +130,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertTrue(typing.performed.isEmpty, "the engine converted with automatic off")
-        withExtendedLifetime(engine) {}
-    }
-
-    /// Both directions of the trigger table, in one engine: the space the user
-    /// switched off must not convert and the Return they switched on must.
-    func testTheTriggerTableIsReadAtLaunch() {
-        let engine = engine(settings: store {
-            $0.set(false, for: LayoutKey.onSpace)
-            $0.set(true, for: LayoutKey.onReturn)
-        }, triggers: ConversionTriggers(onSpace: true, onReturn: false, onPunctuation: true))
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertTrue(typing.performed.isEmpty, "the space was switched off")
-        tap.type("ghbdtn")
-        tap.send(.newline)
-        XCTAssertEqual(typing.performed.count, 1, "Return was switched on")
         withExtendedLifetime(engine) {}
     }
 
@@ -203,21 +186,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
         withExtendedLifetime(engine) {}
     }
 
-    /// The abbreviation table is decoded in the engine rather than pushed by
-    /// the page, precisely so that a window nobody opened cannot leave the
-    /// engine holding yesterday's list.
-    func testTheAbbreviationTableIsReadAtLaunch() {
-        let entries = [AutoReplace.Entry(from: "brb", to: "be right back")]
-        let data = try? JSONEncoder().encode(entries)
-        let engine = engine(settings: store { $0.set(data!, for: LayoutKey.autoReplace) },
-                            autoReplace: [])
-        tap.type("brb")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.first?.insert, "be right back ",
-                       "the stored abbreviations were not read at launch")
-        withExtendedLifetime(engine) {}
-    }
-
     // MARK: - The defaults a fresh install runs on
 
     /// The documented default beats the initialiser.
@@ -260,7 +228,9 @@ final class LayoutEngineLaunchTests: XCTestCase {
     func testAChangeStillArrivesThroughTheTransport() async throws {
         let settings = store()
         let engine = engine(settings: settings)
-        settings.set(false, for: LayoutKey.onSpace)
+        // Over «Fix as I type» rather than over a trigger switch: the three of
+        // those are gone, and the engine reads no key for them any more.
+        settings.set(false, for: LayoutKey.automatic)
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
         tap.type("ghbdtn")
         tap.send(.space)

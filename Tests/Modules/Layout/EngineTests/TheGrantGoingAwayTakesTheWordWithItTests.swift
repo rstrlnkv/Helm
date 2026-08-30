@@ -49,7 +49,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure)
         engine.activate()
         return engine
     }

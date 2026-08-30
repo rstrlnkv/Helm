@@ -87,7 +87,7 @@ final class GestureAfterNavigationTests: XCTestCase {
         typing = ArrowTyping(); context = ArrowContext(); tap = ArrowTap()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: ArrowSources(),
                                   translation: ArrowTranslation(), spell: ArrowSpell(),
-                                  secure: context, vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                  secure: context)
         engine.activate()
         return engine
     }

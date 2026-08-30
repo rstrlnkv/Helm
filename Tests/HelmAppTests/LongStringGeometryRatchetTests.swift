@@ -321,7 +321,14 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // changes met in this merge and each moved a different key, which is why
         // both numbers below are re-measured here rather than inherited from
         // either side.
-        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
+        // **Three switches and two fields left with Keyboard's two cut sections
+        // (2026-08-30).** «When to fix» was three toggles that could be set to a
+        // combination the page then apologised for in orange; «Abbreviations»
+        // was a list with an abbreviation field, an expansion field and an Add
+        // button. Both counts fall, which is the half of the message below that
+        // warns about a page quietly stopping drawing — here it is the intended
+        // half, and the numbers are re-measured rather than nudged.
+        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).

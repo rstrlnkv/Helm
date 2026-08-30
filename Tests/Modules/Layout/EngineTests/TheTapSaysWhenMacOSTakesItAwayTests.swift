@@ -34,7 +34,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
                      translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
                      secure: FakeSecure(),
                      settings: NamespacedStore(namespace: LayoutEngine.moduleID,
-                                               backing: InMemoryKeyValueStore()), vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                               backing: InMemoryKeyValueStore()))
     }
 
     /// The last state the engine published, which is what the settings page

@@ -71,6 +71,9 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .upd, text: L("Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo.")),
+                ChangeItem(kind: .upd, text: L("Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices.")),
+                ChangeItem(kind: .upd, text: L("The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone.")),
                 ChangeItem(kind: .new, text: L("Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type.")),
                 ChangeItem(kind: .new, text: L("The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead.")),
                 ChangeItem(kind: .new, text: L("Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it.")),

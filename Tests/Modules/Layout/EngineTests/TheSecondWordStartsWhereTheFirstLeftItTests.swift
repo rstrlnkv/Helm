@@ -30,7 +30,7 @@ final class TheSecondWordStartsWhereTheFirstLeftItTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет", "руддщ": "hello"]),
             spell: FakeSpell(valid: ["привет", "hello"]),
-            secure: FakeSecure(), automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: FakeSecure(), automatic: true)
         engine.activate()
         return engine
     }

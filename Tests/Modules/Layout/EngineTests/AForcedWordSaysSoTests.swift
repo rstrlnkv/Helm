@@ -16,7 +16,7 @@ final class AForcedWordSaysSoTests: XCTestCase {
             tap: tap, typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), automatic: automatic, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: FakeSecure(), automatic: automatic)
         engine.activate()
         return engine
     }

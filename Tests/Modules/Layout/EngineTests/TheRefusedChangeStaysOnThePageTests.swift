@@ -18,7 +18,7 @@ final class TheRefusedChangeStaysOnThePageTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: FakeSecure(), automatic: true)
         engine.activate()
 
         tap.type("ghbdtn"); tap.space()

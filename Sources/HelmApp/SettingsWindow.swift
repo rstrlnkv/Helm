@@ -542,14 +542,6 @@ private struct ModuleDetailView: View {
                 // Only for a module that can say. Most answer nil, and nil
                 // draws nothing rather than «Not active» for a module with no
                 // notion of running at all.
-                // The page's own control, before the badge: what the figure is
-                // showing sits beside the name, where the figure's own question
-                // is asked. Eight of nine modules answer nil.
-                if let live = host.liveModule(id),
-                   let accessory = descriptor.headerAccessory(live.vm) {
-                    let _ = activityRevision
-                    accessory
-                }
                 if let live = host.liveModule(id),
                    let activity = descriptor.activity(live.vm) {
                     // Read so this branch depends on it; the value means

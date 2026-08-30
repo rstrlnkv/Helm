@@ -98,46 +98,27 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     private var sources = StaleSources()
     private var selection = StaleSelection()
 
-    private func engine(autoReplace: [AutoReplace.Entry] = [],
-                        fixCapitals: Bool = false) -> LayoutEngine {
+    private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
         typing = StaleTyping(); context = StaleContext()
         tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: StaleTranslation(), spell: StaleSpell(),
                                   secure: context, selection: selection,
-                                  autoReplace: autoReplace, fixCapitals: fixCapitals, vocabulary: VocabularyStore(keys: SilentSealKey()))
+ fixCapitals: fixCapitals)
         engine.activate()
         return engine
     }
 
     // MARK: - A word that was replaced by something else
 
-    /// An abbreviation expanded, so the field no longer holds the word the
-    /// buffer reported — it holds the expansion. The engine remembers the
-    /// abbreviation anyway, and the gesture then converts it: `brb` was three
-    /// characters, `be right back` is thirteen, and four backspaces land in the
-    /// middle of the sentence that replaced it.
+    /// A held capital was corrected, so the field holds `Hello` and the engine
+    /// still remembers `HEllo`. Two edits to one word is the thing this order
+    /// of operations exists to prevent.
     ///
-    /// The module's own rule is that a word which expanded must never also be
-    /// converted. `handle` honours it in the same breath — and then leaves the
-    /// word where a keystroke later can pick it up.
-    func testAWordThatExpandedIsNotStillThereToConvert() {
-        let engine = engine(autoReplace: [AutoReplace.Entry(from: "brb", to: "be right back")])
-        tap.type("brb")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.count, 1, "precondition: the abbreviation expanded")
-        XCTAssertEqual(typing.performed[0].insert, "be right back ")
-
-        // The field now reads "be right back ". Nothing in it is `brb`.
-        engine.convertLastWord()
-        XCTAssertEqual(typing.performed.count, 1,
-                       "the gesture typed a conversion of a word the expansion had already "
-                       + "replaced")
-    }
-
-    /// The same, one door down: a held capital was corrected, so the field
-    /// holds `Hello` and the engine still remembers `HEllo`. Two edits to one
-    /// word is the thing this order of operations exists to prevent.
+    /// It had a twin over abbreviations — `brb` → `be right back`, where four
+    /// backspaces landed in the middle of the sentence that replaced it. That
+    /// feature is gone; the rule it shared with this one is not, and this is
+    /// now the only test holding it.
     func testACorrectedCapitalIsNotStillThereToConvert() {
         let engine = engine(fixCapitals: true)
         tap.type("HEllo")

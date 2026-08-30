@@ -13,12 +13,9 @@
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "Une disposition sans pays garde ses lettres, dans un cadre de la taille d’un drapeau.";
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "Nouvelle allure dans toute l’app : chaque écran s’ouvre sur son icône et ses chiffres clés, sur une mise en page unifiée.";
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "Une règle est une décision prise une fois et appliquée ensuite toujours : elle est donc montrée avant d’être activée.";
-"A short token you type often, and what it stands for. It expands when you finish the word." = "Une abréviation que vous tapez souvent, et ce qu’elle veut dire. Elle se développe quand le mot est fini.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Une sortie de l’analyse dans Disque : le module s’ouvre sur ce qu’il a mesuré en dernier, et « Choisir autre chose… » efface l’écran et oublie l’analyse enregistrée.";
-"A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "Le mot est vérifié quand vous le terminez ainsi. Déplacer le curseur ou cliquer ailleurs ne convertit jamais : vous êtes déjà parti.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Un mot n’est changé que s’il n’en est pas un tel quel et en devient un une fois converti. Ce qui est valide reste.";
-"Abbreviation" = "Abréviation";
-"Abbreviations" = "Abréviations";
+"Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "Les abréviations quittent le Clavier. macOS propose la même chose dans Remplacement de texte et la synchronise entre vos appareils.";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "Abréviations. Un raccourci que vous tapez souvent et ce qu’il devient, dès que le mot est terminé. Un mot développé n’est jamais converti en plus. Et, en option, la seule faute de frappe que Helm corrige sans hésiter : « BOnjour » → « Bonjour » — jamais un mot en capitales voulu, jamais un mot contenant un chiffre.";
 "About Helm" = "À propos de Helm";
 "Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”." = "L’accès est lié à une copie précise de Helm : accordez-le de nouveau après chaque mise à jour — retirez Helm avec « − », puis ajoutez-le avec « + ».";
@@ -26,7 +23,6 @@
 "Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing." = "L’accessibilité est désactivée. Sans elle Helm ne voit pas ce que vous tapez : ni correction clavier ni mouvement du pointeur.";
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "L’Accessibilité figure désormais parmi les autorisations, et Rester éveillé le signale au niveau du réglage du pointeur : sans elle, macOS ignore le mouvement et l’interrupteur ne faisait rien.";
 "Active" = "Actif";
-"Add" = "Ajouter";
 "Add an app, and Helm connects a VPN when it launches." = "Ajoutez une app, et Helm connecte un VPN à son ouverture.";
 "Add another in System Settings and Helm picks it up." = "Ajoutez-en une autre dans les Réglages Système et Helm la reprend.";
 "Add app…" = "Ajouter une app…";
@@ -40,7 +36,6 @@
 "Always" = "Toujours";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Une app ne peut plus revendiquer les fichiers des autres comme ses résidus en se donnant un nom inhabituel.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Une app qui garde le Mac éveillé peut désormais être limitée : seulement avec un écran externe, seulement sur secteur, ou les deux.";
-"An estimate: about 3 seconds a word — noticing, clearing, switching, typing it again." = "Une estimation : environ 3 secondes par mot — remarquer, effacer, changer, retaper.";
 "Another app already uses this combination, so it does nothing here." = "Une autre app utilise déjà cette combinaison ; ici elle ne fait rien.";
 "Another rule takes these files" = "Une autre règle prend ces fichiers";
 "Anything that needs a system permission now says so where you turn it on — Disk, App Uninstaller, Login Items and Keep Awake all warn before they can disappoint you." = "Tout ce qui exige une autorisation système le signale là où vous l’activez — Disque, Désinstallation, Ouverture et Rester éveillé.";
@@ -106,7 +101,6 @@
 "Discard and start again" = "Supprimer et recommencer";
 "Error" = "Erreur";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "La correction à la frappe fonctionne sur les mots dont les lettres occupent des touches de ponctuation dans l’autre disposition. Ces lettres n’avaient aucune touche, donc la plupart des mots russes restaient intacts ou se coupaient en deux.";
-"Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "Corriger ce que vous tapez demande l’Accessibilité : sans elle, Helm ne voit aucune frappe et ne change rien. L’indicateur de langue ci-dessous fonctionne sans elle.";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Maintenue ou combinée à une autre touche, elle reste un modificateur ordinaire : tout ce que vous en faites déjà continue de fonctionner.";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm ne peut pas lire la clé qui scelle ses règles : aucune ne s’exécute.";
 "Helm cannot read this folder" = "Helm ne peut pas lire ce dossier";
@@ -121,6 +115,7 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm vous prévient maintenant quand une nouvelle version est disponible. La vérification avait déjà lieu chaque jour, mais la réponse restait sur la page À propos de Helm, en attendant que vous alliez la voir.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm signale quand macOS n’a pas de dictionnaire pour l’une de vos dispositions. La correction à la frappe ne peut pas y fonctionner, et jusqu’ici l’interrupteur restait activé sans rien corriger. La correction à la touche fonctionne toujours.";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Le Clavier revient dans le panneau de la barre des menus, dans les trois tailles. La grande dessine les quinze derniers jours au jour le jour, indique la frappe économisée à peu près, et porte les boutons de période, le dernier changement avec de quoi ne plus jamais toucher ce mot, et l’interrupteur de correction à la frappe.";
+"Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "Le Clavier est plus simple. Les trois interrupteurs « Quand corriger » ont disparu : l’espace et la ponctuation confirment un mot, Return non — ce à quoi ils étaient réglés, et ce qui empêche une messagerie d’envoyer votre faute.";
 "Last change (undone)" = "Dernier changement (annulé)";
 "Last fourteen days" = "Quatorze derniers jours";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agents de lancement, fichiers de réglages, modules et extensions système. Seuls les restes peuvent aller à la corbeille.";
@@ -133,7 +128,6 @@
 "Nothing" = "Rien";
 "Nothing has needed putting right so far." = "Rien n’a eu besoin d’être corrigé jusqu’ici.";
 "Nothing is selected for you: macOS loads every item in this list." = "Rien n’est sélectionné : macOS charge chaque élément de cette liste.";
-"Nothing is switched on — words will not be fixed as you type." = "Rien n’est activé — les mots ne seront pas corrigés pendant la frappe.";
 "Only an administrator can move this" = "Seul un administrateur peut le déplacer";
 "Option" = "Option";
 "Other…" = "Autre…";
@@ -147,6 +141,7 @@
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Appuyer sur Contrôle seule met aussi en pause la voix de VoiceOver. Si vous utilisez VoiceOver, choisissez une autre touche.";
 "Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "Les terminaux et gestionnaires de mots de passe sont désactivés au départ : là, un mot qui semble faux est souvent exactement le bon. Activez celui que vous voulez, ou ajoutez votre propre app.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "La page Clavier s’ouvre sur ce qu’elle a corrigé, sur la période de votre choix — aujourd’hui, une semaine, un mois, une année ou tout — et le temps de frappe ainsi épargné. Rien pour l’instant n’est pas un zéro : le module le dit.";
+"The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "La page du Clavier affiche les deux chiffres à la fois : combien de mots corrigés, et ce que cela représente en frappe. L’interrupteur de l’en-tête qui n’en montrait qu’un a disparu.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "La pastille à côté du nom de Clavier n’indique plus qu’il est actif alors que la page en dessous le dit en pause. Devant un champ de mot de passe, le module se tait volontairement, et les deux endroits le disent maintenant.";
 "The language indicator below works without this permission." = "L’indicateur de langue ci-dessous fonctionne sans cette autorisation.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Les règles enregistrées sur ce Mac n’ont pas été écrites par Helm : aucune ne s’exécute.";
@@ -155,14 +150,11 @@
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Recherchez à nouveau pour voir ce qui reste.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Ce fichier n’est plus là où Helm l’a trouvé — rien n’a été déplacé. Réanalysez pour voir où il est maintenant.";
 "This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Ce fichier n’est plus là où Helm l’a trouvé — rien n’a été déplacé. Recherchez à nouveau pour voir où il est maintenant.";
-"Time saved" = "Temps gagné";
 "Today" = "Aujourd’hui";
 "Warning" = "Avertissement";
 "Watching your words" = "Surveille vos mots";
 "Week" = "Semaine";
-"What the figure shows" = "Ce que montre le chiffre";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Avec ceci désactivé et l’avis réglé sur « Rien », une règle qui connecte ou coupe un tunnel ne donne aucun signe.";
-"Words put right" = "Mots corrigés";
 "Year" = "Année";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS n’autorise pas les notifications de Helm : le nom apparaît donc dans la barre des menus.";
 "Cyan" = "Cyan";
@@ -347,7 +339,6 @@
 "New rule" = "Nouvelle règle";
 "Next" = "Suivant";
 "No VPNs" = "Aucun VPN";
-"No abbreviations yet" = "Pas encore d’abréviations";
 "No access" = "Pas d’accès";
 "No applications found." = "Aucune app trouvée.";
 "No applications match this search." = "Aucune app ne correspond à cette recherche.";
@@ -396,7 +387,6 @@
 "Panel" = "Panneau";
 "Panel toggles show the real state right after launch." = "Les interrupteurs du panneau montrent l’état réel dès le lancement.";
 "Panels and cards now look the same on every screen: one border-free container, and the figures at the top of a module line up with the settings below them." = "Panneaux et cartes ont le même aspect partout : un seul conteneur sans bordure, et les chiffres en haut s’alignent sur les réglages en dessous.";
-"Paused" = "En pause";
 "Paused — a password field is in front, and Helm never reads one." = "En pause — un champ de mot de passe est au premier plan, et Helm n’en lit jamais.";
 "Per-app automation" = "Automatisation par app";
 "Per-app rules read as one line each: the app, when the rule applies, and nothing else. Both Keep Awake and VPN." = "Les règles par app tiennent sur une ligne : l’app, quand la règle s’applique, rien d’autre. Dans Rester éveillé comme dans VPN.";
@@ -486,7 +476,6 @@
 "Skip" = "Ignorer";
 "Smaller items" = "Petits éléments";
 "Sort into subfolder" = "Ranger en sous-dossier";
-"Stands for" = "Signification";
 "Start" = "Démarrer";
 "Startup items, extensions, and what removed apps left behind" = "Éléments de démarrage, extensions et résidus d’apps supprimées";
 "Stop" = "Arrêter";
@@ -603,16 +592,12 @@
 "What would happen" = "Ce qui se passerait";
 "What’s New" = "Nouveautés";
 "When" = "Quand";
-"When Return is pressed" = "À l’appui sur Retour";
-"When Space is pressed" = "À l’appui sur Espace";
 "When a VPN rule fires, the menu bar can say so. A tunnel a rule raised or dropped by itself changed nothing you could see. Now the connection can be named beside the icon for three seconds, or arrive as a macOS notification, or not be named at all — whichever you pick in Settings → VPN. The ring turns as well if you ask it to, in a colour you choose: one for connecting, another for dropping." = "Quand une règle VPN se déclenche, la barre des menus peut le dire. Un tunnel qu’une règle ouvre ou ferme d’elle-même ne changeait rien de visible. Le nom de la connexion peut maintenant s’afficher à côté de l’icône pendant trois secondes, arriver en notification macOS, ou ne pas s’afficher, selon votre choix dans Réglages → VPN. L’anneau tourne aussi si vous le demandez, dans la couleur de votre choix : une pour la connexion, une autre pour la coupure.";
 "When a file cannot be moved, Helm now says which one and why instead of reporting success. Deleting a Homebrew package asks first, and the disk basket lists what is in it before it goes to the Trash." = "Quand un fichier ne peut être déplacé, Helm dit lequel et pourquoi au lieu d’annoncer une réussite. Désinstaller un paquet Homebrew demande confirmation, et le panier du disque affiche son contenu.";
 "When a file will not move, Helm now says why on every screen that removes things. Disk and the duplicate finder used to give you a count and leave you to guess — usually the answer was Full Disk Access, which is one click away once you know. Quiet text is also readable again: the captions and secondary lines were fainter than they were meant to be." = "Quand un fichier refuse de bouger, Helm dit maintenant pourquoi, sur chaque écran qui supprime. Disque et le chercheur de doublons ne donnaient qu’un nombre ; la cause est presque toujours l’accès complet au disque. Et le texte atténué redevient lisible.";
-"When a punctuation mark is typed" = "À la saisie d’une ponctuation";
 "When a rule connects" = "Quand une règle connecte";
 "When a rule fires" = "Quand une règle se déclenche";
 "When a tunnel goes down" = "Quand un tunnel se déconnecte";
-"When to fix" = "Quand corriger";
 "Which conditions must match" = "Quelles conditions doivent correspondre";
 "White" = "Blanc";
 "Window" = "Fenêtres";

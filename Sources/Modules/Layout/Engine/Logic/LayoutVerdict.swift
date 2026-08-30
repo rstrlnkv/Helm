@@ -26,17 +26,7 @@ enum LayoutVerdict {
                        translated: String,
                        validAsTyped: Bool,
                        validTranslated: Bool,
-                       exceptions: Set<String>,
-                       /// What the person taught the module by putting this
-                       /// word back — twice, so a mis-press is not a rule.
-                       ///
-                       /// **It refuses and never permits.** There is no value
-                       /// it can take that turns a `.leave` into a conversion:
-                       /// a vocabulary the module wrote for itself, able to
-                       /// overrule the dictionary, would let one repeated typo
-                       /// become a standing instruction inside somebody else's
-                       /// app.
-                       learned: Bool = false) -> Decision {
+                       exceptions: Set<String>) -> Decision {
         // The rule that outranks the rest: what was typed is already a word, so
         // it is what they meant.
         guard !validAsTyped else { return .leave }
@@ -57,7 +47,6 @@ enum LayoutVerdict {
         // they keep seeing, which is the translated one, not what they typed.
         guard !exceptions.contains(word.lowercased()),
               !exceptions.contains(translated.lowercased()) else { return .leave }
-        guard !learned else { return .leave }
         guard !turnsALetterIntoAMark(word, translated) else { return .leave }
         return .convert(translated)
     }
@@ -69,8 +58,7 @@ enum LayoutVerdict {
     /// them, and for the same reason.
     static func decideForced(word: String,
                              translated: String,
-                             exceptions: Set<String>,
-                             learned: Bool = false) -> Decision {
+                             exceptions: Set<String>) -> Decision {
         guard !translated.isEmpty, translated != word else { return .leave }
         guard !exceptions.contains(word.lowercased()),
               !exceptions.contains(translated.lowercased()) else { return .leave }
@@ -78,7 +66,6 @@ enum LayoutVerdict {
         // word by name — but they also said, twice, that this exact word is to
         // be left alone, and that is the later instruction. Same reasoning as
         // the never-list one line above.
-        guard !learned else { return .leave }
         // The dictionary is skipped here, not this: they asked for a word, and
         // a bracket where a letter was is not the word they asked for.
         guard !turnsALetterIntoAMark(word, translated) else { return .leave }

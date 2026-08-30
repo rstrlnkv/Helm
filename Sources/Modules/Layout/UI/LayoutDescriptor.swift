@@ -48,11 +48,7 @@ import Module_Layout_Engine
                             // with nothing checking the two agreed — which is
                             // exactly the asymmetry that hid `tapKey` staying
                             // `.off` on every launch until 283c3cf. One reader.
-                            settings: store,
-                            // The one construction that gets the real keychain,
-                            // and it is the app's. Read lazily and off the
-                            // launch path — `VocabularyStore.warm`.
-                            vocabulary: VocabularyStore(keys: LayoutEngine.saltKeychain))
+                            settings: store)
     }
 
     /// The module's own flag in the menu bar, built when the module starts
@@ -105,7 +101,7 @@ import Module_Layout_Engine
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(
-            LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm), store: store,
+            LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm),
                                period: Self.storedPeriod(store), onNever: { Self.never($0, store) })))
     }
 
@@ -118,13 +114,12 @@ import Module_Layout_Engine
         case .compact:
             return AnyView(LayoutWidgets.Compact(lvm: lvm, period: Self.storedPeriod(store)))
         case .wide:
-            return AnyView(LayoutWidgets.Wide(lvm: lvm, store: store,
-                                              period: Self.storedPeriod(store),
+            return AnyView(LayoutWidgets.Wide(lvm: lvm, period: Self.storedPeriod(store),
                                               onNever: { Self.never($0, store) }))
         case .tall:
-            return AnyView(LayoutTallWidget(lvm: lvm, store: store,
-                                            onNever: { Self.never($0, store) },
-                                            onAutomatic: { Self.automatic($0, store, vm) }))
+            return AnyView(LayoutWidgets.Tall(lvm: lvm, store: store,
+                                              onNever: { Self.never($0, store) },
+                                              onAutomatic: { Self.automatic($0, store, vm) }))
         }
     }
 
@@ -178,14 +173,6 @@ import Module_Layout_Engine
     /// screen. A pause reports as idle, and the page keeps the word for it.
     static func activity(enabled: Bool, suspended: Bool) -> ModuleActivity {
         enabled && !suspended ? .active : .idle
-    }
-
-    /// Which figure the hero is showing, beside the module's name — see
-    /// `LayoutHeaderMetric` for why it is here rather than in the hero's own
-    /// row of buttons.
-    public func headerAccessory(_ vm: ModuleViewModel) -> AnyView? {
-        guard let store else { return nil }
-        return AnyView(LayoutHeaderMetric(store: store))
     }
 
     /// Without this the header reads the badge once and never again: the tap

@@ -28,7 +28,7 @@ final class ASecureEpisodeLeavesNothingToReplayTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure, automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure, automatic: true)
         engine.activate()
 
         tap.type("ghbdtn"); tap.space()
@@ -61,7 +61,7 @@ final class ASecureEpisodeLeavesNothingToReplayTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["swordfish": "ыцщквашыр"]),
             spell: FakeSpell(valid: []),
-            secure: secure, automatic: false, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure, automatic: false)
         engine.activate()
 
         secure.secure = true

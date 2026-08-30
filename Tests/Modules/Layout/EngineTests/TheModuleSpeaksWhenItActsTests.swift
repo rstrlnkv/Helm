@@ -20,7 +20,7 @@ final class TheModuleSpeaksWhenItActsTests: XCTestCase {
             tap: tap, typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), announcer: announcer, automatic: automatic, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: FakeSecure(), announcer: announcer, automatic: automatic)
         engine.activate()
         return engine
     }
@@ -50,7 +50,7 @@ final class TheModuleSpeaksWhenItActsTests: XCTestCase {
         let engine = LayoutEngine(
             tap: tap, typing: FakeTyping(), sources: FakeSources(),
             translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
-            secure: secure, announcer: announcer, automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure, announcer: announcer, automatic: true)
         engine.activate()
 
         secure.secure = true

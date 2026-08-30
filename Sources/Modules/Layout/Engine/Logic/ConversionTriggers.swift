@@ -5,10 +5,16 @@ import Foundation
 ///
 /// Not every boundary is a confirmation. Moving the caret, clicking elsewhere
 /// or leaving the window says the person went somewhere else — converting then
-/// edits text they are no longer looking at. Those never convert, and are not
-/// offered as a choice. The three that do are offered, because they differ by
-/// habit and by app: Return sends the message in most chats, so a conversion on
-/// Return lands after it was too late to matter.
+/// edits text they are no longer looking at.
+///
+/// **None of it is a choice any more.** Three toggles on the settings page used
+/// to write these, and they could be set to a combination the page then had to
+/// apologise for in orange: all three off is «Fix as I type» switched on and
+/// doing nothing, over a header still saying «Active». The defaults below were
+/// always argued from how apps behave, not from how a person prefers to work —
+/// which makes them a decision the app owes rather than a question it asks.
+/// Caramba Switcher, the other Mac tool people compare this to, ships one
+/// setting in total for the same reason.
 public struct ConversionTriggers: Equatable, Sendable {
     public var onSpace: Bool
     public var onReturn: Bool
@@ -30,11 +36,6 @@ public struct ConversionTriggers: Equatable, Sendable {
         self.onPunctuation = onPunctuation
     }
 
-    /// All three off: no ending ever confirms a word, so «Fix as I type» is
-    /// dead whatever the page's badge says. One word here rather than an `&&`
-    /// assembled in the view, so the page's warning cannot drift from what
-    /// `converts` actually answers.
-    public var fixesNothing: Bool { !onSpace && !onReturn && !onPunctuation }
 
     public func converts(_ event: TypingBuffer.Event) -> Bool {
         switch event {

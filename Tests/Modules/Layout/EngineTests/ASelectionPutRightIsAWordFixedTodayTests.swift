@@ -52,7 +52,7 @@ final class ASelectionPutRightIsAWordFixedTodayTests: XCTestCase {
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), selection: selection, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: FakeSecure(), selection: selection)
         engine.activate()
 
         selection.text = "ghbdtn"

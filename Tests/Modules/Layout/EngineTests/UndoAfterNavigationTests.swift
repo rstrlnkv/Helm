@@ -79,7 +79,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         typing = NavTyping(); context = NavContext(); tap = NavTap()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: NavSources(),
                                   translation: NavTranslation(), spell: NavSpell(),
-                                  secure: context, vocabulary: VocabularyStore(keys: SilentSealKey()))
+                                  secure: context)
         engine.activate()
         return engine
     }

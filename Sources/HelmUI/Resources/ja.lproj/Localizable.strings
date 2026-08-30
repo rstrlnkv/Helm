@@ -13,12 +13,9 @@
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "国が定まらない配列は文字のまま、旗と同じ大きさの枠に表示されます。";
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "アプリ全体の新しい外観：各画面はアイコンと主要な数値から始まり、レイアウトは統一されています。";
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "ルールは一度決めたらその後ずっと実行される判断なので、有効にする前に内容を示します。";
-"A short token you type often, and what it stands for. It expands when you finish the word." = "よく入力する短い文字列と、その置き換え先。単語を打ち終えたときに展開されます。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“ディスク”のスキャンから抜けられるようになりました。“別の場所を選択…”で保存済みのスキャンを忘れます。";
-"A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "この方法で単語を終えたときに判定します。カーソル移動や他所のクリックでは変換しません。既に離れているためです。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "入力どおりでは単語でなく、変換すると単語になる場合のみ置き換えます。正しいものはそのままです。";
-"Abbreviation" = "短縮形";
-"Abbreviations" = "短縮入力";
+"Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "キーボードから短縮入力を削除しました。macOSが“ユーザ辞書”で同じ機能を提供し、デバイス間で同期します。";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "略語展開。よく打つ短いつづりと、その展開先を登録できます。展開は語を打ち終えた時点で起こり、展開された語がさらに変換されることはありません。さらに任意で、Helm が確信を持てる唯一の打ち間違いも直します: “KOnnichiwa”→“Konnichiwa”。わざとの全大文字や、数字を含む語は対象外です。";
 "About Helm" = "Helm について";
 "Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”." = "アクセス権は Helm の特定のコピーに紐づきます。更新のたびに再設定してください：“−”で削除し“+”で追加。";
@@ -26,7 +23,6 @@
 "Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing." = "アクセシビリティがオフです。入力内容を読み取れず、キーボード修正もポインタ移動も動作しません。";
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "アクセシビリティをアクセス権の一覧に追加し、“スリープ防止”ではポインタ設定のすぐ横に注意を表示します。許可がないと macOS は動きを無視し、スイッチは無効でした。";
 "Active" = "動作中";
-"Add" = "追加";
 "Add an app, and Helm connects a VPN when it launches." = "アプリを追加すると、その起動時に Helm が VPN を接続します。";
 "Add another in System Settings and Helm picks it up." = "システム設定で追加すれば、Helm が引き継ぎます。";
 "Add app…" = "アプリを追加…";
@@ -40,7 +36,6 @@
 "Always" = "常に";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "アプリが異常な名前を名乗って他のアプリのファイルを自分の残存物として提示することはできなくなりました。";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Mac を起こし続けるアプリに条件を付けられます：外部ディスプレイ接続時のみ、電源接続時のみ、またはその両方。";
-"An estimate: about 3 seconds a word — noticing, clearing, switching, typing it again." = "目安: 1語あたり約3秒 — 気づく、消す、切り替える、打ち直す。";
 "Another app already uses this combination, so it does nothing here." = "この組み合わせは他のアプリが使用中で、ここでは動作しません。";
 "Another rule takes these files" = "これらのファイルは別のルールが処理します";
 "Anything that needs a system permission now says so where you turn it on — Disk, App Uninstaller, Login Items and Keep Awake all warn before they can disappoint you." = "システムの許可が必要な機能は、オンにするその場で知らせます（ディスク、アンインストーラ、ログイン項目、スリープ防止）。";
@@ -106,7 +101,6 @@
 "Discard and start again" = "破棄してやり直す";
 "Error" = "エラー";
 "Fixing as you type works on words whose letters sit on punctuation keys in the other layout. Those letters had no key at all, so most Russian words were left alone or cut in half mid-word — and every layout that puts letters where a latin keyboard puts marks had the same problem." = "入力中の修正が、別のレイアウトでは記号キーに置かれた文字を含む単語でも働くようになりました。それらの文字にはキーが存在せず、ロシア語の多くの単語はそのまま残るか、途中で切れていました。";
-"Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it." = "入力の修正にはアクセシビリティが必要です。許可がないとキー入力を読み取れず、何も変更しません。下の言語インジケータは許可なしでも動作します。";
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "押したままにしたり、他のキーと一緒に押したりしたときは、これまでどおりの修飾キーとして働きます。";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "ルールの署名に使う鍵を読み取れません。どのルールも実行されません。";
 "Helm cannot read this folder" = "このフォルダを読み取れません";
@@ -121,6 +115,7 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "キーボードがメニューバーのパネルに戻りました。3つのサイズすべてで使えます。大きいものは直近14日間を日ごとに描き、節約できたおおよその入力量を示し、期間ボタン、直前の変更とその語を今後触らせない操作、入力中の修正のスイッチを備えます。";
+"Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "キーボードが簡素になりました。“いつ修正するか”の3つのスイッチは廃止です。スペースと句読点で語を確定し、Returnでは確定しません。もともとその設定でしたし、チャットが打ち間違いを送信せずに済みます。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
 "Last fourteen days" = "過去14日間";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
@@ -133,7 +128,6 @@
 "Nothing" = "なし";
 "Nothing has needed putting right so far." = "これまで修正が必要なものはありません。";
 "Nothing is selected for you: macOS loads every item in this list." = "既定では何も選択されていません。このリストの項目はすべて macOS が読み込みます。";
-"Nothing is switched on — words will not be fixed as you type." = "どれもオンになっていないため、入力中に単語は修正されません。";
 "Only an administrator can move this" = "移動できるのは管理者のみです";
 "Option" = "Option";
 "Other…" = "その他…";
@@ -147,6 +141,7 @@
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。";
 "Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "ターミナルとパスワード管理アプリは最初はオフです。そこでは間違って見える語こそ正しいことが多いからです。必要なものはオンにでき、自分のアプリも追加できます。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "キーボードのページは、選んだ期間（今日・1週間・1か月・1年・全期間）に修正した語と、それで省けた入力時間から始まります。まだ何もない状態はゼロではなく、そう表示されます。";
+"The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "キーボードのページは2つの数を同時に表示します。修正した語数と、それが入力時間でどれだけかです。片方ずつ切り替えていたウインドウ見出しのスイッチは廃止しました。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "キーボードの名前の横のバッジが、下のページが一時停止と示している間に“動作中”と表示することはなくなりました。パスワード欄が前面にある間、モジュールは意図的に黙ります。";
 "The language indicator below works without this permission." = "下の言語インジケータはこの許可がなくても動きます。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
@@ -155,14 +150,11 @@
 "This is not there any more, so nothing was moved. Search again to see what is left." = "これはもう存在しないため、何も移動していません。もう一度検索して残りを確認してください。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。再スキャンして現在の場所を確認してください。";
 "This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。もう一度検索して現在の場所を確認してください。";
-"Time saved" = "節約できた時間";
 "Today" = "今日";
 "Warning" = "警告";
 "Watching your words" = "単語を見ています";
 "Week" = "1週間";
-"What the figure shows" = "数字が示すもの";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";
-"Words put right" = "修正した語";
 "Year" = "1年";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "Cyan" = "シアン";
@@ -347,7 +339,6 @@
 "New rule" = "新しいルール";
 "Next" = "次へ";
 "No VPNs" = "VPN なし";
-"No abbreviations yet" = "短縮入力はまだありません";
 "No access" = "アクセス不可";
 "No applications found." = "アプリが見つかりませんでした。";
 "No applications match this search." = "この検索に一致するアプリはありません。";
@@ -396,7 +387,6 @@
 "Panel" = "パネル";
 "Panel toggles show the real state right after launch." = "起動直後からパネルのスイッチが実際の状態を表示。";
 "Panels and cards now look the same on every screen: one border-free container, and the figures at the top of a module line up with the settings below them." = "パネルとカードの見た目を全画面で統一：枠線のない一種類のコンテナにし、上部の数値を下の設定と揃えました。";
-"Paused" = "一時停止";
 "Paused — a password field is in front, and Helm never reads one." = "一時停止中 — 前面にパスワード欄があります。Helm はパスワード欄を読みません。";
 "Per-app automation" = "アプリ別の自動化";
 "Per-app rules read as one line each: the app, when the rule applies, and nothing else. Both Keep Awake and VPN." = "アプリ別ルールは1行に：アプリと、適用される条件だけ。“スリープ防止”と VPN の両方で。";
@@ -486,7 +476,6 @@
 "Skip" = "スキップ";
 "Smaller items" = "小さい項目";
 "Sort into subfolder" = "サブフォルダに整理";
-"Stands for" = "展開後";
 "Start" = "開始";
 "Startup items, extensions, and what removed apps left behind" = "起動項目、機能拡張、削除済みアプリの残存物";
 "Stop" = "停止";
@@ -603,16 +592,12 @@
 "What would happen" = "何が起きるか";
 "What’s New" = "新機能";
 "When" = "条件";
-"When Return is pressed" = "Return キーを押したとき";
-"When Space is pressed" = "スペースキーを押したとき";
 "When a VPN rule fires, the menu bar can say so. A tunnel a rule raised or dropped by itself changed nothing you could see. Now the connection can be named beside the icon for three seconds, or arrive as a macOS notification, or not be named at all — whichever you pick in Settings → VPN. The ring turns as well if you ask it to, in a colour you choose: one for connecting, another for dropping." = "VPN ルールが動いたことをメニューバーが伝えられます。接続名をアイコンの横に 3 秒間出すことも、macOS の通知にすることも、何も出さないこともできます。リングも、選んだ色で回すことができます。";
 "When a file cannot be moved, Helm now says which one and why instead of reporting success. Deleting a Homebrew package asks first, and the disk basket lists what is in it before it goes to the Trash." = "移動できないファイルがあれば、成功と報告せずに“どれが・なぜ”を表示します。Homebrew パッケージの削除は確認を求め、ディスクのバスケットは中身を一覧します。";
 "When a file will not move, Helm now says why on every screen that removes things. Disk and the duplicate finder used to give you a count and leave you to guess — usually the answer was Full Disk Access, which is one click away once you know. Quiet text is also readable again: the captions and secondary lines were fainter than they were meant to be." = "ファイルを移動できなかったとき、削除を行うすべての画面で理由を示すようになりました。“ディスク”と重複ファイル検索は件数だけを出していましたが、多くはフルディスクアクセスが原因です。控えめな文字の濃さも読める値に戻しました。";
-"When a punctuation mark is typed" = "句読点を入力したとき";
 "When a rule connects" = "ルールが接続したとき";
 "When a rule fires" = "ルールが動作したとき";
 "When a tunnel goes down" = "トンネルが切断されたとき";
-"When to fix" = "修正するタイミング";
 "Which conditions must match" = "一致が必要な条件";
 "White" = "白";
 "Window" = "ウインドウ";

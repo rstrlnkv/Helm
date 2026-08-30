@@ -54,18 +54,6 @@ import HelmRuntime
     /// A module answers this when it has a running/not-running of its own, and
     /// gets no badge until it does.
     func activity(_ vm: ModuleViewModel) -> ModuleActivity?
-
-    /// A control the page wants beside its name in the window header, or nil.
-    ///
-    /// **Not a switch for the module.** The redesign settled that one — a page
-    /// header names what you are looking at and does not turn it off — and this
-    /// slot does not reopen it. It is for a choice *about the page's own
-    /// figure*: which of two numbers the hero is showing, where the answer
-    /// belongs next to the name rather than a third of the way down the page.
-    ///
-    /// Nil for eight of nine modules, and nil is the default so a module that
-    /// has nothing to put there writes nothing.
-    func headerAccessory(_ vm: ModuleViewModel) -> AnyView?
     /// The permissions this module needs **as it is configured right now**.
     ///
     /// `metadata.permissions` answers a different question — what a module
@@ -110,7 +98,6 @@ public extension ModuleDescriptor {
     func attachMenuBarPresence() {}
     func detachMenuBarPresence() {}
     func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
-    func headerAccessory(_ vm: ModuleViewModel) -> AnyView? { nil }
     func currentPermissions() -> [ModulePermission] {
         Self.metadata.permissions
     }

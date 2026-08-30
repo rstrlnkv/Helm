@@ -30,7 +30,6 @@ enum LayoutWidgets {
     /// 2×1 — how many, and the one thing to do about it.
     struct Wide: View {
         @ObservedObject var lvm: LayoutViewModel
-        let store: NamespacedStore
         let period: ConversionPeriod
         var onNever: (String) -> Void
 
@@ -43,18 +42,23 @@ enum LayoutWidgets {
     struct Tall: View {
         @ObservedObject var lvm: LayoutViewModel
         let store: NamespacedStore
-        @Binding var period: ConversionPeriod
         var onNever: (String) -> Void
         var onAutomatic: (Bool) -> Void
+        // Both read from the store the way the page reads them, and both live
+        // here. The period used to be a `@State` in a 35-line file whose whole
+        // job was to hold it and hand down a `Binding` — a wrapper for a view
+        // that already owns state, and the only construction of that binding.
+        @State private var period: ConversionPeriod
         @State private var automatic: Bool
 
-        init(lvm: LayoutViewModel, store: NamespacedStore, period: Binding<ConversionPeriod>,
+        init(lvm: LayoutViewModel, store: NamespacedStore,
              onNever: @escaping (String) -> Void, onAutomatic: @escaping (Bool) -> Void) {
             self.lvm = lvm
             self.store = store
-            _period = period
             self.onNever = onNever
             self.onAutomatic = onAutomatic
+            _period = State(initialValue: ConversionPeriod(
+                rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
             _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
         }
 

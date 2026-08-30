@@ -10,9 +10,6 @@ struct LayoutSettingsPage: View {
     @State private var automatic: Bool
     @State private var exceptions: String
     @State private var accessibility: PermissionState = .granted
-    @State private var onSpace: Bool
-    @State private var onReturn: Bool
-    @State private var onPunctuation: Bool
     @State private var appRules: [String: Bool]
     @State private var audible: Bool
     @State private var indicator: Bool
@@ -21,25 +18,18 @@ struct LayoutSettingsPage: View {
     @State private var tapKey: TapKey
     @State private var introSeen: Bool
     @StateObject private var convertKey: HelmHotkeyRecorder
-    @State private var abbreviations: [AutoReplace.Entry]
-    @State private var newShort = ""
-    @State private var newLong = ""
     @State private var fixCapitals: Bool
     /// The apps Helm leaves alone before any rule is consulted, filtered to
     /// the ones this Mac actually has. Worked out once: each answer is an
     /// `NSWorkspace` lookup, and this is read while a form redraws.
     private let builtInBlocked: [String]
     @State private var heroPeriod: ConversionPeriod
-    @State private var heroMetric: HeroMetric
 
     init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
         _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions).joined(separator: "\n"))
-        _onSpace = State(initialValue: store.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace))
-        _onReturn = State(initialValue: store.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn))
-        _onPunctuation = State(initialValue: store.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation))
         _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
@@ -51,15 +41,12 @@ struct LayoutSettingsPage: View {
         _introSeen = State(initialValue: store.bool(LayoutKey.introSeen, default: false))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
-        _abbreviations = State(initialValue: AutoReplaceStore.load(store))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
         builtInBlocked = AppScope.blockedByDefault.filter {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
         }
         _heroPeriod = State(initialValue: ConversionPeriod(
             rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
-        _heroMetric = State(initialValue: HeroMetric(
-            rawValue: store.string(LayoutKey.heroMetric, default: "")) ?? .words)
     }
 
     var body: some View {
@@ -100,10 +87,8 @@ struct LayoutSettingsPage: View {
                 // the figure, what it does, and the field to try it in.
                 behaviourSection
                 tryItSection
-                triggersSection
                 exceptionsSection
                 appsSection
-                autoReplaceSection
                 shortcutsSection
                 indicatorSection
             }
@@ -116,11 +101,6 @@ struct LayoutSettingsPage: View {
         // is the state between the page appearing and the engine's first
         // `layoutState`. Unanimated it drops the whole form in one frame.
         .animation(HelmMotion.interface, value: lvm.state.enabled)
-        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { _ in
-            let stored = HeroMetric(
-                rawValue: store.string(LayoutKey.heroMetric, default: "")) ?? .words
-            if stored != heroMetric { heroMetric = stored }
-        }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
         .helmTracksAccessibility($accessibility)
@@ -164,27 +144,6 @@ struct LayoutSettingsPage: View {
         }
     }
 
-    /// Three states, not two: watching, paused by secure input, and not
-    /// watching at all because the grant is missing.
-    /// The grant comes first, because without it the module is not watching
-    /// anything and the switch above is the only thing that says otherwise.
-    /// Measured in this machine's log: 84 warnings of `no accessibility grant —
-    /// not watching`, against a page that said "On" in green throughout. The
-    /// state is what the module can do, not what the setting says.
-    private var stateLabel: String {
-        if accessibility == .denied { return LyStr.notWatching }
-        if !lvm.state.enabled { return LyStr.notWatching }
-        return lvm.state.suspended ? LyStr.paused : LyStr.on
-    }
-
-    /// From `HelmSignal`, never the raw system palette: orange measures 2.31:1
-    /// and green 2.22:1 against this page's own background in light.
-    private var stateTint: Color {
-        if accessibility == .denied { return HelmSignal.warning }
-        if !lvm.state.enabled { return HelmSignal.warning }
-        return lvm.state.suspended ? HelmSignal.warning : HelmSignal.success
-    }
-
     /// The figure this module has, at the size a figure gets.
     ///
     /// It was a `HelmMetricStrip` — «Active · 17» over 9 pt capitals reading
@@ -200,11 +159,9 @@ struct LayoutSettingsPage: View {
                    suspended: lvm.state.suspended,
                    watching: accessibility != .denied && lvm.state.enabled,
                    period: $heroPeriod,
-                   metric: $heroMetric,
                    grant: accessibility == .denied
                        ? { PermissionNeed.accessibility.openSettings() } : nil)
         .onChange(of: heroPeriod) { _, new in store.set(new.rawValue, for: LayoutKey.heroPeriod) }
-        .onChange(of: heroMetric) { _, new in store.set(new.rawValue, for: LayoutKey.heroMetric) }
     }
 
     /// The hero rides on the first section's header, for the reason Keep Awake's
@@ -235,6 +192,20 @@ struct LayoutSettingsPage: View {
                 Toggle(LyStr.automatic, isOn: $automatic)
                     .labelsHidden()
                     .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
+            }
+            // A layout macOS cannot spell-check. «Fix as I type» is dead for
+            // every pair that includes it, and until this line the page said
+            // nothing — the switch stayed on and the badge stayed green. It
+            // used to hang under the three trigger toggles; it belongs to the
+            // switch it is about, which is the one thing above it.
+            // Named by the system's own name for the source, never by its id.
+            if !lvm.state.noDictionary.isEmpty {
+                Text(LyStr.noDictionary(layouts: lvm.state.noDictionary
+                                            .map { InputSourceInfo.name(of: $0) }
+                                            .joined(separator: ", ")))
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmSignal.warning)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
                 Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
@@ -271,47 +242,6 @@ struct LayoutSettingsPage: View {
             .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var triggersSection: some View {
-        Section {
-            Toggle(LyStr.onSpace, isOn: $onSpace)
-                .onChange(of: onSpace) { _, value in write(value, LayoutKey.onSpace) }
-            Toggle(LyStr.onReturn, isOn: $onReturn)
-                .onChange(of: onReturn) { _, value in write(value, LayoutKey.onReturn) }
-            Toggle(LyStr.onPunctuation, isOn: $onPunctuation)
-                .onChange(of: onPunctuation) { _, value in write(value, LayoutKey.onPunctuation) }
-        } header: {
-            HelmSectionTitle(LyStr.triggers)
-        } footer: {
-            VStack(alignment: .leading, spacing: HelmSpace.s2) {
-                sectionNote(LyStr.triggersHint)
-                // All three off is «Fix as I type» switched on and doing
-                // nothing: no ending ever confirms a word, and the green badge
-                // above keeps saying «Active» because the tap is, in fact,
-                // alive. Judged by the same value the engine acts on, not by a
-                // hand-assembled `&&` that could drift from it.
-                if ConversionTriggers(onSpace: onSpace, onReturn: onReturn,
-                                      onPunctuation: onPunctuation).fixesNothing {
-                    Text(LyStr.noTriggers)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmSignal.warning)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                // A layout macOS cannot spell-check. «Fix as I type» is dead
-                // for every pair that includes it, and until now the page said
-                // nothing — the switch stayed on and the badge stayed green.
-                // Named by the system's own name for the source, never by its id.
-                if !lvm.state.noDictionary.isEmpty {
-                    Text(LyStr.noDictionary(layouts: lvm.state.noDictionary
-                                                .map { InputSourceInfo.name(of: $0) }
-                                                .joined(separator: ", ")))
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmSignal.warning)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
         }
     }
 
@@ -419,77 +349,6 @@ struct LayoutSettingsPage: View {
         return LyStr.undoHint(gesture: gestureName)
     }
 
-    /// Abbreviations, and the one typing habit Helm is sure enough about to
-    /// correct.
-    private var autoReplaceSection: some View {
-        Section {
-            if abbreviations.isEmpty {
-                Text(LyStr.noAbbreviations).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
-            }
-            ForEach(abbreviations) { entry in
-                HStack(spacing: HelmSpace.s5) {
-                    Text(entry.from)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minWidth: 60, alignment: .leading)
-                    Text("→").foregroundStyle(HelmText.faint)
-                    Text(entry.to).lineLimit(1).truncationMode(.tail)
-                    Spacer(minLength: HelmSpace.s4)
-                    Button {
-                        abbreviations.removeAll { $0.from == entry.from }
-                        AutoReplaceStore.save(abbreviations, to: store)
-                        lvm.vm.send(LayoutCommand.settingsChanged)
-                    } label: {
-                        Image(systemName: "xmark").foregroundStyle(HelmText.faint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(HelmA11y.remove), \(entry.from)")
-                }
-                // One element per abbreviation: read apart, the row was a
-                // token, «right arrow», a phrase and a button with nothing
-                // saying the four belong together. The remove button's action
-                // survives the merge as the element's action.
-                .accessibilityElement(children: .combine)
-            }
-            HStack(spacing: HelmSpace.s4) {
-                // `prompt:` rather than a title, and labels hidden: inside a
-                // `Form` a `TextField`'s title is drawn as a label *beside* the
-                // field, so the placeholder ended up as a two-line word to the
-                // left of an empty box with "stands for" floating between them.
-                TextField("", text: $newShort, prompt: Text(LyStr.abbreviation))
-                    // A prompt is a placeholder, and a placeholder disappears
-                    // the moment there is a value to read.
-                    .accessibilityLabel(LyStr.abbreviation)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .frame(width: 150)
-                TextField("", text: $newLong, prompt: Text(LyStr.expansion))
-                    .accessibilityLabel(LyStr.expansion)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                Button(LyStr.addAbbreviation) { addAbbreviation() }
-                    .disabled(newShort.trimmingCharacters(in: .whitespaces).isEmpty
-                              || newLong.isEmpty)
-            }
-        } header: {
-            HelmSectionTitle(LyStr.autoReplaceSection)
-        } footer: {
-            sectionNote(LyStr.autoReplaceNote)
-        }
-    }
-
-    private func addAbbreviation() {
-        let short = newShort.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !short.isEmpty, !newLong.isEmpty, short != newLong else { return }
-        abbreviations.removeAll { $0.from == short }
-        abbreviations.append(AutoReplace.Entry(from: short, to: newLong))
-        abbreviations.sort { $0.from < $1.from }
-        AutoReplaceStore.save(abbreviations, to: store)
-        // Announced rather than written through a spare key: the table is
-        // already saved, and the engine needs to be told to re-read it.
-        lvm.vm.send(LayoutCommand.settingsChanged)
-        newShort = ""
-        newLong = ""
-    }
 
     /// A place to try it without risking anything that was being written.
     ///

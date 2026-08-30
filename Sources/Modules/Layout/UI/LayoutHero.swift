@@ -3,33 +3,6 @@ import HelmRuntime
 import HelmUI
 import Module_Layout_Engine
 
-/// Which figure the hero is showing.
-///
-/// Two glyphs rather than two words: a letter and a clock are things a glyph
-/// can be, where «Всё время» is not. Each carries a name — a glyph-only control
-/// is invisible to anybody using VoiceOver, and `NamedControlsTests` scans the
-/// source for exactly this shape.
-enum HeroMetric: String, CaseIterable {
-    case words, minutes
-
-    var symbol: String {
-        switch self {
-        // Measured rather than chosen by meaning: `textformat.abc` paints 176
-        // wide at 100 pt — half again wider than anything in `SymbolInk.ratios`
-        // — and breaks the column it stands in. These two sit near the mean.
-        case .words: "character.cursor.ibeam"
-        case .minutes: "clock"
-        }
-    }
-
-    var name: String {
-        switch self {
-        case .words: LyStr.showWords
-        case .minutes: LyStr.showMinutes
-        }
-    }
-}
-
 /// The page's one figure: what the module has put right, over a period somebody
 /// chooses, and what that came to in time.
 ///
@@ -49,7 +22,6 @@ struct LayoutHero: View {
     let suspended: Bool
     let watching: Bool
     @Binding var period: ConversionPeriod
-    @Binding var metric: HeroMetric
     /// Offered only when the grant is missing — the hero carries the verb
     /// rather than repeating itself in a second block below.
     var grant: (() -> Void)?
@@ -88,7 +60,7 @@ struct LayoutHero: View {
                 // constant across all eight languages and every width. The
                 // always-drawn line is what keeps every state one height; where
                 // it stands is what keeps the app one rhythm.
-                Text(note.isEmpty ? LyStr.estimateNote : note)
+                Text(note.isEmpty ? LyStr.notSpentTypingAgain : note)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
@@ -122,51 +94,41 @@ struct LayoutHero: View {
 
     private var figureText: String {
         guard hasFigure else { return watching ? LyStr.nothingYet : LyStr.heroNotWatching }
-        switch metric {
-        case .words: return Decimal(Double(figures.words), decimals: 0)
-        case .minutes: return HelmDuration.string(seconds)
-        }
+        return Decimal(Double(figures.words), decimals: 0)
     }
 
-    @ViewBuilder private var figure: some View {
-        if hasFigure, metric == .minutes {
-            // «≈» is part of the figure and set smaller: the words are counted
-            // and the time is estimated, and they must not look equally certain.
-            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
-                Text(verbatim: "≈")
-                    .font(HelmText.rowTitle)
-                    .foregroundStyle(HelmText.quiet)
-                Text(figureText)
-            }
-        } else {
-            Text(figureText)
-                .foregroundStyle(hasFigure ? Color.primary : HelmText.quiet)
-        }
+    private var figure: some View {
+        Text(figureText)
+            .foregroundStyle(hasFigure ? Color.primary : HelmText.quiet)
     }
 
     private var caption: String {
         guard watching else { return LyStr.heroNotWatchingWhy }
         guard hasFigure else { return LyStr.nothingYetNote }
         if suspended { return LyStr.suspended }
-        return metric == .words
-            ? LyStr.wordsIn(period, count: figures.words)
-            : LyStr.timeIn(period)
+        return LyStr.wordsIn(period, count: figures.words)
     }
 
-    /// The line that never leaves.
+    /// The line that never leaves: what the count came to in typing time.
     ///
-    /// It says the estimate's assumption while the figure is time, and nothing
-    /// while it is words — but it is drawn either way, at `.opacity(0)`, so the
-    /// hero does not change height when somebody presses a glyph. An `if` here
-    /// takes the form under it with it, on an act that was not about the form.
+    /// **Both numbers at once, which is what the panel tile always did.** They
+    /// used to be one at a time behind a two-glyph switch in the *window
+    /// header* — so the 744 pt page showed one and a 280 pt tile showed both,
+    /// two surfaces disagreeing about what the figure is. The switch also left
+    /// the bottom 19 pt of this hero blank in the state it ships in: measured
+    /// 0 ink in the band 118–137 pt with the figure on words, because the line
+    /// was reserved at `.opacity(0)` so pressing a glyph would not move the
+    /// form. Reserved is right when a switch exists; the answer was to drop the
+    /// switch.
     ///
-    /// It used to say «counted since 29 August» under the words. True, and not
-    /// worth a line on the page: a start date is something a person needs once
-    /// and never again, and it was standing in the one place the page has for
-    /// something worth saying.
+    /// Empty before the first word, so the hero says nothing it has not
+    /// measured — and drawn either way, which is what keeps every state one
+    /// height.
     private var note: String {
-        guard watching, hasFigure, metric == .minutes else { return "" }
-        return LyStr.estimateNote
+        guard watching, hasFigure, !suspended else { return "" }
+        let spelled = HelmDuration.string(seconds)
+        guard !spelled.isEmpty else { return "" }
+        return "≈ " + spelled + " " + LyStr.notSpentTypingAgain
     }
 
     // MARK: - The controls

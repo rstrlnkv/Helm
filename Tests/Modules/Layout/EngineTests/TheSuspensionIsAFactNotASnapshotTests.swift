@@ -30,7 +30,7 @@ final class TheSuspensionIsAFactNotASnapshotTests: XCTestCase {
         let engine = LayoutEngine(
             tap: tap, typing: FakeTyping(), sources: FakeSources(),
             translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
-            secure: secure, automatic: true, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure, automatic: true)
         engine.activate()
 
         secure.secure = true

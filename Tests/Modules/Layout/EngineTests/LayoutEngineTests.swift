@@ -127,7 +127,7 @@ final class LayoutEngineTests: XCTestCase {
             translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
                                                  "qqqq": "ййыы"]),
             spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            secure: secure, automatic: automatic)
         engine.activate()
         return engine
     }
@@ -269,7 +269,7 @@ extension LayoutEngineTests {
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
-            spell: FakeSpell(valid: ["привет"]), secure: secure, vocabulary: VocabularyStore(keys: SilentSealKey()))
+            spell: FakeSpell(valid: ["привет"]), secure: secure)
         engine.activate()
         tap.type("ghbdtn"); tap.space()
         XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")

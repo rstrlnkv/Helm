@@ -12,11 +12,6 @@ enum LyStr {
     static var suspended: String { L("Paused — a password field is in front, and Helm never reads one.") }
     static var exceptions: String { L("Never change these words") }
     static var exceptionsHint: String { L("One per line.") }
-    static var triggers: String { L("When to fix") }
-    static var triggersHint: String { L("A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on.") }
-    static var onSpace: String { L("When Space is pressed") }
-    static var onReturn: String { L("When Return is pressed") }
-    static var onPunctuation: String { L("When a punctuation mark is typed") }
     static var addApp: String { L("Add app…") }
     static var ruleOn: String { L("Fix") }
     static var ruleOff: String { L("Don’t fix") }
@@ -35,9 +30,6 @@ enum LyStr {
     static var appsWhy: String {
         L("Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own.")
     }
-    static var on: String { L("Active") }
-    static var notWatching: String { L("Not running") }
-    static var paused: String { L("Paused") }
     static var lastChange: String { L("Last change") }
 
     /// The tile's estimate, without the period on the end: the caption above it
@@ -75,27 +67,7 @@ enum LyStr {
     static var indicatorWorksAnyway: String {
         L("The language indicator below works without this permission.")
     }
-    static var deniedMessage: String {
-        L("Fixing what you type needs Accessibility: without it Helm sees no keystrokes and changes nothing. The language indicator below works without it.")
-    }
 
-    /// The caption under the hero figure, which has to agree with it: «1 слово»,
-    /// «17 слов». Interpolated, so it keeps its own table — the lookup would
-    /// happen after the number was already in the string (CLAUDE.md §
-    /// Localization).
-    static func fixedToday(_ count: Int, language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: Plural.russian(count, "слово", "слова", "слов") + " исправлено сегодня",
-            .es: count == 1 ? "palabra corregida hoy" : "palabras corregidas hoy",
-            .fr: count <= 1 ? "mot corrigé aujourd’hui" : "mots corrigés aujourd’hui",
-            .de: count == 1 ? "Wort heute korrigiert" : "Wörter heute korrigiert",
-            .pt: count == 1 ? "palavra corrigida hoje" : "palavras corrigidas hoje",
-            .ja: "語を今日修正",
-            .zh: "个词今天已修正",
-        ]
-        let english = count == 1 ? "word fixed today" : "words fixed today"
-        return language == .en ? english : table[language] ?? english
-    }
     static var introSubtitle: String { L("Before it starts changing what you type.") }
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
     static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }
@@ -145,12 +117,6 @@ enum LyStr {
         return sentences(head, tail, language: language)
     }
     static var introStart: String { L("Got it") }
-    static var autoReplaceSection: String { L("Abbreviations") }
-    static var autoReplaceNote: String { L("A short token you type often, and what it stands for. It expands when you finish the word.") }
-    static var abbreviation: String { L("Abbreviation") }
-    static var expansion: String { L("Stands for") }
-    static var addAbbreviation: String { L("Add") }
-    static var noAbbreviations: String { L("No abbreviations yet") }
     static var fixCapitals: String { L("Fix a capital held too long") }
     static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
     static var tryIt: String { L("Try it") }
@@ -243,12 +209,6 @@ enum LyStr {
     /// ellipsis. This key used to be «Open Keyboard settings…», a near-copy
     /// with four of eight rows retranslated by hand.
     static var openKeyboardSettings: String { L("Open Keyboard Settings…") }
-    /// macOS's own name for its palette, read from AppKit's
-    /// `InputManager.loctable` (key `Emoji & Symbols`) rather than translated
-    /// again — the Edit menu of every app spells it this way. Helm's zh takes
-    /// the `zh_CN` row and its pt the `pt_BR` row, the variants the rest of
-    /// the app follows.
-    static var emojiAndSymbols: String { L("Emoji & Symbols") }
     /// The emoji door's full title, built the way the system input menu builds
     /// it: the `Show palette class IM` template (`TextInputMenuCore.bundle`)
     /// around the palette's own name — so the sentence cannot drift from the
@@ -317,16 +277,8 @@ enum LyStr {
         }
     }
 
-    /// The two segments' own names. A segmented picker with no label is «pop up
-    /// button» to VoiceOver, and `NamedControlsTests` scans the source for it.
-    static var whatTheFigureShows: String { L("What the figure shows") }
     static var period: String { L("Period") }
 
-    /// The two glyph buttons. Named, because a glyph without a name is invisible
-    /// to anybody using VoiceOver — and `NamedControlsTests` scans for exactly
-    /// this shape.
-    static var showWords: String { L("Words put right") }
-    static var showMinutes: String { L("Time saved") }
 
     /// Under the figure when it is showing words: how many, and over what.
     ///
@@ -362,34 +314,13 @@ enum LyStr {
         return language == .en ? english : table[language] ?? english
     }
 
-    /// And when it is showing time. «Не ушло на перенабор» rather than «сэкономлено»:
-    /// the module did not save time, it removed work that would have been done.
-    static func timeIn(_ period: ConversionPeriod,
-                       language: AppLanguage = AppLanguage.current) -> String {
-        let name = periodName(period, language: language).lowercased()
-        return L("not spent typing again · \(name)",
-                 [.ru: "не ушло на перенабор · \(name)",
-                  .es: "no gastado en volver a escribir · \(name)",
-                  .fr: "non passé à retaper · \(name)",
-                  .de: "nicht mit Neutippen verbracht · \(name)",
-                  .pt: "não gasto redigitando · \(name)",
-                  .ja: "打ち直しに使わずに済んだ時間 · \(name)",
-                  .zh: "省下的重新输入时间 · \(name)"],
-                 language: language)
-    }
 
-    /// The line that is always occupied, so the hero does not change height when
-    /// the metric does. It simply says something different.
-    static var estimateNote: String {
-        L("An estimate: about 3 seconds a word — noticing, clearing, switching, typing it again.")
-    }
 
     /// The hero when nothing has been put right yet — the state no edition of
     /// the redesign ever drew, and the one a fresh install sees.
     static var nothingYet: String { L("Watching your words") }
     static var nothingYetNote: String { L("Nothing has needed putting right so far.") }
 
-    static var noTriggers: String { L("Nothing is switched on — words will not be fixed as you type.") }
 
     /// Under the same card when macOS has no dictionary for a layout somebody
     /// has installed.

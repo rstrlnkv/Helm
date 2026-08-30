@@ -35,7 +35,8 @@ public struct ConversionEvent: Codable, Equatable, Sendable {
 ///
 /// **The windows slide; they do not follow the calendar.** «This month» on the
 /// first of the month is a figure that collapses overnight through nothing the
-/// reader did — the same complaint `DailyCount` was written for one scale down.
+/// reader did — the same complaint the day counter it replaced was written for,
+/// one scale down.
 /// Only `today` is a calendar day, because «today» means that and nothing else.
 ///
 /// One type for the engine and the page: the segment somebody presses and the
