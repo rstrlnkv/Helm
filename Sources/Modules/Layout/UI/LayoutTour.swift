@@ -122,9 +122,9 @@ struct LayoutTour: View {
     private var explanation: String {
         switch step {
         case 0: return LyStr.introWhat
-        case 1: return LyStr.tourTryBody
+        case 1: return ""
         case 2: return LyStr.tourSwitchesBody
-        default: return LyStr.introUndo(gesture: gesture)
+        default: return gesture.map { LyStr.undoHint(gesture: $0) } ?? LyStr.undoImpossible()
         }
     }
 
@@ -134,7 +134,7 @@ struct LayoutTour: View {
             // What it refuses is the half people are wary of, and it is the
             // half a sentence about what it *does* cannot carry.
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                point("checkmark.shield", LyStr.introWhen)
+                point("checkmark.shield", LyStr.automaticNote)
                 point("hand.raised", LyStr.introWhere)
             }
         case 1:

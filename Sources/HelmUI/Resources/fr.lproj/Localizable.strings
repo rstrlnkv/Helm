@@ -8,7 +8,6 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "Une session Rester Éveillé survit désormais au redémarrage de Helm. Auparavant, tout ce qui fermait l’app — le plus souvent une mise à jour silencieuse — annulait une session de deux heures : le compte à rebours disparaissait de la barre des menus, le Mac pouvait s’endormir et rien ne le disait. Elle revient avec le temps qui lui restait, et une session dont l’échéance est passée pendant l’absence de Helm reste terminée.";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "Un VPN transporte tout le trafic de ce Mac, pas seulement celui de cette app, et le tunnel met quelques secondes à s’établir après l’ouverture.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "Une passe de design sur toute l’app, dans l’idiome macOS 26/27 : Liquid Glass dans le panneau, des titres alignés avec leur contenu à toute largeur, un texte atténué qui reste lisible et des chiffres qui défilent au lieu de sauter. La barre latérale regroupe en Fichiers et Utilitaires.";
-"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "Un vrai champ, pas une démonstration. Tapez ghbdtn, appuyez sur espace et regardez.";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "Une suppression pouvait suivre un lien symbolique hors du dossier que vous aviez confirmé et effacer un autre fichier. Ce n’est plus possible.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "Un filtre masque les types que vous n’examinez pas, les extensions système par exemple.";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "Une disposition sans pays garde ses lettres, dans un cadre de la taille d’un drapeau.";
@@ -18,7 +17,7 @@
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "Un champ sécurisé est ignoré avant d’être lu, et non après. Et le compte du jour survit à la correction du fuseau horaire par votre Mac.";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "Un raccourci pressé après un collage n’écrit plus le mot d’avant à l’intérieur du texte collé. Seul le raccourci que vous avez enregistré compte comme « peut-être le geste » ; toute autre combinaison termine le mot pour de bon.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Une sortie de l’analyse dans Disque : le module s’ouvre sur ce qu’il a mesuré en dernier, et « Choisir autre chose… » efface l’écran et oublie l’analyse enregistrée.";
-"A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Un mot n’est changé que s’il n’en est pas un tel quel et en devient un une fois converti. Ce qui est valide reste.";
+"Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "Uniquement si ce que vous avez tapé n’est pas un mot et en devient un dans l’autre disposition. Ce qui est déjà un mot reste intact.";
 "A word to leave alone" = "Un mot à ne pas toucher";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "Un mot inscrit sur la liste des exceptions est aussi laissé tranquille quand vous le sélectionnez. Cette voie ignorait tous les refus appliqués à un mot tapé.";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "Les abréviations quittent le Clavier. macOS propose la même chose dans Remplacement de texte et la synchronise entre vos appareils.";
@@ -124,7 +123,7 @@
 "How it works" = "Comment ça marche";
 "If it gets one wrong" = "S’il se trompe";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "Le Clavier corrige les mots d’une lettre. En russe, les mots les plus courants font une lettre — в, и, с, к, о, у, а, я — et jusqu’ici il les laissait tous tels quels.";
-"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Le Clavier revient dans le panneau de la barre des menus, dans les trois tailles. La grande dessine les quinze derniers jours au jour le jour, indique la frappe économisée à peu près, et porte les boutons de période, le dernier changement avec de quoi ne plus jamais toucher ce mot, et l’interrupteur de correction à la frappe.";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Le clavier est de retour dans le panneau de la barre des menus, dans les trois tailles de tuile. La grande dessine les quatorze derniers jours un à un, indique à peu près la frappe économisée et porte un bouton pour changer de période, la dernière correction avec le moyen de ne plus jamais toucher ce mot, et l’interrupteur de correction à la volée.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "Le Clavier est plus simple. Les trois interrupteurs « Quand corriger » ont disparu : l’espace et la ponctuation confirment un mot, Return non — ce à quoi ils étaient réglés, et ce qui empêche une messagerie d’envoyer votre faute.";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "Le Clavier n’écrit plus dans un texte que vous aviez déjà supprimé. Supprimer un mot avec Option-Suppression laissait le dernier changement annulable, et la touche de correction insérait l’ancien mot là où se trouvait le curseur.";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "Le Clavier s’ouvre sur un parcours en quatre étapes plutôt qu’une introduction. L’étape deux est un vrai champ pour essayer, l’étape trois les interrupteurs eux-mêmes : accepter l’étape, c’est activer.";
@@ -136,8 +135,7 @@
 "Month" = "Mois";
 "Move to Trash…" = "Placer dans la corbeille…";
 "No key is assigned — this change can only be put back by hand." = "Aucune touche n’est choisie — ce changement ne peut être rétabli qu’à la main.";
-"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Aucune touche : rien ne corrige la sélection ni le dernier mot à la demande. Choisissez-en une, ou définissez une combinaison ci-dessous.";
-"No words set aside" = "Aucun mot mis de côté";
+"Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "Rien ne corrige la sélection ni le dernier mot tant que vous n’avez pas choisi une touche ou enregistré une combinaison ci-dessous.";
 "No words yet" = "Aucun mot pour l’instant";
 "Not watching" = "Ne surveille pas";
 "Nothing" = "Rien";
@@ -154,8 +152,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "Appuyez de nouveau pour annuler le changement, ou resélectionnez le texte pour le rétablir.";
 "Tap it on its own: it fixes the selection, or the last word." = "Appuyez dessus seule : elle corrige la sélection ou le dernier mot.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Appuyer sur Contrôle seule met aussi en pause la voix de VoiceOver. Si vous utilisez VoiceOver, choisissez une autre touche.";
-"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "Les terminaux et gestionnaires de mots de passe sont désactivés au départ : là, un mot qui semble faux est souvent exactement le bon. Activez celui que vous voulez, ou ajoutez votre propre app.";
-"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "L’introduction du Clavier se replie. Elle s’ouvre sur une ligne avec un bouton qui déplie le reste, si bien que le chiffre et les réglages restent là où vous les aviez laissés.";
+"Terminals and password managers start switched off: there a word that looks wrong is often exactly right." = "Dans les terminaux et gestionnaires de mots de passe, la correction est désactivée au départ : là, un mot qui semble faux est souvent exactement le bon.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "La page Clavier s’ouvre sur ce qu’elle a corrigé, sur la période de votre choix — aujourd’hui, une semaine, un mois, une année ou tout — et le temps de frappe ainsi épargné. Rien pour l’instant n’est pas un zéro : le module le dit.";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "La page du Clavier affiche les deux chiffres à la fois : combien de mots corrigés, et ce que cela représente en frappe. L’interrupteur de l’en-tête qui n’en montrait qu’un a disparu.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "La pastille à côté du nom de Clavier n’indique plus qu’il est actif alors que la page en dessous le dit en pause. Devant un champ de mot de passe, le module se tait volontairement, et les deux endroits le disent maintenant.";
@@ -234,7 +231,7 @@
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Fichiers laissés dans votre Bibliothèque par des apps que vous n’avez plus. Seuls ceux nommés d’après le bundle id d’une app sont listés, donc certains restes n’apparaîtront pas.";
 "Files that exist more than once" = "Fichiers présents plus d’une fois";
 "Fix" = "Corriger";
-"Fix a capital held too long" = "Corriger une majuscule maintenue trop longtemps";
+"Fix two capitals at the start of a word" = "Corriger deux majuscules en début de mot";
 "Fix as I type" = "Corriger pendant la saisie";
 "Fix with" = "Corriger avec";
 "Fixes words typed in the wrong keyboard layout" = "Corrige les mots tapés dans la mauvaise disposition";
@@ -266,7 +263,7 @@
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm revient à son état juste après l’installation. Les accès accordés dans Réglages Système ne changent pas.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm montre les réglages, caches et fichiers de support laissés derrière, prêts à supprimer. Seulement tant que l’app est dans la corbeille : une fois vidée, plus rien ne permet de les identifier.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "La langue de Helm atteint désormais ce que macOS dessine pour lui : le sélecteur de dossier, sa barre latérale et les menus d’un champ de texte restaient en anglais. Les nombres et les dates suivent aussi la langue.";
-"Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Une copie de l’indicateur avec les choix que celui du système n’offre pas. Celui du système reste : désactivez-le dans les réglages du clavier, sinon vous en aurez deux.";
+"macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS affiche son propre indicateur. Désactivez-le dans les réglages du clavier, sinon vous en aurez deux.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew n’est plus installé.";
 "Homebrew isn’t installed" = "Homebrew n’est pas installé";
@@ -354,8 +351,8 @@
 "Network" = "Réseau";
 "Network cache and cookies" = "Cache réseau et cookies";
 "Never" = "Jamais";
-"Never change these words" = "Ne jamais changer ces mots";
-"Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "Jamais dans un champ de mot de passe. Ni dans les terminaux et gestionnaires de mots de passe que Helm connaît — ajoutez les autres dans les réglages.";
+"Words to leave alone" = "Mots à ne pas toucher";
+"Never in a password field, and never in the terminals and password managers Helm knows." = "Jamais dans un champ de mot de passe, ni dans les terminaux et gestionnaires de mots de passe que Helm connaît.";
 "Never this word" = "Jamais ce mot";
 "New rule" = "Nouvelle règle";
 "Next" = "Suivant";
@@ -386,7 +383,7 @@
 "Notification" = "Notification";
 "Number of days" = "Nombre de jours";
 "OK" = "OK";
-"Off" = "Désactivée";
+"No key" = "Aucune touche";
 "Old download" = "Téléchargement ancien";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "Sur une fenêtre large, les réglages ne dérivent plus : toutes les pages commencent au même bord gauche.";
 "On launch and quit" = "À l’ouverture et à la fermeture";
@@ -394,7 +391,6 @@
 "On power" = "Sur secteur";
 "On quit only" = "À la fermeture seulement";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Une touche pour les deux corrections : choisissez ⌘, ⌥, ⌃ ou ⇧ droite et appuyez seule. La première fois corrige le dernier mot, la suivante le restaure. Maintenue ou combinée, elle reste un modificateur.";
-"Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Uniquement si ce que vous avez tapé n’est pas un mot et en devient un une fois la disposition changée. Ce qui est déjà un mot reste intact.";
 "Open Accessibility…" = "Ouvrir Accessibilité…";
 "Open Extensions…" = "Ouvrir Extensions…";
 "Open Full Disk Access…" = "Ouvrir Accès complet au disque…";
@@ -481,7 +477,7 @@
 "Settings files" = "Fichiers de réglages";
 "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout." = "Réglages peaufinés : fenêtre agrandie pour les utilitaires, listes façon macOS 26, textes clarifiés.";
 "Settings…" = "Réglages…";
-"Shortcuts" = "Raccourcis";
+"Keyboard shortcuts" = "Raccourcis clavier";
 "Show" = "Afficher";
 "Show in Finder" = "Afficher dans le Finder";
 "Show it in the menu bar" = "L’afficher dans la barre des menus";
@@ -554,7 +550,7 @@
 "Then" = "Alors";
 "This app is not signed — this rule never fires" = "Cette app n’est pas signée — la règle ne se déclenche pas";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "C’est une touche dont vous vous servez en tapant. Maintenue ou combinée elle fonctionne normalement, mais une pression isolée par mégarde corrigera le dernier mot.";
-"This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Ce champ est réel, pas une démonstration : le module s’y comporte comme partout ailleurs.";
+"Helm works in this field exactly as it does anywhere else." = "Helm fonctionne dans ce champ exactement comme partout ailleurs.";
 "This release published no checksum. Helm opened its download page instead." = "Cette version n’a publié aucune somme de contrôle. Helm a ouvert sa page de téléchargement.";
 "Timer" = "Minuteur";
 "Timing" = "Quand";

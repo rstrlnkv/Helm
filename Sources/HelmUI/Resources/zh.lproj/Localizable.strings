@@ -8,7 +8,6 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "防止睡眠的会话现在能在 Helm 重启后继续。此前任何结束应用的操作 —— 通常是静默更新 —— 都会取消两小时的会话：菜单栏的倒计时消失，Mac 可以入睡，而且没有任何提示。现在它会带着剩余时间回来；若结束时间在 Helm 不在期间已过，会话保持结束状态。";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN 承载这台 Mac 的全部流量，不只是该应用的，而且隧道要在应用启动几秒后才建立。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "对整个应用做了一次符合 macOS 26/27 风格的设计调整：菜单栏面板采用 Liquid Glass，页面标题在任何窗口宽度下都与下方内容对齐，次要文字在变淡的同时保持可读，数字滚动而不是硬切。侧边栏按“文件”和“实用工具”分组。";
-"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "这是真实的输入框，不是演示。输入 ghbdtn，按空格，看看会怎样。";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "删除可能沿着符号链接离开你确认过的文件夹，删掉另一个文件。现在不会了。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "筛选器可隐藏你当前不查看的类型，例如系统扩展。";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "没有国家归属的布局保持字母显示，边框与旗帜同样大小。";
@@ -18,7 +17,7 @@
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "安全输入框在被读取之前就跳过，而不是之后。并且当 Mac 自行校正时区时，当天的计数不再丢失。";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "粘贴之后再按快捷键，不会再把粘贴前的那个词打进粘贴的文字里。只有你录制的快捷键才被当作“可能是手势”，其他组合键会彻底结束这个词。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
-"A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
+"Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "仅当按原样不是单词、换到另一个布局才是单词时才会改。已经是单词的一律不动。";
 "A word to leave alone" = "不要改动的词";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "加入“不再改动”名单的词，在你选中它时也不会被改。这条路径此前跳过了输入路径的所有拒绝规则。";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "“键盘”不再提供缩写替换。macOS 的“文本替换”提供同样的功能，并在你的设备之间同步。";
@@ -124,7 +123,7 @@
 "How it works" = "工作方式";
 "If it gets one wrong" = "如果它弄错了";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "“键盘”现在也修正单字母的词。俄语中最常见的词正是单字母的 в、и、с、к、о、у、а、я，而此前它们全都不被处理。";
-"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "键盘回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴逐日绘出过去十四天，说明大致省下多少输入量，并带有切换时间范围的按钮、上一次替换以及禁止再改该词的方法，还有随打随改的开关。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "“键盘”更简单了。“何时修正”的三个开关已移除：空格和标点确认一个词，Return 不确认——这本就是它们的设置，也避免聊天工具把错字发出去。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "“键盘”不再向你已经删除的文字里输入。用 Option-Delete 删除一个词后，上一次替换仍被当作可撤销，修复键会把旧词插入光标所在处。";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "“键盘”以四步导览开场，而不是一段介绍。第二步是可以真的试一试的输入框，第三步就是开关本身——同意这一步就是把它打开。";
@@ -136,8 +135,7 @@
 "Month" = "一月";
 "Move to Trash…" = "移到废纸篓…";
 "No key is assigned — this change can only be put back by hand." = "未指定按键——这次替换只能手动改回。";
-"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "未设置按键——无法按需修正选中的文字或最后一个词。请选择一个按键，或在下方设置组合键。";
-"No words set aside" = "没有排除任何词";
+"Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "在选择按键或在下方录制组合键之前，选中的文字和上一个词都不会被修正。";
 "No words yet" = "还没有词";
 "Not watching" = "未在监看";
 "Nothing" = "无";
@@ -154,8 +152,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "再按一次即可撤销更改，或重新选中文字以还原。";
 "Tap it on its own: it fixes the selection, or the last word." = "单独按一下：修正选中的文字，或最后一个词。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
-"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "终端和密码管理器默认关闭：在那里，看起来写错的词往往正是对的。你可以打开其中任何一个，也可以添加自己的应用。";
-"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "“键盘”的介绍可以折叠。它以一行显示，按钮可展开其余内容，页面的数字和设置仍在原处。";
+"Terminals and password managers start switched off: there a word that looks wrong is often exactly right." = "终端和密码管理器默认关闭：在那里，看起来写错的词往往正是对的。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "“键盘”页面以它在你所选时间段内修正的内容开头——今天、一周、一月、一年或全部——以及由此省下的输入时间。还没有内容并不等于零，页面会直接说明。";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "“键盘”页面同时显示两个数字：修正了多少词，以及折合多少输入时间。窗口标题栏里那个每次只显示一个的开关已移除。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "“键盘”名称旁的标记不再显示为运行中，而下方页面却说已暂停。密码输入框在前时，模块会有意保持沉默，现在两处说法一致。";
@@ -234,7 +231,7 @@
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "已卸载应用留在资源库中的文件。仅列出以应用 bundle id 命名的文件，因此部分残留不会出现。";
 "Files that exist more than once" = "存在多份的文件";
 "Fix" = "修正";
-"Fix a capital held too long" = "修正词首连续两个大写字母";
+"Fix two capitals at the start of a word" = "修正词首连续两个大写字母";
 "Fix as I type" = "输入时自动修正";
 "Fix with" = "修正键";
 "Fixes words typed in the wrong keyboard layout" = "修正用错误键盘布局输入的单词";
@@ -266,7 +263,7 @@
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm 会回到刚安装完的状态。你在系统设置中授予的权限不受影响。";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm 会列出它留下的设置、缓存和支持文件，可直接删除。仅在 App 还在废纸篓里时有效——清倒之后就无法辨认这些文件了。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm 的语言现在也适用于 macOS 为它绘制的部分：选择文件夹的窗口、它的边栏以及文本框的菜单此前始终是英文。数字和日期也会按你的语言书写。";
-"Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "菜单栏指示器的自有副本，带有系统版本没有的选项。系统的那个仍在：请在键盘设置中关闭，否则会有两个。";
+"macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS 也会显示自己的指示器。请在键盘设置中关闭，否则会有两个。";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew 已被卸载。";
 "Homebrew isn’t installed" = "未安装 Homebrew";
@@ -354,8 +351,8 @@
 "Network" = "网络";
 "Network cache and cookies" = "网络缓存与 Cookie";
 "Never" = "永不";
-"Never change these words" = "从不修改这些词";
-"Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "在密码框中从不介入。Helm 已知的终端和密码管理器也不介入；其他的请在设置中添加。";
+"Words to leave alone" = "不改动的词";
+"Never in a password field, and never in the terminals and password managers Helm knows." = "在密码框中从不介入，Helm 已知的终端和密码管理器也不介入。";
 "Never this word" = "从不改这个词";
 "New rule" = "新建规则";
 "Next" = "下一步";
@@ -386,7 +383,7 @@
 "Notification" = "通知";
 "Number of days" = "天数";
 "OK" = "完成";
-"Off" = "关闭";
+"No key" = "无";
 "Old download" = "旧下载";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "窗口拉宽时设置不再错位：所有页面从同一左边缘开始。";
 "On launch and quit" = "启动与退出时";
@@ -394,7 +391,6 @@
 "On power" = "接通电源时";
 "On quit only" = "仅退出时";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "一个键完成两件事：选择右侧 ⌘、⌥、⌃ 或 ⇧ 并单独按下，第一次修正上一个词，再按一次还原。按住或与其他键同时按下时，它仍是普通修饰键。";
-"Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "仅当按原样不是单词、切换布局后才是单词时才会改。已经是单词的一律不动。";
 "Open Accessibility…" = "打开无障碍…";
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
@@ -481,7 +477,7 @@
 "Settings files" = "设置文件";
 "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout." = "设置窗口打磨：实用工具使用更大窗口、macOS 26 风格列表、更清晰的文案。";
 "Settings…" = "设置…";
-"Shortcuts" = "快捷键";
+"Keyboard shortcuts" = "键盘快捷键";
 "Show" = "显示";
 "Show in Finder" = "在访达中显示";
 "Show it in the menu bar" = "在菜单栏中显示";
@@ -554,7 +550,7 @@
 "Then" = "则";
 "This app is not signed — this rule never fires" = "此应用未签名，此规则不会生效";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。";
-"This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "这是真实的输入框，不是演示：它在这里的行为和在别处完全一样。";
+"Helm works in this field exactly as it does anywhere else." = "Helm 在这个输入框里的行为，和在其他应用中完全一样。";
 "This release published no checksum. Helm opened its download page instead." = "此版本未发布校验和。Helm 已打开其下载页面。";
 "Timer" = "计时器";
 "Timing" = "时机";

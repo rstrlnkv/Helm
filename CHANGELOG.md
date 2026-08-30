@@ -18,7 +18,6 @@ only once it has no known problems left.
 - **FIX** The panel’s Disk tile measures the disk on every opening, and a drive plugged in while the page is open appears in the list.
 - **FIX** About: the update row wraps instead of cutting off “Helm is up to date.”
 - **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
-- **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
 - **NEW** Keyboard opens with a four-step tour: a real field to try it in, and the switches themselves.
 - **NEW** Keyboard’s never-list and per-app rules move to a window of their own; the page keeps a row and a count for each.
 - **FIX** Keyboard: a chord that is not the shortcut you recorded ends the word for good, so the gesture after a paste cannot type the old word into the pasted text.

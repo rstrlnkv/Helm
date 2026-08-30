@@ -8,9 +8,13 @@ enum LyStr {
     static var moduleName: String { L("Keyboard") }
     static var summary: String { L("Fixes words typed in the wrong keyboard layout") }
     static var automatic: String { L("Fix as I type") }
-    static var automaticNote: String { L("A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone.") }
+    /// The rule, said once. `introWhen` said it again as step 1's second point —
+    /// sixteen translated rows for one sentence, both of them drawn inside one
+    /// four-card tour. «Once swapped» was also opaque (swapped what?) where «in
+    /// the other layout» is the thing itself.
+    static var automaticNote: String { L("Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone.") }
     static var suspended: String { L("Paused — a password field is in front, and Helm never reads one.") }
-    static var exceptions: String { L("Never change these words") }
+    static var exceptions: String { L("Words to leave alone") }
     /// **It said «One per line.» until the list stopped being lines.** That was
     /// a description of a `TextEditor` — true of the control, and the control is
     /// gone. A note under a list is the place to say what the list *does*, not
@@ -25,7 +29,13 @@ enum LyStr {
     /// `Keyboard shortcut`, and 2 to 0 for the plural. «Горячие клавиши» is a
     /// colloquialism the system never uses, and this file already said the
     /// right thing thirty lines down (`orShortcut`). One name per thing.
-    static var shortcuts: String { L("Shortcuts") }
+    /// The system's own term, read from `KeyboardSettings.appex`'s loctable
+    /// (key `Keyboard Shortcuts`) rather than shortened. Bare «Shortcuts» is
+    /// what five of the seven translations call the *Shortcuts app*:
+    /// `Kurzbefehle`, `Raccourcis`, `Atajos`, `Atalhos`, `ショートカット`.
+    /// Russian was already right, because in Russian the compound is the
+    /// ordinary name — which is why one English key fixes all five.
+    static var shortcuts: String { L("Keyboard shortcuts") }
     static var apps: String { L("Rules for specific apps") }
     /// One caption for the list, and it explains the rows above it rather than
     /// describing a rule the page keeps invisible.
@@ -34,7 +44,7 @@ enum LyStr {
     /// managers are left alone already» and a footer saying almost the same
     /// thing, neither of which named one of them. The apps are drawn now.
     static var appsWhy: String {
-        L("Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own.")
+        L("Terminals and password managers start switched off: there a word that looks wrong is often exactly right.")
     }
     static var lastChange: String { L("Last change") }
 
@@ -82,41 +92,12 @@ enum LyStr {
     }
 
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
-    static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }
-    static var introWhere: String { L("Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings.") }
-    /// The intro's undo point: the same instruction the page's note gives,
-    /// plus the one thing only the intro can say.
-    ///
-    /// **It used to spell the instruction out again.** Two eight-language
-    /// tables held the same three conditions in the same order — press it
-    /// again, before you type anything else, in the app it happened in — so one
-    /// sentence cost sixteen hand-maintained translations and had two places to
-    /// drift from the control it names. `undoHint` is the sentence;
-    /// `undoImpossible` is the honest version when no key is bound, and it must
-    /// stay honest: a sentence promising an undo that cannot fire is worse than
-    /// no sentence. What is left here is the tail — that this page has a field
-    /// to try it in — which is true of nowhere else and so belongs to nowhere
-    /// else.
-    ///
-    /// `gesture` is the bound tap key or the recorded chord; nil means neither
-    /// exists. Interpolated, so it keeps its own table.
-    static func introUndo(gesture: String?, language: AppLanguage = AppLanguage.current) -> String {
-        let tryIt: [AppLanguage: String] = [
-            .en: "And there is a field on this page to try it in, before it touches anything real.",
-            .ru: "А на этой странице есть поле, где можно всё попробовать, прежде чем это коснётся настоящего текста.",
-            .es: "Y en esta página hay un campo para probarlo antes de que toque nada real.",
-            .fr: "Et cette page contient un champ pour l’essayer, avant qu’il ne touche à rien de réel.",
-            .de: "Und auf dieser Seite gibt es ein Feld zum Ausprobieren, bevor etwas Echtes berührt wird.",
-            .pt: "E nesta página há um campo para experimentar, antes que toque em algo real.",
-            .ja: "実際の文章に触れる前に、このページの入力欄で試せます。",
-            .zh: "本页还有一个输入框，可以在触及真实文字之前先试一试。",
-        ]
-        let head = gesture.map { undoHint(gesture: $0, language: language) }
-            ?? undoImpossible(language: language)
-        guard let tail = tryIt[language] ?? tryIt[.en] else { return head }
-        return sentences(head, tail, language: language)
-    }
-
+    /// **No route at the end.** It said «add any others in Settings» — from
+    /// inside Settings, about a list that lives in the «Words and apps» window
+    /// now. The 0.9.0 «Configure panel» failure: a string naming a way to
+    /// somewhere, translated faithfully into seven languages after the way
+    /// moved.
+    static var introWhere: String { L("Never in a password field, and never in the terminals and password managers Helm knows.") }
     /// The two faces of one control, so a reader who opened the points can put
     /// them away again — a disclosure that only opens is a disclosure that has
     /// stopped being one.
@@ -142,7 +123,10 @@ enum LyStr {
         L("\(index) of \(total)",
           [.ru: "\(index) из \(total)", .es: "\(index) de \(total)",
            .fr: "\(index) sur \(total)", .de: "\(index) von \(total)",
-           .pt: "\(index) de \(total)", .ja: "\(total)分の\(index)",
+           .pt: "\(index) de \(total)",
+           // `\(total)分の\(index)` is the *fraction* — «one quarter» —
+           // and not a step counter at all.
+           .ja: "\(index) / \(total)",
            .zh: "第\(index)步，共\(total)步"],
           language: language)
     }
@@ -152,18 +136,25 @@ enum LyStr {
         L("These are live: switch one here and it is switched.")
     }
     static var tourUndoTitle: String { L("If it gets one wrong") }
-    static var tourTryBody: String {
-        L("A real field, not a demonstration. Type ghbdtn, press space, and watch.")
-    }
     static var introStart: String { L("Got it") }
-    static var fixCapitals: String { L("Fix a capital held too long") }
+    /// **The English was the wrong half of the pair.** It named a cause — a
+    /// Shift held a beat too long — where ja and zh had both already named the
+    /// rule, which is what the switch actually does. The translators were right
+    /// and the key was wrong, so it is one fix rather than seven. The Russian
+    /// also borrowed the root of macOS's Sticky Keys («Залипание клавиш»), a
+    /// feature that does something else entirely.
+    static var fixCapitals: String { L("Fix two capitals at the start of a word") }
     static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it.") }
     static var tryIt: String { L("Try it") }
     static var tryItPlaceholder: String { L("Type ghbdtn and press space") }
-    static var tryItHint: String { L("This is the real thing, not a demonstration: it works here exactly as it does anywhere else.") }
+    /// **Seventeen words doing one job through a colon.** The step above it
+    /// said «not a demonstration» too, and so did the placeholder — one idea
+    /// across four strings and 32 translated rows. The Russian also leaked the
+    /// word «модуль» onto a page the reader knows as «Клавиатура».
+    static var tryItHint: String { L("Helm works in this field exactly as it does anywhere else.") }
     static var indicator: String { L("Language indicator") }
     static var indicatorShow: String { L("Show it in the menu bar") }
-    static var indicatorHint: String { L("Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two.") }
+    static var indicatorHint: String { L("macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.") }
     static var tapKey: String { L("Fix with") }
     /// «Select it again to change it back», not «tapping again puts it back»:
     /// a fixed selection leaves no undo record — the caret's landing place
@@ -182,7 +173,7 @@ enum LyStr {
     /// The one value that means the control does nothing, which the note used
     /// to describe as if it did.
     static var tapKeyOff: String {
-        L("No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below.")
+        L("Nothing fixes the selection or the last word until you pick a key, or record a combination below.")
     }
 
     /// Behind the ⓘ beside «Fix with». Assembled from the key in force, so a
@@ -217,7 +208,7 @@ enum LyStr {
     static var orShortcut: String { L("Or a key combination") }
     static func tapKeyName(_ key: TapKey) -> String {
         switch key {
-        case .off: return L("Off")
+        case .off: return L("No key")
         case .rightCommand: return L("Right ⌘")
         case .rightOption: return L("Right ⌥")
         case .rightControl: return L("Right ⌃")
@@ -267,7 +258,7 @@ enum LyStr {
     /// is a count where «none» is a state.
     static func exceptionsRow(_ count: Int,
                               language: AppLanguage = AppLanguage.current) -> String {
-        guard count > 0 else { return L("No words set aside", language: language) }
+        guard count > 0 else { return L("No words yet", language: language) }
         let table: [AppLanguage: String] = [
             .ru: Plural.russian(count, "слово", "слова", "слов"),
             .es: count == 1 ? "palabra" : "palabras",

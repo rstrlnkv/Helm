@@ -48,16 +48,13 @@ final class TheUndoPromiseNamesItsConditionTests: XCTestCase {
         }
     }
 
-    /// The introduction makes the same promise on the first run, and it was the
-    /// same sentence with the same silence.
-    func testTheIntroductionSaysItToo() throws {
-        for language in AppLanguage.allCases {
-            let expected = try XCTUnwrap(condition[language])
-            let line = LyStr.introUndo(gesture: "Right ⌘", language: language)
-            XCTAssertTrue(line.contains(expected),
-                          "\(language) introduces an undo without its condition: \(line)")
-        }
-    }
+    /// **The tour makes the same promise, and now makes it with the same
+    /// string.** `introUndo` used to wrap `undoHint` and append a tail — «and
+    /// there is a field on this page to try it in» — written for the folding
+    /// introduction, where all four points were on screen at once. In a tour it
+    /// arrived at step 4, pointing forward at the field step 2 had already
+    /// handed over. The step calls `undoHint` directly now, so the case above
+    /// covers both and there is nothing left here to check separately.
 
     /// And VoiceOver hears it spoken, where there is no row to go back and read
     /// again. This one already knew whether an undo existed — it takes

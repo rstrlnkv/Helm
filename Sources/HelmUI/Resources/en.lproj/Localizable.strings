@@ -8,7 +8,6 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished.";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures.";
-"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "A real field, not a demonstration. Type ghbdtn, press space, and watch.";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "A filter hides the kinds you are not reviewing — system extensions, for instance.";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "A layout that names no country keeps its letters, in a frame the same size as a flag.";
@@ -18,7 +17,7 @@
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone.";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan.";
-"A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone.";
+"Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone.";
 "A word to leave alone" = "A word to leave alone";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes.";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices.";
@@ -124,7 +123,7 @@
 "How it works" = "How it works";
 "If it gets one wrong" = "If it gets one wrong";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone.";
-"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type.";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo.";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of.";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on.";
@@ -136,8 +135,7 @@
 "Month" = "Month";
 "Move to Trash…" = "Move to Trash…";
 "No key is assigned — this change can only be put back by hand." = "No key is assigned — this change can only be put back by hand.";
-"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below.";
-"No words set aside" = "No words set aside";
+"Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "Nothing fixes the selection or the last word until you pick a key, or record a combination below.";
 "No words yet" = "No words yet";
 "Not watching" = "Not watching";
 "Nothing" = "Nothing";
@@ -154,8 +152,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "Tap again to put the change back, or select the text again to change it back.";
 "Tap it on its own: it fixes the selection, or the last word." = "Tap it on its own: it fixes the selection, or the last word.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key.";
-"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own.";
-"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them.";
+"Terminals and password managers start switched off: there a word that looks wrong is often exactly right." = "Terminals and password managers start switched off: there a word that looks wrong is often exactly right.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead.";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so.";
@@ -234,7 +231,7 @@
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.";
 "Files that exist more than once" = "Files that exist more than once";
 "Fix" = "Fix";
-"Fix a capital held too long" = "Fix a capital held too long";
+"Fix two capitals at the start of a word" = "Fix two capitals at the start of a word";
 "Fix as I type" = "Fix as I type";
 "Fix with" = "Fix with";
 "Fixes words typed in the wrong keyboard layout" = "Fixes words typed in the wrong keyboard layout";
@@ -266,7 +263,7 @@
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one.";
-"Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two.";
+"macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew is no longer installed.";
 "Homebrew isn’t installed" = "Homebrew isn’t installed";
@@ -354,8 +351,8 @@
 "Network" = "Network";
 "Network cache and cookies" = "Network cache and cookies";
 "Never" = "Never";
-"Never change these words" = "Never change these words";
-"Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings.";
+"Words to leave alone" = "Words to leave alone";
+"Never in a password field, and never in the terminals and password managers Helm knows." = "Never in a password field, and never in the terminals and password managers Helm knows.";
 "Never this word" = "Never this word";
 "New rule" = "New rule";
 "Next" = "Next";
@@ -386,7 +383,7 @@
 "Notification" = "Notification";
 "Number of days" = "Number of days";
 "OK" = "OK";
-"Off" = "Off";
+"No key" = "No key";
 "Old download" = "Old download";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways.";
 "On launch and quit" = "On launch and quit";
@@ -394,7 +391,6 @@
 "On power" = "On power";
 "On quit only" = "On quit only";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working.";
-"Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.";
 "Open Accessibility…" = "Open accessibility…";
 "Open Extensions…" = "Open Extensions…";
 "Open Full Disk Access…" = "Open Full Disk Access…";
@@ -481,7 +477,7 @@
 "Settings files" = "Settings files";
 "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout." = "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout.";
 "Settings…" = "Settings…";
-"Shortcuts" = "Shortcuts";
+"Keyboard shortcuts" = "Keyboard shortcuts";
 "Show" = "Show";
 "Show in Finder" = "Show in Finder";
 "Show it in the menu bar" = "Show it in the menu bar";
@@ -554,7 +550,7 @@
 "Then" = "Then";
 "This app is not signed — this rule never fires" = "This app is not signed — this rule never fires";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.";
-"This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "This is the real thing, not a demonstration: it works here exactly as it does anywhere else.";
+"Helm works in this field exactly as it does anywhere else." = "Helm works in this field exactly as it does anywhere else.";
 "This release published no checksum. Helm opened its download page instead." = "This release published no checksum. Helm opened its download page instead.";
 "Timer" = "Timer";
 "Timing" = "Timing";

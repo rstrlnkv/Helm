@@ -8,7 +8,6 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "Сессия «Не спать» теперь переживает перезапуск Helm. Раньше двухчасовую сессию отменяло всё, что завершало приложение, — чаще всего тихое обновление: отсчёт исчезал из меню-бара, Mac мог заснуть, и об этом никто не сообщал. Теперь она возвращается с остатком времени, а та, чей срок истёк, пока Helm не было, остаётся завершённой.";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "Через VPN идёт весь трафик этого Mac, а не только трафик приложения. Туннель поднимается через несколько секунд после запуска приложения.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "Дизайн-проход по всему приложению в стиле macOS 26/27: Liquid Glass в панели строки меню, заголовки страниц, выровненные с содержимым при любой ширине окна, приглушённый текст, который остаётся читаемым, и цифры, которые перекатываются, а не режутся. В боковом меню появились «Файлы» и «Утилиты» вместо пяти модулей из семи в одной куче, а окно открывается достаточно широким, чтобы «Диск» показывал всё, что измерил.";
-"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "Настоящее поле, а не демонстрация. Наберите ghbdtn, нажмите пробел и смотрите.";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "Удаление могло уйти по символической ссылке из подтверждённой папки и стереть другой файл. Теперь не может.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "Фильтр прячет виды, которые сейчас не смотрите, — например, системные расширения.";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "Раскладка, не привязанная к стране, остаётся буквами — в рамке размером с флаг.";
@@ -18,8 +17,8 @@
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "Защищённое поле пропускается до чтения, а не после. И дневной счёт переживает смену часового пояса на вашем Mac.";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "Сочетание, нажатое после вставки, больше не печатает слово, бывшее до вставки, внутрь вставленного текста. Как «возможно, это жест» теперь считается только записанное вами сочетание, любое другое заканчивает слово насовсем.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Из скана в «Диске» теперь есть выход. Модуль открывается на том, что мерил в последний раз, а единственная кнопка была «Сканировать заново», которая мерит то же самое место. «Выбрать другое…» рядом очищает экран и забывает сохранённый скан.";
-"A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Слово меняется, только если само по себе оно не слово, а после смены раскладки словом становится. Всё осмысленное остаётся как есть.";
-"A word to leave alone" = "Слово, которое не трогать";
+"Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "Только если то, что вы набрали, — не слово, а в другой раскладке становится словом. Всё, что и так слово, остаётся нетронутым.";
+"A word to leave alone" = "Слово-исключение";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "Слово из списка «никогда не менять» теперь не трогается и при выделении. Эта дверь обходила все отказы, которые делает дверь набранного слова.";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "Сокращения из Клавиатуры убраны. macOS возит то же самое в «Замене текста» и синхронизирует между устройствами.";
 "Abbreviations. A short token you type often and what it stands for, expanded as soon as you finish the word. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "Аббревиатуры. Короткое сочетание, которое вы часто набираете, и то, во что оно разворачивается, — как только слово дописано. Развернувшееся слово не переводится ещё и в другую раскладку. И, по желанию, единственная опечатка, в которой Helm уверен достаточно, чтобы её исправлять: «ПРивет» → «Привет» — но никогда «ПРИВЕТ» (кто-то кричит намеренно) и никогда слово с цифрой (это идентификатор).";
@@ -118,13 +117,13 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше по-прежнему показывает, где они были до перемещения.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm не получил ответа, поэтому список выше остался от прошлого сканирования.";
 "Helm got no answer, so this may not be every volume." = "Helm не получил ответа, поэтому здесь могут быть не все тома.";
-"Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm не читает пароли: поле, помеченное системой как защищённое, он пропускает целиком.";
+"Helm never reads a password: a field the system marks as secure is skipped whole." = "Helm не читает пароли: поле, которое система пометила как защищённое, он не трогает вовсе.";
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "Helm теперь сам сообщает о новой версии. Проверка и раньше шла каждый день, но ответ оставался на странице «О Helm» и ждал, пока вы туда заглянете.";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "Helm сообщает, когда у macOS нет словаря для одной из ваших раскладок. Исправление на лету там невозможно — ему нужен словарь с обеих сторон, — а раньше переключатель оставался включённым, значок зелёным, и ни одно слово не исправлялось. Исправление клавишей работает, и в сообщении об этом сказано.";
 "How it works" = "Как это работает";
 "If it gets one wrong" = "Если ошибётся";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "Клавиатура исправляет однобуквенные слова. В русском самые частые слова — как раз однобуквенные: в, и, с, к, о, у, а, я, — и до сих пор она не трогала ни одно из них.";
-"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Клавиатура снова в панели меню-бара, во всех трёх размерах плитки. Большая рисует последние две недели по дням, говорит, сколько примерно набора сэкономлено, и несёт кнопки периода, последнюю замену с возможностью сказать, что это слово трогать не надо, и переключатель исправления по ходу набора.";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "Клавиатура снова в меню-баре, во всех трёх размерах плитки. Большая рисует последние четырнадцать дней по одному, говорит, сколько примерно набора это сберегло, и несёт кнопку выбора периода, последнюю замену с возможностью запретить трогать это слово впредь и переключатель исправления по ходу набора.";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "Клавиатура стала проще. Трёх переключателей «Когда исправлять» больше нет: слово подтверждают пробел и знак препинания, но не Return — так они и были выставлены, и так чат не отправляет вашу опечатку.";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "Клавиатура больше не печатает в текст, который вы уже удалили. Удаление слова через Option-Delete оставляло последнюю замену отменяемой, и клавиша исправления вставляла старое слово туда, где стояла каретка.";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "Клавиатура открывается туром из четырёх шагов вместо вступления. Второй шаг — настоящее поле, где можно попробовать, третий — сами переключатели: согласиться с шагом и значит включить.";
@@ -136,8 +135,7 @@
 "Month" = "Месяц";
 "Move to Trash…" = "Переместить в Корзину…";
 "No key is assigned — this change can only be put back by hand." = "Клавиша не назначена — эту замену можно вернуть только вручную.";
-"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "Клавиша не выбрана — исправить выделенное или последнее слово по требованию нечем. Выберите её или задайте сочетание ниже.";
-"No words set aside" = "Ни одного слова";
+"Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "Пока клавиша не выбрана, исправить выделенное или последнее слово нечем — выберите клавишу или задайте сочетание ниже.";
 "No words yet" = "Пока ни одного слова";
 "Not watching" = "Не следит";
 "Nothing" = "Ничего";
@@ -152,10 +150,9 @@
 "Shift" = "Shift";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";
 "Tap again to put the change back, or select the text again to change it back." = "Нажмите ещё раз, чтобы отменить замену, или выделите текст снова, чтобы вернуть его.";
-"Tap it on its own: it fixes the selection, or the last word." = "Нажмите и отпустите её, ничего больше не нажимая: исправит выделенное или последнее слово.";
+"Tap it on its own: it fixes the selection, or the last word." = "Нажмите её одну, ничего больше не трогая: исправит выделенное или последнее слово.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Одиночное нажатие Control также приостанавливает речь VoiceOver. Если вы пользуетесь VoiceOver, выберите другую клавишу.";
-"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "Терминалы и менеджеры паролей изначально выключены: там слово, похожее на ошибку, чаще всего именно то, что нужно. Любой можно включить или добавить своё приложение.";
-"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "Вступление в Клавиатуре сворачивается. Оно открывается одной строкой с кнопкой, раскрывающей остальное, — цифра и настройки остаются там, где вы их оставили.";
+"Terminals and password managers start switched off: there a word that looks wrong is often exactly right." = "В терминалах и менеджерах паролей исправление по умолчанию выключено: там слово, похожее на ошибку, чаще всего именно то, что нужно.";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "Страница «Клавиатуры» открывается тем, что модуль исправил, за выбранный срок — сегодня, неделя, месяц, год или всё время — и сколько это сберегло набора. Пусто — это не ноль: модуль, который весь день смотрел и не нашёл что исправлять, так и говорит.";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "Страница Клавиатуры показывает обе цифры сразу: сколько слов исправлено и во что это вылилось по времени набора. Переключателя в шапке окна, показывавшего их по одной, больше нет.";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "Бейдж рядом с названием «Клавиатуры» больше не сообщает, что модуль работает, когда страница под ним говорит о паузе. Пока впереди поле пароля, модуль намеренно молчит — теперь об этом говорят оба места.";
@@ -164,7 +161,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Правила, сохранённые на этом Mac, записаны не приложением Helm — ни одно из них не выполняется.";
 "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "Слова, которые Клавиатура не должна трогать, и правила для отдельных приложений переехали в своё окно. На странице осталось по строке на каждый список со счётчиком — видно, куда девается слово.";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "Эти слова остаются ровно такими, как вы их набрали, что бы ни думал словарь.";
-"These are live: switch one here and it is switched." = "Переключатели настоящие: включите здесь — и он включён.";
+"These are live: switch one here and it is switched." = "Переключатели настоящие: включите любой — и он включён.";
 "This folder is no longer there" = "Этой папки больше нет";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Сканируйте заново, чтобы увидеть, что осталось.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Поищите заново, чтобы увидеть, что осталось.";
@@ -172,7 +169,7 @@
 "This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Поищите заново, чтобы увидеть, где он теперь.";
 "Today" = "Сегодня";
 "Warning" = "Предупреждение";
-"Watching your words" = "Следит за словами";
+"Watching your words" = "Следит за набором";
 "Week" = "Неделя";
 "What it does" = "Что он делает";
 "What you can switch on" = "Что можно включить";
@@ -234,7 +231,7 @@
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Файлы, оставшиеся в Библиотеке от приложений, которых у вас больше нет. В списке — только файлы, названные по bundle id приложения, поэтому часть остатков в него не попадёт.";
 "Files that exist more than once" = "Файлы, которые существуют больше одного раза";
 "Fix" = "Исправлять";
-"Fix a capital held too long" = "Исправлять залипшую заглавную";
+"Fix two capitals at the start of a word" = "Исправлять две заглавные в начале слова";
 "Fix as I type" = "Исправлять по ходу набора";
 "Fix with" = "Исправлять клавишей";
 "Fixes words typed in the wrong keyboard layout" = "Исправляет слова, набранные не в той раскладке";
@@ -266,7 +263,7 @@
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm вернётся к состоянию сразу после установки. Доступ, выданный в Системных настройках, останется как есть.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm покажет оставшиеся настройки, кеши и служебные файлы — их можно сразу удалить. Только пока приложение в Корзине: если очистить её, опознать файлы будет уже не по чему.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Язык Helm теперь распространяется и на то, что рисует macOS. Окно выбора папки, его боковое меню и меню у текстового поля оставались английскими при любом выбранном языке. Числа и даты тоже следуют языку: количество файлов разделяется по разрядам, а дата пишется так, как её пишут в вашем языке.";
-"Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Своя копия индикатора в строке меню — с настройками, которых нет у системного. Системный никуда не девается: выключите его в настройках клавиатуры, иначе их будет два.";
+"macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "У macOS есть собственный индикатор. Выключите его в настройках клавиатуры, иначе индикаторов будет два.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew больше не установлен.";
 "Homebrew isn’t installed" = "Homebrew не установлен";
@@ -354,8 +351,8 @@
 "Network" = "Сеть";
 "Network cache and cookies" = "Сетевой кеш и cookie";
 "Never" = "Никогда";
-"Never change these words" = "Никогда не менять эти слова";
-"Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "Никогда — в поле пароля. И не в тех терминалах и менеджерах паролей, которые Helm знает; остальные добавьте в настройках.";
+"Words to leave alone" = "Слова-исключения";
+"Never in a password field, and never in the terminals and password managers Helm knows." = "В поле пароля — никогда. И не в тех терминалах и менеджерах паролей, которые Helm знает.";
 "Never this word" = "Не менять это слово";
 "New rule" = "Новое правило";
 "Next" = "Далее";
@@ -386,7 +383,7 @@
 "Notification" = "Уведомление";
 "Number of days" = "Число дней";
 "OK" = "Готово";
-"Off" = "Выключено";
+"No key" = "Нет";
 "Old download" = "Старая загрузка";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "На широком окне настройки больше не разъезжаются: все страницы начинаются от одного левого края, и переключение между ними не сдвигает содержимое вбок.";
 "On launch and quit" = "При запуске и выходе";
@@ -394,7 +391,6 @@
 "On power" = "При питании";
 "On quit only" = "Только при выходе";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Одна клавиша на оба действия. Выберите правую ⌘, ⌥, ⌃ или ⇧ и нажмите её отдельно: первое нажатие исправляет последнее слово, второе возвращает как было. Модификатором она быть не перестаёт — зажатая или нажатая вместе с чем-то ещё, это обычная клавиша, и всё, для чего вы её уже используете, продолжает работать.";
-"Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Только если набранное — не слово, а после смены раскладки словом становится. Всё, что осмысленно как есть, остаётся нетронутым.";
 "Open Accessibility…" = "Открыть «Универсальный доступ»…";
 "Open Extensions…" = "Открыть «Расширения»…";
 "Open Full Disk Access…" = "Открыть «Доступ к диску»…";
@@ -481,7 +477,7 @@
 "Settings files" = "Файлы настроек";
 "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout." = "Полировка окна настроек: увеличенное окно для утилит, списки в стиле macOS 26, выверенные тексты.";
 "Settings…" = "Настройки…";
-"Shortcuts" = "Сочетания клавиш";
+"Keyboard shortcuts" = "Сочетания клавиш";
 "Show" = "Показать";
 "Show in Finder" = "Показать в Finder";
 "Show it in the menu bar" = "Показывать в строке меню";
@@ -531,7 +527,7 @@
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Карта диска теперь отвечает VoiceOver: каждый сегмент называет папку, размер и её долю, и оттуда же в неё можно провалиться. Папки в списке рядом открываются и через контекстное меню — двойной клик работает по-прежнему, но перестал быть единственным способом.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in used to appear all at once at the end of the animation. Now it slides in with the rest." = "Кольцо «Диска» врастает в папку, в которую вы вошли. Оно показывает три уровня сразу, и уровень, появлявшийся при входе, раньше возникал разом в конце анимации. Теперь он въезжает вместе со всеми.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume’s free space alongside the folder’s contents, so a small folder came out as a blank grey circle." = "Кольцо «Диска» мерило не то, когда вы сканировали папку: рядом с содержимым оно рисовало свободное место всего тома, и небольшая папка выходила пустым серым кругом.";
-"macOS is not delivering keystrokes to Helm" = "macOS не отдаёт Helm нажатия клавиш";
+"macOS is not delivering keystrokes to Helm" = "macOS не передаёт Helm нажатия клавиш";
 "not spent typing again" = "не ушло на перенабор";
 "“Scan again” now scans the same place again instead of sending you back to the volume list." = "«Сканировать заново» теперь и правда сканирует то же самое место, а не возвращает к списку томов.";
 "In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over." = "В поиске дубликатов файлы, которые не удалось переместить, остаются отмеченными — можно устранить причину и повторить, не начиная заново.";
@@ -554,7 +550,7 @@
 "Then" = "То";
 "This app is not signed — this rule never fires" = "Приложение не подписано — правило не срабатывает";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Это клавиша, которой вы печатаете. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово.";
-"This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Поле настоящее, а не демонстрация: здесь модуль работает точно так же, как в любом другом приложении.";
+"Helm works in this field exactly as it does anywhere else." = "В этом поле Helm работает точно так же, как в любом другом приложении.";
 "This release published no checksum. Helm opened its download page instead." = "В релизе нет контрольной суммы. Helm открыл страницу загрузки.";
 "Timer" = "Таймер";
 "Timing" = "Когда";

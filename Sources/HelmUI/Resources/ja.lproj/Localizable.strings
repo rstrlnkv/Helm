@@ -8,7 +8,6 @@
 "A Keep Awake session now survives Helm restarting. A two-hour session used to be cancelled by anything that ended the app — a silent update most often: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left, and a session whose end passed while Helm was gone stays finished." = "スリープ防止のセッションが Helm の再起動後も続くようになりました。以前は、アプリを終了させるもの — たいていは自動更新 — が 2 時間のセッションを取り消していました。メニューバーのカウントダウンは消え、Mac はスリープでき、その説明もありませんでした。いまは残り時間のまま戻り、Helm が動いていない間に終了時刻を過ぎたセッションは、そのまま終了扱いです。";
 "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN はこの Mac の通信すべてを運びます。そのアプリの分だけではありません。トンネルは起動から数秒後につながります。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "アプリ全体のデザインを macOS 26/27 の作法に合わせました。メニューバーパネルの Liquid Glass、どの幅でも下の内容と揃うページ見出し、読める濃さの補助テキスト、そして切り替わらず転がる数字。サイドバーは“ファイル”と“ユーティリティ”に整理されます。";
-"A real field, not a demonstration. Type ghbdtn, press space, and watch." = "デモではなく本物の入力欄です。ghbdtnと入力し、スペースを押して見てください。";
 "A removal could follow a symbolic link out of the folder you confirmed and delete a different file. It cannot now." = "削除が、確認したフォルダの外へシンボリックリンクをたどり、別のファイルを消してしまうことがありました。もう起きません。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "いま見ていない種類（システム機能拡張など）はフィルタで隠せます。";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "国が定まらない配列は文字のまま、旗と同じ大きさの枠に表示されます。";
@@ -18,7 +17,7 @@
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "保護された入力欄は、読み取る前に飛ばすようになりました。読んだ後ではありません。またMacがタイムゾーンを直しても、その日の集計は失われません。";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "貼り付けの後にショートカットを押しても、貼り付け前の語が貼り付けたテキストの中に入力されることはなくなりました。“ジェスチャーかもしれない”とみなすのは登録したショートカットだけで、ほかの組み合わせは語をそこで終わらせます。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“ディスク”のスキャンから抜けられるようになりました。“別の場所を選択…”で保存済みのスキャンを忘れます。";
-"A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "入力どおりでは単語でなく、変換すると単語になる場合のみ置き換えます。正しいものはそのままです。";
+"Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "入力どおりでは単語でなく、別の配列にすると単語になる場合だけです。すでに単語であるものには触れません。";
 "A word to leave alone" = "変更しない単語";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "“変更しない”一覧に入れた語は、選択したときにも触られなくなりました。この経路は入力語の経路が行うすべての拒否を飛ばしていました。";
 "Abbreviations are gone from Keyboard. macOS ships the same thing in Text Replacement and syncs it across your devices." = "キーボードから短縮入力を削除しました。macOSが“ユーザ辞書”で同じ機能を提供し、デバイス間で同期します。";
@@ -124,7 +123,7 @@
 "How it works" = "仕組み";
 "If it gets one wrong" = "間違えたときは";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "キーボードが1文字の語も直します。ロシア語で最も多い語は1文字（в, и, с, к, о, у, а, я）ですが、これまではすべて手つかずでした。";
-"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "キーボードがメニューバーのパネルに戻りました。3つのサイズすべてで使えます。大きいものは直近14日間を日ごとに描き、節約できたおおよその入力量を示し、期間ボタン、直前の変更とその語を今後触らせない操作、入力中の修正のスイッチを備えます。";
+"Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "キーボードがメニューバーのパネルに戻り、3つのタイルサイズすべてで使えます。大きいタイルは過去14日間を1日ずつ描き、節約できた入力量のおおよそを示し、期間を切り替えるボタン、直前の修正とその語を今後触らせない方法、入力中に修正するスイッチを備えます。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "キーボードが簡素になりました。“いつ修正するか”の3つのスイッチは廃止です。スペースと句読点で語を確定し、Returnでは確定しません。もともとその設定でしたし、チャットが打ち間違いを送信せずに済みます。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "キーボードが、すでに削除した文章に入力することはなくなりました。Option+Deleteで単語を消しても直前の変更が取り消し可能なままで、修正キーがカーソル位置に古い語を入れていました。";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "キーボードは説明ではなく4ステップのツアーで始まります。2つめは実際に試せる入力欄、3つめはスイッチそのもの。ステップに同意することが、そのままオンにすることです。";
@@ -136,8 +135,7 @@
 "Month" = "1か月";
 "Move to Trash…" = "ゴミ箱に入れる…";
 "No key is assigned — this change can only be put back by hand." = "キーが設定されていないため、この変更は手動でしか戻せません。";
-"No key — nothing fixes a selection or the last word on demand. Pick one, or set a key combination below." = "キーが未設定です。選択部分や直前の語をその場で修正する手段がありません。キーを選ぶか、下で組み合わせを設定してください。";
-"No words set aside" = "除外した単語なし";
+"Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "キーを選ぶか、下で組み合わせを登録するまで、選択範囲も直前の単語も修正されません。";
 "No words yet" = "まだ単語はありません";
 "Not watching" = "監視していません";
 "Nothing" = "なし";
@@ -154,8 +152,7 @@
 "Tap again to put the change back, or select the text again to change it back." = "もう一度押すと変更を元に戻せます。選択し直しても戻せます。";
 "Tap it on its own: it fixes the selection, or the last word." = "単独で押すと、選択した文字か直前の語を修正します。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。";
-"Terminals and password managers start switched off: there, a word that looks wrong is often exactly right. Switch any of them on, or add an app of your own." = "ターミナルとパスワード管理アプリは最初はオフです。そこでは間違って見える語こそ正しいことが多いからです。必要なものはオンにでき、自分のアプリも追加できます。";
-"The Keyboard introduction folds away. It opens on one line with a button that unfolds the rest, so the page's figure and its settings are where you left them." = "キーボードの説明は折りたためます。1行で開き、ボタンで残りを展開するので、数値と設定はいつもの位置にあります。";
+"Terminals and password managers start switched off: there a word that looks wrong is often exactly right." = "ターミナルとパスワード管理アプリでは最初はオフです。そこでは間違って見える語こそ正しいことが多いからです。";
 "The Keyboard page opens with what it has put right, over a period you choose — today, a week, a month, a year, or all of it — and how much typing that saved. Nothing yet is not a zero: a module that has been watching all day with nothing to correct says so instead." = "キーボードのページは、選んだ期間（今日・1週間・1か月・1年・全期間）に修正した語と、それで省けた入力時間から始まります。まだ何もない状態はゼロではなく、そう表示されます。";
 "The Keyboard page shows both numbers at once — how many words it put right, and what that came to in typing. The switch in the window header that showed one at a time is gone." = "キーボードのページは2つの数を同時に表示します。修正した語数と、それが入力時間でどれだけかです。片方ずつ切り替えていたウインドウ見出しのスイッチは廃止しました。";
 "The badge beside Keyboard’s name no longer says it is active while the page underneath says it is paused. With a password field in front the module stays deliberately silent, and now both places say so." = "キーボードの名前の横のバッジが、下のページが一時停止と示している間に“動作中”と表示することはなくなりました。パスワード欄が前面にある間、モジュールは意図的に黙ります。";
@@ -234,7 +231,7 @@
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "すでにないアプリがライブラリに残したファイル。アプリの bundle id を名前に持つファイルだけを表示するため、見つからない残存ファイルもあります。";
 "Files that exist more than once" = "複数存在するファイル";
 "Fix" = "修正する";
-"Fix a capital held too long" = "単語の先頭 2 文字の大文字を修正";
+"Fix two capitals at the start of a word" = "単語の先頭 2 文字の大文字を修正";
 "Fix as I type" = "入力しながら修正";
 "Fix with" = "修正するキー";
 "Fixes words typed in the wrong keyboard layout" = "誤った配列で入力した単語を修正します";
@@ -266,7 +263,7 @@
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "残された設定・キャッシュ・サポートファイルを表示し、そのまま削除できます。App がゴミ箱にある間だけです。空にすると、どのファイルか見分けられなくなります。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
-"Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "システムの入力ソース表示を、設定できる形で複製したものです。システム側は残るので、キーボード設定でオフにしないと2つ並びます。";
+"macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS も独自の表示を出します。キーボード設定でオフにしないと2つ並びます。";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew はアンインストールされています。";
 "Homebrew isn’t installed" = "Homebrew がインストールされていません";
@@ -354,8 +351,8 @@
 "Network" = "ネットワーク";
 "Network cache and cookies" = "ネットワークキャッシュと Cookie";
 "Never" = "しない";
-"Never change these words" = "これらの単語は変更しない";
-"Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "パスワード欄では決して動きません。Helm が知っているターミナルとパスワード管理アプリでも動きません。ほかは設定で追加してください。";
+"Words to leave alone" = "変更しない単語";
+"Never in a password field, and never in the terminals and password managers Helm knows." = "パスワード欄では決して動きません。Helm が知っているターミナルとパスワード管理アプリでも動きません。";
 "Never this word" = "この単語は変更しない";
 "New rule" = "新しいルール";
 "Next" = "次へ";
@@ -386,7 +383,7 @@
 "Notification" = "通知";
 "Number of days" = "日数";
 "OK" = "完了";
-"Off" = "オフ";
+"No key" = "なし";
 "Old download" = "古いダウンロード";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "ウィンドウを広げても設定がずれません。すべてのページが同じ左端から始まります。";
 "On launch and quit" = "起動時と終了時";
@@ -394,7 +391,6 @@
 "On power" = "電源接続時";
 "On quit only" = "終了時のみ";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "ひとつのキーで両方。右の ⌘ / ⌥ / ⌃ / ⇧ を選んで単独で押すと、1 回目で直前の単語を修正し、もう一度で元に戻します。押しっぱなしや同時押しでは通常の修飾キーのままです。";
-"Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "入力どおりでは単語でなく、配列を切り替えると単語になる場合だけです。すでに単語であるものには触れません。";
 "Open Accessibility…" = "アクセシビリティを開く…";
 "Open Extensions…" = "機能拡張を開く…";
 "Open Full Disk Access…" = "フルディスクアクセスを開く…";
@@ -481,7 +477,7 @@
 "Settings files" = "設定ファイル";
 "Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout." = "設定ウインドウを改良：ユーティリティは大きめのウインドウ、macOS 26 スタイルのリスト、文言を整理。";
 "Settings…" = "設定…";
-"Shortcuts" = "ショートカット";
+"Keyboard shortcuts" = "キーボードショートカット";
 "Show" = "表示";
 "Show in Finder" = "Finderに表示";
 "Show it in the menu bar" = "メニューバーに表示";
@@ -554,7 +550,7 @@
 "Then" = "その時";
 "This app is not signed — this rule never fires" = "このアプリは署名されていません。このルールは動作しません";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。";
-"This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "これはデモではなく本物の入力欄です。ここでも他のアプリと同じように動きます。";
+"Helm works in this field exactly as it does anywhere else." = "この入力欄でも、Helm はほかのアプリとまったく同じように動きます。";
 "This release published no checksum. Helm opened its download page instead." = "このリリースにはチェックサムがありません。Helm がダウンロードページを開きました。";
 "Timer" = "タイマー";
 "Timing" = "タイミング";
