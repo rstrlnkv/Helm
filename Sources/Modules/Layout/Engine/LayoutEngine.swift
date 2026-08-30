@@ -722,14 +722,26 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// engine owns the behaviour, and this is the one line between them.
     private func reloadSettings() {
         guard let settings else { return }
+        // **Every read first, then one short critical section.** The store is
+        // `UserDefaults` behind a namespace, and a read can go out to `cfprefsd`
+        // — so five of them under this lock is five chances for a keystroke to
+        // arrive and find the tap callback blocked. `appRules` was already
+        // hoisted for exactly that reason and the five beside it were not.
         let rules = settings.boolTable(LayoutKey.appRules)
+        let readAutomatic = settings.bool(LayoutKey.automatic, default: true)
+        let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
+        let readAudible = settings.bool(LayoutKey.audible, default: false)
+        let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
+        let readTapKey = ModifierTap(
+            key: TapKey.from(settings.string(LayoutKey.tapKey,
+                                             default: TapKey.rightCommand.rawValue)))
         lock.lock()
-        automatic = settings.bool(LayoutKey.automatic, default: true)
-        exceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
+        automatic = readAutomatic
+        exceptions = readExceptions
         scope = AppScope(rules: rules)
-        audible = settings.bool(LayoutKey.audible, default: false)
-        fixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
-        tapKey = ModifierTap(key: TapKey.from(settings.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
+        audible = readAudible
+        fixCapitals = readFixCapitals
+        tapKey = readTapKey
         // **Not read from the store any more, and that is the point.** The three
         // switches that wrote these keys are gone, so a person who had turned
         // all three off before this build would be left with an inert module
@@ -806,12 +818,19 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // hung app there blocks for the messenger's timeout. Holding the lock
         // across it would freeze the tap callback — which runs on main.
         let suspended = secure.isSecure()
+        // **And the ledger, for the same reason, which this line did not obey.**
+        // `LedgerStore.totals` is a `queue.sync` onto the serial queue that also
+        // writes the file, so a write in flight holds it — and holding it under
+        // this lock stalls the tap callback behind an unbounded disk wait. The
+        // sentence above was already written about `isSecure()`; the call added
+        // beside it went straight back inside.
+        let counted = ledger.totals(now: Date())
         lock.lock()
         let state = LayoutState(enabled: tapped, automatic: automatic,
                                 suspended: suspended,
                                 lastConversion: lastEvent,
                                 lastConversionUndone: lastEventUndone,
-                                totals: ledger.totals(now: Date()),
+                                totals: counted,
                                 noDictionary: noDictionary)
         lock.unlock()
         localTransport.emit(LayoutEvent.layoutState, encoding: state)

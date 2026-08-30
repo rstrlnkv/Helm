@@ -12,6 +12,7 @@
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "筛选器可隐藏你当前不查看的类型，例如系统扩展。";
 "A layout that names no country keeps its letters, in a frame the same size as a flag." = "没有国家归属的布局保持字母显示，边框与旗帜同样大小。";
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "全新界面：每个页面以图标和关键数字开场，版式统一。";
+"A replacement an app turns down now leaves your word alone, and leaves it there to fix by hand. It used to delete the word and type nothing in its place." = "被应用拒绝的替换现在不会动你的词，并把它留在那里让你手动修改。以前它会删掉这个词，却不输入任何内容。";
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
@@ -119,6 +120,7 @@
 "Hide" = "隐藏";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fortnight day by day, says roughly how much typing it saved, and carries the period buttons, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "“键盘”回到了菜单栏面板，三种磁贴尺寸都有。大号磁贴按天绘制最近十四天，给出大致省下的输入量，并带有时段按钮、最近一次替换及把该词加入不再改动的名单，还有边打边改的开关。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "“键盘”更简单了。“何时修正”的三个开关已移除：空格和标点确认一个词，Return 不确认——这本就是它们的设置，也避免聊天工具把错字发出去。";
+"Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "“键盘”不再向你已经删除的文字里输入。用 Option-Delete 删除一个词后，上一次替换仍被当作可撤销，修复键会把旧词插入光标所在处。";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Last fourteen days" = "最近十四天";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";

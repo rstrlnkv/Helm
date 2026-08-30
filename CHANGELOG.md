@@ -15,6 +15,8 @@ only once it has no known problems left.
 
 - **UPD** Keyboard: the «never these words» list is rows with a cross, not a block of text.
 - **UPD** Keyboard: the introduction folds away behind one button, so the figure and the settings stay in view.
+- **FIX** Keyboard: Option-Delete no longer leaves the last change undoable, so the fix key cannot type an old word into text you deleted.
+- **FIX** Keyboard: a replacement an app turns down leaves the word untouched and still fixable by hand, instead of deleting it and typing nothing.
 - **UPD** Keyboard: the three “When to fix” switches are gone — space and punctuation confirm a word, Return does not.
 - **UPD** Keyboard: abbreviations removed. macOS ships the same thing in Text Replacement and syncs it across devices.
 - **UPD** Keyboard: the page shows both figures at once, and the metric switch in the window header is gone.

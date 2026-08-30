@@ -239,56 +239,42 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         let flags = event.flags
         let modified = flags.contains(.maskCommand) || flags.contains(.maskControl)
             || flags.contains(.maskAlternate)
-        if modified {
-            // A chord is not text, and it is not a confirmation either. ⌘Space
-            // — the very gesture someone makes on noticing the wrong layout —
-            // used to arrive as a plain space: the word was "confirmed", a
-            // backspace was budgeted for a space that never reached the field,
-            // and the character to its left was eaten. ⌘S appended an "s". ⌘V
-            // changed the text underneath without saying what it now holds.
-            //
-            // `.chord` covers all of it: the word ends, nothing is confirmed,
-            // and the buffer stops describing a field it no longer matches.
-            //
-            // Its own case rather than `.navigation`, which this reported for
-            // years. The two are identical to the buffer and differ in exactly
-            // one place — a chord may have been the undo shortcut arriving, so
-            // `UndoRecord` forgives one, and a bare arrow may not have been, so
-            // it must not spend that forgiveness. Reporting both as one event
-            // handed the budget to ordinary typing.
-            handler?(.chord)
+        // The ordering that decides this is `TapEvent.classify`, pure and
+        // beside the buffer it feeds, because it used to live here — private,
+        // over a `CGEvent` — where no test could ask it anything. What it
+        // settles: a key held with ⌘, ⌥ or ⌃ is a chord unless it is one that
+        // moves the caret or deletes backwards, and ⌥Delete is one of those.
+        //
+        // The prose that used to stand here is at `TapEvent`, with the sentence
+        // this file kept getting wrong: ⌘Space arriving as a plain space
+        // confirmed a word, budgeted a backspace for a space that never reached
+        // the field, and ate the character to its left.
+        let code = Int(event.getIntegerValueField(.keyboardEventKeycode))
+        if let classified = TapEvent.classify(keycode: code, modified: modified) {
+            handler?(classified)
             return
         }
 
-        switch Int(event.getIntegerValueField(.keyboardEventKeycode)) {
-        case kVK_Delete: handler?(.backspace)
-        case kVK_Space: handler?(.space)
-        case kVK_Return, kVK_ANSI_KeypadEnter: handler?(.newline)
-        case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
-             kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown, kVK_Escape, kVK_Tab:
-            handler?(.navigation)
-        default:
-            var length = 0
-            var characters = [UniChar](repeating: 0, count: 4)
-            event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length,
-                                           unicodeString: &characters)
-            guard length > 0,
-                  let character = String(utf16CodeUnits: characters, count: length).first
-            else { return }
-            // **Not «is this a letter», but «is this key a letter anywhere».**
-            // `,` types `б` in Russian, `;` types `ж`, `[` types `х` — and
-            // punctuation confirms a word, so on a latin layout `cgfcb,j` was
-            // cut at the comma: `cgfcb` confirmed and converted, `j` starting
-            // again. Measured over 24 ordinary Russian words: 6 cut mid-word.
-            //
-            // A Mac with only latin layouts installed answers false for every
-            // mark and keeps today's behaviour exactly — the comma goes on
-            // ending an English sentence's last word.
-            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-            let letter = character.isLetter
-                || UCTranslation.letterKeys(installed: TISLayoutSources().installed()).contains(code)
-            handler?(letter ? .character(character) : .punctuation(character))
-        }
+        var length = 0
+        var characters = [UniChar](repeating: 0, count: 4)
+        event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length,
+                                       unicodeString: &characters)
+        guard length > 0,
+              let character = String(utf16CodeUnits: characters, count: length).first
+        else { return }
+        // **Not «is this a letter», but «is this key a letter anywhere».**
+        // `,` types `б` in Russian, `;` types `ж`, `[` types `х` — and
+        // punctuation confirms a word, so on a latin layout `cgfcb,j` was cut
+        // at the comma: `cgfcb` confirmed and converted, `j` starting again.
+        // Measured over 24 ordinary Russian words: 6 cut mid-word.
+        //
+        // A Mac with only latin layouts installed answers false for every mark
+        // and keeps today's behaviour exactly — the comma goes on ending an
+        // English sentence's last word.
+        let letter = character.isLetter
+            || UCTranslation.letterKeys(installed: TISLayoutSources().installed())
+                .contains(UInt16(code))
+        handler?(letter ? .character(character) : .punctuation(character))
     }
 }
 
