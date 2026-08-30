@@ -564,8 +564,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lastEventUndone = false
         lock.unlock()
         ledger.record(characters: word.count, on: Date())
-        // Counts, never content: the words themselves stay out of the log.
-        HelmLog.shared.info(Self.moduleID, "converted a word in \(Redact.app(bundleID))")
+        // **Counts, never content — and the shape of the edit, which is the one
+        // thing a report of «it ate my text» can be checked against.** The line
+        // said only that a conversion happened, so a person describing a
+        // replacement that deleted too much left nothing behind to read: the
+        // arithmetic that did it is `plan.backspaces` against `plan.insert`,
+        // and both are numbers. The refusal branch above already carried its
+        // count for the same reason.
+        HelmLog.shared.info(Self.moduleID,
+                            "converted a word in \(Redact.app(bundleID)): "
+                            + "deleted \(plan.backspaces), typed \(plan.insert.count)")
         // The words *do* go here: an announcement is spoken and gone — the one
         // channel with the same lifetime as the memory they are promised to.
         announcer?.announce(.converted(event))
@@ -662,11 +670,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock()
         guard let record = undo, record.canUndo(in: bundleID),
               let plan = record.reversePlan() else { lock.unlock(); return }
-        undo = nil
         lock.unlock()
         // Both halves of the conversion or neither: the person who rejected it
         // is about to keep typing in the layout they typed with, and the text
         // alone put back left every next keystroke in the refused alphabet.
+        //
+        // **The record is dropped by the edit succeeding, not by it being
+        // attempted.** It was cleared before `perform`, so an app that declined
+        // the events retired the undo anyway: the change stayed in the field and
+        // the second press — the one somebody makes when the first did nothing —
+        // had nothing left to work with. `perform` clears it through
+        // `forgetTheWord` when the typing actually happened.
         guard perform(plan) else {
             emitState()
             return
@@ -726,11 +740,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
+    /// **Forgets only what was actually typed.**
+    ///
+    /// `forgetTheWord` ran either way, so a refusal threw away the word, the
+    /// undo record and the page's row — for an edit the app never carried out.
+    /// The field still held what the person typed, and the module had dropped
+    /// every handle on it: the gesture that exists to fix a word by hand was
+    /// dead on exactly the word that needed fixing, and one declined undo
+    /// retired the record for good.
+    ///
+    /// Safe only because `TypingPort.perform` is all-or-nothing now — it builds
+    /// every event before posting any. Keeping state across a refusal while the
+    /// port could still half-apply would aim a blind edit at text that is no
+    /// longer there, which is worse than the defect it repairs.
     @discardableResult
     private func perform(_ plan: SwitchPlan) -> Bool {
         lock.lock(); performing = true; lock.unlock()
         let done = typing.perform(plan)
-        lock.lock(); performing = false; forgetTheWord(); lock.unlock()
+        lock.lock()
+        performing = false
+        if done { forgetTheWord() }
+        lock.unlock()
         return done
     }
 

@@ -301,9 +301,31 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
 public struct SynthesisTyping: TypingPort {
     public init() {}
 
+    /// **Every event is built before any of them is posted.**
+    ///
+    /// This used to post the deletes and only then build the events that type
+    /// the replacement, so the `guard let … else { return false }` inside the
+    /// second loop was reachable with the word already gone —
+    /// `CGEvent(keyboardEventSource:virtualKey:keyDown:)` is a failable
+    /// allocation against a resource this app does not own, and it can answer
+    /// nil on its own. The outcome was: the word deleted, nothing typed in its
+    /// place, `false` returned, and every caller reading that as «the app
+    /// refused, nothing happened». `TypingPort.perform`'s own contract says
+    /// «a partial retype is worse than none», and `LayoutEngine.convert` spends
+    /// that promise by name.
+    ///
+    /// Building first costs one array of at most a word's worth of events. It
+    /// is the shape `send(key:)` in this file already has, for the same reason.
+    ///
+    /// **It does not make the plan atomic against the app**, and cannot: the
+    /// events go to the HID tap and whatever is in front may stop reading them
+    /// halfway. What it removes is the half that is this port's own doing.
     public func perform(_ plan: SwitchPlan) -> Bool {
         guard let source = CGEventSource(stateID: .combinedSessionState) else { return false }
         source.userData = helmEventMarker
+
+        var events: [CGEvent] = []
+        events.reserveCapacity(plan.backspaces * 2 + plan.insert.count * 2)
 
         for _ in 0..<plan.backspaces {
             guard let down = CGEvent(keyboardEventSource: source,
@@ -311,8 +333,8 @@ public struct SynthesisTyping: TypingPort {
                   let up = CGEvent(keyboardEventSource: source,
                                    virtualKey: CGKeyCode(kVK_Delete), keyDown: false)
             else { return false }
-            down.post(tap: .cghidEventTap)
-            up.post(tap: .cghidEventTap)
+            events.append(down)
+            events.append(up)
         }
 
         for character in plan.insert {
@@ -322,9 +344,11 @@ public struct SynthesisTyping: TypingPort {
             else { return false }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
-            down.post(tap: .cghidEventTap)
-            up.post(tap: .cghidEventTap)
+            events.append(down)
+            events.append(up)
         }
+
+        for event in events { event.post(tap: .cghidEventTap) }
         return true
     }
 }
