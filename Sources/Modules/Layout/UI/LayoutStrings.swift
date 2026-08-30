@@ -335,18 +335,30 @@ enum LyStr {
     /// counts of 2, 3 and 4, which is the bucket a light user sees most.
     static func wordsIn(_ period: ConversionPeriod, count: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
-        let name = periodName(period, language: language).lowercased()
+        wordsPutRight(count: count, language: language)
+            + " · " + periodName(period, language: language).lowercased()
+    }
+
+    /// The noun on its own, for a surface where a control beside it already
+    /// names the period.
+    ///
+    /// **Split out rather than written twice.** The 2×N tile carries a pop-up
+    /// showing «Месяц» and said «· месяц» under the figure at the same time —
+    /// one word twice on a 280 pt tile. The period belongs to whichever element
+    /// can change it, and where nothing can (1×1, 2×1) it belongs to the
+    /// caption. Both spellings come from here so they cannot drift apart.
+    static func wordsPutRight(count: Int,
+                              language: AppLanguage = AppLanguage.current) -> String {
         let table: [AppLanguage: String] = [
-            .ru: Plural.russian(count, "слово исправлено", "слова исправлены", "слов исправлено")
-                + " · \(name)",
-            .es: (count == 1 ? "palabra corregida" : "palabras corregidas") + " · \(name)",
-            .fr: (count <= 1 ? "mot corrigé" : "mots corrigés") + " · \(name)",
-            .de: (count == 1 ? "Wort korrigiert" : "Wörter korrigiert") + " · \(name)",
-            .pt: (count == 1 ? "palavra corrigida" : "palavras corrigidas") + " · \(name)",
-            .ja: "語を修正 · \(name)",
-            .zh: "个词已修正 · \(name)",
+            .ru: Plural.russian(count, "слово исправлено", "слова исправлены", "слов исправлено"),
+            .es: count == 1 ? "palabra corregida" : "palabras corregidas",
+            .fr: count <= 1 ? "mot corrigé" : "mots corrigés",
+            .de: count == 1 ? "Wort korrigiert" : "Wörter korrigiert",
+            .pt: count == 1 ? "palavra corrigida" : "palavras corrigidas",
+            .ja: "語を修正",
+            .zh: "个词已修正",
         ]
-        let english = (count == 1 ? "word put right" : "words put right") + " · \(name)"
+        let english = count == 1 ? "word put right" : "words put right"
         return language == .en ? english : table[language] ?? english
     }
 

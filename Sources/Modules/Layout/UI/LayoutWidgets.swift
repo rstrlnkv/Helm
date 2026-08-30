@@ -100,8 +100,26 @@ struct LayoutTile: View {
                 }
             }
             if state.enabled {
-                HelmWidgetFigure(figure(state, period),
-                                 LyStr.wordsIn(period, count: count(state, period)), size)
+                // The period is in the caption only where nothing on the tile
+                // can change it. On 2×N the button beside the figure names it,
+                // and saying it twice on a 280 pt tile reads as two spans.
+                HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
+                    HelmWidgetFigure(figure(state, period),
+                                     size == .tall
+                                     ? LyStr.wordsPutRight(count: count(state, period))
+                                     : LyStr.wordsIn(period, count: count(state, period)),
+                                     size)
+                    // Beside the figure rather than under the drawing: it is
+                    // what the figure is *of*, and a control a line away from
+                    // the number it governs reads as a control over the tile.
+                    // Baselines, not tops — a 20 pt figure and a small button
+                    // aligned by their boxes sit visibly off each other.
+                    if size == .tall { periods }
+                }
+                // The one gap in the tile that is not between two lines of the
+                // same thought: the plate names the module, the figure answers
+                // it. 6 pt read as one paragraph.
+                .padding(.top, HelmSpace.s2)
                 if size == .tall, let saved = savedLabel(state, period) {
                     // The page's second figure, which is the one people quote.
                     // Quiet, because it is an estimate and the count above it
@@ -119,20 +137,22 @@ struct LayoutTile: View {
                     // in about Keyboard. Measured at 202 pt against Disk's 110
                     // before the drawing and the estimate moved down here.
                     Sparkline(days: state.totals.recent)
-                }
-                if size == .tall {
-                    periods
+                        .padding(.top, HelmSpace.s3)
                 }
                 if size != .compact, state.lastConversion != nil {
-                    Divider()
                     LastChange(state: state, onNever: onNever)
+                        .padding(.top, HelmSpace.s2)
                 }
                 if size == .tall, let automatic {
-                    Divider()
                     Toggle(LyStr.automatic, isOn: automatic)
                         .font(HelmText.rowDetail)
                         .controlSize(.small)
                         .onChange(of: automatic.wrappedValue) { _, value in onAutomatic(value) }
+                        // The switch is the tile's own setting and stands apart
+                        // from the report above it. Air, since the block above
+                        // now draws its own edge and a rule under it would be a
+                        // second boundary for one gap.
+                        .padding(.top, HelmSpace.s2)
                 }
             } else {
                 HelmWidgetUnmeasured(LyStr.heroNotWatching)
@@ -140,41 +160,37 @@ struct LayoutTile: View {
         }
     }
 
-    /// The same control the page carries, at the size a tile can spare —
-    /// buttons rather than a menu, because a menu hides the four periods it is
-    /// not showing and this figure means nothing without its scale.
+    /// The period: a button that opens the list of five.
     ///
-    /// `HelmWrappingRow`, so the answer to «do five words fit in 280 pt» is a
-    /// second line rather than a truncation: the five names are eight languages
-    /// wide and no single measurement settles them.
+    /// Five buttons in a row was the other shape and it cost two lines of the
+    /// tile to say one thing — the fifth name wrapped alone in every language
+    /// measured. A button spends one line and shows the period it is on, which
+    /// is why the caption beside it stopped saying it.
+    ///
+    /// **Keep Awake's shape, not a `Picker`'s.** That tile's duration control is
+    /// a `Menu` under `.menuStyle(.button)` and `.buttonStyle(.bordered)`, and a
+    /// pop-up button next to it in the same panel is a second kind of the same
+    /// object — the difference nobody can name and everybody sees. `.fixedSize()`
+    /// for the reason it has there too: a control stretched to the tile's width
+    /// reads as the tile's subject, and the subject is the figure.
+    ///
+    /// Named, because a control whose face is its value alone is «pop up button»
+    /// to VoiceOver, and `NamedControlsTests` scans the source for that shape.
     private var periods: some View {
-        HelmWrappingRow(spacing: 4, lineSpacing: 4, alignment: .leading) {
+        Menu {
             ForEach(ConversionPeriod.allCases, id: \.self) { option in
-                chooser(chosen: period == option) { onPeriod(option) } label: {
-                    Text(LyStr.periodName(option)).font(HelmText.rowDetail)
-                }
+                Button(LyStr.periodName(option)) { onPeriod(option) }
             }
+        } label: {
+            Text(LyStr.periodName(period))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .menuStyle(.button)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .fixedSize()
+        .accessibilityLabel(LyStr.period)
     }
 
-    /// One period button, filled when it is the one in force. The same branch
-    /// the hero makes, and for the same reason: `.borderedProminent` and
-    /// `.bordered` are two types, and SwiftUI has no `AnyButtonStyle`.
-    @ViewBuilder
-    private func chooser<Label: View>(chosen: Bool, action: @escaping () -> Void,
-                                      @ViewBuilder label: () -> Label) -> some View {
-        if chosen {
-            Button(action: action, label: label)
-                .controlSize(.small)
-                .buttonStyle(.borderedProminent)
-                .accessibilityAddTraits(.isSelected)
-        } else {
-            Button(action: action, label: label)
-                .controlSize(.small)
-                .buttonStyle(.bordered)
-        }
-    }
 }
 
 /// The last word put right, and the one thing that can be done about it here.
@@ -184,6 +200,13 @@ struct LayoutTile: View {
 /// letters standing in for each other and a proportional face hides how close
 /// they are. The verb is borderless: a bordered button the width of the tile
 /// reads as the tile's purpose, and the purpose is the figure above it.
+///
+/// **A block with a fill, not a band between two rules.** Rules divide a list
+/// into parts of one thing; this is not part of the figure above it, it is a
+/// different thing that happens to be on the same tile. A fill says «this is a
+/// piece» in one edge where two rules take two — and the tile had three of them
+/// stacked down its lower half, which is a lot of drawing to say «and now
+/// something else».
 private struct LastChange: View {
     let state: LayoutState
     var onNever: (String) -> Void
@@ -219,6 +242,11 @@ private struct LastChange: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(HelmSpace.s4)
+            .background(
+                RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
+                    .fill(HelmSurface.onPanelFill)
+            )
         }
     }
 }
