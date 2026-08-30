@@ -71,17 +71,23 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         let menu = built.menu
 
         let tail = sections(of: menu)
-        XCTAssertEqual(tail.count, 4, """
-            the menu is four sections under three separators: layouts, the emoji \
-            palette, the source-name switch, the keyboard settings — the sections \
-            macOS's own input menu draws, minus the Keyboard Viewer (see the class \
-            doc for why that door cannot be opened).
+        // **Three, not four: the source-name switch left this menu on
+        // 2026-08-30 and became `BadgeStyle.sourceName`.** It was the one item
+        // here that changed how the indicator *looks*, and it could be reached
+        // from nowhere else — so switching it on left the settings page's Style
+        // picker, Size picker and preview grid all describing a badge that had
+        // stopped being drawn. A setting belongs beside its siblings; this menu
+        // keeps the doors, which is what the rest of it is.
+        XCTAssertEqual(tail.count, 3, """
+            the menu is three sections under two separators: layouts, the emoji \
+            palette, the keyboard settings — the sections macOS's own input menu \
+            draws, minus the Keyboard Viewer (see the class doc for why that door \
+            cannot be opened) and minus the source-name switch, which is a style \
+            on the settings page now.
             """)
         XCTAssertEqual(try section(menu, 1).map(\.title), [LyStr.showEmojiPanel()],
                        "the first section under the layouts is the emoji palette door alone")
-        XCTAssertEqual(try section(menu, 2).map(\.title), [LyStr.showInputSourceName],
-                       "then the source-name switch, in a section of its own")
-        XCTAssertEqual(try section(menu, 3).map(\.title), [LyStr.openKeyboardSettings],
+        XCTAssertEqual(try section(menu, 2).map(\.title), [LyStr.openKeyboardSettings],
                        "and the menu ends with the keyboard settings door")
         for item in tail.dropFirst().flatMap({ $0 }) {
             XCTAssertTrue(item.target === built.indicator,
@@ -115,27 +121,11 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// The switch writes the setting and reads it back: pressing it flips
-    /// `LayoutKey.indicatorShowsName`, and the rebuilt menu shows the new state
-    /// — the same round trip the system's own item makes.
-    func testTheSourceNameSwitchFlipsTheStoredSetting() throws {
-        let built = builtMenu()
-        let store = built.store
-        let toggle = try XCTUnwrap(try section(built.menu, 2).first)
-        XCTAssertEqual(toggle.state, .off, "the name is off until somebody asks for it")
-
-        _ = toggle.target?.perform(toggle.action, with: toggle)
-        XCTAssertTrue(store.bool(LayoutKey.indicatorShowsName, default: false),
-                      "pressing the switch did not write the setting")
-
-        let rebuilt = builtMenu(store: store)
-        let after = try XCTUnwrap(try section(rebuilt.menu, 2).first)
-        XCTAssertEqual(after.state, .on, "the rebuilt menu does not show the switch as on")
-
-        _ = after.target?.perform(after.action, with: after)
-        XCTAssertFalse(store.bool(LayoutKey.indicatorShowsName, default: false),
-                       "pressing the switch again did not clear the setting")
-    }
+    /// The switch that used to live in section 2 was tested here for flipping
+    /// its own stored key. It is `BadgeStyle.sourceName` now — chosen from the
+    /// settings page's Style picker like every other look — so what needs
+    /// covering is the carry-over, not a menu item that no longer exists:
+    /// `TheOldNameSettingBecomesAStyleTests`.
 
     /// The words on the items are macOS's own, read from the system's
     /// `TextInputMenuCore` table (`Localizable.loctable`) — not translated

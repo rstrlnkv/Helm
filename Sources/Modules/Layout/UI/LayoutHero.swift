@@ -110,55 +110,37 @@ struct LayoutHero: View {
 
     // MARK: - The controls
 
-    /// Every choice on this row is a button, the way Keep Awake's hero is: one
-    /// `HelmWrappingRow` of `.large` buttons that folds instead of truncating.
+    /// The period: a button that opens the list of five, the same control the
+    /// 2×N panel tile carries.
     ///
-    /// **Buttons rather than a segmented control, and that is a measurement.**
-    /// A segmented picker draws to its intrinsic width and centres inside
-    /// whatever it is given, so inside a row that proposes `.unspecified` it has
-    /// no headroom at all — measured at 347.5 pt for five words in English,
-    /// 52 pt for the glyph pair, drawn exactly equal to wanted in all eight
-    /// languages. `LongStringGeometryRatchetTests` counts a control with under
-    /// 39 % room as one a longer word breaks, which German and French are.
-    /// A row of buttons wraps to a second line instead, which is what
-    /// `HelmWrappingRow` exists for.
+    /// **It was five buttons, and the argument for that does not survive being
+    /// checked.** The comment here said «the way Keep Awake's hero is» — but
+    /// every button on that hero is an *action*: start for fifteen minutes,
+    /// extend by an hour, stop. None of them holds a selection. A selection has
+    /// to show which one is selected, and a row of buttons shows that only
+    /// through `.borderedProminent` against `.bordered` — which macOS draws
+    /// identically in a window that is not key. Measured on the running build:
+    /// all five grey, and the only surviving cue was the period's name inside
+    /// the caption.
     ///
-    /// The chosen one is `.borderedProminent`; the rest are ordinary. That is
-    /// the same «this is the one that is on» the panel uses, and it needs no
-    /// second colour of its own.
+    /// A menu's face **is** its value, so the state cannot go missing whatever
+    /// the window's focus. It also spends one line where the buttons spent two
+    /// — the fifth name wrapped alone in every language measured.
+    ///
+    /// Named, because a control whose face is its value alone is «pop up button»
+    /// to VoiceOver, and `NamedControlsTests` scans the source for that shape.
     private var controls: some View {
-        HelmWrappingRow {
+        Menu {
             ForEach(ConversionPeriod.allCases, id: \.self) { option in
-                periodButton(option)
+                Button(LyStr.periodName(option)) { period = option }
             }
+        } label: {
+            Text(LyStr.periodName(period))
         }
-    }
-
-    private func periodButton(_ option: ConversionPeriod) -> some View {
-        chooser(chosen: period == option) { period = option } label: {
-            Text(LyStr.periodName(option))
-        }
-    }
-
-    /// One button, filled when it is the one in force.
-    ///
-    /// `.borderedProminent` and `.bordered` are two types, so the choice is a
-    /// branch rather than a value — SwiftUI has no `AnyButtonStyle`, and hiding
-    /// that behind an erased wrapper would cost more than the four lines it
-    /// saves.
-    @ViewBuilder
-    private func chooser<Label: View>(chosen: Bool,
-                                      action: @escaping () -> Void,
-                                      @ViewBuilder label: () -> Label) -> some View {
-        if chosen {
-            Button(action: action, label: label)
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
-                .accessibilityAddTraits(.isSelected)
-        } else {
-            Button(action: action, label: label)
-                .controlSize(.large)
-                .buttonStyle(.bordered)
-        }
+        .menuStyle(.button)
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .fixedSize()
+        .accessibilityLabel(LyStr.period)
     }
 }

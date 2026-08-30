@@ -19,6 +19,25 @@ import Module_Layout_Engine
     init(store: NamespacedStore) {
         self.store = store
         super.init()
+        carryTheOldNameSettingOver()
+    }
+
+    /// «Show Input Source Name» used to be a key of its own, flipped from the
+    /// status item's menu; it is `BadgeStyle.sourceName` now.
+    ///
+    /// **Deleting the key without this would take somebody's choice away in
+    /// silence** — their menu bar goes back to a badge on the next launch with
+    /// nothing said. Written once and erased in the same breath, so it cannot
+    /// fight a style the person picks afterwards: the old key is gone from the
+    /// store the first time this runs, and every later launch sees nothing to
+    /// carry. This is the same failure the trigger switches had, caught before
+    /// it shipped rather than after — a stored value outliving the only control
+    /// that could change it.
+    private func carryTheOldNameSettingOver() {
+        guard store.bool(LayoutKey.indicatorShowsName, default: false) else { return }
+        // `set(nil, for:)` is this store’s delete — there is no `remove`.
+        store.set(nil, for: LayoutKey.indicatorShowsName)
+        store.set(BadgeStyle.sourceName.rawValue, for: LayoutKey.badgeStyle)
     }
 
     func refresh() {
@@ -65,9 +84,8 @@ import Module_Layout_Engine
         item = nil
     }
 
-    /// The one setting three sites read: the switch that draws it, the press
-    /// that flips it, and the redraw that obeys it.
-    private var showsName: Bool { store.bool(LayoutKey.indicatorShowsName, default: false) }
+    /// Read off the style rather than a key of its own — see `BadgeStyle.isName`.
+    private var showsName: Bool { badgeStyle.isName }
 
     private var badgeStyle: BadgeStyle {
         BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
@@ -129,10 +147,6 @@ import Module_Layout_Engine
         emoji.image = EmojiPalette.icon
         menu.addItem(emoji)
         menu.addItem(.separator())
-        let name = actionItem(LyStr.showInputSourceName, #selector(toggleSourceName))
-        name.state = showsName ? .on : .off
-        menu.addItem(name)
-        menu.addItem(.separator())
         menu.addItem(actionItem(LyStr.openKeyboardSettings, #selector(openSettings)))
     }
 
@@ -156,12 +170,6 @@ import Module_Layout_Engine
         if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
     }
 
-    /// The write redraws by itself: `set` posts `.helmStoreChanged`, the
-    /// descriptor's observer calls `refresh()`, and the indicator swaps badge
-    /// for name — the same round trip any other window's write makes.
-    @objc private func toggleSourceName() {
-        store.set(!showsName, for: LayoutKey.indicatorShowsName)
-    }
 
     @objc private func openSettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")

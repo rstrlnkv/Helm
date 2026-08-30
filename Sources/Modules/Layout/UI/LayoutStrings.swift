@@ -206,6 +206,11 @@ enum LyStr {
         case .outlined: return L("Letters in a frame")
         case .flagEmoji: return L("Flag, system")
         case .flagDrawn: return L("Flag")
+        // The system's own name for it, read from `TextInputMenuCore.bundle`
+        // the way `openKeyboardSettings` is — this draws exactly what macOS's
+        // indicator draws under that switch, and inventing a second name for
+        // one behaviour is what CLAUDE.md § Localization warns against.
+        case .sourceName: return showInputSourceName
         }
     }
     static var badgePreview: String { L("Your layouts, as they will look:") }

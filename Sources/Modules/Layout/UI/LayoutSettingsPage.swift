@@ -450,18 +450,27 @@ struct LayoutSettingsPage: View {
                     .fixedSize()
                     .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
                 }
-                HelmSettingRow(LyStr.badgeSize) {
-                    Picker(LyStr.badgeSize, selection: $badgeSize) {
-                        ForEach(MenuBarIconSize.allCases, id: \.self) { size in
-                            Text(size.label).tag(size)
+                // Size and the preview are about a badge, and «Название
+                // раскладки» draws no badge — it draws the layout's name at the
+                // menu bar's own size. They used to stay live and go on
+                // promising «your layouts, as they will look» over an indicator
+                // that had stopped looking like that at all, because the switch
+                // that caused it lived in the status item's menu and nothing
+                // here knew about it.
+                if !badgeStyle.isName {
+                    HelmSettingRow(LyStr.badgeSize) {
+                        Picker(LyStr.badgeSize, selection: $badgeSize) {
+                            ForEach(MenuBarIconSize.allCases, id: \.self) { size in
+                                Text(size.label).tag(size)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .fixedSize()
+                        .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .fixedSize()
-                    .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
+                    BadgePreview(style: badgeStyle, size: badgeSize)
                 }
-                BadgePreview(style: badgeStyle, size: badgeSize)
             }
         } header: {
             HelmSectionTitle(LyStr.indicator)

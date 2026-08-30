@@ -18,10 +18,23 @@ enum BadgeImage {
         case .plain: return text(label, points: points, inverted: false, box: nil)
         case .filled: return text(label, points: points, inverted: true, box: .filled)
         case .outlined: return text(label, points: points, inverted: false, box: .outlined)
+        // Never asked for: `LanguageIndicator` draws the name as the button's
+        // title, with no image at all. Answered rather than defaulted, because
+        // this switch has no `default` — an unhandled style is a build error
+        // here, which is how the case above was found the moment it landed.
+        case .sourceName: return text(label, points: points, inverted: false, box: nil)
         case .flagEmoji:
-            // No country, no flag: falling back to letters is better than a
-            // gap where an indicator should be.
-            guard let flag else { return text(label, points: points, inverted: false, box: nil) }
+            // No country, no flag: falling back to letters is better than a gap
+            // where an indicator should be — **framed**, the same fallback
+            // `.flagDrawn` makes eight lines below and for the reason written
+            // there. It fell back bare until 2026-08-30, and the page's note
+            // under both flag styles promises «letters in a frame the same size
+            // as a flag»: measured 24.0 × 15.0 pt against `.flagDrawn`'s
+            // 32.4 × 17.0, so under «Flag, system» the page said frame and the
+            // menu bar drew none, in all eight languages.
+            guard let flag else {
+                return text(label, points: points, inverted: false, box: .outlined)
+            }
             return emoji(flag, points: points)
         case .flagDrawn:
             // Letters in the same rounded rectangle the flag would have
