@@ -46,7 +46,7 @@ struct LayoutSettingsPage: View {
         _introSeen = State(initialValue: store.bool(LayoutKey.introSeen, default: false))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
-        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
+        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: true))
         builtInBlocked = AppScope.blockedByDefault.filter {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
         }
@@ -150,7 +150,7 @@ struct LayoutSettingsPage: View {
                 automatic = store.bool(LayoutKey.automatic, default: true)
             }
             if store.changed(note, is: LayoutKey.fixCapitals) {
-                fixCapitals = store.bool(LayoutKey.fixCapitals, default: false)
+                fixCapitals = store.bool(LayoutKey.fixCapitals, default: true)
             }
             if store.changed(note, is: LayoutKey.audible) {
                 audible = store.bool(LayoutKey.audible, default: false)

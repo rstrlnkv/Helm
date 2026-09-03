@@ -663,7 +663,7 @@
 "stays" = "останется";
 "tagged" = "помечено тегом";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} и {counter} подставляются. Расширение всегда остаётся собственным.";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет. Не трогает ПРИВЕТ, слова с цифрами и слова из трёх букв: CDs — не опечатка.";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "ПРивет → Привет, но только если получается слово. IPhone и OSes остаются как есть, и ПРИВЕТ тоже.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

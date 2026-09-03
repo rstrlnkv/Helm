@@ -402,6 +402,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.unlock()
         guard let replacement else { return false }
 
+        // **The dictionary decides, not the shape of the letters.**
+        //
+        // `TypingHabits.corrected` can only see two capitals and a lowercase
+        // third, which is a slipped Shift *and* it is `IPhone`, `IPad`,
+        // `IPods`, `OSes`, `ТВшник`, `MPhil` — measured by running the rule. It
+        // rewrote every one of them, in somebody else's app, mid-sentence, and
+        // the note under the switch listed three refusals from which the only
+        // possible conclusion was that abbreviations were safe.
+        //
+        // This was also the one path in the module that changed text without
+        // asking anything: `convert` runs the whole `LayoutVerdict` gauntlet
+        // two hundred lines below, and this asked only about scope and secure
+        // input. A slip has a *word* behind it — so ask whether the correction
+        // is one, on the layout being typed in.
+        //
+        // Nil is a refusal, not a yes: no dictionary means the question could
+        // not be asked, which `SpellPort`'s own contract says must never be
+        // read as «not a word» — and must not be read as «go ahead» either.
+        guard let current = sources.current(),
+              spell.isWord(replacement, sourceID: current) == true else { return false }
+
         let bundleID = secure.frontmostBundleID()
         lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
         guard allowed, !secure.isSecure() else { return false }
@@ -893,7 +914,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let readAutomatic = settings.bool(LayoutKey.automatic, default: true)
         let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
         let readAudible = settings.bool(LayoutKey.audible, default: false)
-        let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
+        let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: true)
         // -1 is the recorder's own «nothing bound», not a keycode. Read out here
         // with its neighbours: `TheLockIsNeverHeldAcrossAWaitTests` caught this
         // one inside the critical section the moment it was written, which is

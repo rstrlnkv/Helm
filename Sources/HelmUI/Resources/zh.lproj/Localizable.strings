@@ -663,7 +663,7 @@
 "stays" = "保留";
 "tagged" = "标签";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}、{date} 和 {counter} 会被替换。扩展名始终保持文件本身的。";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет。不改 ПРИВЕТ、含数字的词，也不改三个字母的词：CDs 不是手滑。";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "HEllo → Hello，但仅当结果是一个单词时。IPhone、OSes 和 HELLO 都不改。";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

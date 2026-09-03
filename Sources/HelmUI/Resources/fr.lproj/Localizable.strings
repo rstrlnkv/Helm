@@ -663,7 +663,7 @@
 "stays" = "reste";
 "tagged" = "étiqueté";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} et {counter} sont remplacés. L’extension reste toujours celle du fichier.";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "BOnjour → Bonjour. Jamais BONJOUR, jamais un mot contenant un chiffre, jamais un mot de trois lettres : CDs n’est pas une faute.";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "BOnjour → Bonjour, mais seulement si le résultat est un mot. IPhone et OSes restent tels quels, BONJOUR aussi.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

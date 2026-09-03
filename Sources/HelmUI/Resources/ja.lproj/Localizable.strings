@@ -663,7 +663,7 @@
 "stays" = "残す";
 "tagged" = "タグ";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}、{date}、{counter} が置き換わります。拡張子は常に元のままです。";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет。ПРИВЕТ、数字を含む語、3文字の語は変更しません。CDs は打ち間違いではありません。";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "HEllo → Hello。ただし結果が単語になる場合だけです。IPhone や OSes、HELLO はそのままにします。";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

@@ -38,8 +38,16 @@ private struct StaleTranslation: TranslationPort {
 }
 
 private struct StaleSpell: SpellPort {
+    /// Cyrillic reads as a word, and Latin only when it is one.
+    ///
+    /// **The second half is new and the fake could not answer without it.** The
+    /// layout path asks whether a *Cyrillic* translation is a word; the capital
+    /// fix asks whether a *Latin* correction is one, which is a question this
+    /// fake used to answer «no» to unconditionally. A fake that cannot be in a
+    /// state the port can be in cannot fail the way the port can.
+    private static let latinWords: Set<String> = ["Hello"]
     func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
+        word.unicodeScalars.allSatisfy { $0.value > 0x400 } || Self.latinWords.contains(word)
     }
 }
 

@@ -663,7 +663,7 @@
 "stays" = "bleibt";
 "tagged" = "markiert";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} und {counter} werden ersetzt. Die Endung bleibt immer die der Datei.";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "HAllo → Hallo. Nicht bei HALLO, nicht bei Wörtern mit Ziffern und nicht bei Wörtern aus drei Buchstaben — CDs ist kein Vertipper.";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "HAllo → Hallo, aber nur wenn dabei ein Wort herauskommt. IPhone und OSes bleiben, HALLO auch.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

@@ -39,7 +39,7 @@ struct LayoutTour: View {
         self.onSettingsChanged = onSettingsChanged
         self.onDone = onDone
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
-        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
+        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: true))
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
     }
 

@@ -663,7 +663,7 @@
 "stays" = "stays";
 "tagged" = "tagged";
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} and {counter} are replaced. The extension is always the file’s own.";
-"ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip." = "ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip.";
+"HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO." = "HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO.";
 "🌐︎" = "🌐︎";
 
 /* Duplicates */

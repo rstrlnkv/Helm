@@ -129,6 +129,16 @@ enum LyStr {
     static var tourWhatTitle: String { L("What it does") }
     static var tourSwitchesTitle: String { L("What you can switch on") }
     static var introStart: String { L("Got it") }
+    /// **The example is Latin now, and the note says what the rule does.**
+    /// The old one listed three refusals — never shouting, never a digit, never
+    /// three letters — from which the only available conclusion was that
+    /// abbreviations were safe. They were not: `IPhone`, `IPad`, `OSes`,
+    /// `ТВшник` were all rewritten, measured by running the rule. The engine
+    /// asks the dictionary now, so the note can name the condition instead of
+    /// the exceptions. The example was also Cyrillic in the English, Japanese
+    /// and Chinese rows — a slip demonstrated in an alphabet those readers are
+    /// not typing in.
+    ///
     /// **The English was the wrong half of the pair.** It named a cause — a
     /// Shift held a beat too long — where ja and zh had both already named the
     /// rule, which is what the switch actually does. The translators were right
@@ -136,7 +146,7 @@ enum LyStr {
     /// also borrowed the root of macOS's Sticky Keys («Залипание клавиш»), a
     /// feature that does something else entirely.
     static var fixCapitals: String { L("Fix two capitals at the start of a word") }
-    static var fixCapitalsNote: String { L("ПРивет → Привет. Never ПРИВЕТ, never a word with a digit, and never a word of three letters — CDs is not a slip.") }
+    static var fixCapitalsNote: String { L("HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO.") }
     static var tryIt: String { L("Try it") }
     static var tryItPlaceholder: String { L("Type ghbdtn and press space") }
     /// **Seventeen words doing one job through a colon.** The step above it
