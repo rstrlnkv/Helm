@@ -52,6 +52,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
         "CAAnimation": "Core Animation's animation object, named where the documents say whose in-flight values `cacheDisplay` cannot see — and SwiftUI's, which it can",
         "NSAnimationContext": "AppKit's animation scope, named in the same passage about the table that is gone",
+        "NSVisualEffectView": "AppKit's material view, named where the documents say the settings sidebar deliberately draws none — `NSSplitViewController` supplies the glass and one of these would block it",
         // Lowercase, and only visible to this check since it stopped skipping
         // that half of the namespace. Programs the documents name because a
         // script runs them, and two AppKit/SwiftUI members named in passages

@@ -157,11 +157,20 @@ final class SettingsSplitViewController: NSSplitViewController {
                 // memory — for every engine event for as long as the app ran.
                 // `OffScreenIdle` in HelmUI has the measurements.
                 .helmIdlesOffScreen())
-        // Own the top strip ourselves: with the automatic titlebar safe area the
-        // list scrolls under the traffic lights and gets the system scroll-edge
-        // fade; dropping the safe area and reserving a fixed strip in the view
-        // keeps the first row clear with no fade and no double inset.
-        sidebar.safeAreaRegions = []
+        // **The safe area is AppKit's here, and that is what was wrong.**
+        //
+        // This used to be `safeAreaRegions = []` plus a hand-reserved 44 pt
+        // strip in the view: the system's inset thrown away and a slightly
+        // larger one put back, so the first row cleared the traffic lights with
+        // no scroll-edge fade. That was right for the old look and is wrong for
+        // this one — on macOS 26 a sidebar is a pane of glass at the window's
+        // full height, the lights sit on it, and a list scrolling under them
+        // with the system's fade is what every stock app does.
+        //
+        // Measured: AppKit offers 42 pt here and the hand-rolled strip was 44,
+        // so what the substitution bought was two points and the loss of the
+        // fade. The sidebar's *view* was full height throughout; it was its
+        // content that started below the lights.
         // The window's size belongs to the user. By default NSHostingController
         // feeds SwiftUI's ideal size into auto layout, and any pane whose ideal
         // height is unbounded (Spacer-centred empty states, plain VStacks
@@ -170,6 +179,20 @@ final class SettingsSplitViewController: NSSplitViewController {
         // it and never the other way around.
         sidebar.sizingOptions = []
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
+        // **Documented as the switch for a full-height sidebar, and measured as
+        // a no-op on macOS 27.** A probe built this same window twice, with the
+        // flag and without, and read the sidebar's top edge in window
+        // coordinates: 700 and 700, safe-area top 42 both times. On this system
+        // a sidebar under `.fullSizeContentView` is already full height and
+        // AppKit already reserves the traffic lights' strip.
+        //
+        // It stays because the deployment target is 26.0 and that is the one
+        // version this cannot be measured on — the property is documented as
+        // deciding whether full-height sidebars appear *after* a style mask is
+        // set, and a line that costs nothing is cheaper than a gap on the
+        // oldest system Helm ships to. It is not what fixed the gap; see the
+        // safe area below, which is.
+        sidebarItem.allowsFullHeightLayout = true
         sidebarItem.canCollapse = false
         // Narrower by default, and the person's to change.
         //
@@ -291,10 +314,10 @@ private struct SettingsSidebar: View {
     /// where the value comes from — it is about being redrawn at all.
     @ObservedObject var host: ModuleHost
     var body: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: 44)   // traffic-light strip + breathing room
-            sidebarList
-        }
+        // No hand-reserved strip: the split item is full-height now, so AppKit
+        // gives this view a safe area that already clears the traffic lights,
+        // and the list is meant to scroll under them.
+        sidebarList
     }
 
     /// Re-probed when the app comes forward: a grant is given in System
