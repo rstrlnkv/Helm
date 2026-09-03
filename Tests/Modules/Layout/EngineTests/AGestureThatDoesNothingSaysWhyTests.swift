@@ -40,9 +40,13 @@ final class AGestureThatDoesNothingSaysWhyTests: XCTestCase {
 
     func testBothRefusalsTheGestureCanReachAreLogged() throws {
         let body = try convert
-        XCTAssertEqual(body.components(separatedBy: "gesture declined").count - 1, 2, """
-            the two refusals a deliberate press can reach — the app scope and the verdict — \
-            do not both say so. A gesture that returns in silence is a key that looks broken.
+        XCTAssertEqual(body.components(separatedBy: "gesture declined").count - 1, 5, """
+            the five refusals a deliberate press can reach do not all say so. A gesture that \
+            returns in silence is a key that looks broken — the app scope, the verdict, and \
+            the three halves of the layout guard: no current layout, no second layout, no \
+            shared reading. That last group was one `guard` with three conditions and one \
+            silent `return`, and the field failure landed in it: two `gesture: last word` \
+            lines followed by nothing at all, then a restart.
             """)
     }
 
@@ -66,7 +70,7 @@ final class AGestureThatDoesNothingSaysWhyTests: XCTestCase {
             gated += 1
             searched = searched[hit.upperBound...]
         }
-        XCTAssertEqual(gated, 2, "the scan found \(gated) refusal lines, not the two it reads")
+        XCTAssertEqual(gated, 5, "the scan found \(gated) refusal lines, not the five it reads")
     }
 
     /// And neither line carries what was typed.

@@ -384,8 +384,64 @@ public enum InputSources {
         all().first { identifier(of: $0) == id }
     }
 
+    /// The layout the keyboard is on **now**.
+    ///
+    /// **`TISCopyCurrentKeyboardInputSource` is not asked first any more.** It
+    /// answers out of per-process state that HIToolbox refreshes as the process
+    /// handles the system's notification, and in this app it was observed to
+    /// stop tracking: the person switched layout with their own shortcut, macOS
+    /// switched, and Helm went on reading the previous one until the app was
+    /// restarted. Both readers freeze together, which is why the menu-bar
+    /// badge sat on one value while conversions stopped — one stale answer, not
+    /// two broken features.
+    ///
+    /// A fresh `TISCreateInputSourceList` and the source that says it is
+    /// selected is a different path to the same fact, and it is the one that
+    /// cannot go stale: the list is built on the call. It costs a list walk,
+    /// measured at single-digit microseconds on this Mac, and it is asked once
+    /// per completed word rather than per keystroke.
+    ///
+    /// The old call stays as the fallback, because with an input method in
+    /// front — Japanese, Chinese — no *keyboard layout* need report itself
+    /// selected, and an answer from the cache beats no answer at all. When the
+    /// two disagree the log says so once, which is what turns the next
+    /// occurrence of this bug into evidence rather than a restart.
     public static func current() -> TISInputSource? {
-        TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+        let cached = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+        guard let live = selected() else { return cached }
+        if let cached, identifier(of: cached) != identifier(of: live) {
+            noteDisagreement()
+        }
+        return live
+    }
+
+    /// The enabled keyboard layout whose own `kTISPropertyInputSourceIsSelected`
+    /// is true, read off a list built on this call.
+    public static func selected() -> TISInputSource? {
+        keyboardLayouts().first { flag($0, kTISPropertyInputSourceIsSelected) == true }
+    }
+
+    /// Once per run, not once per word: a stale cache stays stale, so a line
+    /// every time somebody types would bury the log it belongs in. A lock and a
+    /// `Bool` rather than anything from `HelmRuntime` — nothing there does
+    /// «say it once», and one log guard is not shared plumbing.
+    private static let saidLock = NSLock()
+    nonisolated(unsafe) private static var said = false
+
+    private static func noteDisagreement() {
+        saidLock.lock()
+        let first = !said
+        said = true
+        saidLock.unlock()
+        guard first else { return }
+        HelmLog.shared.warn(LayoutEngine.moduleID,
+                            "macOS's cached current layout disagrees with the selected one — "
+                            + "reading the live list from here on")
+    }
+
+    private static func flag(_ source: TISInputSource, _ key: CFString!) -> Bool? {
+        guard let pointer = TISGetInputSourceProperty(source, key) else { return nil }
+        return CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(pointer).takeUnretainedValue())
     }
 
     public static func string(_ source: TISInputSource, _ key: CFString!) -> String? {

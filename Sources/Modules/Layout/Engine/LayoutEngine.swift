@@ -595,10 +595,41 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // whichever the system lists first, and the module converted into a
         // language the word has nothing to do with — then switched the keyboard
         // to it. Ask each candidate whether the result is a word (`OtherSource`).
-        guard let from = sources.current(),
-              let to = target(for: word, from: from),
-              let translated = translation.translate(word, from: from, to: to)
-        else { return }
+        //
+        // **Split, because this was the third silent refusal and the commonest
+        // one.** Two gestures logged `gesture: last word` and then nothing at
+        // all — the tap alive, the callback run, the line written — and the
+        // person restarted the app to get conversions back. A three-way `guard`
+        // that returns in silence cannot say which of its three halves refused,
+        // so the one failure that actually happens in the field was the one the
+        // log had nothing to say about.
+        guard let from = sources.current() else {
+            if force {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "gesture declined: macOS did not name a current layout")
+            }
+            return
+        }
+        guard let to = target(for: word, from: from) else {
+            // `OtherSource` falls back to the first other source rather than
+            // refusing, so this is reached only when there is no other source
+            // at all: one layout installed, or the current one is not among
+            // those Helm can translate through.
+            if force {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "gesture declined: no second layout to convert into "
+                                    + "(\(sources.installed().count) installed)")
+            }
+            return
+        }
+        guard let translated = translation.translate(word, from: from, to: to) else {
+            if force {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "gesture declined: the layouts have no shared reading for "
+                                    + "\(word.count) characters")
+            }
+            return
+        }
 
         lock.lock(); let list = exceptions.words; lock.unlock()
         let decision: LayoutVerdict.Decision
