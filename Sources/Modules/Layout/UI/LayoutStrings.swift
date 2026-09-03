@@ -61,10 +61,6 @@ enum LyStr {
         L("not spent typing again", language: language)
     }
 
-    /// The bar row's name. A drawing is invisible to VoiceOver unless somebody
-    /// says what it is, and `NamedControlsTests` scans the source for the shape
-    /// of one that nobody did.
-    static var fortnight: String { L("Last fourteen days") }
 
     /// Without the grant the *typing* half can do nothing at all, so the page
     /// says that instead of drawing every setting under a banner. Not «every
@@ -132,10 +128,6 @@ enum LyStr {
     }
     static var tourWhatTitle: String { L("What it does") }
     static var tourSwitchesTitle: String { L("What you can switch on") }
-    static var tourSwitchesBody: String {
-        L("These are live: switch one here and it is switched.")
-    }
-    static var tourUndoTitle: String { L("If it gets one wrong") }
     static var introStart: String { L("Got it") }
     /// **The English was the wrong half of the pair.** It named a cause — a
     /// Shift held a beat too long — where ja and zh had both already named the
@@ -414,25 +406,52 @@ enum LyStr {
     /// actually exists. Interpolated, so it keeps its own table.
     /// The last change, read rather than seen.
     ///
-    /// The row is two words and an arrow. Uncombined it gave a reader three
-    /// unrelated stops with nothing saying one replaced the other; combined it
-    /// needs a sentence, and the arrow is hidden so it is not read as a glyph.
-    /// The wording is `fixedAnnouncement`'s minus its undo tail — that one is
-    /// said when the change *happens*, this one when the row is read afterwards.
+    /// **No arrow.** `ConversionPair` hides the glyph from VoiceOver saying
+    /// «the arrow's job is done by the word in the label» — and the label put
+    /// the same `→` straight back, so a reader heard it from the one place it
+    /// had just been taken out of. Words on both sides now, which also ends a
+    /// second mismatch: the caption above says «Последняя замена» and this said
+    /// «Исправлено», two nouns for one event two stops apart.
     ///
     /// Interpolated, so it keeps its own table.
     static func pairRead(before: String, after: String,
                          language: AppLanguage = AppLanguage.current) -> String {
         let table: [AppLanguage: String] = [
-            .ru: "Исправлено: \(before) → \(after)",
-            .es: "Corregido: \(before) → \(after)",
-            .fr: "Corrigé\u{00A0}: \(before) → \(after)",
-            .de: "Korrigiert: \(before) → \(after)",
-            .pt: "Corrigido: \(before) → \(after)",
-            .ja: "修正しました：\(before) → \(after)",
-            .zh: "已修正：\(before) → \(after)",
+            .ru: "Было \(before), стало \(after)",
+            .es: "Antes \(before), ahora \(after)",
+            .fr: "Avant \(before), maintenant \(after)",
+            .de: "Vorher \(before), jetzt \(after)",
+            .pt: "Antes \(before), agora \(after)",
+            .ja: "\(before) を \(after) に修正しました",
+            .zh: "已将 \(before) 修正为 \(after)",
         ]
-        return table[language] ?? "Fixed: \(before) → \(after)"
+        return table[language] ?? "Was \(before), now \(after)"
+    }
+
+    /// The fortnight's total, spelled as each language spells a counted noun.
+    ///
+    /// **Three defects in one line, and the module already knew all three.**
+    /// `wordsPutRight` returns the noun phrase without its figure, so the
+    /// figure was glued on with `"\(total) "` — which put a space before the
+    /// Japanese and Chinese counters (`37 語を修正`), where those languages
+    /// attach the numeral; `exceptionsRow` twenty lines up and `Plural.apps` in
+    /// `HelmRuntime` both guard exactly that. It also put the Russian
+    /// participle last (`37 слов исправлено`), which is a table cell rather
+    /// than a sentence — spoken Russian leads with it. And it spelled the
+    /// number by hand, so a busy fortnight drew `1234` where Russian and French
+    /// write `1 234`; `Count` exists for that and its own doc records the same
+    /// defect found in a scan of `/`.
+    static func wordsCounted(_ count: Int,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        let figure = Count(count, language: language)
+        switch language {
+        case .ru:
+            return "исправлено " + figure + " "
+                + Plural.russian(count, "слово", "слова", "слов")
+        case .ja: return figure + "語を修正"
+        case .zh: return figure + "个词已修正"
+        default: return figure + " " + wordsPutRight(count: count, language: language)
+        }
     }
 
     /// What the fourteen bars come to, for a reader who cannot see them.
@@ -445,20 +464,18 @@ enum LyStr {
     /// Interpolated, so it keeps its own table.
     static func fortnightSummary(total: Int, today: Int,
                                  language: AppLanguage = AppLanguage.current) -> String {
-        // `wordsPutRight` is the noun phrase alone — «слов исправлено», not
-        // «37 слов исправлено» — so the figure is spelled here. Caught by
-        // the guard, in all eight languages at once.
-        let words = "\(total) " + wordsPutRight(count: total, language: language)
+        let words = wordsCounted(total, language: language)
+        let now = Count(today, language: language)
         let table: [AppLanguage: String] = [
-            .ru: "Последние четырнадцать дней: \(words), сегодня — \(today)",
-            .es: "Últimos catorce días: \(words), hoy \(today)",
-            .fr: "Quatorze derniers jours\u{00A0}: \(words), aujourd\u{2019}hui \(today)",
-            .de: "Letzte vierzehn Tage: \(words), heute \(today)",
-            .pt: "Últimos catorze dias: \(words), hoje \(today)",
-            .ja: "過去14日間：\(words)、本日 \(today)",
-            .zh: "过去十四天：\(words)，今天 \(today)",
+            .ru: "Последние четырнадцать дней: \(words), из них сегодня \(now)",
+            .es: "Últimos catorce días: \(words), hoy \(now)",
+            .fr: "Quatorze derniers jours\u{00A0}: \(words), aujourd\u{2019}hui \(now)",
+            .de: "Letzte vierzehn Tage: \(words), heute \(now)",
+            .pt: "Últimos catorze dias: \(words), hoje \(now)",
+            .ja: "過去14日間：\(words)、本日 \(now)語",
+            .zh: "过去十四天：\(words)，今天 \(now)个",
         ]
-        return table[language] ?? "Last fourteen days: \(words), \(today) today"
+        return table[language] ?? "Last fourteen days: \(words), \(now) of them today"
     }
 
     static func fixedAnnouncement(before: String, after: String, undoable: Bool,

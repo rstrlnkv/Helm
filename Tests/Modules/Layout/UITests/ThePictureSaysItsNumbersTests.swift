@@ -21,8 +21,11 @@ final class ThePictureSaysItsNumbersTests: XCTestCase {
                           "\(language.rawValue): the fortnight is read without its total")
             XCTAssertTrue(said.contains("4"),
                           "\(language.rawValue): the fortnight is read without today's count")
-            XCTAssertNotEqual(said, LyStr.fortnight,
-                              "\(language.rawValue): the summary is the bare span again")
+            // The number is grouped the way the language groups it, and the
+            // Japanese and Chinese counters take no space before them — the
+            // rule `exceptionsRow` and `Plural.apps` already hold.
+            if language == .ja { XCTAssertTrue(said.contains("37語"), said) }
+            if language == .zh { XCTAssertTrue(said.contains("37个"), said) }
         }
     }
 
@@ -59,6 +62,12 @@ final class ThePictureSaysItsNumbersTests: XCTestCase {
             XCTAssertGreaterThan(said.count, "vjq → мой".count,
                                  "\(language.rawValue): the label is the arrow row again, which "
                                  + "is what a reader was already getting in three pieces")
+            // **The assertion this file was missing.** `ConversionPair` hides
+            // the arrow glyph from VoiceOver on the grounds that the label says
+            // it in words — and the label put the same `→` straight back, so a
+            // reader heard it from the one place it had been removed.
+            XCTAssertFalse(said.contains("→"),
+                           "\(language.rawValue) reads the arrow aloud: \(said)")
         }
     }
 

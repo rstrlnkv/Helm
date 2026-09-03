@@ -121,14 +121,12 @@
 "Helm now tells you when a new version is out. It has looked every day for a long time; the answer only ever sat on the About page, waiting for you to go and find it." = "新しいバージョンが出ると Helm がお知らせするようになりました。確認は以前から毎日行っていましたが、その答えは“Helm について”のページに置かれたままで、開くまで気づけませんでした。";
 "Helm says when macOS has no spelling dictionary for one of your layouts. Fixing as you type cannot work there — it needs the dictionary on both sides — and until now the switch stayed on, the badge stayed green, and no word was ever fixed. Fixing with the key still works, and the notice says so." = "macOS に辞書がないレイアウトがある場合、Helm がそれを伝えるようになりました。そこでは入力中の修正は働きませんが、以前はスイッチが入ったままで何も直りませんでした。キーによる修正は使えます。";
 "How it works" = "仕組み";
-"If it gets one wrong" = "間違えたときは";
 "Keyboard fixes one-letter words. In Russian the commonest words of all are one letter — в, и, с, к, о, у, а, я — and until now it left every one of them alone." = "キーボードが1文字の語も直します。ロシア語で最も多い語は1文字（в, и, с, к, о, у, а, я）ですが、これまではすべて手つかずでした。";
 "Keyboard is back in the menu-bar panel, in all three tile sizes. The big one draws the last fourteen days one by one, says roughly how much typing it saved, and carries a button that changes the period, the last change with a way to tell it never to touch that word again, and the switch for fixing as you type." = "キーボードがメニューバーのパネルに戻り、3つのタイルサイズすべてで使えます。大きいタイルは過去14日間を1日ずつ描き、節約できた入力量のおおよそを示し、期間を切り替えるボタン、直前の修正とその語を今後触らせない方法、入力中に修正するスイッチを備えます。";
 "Keyboard is simpler. The three “When to fix” switches are gone — space and punctuation confirm a word, Return does not, which is what they were set to anyway and what keeps a chat from sending your typo." = "キーボードが簡素になりました。“いつ修正するか”の3つのスイッチは廃止です。スペースと句読点で語を確定し、Returnでは確定しません。もともとその設定でしたし、チャットが打ち間違いを送信せずに済みます。";
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "キーボードが、すでに削除した文章に入力することはなくなりました。Option+Deleteで単語を消しても直前の変更が取り消し可能なままで、修正キーがカーソル位置に古い語を入れていました。";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "キーボードは説明ではなく4ステップのツアーで始まります。2つめは実際に試せる入力欄、3つめはスイッチそのもの。ステップに同意することが、そのままオンにすることです。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
-"Last fourteen days" = "過去14日間";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Layout name" = "入力ソース名";
 "Menu bar" = "メニューバー";
@@ -161,7 +159,6 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
 "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "キーボードが触らない単語と、アプリごとのルールは専用のウインドウに移りました。ページには件数付きの行が残るので、語がどこへ行ったかは見えます。";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "ここに入れた語は、辞書が何と言おうと入力したままにします。";
-"These are live: switch one here and it is switched." = "これは実物です。ここでオンにすれば、オンになります。";
 "This folder is no longer there" = "このフォルダはもうありません";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "これはもう存在しないため、何も移動していません。もう一度検索して残りを確認してください。";

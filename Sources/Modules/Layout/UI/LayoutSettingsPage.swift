@@ -222,10 +222,27 @@ struct LayoutSettingsPage: View {
         .onChange(of: heroPeriod) { _, new in store.set(new.rawValue, for: LayoutKey.heroPeriod) }
     }
 
+    /// **The heading only when the section under it has a card.**
+    ///
+    /// A grouped `Form` draws no card for an empty section, so a title over one
+    /// falls straight onto the next section's — measured on the true first run
+    /// («Behaviour» inking 383…397 and «Words and apps» 397…411, no gap and no
+    /// card between them). That state is every install: the tour is up, so the
+    /// three switches are held back, and with no last change and no
+    /// no-dictionary line there is nothing else in the body.
+    ///
+    /// The denied branch already had this right — `Section(header: hero)` with
+    /// no title, and a comment saying a section title over a permission notice
+    /// is a heading for the wrong thing. Same rule, the other reason for the
+    /// section being empty.
+    private var behaviourHasRows: Bool {
+        !showTour || lvm.state.lastConversion != nil || !lvm.state.noDictionary.isEmpty
+    }
+
     private var heroAndTitle: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
             hero
-            HelmSectionTitle(HelmSectionName.behaviour)
+            if behaviourHasRows { HelmSectionTitle(HelmSectionName.behaviour) }
         }
         // **No outset.** It was on this whole block — the figure *and* the
         // section title — so «Behaviour» sat 9.5 pt left of the other seven

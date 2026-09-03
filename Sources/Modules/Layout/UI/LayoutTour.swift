@@ -43,7 +43,7 @@ struct LayoutTour: View {
         _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
     }
 
-    private var lastStep: Int { 3 }
+    private var lastStep: Int { 2 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
@@ -53,10 +53,12 @@ struct LayoutTour: View {
                 // rotor can jump between them — which is the only way somebody
                 // reading with VoiceOver knows the card changed at all.
                 .accessibilityAddTraits(.isHeader)
-            Text(explanation)
-                .font(HelmText.rowTitle)
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            if let explanation {
+                Text(explanation)
+                    .font(HelmText.rowTitle)
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             content
                 // Every step is a different height, and a card that resizes by
@@ -108,23 +110,37 @@ struct LayoutTour: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - The four steps
+    // MARK: - The three steps
 
     private var title: String {
         switch step {
         case 0: return LyStr.tourWhatTitle
         case 1: return LyStr.tryIt
-        case 2: return LyStr.tourSwitchesTitle
-        default: return LyStr.tourUndoTitle
+        default: return LyStr.tourSwitchesTitle
         }
     }
 
-    private var explanation: String {
+    /// **Optional, because an absent sentence is not an empty one.** `Text("")`
+    /// still takes a line: step 2's title sat 35 pt above its field where every
+    /// other title sits 12 above its own explanation, measured.
+    private var explanation: String? {
         switch step {
         case 0: return LyStr.introWhat
-        case 1: return ""
-        case 2: return LyStr.tourSwitchesBody
-        default: return gesture.map { LyStr.undoHint(gesture: $0) } ?? LyStr.undoImpossible()
+        // **The undo promise, moved here from a step of its own.** It used to
+        // be step 4 — a title, this sentence, a counter and a button, with
+        // `EmptyView()` for content. Two things were wrong with that. The card
+        // kept step 3's measured height for ever, because `helmMeasuredHeight`
+        // refuses a zero, so the last step drew 224 pt with 140 of them empty.
+        // And the sentence is the one the page already draws under «Last
+        // change», at the moment it is useful. Here it lands where somebody has
+        // just watched `ghbdtn` become `привет` and «and if it is wrong?» is
+        // the live question.
+        case 1: return gesture.map { LyStr.undoHint(gesture: $0) } ?? LyStr.undoImpossible()
+        // No sentence: three labelled switches say what they are, and the one
+        // that stood here told the reader the controls were real — a doubt
+        // nobody has now that the page no longer draws its own copies beneath
+        // them.
+        default: return nil
         }
     }
 
@@ -141,16 +157,20 @@ struct LayoutTour: View {
             // The real field, not a demonstration: it works here exactly as it
             // does anywhere else, which is the point of putting it in a tour.
             LayoutTestField()
-        case 2:
+        // No `default` that draws nothing: every step has a body, so
+        // `helmMeasuredHeight` measures one on every step and the frame below
+        // it can never keep a stale height.
+        default:
             VStack(spacing: 0) {
-                toggle(LyStr.automatic, LyStr.automaticNote, $automatic, LayoutKey.automatic)
+                // No note under the first switch: step 1 gave the rule as its
+                // own point, and twenty-five words repeated two cards later is
+                // the duplication this tour was just cured of.
+                toggle(LyStr.automatic, nil, $automatic, LayoutKey.automatic)
                 Divider().padding(.vertical, HelmSpace.s2)
                 toggle(LyStr.fixCapitals, LyStr.fixCapitalsNote, $fixCapitals, LayoutKey.fixCapitals)
                 Divider().padding(.vertical, HelmSpace.s2)
                 toggle(LyStr.audible, nil, $audible, LayoutKey.audible)
             }
-        default:
-            EmptyView()
         }
     }
 
