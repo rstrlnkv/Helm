@@ -43,6 +43,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// empty is the module's «no idea which app», which matches nothing.
     private var typingApp = ""
     private var activeObserver: NSObjectProtocol?
+    /// The token `FrontmostApp` gives back, so this watcher can be stopped.
+    private var frontmostWatch: UUID?
     private var undo: UndoRecord?
     /// The last conversion as the page shows it, kept apart from `undo`: the
     /// right to a blind edit dies with the caret's next move, but the record —
@@ -173,6 +175,19 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 self.refreshDictionarySupport()
             }
         }
+        // **The layout the person bound to this application.**
+        //
+        // Through `FrontmostApp` rather than a `NSWorkspace` observer of our
+        // own: that type is the app's single observer of the activation notice
+        // and exists because `NSWorkspace` is main-thread-only. A second one
+        // here would be the third in the app.
+        //
+        // `AppScope` does not gate this. «Do not rewrite my text here» and «I
+        // write English here» are different questions, and the second is more
+        // likely to be wanted in a terminal.
+        frontmostWatch = FrontmostApp.shared.onChange { [weak self] app in
+            self?.selectBoundLayout(for: app)
+        }
         emitState()
     }
 
@@ -226,6 +241,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // and on again would stack another one each time.
         if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
         activeObserver = nil
+        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
+        frontmostWatch = nil
         tap.stop()
         lock.lock()
         running = false; tapped = false
@@ -249,6 +266,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             else { return false }
             return spell.isWord(attempt, sourceID: candidate) == true
         }
+    }
+
+    /// Selects the layout bound to `app`, when there is one and it is not
+    /// already current.
+    ///
+    /// Reading the bindings here rather than caching them in `reloadSettings`
+    /// is deliberate: this runs on an application switch, not on a keystroke,
+    /// so a store read is not on the tap's path — and a cached copy would be
+    /// one more mirror to keep in step with the lists window.
+    private func selectBoundLayout(for app: String) {
+        guard let settings else { return }
+        guard let wanted = AppLayouts.layout(for: app,
+                                             bindings: settings.stringTable(LayoutKey.appLayouts),
+                                             installed: sources.installed())
+        else { return }
+        // Already there: a `TISSelectInputSource` for the layout you are on is
+        // a system event for nothing.
+        guard sources.current() != wanted else { return }
+        sources.select(wanted)
+        HelmLog.shared.info(Self.moduleID,
+                            "switched the layout for \(Redact.app(app))")
     }
 
     /// Drops everything a later gesture could use to edit text that is no
