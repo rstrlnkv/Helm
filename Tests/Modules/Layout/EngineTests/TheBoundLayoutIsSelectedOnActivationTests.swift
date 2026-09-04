@@ -93,4 +93,19 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
         XCTAssertTrue(sources.selected.isEmpty)
         withExtendedLifetime(engine) {}
     }
+
+    /// Two `activate()`s in a row, with no `deactivate()` between: the second
+    /// must drop the first registration rather than orphan it in
+    /// `FrontmostApp.shared`'s watcher dictionary. Proved through
+    /// `deactivate()`: a fixed engine holds one token, and that one call
+    /// stops it — an orphaned first token would still be registered and
+    /// would go on selecting for a module the page shows as off.
+    func testActivatingTwiceLeavesNoOrphanedWatcherBehind() {
+        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
+        engine.activate()
+        engine.deactivate()
+        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
+        XCTAssertTrue(sources.selected.isEmpty)
+        withExtendedLifetime(engine) {}
+    }
 }

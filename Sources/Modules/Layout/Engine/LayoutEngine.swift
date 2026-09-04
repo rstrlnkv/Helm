@@ -185,6 +185,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // `AppScope` does not gate this. «Do not rewrite my text here» and «I
         // write English here» are different questions, and the second is more
         // likely to be wanted in a terminal.
+        //
+        // Dropped rather than overwritten, same as `activeObserver` three
+        // lines up and for the same reason: `FrontmostApp.shared` is a
+        // process-wide singleton whose `watchers` dictionary is never pruned,
+        // so two activates in a row would leave the first registered — and
+        // unstoppable, because `deactivate()` only has the newest token to
+        // hand back.
+        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
         frontmostWatch = FrontmostApp.shared.onChange { [weak self] app in
             self?.selectBoundLayout(for: app)
         }
