@@ -25,6 +25,14 @@ enum LyStr {
     static var addApp: String { L("Add app…") }
     static var ruleOn: String { L("Fix") }
     static var ruleOff: String { L("Don’t fix") }
+    /// The layout picker's «leave it alone» value, and the first one offered.
+    /// Not «Off»: the row's other picker already uses that shape for a
+    /// different question, and this one names what does not happen.
+    static var layoutUnchanged: String { L("As the system has it") }
+
+    /// The picker's own name, which a reader with VoiceOver hears in place of
+    /// «pop-up button». Its *value* is the layout's own name, from the system.
+    static var appLayout: String { L("Layout") }
     /// «Сочетания клавиш» is what macOS calls these — 12 tables to 0 for
     /// `Keyboard shortcut`, and 2 to 0 for the plural. «Горячие клавиши» is a
     /// colloquialism the system never uses, and this file already said the

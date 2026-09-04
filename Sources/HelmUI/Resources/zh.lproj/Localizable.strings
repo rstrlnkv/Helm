@@ -199,6 +199,7 @@
 "Display and power" = "显示器与电源";
 "Document" = "文稿";
 "Done" = "完成";
+"As the system has it" = "跟随系统";
 "Don’t fix" = "不修正";
 "Double ring" = "双环";
 "Download" = "下载";
@@ -300,6 +301,7 @@
 "Later" = "稍后";
 "Launch agents" = "启动代理";
 "Launch daemons" = "启动守护进程";
+"Layout" = "布局";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
@@ -1109,3 +1111,13 @@
 "“Run now” is switched off on a folder you have switched off. It used to be live there, and pressing it came back with a report of a sweep that never ran." = "“立即运行”在已关闭的文件夹上不可用。此前按钮在那里仍可点击，按下后会报告一次并未发生的整理。";
 "The Disk tile in the panel opens the Disk module. A chevron in its header takes you straight to the page." = "面板中的“磁盘”磁贴可直接打开模块：标题栏中的箭头会带你到该页面。";
 "The Disk tile measures your disk each time you open the panel. It used to keep the figure from the first time the panel was ever opened — for the weeks a menu-bar app runs — so a disk filling up never turned the bar red. And a drive you plug in while the page is open now shows up in the list." = "“磁盘”磁贴在每次打开面板时重新测量磁盘。此前它一直沿用面板首次打开时的数字 — 在菜单栏应用运行的数周里 — 磁盘装满也不会让进度条变红。现在，在页面打开时接入的驱动器也会出现在列表中。";
+"Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window." = "把应用和键盘布局绑定，该应用切到前台时 Helm 会自动切换布局。设置就在“词与应用”窗口中该应用规则的旁边。";
+"Keyboard could stop switching your layout until you restarted Helm, and the panel’s badge froze on the layout it last saw at the same moment." = "键盘有时会停止切换布局，只有重启 Helm 才能恢复——与此同时，面板上的标记也会停在它最后看到的那个布局上。";
+"“Fix two capitals at the start of a word” no longer rewrites CDs to Cds, or IPhone to Iphone. It checks the dictionary before correcting a slipped Shift now, and ships switched on." = "“修正词首连续两个大写字母”不再把 CDs 改成 Cds，也不再把 IPhone 改成 Iphone。它现在会先查词典，再修正按住不放的 Shift 键，并且默认开启。";
+"A key press that does nothing, on one of the words Keyboard must never touch, now says why in the log instead of looking like a dead key. And a frozen app in front no longer holds Keyboard’s tap waiting on it." = "在“键盘”不得改动的词上按下却毫无反应时，现在会在日志里说明原因，而不是像失灵的按键。前台应用卡死时，也不会再让“键盘”一直等待。";
+"On a first visit, Keyboard’s tour drew the same “Try it” field and the same three switches as the page beneath it, a card apart and out of step with each other. The button that reopens the tour is labelled “Show” now, instead of repeating its own name." = "第一次打开时，“键盘”的导览会绘出和下方页面一样的“试一试”输入框和同样的三个开关，隔着一张卡片，还彼此不同步。重新打开导览的按钮现在显示为“显示”，而不再重复自己的名字。";
+"The period chosen on Keyboard’s panel tile and the period its page counts over are the same one now — they used to drift apart until the settings window was closed and reopened." = "面板中“键盘”磁贴所选的时间段，和页面统计所用的时间段，现在是同一个了——以前两者会不一致，直到关闭并重新打开设置窗口才会同步。";
+"Escape now closes Keyboard’s words-and-apps window. It had no way out from the keyboard at all, so closing it needed a mouse." = "现在按 Esc 键即可关闭“键盘”的词与应用窗口。此前它完全没有键盘退出方式，只能用鼠标关闭。";
+"The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now." = "打开“键盘”应用列表的那一行，此前只统计你自己的规则。它背后的窗口还列出了 Helm 内置的排除项——终端、密码管理器——两个数字最多能相差七个。现在它们一致了。";
+"The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now." = "如果当天的计数还是零，即使“键盘”页面顶部那一行处于密码框造成的暂停中，它也可能显示“正在留意你的输入”——尽管上方的窗口标题已经写着“未运行”。现在两者一致了。";
+"Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops." = "“键盘”与 VoiceOver 配合得更好了：过去十四天的图表会读出自己的数字，时间段菜单会说明选中的是哪个时间段，一次修正也会读作一整句话，而不是三个互不相关的片段。";

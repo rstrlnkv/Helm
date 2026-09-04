@@ -26,6 +26,7 @@ public final class FrontmostApp: @unchecked Sendable {
 
     private let lock = NSLock()
     private var snapshot = ""
+    private var watchers: [UUID: (String) -> Void] = [:]
 
     private init() {}
 
@@ -49,7 +50,7 @@ public final class FrontmostApp: @unchecked Sendable {
             return snapshot
         }
         let current = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
-        lock.lock(); snapshot = current; lock.unlock()
+        record(current)
         return current
     }
 
@@ -62,8 +63,58 @@ public final class FrontmostApp: @unchecked Sendable {
         refresh()
     }
 
-    /// Tests only: seeds the snapshot without AppKit.
+    /// **Told, not asked.** A caller that wants to act when the front
+    /// application changes had no way to hear it and would have added a second
+    /// observer for a notification this type already owns — and `NSWorkspace`
+    /// is main-thread-only, which is why there is exactly one observer.
+    ///
+    /// The handler runs on the main thread, with the new bundle id, and only
+    /// when it differs from the last one delivered: coming back to a window you
+    /// were already in is not a change, and a caller acting on it would select
+    /// an input source for nothing.
+    ///
+    /// The token is the caller's to keep and to hand back. A watcher that
+    /// cannot be stopped is a watcher that outlives whatever owned it.
+    /// **Not `@discardableResult`, unlike `refresh()` three methods up.** That
+    /// one returns a *value*; this returns a *handle* into a dictionary this
+    /// singleton never prunes. Letting a caller drop it on the floor is the
+    /// mistake the paragraph above warns about, blessed by the compiler.
+    public func onChange(_ handler: @escaping (String) -> Void) -> UUID {
+        let token = UUID()
+        lock.lock(); watchers[token] = handler; lock.unlock()
+        return token
+    }
+
+    public func stopWatching(_ token: UUID) {
+        lock.lock(); watchers.removeValue(forKey: token); lock.unlock()
+    }
+
+    /// Every watcher, on the main thread, outside the lock.
+    ///
+    /// Outside deliberately: a handler is other people's code and may call
+    /// straight back into this type, and a lock held across a call out is the
+    /// shape `LocalTransport.setHandler` is on record for.
+    private func tell(_ bundleID: String) {
+        lock.lock(); let handlers = Array(watchers.values); lock.unlock()
+        for handler in handlers { handler(bundleID) }
+    }
+
+    /// Stores the new snapshot and tells the watchers only if it actually
+    /// changed — the one compare-and-swap both `refresh()` and
+    /// `setForTesting` need, so there is exactly one place a caller can
+    /// forget the guard rather than two.
+    private func record(_ bundleID: String) {
+        lock.lock()
+        let changed = snapshot != bundleID
+        snapshot = bundleID
+        lock.unlock()
+        if changed { tell(bundleID) }
+    }
+
+    /// Tests only: seeds the snapshot without AppKit, and tells the watchers,
+    /// because the whole point of the seam is that a test can drive what the
+    /// workspace would have driven.
     public func setForTesting(_ bundleID: String) {
-        lock.lock(); snapshot = bundleID; lock.unlock()
+        record(bundleID)
     }
 }

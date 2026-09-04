@@ -199,6 +199,7 @@
 "Display and power" = "ディスプレイと電源";
 "Document" = "書類";
 "Done" = "完了";
+"As the system has it" = "システムのまま";
 "Don’t fix" = "修正しない";
 "Double ring" = "二重リング";
 "Download" = "ダウンロード";
@@ -300,6 +301,7 @@
 "Later" = "後で";
 "Launch agents" = "起動エージェント";
 "Launch daemons" = "起動デーモン";
+"Layout" = "配列";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
@@ -1109,3 +1111,13 @@
 "“Run now” is switched off on a folder you have switched off. It used to be live there, and pressing it came back with a report of a sweep that never ran." = "“今すぐ実行”は、オフにしたフォルダでは押せなくなりました。以前はそこでも押すことができ、実行されていない処理の結果が返ってきていました。";
 "The Disk tile in the panel opens the Disk module. A chevron in its header takes you straight to the page." = "パネルの“ディスク”タイルからモジュール自体を開けます。見出しのシェブロンを押すとページに移動します。";
 "The Disk tile measures your disk each time you open the panel. It used to keep the figure from the first time the panel was ever opened — for the weeks a menu-bar app runs — so a disk filling up never turned the bar red. And a drive you plug in while the page is open now shows up in the list." = "“ディスク”タイルは、パネルを開くたびにディスクを測ります。以前はパネルを初めて開いたときの数値を保持したままで、メニューバーアプリが動き続ける数週間、いっぱいになりつつあるディスクでもバーが赤くなりませんでした。ページを開いたまま接続したドライブも、一覧に表示されます。";
+"Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window." = "アプリにキーボード配列を割り当てておくと、そのアプリが前面に出たときに Helm が切り替えます。設定は“単語とアプリ”ウインドウの、アプリごとのルールの隣にあります。";
+"Keyboard could stop switching your layout until you restarted Helm, and the panel’s badge froze on the layout it last saw at the same moment." = "キーボードがレイアウトの切り替えを止めてしまうことがあり、直すには Helm の再起動しかありませんでした。同じ瞬間、パネルのバッジも最後に見たレイアウトのまま固まっていました。";
+"“Fix two capitals at the start of a word” no longer rewrites CDs to Cds, or IPhone to Iphone. It checks the dictionary before correcting a slipped Shift now, and ships switched on." = "“単語の先頭 2 文字の大文字を修正”は、CDs を Cds に、IPhone を Iphone に書き換えなくなりました。今はシフトキーの押しっぱなしを直す前に辞書を確認し、初期状態でオンになっています。";
+"A key press that does nothing, on one of the words Keyboard must never touch, now says why in the log instead of looking like a dead key. And a frozen app in front no longer holds Keyboard’s tap waiting on it." = "キーボードが触らない単語の一つで何も起きないキー操作は、キーが壊れているように見えるのではなく、ログにその理由を残すようになりました。前面のアプリが固まっていても、キーボードが待たされることはもうありません。";
+"On a first visit, Keyboard’s tour drew the same “Try it” field and the same three switches as the page beneath it, a card apart and out of step with each other. The button that reopens the tour is labelled “Show” now, instead of repeating its own name." = "初回に開くと、キーボードのツアーはページ下部と同じ“試す”欄と同じ3つのスイッチを、カード1枚分離れた場所に描き、しかも両者は連動していませんでした。ツアーを開き直すボタンは、自分の名前を繰り返す代わりに“表示”と表示されるようになりました。";
+"The period chosen on Keyboard’s panel tile and the period its page counts over are the same one now — they used to drift apart until the settings window was closed and reopened." = "パネルのキーボードのタイルで選んだ期間と、ページが集計する期間は、同じものになりました。以前は設定ウインドウを閉じて開き直すまで、両者はずれたままでした。";
+"Escape now closes Keyboard’s words-and-apps window. It had no way out from the keyboard at all, so closing it needed a mouse." = "Esc キーで、キーボードの単語とアプリのウインドウを閉じられるようになりました。これまではキーボードでの脱出手段が一切なく、閉じるにはマウスが必要でした。";
+"The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now." = "キーボードのアプリ一覧を開く行は、自分で作ったルールしか数えていませんでした。その先のウインドウには Helm 組み込みの除外対象——ターミナルやパスワード管理アプリ——も並ぶため、2つの数字は最大7件ずれることがありました。今は一致します。";
+"The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now." = "キーボードのページ上部の行は、その日の件数がまだゼロのままだと、パスワード欄で一時停止している最中でも“単語を見ています”と表示することがありました。すぐ上のウインドウタイトルはすでに“停止中”と言っていたのに。今は両方が一致します。";
+"Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops." = "キーボードは VoiceOver でよりよく話せるようになりました。過去14日間のグラフは自分の数字を読み上げ、期間メニューはどの期間が選ばれているかを伝え、修正は無関係な3つの断片ではなく1つの文として読み上げられます。";

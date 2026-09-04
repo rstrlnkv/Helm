@@ -602,7 +602,9 @@ struct LayoutSettingsPage: View {
     /// The number the row says, which is the number of rows the window draws —
     /// `AppScope.listed` is the set, and `LayoutLists` draws exactly it.
     private static func ruleCount(_ store: NamespacedStore, _ builtInBlocked: [String]) -> Int {
-        AppScope.listed(rules: store.boolTable(LayoutKey.appRules), builtIn: builtInBlocked).count
+        AppScope.listed(rules: store.boolTable(LayoutKey.appRules),
+                        layouts: store.stringTable(LayoutKey.appLayouts),
+                        builtIn: builtInBlocked).count
     }
 
     private func write(_ value: Any, _ key: String) {

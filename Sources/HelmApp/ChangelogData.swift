@@ -71,6 +71,16 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .new, text: L("Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window.")),
+                ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm, and the panel’s badge froze on the layout it last saw at the same moment.")),
+                ChangeItem(kind: .fix, text: L("“Fix two capitals at the start of a word” no longer rewrites CDs to Cds, or IPhone to Iphone. It checks the dictionary before correcting a slipped Shift now, and ships switched on.")),
+                ChangeItem(kind: .fix, text: L("A key press that does nothing, on one of the words Keyboard must never touch, now says why in the log instead of looking like a dead key. And a frozen app in front no longer holds Keyboard’s tap waiting on it.")),
+                ChangeItem(kind: .fix, text: L("On a first visit, Keyboard’s tour drew the same “Try it” field and the same three switches as the page beneath it, a card apart and out of step with each other. The button that reopens the tour is labelled “Show” now, instead of repeating its own name.")),
+                ChangeItem(kind: .fix, text: L("The period chosen on Keyboard’s panel tile and the period its page counts over are the same one now — they used to drift apart until the settings window was closed and reopened.")),
+                ChangeItem(kind: .fix, text: L("Escape now closes Keyboard’s words-and-apps window. It had no way out from the keyboard at all, so closing it needed a mouse.")),
+                ChangeItem(kind: .fix, text: L("The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now.")),
+                ChangeItem(kind: .fix, text: L("The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now.")),
+                ChangeItem(kind: .fix, text: L("Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops.")),
                 ChangeItem(kind: .fix, text: L("“Run now” is switched off on a folder you have switched off. It used to be live there, and pressing it came back with a report of a sweep that never ran.")),
                 ChangeItem(kind: .new, text: L("The Disk tile in the panel opens the Disk module. A chevron in its header takes you straight to the page.")),
                 ChangeItem(kind: .fix, text: L("The Disk tile measures your disk each time you open the panel. It used to keep the figure from the first time the panel was ever opened — for the weeks a menu-bar app runs — so a disk filling up never turned the bar red. And a drive you plug in while the page is open now shows up in the list.")),
