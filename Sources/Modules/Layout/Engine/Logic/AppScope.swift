@@ -33,8 +33,21 @@ public struct AppScope: Equatable, Sendable {
     /// `builtIn` is passed rather than read from `blockedByDefault` because the
     /// caller has already filtered it to the applications installed here — a
     /// row for software nobody has is a list of somebody else's Mac.
-    public static func listed(rules: [String: Bool], builtIn: [String]) -> Set<String> {
-        Set(rules.keys).union(builtIn)
+    /// **Both tables, or the second one orphans.** `builtIn` arrives filtered to
+    /// the applications this Mac has, so a row drawn only because of it
+    /// disappears when that application is uninstalled — and a layout bound to
+    /// it goes with the row, staying in the store where nothing can reach it
+    /// and reviving silently if the application comes back. `rules` cannot
+    /// orphan that way because its keys are unfiltered; the layouts table can.
+    ///
+    /// The union belongs here rather than at either call site: the lists window
+    /// draws this set and the page counts it, and adding a table to one of the
+    /// two would reopen the «the row said one app over a list of eight» defect
+    /// that `ce5a1617` closed.
+    public static func listed(rules: [String: Bool],
+                              layouts: [String: String] = [:],
+                              builtIn: [String]) -> Set<String> {
+        Set(rules.keys).union(layouts.keys).union(builtIn)
     }
 
     func allows(_ bundleID: String) -> Bool {

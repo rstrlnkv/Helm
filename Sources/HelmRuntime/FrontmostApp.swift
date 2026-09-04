@@ -75,7 +75,10 @@ public final class FrontmostApp: @unchecked Sendable {
     ///
     /// The token is the caller's to keep and to hand back. A watcher that
     /// cannot be stopped is a watcher that outlives whatever owned it.
-    @discardableResult
+    /// **Not `@discardableResult`, unlike `refresh()` three methods up.** That
+    /// one returns a *value*; this returns a *handle* into a dictionary this
+    /// singleton never prunes. Letting a caller drop it on the floor is the
+    /// mistake the paragraph above warns about, blessed by the compiler.
     public func onChange(_ handler: @escaping (String) -> Void) -> UUID {
         let token = UUID()
         lock.lock(); watchers[token] = handler; lock.unlock()

@@ -36,6 +36,26 @@ final class TheCountOnTheRowIsTheCountInTheWindowTests: XCTestCase {
                                        builtIn: builtIn).count, 3)
     }
 
+    /// **A layout bound to an app with no rule still draws a row.** Without
+    /// this the second table orphans: `builtIn` is filtered to what this Mac
+    /// has, so a row drawn only because of it disappears when the application
+    /// is uninstalled — and the binding goes with the row, left in the store
+    /// where nothing can reach it and revived silently if the app comes back.
+    func testABoundLayoutIsEnoughToDrawARow() {
+        let listed = AppScope.listed(rules: [:],
+                                     layouts: ["com.tinyspeck.slackmacgap": "ru"],
+                                     builtIn: builtIn)
+        XCTAssertEqual(listed.count, 3)
+        XCTAssertTrue(listed.contains("com.tinyspeck.slackmacgap"))
+    }
+
+    /// And one application with both a rule and a binding is one row, not two.
+    func testARuleAndABindingOnOneAppIsOneRow() {
+        XCTAssertEqual(AppScope.listed(rules: ["com.apple.Terminal": true],
+                                       layouts: ["com.apple.Terminal": "en"],
+                                       builtIn: builtIn).count, 2)
+    }
+
     /// Only what this Mac has: `builtIn` arrives already filtered by the caller,
     /// because a row for software nobody installed is a list of somebody else's
     /// machine.

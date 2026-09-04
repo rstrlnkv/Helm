@@ -148,6 +148,14 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Audio": [.es, .fr, .de],
         "Auto": [.fr],
         "Autopilot": [.de],
+        // The Keyboard module's app-row picker. Portuguese borrowed the word
+        // whole, the way German borrowed «Filter»: macOS pt-BR says «Layout de
+        // Teclado» throughout `KeyboardSettings.appex` — «Alterar Layout de
+        // Teclado», «Layout de Teclado Instalado» — so the system's own
+        // spelling is the English one. The other six all differ (Раскладка,
+        // Belegung, Disposition, Distribución, 配列, 布局), which is what makes
+        // this an identity rather than a row nobody filled in.
+        "Layout": [.pt],
         // The key is the column header on the keys tab. French spells the word
         // exactly as English does — Larousse lists «type» and nothing shorter
         // fits a column — and the other six all differ, which is what makes

@@ -138,6 +138,7 @@ struct LayoutLists: View {
             // same question once per app instead of once for the list.
             let layoutSources = InputSourceInfo.all()
             ForEach(AppInfo.sortedByName(AppScope.listed(rules: appRules,
+                                                         layouts: appLayouts,
                                                          builtIn: builtInBlocked)),
                     id: \.self) { bundleID in
                 appRow(bundleID, layoutSources: layoutSources)
@@ -171,7 +172,12 @@ struct LayoutLists: View {
             }
             .labelsHidden()
             .fixedSize()
-            .accessibilityLabel(LyStr.appLayout)
+            // The app's name, the way both of its neighbours carry one: the rule
+            // picker at the top of this row and `HelmAppRuleRow`'s cross each
+            // say why — five rows of «Layout, pop-up button» name nothing.
+            // `NamedControlsTests` cannot catch this: it scans for controls
+            // with no name, not for five with the same one.
+            .accessibilityLabel("\(LyStr.appLayout), \(AppInfo.resolve(bundleID).name)")
         } remove: {
             appRules.removeValue(forKey: bundleID)
             appLayouts.removeValue(forKey: bundleID)
