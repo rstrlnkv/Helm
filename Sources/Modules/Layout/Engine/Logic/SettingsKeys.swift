@@ -17,6 +17,8 @@ public enum LayoutKey {
     public static let tapKey = "tapKey"
     public static let exceptions = "exceptions"
     public static let appRules = "appRules"
+    /// bundle id → input source id. The person's own binding, never learned.
+    public static let appLayouts = "appLayouts"
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
