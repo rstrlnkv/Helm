@@ -145,7 +145,7 @@ public final class NamespacedStore {
         backing.object(forKey: k(key)) as? [String: Bool] ?? [:]
     }
 
-    /// The third table shape, beside `intTable` and `boolTable`.
+    /// The fourth table shape, beside `doubleTable`, `intTable` and `boolTable`.
     ///
     /// Keyboard binds an application to an input source, which is a
     /// `[String: String]`. Added here rather than in the module because the two

@@ -80,7 +80,8 @@ final class NamespacedStoreTypeTests: XCTestCase {
                        "the prefix is literal, so a crafted key names a key that does not exist")
     }
 
-    /// The third member of the `intTable`/`boolTable` row. Keyboard binds an
+    /// The fourth member of the `doubleTable`/`intTable`/`boolTable` row.
+    /// Keyboard binds an
     /// application to a layout, which is a `[String: String]`, and every other
     /// table shape was already here.
     func testAStringTableComesBackAsItWentIn() {
