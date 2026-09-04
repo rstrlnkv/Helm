@@ -199,6 +199,7 @@
 "Display and power" = "Tela e tomada";
 "Document" = "Documento";
 "Done" = "Concluído";
+"Don’t change" = "Não alterar";
 "Don’t fix" = "Não corrigir";
 "Double ring" = "Anel duplo";
 "Download" = "Baixar";
@@ -300,6 +301,7 @@
 "Later" = "Depois";
 "Launch agents" = "Agentes de início";
 "Launch daemons" = "Daemons de início";
+"Layout" = "Layout";
 "Left ⇧" = "⇧ esquerda";
 "Left ⌃" = "⌃ esquerda";
 "Left ⌘" = "⌘ esquerda";

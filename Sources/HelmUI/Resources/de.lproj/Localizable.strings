@@ -199,6 +199,7 @@
 "Display and power" = "Bildschirm und Netzstrom";
 "Document" = "Dokument";
 "Done" = "Fertig";
+"Don’t change" = "Nicht ändern";
 "Don’t fix" = "Nicht korrigieren";
 "Double ring" = "Doppelring";
 "Download" = "Herunterladen";
@@ -300,6 +301,7 @@
 "Later" = "Später";
 "Launch agents" = "Startagenten";
 "Launch daemons" = "Start-Daemons";
+"Layout" = "Belegung";
 "Left ⇧" = "Linke ⇧";
 "Left ⌃" = "Linke ⌃";
 "Left ⌘" = "Linke ⌘";

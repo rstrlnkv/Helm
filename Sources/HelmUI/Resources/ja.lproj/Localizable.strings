@@ -199,6 +199,7 @@
 "Display and power" = "ディスプレイと電源";
 "Document" = "書類";
 "Done" = "完了";
+"Don’t change" = "変更しない";
 "Don’t fix" = "修正しない";
 "Double ring" = "二重リング";
 "Download" = "ダウンロード";
@@ -300,6 +301,7 @@
 "Later" = "後で";
 "Launch agents" = "起動エージェント";
 "Launch daemons" = "起動デーモン";
+"Layout" = "配列";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";

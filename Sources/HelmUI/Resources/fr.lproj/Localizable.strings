@@ -199,6 +199,7 @@
 "Display and power" = "Écran et secteur";
 "Document" = "Document";
 "Done" = "Terminé";
+"Don’t change" = "Ne pas changer";
 "Don’t fix" = "Ne pas corriger";
 "Double ring" = "Double anneau";
 "Download" = "Télécharger";
@@ -300,6 +301,7 @@
 "Later" = "Plus tard";
 "Launch agents" = "Agents de lancement";
 "Launch daemons" = "Démons de lancement";
+"Layout" = "Disposition";
 "Left ⇧" = "⇧ gauche";
 "Left ⌃" = "⌃ gauche";
 "Left ⌘" = "⌘ gauche";

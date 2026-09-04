@@ -30,6 +30,7 @@ struct LayoutLists: View {
     @State private var exceptions: [String]
     @State private var newException = ""
     @State private var appRules: [String: Bool]
+    @State private var appLayouts: [String: String]
 
     /// The apps Helm refuses before any rule is read — terminals and password
     /// managers. Drawn as ordinary rows so the refusal is visible and the
@@ -44,6 +45,7 @@ struct LayoutLists: View {
         self.announce = announce
         _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions))
         _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
+        _appLayouts = State(initialValue: store.stringTable(LayoutKey.appLayouts))
     }
 
     var body: some View {
@@ -131,10 +133,14 @@ struct LayoutLists: View {
             // typing is not being fixed in Warp had no way to learn that Warp
             // was the reason. Only the ones this Mac has: a row for an app
             // nobody installed is a list of somebody else's software.
+            // Read once for the whole section: every row offers the same
+            // layouts, and each is a system call — asking it per row asks the
+            // same question once per app instead of once for the list.
+            let layoutSources = InputSourceInfo.all()
             ForEach(AppInfo.sortedByName(AppScope.listed(rules: appRules,
                                                          builtIn: builtInBlocked)),
                     id: \.self) { bundleID in
-                appRow(bundleID)
+                appRow(bundleID, layoutSources: layoutSources)
             }
             Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }
         } header: {
@@ -144,7 +150,7 @@ struct LayoutLists: View {
         }
     }
 
-    private func appRow(_ bundleID: String) -> some View {
+    private func appRow(_ bundleID: String, layoutSources: [InputSourceInfo]) -> some View {
         HelmAppRuleRow(bundleID: bundleID) {
             // The picker carries the app's name: "Off, pop-up button" answers
             // nothing when there are five of these in a list.
@@ -154,15 +160,41 @@ struct LayoutLists: View {
             }
             .labelsHidden()
             .fixedSize()
+            // **Two independent things about one application**, which is why
+            // they sit together: whether Helm rewrites your words here, and
+            // which layout you type in here. Neither gates the other.
+            Picker(LyStr.appLayout, selection: layoutBinding(bundleID)) {
+                Text(LyStr.layoutUnchanged).tag("")
+                ForEach(layoutSources, id: \.id) { source in
+                    Text(source.name).tag(source.id)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityLabel(LyStr.appLayout)
         } remove: {
             appRules.removeValue(forKey: bundleID)
+            appLayouts.removeValue(forKey: bundleID)
             write(appRules, LayoutKey.appRules)
+            write(appLayouts, LayoutKey.appLayouts)
         }
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<Bool> {
         Binding(get: { appRules[bundleID] ?? false },
                 set: { appRules[bundleID] = $0; write(appRules, LayoutKey.appRules) })
+    }
+
+    /// The empty string is «don't change», so choosing it removes the binding
+    /// rather than storing an empty one — a stored value nothing reads is the
+    /// setting that outlives its control.
+    private func layoutBinding(_ bundleID: String) -> Binding<String> {
+        Binding(get: { appLayouts[bundleID] ?? "" },
+                set: { chosen in
+                    if chosen.isEmpty { appLayouts.removeValue(forKey: bundleID) }
+                    else { appLayouts[bundleID] = chosen }
+                    write(appLayouts, LayoutKey.appLayouts)
+                })
     }
 
     private func pickApps() {

@@ -199,6 +199,7 @@
 "Display and power" = "显示器与电源";
 "Document" = "文稿";
 "Done" = "完成";
+"Don’t change" = "不更改";
 "Don’t fix" = "不修正";
 "Double ring" = "双环";
 "Download" = "下载";
@@ -300,6 +301,7 @@
 "Later" = "稍后";
 "Launch agents" = "启动代理";
 "Launch daemons" = "启动守护进程";
+"Layout" = "布局";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";

@@ -199,6 +199,7 @@
 "Display and power" = "Display and power";
 "Document" = "Document";
 "Done" = "Done";
+"Don’t change" = "Don’t change";
 "Don’t fix" = "Don’t fix";
 "Double ring" = "Double ring";
 "Download" = "Download";
@@ -300,6 +301,7 @@
 "Later" = "Later";
 "Launch agents" = "Launch agents";
 "Launch daemons" = "Launch daemons";
+"Layout" = "Layout";
 "Left ⇧" = "Left ⇧";
 "Left ⌃" = "Left ⌃";
 "Left ⌘" = "Left ⌘";
