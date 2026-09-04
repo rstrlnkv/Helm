@@ -71,6 +71,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .new, text: L("Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted.")),
                 ChangeItem(kind: .new, text: L("Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window.")),
                 ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm.")),
                 ChangeItem(kind: .fix, text: L("Keyboard’s language badge in the menu bar keeps up with a layout you switch yourself — it could sit on one language until you restarted Helm.")),

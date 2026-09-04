@@ -36,10 +36,14 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         let store: NamespacedStore
     }
 
-    private func builtMenu(store: NamespacedStore? = nil) -> Built {
+    /// `trusted` is named at every call, never defaulted to the machine's own
+    /// answer: with `AXIsProcessTrusted()` asked inline this suite would test
+    /// whichever menu this Mac happens to produce, and the other shape would
+    /// have no test anywhere.
+    private func builtMenu(store: NamespacedStore? = nil, trusted: Bool) -> Built {
         let store = store ?? NamespacedStore(namespace: LayoutDescriptor.id.rawValue,
                                             backing: InMemoryKeyValueStore())
-        let indicator = LanguageIndicator(store: store)
+        let indicator = LanguageIndicator(store: store, isTrusted: { trusted })
         let menu = NSMenu()
         indicator.menuNeedsUpdate(menu)
         return Built(menu: menu, indicator: indicator, store: store)
@@ -67,7 +71,7 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
     }
 
     func testTheTailIsTheSystemMenusOwnOrder() throws {
-        let built = builtMenu()
+        let built = builtMenu(trusted: false)
         let menu = built.menu
 
         let tail = sections(of: menu)
@@ -85,12 +89,13 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         // state that sentence was written for, one of three items beeped. Every
         // Mac opens the same palette with Globe+E.
         XCTAssertEqual(tail.count, 2, """
-            the menu is two sections under one separator: the layouts and the \
-            keyboard settings — what macOS's own input menu draws, minus the \
-            Keyboard Viewer (see the class doc for why that door cannot be \
-            opened), minus the source-name switch, which is a style on the \
-            settings page now, and minus the emoji palette, which was the one \
-            door here that needed a permission this menu promises not to need.
+            without the Accessibility grant the menu is two sections under one \
+            separator: the layouts and the keyboard settings — what macOS's own \
+            input menu draws, minus the Keyboard Viewer (see the class doc for \
+            why that door cannot be opened), minus the source-name switch, \
+            which is a style on the settings page now, and minus the emoji \
+            palette, which is the one door here that needs a permission this \
+            menu promises not to need.
             """)
         XCTAssertEqual(try section(menu, 1).map(\.title), [LyStr.openKeyboardSettings],
                        "and the menu ends with the keyboard settings door")
@@ -107,11 +112,42 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
     /// the test said so — but the door itself needed Accessibility on a menu
     /// whose section on the settings page promises to work without it.
 
+    /// **With the grant, the emoji door is there — and only then.**
+    ///
+    /// It left this menu on 2026-08-30 for needing Accessibility while the
+    /// settings page promises, directly above the section that offers the
+    /// indicator, that it works without that permission. The promise is about
+    /// the menu a person without the grant sees, which the test above pins;
+    /// this one pins the other half, so the door cannot quietly come back in
+    /// front of the grant instead of behind it.
+    func testTheEmojiDoorAppearsOnlyWithTheGrant() throws {
+        let withGrant = builtMenu(trusted: true)
+        let sectionsWith = sections(of: withGrant.menu)
+        XCTAssertEqual(sectionsWith.count, 3,
+                       "with the grant the menu is three sections: the layouts, the emoji "
+                       + "door, the keyboard settings — the system menu's own order")
+        let door = try section(withGrant.menu, 1)
+        XCTAssertEqual(door.map(\.title), [LyStr.showEmojiPanel()],
+                       "the middle section is the emoji door and nothing else")
+        XCTAssertNotNil(door.first?.image,
+                        "the door goes bare: macOS stopped handing out the palette's icon "
+                        + "(`kTISPropertyIconImageURL` for `com.apple.CharacterPaletteIM`)")
+        XCTAssertTrue(door.first?.target === withGrant.indicator,
+                      "the door is aimed at nobody: pressing it would do nothing")
+        XCTAssertNotNil(door.first?.action,
+                        "the door has no action: pressing it would do nothing")
+        // The other half, said out loud rather than inferred from the count.
+        let titles = sections(of: builtMenu(trusted: false).menu).flatMap { $0 }.map(\.title)
+        XCTAssertFalse(titles.contains(LyStr.showEmojiPanel()),
+                       "the emoji door is drawn without the grant, where pressing it can "
+                       + "only beep — which is why it was taken out in the first place")
+    }
+
     /// Every layout row wears the same badge the menu bar draws for it — the
     /// system menu puts a layout icon on every row, and a row without one reads
     /// as a different kind of entry.
     func testEveryLayoutRowWearsItsBadge() throws {
-        let built = builtMenu()
+        let built = builtMenu(trusted: false)
         let layouts = try section(built.menu, 0)
         XCTAssertFalse(layouts.isEmpty, "this machine has keyboard layouts installed")
         for row in layouts {

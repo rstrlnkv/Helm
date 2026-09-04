@@ -394,6 +394,8 @@
 "Open Extensions…" = "機能拡張を開く…";
 "Open Full Disk Access…" = "フルディスクアクセスを開く…";
 "Open Helm at login" = "ログイン時に Helm を開く";
+"Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted." = "キーボードの言語アイコンから、入力していたアプリで絵文字パレットを開けます。システムの入力メニューと同じ動きで、アクセシビリティを許可すると項目が現れます。";
+"Emoji & Symbols" = "絵文字と記号";
 "Open Keyboard Settings…" = "キーボード設定を開く…";
 "Or a key combination" = "またはキーの組み合わせ";
 "Orange" = "オレンジ";

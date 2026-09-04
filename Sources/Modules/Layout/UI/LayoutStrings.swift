@@ -254,6 +254,24 @@ enum LyStr {
     /// ellipsis. This key used to be «Open Keyboard settings…», a near-copy
     /// with four of eight rows retranslated by hand.
     static var openKeyboardSettings: String { L("Open Keyboard Settings…") }
+    /// The emoji door's full title, built the way the system input menu builds
+    /// it: the `Show palette class IM` template (`TextInputMenuCore.bundle`)
+    /// around the palette's own name — so the sentence cannot drift from the
+    /// palette it opens, the same construction as `VPNStr.secretNeedsAPress`.
+    /// Interpolated, so the template keeps its own table.
+    static func showEmojiPanel(language: AppLanguage = AppLanguage.current) -> String {
+        let name = L("Emoji & Symbols", language: language)
+        let table: [AppLanguage: String] = [
+            .ru: "Показать панель «\(name)»",
+            .es: "Mostrar \(name)",
+            .fr: "Afficher \(name)",
+            .de: "\(name) einblenden",
+            .ja: "\(name)を表示",
+            .zh: "显示\(name)",
+            .pt: "Mostrar \(name)",
+        ]
+        return language == .en ? "Show \(name)" : table[language] ?? "Show \(name)"
+    }
     /// The window's own title. Not «Settings» and not the module's name — the
     /// window holds two lists and says so, because a window titled «Keyboard»
     /// beside a settings window titled «Keyboard» is two of one thing.

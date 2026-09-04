@@ -394,6 +394,8 @@
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
 "Open Helm at login" = "登录时打开 Helm";
+"Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted." = "键盘的语言标记可以在正在输入的应用里打开表情面板，与系统输入菜单一致。授予“辅助功能”后该项出现。";
+"Emoji & Symbols" = "表情与符号";
 "Open Keyboard Settings…" = "打开键盘设置…";
 "Or a key combination" = "或使用组合键";
 "Orange" = "橙色";

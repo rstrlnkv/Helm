@@ -13,6 +13,7 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **NEW** Keyboard: the language indicator's menu opens the emoji palette where you were typing, the way the system's own input menu does — the item appears once Accessibility is granted.
 - **NEW** Bind an application to a keyboard layout — Helm switches to it when that app comes forward.
 - **FIX** Keyboard: a stuck layout reading could stop your layout switching until Helm restarted.
 - **FIX** Keyboard: the menu bar's language badge keeps up with a layout you switch yourself — it could sit on one language until Helm restarted.

@@ -394,6 +394,8 @@
 "Open Extensions…" = "Открыть «Расширения»…";
 "Open Full Disk Access…" = "Открыть «Доступ к диску»…";
 "Open Helm at login" = "Открывать Helm при входе";
+"Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted." = "Значок языка Клавиатуры открывает панель эмодзи там, где шёл набор, — как это делает системное меню ввода. Пункт появляется, когда выдан «Универсальный доступ».";
+"Emoji & Symbols" = "Эмодзи и символы";
 "Open Keyboard Settings…" = "Открыть настройки клавиатуры…";
 "Or a key combination" = "Или сочетание клавиш";
 "Orange" = "Оранжевый";

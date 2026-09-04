@@ -24,8 +24,18 @@ import Module_Layout_Engine
     /// Once per run — see `noteBadgeWasBehind`.
     private var saidBehind = false
 
-    init(store: NamespacedStore) {
+    /// Whether Accessibility is granted, asked rather than assumed.
+    ///
+    /// **A port, not a call, because the answer decides how many sections the
+    /// menu has.** `AXIsProcessTrusted()` inline would make the menu's shape a
+    /// fact about the machine the suite runs on — green here, a different menu
+    /// on a build machine, and no test able to see both. Named at every
+    /// construction, the way every other port in this app is.
+    private let isTrusted: () -> Bool
+
+    init(store: NamespacedStore, isTrusted: @escaping () -> Bool = { AXIsProcessTrusted() }) {
         self.store = store
+        self.isTrusted = isTrusted
         super.init()
         carryTheOldNameSettingOver()
     }
@@ -199,13 +209,26 @@ import Module_Layout_Engine
             entry.image = badge(for: source, points: MenuBarIconSize.small.points)
             menu.addItem(entry)
         }
-        // **No emoji-palette item.** It was the one part of this menu that
-        // needed Accessibility — an AX press of *another* app's Edit-menu item,
-        // matched by title out of `InputManager.loctable` — and the settings
-        // page draws «the language indicator below works without this
-        // permission» directly above the section that offers it. So in exactly
-        // the state that sentence was written for, one of three items beeped.
-        // Every Mac opens the same palette with Globe+E.
+        // **The emoji door, drawn only where it opens.** It is the one item
+        // here that needs Accessibility — an AX press of *another* app's
+        // Edit-menu item, matched by title out of `InputManager.loctable` —
+        // and the settings page draws «the language indicator below works
+        // without this permission» directly above the section that offers it.
+        // That sentence is about the menu a person without the grant sees, so
+        // the item is behind the grant rather than in front of it: without it
+        // this menu is what it was, and nothing beeps in the state the sentence
+        // was written for. Every Mac still opens the same palette with Globe+E.
+        //
+        // No Keyboard Viewer item beside it: macOS 27 ships no such input
+        // source and no such bundle — the system's own menu draws it out of
+        // private frameworks, and the class doc of
+        // `TheIndicatorMenuFollowsTheSystemInputMenuTests` has the count.
+        if isTrusted() {
+            menu.addItem(.separator())
+            let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))
+            emoji.image = EmojiPalette.icon
+            menu.addItem(emoji)
+        }
         menu.addItem(.separator())
         menu.addItem(actionItem(LyStr.openKeyboardSettings, #selector(openSettings)))
     }
@@ -219,6 +242,16 @@ import Module_Layout_Engine
     @objc private func pick(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         TISLayoutSources().select(id)
+    }
+
+    /// The palette lands on whichever app holds the keyboard — a status-item
+    /// menu does not take it away, and `EmojiPalette` never activates Helm, so
+    /// the person's focus stays where they were typing. The beep is the refusal
+    /// said out loud, and it is now a narrow one: the item is only drawn with
+    /// the grant in hand, so what is left is an app whose menus carry no such
+    /// item, where a silent press would look like a dead control.
+    @objc private func openEmojiPalette() {
+        if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
     }
 
     @objc private func openSettings() {
