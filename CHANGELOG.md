@@ -13,6 +13,16 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **NEW** Bind an application to a keyboard layout — Helm switches to it when that app comes forward.
+- **FIX** Keyboard: a stuck layout read could freeze the language switch and the panel badge together until Helm restarted.
+- **FIX** Keyboard: “Fix two capitals at the start of a word” no longer rewrites CDs to Cds or IPhone to Iphone — it checks the dictionary now, and ships on.
+- **FIX** Keyboard: a key press on a never-touch word that did nothing now says why in the log, and a frozen frontmost app no longer holds the tap waiting.
+- **FIX** Keyboard: the tour no longer draws the same three switches as the page beneath it, out of step with each other.
+- **FIX** Keyboard: the period on the panel tile and the period the page counts over are the same one again.
+- **FIX** Keyboard: Escape closes the words-and-apps window — it had no keyboard exit before.
+- **FIX** Keyboard: the app list's row counted only your own rules; the window behind it also lists the built-in refusals, so the two could differ by seven.
+- **FIX** Keyboard: the page could say “Watching your words” while paused at a password field, contradicting the window header above it.
+- **FIX** Keyboard: VoiceOver reads the fortnight chart's numbers, the period menu's value, and a correction as one sentence.
 - **FIX** Autopilot: “Run now” is off on a folder you have switched off; it used to report a sweep that never ran.
 - **NEW** The panel’s Disk tile opens the Disk module — a chevron in its header.
 - **FIX** The panel’s Disk tile measures the disk on every opening, and a drive plugged in while the page is open appears in the list.
