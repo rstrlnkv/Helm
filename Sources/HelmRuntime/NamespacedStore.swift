@@ -144,6 +144,17 @@ public final class NamespacedStore {
     public func boolTable(_ key: String) -> [String: Bool] {
         backing.object(forKey: k(key)) as? [String: Bool] ?? [:]
     }
+
+    /// The third table shape, beside `intTable` and `boolTable`.
+    ///
+    /// Keyboard binds an application to an input source, which is a
+    /// `[String: String]`. Added here rather than in the module because the two
+    /// lines above it are the same three lines with a different value type, and
+    /// a module reaching for `backing.object(forKey:)` itself would be the
+    /// fourth spelling of a cast this type exists to own.
+    public func stringTable(_ key: String) -> [String: String] {
+        backing.object(forKey: k(key)) as? [String: String] ?? [:]
+    }
 }
 
 public extension Notification.Name {

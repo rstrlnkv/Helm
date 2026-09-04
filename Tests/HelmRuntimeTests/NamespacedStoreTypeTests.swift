@@ -79,4 +79,28 @@ final class NamespacedStoreTypeTests: XCTestCase {
         XCTAssertEqual(intruder.int("../a.x", default: 0), 0,
                        "the prefix is literal, so a crafted key names a key that does not exist")
     }
+
+    /// The third member of the `intTable`/`boolTable` row. Keyboard binds an
+    /// application to a layout, which is a `[String: String]`, and every other
+    /// table shape was already here.
+    func testAStringTableComesBackAsItWentIn() {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        store.set(["com.apple.Terminal": "com.apple.keylayout.US"], for: "appLayouts")
+        XCTAssertEqual(store.stringTable("appLayouts"),
+                       ["com.apple.Terminal": "com.apple.keylayout.US"])
+    }
+
+    /// Absent is empty, never nil — the same answer `boolTable` gives, so a
+    /// caller never writes the same `?? [:]` a third time.
+    func testAnAbsentStringTableIsEmpty() {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        XCTAssertEqual(store.stringTable("appLayouts"), [:])
+    }
+
+    /// A value of the wrong shape is not a crash and not a half-read table.
+    func testAStringTableRefusesAValueOfAnotherShape() {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        store.set(["a": 1], for: "appLayouts")
+        XCTAssertEqual(store.stringTable("appLayouts"), [:])
+    }
 }
