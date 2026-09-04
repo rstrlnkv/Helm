@@ -50,11 +50,7 @@ public final class FrontmostApp: @unchecked Sendable {
             return snapshot
         }
         let current = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
-        lock.lock()
-        let changed = snapshot != current
-        snapshot = current
-        lock.unlock()
-        if changed { tell(current) }
+        record(current)
         return current
     }
 
@@ -100,14 +96,22 @@ public final class FrontmostApp: @unchecked Sendable {
         for handler in handlers { handler(bundleID) }
     }
 
-    /// Tests only: seeds the snapshot without AppKit, and tells the watchers,
-    /// because the whole point of the seam is that a test can drive what the
-    /// workspace would have driven.
-    public func setForTesting(_ bundleID: String) {
+    /// Stores the new snapshot and tells the watchers only if it actually
+    /// changed — the one compare-and-swap both `refresh()` and
+    /// `setForTesting` need, so there is exactly one place a caller can
+    /// forget the guard rather than two.
+    private func record(_ bundleID: String) {
         lock.lock()
         let changed = snapshot != bundleID
         snapshot = bundleID
         lock.unlock()
         if changed { tell(bundleID) }
+    }
+
+    /// Tests only: seeds the snapshot without AppKit, and tells the watchers,
+    /// because the whole point of the seam is that a test can drive what the
+    /// workspace would have driven.
+    public func setForTesting(_ bundleID: String) {
+        record(bundleID)
     }
 }
