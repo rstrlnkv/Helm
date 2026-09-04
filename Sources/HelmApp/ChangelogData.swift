@@ -72,7 +72,8 @@ enum Changelog {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
                 ChangeItem(kind: .new, text: L("Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window.")),
-                ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm, and the panel’s badge froze on the layout it last saw at the same moment.")),
+                ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm.")),
+                ChangeItem(kind: .fix, text: L("Keyboard’s language badge in the menu bar keeps up with a layout you switch yourself — it could sit on one language until you restarted Helm.")),
                 ChangeItem(kind: .fix, text: L("“Fix two capitals at the start of a word” no longer rewrites CDs to Cds, or IPhone to Iphone. It checks the dictionary before correcting a slipped Shift now, and ships switched on.")),
                 ChangeItem(kind: .fix, text: L("A key press that does nothing, on one of the words Keyboard must never touch, now says why in the log instead of looking like a dead key. And a frozen app in front no longer holds Keyboard’s tap waiting on it.")),
                 ChangeItem(kind: .fix, text: L("On a first visit, Keyboard’s tour drew the same “Try it” field and the same three switches as the page beneath it, a card apart and out of step with each other. The button that reopens the tour is labelled “Show” now, instead of repeating its own name.")),

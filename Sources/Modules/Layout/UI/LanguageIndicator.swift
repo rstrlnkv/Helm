@@ -13,8 +13,16 @@ import Module_Layout_Engine
 @MainActor final class LanguageIndicator: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
     private let store: NamespacedStore
-    private var observer: NSObjectProtocol?
-    private var themeObserver: NSObjectProtocol?
+    /// Whether this object is registered with the distributed centre — one
+    /// `Bool` where two opaque tokens used to be, because the observer is
+    /// `self` now rather than two blocks. See `build()` for why it had to be.
+    private var observing = false
+    private var frontmostWatch: UUID?
+    /// The source id `redraw` last put on the button. Read by
+    /// `menuNeedsUpdate` to catch a badge that has fallen behind the keyboard.
+    private var drawn: String?
+    /// Once per run — see `noteBadgeWasBehind`.
+    private var saidBehind = false
 
     init(store: NamespacedStore) {
         self.store = store
@@ -53,35 +61,60 @@ import Module_Layout_Engine
         menu.delegate = self
         item.menu = menu
         self.item = item
+        // **`.deliverImmediately`, and therefore the selector API.** The block
+        // form of `addObserver` takes no suspension behaviour and gets the
+        // default, which coalesces: while a centre is suspended it keeps at
+        // most the last notification and delivers it on resume. Helm is
+        // `LSUIElement` — it is never the active application — so its centre
+        // spends nearly all its life suspended, and a layout switch made with
+        // the person's own shortcut reached macOS and never reached the badge.
+        // The badge then sat on one layout until Helm was restarted, which is
+        // exactly the report this fixes: the reading was never wrong, the
+        // message never came.
+        let centre = DistributedNotificationCenter.default()
         // The system posts this on every switch, including ones Helm made.
-        observer = DistributedNotificationCenter.default().addObserver(
-            forName: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.redraw() }
-        }
+        centre.addObserver(
+            self, selector: #selector(inputSourceChanged),
+            name: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
+            object: nil, suspensionBehavior: .deliverImmediately)
         // The outline is one colour in dark and another in light, and the
         // image caches its rendering: without this the flag keeps the outline
-        // of the theme it was drawn in until the next layout switch.
-        themeObserver = DistributedNotificationCenter.default().addObserver(
-            forName: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.redraw() }
+        // of the theme it was drawn in until the next layout switch. Suspension
+        // hits this one the same way — a theme changed in the background was a
+        // badge left in the old theme's outline.
+        centre.addObserver(
+            self, selector: #selector(themeChanged),
+            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil, suspensionBehavior: .deliverImmediately)
+        observing = true
+        // A second door to the same fact, through a channel that is not the
+        // distributed centre at all: `FrontmostApp` is the app's own observer
+        // of `NSWorkspace`'s activation notice. If the first door is ever shut
+        // again the badge still comes right the next time the person changes
+        // application, which is oftener than they look at it.
+        frontmostWatch = FrontmostApp.shared.onChange { [weak self] _ in
+            Task { @MainActor in self?.redraw() }
         }
     }
+
+    @objc private func inputSourceChanged() { redraw() }
+
+    @objc private func themeChanged() { redraw() }
 
     /// Off the menu bar, with its two observers. Called by `refresh` when the
     /// setting goes off and by the descriptor when the module stops running —
     /// which is one route more than this had: nothing removed the item when
     /// Keyboard was switched off.
     func detach() {
-        if let observer { DistributedNotificationCenter.default().removeObserver(observer) }
-        if let themeObserver { DistributedNotificationCenter.default().removeObserver(themeObserver) }
-        observer = nil
-        themeObserver = nil
+        if observing {
+            DistributedNotificationCenter.default().removeObserver(self)
+            observing = false
+        }
+        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
+        frontmostWatch = nil
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
+        drawn = nil
     }
 
     /// Read off the style rather than a key of its own — see `BadgeStyle.isName`.
@@ -122,6 +155,18 @@ import Module_Layout_Engine
         // The label says what the control is; the value says the one fact it
         // exists to show. Set here, not in build(), so it tracks every switch.
         button.setAccessibilityValue(source.name)
+        drawn = source.id
+    }
+
+    /// Once per run: a badge that has fallen behind will keep falling behind,
+    /// and a line every time somebody opens the menu would bury the log this
+    /// belongs in.
+    private func noteBadgeWasBehind() {
+        guard !saidBehind else { return }
+        saidBehind = true
+        HelmLog.shared.warn(LayoutEngine.moduleID,
+                            "the badge was behind the keyboard when the menu opened — "
+                            + "the switch notification did not arrive")
     }
 
     // MARK: - Menu
@@ -134,6 +179,15 @@ import Module_Layout_Engine
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let current = InputSourceInfo.current()
+        // **The evidence, and the reason this menu is where it is taken.** A
+        // person opens this menu; Helm never does. So a badge disagreeing with
+        // the live reading at this moment is the notification above having
+        // failed to arrive and nothing else — no switch Helm made itself can
+        // be mistaken for it. Correct the badge, and say so once.
+        if current.id != drawn {
+            noteBadgeWasBehind()
+            redraw()
+        }
         // The rows wear the badge the person chose for the menu bar, at one
         // fixed size: the style is the layout's identity, the stored size is a
         // fact about the menu bar's density, not the menu's.

@@ -14,7 +14,8 @@ only once it has no known problems left.
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
 - **NEW** Bind an application to a keyboard layout — Helm switches to it when that app comes forward.
-- **FIX** Keyboard: a stuck layout read could freeze the language switch and the panel badge together until Helm restarted.
+- **FIX** Keyboard: a stuck layout reading could stop your layout switching until Helm restarted.
+- **FIX** Keyboard: the menu bar's language badge keeps up with a layout you switch yourself — it could sit on one language until Helm restarted.
 - **FIX** Keyboard: “Fix two capitals at the start of a word” no longer rewrites CDs to Cds or IPhone to Iphone — it checks the dictionary now, and ships on.
 - **FIX** Keyboard: a key press on a never-touch word that did nothing now says why in the log, and a frozen frontmost app no longer holds the tap waiting.
 - **FIX** Keyboard: the tour no longer draws the same three switches as the page beneath it, out of step with each other.
