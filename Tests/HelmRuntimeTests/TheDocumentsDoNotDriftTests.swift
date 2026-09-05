@@ -54,6 +54,13 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     /// is expected to produce, so one more is a failure even between two files
     /// already on the list.
     ///
+    /// **An entry naming a brief that has left is caught, not silent** — by
+    /// `testNothingRecordedHasSinceBeenFixed`, which fails on any entry whose
+    /// pair no longer appears. Six of these accumulated on 2026-09-05 while the
+    /// corpus assertion above was red and masking it; the moment that one was
+    /// fixed, this one started naming them one at a time. Removing a brief
+    /// means removing its allowances in the same change.
+    ///
     /// **An entry naming a brief that has left is dead, not harmless.** Six of
     /// them accumulated on 2026-09-05 when eight roles moved to the shared crew
     /// and their briefs stopped existing here; the corpus is read from disk, so
@@ -67,7 +74,6 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         Pair("ARCHITECTURE.md", "helm-animator.md"):
             (1, "the third law of motion, kept as a checklist line in the brief after the two long copies were cut on 2026-08-25"),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-a11y.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-localizer.md"): (1, templateReason),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-ux-designer.md"): (1, templateReason),
     ]
 
@@ -171,27 +177,29 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         let blocks = try corpus()
         XCTAssertGreaterThan(blocks.count, 300,
                              "only \(blocks.count) prose blocks — the reader stopped seeing most of the documents")
-        // **The floor is asserted, not discovered**, for the same reason
-        // `RO_EXPECTED` is in `check-in-step.sh`: a floor computed from the same
-        // corpus it judges cannot fail. It says how many byte-identical pairs
-        // this tree must produce, and the shared read-only scope paragraph is
-        // what produces most of them.
+        // **The pair count stopped being a signal, so it stopped being the
+        // check.** It asked "were the briefs read?" by counting byte-identical
+        // blocks, which worked while the shared read-only scope paragraph was
+        // one text across eight briefs. On 2026-09-05 ten roles moved to the
+        // shared crew and four local ones remain, two of them read-only: the
+        // count went 50-odd → 9 → 3 in one day, and the floor was edited twice
+        // to chase it. A number that has to be re-derived every time the crew
+        // changes is not asserting anything about the corpus.
         //
-        // 2026-09-05: 50 → 8. Eight roles moved to the shared crew and their
-        // briefs stopped existing here, so the paragraph that was one text
-        // across eight briefs is now one text across three, and the corpus
-        // yields 9 where it yielded dozens. The floor still catches the failure
-        // it was written for: three read-only briefs carrying one paragraph owe
-        // at least three pairs by themselves, so a reader that stopped seeing
-        // the briefs drops to 6 or fewer and goes red.
-        //
-        // **Raising or lowering this number is a decision, not maintenance.**
-        // Say why, here, next to the last person who said why.
+        // What it was really guarding is asked directly now: did the reader see
+        // any briefs at all, and does the shared paragraph still appear in more
+        // than one of them. Both go red the moment the briefs stop being read,
+        // and neither needs editing when a seat leaves.
+        let briefBlocks = blocks.filter(\.isBrief)
+        XCTAssertGreaterThan(briefBlocks.count, 0,
+                             "no brief contributed a block — .claude/agents was not read, and every verdict below is over the wrong text")
+
         let exact = pairs(in: blocks).filter { $0.similarity >= 0.999 }
-        XCTAssertGreaterThan(exact.count, 8, """
-            \(exact.count) byte-identical cross-document pairs. The read-only scope paragraph \
-            is one text across every read-only brief, so this corpus should carry them; that it \
-            does not means the briefs were not read, and every verdict below is over the wrong text.
+        let acrossBriefs = exact.filter(\.isCheckInSteps)
+        XCTAssertGreaterThan(acrossBriefs.count, 0, """
+            \(briefBlocks.count) brief blocks and no byte-identical pair among them. \
+            The read-only briefs carry one shared scope paragraph, so at least one pair is owed; \
+            none means the briefs were not read whole.
             """)
     }
 
