@@ -53,20 +53,21 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     /// names in sorted order; the value is how many block pairs that file pair
     /// is expected to produce, so one more is a failure even between two files
     /// already on the list.
+    ///
+    /// **An entry naming a brief that has left is dead, not harmless.** Six of
+    /// them accumulated on 2026-09-05 when eight roles moved to the shared crew
+    /// and their briefs stopped existing here; the corpus is read from disk, so
+    /// an unused allowance fails nothing and says nothing. It still costs: the
+    /// next reader takes the list as a description of what the briefs look like
+    /// today. Removing a brief means removing its allowances in the same
+    /// change.
     private static let known: [Pair: (count: Int, reason: String)] = [
         Pair("ARCHITECTURE.md", "CLAUDE.md"):
             (1, "the Completeness rule and the evidence under it: the contracts put the rule in CLAUDE.md and the account in ARCHITECTURE.md, and the rule restates enough of it to stand alone"),
         Pair("ARCHITECTURE.md", "helm-animator.md"):
             (1, "the third law of motion, kept as a checklist line in the brief after the two long copies were cut on 2026-08-25"),
-        Pair("helm-architect.md", "helm-product.md"):
-            (1, "the opening paragraph describing the app, carried by both judging roles"),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-a11y.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-architect.md"): (1, templateReason),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-localizer.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-locator.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-product.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-security.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-ui-designer.md"): (1, templateReason),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-ux-designer.md"): (1, templateReason),
     ]
 
@@ -170,11 +171,27 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         let blocks = try corpus()
         XCTAssertGreaterThan(blocks.count, 300,
                              "only \(blocks.count) prose blocks — the reader stopped seeing most of the documents")
+        // **The floor is asserted, not discovered**, for the same reason
+        // `RO_EXPECTED` is in `check-in-step.sh`: a floor computed from the same
+        // corpus it judges cannot fail. It says how many byte-identical pairs
+        // this tree must produce, and the shared read-only scope paragraph is
+        // what produces most of them.
+        //
+        // 2026-09-05: 50 → 8. Eight roles moved to the shared crew and their
+        // briefs stopped existing here, so the paragraph that was one text
+        // across eight briefs is now one text across three, and the corpus
+        // yields 9 where it yielded dozens. The floor still catches the failure
+        // it was written for: three read-only briefs carrying one paragraph owe
+        // at least three pairs by themselves, so a reader that stopped seeing
+        // the briefs drops to 6 or fewer and goes red.
+        //
+        // **Raising or lowering this number is a decision, not maintenance.**
+        // Say why, here, next to the last person who said why.
         let exact = pairs(in: blocks).filter { $0.similarity >= 0.999 }
-        XCTAssertGreaterThan(exact.count, 50, """
+        XCTAssertGreaterThan(exact.count, 8, """
             \(exact.count) byte-identical cross-document pairs. The read-only scope paragraph \
-            is one text across eight briefs, so this corpus should be full of them; that it is \
-            not means the briefs were not read, and every verdict below is over the wrong text.
+            is one text across every read-only brief, so this corpus should carry them; that it \
+            does not means the briefs were not read, and every verdict below is over the wrong text.
             """)
     }
 
