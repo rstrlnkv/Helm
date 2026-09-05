@@ -9,7 +9,7 @@ DerivedData/
 # person drives this repository, not something it ships. `/plugin marketplace
 # add ~/Projects/Claude/Helm` reads them from the working copy, so nothing about
 # installing them needed git.
-# `agents` and `plugins/helm-crew` are symbolic links into `.backstage` too, for
+# `agents` and `plugins/helm-crew` are symbolic links into Core Crew too, for
 # the same reason the documents are: they were copies, and copies of the crew
 # existed in four places at once — twice inside this tree, because a bare
 # `.claude/agents/` is not read when the crew is installed as a plugin and the
@@ -25,7 +25,7 @@ DerivedData/
 /plugins/
 /.claude-plugin/
 
-# The measuring tools, and the release process. Links into `.backstage`.
+# The measuring tools, and the release process. Links into Core Crew.
 #
 # The line is not "does this look like design work" but **"does the build break
 # without it"**. `make-dmg-background.swift` stays public and tracked though it
@@ -53,7 +53,7 @@ DerivedData/
 # specs and plans are how this app is built rather than something it ships; they
 # live on disk and in a private repository. The public tree carries the code,
 # the changelog, the licence notice and how to build it.
-# These three are symbolic links into `.backstage`, a submodule holding
+# These three are symbolic links into Core Crew's `projects/Helm`, holding
 # everything about Helm that Helm does not ship. Its contents stay private —
 # the submodule publishes an address, and an address is not access.
 #

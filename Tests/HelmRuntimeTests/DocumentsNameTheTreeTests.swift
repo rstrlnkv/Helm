@@ -42,6 +42,14 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// nothing about it; each is here with what it actually is, so nobody has to
     /// re-derive that to decide whether an entry still belongs.
     private static let foreign: [String: String] = [
+        // macOS ships this one; the documents name it because the screenshot
+        // harness calls it. It passed unlisted until 2026-09-05 only by
+        // accident: a shooting script inside `.backstage/` mentioned the word,
+        // so the scanner found the token in the tree and asked no further
+        // question. When Helm's other half moved to Core Crew the script left
+        // the checkout, the accident ended, and the guard said what had always
+        // been true — the tree does not own this name.
+        "screencapture": "the macOS binary the shooting harness calls; the tree has never owned it",
         "AVAssetImageGenerator": "AVFoundation — pulls exact frames for the motion measurements",
         "assignOnlyProperty": "periphery's own vocabulary for a finding, not a name in this tree",
         "AttributeGraph": "SwiftUI's own dependency graph, named from a live vmmap",
