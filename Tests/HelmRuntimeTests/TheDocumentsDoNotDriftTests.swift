@@ -71,8 +71,6 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     private static let known: [Pair: (count: Int, reason: String)] = [
         Pair("ARCHITECTURE.md", "CLAUDE.md"):
             (1, "the Completeness rule and the evidence under it: the contracts put the rule in CLAUDE.md and the account in ARCHITECTURE.md, and the rule restates enough of it to stand alone"),
-        Pair("ARCHITECTURE.md", "helm-animator.md"):
-            (1, "the third law of motion, kept as a checklist line in the brief after the two long copies were cut on 2026-08-25"),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-a11y.md"): (1, templateReason),
         Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-ux-designer.md"): (1, templateReason),
     ]
