@@ -21,6 +21,7 @@ DerivedData/
 # `git status`. `/plugins/` keeps its slash because that one is still a real
 # directory — only what is inside it became a link.
 /.claude/agents
+/.claude/crew
 /plugins/
 /.claude-plugin/
 
