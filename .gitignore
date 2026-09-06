@@ -4,30 +4,34 @@ build/
 *.xcodeproj/xcuserdata/
 DerivedData/
 
-# The crew is local. The agent definitions and the plugin that installs
-# them live on disk and are not part of the project's history: they are how one
-# person drives this repository, not something it ships. `/plugin marketplace
-# add ~/Projects/Claude/Helm` reads them from the working copy, so nothing about
-# installing them needed git.
-# `agents` and `plugins/helm-crew` are symbolic links into Core Crew too, for
-# the same reason the documents are: they were copies, and copies of the crew
-# existed in four places at once — twice inside this tree, because a bare
-# `.claude/agents/` is not read when the crew is installed as a plugin and the
-# plugin copy is not what a plain checkout reads.
+# The crew is local. The agent briefs live on disk and are not part of the
+# project's history: they are how one person drives this repository, not
+# something it ships.
+# `agents`, `crew` and `skills` are symbolic links into Core Crew, for the same
+# reason the documents are: they were copies, and copies of the crew existed in
+# four places at once — twice inside this tree, because a bare `.claude/agents/`
+# is not read when the crew is installed as a plugin and the plugin copy is not
+# what a plain checkout reads.
+#
+# **The plugin is gone since 2026-09-06, and `/plugins/` and `/.claude-plugin/`
+# went with it.** The crew was packaged as `helm-crew@helm` and installed with
+# `/plugin marketplace add ~/Projects/Helm`, which reads the working copy, so
+# nothing about installing it ever needed git. A plugin installs on the
+# **account** rather than on the project, this one was never enabled here, and
+# the briefs now arrive through the `.claude/agents` link alone — so the two
+# lines that ignored its directories named nothing left in this tree and were
+# removed with it.
 #
 # No trailing slash on `agents`, and the reason is worth reading twice: `/docs/`
 # had exactly this bug an hour earlier. A pattern ending in `/` matches a
 # directory and not a link, so the moment a copy becomes a link it reappears in
-# `git status`. `/plugins/` keeps its slash because that one is still a real
-# directory — only what is inside it became a link.
+# `git status`.
 /.claude/agents
 /.claude/crew
 # `skills` joined them 2026-09-06: the crew's own `motion-probe` lived only
 # inside the plugin, and the plugin is not enabled — the skill was declared and
 # unreachable. It is a link now, so it needs the same no-trailing-slash line.
 /.claude/skills
-/plugins/
-/.claude-plugin/
 
 # The measuring tools, and the release process. Links into Core Crew.
 #
