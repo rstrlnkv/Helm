@@ -22,6 +22,10 @@ DerivedData/
 # directory — only what is inside it became a link.
 /.claude/agents
 /.claude/crew
+# `skills` joined them 2026-09-06: the crew's own `motion-probe` lived only
+# inside the plugin, and the plugin is not enabled — the skill was declared and
+# unreachable. It is a link now, so it needs the same no-trailing-slash line.
+/.claude/skills
 /plugins/
 /.claude-plugin/
 
