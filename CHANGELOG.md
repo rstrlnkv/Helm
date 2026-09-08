@@ -9,7 +9,9 @@ Releases with a `-dev.N` suffix go out on the Dev channel first; everything they
 carry is listed under the version they lead to. The Beta channel gets a version
 only once it has no known problems left.
 
-## 0.11.1-dev.6 — 2026-09-08
+## 0.11.1 — 2026-08-26
+
+*0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
 - **FIX** Duplicates keeps the copy with no "Date Added" at all, instead of ticking it for the Trash, and the group says "kept: no date recorded".
 - **FIX** Duplicates keeps the same copy each time it runs — a group holding a copy with no "Date Added" could keep a different one from one scan to the next.
@@ -17,11 +19,6 @@ only once it has no known problems left.
 - **FIX** "Turn off" in Leftovers is refused when a startup folder will not open, where Helm cannot see whether a second file registers the same login item.
 - **FIX** Leftovers follows a folder that is a symbolic link and lists what is at the other end — such a folder used to come back empty.
 - **FIX** Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.
-
-## 0.11.1 — 2026-08-26
-
-*0.11.0 never shipped a build of any kind; everything written under it goes out here.*
-
 - **NEW** Keyboard: the language indicator's menu opens the emoji palette where you were typing, the way the system's own input menu does — the item appears once Accessibility is granted.
 - **NEW** Bind an application to a keyboard layout — Helm switches to it when that app comes forward.
 - **FIX** Keyboard: a stuck layout reading could stop your layout switching until Helm restarted.

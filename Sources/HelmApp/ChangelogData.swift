@@ -70,15 +70,13 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.11.1-dev.6", date: "2026-09-08", items: [
+            ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
                 ChangeItem(kind: .fix, text: L("Duplicates keeps a copy that has no “Date Added” at all, and says so in the group’s header: “kept: no date recorded”. Such a copy used to be the one ticked for the Trash, in every group it turned up in.")),
                 ChangeItem(kind: .fix, text: L("Duplicates keeps the same copy each time it runs. In a group holding a copy with no “Date Added”, which one stayed could change from one scan to the next.")),
                 ChangeItem(kind: .fix, text: L("Helm tells you again when an update has cost it a permission macOS had granted. The check went by the version number, and two builds can carry the same one.")),
                 ChangeItem(kind: .fix, text: L("“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one.")),
                 ChangeItem(kind: .fix, text: L("Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown.")),
                 ChangeItem(kind: .fix, text: L("Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.")),
-            ]),
-            ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
                 ChangeItem(kind: .new, text: L("Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted.")),
                 ChangeItem(kind: .new, text: L("Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window.")),
                 ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm.")),
