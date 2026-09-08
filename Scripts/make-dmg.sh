@@ -56,8 +56,15 @@ swift "$SCRIPT_DIR/design/make-dmg-background.swift" \
 # Python, which Homebrew marks externally managed, and which is not this
 # project's to install into.
 TOOLS="$REPO_ROOT/build/dmg-tools"
-if [ ! -x "$TOOLS/bin/dmgbuild" ]; then
-  echo "==> Setting up dmgbuild (first run)"
+# **The tool is asked to RUN, not to exist.** A venv records the absolute path of
+# its interpreter, so moving the repository leaves `bin/dmgbuild` executable and
+# broken at once: `[ -x ... ]` said yes, and the build died on
+# `bad interpreter: No such file or directory` after the app was already
+# packaged. `--help` costs one process and answers the question that matters —
+# it, and not `--version`: dmgbuild has no such flag and exits 2 on it when whole.
+if ! "$TOOLS/bin/dmgbuild" --help >/dev/null 2>&1; then
+  echo "==> Setting up dmgbuild (first run, or its interpreter moved)"
+  rm -rf "$TOOLS"
   python3 -m venv "$TOOLS"
   "$TOOLS/bin/pip" install --quiet dmgbuild
 fi
