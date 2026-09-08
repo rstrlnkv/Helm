@@ -9,6 +9,15 @@ Releases with a `-dev.N` suffix go out on the Dev channel first; everything they
 carry is listed under the version they lead to. The Beta channel gets a version
 only once it has no known problems left.
 
+## 0.11.1-dev.6 — 2026-09-08
+
+- **FIX** Duplicates keeps the copy with no "Date Added" at all, instead of ticking it for the Trash, and the group says "kept: no date recorded".
+- **FIX** Duplicates keeps the same copy each time it runs — a group holding a copy with no "Date Added" could keep a different one from one scan to the next.
+- **FIX** Helm tells you again when an update has cost it a permission — the check went by version number, and two builds can carry the same one.
+- **FIX** "Turn off" in Leftovers is refused when a startup folder will not open, where Helm cannot see whether a second file registers the same login item.
+- **FIX** Leftovers follows a folder that is a symbolic link and lists what is at the other end — such a folder used to come back empty.
+- **FIX** Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.
+
 ## 0.11.1 — 2026-08-26
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*

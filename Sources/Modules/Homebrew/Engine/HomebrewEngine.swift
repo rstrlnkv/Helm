@@ -487,9 +487,22 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // Download, then run — not `eval "$(curl …)"`, where a failed download
         // evaluates the empty string, exits 0, and the module reports a
         // successful install of nothing.
+        //
+        // **`|| rc=$?`, not `; rc=$?`.** `set -e` ends the shell at the first
+        // command that fails, and an installer that exits non-zero is a command
+        // that failed: the `rm` after it never ran, and the downloaded script
+        // stayed in the temporary folder — a program anybody running as this
+        // user can read, and rewrite before the retry runs it again. Measured:
+        // with `; rc=$?` a failing installer leaves the file behind and with
+        // `|| rc=$?` it does not, and the shell exits 3 either way, which is the
+        // second half of this line — `||` is what stops `set -e` firing, so the
+        // installer's own code still reaches `concludeOp` unchanged. `rc=0`
+        // ahead of it because a bare `exit $rc` on an unset variable is `exit`,
+        // which answers with the status of whatever ran last — the `rm`.
         let installer = "set -e; script=$(/usr/bin/mktemp); "
                       + "/usr/bin/curl -fsSL \(Self.installerURL) -o \"$script\"; "
-                      + "/bin/bash \"$script\"; rc=$?; /bin/rm -f \"$script\"; exit $rc"
+                      + "rc=0; /bin/bash \"$script\" || rc=$?; "
+                      + "/bin/rm -f \"$script\"; exit $rc"
         // The dialog above blocked this thread for as long as the person took
         // to find their password, with a live Stop button on the page the whole
         // time; `startChild` is where a press that landed during it is read.

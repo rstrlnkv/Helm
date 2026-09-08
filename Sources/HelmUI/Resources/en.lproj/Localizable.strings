@@ -866,6 +866,7 @@
 "the path changed underneath" = "the path changed underneath";
 "kept: by folder" = "kept: by folder";
 "kept: arrived first" = "kept: arrived first";
+"kept: no date recorded" = "kept: no date recorded";
 "kept: the shorter path" = "kept: the shorter path";
 "kept: first alphabetically" = "kept: first alphabetically";
 "kept: your choice" = "kept: your choice";
@@ -1124,3 +1125,10 @@
 "The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now." = "The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now.";
 "The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now." = "The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Paused”. Both agree now.";
 "Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops." = "Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops.";
+
+"Duplicates keeps a copy that has no “Date Added” at all, and says so in the group’s header: “kept: no date recorded”. Such a copy used to be the one ticked for the Trash, in every group it turned up in." = "Duplicates keeps a copy that has no “Date Added” at all, and says so in the group’s header: “kept: no date recorded”. Such a copy used to be the one ticked for the Trash, in every group it turned up in.";
+"Duplicates keeps the same copy each time it runs. In a group holding a copy with no “Date Added”, which one stayed could change from one scan to the next." = "Duplicates keeps the same copy each time it runs. In a group holding a copy with no “Date Added”, which one stayed could change from one scan to the next.";
+"Helm tells you again when an update has cost it a permission macOS had granted. The check went by the version number, and two builds can carry the same one." = "Helm tells you again when an update has cost it a permission macOS had granted. The check went by the version number, and two builds can carry the same one.";
+"“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one." = "“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one.";
+"Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown.";
+"Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.";

@@ -44,10 +44,19 @@ public enum KeepPolicy: String, CaseIterable, Sendable {
     /// while the app follows another — this module has already paid for that
     /// once, when `SurvivingCopy` replaced the alphabetical rule in one of the
     /// two pipelines.
+    /// **`.undated` sits immediately above `.date` in both, and that is what makes
+    /// the ladder an order at all.** A rung has to separate every pair in a class
+    /// or none of them: `.date` separates two known dates and says nothing about a
+    /// pair where one date is missing, so with a dateless copy in the group the
+    /// three pairwise readings closed a cycle and which copy stayed was decided by
+    /// the order the walk built the array in
+    /// (`TheSurvivorDoesNotDependOnWalkOrderTests`). `.undated` takes the missing
+    /// date out first, so by the time `.date` is asked the two copies either both
+    /// have one or neither does.
     var ladder: [KeepReason] {
         switch self {
-        case .byPlace: return [.place, .date, .depth, .name]
-        case .byDate: return [.date, .place, .depth, .name]
+        case .byPlace: return [.place, .undated, .date, .depth, .name]
+        case .byDate: return [.undated, .date, .place, .depth, .name]
         }
     }
 }
@@ -65,6 +74,21 @@ public enum KeepPolicy: String, CaseIterable, Sendable {
 public enum KeepReason: String, Sendable {
     /// The tier said so: one is filed, the other is in transit.
     case place
+    /// One of them has no arrival date at all, and that copy is the one that
+    /// stays.
+    ///
+    /// **Silence is not evidence, and it is not a loss either.** A volume that
+    /// does not record when a file was added reports nothing, and this module's
+    /// act is deletion: the copy it cannot date is the copy it must not offer for
+    /// the Trash. Read the other way round — a blank date as a loss — one such
+    /// copy on an external volume was ticked in every group it appeared in, which
+    /// is the defect `SurvivingCopyTests` records.
+    ///
+    /// A rung of its own rather than a `nil` folded into `.date`, for two reasons
+    /// that are one: a rung that is silent about some pairs and not others is not
+    /// an ordering, and the header would say «arrived first» about a copy nothing
+    /// knows the arrival of.
+    case undated
     /// One arrived earlier. Only ever true of two dates that are both known and
     /// different.
     case date

@@ -10,8 +10,9 @@ import HelmTestSupport
 /// that reason, so a link into the home directory is approved.
 ///
 /// Approval is only half of «keeps working». The write that follows goes
-/// through `PrivateFile.write`, which is `Data.write(options: .atomic)` — and
-/// an atomic write is a temporary file `rename`d over the destination. `rename`
+/// through `PrivateFile.write`, which writes a file of its own and `rename`s it
+/// over the destination — the shape of an atomic write, spelled out there so
+/// the mode can arrive with the file. `rename`
 /// replaces the **link**, not the file the link points at. So the first Apply
 /// on a linked config turns `~/.ssh/config` into an ordinary file, leaves the
 /// checkout holding the old text, and disconnects a version-controlled config

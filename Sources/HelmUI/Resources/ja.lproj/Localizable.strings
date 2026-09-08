@@ -866,6 +866,7 @@
 "the path changed underneath" = "途中で経路が変わりました";
 "kept: by folder" = "残す理由: フォルダ";
 "kept: arrived first" = "残す理由: 先に来た";
+"kept: no date recorded" = "残す理由: 日付の記録なし";
 "kept: the shorter path" = "残す理由: パスが短い";
 "kept: first alphabetically" = "残す理由: アルファベット順で先頭";
 "kept: your choice" = "残す理由: あなたの選択";
@@ -1124,3 +1125,10 @@
 "The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now." = "キーボードのアプリ一覧を開く行は、自分で作ったルールしか数えていませんでした。その先のウインドウには Helm 組み込みの除外対象——ターミナルやパスワード管理アプリ——も並ぶため、2つの数字は最大7件ずれることがありました。今は一致します。";
 "The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now." = "キーボードのページ上部の行は、その日の件数がまだゼロのままだと、パスワード欄で一時停止している最中でも“単語を見ています”と表示することがありました。すぐ上のウインドウタイトルはすでに“停止中”と言っていたのに。今は両方が一致します。";
 "Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops." = "キーボードは VoiceOver でよりよく話せるようになりました。過去14日間のグラフは自分の数字を読み上げ、期間メニューはどの期間が選ばれているかを伝え、修正は無関係な3つの断片ではなく1つの文として読み上げられます。";
+
+"Duplicates keeps a copy that has no “Date Added” at all, and says so in the group’s header: “kept: no date recorded”. Such a copy used to be the one ticked for the Trash, in every group it turned up in." = "“重複”は“追加日”がまったくないコピーを残し、その理由をグループの見出しに“残す理由: 日付の記録なし”と示します。以前は、そうしたコピーこそが、現れたどのグループでもゴミ箱行きにチェックされていました。";
+"Duplicates keeps the same copy each time it runs. In a group holding a copy with no “Date Added”, which one stayed could change from one scan to the next." = "“重複”は実行のたびに同じコピーを残します。“追加日”のないコピーを含むグループでは、残る側が検索のたびに変わることがありました。";
+"Helm tells you again when an update has cost it a permission macOS had granted. The check went by the version number, and two builds can carry the same one." = "アップデートによって macOS が与えた権限が失われたとき、Helm はまたそれを知らせます。判定はバージョン番号で行っていましたが、二つのビルドが同じ番号を持つことがあります。";
+"“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one." = "起動フォルダが開けないとき、“残存物”の“オフにする”は拒まれます。同じログイン項目を登録する二つ目のファイルがその中にあるかどうかを Helm は見られず、項目をオフにするともう一方が壊れてしまうからです。";
+"Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残存物”は、シンボリックリンクであるフォルダをたどり、その先にあるものを一覧します。これまでそうしたフォルダは空として返り、そこに残されたものは表示されませんでした。";
+"Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew は、インストールが失敗したときにも、ダウンロードしたインストーラを削除します。成功したときだけではありません。";

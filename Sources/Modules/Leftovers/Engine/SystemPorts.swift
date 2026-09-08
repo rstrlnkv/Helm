@@ -8,7 +8,21 @@ public struct FileSystemLeftovers: LeftoversFilePort {
         FileManager.default.isWritableFile(atPath: url.path)
     }
 
-    public func resolvingSymlinks(_ url: URL) -> URL { url.resolvingSymlinksInPath() }
+    /// **Not `resolvingSymlinksInPath()`, which is `realpath` and gives up on a
+    /// link whose target is not there.** It fails with `ENOENT` for one, and
+    /// Foundation hands back the spelling it was given — so the one caller of this
+    /// port, `LeftoversScanner.isItsOwnPlace`, asked «did resolving this change
+    /// it» about a planted link and was told no. The planting is done in that
+    /// order on purpose: the link goes down while its target does not exist, the
+    /// scan reads `ENOENT` from `opendir` as an empty folder, and the source
+    /// produces no row of any kind; the target is created afterwards.
+    ///
+    /// `PathCanonical.followingEveryLink` answers the question this port's
+    /// documentation states — the whole path, every link followed — for a target
+    /// that is not there as well as for one that is.
+    public func resolvingSymlinks(_ url: URL) -> URL {
+        URL(fileURLWithPath: PathCanonical.followingEveryLink(url.path))
+    }
 
     public func contents(of url: URL) -> DirectoryListing.Contents {
         DirectoryListing.contents(of: url)

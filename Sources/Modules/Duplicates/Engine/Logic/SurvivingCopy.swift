@@ -16,11 +16,20 @@ import Foundation
 /// applied. The rungs and their order belong to the policy; what is left here is
 /// what each rung reads.
 ///
-/// **A rung that cannot tell hands on rather than deciding.** An unknown date is
-/// the case that matters: a volume that does not record when a file was added
-/// reports nothing, and nothing is evidence for neither copy. Read as a loss it
-/// handed the whole decision to a fact the filesystem happened to keep, skipping
-/// every rung below.
+/// **A rung that cannot tell hands on rather than deciding.** That holds only
+/// while a rung is silent about *every* pair of the copies it is comparing or
+/// about none: a rung silent about some of them is not an ordering, and the
+/// survivor then depends on the order the walk built the array in. An unknown
+/// date was exactly such a rung — it separates two known dates and says nothing
+/// where one is missing — so three copies, one of them dateless, closed a cycle
+/// and each of the six walk orders kept whichever copy it happened to be fed
+/// first (`TheSurvivorDoesNotDependOnWalkOrderTests`).
+///
+/// The missing date is therefore a rung of its own, above the date it is missing
+/// from: the copy nothing records the arrival of is the copy that stays, because
+/// what this module does with the rest is offer them for the Trash. Read the
+/// other way — silence as a loss — it handed the whole decision to a fact the
+/// filesystem happened to keep, skipping every rung below.
 public enum SurvivingCopy {
 
     /// The group's copies, the survivor first.
@@ -70,8 +79,15 @@ public enum SurvivingCopy {
             // knows nothing about which of them somebody meant to keep.
             guard transitA != transitB else { return nil }
             return transitB
+        case .undated:
+            // Asked before the date it is about, so the rung below it never sees
+            // a pair it can only half answer.
+            let (datedA, datedB) = (a.added != nil, b.added != nil)
+            guard datedA != datedB else { return nil }
+            return !datedA
         case .date:
-            // Two dates decide; one date and one blank decide nothing.
+            // Two dates decide, and by `.undated` above there is no other kind of
+            // pair left: either both are known or neither is.
             guard let dateA = a.added, let dateB = b.added, dateA != dateB else { return nil }
             return dateA < dateB
         case .depth:

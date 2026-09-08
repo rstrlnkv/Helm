@@ -61,6 +61,16 @@ enum LaunchClaims {
         return claims.filter { $0.label == label }.map(\.path)
     }
 
+    /// The same question asked of a reading of the disk, which carries whether
+    /// there was a folder it could not count.
+    ///
+    /// The count and «was everything counted» are two halves of one reading and
+    /// are never useful apart: a caller holding only the count is a caller
+    /// treating a folder that did not open as a folder with nothing in it.
+    static func claimants(of label: String, in reading: Reading) -> [String] {
+        claimants(of: label, in: reading.claims)
+    }
+
     /// For every file that is not alone in registering its label, one other file
     /// that registers it too — keyed by path, which is the row's own id.
     ///
@@ -76,15 +86,40 @@ enum LaunchClaims {
         return rivals
     }
 
+    /// One reading of the two agent folders: what registers a label there, and
+    /// whether both folders opened.
+    ///
+    /// **The second half is not a detail of the first.** A folder that would not
+    /// open hands back nothing, and nothing is what a folder with no rival in it
+    /// hands back too — so a count taken without it is the strongest claim this
+    /// module makes («no second file registers this label, the switch may go
+    /// through») resting on a read that never happened. Both folders are ordinary
+    /// candidates for it: `/Library/LaunchAgents` is root's and Helm is not root,
+    /// and `~/Library/LaunchAgents` sits behind a TCC grant that is denied on 23 of
+    /// the 42 launches ARCHITECTURE.md records.
+    struct Reading: Equatable, Sendable {
+        /// What the folders that opened hold.
+        let claims: [Claim]
+        /// Whether every agent folder answered with its contents. False when one
+        /// of them refused, which is «anything could be in there» and never
+        /// «nothing is».
+        let everyFolderOpened: Bool
+    }
+
     /// What every `.plist` in the two agent folders registers, read now.
     ///
     /// Read through `LaunchAgentReader`, the same reader the scan uses, so both
     /// sides agree about the label a file claims — including a file whose contents
     /// would not come, whose label is then its own name, which is the convention
     /// launchd itself goes by.
-    static func onDisk(home: URL, files: LeftoversFilePort) -> [Claim] {
-        agentFolders(home: home).flatMap { folder in
-            files.children(of: folder)
+    ///
+    /// `contents(of:)` rather than `children(of:)`, which is the port's own rule:
+    /// every reader of a source draws a conclusion from an empty answer, and this
+    /// one draws the act.
+    static func onDisk(home: URL, files: LeftoversFilePort) -> Reading {
+        let readings = agentFolders(home: home).map { files.contents(of: $0) }
+        return Reading(
+            claims: readings.flatMap(\.entries)
                 .filter { $0.pathExtension == "plist" }
                 .map { url in
                     // A plist read per file, handing back autoreleased Foundation
@@ -94,7 +129,7 @@ enum LaunchClaims {
                                                             path: url.path).identifier,
                               path: url.path)
                     }
-                }
-        }
+                },
+            everyFolderOpened: !readings.contains(.refused))
     }
 }

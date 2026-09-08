@@ -177,8 +177,13 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
 
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
                                               ofItemAtPath: preferences.path)
-        XCTAssertTrue(files.children(of: preferences).isEmpty,
-                      "precondition: this process really cannot read the folder now")
+        // `contents(of:)` rather than `children(of:)`, and the difference is this
+        // test's whole subject: `children(of:)` is `contents(of:).entries`, which
+        // folds «refused» back into «empty», so an empty answer here would have
+        // been the precondition passing on the very fold the assertion below
+        // exists to catch. `.refused` says the port really was turned away.
+        XCTAssertEqual(files.contents(of: preferences), .refused,
+                       "precondition: this process really cannot read the folder now")
 
         XCTAssertNotEqual(message(over: mine(scanner.scan())), .nothingFound, """
             `~/Library/Preferences` would not open, and the scan reported it as \

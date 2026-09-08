@@ -17,10 +17,43 @@ import Module_Duplicates_Engine
 /// again with more steps.
 final class TheHeaderSaysWhyACopyStaysTests: XCTestCase {
 
-    /// Every reason a group can carry. Built from `KeepReason` itself, so a rung
-    /// added to the ladder lands here without anybody remembering to add it.
+    /// Every reason a group can carry.
+    ///
+    /// **Written by hand, and this comment used to say it was built from
+    /// `KeepReason` itself «so a rung added to the ladder lands here without
+    /// anybody remembering to add it».** It was `[.place, .date, .depth, .name]`
+    /// then and it is a literal now: `KeepReason` is not `CaseIterable`, so
+    /// nothing here can enumerate it. The rung the walk-order repair added,
+    /// `.undated`, reached the header while this file went on checking four of
+    /// five — the omission the comment claimed was impossible, and a sentence
+    /// nobody had asked about is what this file exists to catch.
+    ///
+    /// `testAddingARungToTheLadderStopsTheBuildHere` is what the comment
+    /// promised, as far as a test target can carry it.
     private let grounds: [KeepGrounds] =
-        [.place, .date, .depth, .name].map(KeepGrounds.rung) + [.byHand]
+        [.place, .undated, .date, .depth, .name].map(KeepGrounds.rung) + [.byHand]
+
+    /// **A rung added to `KeepReason` is a build error in this file.** The switch
+    /// is exhaustive and has no `default`, so a sixth case stops the compiler
+    /// here; putting it in the list above is then the only way to build, and the
+    /// tests below cover it from that moment.
+    ///
+    /// The runtime half catches the other order of events — a case spelled here
+    /// and forgotten in the list — which is what happens when the build error is
+    /// answered by adding a `case` and nothing else.
+    func testAddingARungToTheLadderStopsTheBuildHere() {
+        for rung in [KeepReason.place, .undated, .date, .depth, .name] {
+            switch rung {
+            case .place, .undated, .date, .depth, .name: break
+            }
+            XCTAssertTrue(grounds.contains(.rung(rung)), """
+                `\(rung.rawValue)` is a rung the ladder can report and it is not among the \
+                grounds this file checks, so nothing here asks whether the header has a \
+                sentence for it. That is how `.undated` reached the page unchecked: the \
+                list is a literal, and the compiler only guards the switch above it.
+                """)
+        }
+    }
 
     func testEveryReasonHasItsOwnSentenceInEveryLanguage() {
         for language in AppLanguage.allCases {

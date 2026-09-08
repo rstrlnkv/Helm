@@ -207,6 +207,11 @@ enum DupStr {
         // folder, and the tier is the thing being explained rather than a word
         // to reuse.
         case .rung(.place): return L("kept: by folder", language: language)
+        // Said as the absence it is. «Arrived first» is what this case would
+        // borrow if the missing date were folded into the rung below it, and
+        // nothing on this Mac knows when the kept copy arrived — which is the
+        // whole reason it is the one that stays.
+        case .rung(.undated): return L("kept: no date recorded", language: language)
         case .rung(.date): return L("kept: arrived first", language: language)
         // Said as the fact it is. «By depth» is the rule's word for it and means
         // nothing on a screen; the shorter path is what somebody can look at.

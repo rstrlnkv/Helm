@@ -161,15 +161,21 @@ final class KeepPolicyTests: XCTestCase {
     /// nothing is not evidence either way. It used to be a win for the copy we
     /// knew something about — which handed the whole decision to a fact the
     /// filesystem happened to keep, and skipped every rung below it.
-    func testAnUnknownDateDecidesNothingAndTheLadderCarriesOn() {
+    func testAnUnknownDateIsTakenOutOfTheLadderBeforeTheDateItIsMissingFrom() {
         for policy in KeepPolicy.allCases {
-            let ordered = SurvivingCopy.order(
-                [file("/Users/r/Documents/Archive/2019/deep.jpg", added: day(10)),
-                 file("/Users/r/Documents/shallow.jpg")],
-                by: rule(policy))
-            XCTAssertEqual(ordered.first?.path, "/Users/r/Documents/shallow.jpg",
-                           "\(policy): one date and one blank separate nothing, "
-                           + "so the shallower path stays")
+            let copies = [file("/Users/r/Documents/Archive/2019/deep.jpg", added: day(10)),
+                          file("/Users/r/Documents/shallow.jpg")]
+
+            XCTAssertEqual(SurvivingCopy.order(copies, by: rule(policy)).first?.path,
+                           "/Users/r/Documents/shallow.jpg",
+                           "\(policy): the copy with no date on record is the one that stays")
+            XCTAssertEqual(SurvivingCopy.reason(among: copies, by: rule(policy)), .undated, """
+                \(policy): the dateless copy of this pair is also the shallower one, so \
+                the assertion above is green whether `.undated` kept it or `.depth` did — \
+                and which rung answered is what both ladders are being asked about here. \
+                Asking `reason` is what tells «the missing date is a rung above the date» \
+                from «the missing date is silence and the depth rung carried on».
+                """)
         }
     }
 

@@ -866,6 +866,7 @@
 "the path changed underneath" = "路径在中途发生了变化";
 "kept: by folder" = "保留原因：所在文件夹";
 "kept: arrived first" = "保留原因：先出现";
+"kept: no date recorded" = "保留原因：没有日期记录";
 "kept: the shorter path" = "保留原因：路径更短";
 "kept: first alphabetically" = "保留原因：字母顺序在前";
 "kept: your choice" = "保留原因：你的选择";
@@ -1124,3 +1125,10 @@
 "The row that opens Keyboard’s app list counted only your own rules. The window behind it also lists Helm’s built-in refusals — terminals, password managers — so the two numbers could be off by seven. They agree now." = "打开“键盘”应用列表的那一行，此前只统计你自己的规则。它背后的窗口还列出了 Helm 内置的排除项——终端、密码管理器——两个数字最多能相差七个。现在它们一致了。";
 "The line at the top of Keyboard’s page could say “Watching your words” while paused at a password field, if the day’s count still stood at zero — even though the window header above it already said “Not running”. Both agree now." = "如果当天的计数还是零，即使“键盘”页面顶部那一行处于密码框造成的暂停中，它也可能显示“正在留意你的输入”——尽管上方的窗口标题已经写着“未运行”。现在两者一致了。";
 "Keyboard speaks better with VoiceOver: the fortnight chart reads its own numbers, the period menu says which period is chosen, and a correction reads as one sentence instead of three unrelated stops." = "“键盘”与 VoiceOver 配合得更好了：过去十四天的图表会读出自己的数字，时间段菜单会说明选中的是哪个时间段，一次修正也会读作一整句话，而不是三个互不相关的片段。";
+
+"Duplicates keeps a copy that has no “Date Added” at all, and says so in the group’s header: “kept: no date recorded”. Such a copy used to be the one ticked for the Trash, in every group it turned up in." = "“重复文件”会保留完全没有“添加日期”的那一份，并在该组的标题中说明：“保留原因：没有日期记录”。以前正是这样的副本被勾选移到废纸篓，在它出现的每一组里都是如此。";
+"Duplicates keeps the same copy each time it runs. In a group holding a copy with no “Date Added”, which one stayed could change from one scan to the next." = "“重复文件”每次运行都保留同一份副本。如果一组里有一份没有“添加日期”的副本，留下的那一份可能每次搜索都不同。";
+"Helm tells you again when an update has cost it a permission macOS had granted. The check went by the version number, and two builds can carry the same one." = "当一次更新让 Helm 失去 macOS 已经授予的权限时，它会重新告诉你。以前的判断依据是版本号，而两个构建可能带着同一个版本号。";
+"“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one." = "当启动文件夹打不开时，“残留”里的“关闭”会被拒绝。Helm 无法看到里面是否有第二个文件注册了同一个登录项，此时关闭该项会把另一个弄坏。";
+"Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残留”会跟随作为符号链接的文件夹，列出链接另一端的内容。这样的文件夹以前返回为空，留在那里的东西从未显示过。";
+"Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "安装失败时，Homebrew 也会删除下载的安装脚本，而不是只在成功时删除。";

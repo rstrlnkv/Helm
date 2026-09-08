@@ -128,10 +128,21 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 // switch there (`LeftoverActions.available`); this is the same rule
                 // asked of the two folders as they are now, and it refuses whatever
                 // else builds a request.
-                let claimants = await offTheCooperativePool {
-                    LaunchClaims.claimants(of: request.label,
-                                           in: LaunchClaims.onDisk(home: self.home,
-                                                                   files: self.files))
+                let reading = await offTheCooperativePool {
+                    LaunchClaims.onDisk(home: self.home, files: self.files)
+                }
+                let claimants = LaunchClaims.claimants(of: request.label, in: reading)
+                // **And a folder that did not open is not a folder with nothing
+                // in it.** Both agent folders are ordinary candidates for going
+                // unread — root's is not Helm's to read, and the person's own is
+                // behind a TCC grant — and either one going unread turns «two
+                // files claim this switch» into «one does», on the safe-direction
+                // side of a guard whose whole subject is the unsafe direction.
+                guard reading.everyFolderOpened else {
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "refused a switch: an agent folder would not open, so "
+                                        + "the files registering that label were never counted")
+                    return Data()
                 }
                 guard claimants.count <= 1 else {
                     HelmLog.shared.warn(Self.moduleID,

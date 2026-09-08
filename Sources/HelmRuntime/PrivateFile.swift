@@ -62,7 +62,8 @@ public enum PrivateFile {
         case whatItLeadsTo
     }
 
-    /// Encode, write atomically, set 0600.
+    /// Encode, and write it the way `write(_ data:to:)` below does: into a file
+    /// created 0600, renamed into place.
     ///
     /// - Returns: whether it landed. These files are caches, journals and
     ///   salts — a write that cannot happen is a missed optimisation, never a
@@ -109,16 +110,65 @@ public enum PrivateFile {
         case .theName: path = url.path
         case .whatItLeadsTo: path = PathCanonical.resolvingWholePath(url.path)
         }
+        guard let scratch = bornPrivate(beside: path) else { return false }
         do {
-            try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+            let file = FileHandle(fileDescriptor: scratch.descriptor, closeOnDealloc: true)
+            try file.write(contentsOf: data)
+            try file.close()
+            // The rename an atomic write does, spelled out — because the
+            // *creation* above is the half `Data.write(options: .atomic)` does
+            // not let anybody choose. `rename` moves this inode, and its mode,
+            // on to the name.
+            guard rename(scratch.path, path) == 0 else { throw CocoaError(.fileWriteUnknown) }
         } catch {
+            try? FileManager.default.removeItem(atPath: scratch.path)
             return false
         }
-        // Every write. The file this replaced may have been private; the one
-        // that just took its place is a different inode with the umask's mode.
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: path)
         return true
+    }
+
+    /// The inode the bytes go into: 0600 from the `open` that makes it, beside
+    /// the file it is about to become.
+    ///
+    /// **This is the repair of 2026-09-08, and the window it closes is the one
+    /// this whole type was written to close, one level down.** `Data.write` with
+    /// `.atomic` writes a temporary file and renames it, and the temporary is
+    /// created with the process umask on it — 0644 here. So the bytes lay in the
+    /// destination folder readable by anything running as this user for the
+    /// length of the write, and then under the destination *name* until the
+    /// `setAttributes` that used to follow. Nothing was reported and nothing
+    /// looked wrong: `PrivateFile.directory` makes the folder above 0700, which
+    /// covers it — a second defence standing in for a missing first one, and it
+    /// covers nothing at all the day a caller writes into a folder somebody else
+    /// made.
+    ///
+    /// `O_EXCL` because the name is ours or the write does not happen: an
+    /// attacker who can guess it must not be able to have it point somewhere
+    /// first. `fchmod` on the descriptor rather than a `chmod` on the path,
+    /// because the umask can only take bits away from the mode `open` was given
+    /// and a hostile one (0o200) would leave a file this process cannot write —
+    /// on the descriptor there is no name to race, and it happens before the
+    /// file has a byte in it or the name it will end on.
+    ///
+    /// The caller owns the descriptor from here: it is closed by the
+    /// `FileHandle` above on the way out of either branch.
+    ///
+    /// Not `private`, and that is the only reason it is a function of its own:
+    /// «the mode arrives with the file» is the whole claim of this repair, and a
+    /// claim inside a `do` block cannot be asserted about. `TheModeBelongsToTheWriteTests`
+    /// names it.
+    static func bornPrivate(beside path: String) -> (descriptor: Int32, path: String)? {
+        let folder = (path as NSString).deletingLastPathComponent
+        let scratch = (folder as NSString)
+            .appendingPathComponent(".helm-write-\(UUID().uuidString)")
+        let descriptor = open(scratch, O_CREAT | O_EXCL | O_WRONLY, 0o600)
+        guard descriptor >= 0 else { return nil }
+        guard fchmod(descriptor, 0o600) == 0 else {
+            close(descriptor)
+            try? FileManager.default.removeItem(atPath: scratch)
+            return nil
+        }
+        return (descriptor, scratch)
     }
 
     /// 0600 on a file that is already there, without rewriting it.

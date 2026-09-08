@@ -124,6 +124,45 @@ public enum PathCanonical {
             .resolvingSymlinksInPath().standardizedFileURL.path
     }
 
+    /// Where a path leads with every link in it followed — the leaf too, and a
+    /// link whose target is not there yet.
+    ///
+    /// **`realpath` cannot answer for a link that points at nothing.**
+    /// `resolvingSymlinksInPath()` is `realpath` underneath, it fails with
+    /// `ENOENT` on such a link, and Foundation's answer to a failure is the path
+    /// it was handed, unchanged — so `resolvingWholePath` above says «this is the
+    /// place it names» about a name that is a link to somewhere else. A source
+    /// planted as a link before its target is created is invisible to it, and
+    /// creating the target afterwards is the second half of the same act.
+    ///
+    /// So the parent chain is resolved as `resolvingAncestors` does — the deepest
+    /// ancestor that exists, with the missing tail put back — and the leaf is
+    /// then followed with `readlink`, which answers whether or not the target is
+    /// there. A chain of links is followed to its end; a loop is stopped at
+    /// `linkHops`, and what comes back is then a spelling that is not the one
+    /// handed in, which every caller reads as «not the place it names».
+    ///
+    /// Use it wherever an unresolvable path must not read as an honest one.
+    /// `resolvingWholePath` stays for the gates that compare two paths that both
+    /// exist, where `realpath` is the cheaper reading of the same question.
+    public static func followingEveryLink(_ path: String) -> String {
+        var resolved = resolvingAncestors(path)
+        for _ in 0..<linkHops {
+            guard let target = try? FileManager.default
+                .destinationOfSymbolicLink(atPath: resolved) else { return resolved }
+            let absolute = target.hasPrefix("/")
+                ? target
+                : (resolved as NSString).deletingLastPathComponent + "/" + target
+            resolved = resolvingAncestors(absolute)
+        }
+        return resolved
+    }
+
+    /// How many links deep this will follow before it gives up, which is what a
+    /// loop of them looks like from here. `SYMLOOP_MAX` is 32 on this system and
+    /// the kernel's own limit for the same walk.
+    private static let linkHops = 32
+
     /// The same place, spelled without the `/private` the filesystem treats as
     /// invisible and a prefix test does not.
     ///

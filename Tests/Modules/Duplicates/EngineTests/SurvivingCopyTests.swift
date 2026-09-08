@@ -70,19 +70,34 @@ final class SurvivingCopyTests: XCTestCase {
 
     // MARK: - When the date is not there
 
-    /// **This test used to assert the opposite**, and the rule it was defending
-    /// was the wrong end of the same reasoning: a volume that does not record
-    /// when a file was added reports nothing, and nothing was read as a *loss*
-    /// for the copy it was missing from. So one blank date settled a group
-    /// outright, and every rung below it — where the file sits, how deep it is —
-    /// was never asked. Silence is not evidence: the ladder carries on.
-    func testAnUnknownDateSettlesNothingAndTheShallowerPathStays() {
-        let ordered = order([
-            file("/Users/r/Documents/Archive/z.jpg", added: day(400)),
-            file("/Users/r/Documents/a.jpg"),
-        ])
-        XCTAssertEqual(ordered.first, "/Users/r/Documents/a.jpg",
-                       "one date and one blank separate nothing at all")
+    /// **This test asserted the opposite twice, and the second time its fixture
+    /// could not tell.** It first read a blank date as a *loss* for the copy it
+    /// was missing from, so one blank settled a group outright and every rung
+    /// below — where the file sits, how deep it is — was never asked. It was then
+    /// rewritten as «silence settles nothing, the ladder carries on», and the
+    /// copy without a date was also the shallower one: green whether the missing
+    /// date decided or the depth below it did.
+    ///
+    /// Neither reading is the rule. `KeepReason.undated` is a rung of its own,
+    /// above the date it is missing from, and the copy nothing records the
+    /// arrival of is the copy that stays — because what this module does with the
+    /// rest is offer them for the Trash. Which rung answered is a separate
+    /// question from which copy stays, so it is asked separately: `reason` names
+    /// it, and it is what the group header says out loud.
+    func testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays() {
+        let copies = [file("/Users/r/Documents/Archive/z.jpg", added: day(400)),
+                      file("/Users/r/Documents/a.jpg")]
+
+        XCTAssertEqual(order(copies).first, "/Users/r/Documents/a.jpg",
+                       "the copy whose arrival nothing recorded is the one that stays")
+        XCTAssertEqual(SurvivingCopy.reason(among: copies, by: rule), .undated, """
+            and the rung that kept it is the missing date. This fixture's dateless copy \
+            is also its shallower one, so «which copy stays» is green here whichever of \
+            the two rungs decided — `.depth` would mean the group header says «kept: the \
+            shorter path» about a copy that stays for a different reason entirely, and \
+            `.date` would mean it says «arrived first» about a copy nothing on this Mac \
+            knows the arrival of.
+            """)
     }
 
     func testWithNoDatesAtAllTheShallowerPathStays() {
