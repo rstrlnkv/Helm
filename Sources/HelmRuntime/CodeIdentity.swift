@@ -58,15 +58,51 @@ public struct CodeIdentity: Codable, Equatable, Sendable {
     /// the dynamic read *and* a recorded identity taken the same way, which is a
     /// change to what is stored, not a stricter comparison.
     public static func of(bundleAt url: URL) -> CodeIdentity? {
+        guard let dictionary = signingInformation(ofBundleAt: url) else { return nil }
+        return CodeIdentity(
+            signingID: dictionary[kSecCodeInfoIdentifier as String] as? String,
+            teamID: dictionary[kSecCodeInfoTeamIdentifier as String] as? String)
+    }
+
+    /// The **cdhash** of the code at a path: the hash of its code directory,
+    /// lowercase hex, which is the number TCC keeps a grant against.
+    ///
+    /// Deliberately **not** a property of the value above, for two reasons that
+    /// point the same way. This struct is stored inside every VPN rule
+    /// (`VPNAppRule.identity`), so a new field would need a hand-written
+    /// `init(from decoder:)` before a rule saved by an earlier build could
+    /// decode at all — a stored default does not make an older payload decode.
+    /// And a cdhash inside a rule would *refuse* the app it names the first
+    /// time that app updates, which is the opposite of what a rule is for: a
+    /// rule binds to who signed the code, an audit binds to which build is
+    /// running.
+    ///
+    /// Nil when there is nothing there, or nothing signed — an unsigned bundle
+    /// has no code directory to hash, and a test host is a plain directory that
+    /// `SecStaticCodeCreateWithPath` refuses outright. Callers read nil as
+    /// «cannot tell», never as «changed».
+    ///
+    /// Internal, not public: the only caller is `AppBuild.codeFingerprint` in
+    /// this same target, and `public` here means «another target uses this» and
+    /// nothing else.
+    static func cdhash(ofBundleAt url: URL) -> String? {
+        guard let dictionary = signingInformation(ofBundleAt: url),
+              let unique = dictionary[kSecCodeInfoUnique as String] as? Data
+        else { return nil }
+        return HexDigest.string(of: unique)
+    }
+
+    /// One incantation for both readers. `kSecCodeInfoUnique` comes back under
+    /// these same flags, so asking for the signature twice would be two copies
+    /// of the four-line dance rather than two questions.
+    private static func signingInformation(ofBundleAt url: URL) -> [String: Any]? {
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess,
               let code else { return nil }
         var info: CFDictionary?
         guard SecCodeCopySigningInformation(
-                code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
-              let dictionary = info as? [String: Any] else { return nil }
-        return CodeIdentity(
-            signingID: dictionary[kSecCodeInfoIdentifier as String] as? String,
-            teamID: dictionary[kSecCodeInfoTeamIdentifier as String] as? String)
+                code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess
+        else { return nil }
+        return info as? [String: Any]
     }
 }

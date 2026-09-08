@@ -11,10 +11,14 @@ import Foundation
 ///
 /// **Optional, not defaulted here.** The fallbacks are not interchangeable and
 /// this type must not pick one for everybody: `PermissionAuditPlan.shouldSpeak`
-/// treats an empty version as «cannot tell» and stays silent, while
+/// treats an empty identity as «cannot tell» and stays silent, while
 /// `UpdateCheck` wants something `UpdateVersion` can parse and compare. Each
 /// caller says what silence means where it means it; what moves here is the
 /// incantation, which is the part that was copied wrong.
+///
+/// **A version is what this copy calls itself; a fingerprint is what it is.**
+/// Neither string below answers «is this the same program macOS granted?», and
+/// `codeFingerprint` is here because one caller needs that question instead.
 public enum AppBuild {
     /// The marketing version — `0.9.0-dev.9`. Nil when the bundle does not say,
     /// which in practice means a test host rather than the app.
@@ -25,6 +29,32 @@ public enum AppBuild {
     /// The build number, which moves on every packaging run.
     public static var buildNumber: String? {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+    }
+
+    /// The cdhash of this bundle — what TCC actually keeps a grant against.
+    ///
+    /// **Neither version above can tell one local build from another.** They are
+    /// strings in a plist: twenty commits of work carry the same
+    /// `CFBundleShortVersionString`, and the build number is the commit count
+    /// `package-app.sh` writes, so a rebuild at the same commit does not move it
+    /// either. The cdhash moves whenever the bytes do — measured with two ad-hoc
+    /// bundles carrying an identical `0.9.0` and an identical build `405`,
+    /// differing by one byte of code: `72580c71…` against `62511e9b…`, while
+    /// `CodeIdentity.of(bundleAt:)` read the same signing identifier and the same
+    /// absent team for both. ARCHITECTURE.md § Permissions has the other half —
+    /// three consecutive packaging runs at build 405 produced three different
+    /// cdhashes with no source change at all.
+    ///
+    /// **A read, not a verification.** It says which build this is, not whether
+    /// the signature is any good; `codesign --verify` answers that, and
+    /// ARCHITECTURE.md § Permissions records that passing it does not save a
+    /// grant. Measured on the installed bundle at 0.409 ms, worst of five.
+    ///
+    /// Nil under anything that is not signed code — a test host is a plain
+    /// directory, which `SecStaticCodeCreateWithPath` refuses. Nil is «cannot
+    /// tell», and every caller here reads it that way rather than as a change.
+    public static var codeFingerprint: String? {
+        CodeIdentity.cdhash(ofBundleAt: Bundle.main.bundleURL)
     }
 
     /// Whether this process is the app rather than a test runner or a script.

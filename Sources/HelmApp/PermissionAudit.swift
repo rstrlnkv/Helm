@@ -8,8 +8,21 @@ import HelmRuntime
     /// Set by the app delegate so the audit can ask which modules are on.
     static var host: ModuleHost!
 
-    /// Holds the version that last showed the notice, not a bare flag.
-    private static let seenKey = "permissionAuditVersion"
+    /// Holds the **identity** of the build that last showed the notice — not a
+    /// bare flag, and no longer its marketing version.
+    ///
+    /// **The key string is historical and must not be renamed.** A fresh key
+    /// reads as an empty last-seen value, `PermissionAuditPlan.shouldSpeak` is
+    /// silent on a first run by design, and the run that needs this audit most
+    /// is the first one after an update — so a rename would switch the audit off
+    /// on exactly the launch it exists for, and nothing would report it. What
+    /// changes is the value's shape, from `0.11.1-dev.5` to a cdhash: those
+    /// compare unequal once, on the first launch of the first build that reads
+    /// it, and that launch really is a different binary, so speaking then is
+    /// correct rather than a glitch. `ThePermissionAuditAsksTheSignatureTests`
+    /// holds the spelling and the fact that it is not on
+    /// `ObsoleteDefaults.retired`, which really deletes.
+    static let identityKey = "permissionAuditVersion"
 
     static func run() {
         Task {
@@ -26,14 +39,27 @@ import HelmRuntime
                                 "full disk access: \(fullDisk.rawValue), "
                                 + "accessibility: \(accessibility.rawValue)")
 
-            let version = AppBuild.shortVersion ?? ""
-            let lastSeen = AppSettings.store.string(seenKey, default: "")
-            // Recorded unconditionally, including on a first run: the audit
-            // has nothing to compare against yet, but the second run needs
-            // this as its baseline.
-            AppSettings.store.set(version, for: seenKey)
+            // The cdhash, not `AppBuild.shortVersion`: TCC ties an ad-hoc
+            // grant to the bytes, and two builds of one version are two
+            // programs to it and one program to the string.
+            let identity = AppBuild.codeFingerprint ?? ""
+            if identity.isEmpty, AppBuild.isBundledApp {
+                // Silence with a reason. Without a signature there is nothing
+                // to compare, so this audit can never speak on this bundle —
+                // which is a thing to be able to read in the log rather than
+                // to deduce from an alert that never came.
+                HelmLog.shared.info("permissions",
+                                    "no code signature to compare: the audit stays silent")
+            }
+            let lastSeen = AppSettings.store.string(identityKey, default: "")
+            // Recorded on a first run too: the audit has nothing to compare
+            // against yet, but the second run needs this as its baseline. Not
+            // recorded when it could not be read — see `baseline`.
+            if let record = PermissionAuditPlan.baseline(current: identity) {
+                AppSettings.store.set(record, for: identityKey)
+            }
             guard PermissionAuditPlan.shouldSpeak(
-                lastSeenVersion: lastSeen, current: version) else { return }
+                lastSeenIdentity: lastSeen, current: identity) else { return }
 
             // Asked for only what an enabled module actually uses: a permission
             // request with no reason behind it is one people deny.

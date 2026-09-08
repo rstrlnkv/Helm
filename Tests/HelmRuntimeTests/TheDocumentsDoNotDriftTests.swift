@@ -1,7 +1,12 @@
 import HelmTestSupport
 import XCTest
 
-/// Said once because eight entries below share it.
+/// Said once because the entry below and any that join it share it.
+private let sharedScriptReason =
+    "both read-only briefs photograph the settings window with the same script, and each has to say on its own that the script is an ignored link into the workshop that a fresh worktree does not have: a brief is read alone, so the sentence cannot live only in the other one"
+
+/// Kept for the day a local brief is written from the template again. The
+/// template moved to the workshop on 2026-09-06 and is no longer read here.
 private let templateReason =
     "the template describes the machine-boundary paragraph each read-only brief must carry; the resemblance is the template doing its job"
 
@@ -46,7 +51,6 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     /// boundary the documents' own contracts now state.
     private static let documents: [String] = [
         "CLAUDE.md", "ARCHITECTURE.md", "VERSIONING.md", "README.md",
-        "docs/crew/BRIEF-TEMPLATE.md",
     ]
 
     /// Pairs that are allowed to look alike, and why. Keyed by the two file
@@ -71,8 +75,7 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     private static let known: [Pair: (count: Int, reason: String)] = [
         Pair("ARCHITECTURE.md", "CLAUDE.md"):
             (1, "the Completeness rule and the evidence under it: the contracts put the rule in CLAUDE.md and the account in ARCHITECTURE.md, and the rule restates enough of it to stand alone"),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-a11y.md"): (1, templateReason),
-        Pair("docs/crew/BRIEF-TEMPLATE.md", "helm-ux-designer.md"): (1, templateReason),
+        Pair("corehelm-a11y.md", "corehelm-ux-designer.md"): (1, sharedScriptReason),
     ]
 
     struct Pair: Hashable {
@@ -104,7 +107,12 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         var paths = Self.documents
         let briefs = (try? FileManager.default.contentsOfDirectory(
             atPath: root.appendingPathComponent(".claude/agents").path)) ?? []
-        paths += briefs.filter { $0.hasPrefix("helm-") && $0.hasSuffix(".md") }
+        // **Briefs are named after the crew, and the crew renamed itself.** The
+        // prefix was `helm-` until 2026-09-06, when the roles moved to Core Crew
+        // and the local ones became `corehelm-*`. The filter kept matching
+        // nothing, so this guard read a corpus with no brief in it at all — and
+        // the corpus assertion below is what said so.
+        paths += briefs.filter { $0.hasPrefix("corehelm-") && $0.hasSuffix(".md") }
                        .sorted().map { ".claude/agents/\($0)" }
 
         // **The skip asks about the disk, and the assertion asks about the
