@@ -59,20 +59,10 @@ DerivedData/
 # Only `docs/` stays out of the tree: plans and specs are a record of decisions
 # being made, not of what the program is. ARCHITECTURE.md, CLAUDE.md and
 # CHANGELOG.md describe the program itself and belong in the repository with it.
-# These three are symbolic links into Core Crew's `projects/Helm`, holding
-# everything about Helm that Helm does not ship. Its contents stay private —
-# the submodule publishes an address, and an address is not access.
-#
-# They were plain copies until 2026-08-03, kept in step by remembering to copy
-# them, which meant they diverged: the backup sat a day behind and still
-# described code the tree had rolled back, while looking like the source of
-# truth. Links removed the divergence; the submodule adds what links alone
-# could not — a rollback of the code takes the documents with it, because the
-# commit records which documents belong to it.
-#
-# The links themselves stay ignored rather than committed. A clone without
-# access to the submodule would otherwise carry three dangling links, and a
-# confusing checkout is a worse greeting than a missing file.
+# They used to live outside the tree and arrive as links, so a rollback of the
+# code did not take the documents with it and the tree's own tests, which check
+# that a document names things that exist, had nothing to read. Both stop being
+# true once the documents are committed here.
 #
 # No trailing slash on `docs`. The pattern was `/docs/`, which matches a
 # directory and not a link, so the moment the copy became a link it reappeared
