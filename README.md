@@ -1,8 +1,27 @@
 # Helm
 
-Tools for your Mac. A modular utility suite for macOS 26+ (Apple Silicon),
-in the spirit of PowerToys — a menu-bar panel, a settings window, and the
-modules you choose to keep.
+Tools for your Mac. A modular utility suite for macOS in the spirit of PowerToys —
+a menu-bar panel, a settings window, and the modules you choose to keep.
+
+![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)
+[![Release](https://img.shields.io/github/v/release/rstrlnkv/Helm?include_prereleases)](https://github.com/rstrlnkv/Helm/releases)
+[![Downloads](https://img.shields.io/github/downloads/rstrlnkv/Helm/total)](https://github.com/rstrlnkv/Helm/releases)
+[![Licence](https://img.shields.io/github/license/rstrlnkv/Helm)](LICENSE)
+
+## Install
+
+Grab the `.dmg` from the [latest release](https://github.com/rstrlnkv/Helm/releases),
+drag Helm into Applications, then clear the quarantine once (the build is ad-hoc
+signed):
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Helm.app
+```
+
+From then on Helm updates itself: **About Helm → Update & Relaunch** verifies the
+download against the SHA-256 the release publishes in its notes, swaps the bundle and
+restarts — no Gatekeeper prompts, no manual steps. A release that publishes no digest,
+or one that disagrees, is never installed silently: the release page opens instead.
 
 ## Modules
 
@@ -22,53 +41,36 @@ modules you choose to keep.
 Everything is localized in eight languages: English, 中文, Español, Français,
 Deutsch, 日本語, Русский, Português.
 
-## Channels
+## Requirements
 
-Releases ship to the **Dev** channel first (`vX.Y.Z-dev.N` prereleases, always
-logging to `~/Library/Logs/Helm/helm.log`) and graduate to **Beta** when the
-known-problem count reaches zero. Switch channels in About. The slower channel
-is Beta rather than Stable because Helm is before 1.0 and nothing here has
-earned that word yet.
+macOS 26 or later, on Apple Silicon: the package declares `.macOS("26.0")` and the
+bundle a release ships is `arm64` only. There is no Intel build and no back-deployment.
 
-## Install
+Permissions are asked for where they are turned on, not at first launch: Accessibility
+for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modules that
+read protected folders. Because the build is signed ad-hoc, macOS ties a grant to the
+exact binary — every reinstall costs both toggles again.
 
-Grab the `.dmg` from the [latest release](https://github.com/rstrlnkv/Helm/releases),
-drag Helm into Applications, then clear the quarantine once (the build is ad-hoc
-signed):
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Helm.app
-```
-
-From then on Helm updates itself: **About Helm → Update & Relaunch** verifies the
-download against the SHA-256 the release publishes in its notes, swaps the bundle and
-restarts — no Gatekeeper prompts, no manual steps. A release that publishes no digest,
-or one that disagrees, is never installed silently: the release page opens instead.
+Releases go to the **Dev** channel first and graduate to **Beta** once the count of
+known problems reaches zero; the switch is About Helm → Update channel. The channels,
+the version scheme and the shape of a tag are described in the Release section of
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Build from source
 
-Requires Xcode (macOS 26 SDK) and Swift 6.
+Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
 
 ```bash
 swift test                      # the unit suite; it prints its own count
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
-The signed bundle is assembled and signed in `$TMPDIR/helm-package`, outside the
-checkout; the copy left in `build/` is for inspection only — install and package from
-the staged path. **Keep the checkout out from under a file provider** (iCloud Drive,
+Install from the staged path the script prints, not from the copy it leaves in `build/`
+for inspection, and keep the checkout out from under a file provider (iCloud Drive,
 Dropbox, and the like): a provider stamps `com.apple.FinderInfo` onto the bundles it
-manages and `codesign` refuses a bundle carrying it, so signing succeeds or fails by
-luck.
-
-Release packaging: `Scripts/make-dmg.sh` (manual install) and `Scripts/make-zip.sh`
-(the asset the in-app updater consumes).
-
-Versioning is SemVer-shaped: MAJOR for a milestone, MINOR for new or polished
-capability, PATCH for fixes only, and every release bumps the number — the
-updater compares versions, so two releases sharing one are invisible to it.
-Prereleases are the `-dev.N` lane and sort below their own release
-(`0.7.0` > `0.7.0-dev.2` > `0.6.1`).
+manages and `codesign` refuses a bundle carrying it. Everything else about working in
+this tree — release packaging, versioning, what a person does by hand — is in
+[CLAUDE.md](CLAUDE.md).
 
 ## Licence
 
