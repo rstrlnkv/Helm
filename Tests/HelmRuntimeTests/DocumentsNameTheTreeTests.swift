@@ -49,22 +49,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // question. When Helm's other half moved to Core Crew the script left
         // the checkout, the accident ended, and the guard said what had always
         // been true — the tree does not own this name.
-        "screencapture": "the macOS binary the shooting harness calls; the tree has never owned it",
-        "AVAssetImageGenerator": "AVFoundation — pulls exact frames for the motion measurements",
-        "assignOnlyProperty": "periphery's own vocabulary for a finding, not a name in this tree",
-        "AttributeGraph": "SwiftUI's own dependency graph, named from a live vmmap",
-        "IOSurface": "the framework, named from the same vmmap",
-        "QuartzCore": "likewise",
-        "LoginItems.appex": "a macOS bundle Helm reads a pane's own name out of",
-        "KeyboardViewer.app": "the bundle macOS no longer ships — its absence from /System/Library/Input Methods is the measurement",
-        "TextInputMenuUI": "the private framework Apple draws its own input menu from",
-        "TextInputUI": "likewise",
-        "AssistiveControl": "macOS's Accessibility Keyboard input source, measured as the wrong panel",
-        "orderFrontCharacterPalette": "AppKit's own call, measured doing nothing from an agent",
-        "PrivacySecurity.searchTerms": "a key inside a macOS settings bundle, and the rule is about not trusting it",
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
-        "CAAnimation": "Core Animation's animation object, named where the documents say whose in-flight values `cacheDisplay` cannot see — and SwiftUI's, which it can",
-        "NSAnimationContext": "AppKit's animation scope, named in the same passage about the table that is gone",
         "NSVisualEffectView": "AppKit's material view, named where the documents say the settings sidebar deliberately draws none — `NSSplitViewController` supplies the glass and one of these would block it",
         // Lowercase, and only visible to this check since it stopped skipping
         // that half of the namespace. Programs the documents name because a
@@ -74,28 +59,14 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // IOKit's, and the point of that passage is precisely that neither is
         // reachable from this tree: Swift exports neither symbol, which is why
         // the probe had to go through the other two.
-        "kIOReturnNotPrivileged": "IOKit's refusal, the answer the probe got as the user",
-        "IOPMCopySystemPowerSettings": "IOKit's reader, named because Swift does not export it",
-        "dlsym": "the loader's own lookup, named as the way those symbols are reachable at all",
-        "ctypes": "Python's foreign-function module, which is what the probe used in the end",
-        "GetFileInfo": "the Xcode command-line tool that reads a file's Finder info, named in the account of the provider that stamped it",
-        "AppleLanguages": "the defaults key macOS resolves a bundle's language from — named because the value on this machine is what made a language mutation pass",
-        "backupd": "a macOS daemon, named in the measurement of which processes hold sleep",
-        "sharingd": "the same measurement — the one that answers NSRunningApplication and still is not an app",
         "dmgbuild": "the tool that lays out the disk image window",
         "hdiutil": "the tool that makes and mounts it",
-        "ffmpeg": "used to pull frames out of a screen recording when measuring motion",
         "safeAreaInset": "SwiftUI's modifier, named where the documents say what it costs",
-        "usesAutomaticRowHeights": "NSTableView's property, in the passage about the table that is gone",
-        "noteHeightOfRows": "NSTableView's method, in the same passage",
         // The three errno values the launch measurement names, all POSIX's
         // rather than Helm's — the passage names them to say which failures
         // `NSTask` returns rather than raises. `E2BIG` sat outside this list
         // under a note saying the tree already carried it; it carried it in a
         // doc comment, which is the reading that stopped counting.
-        "EMFILE": "POSIX's «too many open files», named in the measurement of which launch failures return an error",
-        "EAGAIN": "POSIX's «no more processes», named in the same measurement",
-        "E2BIG": "POSIX's «argument list too long», named in the same measurement and in the account of how large a hosts line may be",
 
         // The pass that stopped the blob counting comments surfaced
         // twenty-four of these at once on 2026-08-30 — the twenty-three below
@@ -106,26 +77,12 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "NSTableView": "AppKit's table, named where the documents count what two animation systems in one list cost; its property and its method were already here",
         "NSTextField": "AppKit's field, named where the documents say SwiftUI draws its own text instead",
         "NSLocalizedString": "Foundation's lookup, named to say what `L` is not and why",
-        "NSWorkspaceApplicationKVOHelper": "AppKit's own KVO shim, read off a crash backtrace",
-        "eventTapMessageHandler": "CoreGraphics' frame in a backtrace of the same family, named in the account of a retain race",
-        "ObservationTracking": "the Observation framework's own record, counted in a live heap",
         "repeatForever": "SwiftUI's animation member, named where the documents say what it leaves a model holding",
-        "ChildEnvironment.updateValue": "SwiftUI's attribute graph, named from an allocation trace",
-        "PropertyList.prependValue": "the other half of that trace, and SwiftUI's property list rather than Foundation's",
-        "Optional": "Swift's, named where the documents argue why one reading has to be one",
         "Hasher": "Swift's, named to say why the log's tags are FNV-1a instead",
-        "passRetained": "`Unmanaged`'s member, named in the argument for why the key tap does not use it",
         "totalFileAllocatedSize": "Foundation's resource value, named where the documents say what it answers for a directory",
-        "URLResourceValues.totalFileAllocatedSize": "the same value in full, named where a migration exposed what it costs",
-        "FileSizeFormatting.loctable": "a macOS resource the app reads unit names out of, like `LoginItems.appex`",
-        "SecurityPrivacyExtension.appex": "the bundle the disk-permission row's own words come from — the pane's table, not its search terms",
         "execve": "the syscall a written hosts line has to survive, named in the argument about how long one may be",
-        "ifdata": "BSD's `net.link.generic.ifdata`, the sysctl the tunnel counters read",
         "XCTestConfigurationFilePath": "Xcode's environment variable, named because `swift test` does not set it",
         "NEVPNManager": "NetworkExtension's manager — one of the four things a Developer ID is blocking, and named for exactly that",
-        "periphery": "the unused-code scanner, a tool like `dmgbuild` and `hdiutil`",
-        "leaks": "the tool, named among the three that found nothing before the leak was found another way",
-        "vmmap": "the tool the framework figures were read from",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a
@@ -136,20 +93,12 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "HelmSurface.floatingEdge": "a token the documents claimed existed; grep found it only in the prose, and that paragraph is the correction",
         "SidebarComposerTable": "the composer while it was an NSTableView; the passage is about what that cost and why it went back to a List",
         "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
-        "hasPrevious": "the misspelling this check could not see while it skipped lowercase names; the passage naming it is the account of that blind spot",
-        "SleepHoldersPort": "the port behind «something other than Helm is keeping this Mac awake»; the section naming it is about why a correctly-filtered signal was still not one",
-        "DuplicatesLayout.barWithCount": "the threshold that hid the duplicates total at every width the window opens at; deleted when the total moved under the floor note, and the passages naming it are that defect's history",
-        "barWithCount": "the same constant, named bare in the measuring-script passage",
 
         // Seven more, surfaced by the same 2026-08-30 pass. Each is Helm's own
         // and each is genuinely gone; what had been answering for them was a
         // comment somewhere else explaining the removal well.
         "consumeRisingEdge": "Keep Awake's edge before the 2026-08-20 rename to `consumeEdge`, and the passage naming it is the account of the stale document this check failed to catch",
-        "offeredSizes": "one of the three places the panel used to read a widget's size from, and the sentence naming it is about what reading all three cost",
-        "showsCount": "the toolbar gate that went with `barWithCount` when the duplicates total moved under the floor note",
         "VPNRules.unspokenFor": "the filter that kept a locked configuration out of the page-wide banner because a rule's own row already said it; deleted when the rules moved into a popover nobody had opened",
-        "MemoryReclaim.afterHeavyWork": "the reclaim call measured returning 0 MB in nine attempts and deleted on 2026-07-31; both documents name it to say it is gone",
-        "HomebrewViewModel.loadedStatus": "the latched install flag deleted on 2026-08-20 — and the entry this list could not hold while a test's own prose counted as the tree",
         "FOLDERS": "one of the sixteen orphan translation keys the sweep deleted, named among the words that would otherwise have inherited another control's translations",
     ]
 
