@@ -1830,8 +1830,8 @@ name as a name — a bare mention claims nothing about location, a full path cla
 one. A line number is a claim about a file's length and is checked as one. And the check's
 own contents are excluded from the tree it scans while its own name is not, because reading
 itself would otherwise make the tree contain precisely what it had been told was missing.
-Two curated lists carry the exceptions, spelled differently on purpose: `foreign` is what
-macOS owns, `knownAbsent` is what the documents name **because** it is gone. Swift reaches
+Two curated lists carry the exceptions, spelled differently on purpose: one for what
+macOS owns, one for what the documents name **because** it is gone. Swift reaches
 that check through `Tests/Support/SwiftSource.swift` with comments blanked and string
 literals kept, so a name only a comment writes is not in the tree and a name a literal
 writes is; the other extensions are read whole, since `#` is not a comment in a plist and

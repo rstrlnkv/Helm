@@ -44,7 +44,7 @@ Deutsch, 日本語, Русский, Português.
 ## Requirements
 
 macOS 26 or later, on Apple Silicon: the package declares `.macOS("26.0")` and the
-bundle a release ships is `arm64` only. There is no Intel build and no back-deployment.
+bundle a release ships is arm64 only. There is no Intel build and no back-deployment.
 
 Permissions are asked for where they are turned on, not at first launch: Accessibility
 for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modules that
