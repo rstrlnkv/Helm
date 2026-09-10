@@ -72,6 +72,33 @@ volume.
 a `Sources/HelmApp/main.swift`: a test target depending on it with `@testable import HelmApp`
 builds and runs, and `ModuleRegistry.all` answers inside it.
 
+## What is deliberately not here
+
+**No external dependency.** `Package.swift` declares no `dependencies:` array,
+and the one third-party artwork is vendored with its licence in `NOTICE.md`. A
+utility that removes files and asks for Full Disk Access is read by the person
+installing it, and every dependency is a thing he has to be told about.
+
+**No sandbox and no privileged helper.** `Resources/HelmApp/` carries an
+`Info.plist` and no entitlements file, and `command grep -rn 'NSXPCConnection'
+Sources` prints nothing. The modules reach `/Library`, `/etc/sudoers.d` and other
+applications' bundles; a sandbox would have to be perforated until it meant
+nothing, and a privileged helper is a second binary to sign, install, update and
+take back — the reset story is already the hardest chapter here.
+
+**No transport between the parts.** The host and the modules are one process and
+talk through `Sources/HelmContract`, so there is no version to negotiate and no
+wire compatibility to keep across a release. `EngineCommand`/`EngineEvent`
+(`Sources/HelmContract/EngineMessage.swift`) box a payload as `Data`, and
+`Sources/HelmRuntime/EngineReply.swift` fills it with `JSONEncoder`/`JSONDecoder`
+only to erase the payload's type for one generic call site — that boxing never
+reaches a socket, a pipe or a second binary.
+
+**No back-deployment.** The package declares `.macOS("26.0")` and the shipped
+bundle is arm64 only. Supporting an older system means the ports that read
+`Activity Monitor`-era APIs grow a second path each, and there is no second
+machine to prove that path on.
+
 ## Module pattern
 
 A module is four directories, and the manifest expands them from one `Module`
@@ -141,10 +168,21 @@ replaced. `Tests/HelmContractTests/ReplayOrderTests.swift:34` is the guard, and 
 asserts it entered the window at all, because a race test that failed to race
 proves nothing.
 
-**Ports and logic.** Production side effects sit behind protocols whose system
-implementations live in a module's Sources/Modules/<Name>/Engine/SystemPorts.swift
-and whose fakes live in
+**Ports and logic.** A module that reaches the system does it behind a protocol,
+and the system implementation of that protocol lives in a module's
+Sources/Modules/<Name>/Engine/SystemPorts.swift while its fake lives in the
 tests. Pure decision logic sits in `Sources/Modules/<Name>/Engine/Logic/`.
+
+```bash
+ls Sources/Modules/*/Engine/SystemPorts.swift
+```
+
+names the modules that hold to the pattern. Three do not, for two different
+reasons: Disk and Duplicates read the file system as their whole subject, so a
+port would be a second name for `FileManager` and the reading is tested against
+a real temporary tree instead; Autopilot's two ports sit in `Engine/Logic/`
+where the pattern would put them a directory higher, and that is drift rather
+than a decision.
 
 **A port that answers more than one thing grows a second door.** Where a system
 read comes back empty for more than one reason, the port either grows a second
