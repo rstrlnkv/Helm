@@ -19,6 +19,12 @@ enum Installer {
         /// installed bundle indistinguishable from one that worked — and by then
         /// this process is gone. `UpdateHandoff.note` says the rest.
         case couldNotRecordHandover
+        /// The downloaded bundle calls itself something other than what is
+        /// installed here, so the swap would put one program at another's
+        /// address. Refusing is the only direction available: this function has
+        /// no second place to install to, and by the time the script runs there
+        /// is nobody here to ask.
+        case identityMismatch
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
@@ -43,6 +49,18 @@ enum Installer {
         let got = version(ofBundleAt: newApp) ?? ""
         guard sameVersion(got, expectedVersion) else { throw InstallError.versionMismatch(got) }
 
+        // The swap goes to Bundle.main.bundlePath, whatever is standing there —
+        // so before it moves anything, the downloaded bundle must call itself
+        // the same program that is installed here. Without this, a dev build
+        // (a release build with its identifier rewritten after signing) reads
+        // Beta's release, which is newer than its own prerelease, and ends up
+        // holding a bundle that calls itself the release's identifier at the
+        // dev build's own address.
+        guard let installedID = Bundle.main.bundleIdentifier,
+              identifier(ofBundleAt: newApp) == installedID else {
+            throw InstallError.identityMismatch
+        }
+
         let installPath = Bundle.main.bundlePath
         guard fm.isWritableFile(atPath: (installPath as NSString).deletingLastPathComponent)
                 || fm.isWritableFile(atPath: installPath) else {
@@ -65,6 +83,14 @@ enum Installer {
         let plist = app.appendingPathComponent("Contents/Info.plist")
         guard let dict = NSDictionary(contentsOf: plist) else { return nil }
         return dict["CFBundleShortVersionString"] as? String
+    }
+
+    /// What a bundle on disk calls itself. Read exactly the way its version is
+    /// read one function up, so the two answers come from one plist.
+    static func identifier(ofBundleAt app: URL) -> String? {
+        let plist = app.appendingPathComponent("Contents/Info.plist")
+        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
+        return dict["CFBundleIdentifier"] as? String
     }
 
     /// Compares versions ignoring a leading "v" (tag "v0.4.0" vs bundle "0.4.0").
