@@ -304,6 +304,32 @@ the order is the whole security property — and
 `AppleScript.administratorShellScript` (`:31`) is the one place that composes the
 privileged line.
 
+### Running applications
+
+`NSWorkspace.runningApplications` and `.frontmostApplication` are read on the
+main thread only. A read from another thread does not go stale — it crashes
+the process: AppKit keeps the running-applications list in a mutable array
+behind a KVO helper, `-applications` copies that array under a lock while the
+main thread mutates it as apps come and go, and the VPN engine reading it off
+its own serial queue segfaulted the whole program inside `_cow_copy` the
+moment an app quit at the wrong instant
+(`Sources/HelmRuntime/RunningApps.swift:4-24`). The Keyboard module proved the
+same fact a second time over `frontmostApplication`, once its gesture moved
+onto a background queue and took eight call sites with it
+(`Sources/HelmRuntime/FrontmostApp.swift:6`).
+
+There is no safe shape for "a live list, off the main thread", and neither
+port offers one. `RunningApps` and `FrontmostApp` read where AppKit publishes
+— on the main thread, from the notification that arrives there anyway — and
+hand every other thread a snapshot: whoever was running, or in front, a
+moment ago. Layout's fix gesture and the Uninstaller's quit loop both call
+through the snapshot rather than straight into AppKit
+(`Sources/Modules/Layout/Engine/SystemPorts.swift:630`,
+`Sources/Modules/Uninstaller/Engine/SystemPorts.swift:239`), because both run
+off the main thread by construction — the gesture to keep a slow
+accessibility call off the run loop, the quit loop on the transport's own
+pool — which is exactly where a straight read would crash.
+
 ### Where things are
 
 | What a change touches | Where it lives |
@@ -1189,6 +1215,36 @@ Refusals are values rather than silences: `TrashFailure.Reason`
 `outOfScope` is Helm refusing before anything was attempted. `TrashFailure`
 classifies from the Cocoa error code rather than from the shape of a path.
 
+### One removal at a time
+
+Four modules send a `trash` command — Disk, Duplicates, Leftovers and the
+Uninstaller — and a second press while the first is in flight is not a second
+removal, because the files it would name are already gone: what a repeat can
+only be is a refusal. That refusal has to live in the model and not only in a
+dimmed control, because a control's disabled state lags the redraw that would
+show it and never reaches a row's own context menu at all, which draws from
+the same data with none of the button's `.disabled`.
+`DiskViewModel.toggleBasket` declining while `busy` is the same guard read
+from the basket's own door
+(`Sources/Modules/Disk/UI/DiskResultView.swift:362`).
+
+Left unguarded, a second send does not merely do nothing: the reply that
+lands second overwrites the model's report of the reply that landed first, so
+the person is told the removal that worked failed, over a list of files that
+plainly did not move.
+
+`Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift:33` walks every
+file under `Sources/Modules/` and fails on any that sends a removal without
+the guard; the files it finds today are the output of
+`command grep -rln "guard !busy" Sources/Modules/`, since the count itself
+does not belong in this sentence (CLAUDE.md:129). It scans by whether a file
+**sends** a removal — matching `Command.trash` or `uvm.trashPaths(` in its
+own source — rather than by whether a view model **names** it: an earlier
+version matched `lastPathComponent.contains("ViewModel")` and missed two
+doors that are not named `ViewModel` at all, `OrphansView.swift` and
+`TrashedLeftoversView.swift`, both of which send a removal on their own path
+around the guard the type of that name usually carries.
+
 ### Giving everything back
 
 A reset is not a deletion first. Helm can change four things outside its own two
@@ -1542,6 +1598,41 @@ A harness that leaves its window unordered declares itself with `helmMeasuringBe
 (`Sources/HelmUI/DesignSystem/OffScreenIdle.swift:86`), setting `helmTreatsWindowAsSeen`
 (`:76`) — a declaration the app itself does not make. The panel window is deliberately
 ungated.
+
+### An observer outlives the thing it points at
+
+An observer, a timer or a system port an engine or a view model starts is
+taken down twice: once in `deactivate()` and again in `deinit`. Both are
+needed because `deactivate()` is not guaranteed on every route out, and a
+`deinit` alone is not enough either where the thing observed keeps its own
+reference — the run loop holds a repeating `Timer` for as long as it is
+armed, so the timer outlives whatever created it until something calls
+`invalidate()`, `deinit` included:
+
+```
+guard let self else { return timer.invalidate() }
+```
+
+is the timer's own callback finding its owner already gone, inside
+`RepeatingTick.set(active:)` (`Sources/HelmRuntime/RepeatingTick.swift:30`).
+`VPNEngine` stops its network
+observer from both `deactivate()` (`Sources/Modules/VPN/Engine/VPNEngine.swift:343`)
+and `deinit` (`:350`), because a host that calls `deactivate()` and then drops
+the engine leaves a callback still holding it pointing at freed memory the
+moment the port fires again; `NetworkWatchPort.stopObserving`
+(`Sources/Modules/VPN/Engine/Ports.swift:105`) states the same rule from the
+port's own side, since a port's caller is never guaranteed to be the only
+thing that can reach it before it is gone.
+`Tests/Modules/VPN/EngineTests/VPNNetworkWatchTests.swift:50` guards the
+`deactivate()` half; there is no test for the `deinit` half beyond the fact
+that both engines write it, because a missing `deinit` does not fail loudly —
+it fails as the crash in `Sources/HelmRuntime/RunningApps.swift`'s own doc
+comment did, on whichever call happens to land on the freed object next.
+
+`DiskViewModel` holds its mount-watch observer the same way, so a view model
+dropped when the module is switched off is not woken by the next disk
+somebody plugs in
+(`Sources/Modules/Disk/UI/DiskViewModel.swift:65`).
 
 ### Sealed settings
 
