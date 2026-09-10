@@ -219,7 +219,7 @@ import HelmRuntime
                 // the updater that reads a whole file. This is the pool defect's
                 // own scene — 1204 MB of growth hashing a 1200 MB file before the
                 // `autoreleasepool` went inside the `while` (ARCHITECTURE.md
-                // § Memory) — and until now it ran unattended with no label, so a
+                // § Module pattern) — and until now it ran unattended with no label, so a
                 // silent update check could only ever appear in the trail as
                 // growth between two `idle` readings.
                 let digestMatches = HelmActivity.phase("update.digest") {

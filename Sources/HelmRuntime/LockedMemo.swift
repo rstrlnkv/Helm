@@ -45,7 +45,7 @@ public final class LockedMemo<Key: Hashable, Value>: @unchecked Sendable {
     /// A keyboard layout the system has not published yet is a port answering
     /// «not now», not «never»: storing that would make the first miss the answer
     /// for the life of the process, with no channel to say otherwise (CLAUDE.md
-    /// § Anything that can stop being true on its own owns a channel to say so).
+    /// § What not to do, and what breaks if you do).
     public func valueOrNothing(for key: Key, build: () -> Value?) -> Value? {
         lock.lock()
         defer { lock.unlock() }

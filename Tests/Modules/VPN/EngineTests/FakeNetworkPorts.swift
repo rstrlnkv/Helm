@@ -11,7 +11,7 @@ import Foundation
 /// module has is a configuration's and the store is keyed by network service, so
 /// every such pair this fake accepted was one the system could not produce, and
 /// the suite stayed green while the strip was absent on every Mac (CLAUDE.md
-/// § A fake can also be freer than the port). The interface is `scutil`'s answer
+/// § What not to do, and what breaks if you do). The interface is `scutil`'s answer
 /// now, so it is `FakeRunner.statusOutput` — keyed by the name the tool takes.
 ///
 /// **Every one of them is reached from a thread that is not the test's** — the

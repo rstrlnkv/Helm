@@ -240,9 +240,9 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
     // MARK: - The scan is looking at something
 
     /// A `filter` over nothing is empty, and both rules above would pass for
-    /// ever if `swiftFiles` stopped finding anything — the shape ARCHITECTURE.md
-    /// § A check that cannot fail is not a check keeps warning about. So the
-    /// scan says out loud that it found the calls it exists to judge.
+    /// ever if `swiftFiles` stopped finding anything — a check that cannot fail
+    /// is not a check. So the scan says out loud that it found the calls it
+    /// exists to judge.
     func testTheScanActuallyReachesTheCallSites() throws {
         let all = try sites()
         XCTAssertGreaterThan(all.count, 10,

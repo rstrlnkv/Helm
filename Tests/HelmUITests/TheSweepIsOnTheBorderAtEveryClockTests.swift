@@ -20,9 +20,9 @@ import SwiftUI
 /// **`MeasuringSlotSaysWhatIsStaleTests.testBothSpansStayInsideTheBorder`
 /// already asserts this invariant and cannot fail on it**, because every sample
 /// it takes is `Date(timeIntervalSinceReferenceDate: 0)` plus a positive offset.
-/// The guard is real and its window is one-sided — the shape ARCHITECTURE.md
-/// § A check that cannot fail is not a check collects. So this is not a second
-/// copy of that test; it is the same invariant asked on the other side of the
+/// The guard is real and its window is one-sided — a check that cannot fail is
+/// not a check. So this is not a second copy of that test; it is the same
+/// invariant asked on the other side of the
 /// origin, where the arithmetic actually turns over.
 ///
 /// **The input is not invented.** A Mac that cannot read its real-time clock

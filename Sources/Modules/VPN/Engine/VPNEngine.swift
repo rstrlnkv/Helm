@@ -360,7 +360,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the top: once the body starts it holds `self` for as long as it runs, so
     /// a request waiting on its eight-second timeout holds this engine whoever
     /// else has dropped it — and `deinit` cannot run to cancel it (CLAUDE.md
-    /// § `Task { [weak self] … }`).
+    /// § What not to do, and what breaks if you do).
     private func cancelWorkThatLeftTheQueue() {
         lock.lock()
         let inFlight = [_exitCheck, _speedRun]
@@ -1105,7 +1105,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // engine strongly for as long as the body runs — which here is the
             // eight seconds `VPNExitPort` may take — so `deinit` could not run
             // to cancel the task that was holding it (CLAUDE.md
-            // § `Task { [weak self] … }`). The port is held instead, and it
+            // § What not to do, and what breaks if you do). The port is held instead, and it
             // points at nothing.
             guard let exit = self?.exit else { return }
             let region = await exit.regionCode()

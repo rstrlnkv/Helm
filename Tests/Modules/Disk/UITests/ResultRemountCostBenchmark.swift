@@ -13,7 +13,7 @@ import Module_Disk_Engine
 /// `helmIdlesOffScreen()` unmounts a page's subtree while its window is not
 /// visible and rebuilds it on the next occlusion change — by design, and the
 /// rebuild was costed in *time* (32.5 ms cold, 7–9 ms warm, ARCHITECTURE.md
-/// § A hidden window is unmounted, not billed). Its memory bill was never
+/// § State that outlives a page and ends with its module, not billed). Its memory bill was never
 /// measured, and occlusion changes are not rare events: they arrive whenever
 /// the person's other windows pass over Helm's. Every such rebuild re-creates
 /// the result screen over whatever tree the view model holds — 45 081 nodes in
