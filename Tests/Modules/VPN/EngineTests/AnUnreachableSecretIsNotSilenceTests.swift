@@ -30,8 +30,8 @@ import HelmRuntime
 /// silence, and that the port stops folding «this configuration keeps no secret»
 /// (IKEv2, WireGuard) into the same nil as «there is one and Helm may not read
 /// it» — without that separation the notice would be drawn under every automatic
-/// connect on the machine, which is ARCHITECTURE.md § A warning that is always
-/// true is not a warning.
+/// connect on the machine, which is a warning that is always true is not a
+/// warning.
 final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     private let header = "Available network connection services:"

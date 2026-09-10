@@ -101,8 +101,8 @@ final class TypeScaleRatchetTests: XCTestCase {
     ///
     /// `off.count <= recorded` is satisfied by zero, so a `UISources.sizingType`
     /// that dropped everything would leave the ratchet guarding an empty
-    /// set and reporting success — the shape ARCHITECTURE.md § A check that
-    /// cannot fail is not a check collects. So the scan states what it still
+    /// set and reporting success — the shape a check that cannot fail is not a
+    /// check collects. So the scan states what it still
     /// sees: files, sizes, and sizes that are on the ladder rather than off it.
     ///
     /// The last of those three is the one that matters. A scan finding only

@@ -33,8 +33,8 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     /// holds the engine weakly, so an engine nobody retains is deallocated the
     /// moment this returns and `fire()` reaches nothing — every assertion about
     /// something *not* happening would then pass with the whole gate deleted. It
-    /// cost one debugging round here, which is the trap ARCHITECTURE.md § A check
-    /// that cannot fail describes: assert first that the subject happened.
+    /// cost one debugging round here, which is the trap a check that cannot
+    /// fail describes: assert first that the subject happened.
     private func holding(_ apps: FakeApps, _ runner: FakeRunner,
                          identity: CodeIdentity?) -> VPNEngine {
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())

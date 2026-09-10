@@ -40,7 +40,7 @@ import XCTest
 /// surface is the un-composited fill underneath and would read the same
 /// whatever material — or no material — the header names. A pixel test of the
 /// blur would pass on a header that had lost it, which is the shape
-/// ARCHITECTURE.md § A check that cannot fail is not a check exists to name.
+/// a check that cannot fail is not a check exists to name.
 /// The material is therefore guarded **by construction**, and every message
 /// here that touches the strip's surface says so, so a green run is never read
 /// as coverage of the composite.

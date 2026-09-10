@@ -144,7 +144,7 @@ struct HostsSettingsPage: View {
         // well — but the bar's geometry can be sampled without a screen, and
         // reads 29 distinct heights where a settled page reads one. The bar is
         // not invisible to `cacheDisplay`, which is what that first failure
-        // looked like and was not (ARCHITECTURE.md § Dev loop).
+        // looked like and was not.
         .onChange(of: barHasSomethingToSay) { _, something in
             withAnimation(HelmMotion.disclosure) { showingBar = something }
         }

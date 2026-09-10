@@ -80,8 +80,8 @@ public enum LogLine {
     /// A whole tail of them, on **one** formatter.
     ///
     /// The bulk caller has to exist rather than being a `map` at the call site:
-    /// building a `DateFormatter` is the 42.3 µs ARCHITECTURE.md § What is
-    /// running already records — the 42 ms hitch «Copy log» paid on a full tail
+    /// building a `DateFormatter` is the 42.3 µs what is running already
+    /// records — the 42 ms hitch «Copy log» paid on a full tail
     /// before `HelmDates` cached its own — and this one carries a time zone as
     /// well, which measured 77–100 µs on 2026-08-14. A thousand of them is a
     /// tenth of a second on the main thread for one press of a button.

@@ -15,9 +15,8 @@ import SwiftUI
 /// **The appearance is an argument, never the environment.** The automatic
 /// appearance card draws *both* faces at once and masks one — so a wallpaper
 /// that read `colorScheme` would paint the same half twice. The same reason a
-/// render names its screen (ARCHITECTURE.md § A check that cannot fail is not
-/// a check): inheriting an appearance is how a drawing stops being about what
-/// it says it is about.
+/// render names its screen: inheriting an appearance is how a drawing stops
+/// being about what it says it is about.
 public struct HelmWallpaper: View {
     private let dark: Bool
 

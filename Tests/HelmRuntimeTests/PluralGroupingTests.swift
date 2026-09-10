@@ -9,8 +9,7 @@ import XCTest
 ///
 /// Structural on purpose: the assertion is "a separator stands between the
 /// digit groups", never "the string equals what `HelmBytes.grouped` answers" —
-/// a test whose two sides read one shared constant cannot fail
-/// (ARCHITECTURE.md § A check that cannot fail is not a check).
+/// a test whose two sides read one shared constant cannot fail.
 final class PluralGroupingTests: XCTestCase {
 
     /// The eight the switch in `Plural` spells, including the `default` arm.

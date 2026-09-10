@@ -27,8 +27,8 @@ import XCTest
 ///     `autoreleasepool` removed:   6 303 648 bytes, 10200 an item
 ///
 /// The threshold sits between the two readings, never above one of them — a
-/// ceiling picked after a single measurement records the present and cannot fail
-/// (ARCHITECTURE.md § A check that cannot fail is not a check). The mutation was
+/// ceiling picked after a single measurement records the present and cannot
+/// fail. The mutation was
 /// the three `autoreleasepool` calls in `LeftoversScanner` replaced by a closure
 /// that only calls its body, read back in the file before the run and restored
 /// from a copy after it.
