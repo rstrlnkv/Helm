@@ -17,7 +17,9 @@ import Module_Leftovers_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { LeftoversEngine() }
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        LeftoversEngine(store: store)
+    }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 

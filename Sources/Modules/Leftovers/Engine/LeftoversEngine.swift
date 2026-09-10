@@ -31,16 +31,22 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     public let transport: EngineTransport
     /// The write half. The scan gets `loaded` and cannot reach this.
     private let switcher: LoginItemSwitchPort
+    /// Where the labels this module disabled are recorded, so `willDisable()`
+    /// knows which of them are Helm's to give back.
+    private let store: NamespacedStore
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 files: LeftoversFilePort = FileSystemLeftovers(),
                 apps: InstalledAppsPort = WorkspaceInstalledApps(),
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
+                store: NamespacedStore = NamespacedStore(namespace: LeftoversEngine.moduleID,
+                                                         backing: UserDefaults.standard),
                 transport: LocalTransport = LocalTransport()) {
         self.switcher = switcher
         self.home = home
         self.files = files
+        self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
         self.localTransport = transport
         self.transport = transport
@@ -48,6 +54,37 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {}
+
+    /// The labels this module disabled, so that switching the module off can put
+    /// exactly those back — and nothing else. The system's own disabled list is
+    /// not the answer: it holds every switch the person threw in System
+    /// Settings, and giving those back would be Helm undoing decisions that were
+    /// never Helm's.
+    private static let recordKey = "disabledByHelm"
+
+    func setDisabled(_ disabled: Bool, label: String) async {
+        await offTheCooperativePool { self.switcher.setDisabled(disabled, label: label) }
+        var recorded = Set(store.stringArray(Self.recordKey))
+        if disabled { recorded.insert(label) } else { recorded.remove(label) }
+        store.set(Array(recorded).sorted(), for: Self.recordKey)
+    }
+
+    /// **The give-back.** Reached when the person switches the module off, while
+    /// the record is still there — `ResetPlan.order`
+    /// (`Sources/HelmRuntime/ResetPlan.swift:47`) asks the engines before it
+    /// forgets preferences, and that order is why this can read anything at all.
+    ///
+    /// One ambiguity stays and is written down rather than solved: a label the
+    /// person disabled themselves *after* Helm did is indistinguishable from
+    /// Helm's own, so it is given back too. Describing it belongs in
+    /// `ARCHITECTURE.md` beside the launchd chapter.
+    public func willDisable() {
+        let recorded = store.stringArray(Self.recordKey)
+        guard !recorded.isEmpty else { return }
+        for label in recorded { switcher.setDisabled(false, label: label) }
+        store.set([String](), for: Self.recordKey)
+    }
+
     public func deactivate() {}
 
     public func scan() async -> [StaleItem] {
@@ -151,8 +188,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                                         + "kept")
                     return Data()
                 }
-                await offTheCooperativePool { self.switcher.setDisabled(request.disabled,
-                                                                        label: request.label) }
+                await self.setDisabled(request.disabled, label: request.label)
                 return Data()
             case .trash:
                 guard let paths = EngineReply.decode([String].self, from: command)
