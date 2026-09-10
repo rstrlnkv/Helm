@@ -1,9 +1,10 @@
 # Helm — architecture
 
 Helm is a menu-bar utility suite for macOS: one accessory application that hosts
-ten independent modules. A module is a headless engine and a settings page, and
-the two halves speak only over a transport. Around them stand four foundation
-targets — `Sources/HelmContract` for what crosses the engine/host boundary,
+its independent modules, which `ls Sources/Modules` lists. A module is a
+headless engine and a settings page, and the two halves speak only over a
+transport. Around them stand four foundation targets — `Sources/HelmContract`
+for what crosses the engine/host boundary,
 `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
 system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot
 express — plus `Sources/HelmApp`, the executable that owns the window, the panel
@@ -12,9 +13,11 @@ boundaries in this document are the ones the compiler enforces.
 
 ## Targets
 
-`Package.swift` is the whole account of the package's shape: four foundation
-targets, ten modules of two targets each, one test harness, one executable, four
-host-level test targets and two test targets per module.
+`Package.swift` is the whole account of the package's shape: a foundation layer, a
+module pair (engine and UI) per module, one test harness, one executable,
+host-level test targets and a test target per module.
+`swift package describe --type json` is the census; `Package.swift` is where the
+shape is declared.
 
 ```
 HelmLaunch     the package's only non-Swift target: the Objective-C `@try`
@@ -28,7 +31,7 @@ Module_<X>_UI      descriptor, settings page, panel tile, view model; depends on
                    HelmContract, HelmUI and its own engine
 HelmTestSupport    `Tests/Support`, a plain target every test target depends on
                    and no product lists
-HelmApp        the executable; depends on the ten UI targets and on no engine
+HelmApp        the executable; depends on every module's UI target and on no engine
 ```
 
 `Sources/HelmContract` holds `EngineCommand` and `EngineEvent`
@@ -90,9 +93,9 @@ command grep -rn '^import Module_' Sources/Modules/ \
   | sed 's|Sources/Modules/\([^/]*\)/\([^/]*\)/.*:[0-9]*:import \(.*\)|\1/\2 <- \3|' | sort -u
 ```
 
-prints one row per module, each naming its own engine. `HelmApp` imports the ten
-UI targets and no engine, so a direct edge from the host into an engine would be
-a door past the transport.
+prints one row per module, each naming its own engine. `HelmApp` imports every
+module's UI target and no engine, so a direct edge from the host into an engine
+would be a door past the transport.
 
 **Engines carry no UI.**
 `command grep -rln '^import SwiftUI\|^import HelmUI' Sources/Modules/*/Engine/`
@@ -110,9 +113,11 @@ cannot parse is refused once at the door instead.
 
 The one place a string still crosses is the host, which links no engine:
 `ScanCommand` (`Sources/HelmRuntime/ScanReport.swift:39`) is the constant both
-sides read, and the three scan modules' own command files say so in their doc
-comments. `Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift:20` pins those
-spellings, and scans the source per module for a command name its own engine has
+sides read, and the modules `ScanRunner.scannableModules`
+(`Sources/HelmRuntime/ScanRunner.swift:30`) names have their own command files
+that say so in their doc comments.
+`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift:20` pins those spellings,
+and scans the source per module for a command name its own engine has
 no `case` for, because a typo there is silence and silence already reads as
 "refused" here.
 
@@ -1077,10 +1082,15 @@ command grep -rn --include='*.swift' \
 
 `RemovableScope` (`Sources/HelmRuntime/RemovableScope.swift`) asks what belongs to an
 *application*. The rule is positional rather than a blocklist: a path is removable
-only strictly inside one of the roots its private `roots(home:)` lists — `~/Library`,
-`~/Applications`, `/Applications`, `/Library/LaunchAgents`, `/Library/LaunchDaemons`
-and seven more `/Library` subtrees — minus the three in `forbidden`: `/Library/Apple`,
-`/System`, `/Applications/Utilities`. A `.app` bundle is removable wherever it lives
+only strictly inside one of the roots its private `roots(home:)` lists — the user's
+own two, `/Applications`, and the `/Library` subtrees an installer writes into:
+
+```bash
+sed -n '/private static func roots/,/^    }/p' Sources/HelmRuntime/RemovableScope.swift
+```
+
+— minus those in `forbidden`: `/Library/Apple`, `/System`,
+`/Applications/Utilities`. A `.app` bundle is removable wherever it lives
 as long as it is not a top-level directory.
 
 `UserFileScope` (`Sources/HelmRuntime/UserFileScope.swift`) asks what belongs to the
