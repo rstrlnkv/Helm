@@ -4,19 +4,23 @@ Tools for your Mac. A modular utility suite for macOS in the spirit of PowerToys
 a menu-bar panel, a settings window, and the modules you choose to keep.
 
 ![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)
-[![Release](https://img.shields.io/github/v/release/rstrlnkv/Helm?include_prereleases)](https://github.com/rstrlnkv/Helm/releases)
+[![Release](https://img.shields.io/github/v/release/rstrlnkv/Helm)](https://github.com/rstrlnkv/Helm/releases)
 [![Downloads](https://img.shields.io/github/downloads/rstrlnkv/Helm/total)](https://github.com/rstrlnkv/Helm/releases)
 [![Licence](https://img.shields.io/github/license/rstrlnkv/Helm)](LICENSE)
 
 ## Install
 
-Grab the `.dmg` from the [latest release](https://github.com/rstrlnkv/Helm/releases),
+Grab the `.dmg` from the [latest release](https://github.com/rstrlnkv/Helm/releases/latest),
 drag Helm into Applications, then clear the quarantine once (the build is ad-hoc
 signed):
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Helm.app
 ```
+
+A fresh install follows the **Beta** channel: it updates to releases that have
+graduated, not to the Dev prereleases at the top of the releases list. About Helm
+→ Update channel switches it.
 
 From then on Helm updates itself: **About Helm → Update & Relaunch** verifies the
 download against the SHA-256 the release publishes in its notes, swaps the bundle and
@@ -51,11 +55,17 @@ for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modul
 read protected folders. Because the build is signed ad-hoc, macOS ties a grant to the
 exact binary — every reinstall costs both toggles again.
 
+Three hosts Helm reaches over the network: `api.github.com` for update checks,
+`cloudflare.com/cdn-cgi/trace` when VPN resolves a region, and
+`raw.githubusercontent.com` for the Homebrew installer.
+
 Three things Helm can change beyond its own folders, each behind an administrator
 password and each only if you turn it on. **Closed-lid mode** installs one
-permanent rule in `/etc/sudoers.d` so the lid can stay awake without asking
-again; switching Keep Awake off offers to take it back out, and declining leaves
-it there. **Installing Homebrew** from inside Helm makes `/opt/homebrew` yours —
+permanent, passwordless rule in `/etc/sudoers.d` so the lid can stay awake without
+asking again; switching Keep Awake off offers to take it back out, and declining
+leaves it there. Removing Helm itself does not remove that rule: turn Closed-lid
+mode off before you delete the app, or delete `/etc/sudoers.d/helm-keepawake` by
+hand. **Installing Homebrew** from inside Helm makes `/opt/homebrew` yours —
 that is what Homebrew needs and what its own installer does, and it is not
 undone, by Helm or by anything else. **Switching a login item off** under Login
 Items & Extensions is the same switch System Settings offers, so it survives a
@@ -72,16 +82,13 @@ the version scheme and the shape of a tag are described in the Release section o
 Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
 
 ```bash
-swift test                      # the unit suite; it prints its own count
+swift test                      # the unit suite
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
-Install from the staged path the script prints, not from the copy it leaves in `build/`
-for inspection, and keep the checkout out from under a file provider (iCloud Drive,
-Dropbox, and the like): a provider stamps `com.apple.FinderInfo` onto the bundles it
-manages and `codesign` refuses a bundle carrying it. Everything else about working in
-this tree — release packaging, versioning, what a person does by hand — is in
-[CLAUDE.md](CLAUDE.md).
+`swift test` runs the suite — read the whole log, not the tail, since the closing
+line belongs to the last bundle. Three guards over the documents are red on
+purpose right now; [CLAUDE.md](CLAUDE.md) says which, why, and everything else.
 
 ## Licence
 
