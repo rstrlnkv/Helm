@@ -12,8 +12,9 @@ import XCTest
 ///
 /// The outcome is deliberately about *prereleases* being ahead. A final release
 /// ahead of its own channel is a state the release flow does not produce
-/// (VERSIONING.md: everything ships to dev first), and calling it out would put
-/// a notice on the About page of every ordinary user the day a channel lags.
+/// (ARCHITECTURE.md § Release: everything ships to dev first), and calling it
+/// out would put a notice on the About page of every ordinary user the day a
+/// channel lags.
 final class UpdateAheadOfChannelTests: XCTestCase {
 
     private func release(tag: String) -> Data {

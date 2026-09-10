@@ -4,75 +4,30 @@ build/
 *.xcodeproj/xcuserdata/
 DerivedData/
 
-# The crew is local. The agent briefs live on disk and are not part of the
-# project's history: they are how one person drives this repository, not
-# something it ships.
-# `agents`, `crew` and `skills` are symbolic links into Core Crew, for the same
-# reason the documents are: they were copies, and copies of the crew existed in
-# four places at once — twice inside this tree, because a bare `.claude/agents/`
-# is not read when the crew is installed as a plugin and the plugin copy is not
-# what a plain checkout reads.
+# The crew is local: the agent briefs live on disk and are not part of the
+# project's history, because they are how one person drives this repository,
+# not something it ships. `agents` and `crew` are symbolic links into Core
+# Crew for that same reason — `install.sh` creates both under "2. Project
+# trees and their worktrees" (`link_dir "$t/.claude/agents" ...` and
+# `link_dir "$t/.claude/crew" ...`), and `ls -la .claude` in a checkout it has
+# run against shows the pair pointing into Core Crew.
 #
-# **The plugin is gone since 2026-09-06, and `/plugins/` and `/.claude-plugin/`
-# went with it.** The crew was packaged as `helm-crew@helm` and installed with
-# `/plugin marketplace add ~/Projects/Helm`, which reads the working copy, so
-# nothing about installing it ever needed git. A plugin installs on the
-# **account** rather than on the project, this one was never enabled here, and
-# the briefs now arrive through the `.claude/agents` link alone — so the two
-# lines that ignored its directories named nothing left in this tree and were
-# removed with it.
-#
-# No trailing slash on `agents`, and the reason is worth reading twice: `/docs/`
-# had exactly this bug an hour earlier. A pattern ending in `/` matches a
-# directory and not a link, so the moment a copy becomes a link it reappears in
-# `git status`.
+# `/.claude/agents` and `/.claude/crew` carry no trailing slash because each
+# names a symbolic link: a pattern ending in `/` matches a directory and not a
+# symbolic link, so the moment a tracked copy becomes a link it would
+# reappear in `git status`. `.build/`, `build/`, `*.xcodeproj/xcuserdata/`,
+# `DerivedData/` above and `/.superpowers/` below carry the slash because each
+# of those names an ordinary directory that install.sh never turns into a link.
 /.claude/agents
 /.claude/crew
-# `skills` joined them 2026-09-06: the crew's own `motion-probe` lived only
-# inside the plugin, and the plugin is not enabled — the skill was declared and
-# unreachable. It is a link now, so it needs the same no-trailing-slash line.
-/.claude/skills
-
-# The measuring tools, and the release process. Links into Core Crew.
-#
-# The line is not "does this look like design work" but **"does the build break
-# without it"**. `make-dmg-background.swift` stays public and tracked though it
-# looks exactly like its neighbours: `make-dmg.sh` invokes it by path, and
-# CLAUDE.md requires its slot coordinates to match `dmg-settings.py` — splitting
-# that pair across two repositories would guarantee they drift. The rest produce
-# nothing that ships. They prove things: contrast ratios, motion durations,
-# symbol ink, screenshots of every page.
-#
-# No trailing slash on `layout`, for the third time today.
-/Scripts/layout
-/Scripts/design/README.md
-/Scripts/design/contrast.swift
-/Scripts/design/make-wordmark.swift
-/Scripts/design/measure-motion.swift
-/Scripts/design/measure-symbols.swift
-/Scripts/design/measure-wordmark.swift
-/Scripts/design/shoot-all.sh
-/Scripts/design/shoot-panel.sh
-/Scripts/design/shoot.sh
-/Scripts/design/window-id.swift
 
 # Only `docs/` stays out of the tree: plans and specs are a record of decisions
-# being made, not of what the program is. ARCHITECTURE.md, CLAUDE.md and
-# CHANGELOG.md describe the program itself and belong in the repository with it.
-# They used to live outside the tree and arrive as links, so a rollback of the
-# code did not take the documents with it and the tree's own tests, which check
-# that a document names things that exist, had nothing to read. Both stop being
-# true once the documents are committed here.
-#
-# No trailing slash on `docs`. The pattern was `/docs/`, which matches a
-# directory and not a link, so the moment the copy became a link it reappeared
-# in `git status` — one character between "ignored" and "about to be committed
-# into the public history".
+# being made, not of what the program is. ARCHITECTURE.md, CLAUDE.md,
+# CHANGELOG.md and README.md describe the program itself and belong in the
+# repository with it.
 /docs
 
 # Brainstorm sessions write HTML mockups here. They are working material for one
 # design conversation — the decisions that survive them land in `docs/`, and the
 # mockups themselves are worth keeping on disk and out of the history.
 /.superpowers/
-.claude/agents
-.claude/crew

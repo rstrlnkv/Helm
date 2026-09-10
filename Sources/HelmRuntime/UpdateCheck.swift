@@ -124,9 +124,9 @@ public enum UpdateCheck {
         guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else {
             // Only a prerelease reports being ahead. A *final* release ahead of
             // its own channel is a state the release flow does not produce
-            // (VERSIONING.md: everything ships to dev first), and treating it
-            // as one would put a notice on every ordinary user's About page the
-            // day a channel lags.
+            // (ARCHITECTURE.md § Release: everything ships to dev first), and
+            // treating it as one would put a notice on every ordinary user's
+            // About page the day a channel lags.
             guard UpdateVersion.prereleaseOrdinal(currentVersion) != nil,
                   UpdateVersion.isNewer(currentVersion, than: gh.tag_name)
             else { return .upToDate }
