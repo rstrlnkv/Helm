@@ -51,6 +51,17 @@ for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modul
 read protected folders. Because the build is signed ad-hoc, macOS ties a grant to the
 exact binary — every reinstall costs both toggles again.
 
+Three things Helm can change beyond its own folders, each behind an administrator
+password and each only if you turn it on. **Closed-lid mode** installs one
+permanent rule in `/etc/sudoers.d` so the lid can stay awake without asking
+again; switching Keep Awake off offers to take it back out, and declining leaves
+it there. **Installing Homebrew** from inside Helm makes `/opt/homebrew` yours —
+that is what Homebrew needs and what its own installer does, and it is not
+undone, by Helm or by anything else. **Switching a login item off** under Login
+Items & Extensions is the same switch System Settings offers, so it survives a
+reboot; "Reset all settings" switches back on what Helm switched off. Everything
+Helm removes goes to the Trash.
+
 Releases go to the **Dev** channel first and graduate to **Beta** once the count of
 known problems reaches zero; the switch is About Helm → Update channel. The channels,
 the version scheme and the shape of a tag are described in the Release section of

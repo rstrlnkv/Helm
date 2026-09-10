@@ -651,6 +651,15 @@ dash is a package rather than a flag, and they reach the log through `Redact.pkg
 straight off the wire with no gate of its own, which is sound only while the
 transport is in-process with one sender.
 
+The in-app installer (`installBrew`, `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:461`)
+runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL` (`:46`),
+which names `HEAD` rather than a pinned revision or checksum — whatever the branch
+holds the day the button is pressed. Before the download, one administrator dialog
+authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
+/opt/homebrew` (`:481`), which is the only privileged step; the installer itself then
+runs as the now-owning user. See «Giving everything back» for why that ownership
+change is the one reach this document does not describe as reversible.
+
 ### Hosts
 
 `Sources/Modules/Hosts/` edits `/etc/hosts`
@@ -838,6 +847,14 @@ Settings. That switch is aimed at a launchd *label*, and a label is not a file �
 files claim one switch, since a vendor's agent commonly sits in both
 `~/Library/LaunchAgents` and `/Library/LaunchAgents` and both load into the same GUI
 domain.
+
+`LeftoversEngine` keeps its own record of the labels it disabled
+(`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift:34`), so switching the
+module off gives back exactly those and nothing the person switched off in
+System Settings. `willDisable()` (`:81`) reads that record rather than the
+system's own disabled list, because the system's list holds every switch anybody
+threw and giving those back would be Helm undoing a decision that was never
+Helm's; the edge that record cannot close is in «Giving everything back».
 
 Writability is asked of a directory rather than of each item in it: the port is
 named for that in `Sources/Modules/Leftovers/Engine/Ports.swift`.
@@ -1105,18 +1122,49 @@ classifies from the Cocoa error code rather than from the shape of a path.
 
 ### Giving everything back
 
-A reset is not a deletion first. Helm changes exactly one thing outside its own two
-folders — the passwordless `pmset` rule Keep Awake's closed-lid option writes under
-`/etc/sudoers.d` — and the only code that can take that back is the module that put it
-there. `ResetPlan.Step` (`Sources/HelmRuntime/ResetPlan.swift:27`) is
-`handBackWhatIsOutsideHelm`, `trashHelmsOwnFolders`, `forgetPreferences`, `relaunch`,
-and `ResetPlan.order` (`:47`) is that order as a value rather than the shape of a
-function body, where what was missing from it was invisible for exactly that reason.
-`Sources/HelmApp/ResetEverything.swift:33` switches over the steps exhaustively, so a
-step added to the plan and left uncarried is a build error. The engines are asked
-first, through `ModuleEngine.willDisable`, while the settings an engine decides with
-are still there, and the answer can be no. `ResetPlan.roots`
-(`Sources/HelmRuntime/ResetPlan.swift:54`) names the two folders: Helm's Application
+A reset is not a deletion first. Helm can change four things outside its own two
+folders, each only if the person switches it on, and three of them are given back:
+
+- the passwordless `pmset` rule Keep Awake's closed-lid option writes under
+  `/etc/sudoers.d` — taken back by the module that put it there
+  (`Sources/Modules/KeepAwake/Engine/KeepAwakeEngine.swift:172`), through an
+  administrator dialog the person can decline, in which case the rule stays and
+  Helm says so rather than reporting a reset that did not happen;
+- the login items Leftovers switched off with `launchctl disable`
+  (`Sources/Modules/Leftovers/Engine/SystemPorts.swift:135-146`) — switched back
+  on from the module's own record of what it disabled;
+- Helm's own registration in the login-item database
+  (`Sources/HelmApp/LoginItem.swift:64`) — unregistered as a step of the plan,
+  because the application registered it and no module owns it;
+- ownership of `/opt/homebrew`, changed by the in-app Homebrew installer
+  (`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:481`). **This one is not
+  given back.** Helm does not record who owned the tree before, and handing it
+  back to root would leave a `brew` that cannot install anything without `sudo`
+  — the ownership is what Homebrew needs, and it is what Homebrew's own
+  installer does on any Mac.
+
+The launchd give-back has an edge that cannot be closed from here: a label the
+person disabled themselves *after* Helm disabled it is indistinguishable from
+Helm's own, so it is switched back on too. The alternative — reading the
+system's own disabled list — would give back decisions that were never Helm's,
+which is worse in the same direction.
+
+Two keychain keys stay: `com.helm.app` / `settings-seal` and `com.helm.autopilot`
+/ `rule-seal`. `KeychainSealKey` can read and create and not delete, and a
+delete on an ad-hoc-signed bundle costs a modal dialog for each. By the time the
+reset reaches them the preferences domain is gone, so what they sealed no longer
+exists: what remains is 32 bytes the next launch reads as its own.
+
+`ResetPlan.Step` (`Sources/HelmRuntime/ResetPlan.swift:27`) is
+`handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`, `trashHelmsOwnFolders`,
+`forgetPreferences`, `relaunch`, and `ResetPlan.order` (`:59`) is that order as a
+value rather than the shape of a function body, where what was missing from it
+was invisible for exactly that reason. `Sources/HelmApp/ResetEverything.swift:33`
+switches over the steps exhaustively, so a step added to the plan and left
+uncarried is a build error. The engines are asked first, through
+`ModuleEngine.willDisable`, while the settings an engine decides with are still
+there; asking is not being given. `ResetPlan.roots`
+(`Sources/HelmRuntime/ResetPlan.swift:67`) names the two folders: Helm's Application
 Support directory (`Sources/HelmRuntime/HelmSupport.swift:20`) and
 `~/Library/Logs/Helm`. They go to the Trash rather than through `unlink`.
 

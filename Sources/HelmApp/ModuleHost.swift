@@ -149,12 +149,12 @@ import HelmUI
     ///
     /// The second caller of `willDisable()`, and the only one that is not a
     /// module being switched off: «Reset all settings» promises the machine is
-    /// as it was just after installing, and the one thing Helm changes beyond
-    /// its two directories is the passwordless `pmset` rule Keep Awake's lid
-    /// option installs. A reset that reached for `/etc/sudoers.d` itself would
-    /// be the rule in the wrong place — and could not remove it anyway, since it
-    /// is root's and comes out through an administrator dialog. So the module
-    /// that installed it is asked to give it back, which is exactly what
+    /// as it was just after installing, and one of the things Helm changes
+    /// beyond its two directories is the passwordless `pmset` rule Keep Awake's
+    /// lid option installs. A reset that reached for `/etc/sudoers.d` itself
+    /// would be the rule in the wrong place — and could not remove it anyway,
+    /// since it is root's and comes out through an administrator dialog. So the
+    /// module that installed it is asked to give it back, which is exactly what
     /// `willDisable` means (`ModuleEngine.willDisable`).
     ///
     /// **Asking is not being given.** The dialog can be declined, and what that

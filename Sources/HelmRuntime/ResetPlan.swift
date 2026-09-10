@@ -25,14 +25,13 @@ public enum ResetPlan {
     /// exhaustively where it is carried out — a case added without an arm is a
     /// build error, never a step that silently never happens.
     public enum Step: CaseIterable, Sendable {
-        /// **The part that is not a path.** Helm changes exactly one thing
-        /// outside its own two folders: the passwordless `pmset` rule Keep
-        /// Awake's closed-lid option installs in `/etc/sudoers.d`, which is
-        /// root's and can only come out through an administrator dialog. A reset
-        /// that taught itself that filename would be the rule in the wrong
-        /// place; it asks the engines instead, through the one call that means
-        /// «the person is here and this is the last moment to ask»
-        /// (`ModuleEngine.willDisable`). The answer can be *no* — a declined
+        /// **The part that is not a path.** The passwordless `pmset` rule Keep
+        /// Awake's closed-lid option installs in `/etc/sudoers.d` is root's and
+        /// can only come out through an administrator dialog. A reset that
+        /// taught itself that filename would be the rule in the wrong place; it
+        /// asks the engines instead, through the one call that means «the
+        /// person is here and this is the last moment to ask»
+        /// (`ModuleEngine.willDisable`). Asking is not being given — a declined
         /// dialog leaves the rule exactly where it was — which is why this is
         /// asked rather than assumed, and why it is asked **first**, while the
         /// settings an engine decides with are still there.
