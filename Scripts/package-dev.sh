@@ -15,10 +15,10 @@ set -euo pipefail
 # The two look identical in the menu bar — same icon, same ring. The dev one is
 # the one whose right-click menu says "Helm Dev".
 #
-# `scripts/` is not tracked by git, so this file does not travel with a commit
-# and cannot be recovered from one. It lives in the working copy only.
+# `Scripts/package-dev.sh` is tracked by git like the rest of the tree, so a
+# change here travels with a commit and can be recovered from one.
 #
-# Run: bash scripts/package-dev.sh
+# Run: bash Scripts/package-dev.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

@@ -281,7 +281,7 @@ privileged line.
 | the translations | `Sources/HelmUI/Resources/` |
 | the window, panel, status item, settings, changelog | `Sources/HelmApp/` |
 | plumbing a test target wants | `Tests/Support/` |
-| build, sign, package, disk image, screenshots | `Scripts/` |
+| build, sign, package, disk image | `Scripts/` |
 
 ## UI shell
 
@@ -394,8 +394,9 @@ invisible until the one time a row asks for more than the pane has.
 `SettingsSelection` has four cases and two of them are not modules
 (`Sources/HelmApp/SettingsWindow.swift:83`): `.general`, `.about`, `.log` and
 `.module(String)`. That distinction is what keeps the Log pane out of
-`ModuleRegistry.all` and so out of the store, the panel, the tour, `ModuleOrder`
-and every count. The only registry count drawn is About's
+`ModuleRegistry.all` and so out of the store, the panel, the tour and every
+count. `ModuleOrder` reorders that same kind of id list too, but nothing in
+`Sources/` calls it — only its own tests do. The only registry count drawn is About's
 (`Sources/HelmApp/AboutPage.swift:101`); the sidebar summary counts the
 arrangement (`Sources/HelmApp/AppStrings.swift:529`). The Log row ships on every
 build, because the logging switch lives in it
@@ -434,16 +435,22 @@ is one arrangement rather than two that agree by habit. Neither observes
 `UserDefaults`; both listen for `.helmModuleOrderChanged`
 (`Sources/HelmRuntime/NamespacedStore.swift:162`), posted on every write.
 
-Where a drop lands is arithmetic: `SidebarLayoutDrag.flattened`
+Where a drop lands is arithmetic: `SidebarLayout.flattened`
 (`Sources/HelmUI/SidebarLayoutDrag.swift:30`) turns the layout into headings and
-their modules, and `applyingDrag(of:toFlatIndex:)`
-(`Sources/HelmUI/SidebarLayoutDrag.swift:38`) answers what the layout becomes. It
-is pure and tested, which is why the view that draws the list has been rewritten
-without the drop rules moving. `Sources/HelmApp/SidebarComposerList.swift` has two
-states and one row height in both: at rest a list of what the sidebar holds with
-every switch live, and in edit the grips, the section menus and the buttons that
-change the arrangement. The drag is off at rest, because there is no undo here.
-The composer was an `NSTableView` once, driven by `SidebarComposerRedraw` through
+their modules, and `SidebarLayout.applyingDrag(of:toFlatIndex:)`
+(`Sources/HelmUI/SidebarLayoutDrag.swift:38`) answers what the layout becomes.
+Both are members of `SidebarLayout`; the file is named after what it adds, not
+after a type of its own. The pair is pure and tested, which is why the view
+that draws the list has been rewritten without the drop rules moving.
+`Sources/HelmApp/SidebarComposerSheet.swift` is the composer's only entry: it
+builds `SidebarComposerList` at `:182` with `editing: true`, is the sheet's own
+writer of the arrangement (`:137`), and the only sender of
+`.helmModuleOrderChanged` (`:146`). The list still has two states and one row
+height in both — at rest a list of what the sidebar holds with every switch
+live, and in edit the grips, the section menus and the buttons that change the
+arrangement — but with the composer reachable only through the sheet,
+`editing: true` is what it always opens with; the at-rest state is unreachable
+today. The composer was an `NSTableView` once, driven by `SidebarComposerRedraw` through
 `SidebarComposerTable`; two animation systems in one list cost more than the table
 saved, and both names survive only in the prose about their removal.
 
@@ -689,9 +696,14 @@ redirection truncates before the decoder runs. `HostsWrite.fits`
 sentence would survive its own `execve`, which caps a writable hosts file at roughly
 390 KB; larger files are still shown, and said so on open.
 
-There is no rule in `/etc/sudoers.d` for this module —
-`command grep -rn 'sudoers.d' Sources/` names only Keep Awake's. Every Apply is one
-dialog, and `PrivilegedOutcome` keeps "you cancelled" and "the write failed" apart
+There is no rule in `/etc/sudoers.d` for this module — of every module naming it,
+only Keep Awake's is a rule of its own:
+
+```bash
+command grep -rln 'sudoers.d' Sources/ --include='*.swift' | command grep 'Modules/'
+```
+
+Every Apply is one dialog, and `PrivilegedOutcome` keeps "you cancelled" and "the write failed" apart
 all the way to the screen. A port reporting success is believed by nothing but the
 read-back, compared by digest through `Sources/HelmRuntime/HexDigest.swift` because
 the log carries no names.
@@ -1332,7 +1344,7 @@ test asks through. An inline table is kept where a Swift-interpolated string is 
 because interpolation runs before the lookup, and
 `command grep -rl 'table:' Sources` names those sites.
 
-Four guards face four different directions, and each was blind to the others' subject:
+Each of these guards faces a direction the others were blind to:
 
 - `Tests/HelmUITests/StringsCoverageTests.swift:12` — every English key present in all
   eight files, nothing empty, one lookup end to end through the shipped bundle.
@@ -1342,14 +1354,18 @@ Four guards face four different directions, and each was blind to the others' su
   cannot show it, since `L()` falls back to its own key. One sweep deleted sixteen of
   them, `FOLDERS` among the words that would otherwise have inherited another control's
   translations.
-- The direction where a literal in the source reached no table at all: it reads
-  perfectly in English and ships English to the other seven with nothing failing. It
-  skips interpolated literals, which keep their tables at the call site.
-- `Tests/HelmUITests/OneEntryPerKeyTests.swift:23` — a key written twice.
-  `NSDictionary(contentsOfFile:)` keeps the last entry and says nothing about the first,
-  `plutil -lint` calls such a file valid because it is, and a coverage check reads the
-  dictionary the loader already collapsed; this one reads the file as text and compares
-  what it parsed against what the loader returned.
+- `Tests/HelmUITests/StringsLiveInLprojTests.swift:26` — the direction where a literal
+  in the source reached no table at all: it reads perfectly in English and ships English
+  to the other seven with nothing failing. It skips interpolated literals, which keep
+  their tables at the call site.
+- `Tests/HelmUITests/OneEntryPerKeyTests.swift:23` and
+  `Tests/HelmUITests/NoKeyIsWrittenTwiceTests.swift:21` — a key written twice, faced from
+  two sides. `NSDictionary(contentsOfFile:)` keeps the last entry and says nothing about
+  the first, `plutil -lint` calls such a file valid because it is, and a coverage check
+  reads the dictionary the loader already collapsed; the first of the two reads the file
+  as text and cross-checks what it parsed against what the loader returned, and the
+  second counts each key's occurrences straight off the lines, proven on a fixture of
+  its own rather than on the tree.
 
 A malformed `.strings` file is silent: the loader returns nil and every
 string falls back to English with no error anywhere.
@@ -1603,11 +1619,15 @@ and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for inspectio
 `Scripts/make-dmg.sh:12` and `Scripts/make-zip.sh:14` read the **signed** bundle from
 `$TMPDIR/helm-package` and re-run `codesign --verify --deep --strict`
 (`Scripts/make-dmg.sh:14`, `Scripts/make-zip.sh:16`) before packaging, exiting non-zero
-rather than shipping a bundle whose seal something broke. `Scripts/package-dev.sh` builds
-the same worktree as **Helm Dev** beside the real app, rewriting `CFBundleIdentifier` to
-`com.helm.app.dev` (`Scripts/package-dev.sh:38`) so the two hold separate preferences
-domains. `ls Scripts/` is the list of what ships a release; `ls Scripts/design` is what
-draws for it.
+rather than shipping a bundle whose seal something broke. `Scripts/package-dev.sh`
+builds through `Scripts/package-app.sh`, rewrites `CFBundleIdentifier` to
+`com.helm.app.dev` (`Scripts/package-dev.sh:38`) so the two hold separate
+preferences domains, then replaces the installed **Helm Dev** and reopens it: it
+kills any running copy (`:51`), removes `/Applications/Helm Dev.app` (`:53`),
+strips quarantine (`:55`) and opens the fresh one (`:56`). The release scripts are
+`Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
+`Scripts/package-dev.sh`; `Scripts/flags` and `Scripts/design` produce nothing
+that ships on their own.
 
 ### The updater
 
@@ -1615,9 +1635,11 @@ draws for it.
 `UpdateCheck.evaluate` (`Sources/HelmRuntime/UpdateCheck.swift:90`) is pure and tested;
 `Installer.installZip` (`Sources/HelmApp/Installer.swift:27`) does the install. The app
 downloads the release zip itself, so the file carries no quarantine, unpacks it with
-`/usr/bin/ditto -x -k` (`Sources/HelmApp/Installer.swift:34`), and a detached script
-waits for the process to exit, swaps `/Applications/Helm.app`, relaunches and removes
-every temp artifact including itself. `UpdateSwap`
+`/usr/bin/ditto -x -k` (`Sources/HelmApp/Installer.swift:34`), and — once the
+downloaded bundle passes the check that it names the same program already
+installed here, refusing otherwise — a detached script waits for the process to
+exit, swaps the running bundle, relaunches and removes every temp artifact
+including itself. `UpdateSwap`
 (`Sources/HelmApp/UpdateSwap.swift:31`) moves the installed bundle aside, copies, reads
 the status and either removes the aside or puts it back. `UpdateHandoff`
 (`Sources/HelmApp/UpdateSwap.swift:100`) is the note a failure is reported by at the next
@@ -1640,7 +1662,7 @@ unpacked bundle's own version, so a mislabelled asset cannot be swapped in eithe
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
 `Sources/HelmApp/ChangelogData.swift` is the same list inside the app: structured entries
 badged `new`, `upd` and `fix` (`:28`), each text passing through `L()` and computed rather
-than stored so the current language resolves on every read (`:70`). A version heading in
+than stored so the current language resolves on every read (`:71`). A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.
@@ -1675,8 +1697,9 @@ AppleScript, reports them back correctly when queried, and draws its default win
 — 48 pt icons in a grid, no background — which was seen from a hand-written `osascript`
 block and from Homebrew's `create-dmg` alike, so it is the OS rather than any one script.
 Only the window's *bounds* still take. `dmgbuild` writes the `.DS_Store` directly instead;
-it lives in a virtual environment under `build/dmg-tools` which `Scripts/make-dmg.sh:58`
-creates on first run, out of the system Python that Homebrew marks externally managed.
+it lives in a virtual environment under `build/dmg-tools` which
+`Scripts/make-dmg.sh:65-69` creates on first run, out of the system Python that
+Homebrew marks externally managed.
 `build/` is git-ignored, so a fresh clone pays for that environment once.
 `Scripts/make-dmg.sh:65` asks the tool to **run** rather than to exist, because a venv
 records its interpreter's absolute path and moving the repository leaves an executable
