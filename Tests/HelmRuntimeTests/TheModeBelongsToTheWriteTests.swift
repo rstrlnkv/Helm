@@ -19,9 +19,9 @@ import HelmTestSupport
 /// window — a second defence standing in for the first one, and the day a
 /// caller writes into a folder it did not make, nothing is left.
 ///
-/// CLAUDE.md § What the app may destroy already says this to every caller: «a
-/// file that names somebody's files is written through `PrivateFile`, never a
-/// hand-rolled `write(options: .atomic)` plus `setAttributes`». The rule had one
+/// CLAUDE.md § What not to do, and what breaks if you do: «a file that names
+/// somebody's files is written through `PrivateFile`, never a hand-rolled
+/// `write(options: .atomic)` plus `setAttributes`». The rule had one
 /// exception left, and it was `PrivateFile` itself.
 ///
 /// So the scan is over `Sources` entire rather than over the one file: it is the

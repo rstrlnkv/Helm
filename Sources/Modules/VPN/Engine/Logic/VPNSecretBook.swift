@@ -14,15 +14,14 @@ import Foundation
 /// usable secret», which is what this book is.
 ///
 /// **It is a latch with two reverse channels, not a flag**, because the fact it
-/// holds can stop being true without Helm doing anything (CLAUDE.md § Anything
-/// that can stop being true on its own owns a channel to say so): a person
-/// pressing Connect fills the cache, and the tunnel may come up regardless —
-/// somebody raised it in System Settings, or `scutil` never needed Helm's secret
-/// for it. `step` is the first channel and `reconcile` the second; without them
-/// this would be a warning nobody could clear.
+/// holds can stop being true without Helm doing anything (CLAUDE.md § What not to
+/// do, and what breaks if you do): a person pressing Connect fills the cache, and
+/// the tunnel may come up regardless — somebody raised it in System Settings, or
+/// `scutil` never needed Helm's secret for it. `step` is the first channel and
+/// `reconcile` the second; without them this would be a warning nobody could clear.
 ///
 /// Internal, not public: the engine publishes `names` as `[String]`, so no other
-/// target names this type (CLAUDE.md § `public` means "another target uses this").
+/// target names this type (CLAUDE.md § Where things go).
 struct VPNSecretBook: Sendable {
     private var locked: Set<String> = []
 

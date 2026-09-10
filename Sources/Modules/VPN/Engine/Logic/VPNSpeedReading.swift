@@ -31,12 +31,12 @@ public struct VPNSpeedReading: Codable, Equatable, Sendable {
     /// nothing else; this publishes a *length*, so the arc goes on claiming the
     /// clock rather than the work (`HelmExpectedWait`).
     ///
-    /// Optional, and that is what makes an older payload decode: Swift
-    /// synthesises `decodeIfPresent` for an `Optional` property, where a
-    /// non-optional with a stored default is still a required key and throws
-    /// away the whole document (CLAUDE.md § a `defaulted` property on a
-    /// `Codable` payload). Nil is also what a run of no measurable length
-    /// means, which is every reading a test's fixed clock produces.
+    /// Optional, and that is what makes an older payload decode: Swift synthesises
+    /// `decodeIfPresent` for an `Optional` property, where a non-optional with a
+    /// stored default is still a required key and throws away the whole document
+    /// (CLAUDE.md § What not to do, and what breaks if you do). Nil is also what a
+    /// run of no measurable length means, which is every reading a test's fixed
+    /// clock produces.
     public let took: TimeInterval?
 
     public init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {

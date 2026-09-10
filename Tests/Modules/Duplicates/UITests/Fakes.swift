@@ -193,9 +193,9 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
         (eventStream, eventContinuation) = AsyncStream.makeStream(of: EngineEvent.self)
     }
 
-    /// The engine going away under the page, or coming back. A port that can
-    /// change while the app runs hands that state back rather than being fixed at
-    /// init (CLAUDE.md § Anything that can stop being true on its own).
+    /// The engine going away under the page, or coming back. A port that can change
+    /// while the app runs hands that state back rather than being fixed at init
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
     /// The same, for one command only.

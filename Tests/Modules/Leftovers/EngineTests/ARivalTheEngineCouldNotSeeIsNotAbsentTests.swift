@@ -49,9 +49,9 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     /// Both agent folders hold the same label — the ordinary shape on a Mac with a
     /// vendor updater installed for the person and for everybody.
     ///
-    /// `unopenable` names folders whose `contents(of:)` answers `.refused`, which is
-    /// the port's third answer: the fake can be in that state because the port can
-    /// (CLAUDE.md § A fake simpler than the thing it stands for).
+    /// `unopenable` names folders whose `contents(of:)` answers `.refused`, which
+    /// is the port's third answer: the fake can be in that state because the port
+    /// can (CLAUDE.md § What not to do, and what breaks if you do).
     private func files(refusing refused: Set<String> = []) -> LeftoversFakeFiles {
         var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]

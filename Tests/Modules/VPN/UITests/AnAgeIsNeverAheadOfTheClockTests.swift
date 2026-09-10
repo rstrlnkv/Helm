@@ -31,9 +31,9 @@ import XCTest
 /// drawing something. The reading's `at` comes off the same clock, over the
 /// wire, and can be ahead of the page's `now` by exactly that much.
 ///
-/// Asserted in all eight languages, because the shape of a future relative date
-/// is a fact about each of them and this Mac is set to one
-/// (CLAUDE.md § a test parameterized by an explicit language).
+/// Asserted in all eight languages, because the shape of a future relative date is
+/// a fact about each of them and this Mac is set to one (CLAUDE.md § What not to
+/// do, and what breaks if you do).
 final class AnAgeIsNeverAheadOfTheClockTests: XCTestCase {
 
     private let now = Date(timeIntervalSince1970: 1_700_000_000)

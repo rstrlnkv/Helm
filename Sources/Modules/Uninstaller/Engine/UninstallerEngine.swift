@@ -501,7 +501,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private func removeBatch(_ paths: [String],
                              quittingRunningApps mayQuit: Bool) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
-        // port reaches AppKit through the main thread (ARCHITECTURE § Running
+        // port reaches AppKit through the main thread (ARCHITECTURE.md § Running
         // applications).
         let upNow = await offTheCooperativePool { self.runningApps(among: paths) }
         switch UninstallPlan.verdict(running: upNow, mayQuit: mayQuit) {

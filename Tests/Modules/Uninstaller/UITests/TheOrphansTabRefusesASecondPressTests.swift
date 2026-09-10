@@ -30,7 +30,7 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
     func testTheOrphansTabRefusesASecondRemoval() throws {
         // `RepoSource.root` rather than a count of parent directories, which is a
         // fact about where this file sits and breaks silently when it moves
-        // (CLAUDE.md § Test plumbing).
+        // (CLAUDE.md § Where things go).
         let view = RepoSource.root
             .appendingPathComponent("Sources/Modules/Uninstaller/UI/OrphansView.swift")
         let source = try String(contentsOf: view, encoding: .utf8)

@@ -18,9 +18,7 @@ import XCTest
 /// stays alive until then, on top of the tree it is looking at.
 ///
 /// Measured against the allocator's books rather than `MemoryFootprint.current()`
-/// — CLAUDE.md § A per-object memory cost: `phys_footprint` answers what the
-/// process costs the machine and has read 0 KB over a fill that really did
-/// allocate.
+/// — CLAUDE.md § What not to do, and what breaks if you do.
 final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
 
     /// Enough nodes for a per-node cost to be a reading rather than noise, few

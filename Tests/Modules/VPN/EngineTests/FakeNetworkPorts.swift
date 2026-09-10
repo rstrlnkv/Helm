@@ -76,13 +76,12 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     }
     /// Answers handed out in order, one per call, before `answer` is used.
     ///
-    /// **Two requests do not have to say the same thing**, and the real ones
-    /// cannot be relied on to: a tunnel coming up while a request is out is
-    /// asked about a different exit from the one already in flight, which is
-    /// the whole reason the engine has to tell the two answers apart. With one
-    /// fixed answer that state is unrepresentable, and any test of it passes
-    /// against an engine that keeps the wrong one (CLAUDE.md § A fake simpler
-    /// than the thing it stands for).
+    /// **Two requests do not have to say the same thing**, and the real ones cannot
+    /// be relied on to: a tunnel coming up while a request is out is asked about a
+    /// different exit from the one already in flight, which is the whole reason the
+    /// engine has to tell the two answers apart. With one fixed answer that state
+    /// is unrepresentable, and any test of it passes against an engine that keeps
+    /// the wrong one (CLAUDE.md § What not to do, and what breaks if you do).
     var queued: [String?] {
         get { lock.lock(); defer { lock.unlock() }; return _queued }
         set { lock.lock(); _queued = newValue; lock.unlock() }
@@ -114,9 +113,9 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
 
     func regionCode() async -> String? {
         // A synchronous property that takes the lock and returns the value, never
-        // an `await` with the lock held: Swift 6 makes `NSLock.lock()`
-        // unavailable inside an `async` function outright (CLAUDE.md § A lock
-        // taken on one side of a field guards nothing).
+        // an `await` with the lock held: Swift 6 makes `NSLock.lock()` unavailable
+        // inside an `async` function outright (CLAUDE.md § What not to do, and what
+        // breaks if you do).
         let asked = enter()
         if asked.hangs { try? await Task.sleep(nanoseconds: .max) }
         // Polled rather than parked on a semaphore: this is an `async` function
@@ -141,13 +140,13 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
 
 /// **The slowest thing in the module, and the fake could not be slow.**
 ///
-/// `networkQuality` runs for about fifteen seconds by design and blocks the
-/// thread it is on for as long as it does — which is why `VPNSpeedPort.measure`
-/// says so at the protocol and why the engine keeps it off its serial queue. A
-/// fake that answers the instant it is called makes every test of that
-/// arrangement vacuous: «a Connect pressed while a measurement is in flight» and
-/// «the tile says Measuring…» are both states the subject is already past
-/// (CLAUDE.md § A fake that finishes instantly makes a test of a wait vacuous).
+/// `networkQuality` runs for about fifteen seconds by design and blocks the thread
+/// it is on for as long as it does — which is why `VPNSpeedPort.measure` says so at
+/// the protocol and why the engine keeps it off its serial queue. A fake that
+/// answers the instant it is called makes every test of that arrangement vacuous:
+/// «a Connect pressed while a measurement is in flight» and «the tile says
+/// Measuring…» are both states the subject is already past (CLAUDE.md § What not to
+/// do, and what breaks if you do).
 final class FakeSpeed: VPNSpeedPort, @unchecked Sendable {
     private let lock = NSLock()
     private var _answer: VPNSpeedReading?

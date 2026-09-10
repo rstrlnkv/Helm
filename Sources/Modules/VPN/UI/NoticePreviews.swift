@@ -44,11 +44,11 @@ enum NoticePreview {
     /// It was three hand-written pairs of booleans, and one of them was wrong:
     /// `.system` was drawn with a name in the menu bar while
     /// `VPNNotice.showsMenuBarName` is `self == .menuBar`, so the card for the
-    /// loudest mode promised something the setting does not do. Nothing could
-    /// have caught it — the enum and the picture agreed about nothing, because
-    /// nothing connected them. They are one expression now, which is the same
-    /// reason a command name is a constant both sides read rather than a
-    /// literal typed twice (CLAUDE.md § A hand-written list…).
+    /// loudest mode promised something the setting does not do. Nothing could have
+    /// caught it — the enum and the picture agreed about nothing, because nothing
+    /// connected them. They are one expression now, which is the same reason a
+    /// command name is a constant both sides read rather than a literal typed twice
+    /// (CLAUDE.md § Where things go).
     static func of(_ mode: VPNNotice) -> some View {
         strip(name: mode.showsMenuBarName, banner: mode.postsBanner)
     }

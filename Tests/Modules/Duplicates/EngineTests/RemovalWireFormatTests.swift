@@ -21,10 +21,10 @@ final class DuplicateRemovalWireFormatTests: XCTestCase {
         XCTAssertEqual(Set(try XCTUnwrap(refused.first).keys), ["path", "reason"])
     }
 
-    /// A reply written before the removal could be stopped carries no
-    /// `cancelled`, and a synthesised `Decodable` would refuse the whole
-    /// document over the one missing key (CLAUDE.md § A `defaulted` property on
-    /// a `Codable` payload). Missing means «it ran to the end».
+    /// A reply written before the removal could be stopped carries no `cancelled`,
+    /// and a synthesised `Decodable` would refuse the whole document over the one
+    /// missing key (CLAUDE.md § What not to do, and what breaks if you do). Missing
+    /// means «it ran to the end».
     func testJSONFromBeforeTheCancelledFieldStillDecodes() throws {
         let json = Data("""
         {"removed":["/a","/b"],\

@@ -19,9 +19,8 @@ import HelmTestSupport
 /// 66 characters against Chinese's 28.
 ///
 /// Parameterised by language rather than reading `AppLanguage.current`: this Mac
-/// runs in Russian, so a bare assertion would exercise one of eight and pass
-/// while German broke (CLAUDE.md § A test parameterized by an explicit
-/// language).
+/// runs in Russian, so a bare assertion would exercise one of eight and pass while
+/// German broke (CLAUDE.md § What not to do, and what breaks if you do).
 @MainActor
 final class LayoutHeroIsOneHeightTests: XCTestCase {
 

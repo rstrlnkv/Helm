@@ -192,11 +192,11 @@ enum DupStr {
     /// Why this group's first copy is the one that stays.
     ///
     /// **This replaces a tooltip that was wrong in eight languages.** «The copy
-    /// that was there first» was drawn on every group's badge whatever had
-    /// actually decided it — and once the policy existed it was not even the
-    /// usual case. The English key was the error, so it was deleted from all
-    /// eight files rather than translated again (CLAUDE.md § A changelog entry
-    /// that names a control).
+    /// that was there first» was drawn on every group's badge whatever had actually
+    /// decided it — and once the policy existed it was not even the usual case. The
+    /// English key was the error, so it was deleted from all eight files rather
+    /// than translated again (CLAUDE.md § Shipping — what a person does, not a
+    /// role).
     ///
     /// Exhaustive, with no `default`: a rung added to `KeepReason` is a build
     /// error here, not a header that quietly says the wrong one of the four.

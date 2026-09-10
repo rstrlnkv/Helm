@@ -30,9 +30,9 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
     /// be.
     ///
     /// **The wait is bounded**, and that is the point of it: a purge left on the
-    /// launch path parks `init` itself, and an unbounded gate would hang the
-    /// suite where it has to fail it instead (CLAUDE.md § a fake that finishes
-    /// instantly makes a test of a wait vacuous, read from the other side).
+    /// launch path parks `init` itself, and an unbounded gate would hang the suite
+    /// where it has to fail it instead (CLAUDE.md § What not to do, and what breaks
+    /// if you do).
     private final class ParkedPurge: @unchecked Sendable {
         private let started = DispatchSemaphore(value: 0)
         private let go = DispatchSemaphore(value: 0)

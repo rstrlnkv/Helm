@@ -5,13 +5,13 @@ import XCTest
 /// The two refusal sentences that end by naming a control take that control's
 /// verb from the caller.
 ///
-/// «Scan again to see where it is now» was said on four screens, and one of
-/// them — Duplicates — has no such button: its control says «Search again».
-/// A record that names a control is checked against the app's real string
-/// (CLAUDE.md § A changelog entry that names a control), so the sentence comes
-/// in the caller's own verb: three modules keep `.scan`, Duplicates asks for
-/// `.search`, and each is a full key with its own eight translations rather
-/// than a verb interpolated into somebody's grammar.
+/// «Scan again to see where it is now» was said on four screens, and one of them —
+/// Duplicates — has no such button: its control says «Search again». A record that
+/// names a control is checked against the app's real string (CLAUDE.md § Shipping —
+/// what a person does, not a role), so the sentence comes in the caller's own verb:
+/// three modules keep `.scan`, Duplicates asks for `.search`, and each is a full
+/// key with its own eight translations rather than a verb interpolated into
+/// somebody's grammar.
 final class TheRefusalNamesTheControlOnScreenTests: XCTestCase {
 
     /// Parameterized by language rather than gated on `AppLanguage.current`,

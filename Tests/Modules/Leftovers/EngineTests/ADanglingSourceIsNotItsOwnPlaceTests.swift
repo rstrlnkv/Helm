@@ -45,14 +45,14 @@ import XCTest
 /// what this guard exists not to be.
 ///
 /// **Why the existing coverage does not reach it.**
-/// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`,
-/// a dictionary lookup that resolves a link to a target whether or not the target
+/// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`, a
+/// dictionary lookup that resolves a link to a target whether or not the target
 /// exists — so the fake can resolve what the real port cannot. That is a fake
-/// *freer* than its port (CLAUDE.md § A fake can also be freer than the port), and
-/// what it buys is a branch that is proven for a state production never reaches:
-/// the dangling case has no fixture there, because in that fake there is no such
-/// thing as dangling. This file therefore drives the real `FileSystemLeftovers` and
-/// the real filesystem, and nothing else on this Mac.
+/// *freer* than its port (CLAUDE.md § What not to do, and what breaks if you do),
+/// and what it buys is a branch that is proven for a state production never
+/// reaches: the dangling case has no fixture there, because in that fake there is
+/// no such thing as dangling. This file therefore drives the real
+/// `FileSystemLeftovers` and the real filesystem, and nothing else on this Mac.
 final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
 
     /// The real port, fenced to one directory.
@@ -66,7 +66,7 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// row.
     ///
     /// A local helper that does *more* than the shared one keeps its own body and
-    /// calls it — CLAUDE.md § Test plumbing. It calls `FileSystemLeftovers` for
+    /// calls it — CLAUDE.md § Where things go. It calls `FileSystemLeftovers` for
     /// everything it answers.
     private struct FilesUnder: LeftoversFilePort {
         let root: String

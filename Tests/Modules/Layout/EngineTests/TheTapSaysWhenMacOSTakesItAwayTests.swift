@@ -18,9 +18,9 @@ import XCTest
 /// Helm, `didBecomeActive` fires, the page goes green — and nobody is listening
 /// to the keyboard until they relaunch.
 ///
-/// A local flag standing in for a live external fact, with no channel back from
-/// the port that knows (CLAUDE.md § Anything that can stop being true on its
-/// own). The channel is `died`.
+/// A local flag standing in for a live external fact, with no channel back from the
+/// port that knows (CLAUDE.md § What not to do, and what breaks if you do). The
+/// channel is `died`.
 ///
 /// **What is not covered here, and cannot be.** No test process can make macOS
 /// revoke a real `CGEvent` tap, so `CGKeyTap.theSystemDisabledUs` calling this

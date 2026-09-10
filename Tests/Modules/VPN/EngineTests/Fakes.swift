@@ -142,9 +142,9 @@ final class FakeCreds: VPNCredentialsPort {
     }
 
     /// `.ready` only ever carries a usable secret, exactly as `KeychainCredentials`
-    /// builds it — a fake free to answer `.ready` with nothing in it would be
-    /// freer than the port it stands for (CLAUDE.md § A fake can also be freer
-    /// than the port).
+    /// builds it — a fake free to answer `.ready` with nothing in it would be freer
+    /// than the port it stands for (CLAUDE.md § What not to do, and what breaks if
+    /// you do).
     private func answer(_ creds: VPNCredentials) -> VPNCredentialRead {
         creds.secret?.isEmpty == false ? .ready(creds) : .notNeeded
     }

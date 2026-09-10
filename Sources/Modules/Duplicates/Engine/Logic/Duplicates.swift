@@ -75,12 +75,11 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
         ///
         /// The walk already reads it for that decision; carrying it here is what
         /// lets the copy that stays be re-decided from the group alone, without
-        /// reading the folder again. `nil` on a volume that does not record it,
-        /// and **optional rather than defaulted**: a synthesised `Decodable`
-        /// demands the key for a non-optional property whatever its initial
-        /// value is, and `JSONDecoder` then abandons the whole document rather
-        /// than the one field (CLAUDE.md § A `defaulted` property on a `Codable`
-        /// payload).
+        /// reading the folder again. `nil` on a volume that does not record it, and
+        /// **optional rather than defaulted**: a synthesised `Decodable` demands
+        /// the key for a non-optional property whatever its initial value is, and
+        /// `JSONDecoder` then abandons the whole document rather than the one field
+        /// (CLAUDE.md § What not to do, and what breaks if you do).
         public let added: Date?
 
         public init(path: String, bytes: Int, cloneFamily: UInt64? = nil,

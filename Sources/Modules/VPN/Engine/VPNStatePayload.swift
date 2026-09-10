@@ -38,8 +38,8 @@ extension VPNEngine {
         /// three fields above are optional and Swift's synthesised `Decodable`
         /// reads those with `decodeIfPresent`; a non-optional array with a stored
         /// default is still a required key, and a document missing it throws —
-        /// taking every connection the page draws with it (CLAUDE.md § a
-        /// `defaulted` property on a `Codable` payload).
+        /// taking every connection the page draws with it (CLAUDE.md § What not to
+        /// do, and what breaks if you do).
         public var secretsBehindAPrompt: [String] = []
         /// Every connected tunnel that has an interface reading, the one
         /// carrying the default route first.
@@ -173,11 +173,11 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     }
 
     /// Hand-written for the field above: a stored default does **not** make a
-    /// document without the key decode — Swift's synthesised `Decodable` wants
-    /// it regardless and `JSONDecoder` then gives up on the whole payload, which
-    /// here is every tile the strip draws (CLAUDE.md § a `defaulted` property on
-    /// a `Codable` payload). False is what a build from before this field meant:
-    /// it had no way to start a run that outlived its own answer.
+    /// document without the key decode — Swift's synthesised `Decodable` wants it
+    /// regardless and `JSONDecoder` then gives up on the whole payload, which here
+    /// is every tile the strip draws (CLAUDE.md § What not to do, and what breaks
+    /// if you do). False is what a build from before this field meant: it had no
+    /// way to start a run that outlived its own answer.
     public init(from decoder: Decoder) throws {
         let box = try decoder.container(keyedBy: CodingKeys.self)
         name = try box.decode(String.self, forKey: .name)

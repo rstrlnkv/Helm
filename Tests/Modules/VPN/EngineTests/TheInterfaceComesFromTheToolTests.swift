@@ -8,16 +8,15 @@ import XCTest
 
 /// **Which interface a tunnel is on is asked of `scutil`, by name.**
 ///
-/// It used to be asked of the dynamic store, by service id — and for anything
-/// that is not a classic PPP/IPSec service those are two different identifier
-/// spaces. Measured on the machine the build was installed on: `scutil --nc list`
-/// names the configuration `02196763-…`, while the routing entry for the tunnel
-/// it raised is `State:/Network/Service/B8689BB0-…/IPv4`. So the lookup answered
-/// nil for every NetworkExtension tunnel, `tunnelFacts()` answered nil with it,
-/// and the strip was absent on every Mac — with the suite green, because
-/// `FakeInterfaces` was keyed by service id and could therefore be planted with
-/// a pair the real store cannot produce (CLAUDE.md § A fake can also be freer
-/// than the port).
+/// It used to be asked of the dynamic store, by service id — and for anything that
+/// is not a classic PPP/IPSec service those are two different identifier spaces.
+/// Measured on the machine the build was installed on: `scutil --nc list` names the
+/// configuration `02196763-…`, while the routing entry for the tunnel it raised is
+/// `State:/Network/Service/B8689BB0-…/IPv4`. So the lookup answered nil for every
+/// NetworkExtension tunnel, `tunnelFacts()` answered nil with it, and the strip was
+/// absent on every Mac — with the suite green, because `FakeInterfaces` was keyed
+/// by service id and could therefore be planted with a pair the real store cannot
+/// produce (CLAUDE.md § What not to do, and what breaks if you do).
 final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
     /// `scutil --nc status "incy"` on this machine, 2026-08-18, against a live

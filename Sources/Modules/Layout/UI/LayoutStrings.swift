@@ -57,14 +57,12 @@ enum LyStr {
     static var lastChange: String { L("Last change") }
 
     /// The tile's estimate, without the period on the end: the caption above it
-    /// already carries the period, and saying it twice on a 280 pt tile reads
-    /// as two different spans. `timeIn(_:)` is the page's version, which has to
-    /// carry it because the page has no caption above the figure.
-    /// Takes a language rather than reading `AppLanguage.current`, so a guard
-    /// can ask it about German. This machine runs in Russian, so a test that
-    /// reads `.current` exercises exactly one of eight — CLAUDE.md § A test
-    /// parameterized by an explicit language, and the reason a mutation planted
-    /// in an English value once passed.
+    /// already carries the period, and saying it twice on a 280 pt tile reads as
+    /// two different spans. `timeIn(_:)` is the page's version, which has to carry
+    /// it because the page has no caption above the figure. Takes a language rather
+    /// than reading `AppLanguage.current`, so a guard can ask it about German. This
+    /// machine runs in Russian, so a test that reads `.current` exercises exactly
+    /// one of eight — CLAUDE.md § What not to do, and what breaks if you do.
     static func notSpentTypingAgain(language: AppLanguage = AppLanguage.current) -> String {
         L("not spent typing again", language: language)
     }

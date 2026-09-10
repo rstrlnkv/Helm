@@ -4,14 +4,14 @@ import XCTest
 /// **A construction that forgets a port is an integration test nobody meant to
 /// write.**
 ///
-/// An engine's `init` gives every port a default, because the app builds one
-/// with no arguments — and every one of those defaults is the real thing: the
-/// Mac's own keychain, its `/etc/hosts`, its `~/.ssh`, its `launchctl`. A test
-/// that leaves a label off therefore asks the owner's machine a question and
-/// reports the answer as a fact about a fixture. Autopilot is the case that
-/// makes this concrete: eleven engine tests took the keychain default and rolled
-/// the owner's real rules back, and the installed build then refused every rule
-/// as an older set put back (CLAUDE.md § a default argument naming a real port).
+/// An engine's `init` gives every port a default, because the app builds one with
+/// no arguments — and every one of those defaults is the real thing: the Mac's own
+/// keychain, its `/etc/hosts`, its `~/.ssh`, its `launchctl`. A test that leaves a
+/// label off therefore asks the owner's machine a question and reports the answer
+/// as a fact about a fixture. Autopilot is the case that makes this concrete:
+/// eleven engine tests took the keychain default and rolled the owner's real rules
+/// back, and the installed build then refused every rule as an older set put back
+/// (CLAUDE.md § What not to do, and what breaks if you do).
 ///
 /// Read off the source rather than from a list beside a list: every
 /// `<Engine>(` under a module's tests is a subject, so a construction added

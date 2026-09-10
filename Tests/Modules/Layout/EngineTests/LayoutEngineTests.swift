@@ -32,9 +32,9 @@ struct FakeSpell: SpellPort {
 /// for want of the grant, and stopped by macOS behind the app's back.
 ///
 /// `start` used to return `true` unconditionally, so «macOS would not give us a
-/// tap» and «macOS took the tap away» were states no test could write down —
-/// which is why the second one shipped as a page that said «Active» with nobody
-/// listening (CLAUDE.md § A fake simpler than the thing it stands for).
+/// tap» and «macOS took the tap away» were states no test could write down — which
+/// is why the second one shipped as a page that said «Active» with nobody listening
+/// (CLAUDE.md § What not to do, and what breaks if you do).
 final class FakeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?

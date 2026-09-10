@@ -11,11 +11,11 @@ import HelmTestSupport
 /// page re-decide which copy stays without hashing the folder again, since
 /// re-deciding needs the dates and nothing else.
 ///
-/// It is `Date?` and not a defaulted `Date` on purpose. A synthesised
-/// `Decodable` demands the key for a non-optional property however good its
-/// initial value is, and `JSONDecoder` then abandons the whole document rather
-/// than the field — the trap `KeepAwakeEngine.StatePayload` fell into
-/// (CLAUDE.md § A `defaulted` property on a `Codable` payload).
+/// It is `Date?` and not a defaulted `Date` on purpose. A synthesised `Decodable`
+/// demands the key for a non-optional property however good its initial value is,
+/// and `JSONDecoder` then abandons the whole document rather than the field — the
+/// trap `KeepAwakeEngine.StatePayload` fell into (CLAUDE.md § What not to do, and
+/// what breaks if you do).
 final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 
     /// A reply spelled the way a build from before this field spelled it. It

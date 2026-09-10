@@ -518,11 +518,11 @@ public struct DuplicateFindings: Codable, Equatable, Sendable {
         self.librariesSkipped = librariesSkipped
     }
 
-    /// **Hand-written, because a synthesised `Decodable` requires every key.**
-    /// A reply from a build without the two counts would throw, and
-    /// `JSONDecoder` gives up on the whole document rather than on the field —
-    /// so a page would read a lost search where there was a perfectly good list
-    /// (CLAUDE.md § A `defaulted` property on a `Codable` payload).
+    /// **Hand-written, because a synthesised `Decodable` requires every key.** A
+    /// reply from a build without the two counts would throw, and `JSONDecoder`
+    /// gives up on the whole document rather than on the field — so a page would
+    /// read a lost search where there was a perfectly good list (CLAUDE.md § What
+    /// not to do, and what breaks if you do).
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         groups = try container.decode([DuplicateGroup].self, forKey: .groups)
@@ -568,11 +568,11 @@ public struct DuplicateRemoval: Codable, Equatable, Sendable {
                   freedBytes: result.freedBytes, cancelled: cancelled)
     }
 
-    /// **Hand-written, because a synthesised `Decodable` requires every key.**
-    /// A reply from before the removal could be stopped carries no `cancelled`,
-    /// and `JSONDecoder` gives up on the whole document rather than the one
-    /// field (CLAUDE.md § A `defaulted` property on a `Codable` payload).
-    /// Missing means «it ran to the end».
+    /// **Hand-written, because a synthesised `Decodable` requires every key.** A
+    /// reply from before the removal could be stopped carries no `cancelled`, and
+    /// `JSONDecoder` gives up on the whole document rather than the one field
+    /// (CLAUDE.md § What not to do, and what breaks if you do). Missing means «it
+    /// ran to the end».
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         removed = try container.decode([String].self, forKey: .removed)

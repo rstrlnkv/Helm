@@ -16,9 +16,9 @@ import Module_Leftovers_Engine
 /// over from Autopilot's tampered-rules verdict.
 ///
 /// The fake below is a gate per request rather than one gate, because the state
-/// this is about is *two* requests outstanding at once: a transport that could
-/// only hold one open could not represent the moment the defect lives in
-/// (CLAUDE.md § A fake simpler than the thing it stands for).
+/// this is about is *two* requests outstanding at once: a transport that could only
+/// hold one open could not represent the moment the defect lives in (CLAUDE.md §
+/// What not to do, and what breaks if you do).
 @MainActor
 final class TwoScansLandInRequestOrderTests: XCTestCase {
 

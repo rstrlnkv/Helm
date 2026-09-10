@@ -130,11 +130,12 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         XCTAssertEqual(first?.tunnels.first?.measuring, false,
                        "precondition: the first run has not ended, so the second cannot start")
 
-        // A second run that the tool refuses — a `-1009`, a deadline, half a
-        // JSON document. **It holds its thread**, the way the real tool holds
-        // one for twenty seconds: a fake that answered instantly would be past
-        // the measuring state before the wire could be read, and the two ends of
-        // the run would be one event (CLAUDE.md § a fake that finishes instantly).
+        // A second run that the tool refuses — a `-1009`, a deadline, half a JSON
+        // document. **It holds its thread**, the way the real tool holds one for
+        // twenty seconds: a fake that answered instantly would be past the
+        // measuring state before the wire could be read, and the two ends of the
+        // run would be one event (CLAUDE.md § What not to do, and what breaks if
+        // you do).
         speed.answer = nil
         speed.blocksUntilReleased = true
         await waitForState(transport, "the second run is in flight",

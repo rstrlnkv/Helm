@@ -73,9 +73,9 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     /// **A volume list fixed at init cannot change under the app**, which is the
     /// one thing this port really does: `statfs` answers a different number every
     /// time somebody writes a file, and a Mac gains and loses disks. A fake that
-    /// answers the same list for ever makes «the tile is showing what the disk
-    /// held at launch» unrepresentable (CLAUDE.md § Anything that can stop being
-    /// true on its own).
+    /// answers the same list for ever makes «the tile is showing what the disk held
+    /// at launch» unrepresentable (CLAUDE.md § What not to do, and what breaks if
+    /// you do).
     func answerVolumes(with volumes: [VolumeInfo]) {
         lock.lock(); self.volumes = volumes; lock.unlock()
     }
@@ -104,7 +104,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
 
     /// The engine going away under the page, or coming back. A port that can
     /// change while the app is running says so rather than being fixed at init
-    /// (CLAUDE.md § Anything that can stop being true on its own).
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     func answers(_ answer: Answer) {
         lock.lock(); self.answer = answer; lock.unlock()
     }

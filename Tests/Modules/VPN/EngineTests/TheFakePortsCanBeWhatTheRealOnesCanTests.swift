@@ -6,9 +6,9 @@ import XCTest
 @testable import Module_VPN_Engine
 
 /// A fake simpler than the port it stands for makes a whole family of tests
-/// impossible to write, however carefully somebody tries (CLAUDE.md § A fake
-/// simpler than the thing it stands for). These are the states the three network
-/// ports can really be in, asserted of the fakes that stand for them.
+/// impossible to write, however carefully somebody tries (CLAUDE.md § What not to
+/// do, and what breaks if you do). These are the states the three network ports can
+/// really be in, asserted of the fakes that stand for them.
 final class TheFakePortsCanBeWhatTheRealOnesCanTests: XCTestCase {
 
     /// The two answers this port still gives fail separately: a Mac with no
@@ -53,13 +53,13 @@ final class TheFakePortsCanBeWhatTheRealOnesCanTests: XCTestCase {
     /// The service that never answers. A fake that answers instantly makes every
     /// test of «measuring…» vacuous: the state is over before the assertion.
     ///
-    /// **What is asserted is that the call was entered and has not returned.**
-    /// The entry is the control: an assertion about an absence — «it has not
-    /// answered» — also holds when the caller was never scheduled at all, and
-    /// then it is measuring nothing (CLAUDE.md § a test asserting an absence
-    /// passes when the subject never happened). It used to end on
-    /// `XCTAssertFalse(task.isCancelled)`, which the comment above it already
-    /// said asserts nothing: `isCancelled` is false for a finished task too.
+    /// **What is asserted is that the call was entered and has not returned.** The
+    /// entry is the control: an assertion about an absence — «it has not answered»
+    /// — also holds when the caller was never scheduled at all, and then it is
+    /// measuring nothing (CLAUDE.md § What not to do, and what breaks if you do).
+    /// It used to end on `XCTAssertFalse(task.isCancelled)`, which the comment
+    /// above it already said asserts nothing: `isCancelled` is false for a finished
+    /// task too.
     func testTheExitPortCanTakeForeverWithoutAnswering() async {
         let port = FakeExit()
         port.answer = nil

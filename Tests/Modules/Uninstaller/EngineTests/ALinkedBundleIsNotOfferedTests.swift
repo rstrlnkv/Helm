@@ -16,7 +16,7 @@ import HelmTestSupport
 /// target — is deliberately unmeasured here: it needs a real write to somebody's
 /// Trash, and **both answers are defects**. If it moves the link, «The app itself
 /// — always removed» is false and the app is still installed with its containers
-/// gone; if it moves the target, ARCHITECTURE § Removal scope's "the leaf is left
+/// gone; if it moves the target, ARCHITECTURE.md § The gates's "the leaf is left
 /// unresolved on purpose" is false. So the offer is withdrawn instead: an entry
 /// whose path does not lead to itself is not listed among the apps this module
 /// offers to remove.

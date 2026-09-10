@@ -20,11 +20,11 @@ import Foundation
 /// silent too.
 ///
 /// **A clock, not a timer.** The engine already takes its own `now`, and the
-/// verdict is asked at each refresh; a deferred block would have been the
-/// obvious shape and is untestable here, because `VPNWorkQueue.inline` runs a
-/// delayed block immediately — the poll loop depends on that — so the wait would
-/// be over before a test could say what happened during it (CLAUDE.md § a fake
-/// that finishes instantly makes a test of a wait vacuous).
+/// verdict is asked at each refresh; a deferred block would have been the obvious
+/// shape and is untestable here, because `VPNWorkQueue.inline` runs a delayed block
+/// immediately — the poll loop depends on that — so the wait would be over before a
+/// test could say what happened during it (CLAUDE.md § What not to do, and what
+/// breaks if you do).
 enum VPNDropSettle {
 
     /// How long a tunnel has to stay down before its loss is announced.

@@ -506,10 +506,10 @@ extension ModulePageRender {
     ///
     /// **It is an answer to a batch that was really sent.** `opened` builds the
     /// selection *from this value*, so the three paths the page ticks are the three
-    /// this reply is about: a removal naming a path nobody asked to remove is a state
-    /// `HelmTrash.remove` cannot produce, and a fixture free to plant it would be
-    /// proving the page against an impossible round (CLAUDE.md § A fake can also be
-    /// freer than the port).
+    /// this reply is about: a removal naming a path nobody asked to remove is a
+    /// state `HelmTrash.remove` cannot produce, and a fixture free to plant it
+    /// would be proving the page against an impossible round (CLAUDE.md § What not
+    /// to do, and what breaks if you do).
     ///
     /// The two reasons are the two a person can act on and the two the row can
     /// carry: `needsFullDiskAccess` is what puts the «Open Settings» button in the
@@ -682,15 +682,14 @@ extension ModulePageRender {
 /// A transport that answers exactly what a fixture gave it, and nothing else.
 ///
 /// **It is `LocalTransport` inside, and that is the whole design.** The class the
-/// app runs on does two things a hand-rolled stand-in does not: `events`
-/// broadcasts — every access is a fresh stream and `emit` fans out — and it
-/// **replays** its last event per name to a subscriber that arrives late, which
-/// is what a settings page always is, since the engine emits during `activate()`
-/// and the page is built afterwards. A fake with one continuation and no replay
-/// could not be in either of those states, so no test written against it could
-/// fail the way the app can (CLAUDE.md § A fake simpler than the thing it stands
-/// for). Rather than reimplement two behaviours whose absence is invisible, this
-/// wraps the real one.
+/// app runs on does two things a hand-rolled stand-in does not: `events` broadcasts
+/// — every access is a fresh stream and `emit` fans out — and it **replays** its
+/// last event per name to a subscriber that arrives late, which is what a settings
+/// page always is, since the engine emits during `activate()` and the page is built
+/// afterwards. A fake with one continuation and no replay could not be in either of
+/// those states, so no test written against it could fail the way the app can
+/// (CLAUDE.md § What not to do, and what breaks if you do). Rather than reimplement
+/// two behaviours whose absence is invisible, this wraps the real one.
 ///
 /// What it adds is a refusal. A command with no entry in the table throws, which
 /// is what a module gets between its page opening and its first reply, and it is

@@ -72,9 +72,9 @@ public struct VPNFailure: Codable, Equatable, Sendable {
     /// decode: Swift's synthesised `Decodable` requires the key regardless, and
     /// `JSONDecoder` then gives up on the whole document rather than on the one
     /// field — which here would cost the page every connection it draws for the
-    /// sake of a word (CLAUDE.md § a `defaulted` property on a `Codable`
-    /// payload). `.connect` is what a payload from before this field existed
-    /// meant, because that is the only sentence such a build could draw.
+    /// sake of a word (CLAUDE.md § What not to do, and what breaks if you do).
+    /// `.connect` is what a payload from before this field existed meant, because
+    /// that is the only sentence such a build could draw.
     public init(from decoder: Decoder) throws {
         let box = try decoder.container(keyedBy: CodingKeys.self)
         name = try box.decode(String.self, forKey: .name)

@@ -52,11 +52,11 @@ public struct DuplicateSearchRequest: Codable, Sendable {
     ///
     /// **Optional, and a raw string.** A non-optional field with a default would
     /// not decode a payload written before it existed: a synthesised `Decodable`
-    /// demands the key whatever the property's initial value is, and
-    /// `JSONDecoder` then abandons the whole request rather than the one field —
-    /// so a search sent by an older caller would arrive as no search at all
-    /// (CLAUDE.md § A `defaulted` property on a `Codable` payload). `nil` means
-    /// «the caller did not say», and the engine falls back to what is stored.
+    /// demands the key whatever the property's initial value is, and `JSONDecoder`
+    /// then abandons the whole request rather than the one field — so a search sent
+    /// by an older caller would arrive as no search at all (CLAUDE.md § What not to
+    /// do, and what breaks if you do). `nil` means «the caller did not say», and
+    /// the engine falls back to what is stored.
     ///
     /// A string on the wire because a `KeepPolicy` this build does not know is a
     /// value to fall back from, not a document to throw away; `keepPolicy` below
@@ -96,11 +96,11 @@ public struct DuplicateRemovalRequest: Codable, Sendable {
     ///
     /// Optional for the reason `DuplicateSearchRequest.policy` is: a synthesised
     /// `Decodable` demands the key whatever default the property carries, so a
-    /// non-optional field would make a payload written without it decode as
-    /// nothing at all — and «nothing at all» here is a removal that never
-    /// happens (CLAUDE.md § A `defaulted` property on a `Codable` payload).
-    /// Absent means «the caller did not say», which is what every direct caller
-    /// of `DuplicatesEngine.trash` outside this wire is.
+    /// non-optional field would make a payload written without it decode as nothing
+    /// at all — and «nothing at all» here is a removal that never happens
+    /// (CLAUDE.md § What not to do, and what breaks if you do). Absent means «the
+    /// caller did not say», which is what every direct caller of
+    /// `DuplicatesEngine.trash` outside this wire is.
     public let staying: [String]?
 
     public init(plans: [DuplicatePlan], staying: [String]) {

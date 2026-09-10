@@ -238,11 +238,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     /// **Name the three network ports in every test that builds one of these.**
     /// Their defaults are the real thing: `TraceExit` reaches a server and
-    /// `NetworkQualitySpeed` runs a subprocess for `typicalRun` under load.
-    /// Eleven `AutopilotEngine` tests took a default port that turned out to be
-    /// the owner's own keychain and rolled their rules back (CLAUDE.md § a
-    /// default argument naming a real port); `NoTestTakesAProductionPortTests`
-    /// is this module's guard against the same afternoon.
+    /// `NetworkQualitySpeed` runs a subprocess for `typicalRun` under load. Eleven
+    /// `AutopilotEngine` tests took a default port that turned out to be the
+    /// owner's own keychain and rolled their rules back (CLAUDE.md § What not to
+    /// do, and what breaks if you do); `NoTestTakesAProductionPortTests` is this
+    /// module's guard against the same afternoon.
     public init(settings: VPNSettings,
                 runner: VPNRunnerPort,
                 credentials: VPNCredentialsPort? = nil,

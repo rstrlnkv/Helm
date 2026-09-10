@@ -146,8 +146,8 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
     ///
     /// Without it every assertion above is about a method the window might no
     /// longer call — a test of an absence, passing because the subject never
-    /// happens. `RepoSource.root` rather than a count of parent directories,
-    /// which is a fact about where this file sits (CLAUDE.md § Test plumbing).
+    /// happens. `RepoSource.root` rather than a count of parent directories, which
+    /// is a fact about where this file sits (CLAUDE.md § Where things go).
     func testTheCloseIsWhatRecordsTheAnswer() throws {
         let view = RepoSource.root
             .appendingPathComponent("Sources/Modules/Uninstaller/UI/TrashedLeftoversView.swift")

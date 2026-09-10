@@ -160,15 +160,14 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         // **The widest spread of clusters anywhere in the drawing, rather than
         // the band the labels were assumed to be in.**
         //
-        // This used to take the first row carrying ink and read twelve points
-        // down from it, which was the label row exactly while the block opened
-        // with the columns. It opens with a headline now, so that anchor found
-        // a 26 pt sentence and answered «one column» for every state — a probe
-        // measuring where the drawing starts rather than what it holds
-        // (CLAUDE.md § anchor a measurement on something that moves with the
-        // thing measured). Nothing else in the block splits into three pieces
-        // across the width: the headline is one run, a segment is one, and the
-        // button and its note sit 8 pt apart, which is inside `apart`.
+        // This used to take the first row carrying ink and read twelve points down
+        // from it, which was the label row exactly while the block opened with the
+        // columns. It opens with a headline now, so that anchor found a 26 pt
+        // sentence and answered «one column» for every state — a probe measuring
+        // where the drawing starts rather than what it holds (CLAUDE.md § What not
+        // to do, and what breaks if you do). Nothing else in the block splits into
+        // three pieces across the width: the headline is one run, a segment is one,
+        // and the button and its note sit 8 pt apart, which is inside `apart`.
         return (0..<rep.pixelsHigh).map(clusters(inRow:)).max() ?? 0
     }
 

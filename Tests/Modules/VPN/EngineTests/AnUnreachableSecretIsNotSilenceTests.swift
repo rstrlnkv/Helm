@@ -260,10 +260,9 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     /// A payload from a build that predates the field decodes whole. A stored
     /// default does not buy this on its own — Swift's synthesised `Decodable`
-    /// requires the key regardless, and `JSONDecoder` then gives up on the
-    /// document rather than on the field, which would cost the page every
-    /// connection it draws (CLAUDE.md § a `defaulted` property on a `Codable`
-    /// payload).
+    /// requires the key regardless, and `JSONDecoder` then gives up on the document
+    /// rather than on the field, which would cost the page every connection it
+    /// draws (CLAUDE.md § What not to do, and what breaks if you do).
     func testAPayloadFromBeforeThisFieldStillDecodesWithEverythingElseInIt() throws {
         let legacy = Data("""
         {"connections":[{"id":"1","name":"Office","status":"connected"}],

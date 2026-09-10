@@ -144,7 +144,7 @@ final class WorkspaceAppLister: AppLister {
     /// app has no answer to, and **both answers are defects**: one leaves the app
     /// installed with its containers gone under a banner saying it is in the
     /// Trash, the other breaks "the leaf is left unresolved on purpose"
-    /// (ARCHITECTURE § Removal scope). So the offer is withdrawn rather than
+    /// (ARCHITECTURE.md § The gates). So the offer is withdrawn rather than
     /// guessed at. Who has one: anyone whose apps arrive as links — nix-darwin,
     /// some cask layouts, hand-made links.
     ///

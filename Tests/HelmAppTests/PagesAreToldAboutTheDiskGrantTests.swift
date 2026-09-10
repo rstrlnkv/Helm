@@ -17,9 +17,9 @@ import XCTest
 /// **The list of pages is the tree's, not one written here.** They are found by
 /// reading which pages call `helmTracksFullDiskAccess`: a sixth page that grows
 /// the banner arrives in this check without anybody remembering it, and a hand
-/// list would be the comment CLAUDE.md § A hand-written list warns about. That
-/// scan is also the assertion that no page hand-rolls the probe — the modifier is
-/// the one place the reading is read, and `ADiskGrantAReadingCanNameTests` in
+/// list would be the comment CLAUDE.md § Where things go. That scan is also the
+/// assertion that no page hand-rolls the probe — the modifier is the one place
+/// the reading is read, and `ADiskGrantAReadingCanNameTests` in
 /// `HelmUITests` is what proves the modifier honours it.
 ///
 /// **Disk is measured for its floor and not for the difference**, and the reason

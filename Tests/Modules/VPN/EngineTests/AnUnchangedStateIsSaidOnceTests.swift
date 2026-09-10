@@ -16,11 +16,11 @@ import HelmRuntime
 /// the largest single source of idle re-renders in the app
 /// (`HiddenPageEventChurnBenchmark` prices what each of those costs a page).
 ///
-/// The rule is exact: only a payload **equal in every field** to the last one
-/// sent is suppressed. A change of any kind — a status, a failure, a secret
-/// notice — must go out, because a page that is never told cannot stop being
-/// wrong (CLAUDE.md § anything that can stop being true owns a channel). What
-/// is suppressed is the duplicate, never the confirmation of a change.
+/// The rule is exact: only a payload **equal in every field** to the last one sent
+/// is suppressed. A change of any kind — a status, a failure, a secret notice —
+/// must go out, because a page that is never told cannot stop being wrong
+/// (CLAUDE.md § What not to do, and what breaks if you do). What is suppressed is
+/// the duplicate, never the confirmation of a change.
 final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
 
     private let uuid = "11111111-1111-1111-1111-111111111111"

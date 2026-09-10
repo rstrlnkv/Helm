@@ -27,9 +27,9 @@ final class AStaleSearchDoesNotLandOnANewerOneTests: XCTestCase {
     /// can genuinely be in flight at once.
     ///
     /// **A fake that answered at once would make this test vacuous**: the first
-    /// search would be over before the second was made, and the ordering the
-    /// test is about could not happen (CLAUDE.md § a fake that finishes
-    /// instantly makes a test of a wait vacuous).
+    /// search would be over before the second was made, and the ordering the test
+    /// is about could not happen (CLAUDE.md § What not to do, and what breaks if
+    /// you do).
     private final class HeldTransport: EngineTransport, @unchecked Sendable {
         private let stream = AsyncStream<EngineEvent>.makeStream()
         var events: AsyncStream<EngineEvent> { stream.stream }

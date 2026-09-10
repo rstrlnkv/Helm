@@ -20,8 +20,8 @@ import XCTest
 /// this; the reading it is compared against is frozen.
 ///
 /// It is a local memory of a live external fact with no reverse channel from
-/// the port that knows — CLAUDE.md § «Anything that can stop being true on its
-/// own owns a channel to say so», and the same shape as
+/// the port that knows — CLAUDE.md § What not to do, and what breaks if you
+/// do, and the same shape as
 /// `LayoutEngine.tapped`: set once against something macOS can revoke.
 ///
 /// **The branch it decides is reached whenever the dynamic store answers nil.**

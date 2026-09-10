@@ -120,14 +120,13 @@ public protocol NetworkWatchPort: AnyObject {
 ///
 /// **Which interface a given tunnel is on is not asked here**, and that is the
 /// repair for a defect this port shipped. It was `interface(forServiceID:)` over
-/// `State:/Network/Service/<id>/IPv4`, and the id the module has comes from
-/// `scutil --nc list` — the identifier of a *configuration*, which is the
-/// identifier of a *network service* only for classic PPP/IPSec. For every
-/// NetworkExtension tunnel the lookup answered nil, so the tile strip was absent
-/// on every Mac. The question is `scutil`'s now, asked by name through
-/// `VPNRunnerPort` and read by `VPNStatusParser` — and a fake can no longer be
-/// planted with a pair the system cannot produce (CLAUDE.md § A fake can also be
-/// freer than the port).
+/// `State:/Network/Service/<id>/IPv4`, and the id the module has comes from `scutil
+/// --nc list` — the identifier of a *configuration*, which is the identifier of a
+/// *network service* only for classic PPP/IPSec. For every NetworkExtension tunnel
+/// the lookup answered nil, so the tile strip was absent on every Mac. The question
+/// is `scutil`'s now, asked by name through `VPNRunnerPort` and read by
+/// `VPNStatusParser` — and a fake can no longer be planted with a pair the system
+/// cannot produce (CLAUDE.md § What not to do, and what breaks if you do).
 public protocol VPNInterfacePort: AnyObject {
     /// The interface carrying the default route, or nil when the machine has
     /// none — which is the honest answer for a Mac with no network at all — or
@@ -150,9 +149,9 @@ public protocol VPNInterfacePort: AnyObject {
 /// when nothing could be read.
 ///
 /// **The address itself never leaves this port.** The verdict on screen names a
-/// country and the log names neither (CLAUDE.md § The log carries no names), so
-/// there is nowhere for an address to be kept — and a port that never returns
-/// one cannot leak one later.
+/// country and the log names neither (CLAUDE.md § What not to do, and what breaks
+/// if you do), so there is nowhere for an address to be kept — and a port that
+/// never returns one cannot leak one later.
 public protocol VPNExitPort: AnyObject {
     func regionCode() async -> String?
 }

@@ -9,15 +9,15 @@ import XCTest
 /// and this is the claim being read back off a document.**
 ///
 /// The property's own comment says: «Optional, and that is what makes an older
-/// payload decode: Swift synthesises `decodeIfPresent` for an `Optional`
-/// property, where a non-optional with a stored default is still a required key
-/// and throws away the whole document.» This repository has shipped that exact
-/// sentence being **false** — `KeepAwakeEngine.StatePayload` gave three fields a
-/// stored default and a comment claiming each existed so an older payload would
-/// still decode, and a document missing any of them threw and left every screen
-/// holding stale defaults (CLAUDE.md § a `defaulted` property on a `Codable`
-/// payload). So the belief is not worth another prose paragraph; it is worth a
-/// document with the key taken out of it.
+/// payload decode: Swift synthesises `decodeIfPresent` for an `Optional` property,
+/// where a non-optional with a stored default is still a required key and throws
+/// away the whole document.» This repository has shipped that exact sentence being
+/// **false** — `KeepAwakeEngine.StatePayload` gave three fields a stored default
+/// and a comment claiming each existed so an older payload would still decode, and
+/// a document missing any of them threw and left every screen holding stale
+/// defaults (CLAUDE.md § What not to do, and what breaks if you do). So the belief
+/// is not worth another prose paragraph; it is worth a document with the key taken
+/// out of it.
 ///
 /// **A field is removed from a real encoding rather than a JSON literal being
 /// typed by hand.** A literal is a second spelling of the wire format that

@@ -61,7 +61,7 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
     /// **whole** payload with it: a synthesised `Decodable` throws on the missing
     /// key, and `JSONDecoder` then gives up on the document rather than on the
     /// field — so the page would lose every connection it draws over one word
-    /// (CLAUDE.md § a `defaulted` property on a `Codable` payload).
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     func testAFailureFromBeforeTheVerbStillDecodesWithThePayloadAroundIt() throws {
         let legacy = Data("""
         {"connections":[{"id":"1","name":"Office","status":"connected"}],

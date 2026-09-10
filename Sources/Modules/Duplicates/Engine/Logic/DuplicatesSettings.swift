@@ -67,9 +67,9 @@ public enum DuplicatesSettings {
             settings.establishKey()
             return .standard
         case .notHelmsOwn:
-            // The engine's constant, not the word again: a module's id is
-            // written down once (CLAUDE.md § A module's own id is the engine's
-            // constant), and this file is in the engine's target.
+            // The engine's constant, not the word again: a module's id is written
+            // down once (CLAUDE.md § What not to do, and what breaks if you do),
+            // and this file is in the engine's target.
             HelmLog.shared.warn(DuplicatesEngine.moduleID,
                                 "the stored keep policy is not Helm's own; "
                                 + "keeping the copy that was filed rather than downloaded")
@@ -113,9 +113,9 @@ public enum DuplicatesSettings {
     /// setting no search ever used.
     ///
     /// The seal can come back nil — a keychain that cannot be reached — and the
-    /// value is written anyway. Refusing to save what somebody asked for because
-    /// a background reader might distrust it later is failing at the wrong end
-    /// (CLAUDE.md § A stored setting that steers unattended work is sealed).
+    /// value is written anyway. Refusing to save what somebody asked for because a
+    /// background reader might distrust it later is failing at the wrong end
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     public static func setKeepPolicy(_ policy: KeepPolicy, in store: NamespacedStore,
                                      guardedBy settings: SettingGuard) {
         store.set(policy.rawValue, for: keepPolicyKey)

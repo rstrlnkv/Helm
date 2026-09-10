@@ -14,9 +14,9 @@ import XCTest
 ///
 /// It does not, and the shape is the reason: `[weak self]` at the top plus
 /// `guard let self else { break }` and a **synchronous** `handle(event)`. The
-/// trap CLAUDE.md § Memory records is `await self?.method()`, where the strong
-/// reference lives for as long as the call frame does — and for a loop that
-/// never returns, that is the life of the app.
+/// trap CLAUDE.md § What not to do, and what breaks if you do: `await
+/// self?.method()`, where the strong reference lives for as long as the call
+/// frame does — and for a loop that never returns, that is the life of the app.
 ///
 /// **The negative alone would pass vacuously**, which is why the positive comes
 /// first: a `weak` reference to something that was never really constructed is

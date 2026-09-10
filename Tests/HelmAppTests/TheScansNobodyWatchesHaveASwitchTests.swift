@@ -16,7 +16,7 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
 
     /// The rows are the list the coordinator actually loops over, not a list
     /// written again for the screen. A hand-written second copy is the comment
-    /// CLAUDE.md § A hand-written list warns about: a scan added to
+    /// CLAUDE.md § Where things go: a scan added to
     /// `ScanRunner.scannableModules` and forgotten here reads as consent nobody
     /// was asked for.
     func testEveryScanThatCanRunHasARowOnTheScreen() throws {

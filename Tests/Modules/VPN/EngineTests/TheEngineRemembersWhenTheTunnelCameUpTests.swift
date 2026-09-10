@@ -48,11 +48,10 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                            backing: InMemoryKeyValueStore()))
     }
 
-    /// Every port named, including the three this feature added: their
-    /// production defaults reach the network and a subprocess that runs for
-    /// fifteen seconds, and a construction that forgets one of them is an
-    /// integration test nobody asked for (CLAUDE.md § a default argument naming
-    /// a real port).
+    /// Every port named, including the three this feature added: their production
+    /// defaults reach the network and a subprocess that runs for fifteen seconds,
+    /// and a construction that forgets one of them is an integration test nobody
+    /// asked for (CLAUDE.md § What not to do, and what breaks if you do).
     private func makeEngine(_ runner: FakeRunner,
                             transport: LocalTransport,
                             interfaces: FakeInterfaces,
@@ -564,8 +563,8 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     // MARK: - The wire
 
     /// A state event from a build that predates the field still decodes. A throw
-    /// here would cost the page every connection it draws for the sake of one
-    /// field (CLAUDE.md § a `defaulted` property on a `Codable` payload).
+    /// here would cost the page every connection it draws for the sake of one field
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     func test_a_state_payload_without_the_tunnel_still_decodes() throws {
         let legacy = Data("""
         {"connections":[],"autoConnected":[],"defaultName":null}

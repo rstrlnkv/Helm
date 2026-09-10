@@ -84,9 +84,9 @@ final class LeftoversWire: EngineTransport, @unchecked Sendable {
     /// What the rescan after a removal — or after a toggle — will see.
     func setItems(_ next: [StaleItem]) { lock.withLock { items = next } }
 
-    /// The engine going away under the page, or coming back. A port that can
-    /// change while the app is running hands that state back rather than being
-    /// fixed at init (CLAUDE.md § Anything that can stop being true on its own).
+    /// The engine going away under the page, or coming back. A port that can change
+    /// while the app is running hands that state back rather than being fixed at
+    /// init (CLAUDE.md § What not to do, and what breaks if you do).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
     /// The same, for one command only — the request that is lost while the next
