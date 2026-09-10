@@ -8,6 +8,34 @@ cd "$REPO_ROOT"
 
 APP_NAME="Helm.app"
 BUILD_DIR="$REPO_ROOT/build"
+
+# Build number = git commit count, so the About page's "build N" (its only
+# reader: Sources/HelmApp/AboutPage.swift) names an exact commit. A number
+# that silently goes DOWN is worse than a build that refuses to run: it reads
+# as an older build to anyone comparing one copy's About page against
+# another's. Three ways to fail to count, and all three must be caught: no
+# `.git` at all (an archive, a tree with no history), where `rev-parse
+# --is-shallow-repository` itself exits non-zero; a shallow clone, where
+# `rev-list --count HEAD` exits 0 but counts only what was fetched (`--depth 5`
+# answers `5`), so the exit status alone does not see it — caught below by
+# asking `is-shallow-repository` explicitly; and a repository with no commits
+# at all (a fresh `git init` over sources, no `HEAD` to count), where
+# `is-shallow-repository` answers `false` and only `rev-list --count HEAD`
+# itself fails, with git's own `fatal: ambiguous argument 'HEAD'` and no word
+# this was the build number. Checked here, before the compile, so a refusal
+# costs seconds rather than a release build.
+IS_SHALLOW="$(git -C "$REPO_ROOT" rev-parse --is-shallow-repository 2>&1)" || {
+  echo "!! Build number: \`git rev-list --count HEAD\` needs a readable git history, and $REPO_ROOT is not one (no .git, or sources without their history — e.g. a tarball). Refusing rather than shipping build 1 below whatever is already out." >&2
+  exit 1
+}
+if [ "$IS_SHALLOW" = "true" ]; then
+  echo "!! Build number: $REPO_ROOT is a shallow clone. \`git rev-list --count HEAD\` exits 0 here but counts only the fetched commits, not the true build number. Run \`git fetch --unshallow\` and try again." >&2
+  exit 1
+fi
+BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD 2>&1)" || {
+  echo "!! Build number: \`git rev-list --count HEAD\` needs at least one commit, and $REPO_ROOT has none yet (a fresh \`git init\` over sources, no HEAD to count). Refusing rather than shipping build 1 below whatever is already out." >&2
+  exit 1
+}
 # The bundle is assembled and signed OUTSIDE the repo.
 #
 # This checkout lives under ~/Documents, which a file provider syncs, and the
@@ -66,9 +94,12 @@ cp "$REPO_ROOT/NOTICE.md" "$RESOURCES_DIR/NOTICE.md"
 
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
-# Build number = git commit count, so About shows a real, increasing build.
-BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD 2>/dev/null || echo 1)"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$CONTENTS_DIR/Info.plist" >/dev/null 2>&1 || true
+# BUILD_NO was computed and checked above, before the compile. Written here,
+# where the rest of the plist is: `Set` on a key `Resources/HelmApp/Info.plist`
+# already carries as a placeholder does not fail, but a bad target path would,
+# and that failure must stop the build rather than ship the placeholder `1`
+# with nothing said.
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$CONTENTS_DIR/Info.plist"
 echo "==> Build number: $BUILD_NO"
 
 echo "==> Compiling Liquid Glass app icon (Icon Composer .icon → Assets.car)"

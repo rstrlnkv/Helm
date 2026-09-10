@@ -56,7 +56,7 @@ times. `HelmTestSupport` (`Tests/Support`) is to test plumbing what
 
 The deployment target is `.macOS("26.0")` and the default localization is `en`.
 One product is declared, `HelmApp`, so that `--product HelmApp` in
-`Scripts/package-app.sh:34` names something the manifest says exists rather than
+`Scripts/package-app.sh:62` names something the manifest says exists rather than
 the product SwiftPM synthesises for an executable target. The declaration is not
 what keeps the test harness out of a release build: naming the product on the
 command line is.
@@ -1121,7 +1121,7 @@ Access by reading protected files — `~/Library/Safari/Bookmarks.plist`,
 and `TCC.db` is absent on recent macOS. A write probe would be wrong: creating a file
 under `~/Library/Containers` is refused even where access is granted.
 
-`Scripts/package-app.sh:89` signs ad-hoc (`codesign --force --deep --sign -`), so the
+`Scripts/package-app.sh:120` signs ad-hoc (`codesign --force --deep --sign -`), so the
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A
 cdhash is a hash of contents, so every rebuild is a different program to TCC while the
 checkbox in System Settings stays ticked. A grant therefore survives relaunch and
@@ -1685,9 +1685,11 @@ The number is `MAJOR.MINOR.PATCH`. It lives in one place,
 `Resources/HelmApp/Info.plist` under `CFBundleShortVersionString`, and
 `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist`
 is what the tree currently says it is. `CFBundleVersion` in that file is a placeholder:
-`Scripts/package-app.sh:70` computes the build number as `git rev-list --count HEAD` and
-`Scripts/package-app.sh:71` writes it into the plist *of the assembled bundle*, so the
-tree's copy and a shipped bundle's copy disagree by design.
+`Scripts/package-app.sh:35` computes the build number as `git rev-list --count HEAD`,
+after refusing a checkout whose history cannot be counted — none at all, or a shallow
+clone, which exits 0 having counted only the commits it fetched — rather than
+substituting a number, and `Scripts/package-app.sh:102` writes it into the plist *of the
+assembled bundle*, so the tree's copy and a shipped bundle's copy disagree by design.
 
 A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag is `vMAJOR.MINOR.PATCH-dev.N`.
 `git tag --list 'v*' --sort=v:refname` is the list and `git tag --list 'v*' | wc -l` the
@@ -1743,7 +1745,7 @@ attached with a `sha256` line for each in the notes. `Scripts/make-zip.sh:36` an
 downloads for a silent install; the dmg is the manual drag-install path, and a release
 with no zip asset falls back to opening the release page.
 
-`Scripts/package-app.sh:34` builds `swift build -c release --product HelmApp`, assembles
+`Scripts/package-app.sh:62` builds `swift build -c release --product HelmApp`, assembles
 and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for inspection.
 `Scripts/make-dmg.sh:12` and `Scripts/make-zip.sh:14` read the **signed** bundle from
 `$TMPDIR/helm-package` and re-run `codesign --verify --deep --strict`
@@ -1988,7 +1990,7 @@ inside the form as its first `Section` rather than pinned above it with `safeAre
 it inherits the system's width and container in both appearances instead of overhanging the
 rows it summarizes. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
 `Resources/Icon/Helm.icon/Assets/helm-ring.svg` — the artwork the app icon is built from,
-copied in by `Scripts/package-app.sh:45` — rather than reading the icon back, because macOS
+copied in by `Scripts/package-app.sh:73` — rather than reading the icon back, because macOS
 26 resolves `.icon` variants at the system level and the light variant's white slab reads
 as a hole inside Helm's surfaces. `Sources/HelmUI/DesignSystem/HelmBadge.swift` is the one
 pill, its tint colouring the fill and nothing else, because contrast is not something a
