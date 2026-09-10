@@ -32,7 +32,7 @@ import XCTest
 /// what it declares and what it writes in a literal, never what it says about
 /// itself in prose.
 ///
-/// **Only the two standing documents.** `docs/` holds plans, specs and design
+/// **Only the four standing documents.** `docs/` holds plans, specs and design
 /// records — each is the record of a moment and is *supposed* to keep saying
 /// what was true then; `docs/design/current/README.md` says so in its own first
 /// line. Auditing those would demand they lie about their own dates.
@@ -172,31 +172,48 @@ final class DocumentsNameTheTreeTests: XCTestCase {
 
     // MARK: - The documents
 
-    /// The documents this reads. It was `ARCHITECTURE.md` and `CLAUDE.md` alone
-    /// until 2026-08-25, when an audit of the rest found a public module table
-    /// nine rows long over a registry of ten and a digest rule naming one of
-    /// the two scripts that print it — neither a name this check would have
-    /// caught, but both in files it was not looking at, which is the weaker
-    /// reason and still a reason.
-    ///
-    /// **The crew's own README and briefs are not here.** They live in a
-    /// sibling repository, are not reachable by a repo-relative path from a
-    /// worktree, and `check-in-step.sh` already reads them — the boundary each
-    /// document's contract now states out loud.
+    /// The four core documents of the standard, and nothing else. Each names
+    /// code by path or by type and is read by this check for exactly that
+    /// reason: `ARCHITECTURE.md` and `CLAUDE.md` for the reason this class has
+    /// carried since 2026-08-03, `README.md` since 2026-08-25, when an audit of
+    /// the rest found a public module table nine rows long over a registry of
+    /// ten and a digest rule naming one of the two scripts that print it, and
+    /// `CHANGELOG.md` from this pass — 39 KB of prose naming types and files
+    /// that this check had never read.
     private static let standing = [
-        "ARCHITECTURE.md", "CLAUDE.md", "README.md", "VERSIONING.md",
+        "ARCHITECTURE.md", "CLAUDE.md", "README.md", "CHANGELOG.md",
     ]
 
+    /// **A document that is named and absent is a failure, not a silent
+    /// subtraction.** The `compactMap` here used to drop it and the skip only
+    /// asked whether *all* of them were gone, so this class read three documents
+    /// out of four, passed, and said nothing: `VERSIONING.md` had been named for
+    /// a week and does not exist — it has no history in this repository at all.
+    ///
+    /// **The one skip stays, and it is the one `CLAUDE.md` records**: none of
+    /// the standing documents beside `Package.swift`. That is the state of a
+    /// checkout, and the order in `CLAUDE.md` names it out loud so a
+    /// failures-only summary cannot read it as green. *Some* of them is a
+    /// different question and gets a different answer.
     private func documents() throws -> [(name: String, lines: [String])] {
-        let found = Self.standing.compactMap { name -> (String, [String])? in
+        var found: [(name: String, lines: [String])] = []
+        var missing: [String] = []
+        for name in Self.standing {
             guard let text = try? String(contentsOf: root.appendingPathComponent(name),
-                                         encoding: .utf8) else { return nil }
-            return (name, text.components(separatedBy: .newlines))
+                                         encoding: .utf8) else {
+                missing.append(name)
+                continue
+            }
+            found.append((name, text.components(separatedBy: .newlines)))
         }
-        // A checkout without the private submodule has neither, and there is
-        // nothing to be wrong about. Skipped out loud rather than passed
-        // quietly: a green result here would claim a check that never ran.
-        try XCTSkipIf(found.isEmpty, "ARCHITECTURE.md and CLAUDE.md are not in this checkout")
+        try XCTSkipIf(found.isEmpty, "the standing documents are not beside Package.swift")
+        for name in missing {
+            XCTFail("""
+                `\(name)` is on this check's list of standing documents and is not beside \
+                `Package.swift`. Nothing here can be right about a file that is not there, and \
+                dropping it quietly is how this check passed over three documents out of four.
+                """)
+        }
         return found
     }
 
