@@ -1062,14 +1062,17 @@ A stable signing identity is the only real fix, and the same purchase is what
 `systemextensionsctl list`; the uninstaller, the leftovers scanner and the settings
 audit all parse through them.
 
-### The four gates
+### The gates
 
-Four types answer four different questions about where a path may be reached, and
-this is the list of who asks which:
+Five types answer five different questions about where a path may be reached,
+and four of them are about reading or removing. The fifth is about writing, and
+it is the only one, which is why it reads differently from its neighbours: it
+answers *may Helm write this path*, over one file the user owns and Helm did not
+create. This is the list of who asks which:
 
 ```bash
 command grep -rn --include='*.swift' \
-  -oE '(RemovableScope|UserFileScope|WatchScope|ScanRoot)\.[a-zA-Z]+' Sources/
+  -oE '(RemovableScope|UserFileScope|WatchScope|ScanRoot|SSHFileScope)\.[a-zA-Z]+' Sources/
 ```
 
 `RemovableScope` (`Sources/HelmRuntime/RemovableScope.swift`) asks what belongs to an
@@ -1088,6 +1091,12 @@ where an unattended folder rule may reach: inside the home but not the home itse
 outside `~/Library`, and inside `/Volumes/<disk>/` but not at a volume root.
 `ScanRoot` (`Sources/HelmRuntime/ScanRoot.swift`) asks where a read nobody is watching
 may begin and how far it may descend.
+
+`SSHFileScope` (`Sources/Modules/Hosts/Engine/Logic/SSHFileScope.swift:27`) asks
+whether Helm may **write** a path, and it exists because Hosts & Keys is the one
+module that edits a file the user wrote by hand. `mayWrite(_:home:under:)` is the
+whole gate, and the module's rule that anything it does not parse is written back
+byte for byte is the other half of the same care.
 
 Paths reach all four through `Sources/HelmRuntime/PathCanonical.swift`, which resolves
 symlinked ancestors and leaves the leaf alone, so a stale alias is trashed rather than
