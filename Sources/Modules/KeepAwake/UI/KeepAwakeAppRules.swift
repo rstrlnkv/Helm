@@ -8,7 +8,7 @@ import Module_KeepAwake_Engine
 /// An extension rather than a view of its own, and that is load-bearing: a
 /// grouped `Form` groups by what its **direct children** are, so wrapping these
 /// rows in anything — even a `Group` — changes the card they are drawn in
-/// (ARCHITECTURE.md § Settings window). The rows have to stay siblings of the
+/// (ARCHITECTURE.md § The Settings window). The rows have to stay siblings of the
 /// section's other rows, so what moves is the source and not the hierarchy.
 extension KeepAwakeSettingsPage {
     // MARK: - App picker

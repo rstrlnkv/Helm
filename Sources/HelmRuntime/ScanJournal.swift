@@ -77,8 +77,8 @@ public final class ScanJournal: @unchecked Sendable {
 
     /// The journal's own name for `TestScratch`'s judgement, narrowed to the
     /// journal's prefix. `AbandonedJournalsTests` asks it here, which is where
-    /// the 452 directories were counted, and ARCHITECTURE.md § A harness leaves
-    /// nothing behind names it too.
+    /// the 452 directories were counted, and ARCHITECTURE.md § Background scans
+    /// names it too.
     static func abandonedTestJournals(_ names: [String],
                                       isAlive: (Int32) -> Bool) -> [String] {
         testScratch.abandoned(names, isAlive: isAlive)

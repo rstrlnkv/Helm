@@ -15,7 +15,7 @@ import HelmRuntime
 /// has. That bound is the whole defence, so it is a test rather than a sentence —
 /// and the alternative, sealing the value, is refused on purpose: it is read from
 /// `defaultConnection` on every state the engine emits and during `activate()`,
-/// and ARCHITECTURE.md § A seal needs a signature records what a keychain read at
+/// and ARCHITECTURE.md § Sealed settings records what a keychain read at
 /// launch costs on an ad-hoc-signed bundle.
 final class AForgedLastUsedNameIsBoundedTests: XCTestCase {
 

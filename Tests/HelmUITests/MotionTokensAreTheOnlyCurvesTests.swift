@@ -13,7 +13,7 @@ import XCTest
 /// setting rather than a preference.
 ///
 /// CLAUDE.md has said "animations come from `HelmMotion` tokens, never inline
-/// curves" since the tokens existed, and ARCHITECTURE.md § Motion carries three
+/// curves" since the tokens existed, and ARCHITECTURE.md § Design system carries three
 /// laws under it. The tree obeys all of it — measured while writing this, every
 /// one of the sixty-odd `.animation(…)` and `withAnimation(…)` arguments in
 /// `Sources` names a `HelmMotion` member, and all ten tokens consult the flag.

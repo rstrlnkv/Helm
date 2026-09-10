@@ -209,8 +209,8 @@ public enum KeepGrounds: Equatable, Sendable {
     /// defect, and until now only the popup's `choose(_:)` re-decided.
     ///
     /// **The other door opened when the keychain read left `init`.** The page is
-    /// live while `SecurityAgent` holds its dialog (ARCHITECTURE.md § A seal
-    /// needs a signature): the folder is remembered and «Search now» is one
+    /// live while `SecurityAgent` holds its dialog (ARCHITECTURE.md § Sealed
+    /// settings): the folder is remembered and «Search now» is one
     /// press, so a whole list can exist before the stored belief lands. The
     /// reply's own `if chosen != policy` cannot cover that — at the moment it
     /// runs the two are still the same value.

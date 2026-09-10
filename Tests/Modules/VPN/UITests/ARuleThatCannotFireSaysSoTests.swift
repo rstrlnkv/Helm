@@ -8,8 +8,8 @@ import XCTest
 @testable import Module_VPN_UI
 
 /// A rule bound to an identity can refuse, and a rule that refuses in silence is
-/// the failure ARCHITECTURE.md § A rule that is being ignored is not a rule that is
-/// quiet is about — the row goes on showing the app, the VPN and the timing, and
+/// the failure ARCHITECTURE.md § VPN is about — the row goes on showing the
+/// app, the VPN and the timing, and
 /// nothing fires.
 ///
 /// Two of the five verdicts belong to the rule itself and can be drawn from the

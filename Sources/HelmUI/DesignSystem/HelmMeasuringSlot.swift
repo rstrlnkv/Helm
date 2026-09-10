@@ -20,7 +20,7 @@ import SwiftUI
 ///
 /// **It is a colour, and never `.opacity`.** Animating opacity puts the subtree
 /// in an offscreen layer, and dropping that layer at the end makes hierarchical
-/// colours jump — the "Automation" heading's defect, ARCHITECTURE.md § Motion.
+/// colours jump — the "Automation" heading's defect, ARCHITECTURE.md § Design system.
 /// Interpolating a literal `Color.primary.opacity(k)` moves the ink without
 /// creating a layer at all, which is also why the value here is spelled as a
 /// literal rather than as `.secondary`.
@@ -159,7 +159,7 @@ public struct HelmMeasuringSlot: ViewModifier {
         // **No branch around `content`, ever.** An `if` inside a `ViewModifier`
         // is SwiftUI being told the two sides are different views, and after
         // that no transaction on the outside can interpolate between them
-        // (ARCHITECTURE.md § Motion, law 1). Both halves below are a value
+        // (ARCHITECTURE.md § Design system, law 1). Both halves below are a value
         // handed to one unchanging tree.
         content
             .foregroundStyle(Self.ink(measuring: shown))

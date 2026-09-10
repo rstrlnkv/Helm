@@ -14,7 +14,7 @@ import XCTest
 /// repaired in 4dcc5fb6 — 19,09 s in `HelmApp_2026-08-19-235500_MacBook.hang` —
 /// and it is not a one-off: the bundle is ad-hoc signed, so its identity changes
 /// with every build and a keychain ACL written by one never matches the next
-/// (ARCHITECTURE.md § A seal needs a signature). Every install is a dialog, and
+/// (ARCHITECTURE.md § Sealed settings). Every install is a dialog, and
 /// the dialog stands in front of a window that has drawn nothing.
 ///
 /// **The guard that keeps this test off the real keychain stays exactly as it

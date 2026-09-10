@@ -25,7 +25,8 @@ import Module_Uninstaller_UI
     /// cancelled: a `for await` over an event stream that never finishes runs for
     /// the life of the app, and cancelling it from outside is the only way it
     /// ever ends — `deinit` cannot, because the task is what keeps the object
-    /// alive (ARCHITECTURE.md § Memory).
+    /// alive (ARCHITECTURE.md § State that outlives a page and ends with its
+    /// module).
     private var trashEventsTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {

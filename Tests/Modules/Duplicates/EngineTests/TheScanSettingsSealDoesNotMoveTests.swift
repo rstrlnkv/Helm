@@ -36,7 +36,7 @@ final class TheScanSettingsSealDoesNotMoveTests: XCTestCase {
     /// One guard, not one per setting: a second `SettingGuard` here would be a
     /// second keychain item for one question, and the item is the expensive part
     /// — on an ad-hoc signed build every one of them is a dialog
-    /// (ARCHITECTURE.md § A seal needs a signature).
+    /// (ARCHITECTURE.md § Sealed settings).
     func testThereIsExactlyOneGuardOverTheScanSettings() throws {
         let guards = try settingsSource().components(separatedBy: "\n")
             .map(RepoSource.code)

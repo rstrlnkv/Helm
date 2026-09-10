@@ -23,8 +23,7 @@ import HelmRuntime
 ///
 /// A verdict rather than a `Bool`: the log line and the settings row each have to
 /// say which refusal this was, and «the rule did nothing» with no reason is the
-/// failure ARCHITECTURE.md § A rule that is being ignored is not a rule that is
-/// quiet was written about.
+/// failure ARCHITECTURE.md § VPN was written about.
 public enum VPNRuleTrust {
 
     /// Exhaustive, and switched over without a `default` wherever it is read: a

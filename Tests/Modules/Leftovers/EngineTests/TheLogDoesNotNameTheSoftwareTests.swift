@@ -11,8 +11,8 @@ import XCTest
 /// home directory with `~`. That is right for a module whose paths name folders; here
 /// the last component is a bundle id (`~/Library/Preferences/com.acme.tool.plist`,
 /// `~/Library/LaunchAgents/com.vendor.updater.plist`), which is exactly what
-/// `Redact.app` exists for: ARCHITECTURE.md § What must not reach the file says a
-/// bundle id names a person's habits.
+/// `Redact.app` exists for: ARCHITECTURE.md § Diagnostics log says a bundle id
+/// names a person's habits.
 ///
 /// And these lines are not the exceptional case. A refusal by Full Disk Access is an
 /// ordinary outcome for this module — ARCHITECTURE.md records 23 of 42 launches with

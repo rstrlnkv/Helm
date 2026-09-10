@@ -864,9 +864,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// The refusal is logged with its reason, because a rule that has quietly
     /// stopped firing looks exactly like one that fires every day
-    /// (ARCHITECTURE.md § A rule that is being ignored is not a rule that is
-    /// quiet). The identifier goes through `Redact.app`, like every other name in
-    /// this file.
+    /// (ARCHITECTURE.md § VPN). The identifier goes through `Redact.app`, like
+    /// every other name in this file.
     private func launchIfTrusted(_ bundleID: String) {
         guard let rule = core.rules[bundleID] else { return }
         let verdict = VPNRuleTrust.judge(rule: rule, running: apps.identity(of: bundleID))

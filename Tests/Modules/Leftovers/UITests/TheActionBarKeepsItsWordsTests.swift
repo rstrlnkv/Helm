@@ -26,7 +26,7 @@ import Module_Leftovers_Engine
 final class TheActionBarKeepsItsWordsTests: XCTestCase {
 
     /// The narrowest pane the window allows: `contentMinSize` is 860 × 540 and the
-    /// sidebar takes the rest (ARCHITECTURE.md § Settings window).
+    /// sidebar takes the rest (ARCHITECTURE.md § The Settings window).
     private static let narrowest: CGFloat = 606
 
     private static func agent(_ name: String) -> StaleItem {

@@ -18,7 +18,7 @@ import XCTest
 ///
 /// (Those operations also called `MemoryReclaim.afterHeavyWork`, which was
 /// removed 2026-07-31 after four probes and five live operations measured it
-/// returning 0 MB every time — ARCHITECTURE.md § Memory.)
+/// returning 0 MB every time — ARCHITECTURE.md § The memory trail.)
 /// docs/superpowers/plans/2026-07-29-third-pass.md has the trail and the vmmap.
 ///
 /// This is a coverage test, not a measurement: it asserts the labels exist in the

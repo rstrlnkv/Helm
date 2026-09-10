@@ -168,7 +168,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // ("one question, two spellings") read as an invitation to merge
             // them: wiring a module to the wrong gate is a real mistake with
             // a misleading symptom, and the duplicate finder shipped one
-            // (ARCHITECTURE.md § Removal scope).
+            // (ARCHITECTURE.md § The gates).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
             return HelmTrash.remove(allowed: allowed, outOfScope: refused,
                                     module: Self.moduleID)

@@ -13,8 +13,8 @@ import Foundation
 /// state rather than a path — read `OfKey` and `Identity` for how many each is
 /// now, because that number has already gone stale in this sentence once.
 /// Folding either would be the
-/// defect ARCHITECTURE.md § A nil from a system read can be folding two
-/// questions into one is about, arriving in a module that has no system read:
+/// defect ARCHITECTURE.md § Module pattern is about, arriving in a module
+/// that has no system read:
 /// «named nowhere» and «not used» are different facts, and so are «points at a
 /// key that is gone» and «points at no key».
 public enum KeyUsage {

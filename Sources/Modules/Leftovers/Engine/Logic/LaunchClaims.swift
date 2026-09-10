@@ -123,7 +123,7 @@ enum LaunchClaims {
                 .filter { $0.pathExtension == "plist" }
                 .map { url in
                     // A plist read per file, handing back autoreleased Foundation
-                    // objects — ARCHITECTURE.md § Memory, inside the iteration.
+                    // objects — ARCHITECTURE.md § Module pattern, inside the iteration.
                     autoreleasepool {
                         Claim(label: LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:],
                                                             path: url.path).identifier,

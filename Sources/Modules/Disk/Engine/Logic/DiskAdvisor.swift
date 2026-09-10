@@ -166,7 +166,7 @@ enum DiskAdvisor {
             // is the one closing when the whole scan returns. Measured over
             // 20 000 file nodes: 56 bytes a node kept without this, 0 with it
             // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
-            // books). ARCHITECTURE.md § Memory.
+            // books). ARCHITECTURE.md § Module pattern.
             autoreleasepool {
                 if !node.isDirectory, !node.isFolded, node.modified > 0,
                    UserFileScope.isRemovable(path),

@@ -118,7 +118,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// the initialiser's values with the store's — so once a store exists,
     /// passing `fixCapitals: true` to the init and nothing to the store leaves
     /// the flag off. That is the engine reading its own settings at launch,
-    /// which is deliberate (ARCHITECTURE.md § Layout switching); the test has
+    /// which is deliberate (ARCHITECTURE.md § Layout); the test has
     /// to speak to it the way the page does.
     private static func boundStore(fixCapitals: Bool = false) -> NamespacedStore {
         let store = NamespacedStore(namespace: LayoutEngine.moduleID,

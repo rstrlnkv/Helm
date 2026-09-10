@@ -38,8 +38,8 @@ public enum Redact {
     /// above is the whole of the redaction: their folders are the point of those
     /// screens. For the app-cleanup modules the leaf **is a bundle id** —
     /// `~/Library/Preferences/com.acme.tool.plist` — which is the thing `app`
-    /// exists for: ARCHITECTURE.md § What must not reach the file says a bundle id
-    /// names a person's habits. Two kinds of leaf, one shared removal loop, and a
+    /// exists for: ARCHITECTURE.md § Diagnostics log says a bundle id names a
+    /// person's habits. Two kinds of leaf, one shared removal loop, and a
     /// caller has to say which it hands over.
     public enum Leaf: Sendable {
         case fileName, softwareName

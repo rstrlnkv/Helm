@@ -6,7 +6,7 @@ import XCTest
 
 /// What one walk costs the process, and which of its two loops the cost is in.
 ///
-/// ARCHITECTURE.md § Memory reaches both, and **both loops are `BulkWalk`'s
+/// ARCHITECTURE.md § Module pattern reaches both, and **both loops are `BulkWalk`'s
 /// now** — the walk moved to `HelmRuntime` so that `FileWeight` and the
 /// duplicate finder could stop enumerating. The **worker** loop reads a
 /// directory at a time and has had its pool for as long as that section has
@@ -62,7 +62,7 @@ final class ScanFootprintTests: XCTestCase {
         let root = scratchDirectory("disk-footprint")
         try deepTree(in: root)
 
-        // The allocator keeps its tools out — ARCHITECTURE.md § Memory measured
+        // The allocator keeps its tools out — ARCHITECTURE.md § The memory trail measured
         // the peak falling with every round and settling by the third — so the
         // first walk pays for whatever Foundation warms up once, and the reading
         // that answers the question is the second.

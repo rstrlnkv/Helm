@@ -5,7 +5,7 @@ import XCTest
 
 /// What one login-items scan costs the process.
 ///
-/// This scan is exactly the shape ARCHITECTURE.md § Memory names — «any loop
+/// This scan is exactly the shape ARCHITECTURE.md § Module pattern names — «any loop
 /// that reads file contents or asks Foundation for resource values in bulk needs
 /// a pool inside it» — and it had no pool anywhere. Three loops qualify:
 /// `~/Library/Preferences` is 542 plists on the machine this was written on and
@@ -31,7 +31,7 @@ final class LeftoversScanFootprintTests: XCTestCase {
                                        extensions: ActiveExtensions())
 
         // The first scan pays for whatever Foundation warms up once — the
-        // allocator keeps its tools out, which ARCHITECTURE.md § Memory measured
+        // allocator keeps its tools out, which ARCHITECTURE.md § The memory trail measured
         // as a peak that falls to nothing by the third round. The reading that
         // answers this question is the second.
         _ = scanner.scan()

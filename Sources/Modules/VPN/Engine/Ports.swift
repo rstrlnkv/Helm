@@ -24,8 +24,8 @@ public struct VPNCredentials: Equatable, Sendable {
 /// something about every nil would put a warning under every automatic connect on
 /// the machine, and saying nothing is what shipped.
 ///
-/// This is the repair ARCHITECTURE.md § A nil from a system read can be folding
-/// two questions into one records for `PowerSource.supply()`, in the same shape:
+/// This is the repair ARCHITECTURE.md § Module pattern records for
+/// `PowerSource.supply()`, in the same shape:
 /// the port answers the question it is actually being asked.
 public enum VPNCredentialRead: Equatable, Sendable {
     /// Read, and usable: the secret is in hand. Only ever built with a non-empty
@@ -52,7 +52,7 @@ public enum VPNCredentialRead: Equatable, Sendable {
 /// had read the status and thrown it away one line earlier. A tool that did not
 /// run was therefore announced as a tunnel that came up, and no fake could have
 /// caught it, because no fake can separate what the port has already folded
-/// together (ARCHITECTURE.md § A nil from a system read is two questions in one).
+/// together (ARCHITECTURE.md § Module pattern).
 ///
 /// `HelmProcess.Result` rather than a type of this module's own: it is already
 /// the shape of "what a command-line tool answered", and there is one of those.

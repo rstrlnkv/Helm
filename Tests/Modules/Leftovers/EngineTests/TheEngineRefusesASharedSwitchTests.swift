@@ -9,7 +9,7 @@ import XCTest
 /// `LeftoverActions.available` no longer offers «Turn off» where two files register
 /// one label (`OneLabelIsOneSwitchTests`), and that is a rule about what is *drawn*.
 /// The act is the engine's: a request carrying a label and a path is whatever built
-/// it, and `ARCHITECTURE.md § Removal scope` is the standing answer to «the view
+/// it, and `ARCHITECTURE.md § The gates` is the standing answer to «the view
 /// model already decided». `LaunchLabel.mayBeSwitched` passes both copies of
 /// `com.vendor.updater` — each sits in a LaunchAgents folder and each is named
 /// after its label — so without this the engine would send `launchctl disable

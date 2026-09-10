@@ -11,7 +11,7 @@ import Foundation
 ///
 /// The gate is untouched by any of this. `DiskEngine.trash` still runs
 /// `UserFileScope.partition` over whatever comes out of here, and `HelmTrash`
-/// still has the last word (ARCHITECTURE.md § Removal scope).
+/// still has the last word (ARCHITECTURE.md § The gates).
 public enum DiskRemovalPlan {
 
     /// What the confirmation is about.

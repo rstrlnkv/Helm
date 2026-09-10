@@ -143,7 +143,7 @@ struct LeftoversScanner: Sendable {
                 .filter { $0.pathExtension == "plist" }
                 .map { url -> StaleItem in
                     // A plist read per job, and the read hands back autoreleased
-                    // Foundation objects — ARCHITECTURE.md § Memory. Inside the
+                    // Foundation objects — ARCHITECTURE.md § Module pattern. Inside the
                     // iteration, never around it.
                     autoreleasepool {
                     // **The read is kept, not spent.** `readPlist` answers nil for

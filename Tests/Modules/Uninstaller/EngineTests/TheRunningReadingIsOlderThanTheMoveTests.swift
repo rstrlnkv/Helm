@@ -20,7 +20,7 @@ import XCTest
 ///   helper that restarts its app, `open -a`, or the person double-clicking;
 /// - it ignored the quit, and the deadline let the batch proceed.
 ///
-/// The second is the one ARCHITECTURE.md § «Waiting for an app to quit» already
+/// The second is the one ARCHITECTURE.md § «Uninstaller» already
 /// decided: «the deadline **proceeds** rather than refuses… and `trashSync`
 /// reports what would not move». The first half is a decision; the second half
 /// is not true. macOS lets a running app's bundle be moved, so nothing refuses,
@@ -109,8 +109,8 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
 
     /// **An app that ignored the force quit.**
     ///
-    /// The deadline proceeding is a decision (ARCHITECTURE.md § Waiting for an app
-    /// to quit); the sentence that justifies it — «`trashSync` reports what would
+    /// The deadline proceeding is a decision (ARCHITECTURE.md § Uninstaller); the
+    /// sentence that justifies it — «`trashSync` reports what would
     /// not move» — is what is missing. Nothing refuses to move, so the person is
     /// told the uninstall worked.
     ///

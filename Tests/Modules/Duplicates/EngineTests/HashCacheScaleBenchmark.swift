@@ -24,7 +24,7 @@ import HelmTestSupport
 /// each, because it read `phys_footprint` — resident pages — and tests run
 /// alphabetically inside a class, so `testCodec…` and `testCompaction…` had
 /// already built and freed caches of the same size. The third fill costs no new
-/// pages at all, which ARCHITECTURE.md § Memory measures directly ("the peak
+/// pages at all, which ARCHITECTURE.md § The memory trail measures directly ("the peak
 /// falls with each round and stops moving entirely from the third"). The figure
 /// answering this file's own first question was an artefact of test ordering,
 /// and nothing could have noticed, because nothing was asserted.

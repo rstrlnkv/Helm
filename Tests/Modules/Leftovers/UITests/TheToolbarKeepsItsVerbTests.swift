@@ -28,7 +28,7 @@ final class TheToolbarKeepsItsVerbTests: XCTestCase {
 
     /// The narrowest pane the window allows, the default, and a wide one —
     /// `contentMinSize` is 860 × 540 and the sidebar takes the rest
-    /// (ARCHITECTURE.md § Settings window).
+    /// (ARCHITECTURE.md § The Settings window).
     private static let widths: [CGFloat] = [606, 720, 845]
 
     /// The strip, in points from the top of the page: 48 pt of controls and the

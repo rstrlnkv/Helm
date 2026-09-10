@@ -9,7 +9,7 @@ import Foundation
 /// its cdhash is a hash of its contents, so every build is a different program
 /// to the keychain and no access list an earlier one wrote still names it — and
 /// the answer is therefore a modal authorization dialog rather than data
-/// (ARCHITECTURE.md § A seal needs a signature). Measured 2026-08-15 standing in
+/// (ARCHITECTURE.md § Sealed settings). Measured 2026-08-15 standing in
 /// front of the settings window before it had drawn anything.
 ///
 /// **What is cached is the key, never a verdict.** The key is a secret created

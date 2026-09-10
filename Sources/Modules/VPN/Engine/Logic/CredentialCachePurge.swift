@@ -26,8 +26,8 @@ import HelmRuntime
 /// wipe the real `helm.log`: **a latch belongs to what it guards, not to whoever
 /// asks.** What it guards is a keychain item, and a marker *inside* the keychain
 /// would mean a keychain read during `init` — which on this ad-hoc-signed bundle
-/// is a system dialog in front of the launch (ARCHITECTURE.md § A seal needs a
-/// signature). So the record sits with Helm's own state on disk, which is per
+/// is a system dialog in front of the launch (ARCHITECTURE.md § Sealed
+/// settings). So the record sits with Helm's own state on disk, which is per
 /// installation rather than per process, and the app is asked whether it is the
 /// app before any of it happens.
 enum CredentialCachePurge {

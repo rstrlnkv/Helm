@@ -66,7 +66,7 @@ final class OneActHasOneNameTests: XCTestCase {
 
     /// The question asked over a loaded item names the switch that actually stops
     /// it, and names it by asking the switch — not by spelling its word a second
-    /// time (ARCHITECTURE.md § A sentence that names a control).
+    /// time (ARCHITECTURE.md § Localization).
     ///
     /// Moving a launch agent's file to the Trash does not unload the job:
     /// `LeftoversEngine.trash` moves paths and nothing else, while

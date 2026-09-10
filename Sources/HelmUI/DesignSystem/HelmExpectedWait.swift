@@ -39,7 +39,7 @@ import SwiftUI
 /// engine republishes dozens of times behind one connect, and whose value could
 /// then disagree with the truth. A `TimelineView` cannot disagree with the
 /// truth: the fraction is a pure function of `context.date`. That is the same
-/// finding the About bezel wrote down — ARCHITECTURE.md § Motion, «there is no
+/// finding the About bezel wrote down — ARCHITECTURE.md § Design system, «there is no
 /// token for turning forever, and that is the finding».
 ///
 /// **Reduce Motion is answered by the schedule, not by a shorter animation.**

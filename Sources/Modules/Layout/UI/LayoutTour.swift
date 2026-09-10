@@ -63,7 +63,7 @@ struct LayoutTour: View {
             content
                 // Every step is a different height, and a card that resizes by
                 // jumping is a card nobody follows. Measured and animated, the
-                // way a reveal is (ARCHITECTURE.md § Motion).
+                // way a reveal is (ARCHITECTURE.md § Design system).
                 .helmMeasuredHeight($bodyHeight, animation: HelmMotion.disclosure)
                 // **The measurement, drawn.** `helmMeasuredHeight` only writes
                 // the binding — the frame is the caller's, which is why

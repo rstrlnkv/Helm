@@ -18,7 +18,7 @@ import HelmTestSupport
 /// summon an authorization prompt in front of somebody who did nothing.
 ///
 /// Sealing the rules is the wrong repair and is refused: they are read during
-/// `activate()`, and ARCHITECTURE.md § A seal needs a signature records what a
+/// `activate()`, and ARCHITECTURE.md § Sealed settings records what a
 /// keychain read at launch costs on this ad-hoc-signed bundle. What is gated
 /// instead is the prompt itself: an automatic connect may read Helm's own cache
 /// and must give up if the secret is not there.
@@ -57,7 +57,7 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
     /// `SettingGuard.verdict` on the launch path, and a verdict is one
     /// `SealKeyPort.key()` — a login-keychain round trip that, on a bundle signed
     /// `--sign -`, is an authorization dialog rather than data, at every launch
-    /// after every install (ARCHITECTURE.md § A seal needs a signature).
+    /// after every install (ARCHITECTURE.md § Sealed settings).
     ///
     /// The `IfWarm` shape the other two sealed settings use does not rescue it:
     /// `disabledScans` and `keepPolicy` are read when a page opens or a scan

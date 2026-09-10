@@ -61,7 +61,7 @@ final class AppSizesFootprintTests: XCTestCase {
         // Bundle sizing walks metadata, never contents: it should cost about what
         // a directory listing costs, not what the bundles weigh. The ceiling is
         // deliberately far above a healthy figure and far below the 177 MB this
-        // test exists to explain — see ARCHITECTURE.md § Memory.
+        // test exists to explain — see ARCHITECTURE.md § The memory trail.
         XCTAssertLessThan(grewMB, 40,
                           "measuring \(apps.count) bundles grew the process by "
                           + String(format: "%.1f MB", grewMB)

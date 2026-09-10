@@ -4,7 +4,7 @@ import HelmTestSupport
 
 /// `ReleaseDigest.sha256(ofFileAt:)` streams a release asset in 1 MB slices —
 /// the same shape `DuplicateScanner.hash` used before its autoreleasepool fix
-/// (ARCHITECTURE.md § Memory), and the same defect: `FileHandle.read` hands
+/// (ARCHITECTURE.md § Module pattern), and the same defect: `FileHandle.read` hands
 /// back an autoreleased `Data`, this loop has no pool, and nothing else on
 /// this call path forces a drain. Unlike the duplicate hasher this call is
 /// serial — no `concurrentPerform` involved — so it is a clean check of

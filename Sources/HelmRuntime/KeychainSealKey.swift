@@ -15,8 +15,8 @@ public protocol SealKeyPort: Sendable {
     ///
     /// Nil is a **third answer**, not a refusal: «cannot say yet». A caller that
     /// folded it into "no key" would report a stored setting as forged because a
-    /// keychain was slow, which is the shape ARCHITECTURE.md § A nil from a
-    /// system read can be folding two questions into one is about.
+    /// keychain was slow, which is the shape ARCHITECTURE.md § Module pattern
+    /// is about.
     ///
     /// The default is nil because it is the truth for a port that keeps
     /// nothing, and `KeychainSealKey` is exactly that port: every answer it

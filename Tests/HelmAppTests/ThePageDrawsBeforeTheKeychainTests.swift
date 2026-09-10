@@ -16,7 +16,7 @@ import XCTest
 /// the settings window *before the window had drawn anything*, twice blocking
 /// the screenshot harness.
 ///
-/// This is ARCHITECTURE.md § A seal needs a signature arriving through the
+/// This is ARCHITECTURE.md § Sealed settings arriving through the
 /// second door. `clamshellEnabled` is unsealed because `init` reads it;
 /// `disabledScans` is sealed because it is read rarely and never at launch —
 /// and a `@State` initializer on the settings page is a read at construction,

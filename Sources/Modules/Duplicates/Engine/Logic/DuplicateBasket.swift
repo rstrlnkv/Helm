@@ -53,8 +53,7 @@ public enum DuplicateBasket {
     /// Through `DuplicateGroup.reclaimable`, which is the same fold the basket
     /// bar and the confirmation use and the same slate `HelmTrash` opens for the
     /// batch — so the line above the list, the bar under it and the banner after
-    /// the press are one arithmetic (ARCHITECTURE.md § What a copy actually
-    /// costs).
+    /// the press are one arithmetic (ARCHITECTURE.md § Duplicates).
     public static func wasted(in groups: [DuplicateGroup]) -> Int {
         DuplicateGroup.reclaimable(marking: Set(groups.flatMap(removableExtras)), in: groups)
     }

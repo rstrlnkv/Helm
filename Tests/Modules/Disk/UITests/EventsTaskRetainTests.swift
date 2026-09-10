@@ -15,9 +15,10 @@ import Module_Disk_Engine
 /// for as long as the loop runs. That is forever, once it has started.
 ///
 /// `DiskViewModel.shared(vm:)` and `ModuleUICache.dropWhenDisabled` only drop
-/// the CACHE's reference (ARCHITECTURE.md § Memory: "drops the cached
-/// instance, and the reclaim above hands the pages back"). If the view model
-/// is also kept alive by its own task, dropping the cache does not free it —
+/// the CACHE's reference (ARCHITECTURE.md § State that outlives a page and
+/// ends with its module: "drops the cached instance, and the reclaim above
+/// hands the pages back"). If the view model is also kept alive by its own
+/// task, dropping the cache does not free it —
 /// the scan tree, `DiskNode` and all, stays reachable, and `LocalTransport`
 /// keeps a subscriber registered for a view model nothing else can reach.
 /// `DuplicatesViewModel` shows the fix already exists elsewhere in the

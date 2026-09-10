@@ -6,7 +6,7 @@ import XCTest
 
 /// What the sweep at the end of a scan costs the process.
 ///
-/// ARCHITECTURE.md § Memory: **any loop that reads file contents or asks
+/// ARCHITECTURE.md § Module pattern: **any loop that reads file contents or asks
 /// Foundation for resource values in bulk needs a pool inside it.**
 /// `DiskAdvisor.sweep` is such a loop and had no pool. It visits every file node
 /// in the finished tree and asks `UserFileScope.isRemovable` about each one —

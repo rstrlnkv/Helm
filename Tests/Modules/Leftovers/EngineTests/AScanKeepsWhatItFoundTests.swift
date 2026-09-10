@@ -92,7 +92,7 @@ final class AScanKeepsWhatItFoundTests: XCTestCase {
                                        extensions: LeftoversFakeLoaded())
 
         // The first pass pays for whatever Foundation warms up once; the reading
-        // that answers the question is a later one (ARCHITECTURE.md § Memory —
+        // that answers the question is a later one (ARCHITECTURE.md § The memory trail —
         // the allocator keeps its tools out, and the peak falls until it stops).
         for _ in 0..<2 { _ = autoreleasepool { scanner.scan() } }
 
@@ -111,7 +111,7 @@ final class AScanKeepsWhatItFoundTests: XCTestCase {
             (\(Int(perItem)) an item) — it is holding what it read rather than \
             what it found. The `autoreleasepool` inside each of the scanner's \
             loops is what keeps a plist read from outliving the row built from \
-            it (ARCHITECTURE.md § Memory: the pool goes inside the loop).
+            it (ARCHITECTURE.md § Module pattern: the pool goes inside the loop).
             """)
     }
 }

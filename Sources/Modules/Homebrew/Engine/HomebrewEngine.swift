@@ -139,7 +139,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// measured returning 0 MB in nine probes and removed on 2026-07-31, so
     /// there is no reclaim for a phase to be missing; and `HelmLog.memory`
     /// prints on every call now rather than above 8 MB, because a gate that
-    /// hides zero hides the answer (ARCHITECTURE.md § Memory).
+    /// hides zero hides the answer (ARCHITECTURE.md § The memory trail).
     ///
     /// nil when brew did not answer in time — never an empty list, which reads
     /// as a clean machine.

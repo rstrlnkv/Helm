@@ -141,7 +141,7 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// down from 33. The one that stays is `PanelChrome`'s module name: 12 is
     /// off the settings scale and on the *panel's* own — 9 · 10 · 11 · 12 in
     /// that file — and the menu-bar panel deliberately does not follow the
-    /// settings language (ARCHITECTURE.md § Design language). The reason is at
+    /// settings language (ARCHITECTURE.md § Design system). The reason is at
     /// the line as well as here.
     private static let recordedOffScaleStyles = 1
 

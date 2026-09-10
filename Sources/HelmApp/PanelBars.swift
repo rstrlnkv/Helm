@@ -9,7 +9,7 @@ import HelmUI
 //
 // Each takes what it needs and owns none of it. That is the rule the split was
 // made under: the panel's `@State` is what the third drag architecture was
-// bought with (ARCHITECTURE.md § Carrying a tile), so nothing here holds state
+// bought with (ARCHITECTURE.md § The menu-bar panel), so nothing here holds state
 // the panel is steering by — a binding travels down, an action travels up.
 
 /// The tabs, and it is the first row of the card **in both modes**.

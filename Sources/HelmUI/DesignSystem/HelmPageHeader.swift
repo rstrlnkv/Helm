@@ -50,7 +50,7 @@ import SwiftUI
 /// frequencies gone: a blur.
 ///
 /// It is `.bar` — the system's own scroll-edge surface — rather than
-/// `.glassEffect`, which ARCHITECTURE.md § Surfaces reserves for a thing that
+/// `.glassEffect`, which ARCHITECTURE.md § Design system reserves for a thing that
 /// *floats*: glass carries its own edge and its own shadow, and this strip
 /// draws the pane's edge itself, one point below.
 ///

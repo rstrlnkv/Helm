@@ -9,7 +9,7 @@ import HelmTestSupport
 /// gained a lifetime: a binding travels down and an action travels up.
 ///
 /// **SwiftUI identity is what the third drag architecture was bought with**
-/// (ARCHITECTURE.md § Carrying a tile). The second architecture hung the
+/// (ARCHITECTURE.md § The menu-bar panel). The second architecture hung the
 /// gesture on the cell, a repack rebuilt the cells, the gesture died under the
 /// pointer, `onEnded` never came, and the widget hung in the air. The cure was
 /// putting every piece of drag state in the panel and the gesture on the grid
@@ -45,7 +45,7 @@ final class PanelBarsCarryNoLifetimeTests: XCTestCase {
         XCTAssertTrue(offenders.isEmpty,
                       "a bar extracted from the panel has grown state of its own. The panel "
                       + "owns every lifetime the drag is steered by (ARCHITECTURE.md § "
-                      + "Carrying a tile); pass a binding down and an action up:\n"
+                      + "The menu-bar panel); pass a binding down and an action up:\n"
                       + offenders.map { "PanelBars.swift:\($0.line) —\($0.text)" }
                           .joined(separator: "\n"))
     }

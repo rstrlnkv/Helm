@@ -20,7 +20,7 @@ import XCTest
 /// The offer and the engine are both fixed, because the offer is what a person sees
 /// and the engine is what acts: a view model is not allowed to be the last word on
 /// what happens to somebody's login items, the same rule `RemovableScope` states one
-/// verb over (ARCHITECTURE.md § Removal scope).
+/// verb over (ARCHITECTURE.md § The gates).
 final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
     private let victim = "com.securityvendor.agent"
@@ -113,7 +113,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
 
         XCTAssertEqual(recorder.labels, [], """
             the engine passed «\(victim)» to `launchctl` because a request said so — and a request \
-            is built by a view model, which ARCHITECTURE.md § Removal scope says may not be the \
+            is built by a view model, which ARCHITECTURE.md § The gates says may not be the \
             last word on what is done to somebody's machine.
             """)
     }

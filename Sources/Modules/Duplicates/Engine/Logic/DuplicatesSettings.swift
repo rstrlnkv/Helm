@@ -22,7 +22,7 @@ import HelmRuntime
 /// than once per verdict.** Every read here — the engine's on each background
 /// scan, the page's when it opens — called `SecItemCopyMatching`, and on an
 /// ad-hoc signed bundle that is a modal authorization dialog rather than data
-/// (ARCHITECTURE.md § A seal needs a signature). `AppSettings.scanGuard` is the
+/// (ARCHITECTURE.md § Sealed settings). `AppSettings.scanGuard` is the
 /// shape this follows, and the cache's own documentation named this guard as one
 /// of the two still paying per verdict.
 public enum DuplicatesSettings {
@@ -56,8 +56,7 @@ public enum DuplicatesSettings {
     /// getter that answers with its default before touching the guard leaves the
     /// `.adopt` door open for ever, and the first value anybody plants would be
     /// adopted and sealed as Helm's own — `AppSettings.disabledScans` shipped
-    /// exactly that (ARCHITECTURE.md § And a seal's first use has to actually
-    /// happen).
+    /// exactly that (ARCHITECTURE.md § Sealed settings).
     public static func keepPolicy(in store: NamespacedStore?,
                                   guardedBy settings: SettingGuard) -> KeepPolicy {
         switch stored(keepPolicyKey, in: store, guardedBy: settings) {

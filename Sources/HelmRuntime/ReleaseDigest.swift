@@ -54,7 +54,7 @@ public enum ReleaseDigest {
     /// volume read rather than what is kept: measured over a 1200 MB file,
     /// 1204 MB of growth without the pool against 1.0 MB with it. This is the
     /// same defect the duplicate scanner's hash loop had, in a loop that is not
-    /// even parallel — see ARCHITECTURE.md § Memory.
+    /// even parallel — see ARCHITECTURE.md § Module pattern.
     public static func sha256(ofFileAt url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }

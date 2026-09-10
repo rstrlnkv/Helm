@@ -4,7 +4,7 @@ import CoreGraphics
 /// a gesture.
 ///
 /// The panel's drag is a third architecture and every rule in it was paid for
-/// (ARCHITECTURE.md § Carrying a tile). They lived inside the `DragGesture`
+/// (ARCHITECTURE.md § The menu-bar panel). They lived inside the `DragGesture`
 /// closure, where the only way to try one was to press a tile and watch — so
 /// they are here for the same reason `SidebarLayoutDrag` is here: a drag
 /// landing in the wrong place is a failing test, not a thing somebody notices

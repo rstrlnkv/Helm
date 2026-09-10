@@ -185,8 +185,8 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// `VPNSystemPorts()` while the module list is assembled — so a
     /// `SecItemDelete` there is a launch-time keychain call, the family of the
     /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog
-    /// at every install rather than once (ARCHITECTURE.md § A seal needs a
-    /// signature). Nothing waits for the answer: the purge is a one-time
+    /// at every install rather than once (ARCHITECTURE.md § Sealed settings).
+    /// Nothing waits for the answer: the purge is a one-time
     /// deletion of items this port will simply re-read the System keychain past
     /// if it beats them to it.
     ///

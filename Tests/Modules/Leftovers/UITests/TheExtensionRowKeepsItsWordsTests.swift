@@ -23,7 +23,7 @@ import Module_Leftovers_Engine
 final class TheExtensionRowKeepsItsWordsTests: XCTestCase {
 
     /// The narrowest pane the window allows — `contentMinSize` is 860 × 540 and
-    /// the sidebar takes the rest (ARCHITECTURE.md § Settings window).
+    /// the sidebar takes the rest (ARCHITECTURE.md § The Settings window).
     private static let narrowest: CGFloat = 606
 
     /// An extension whose host app is gone: the one row that draws this button,

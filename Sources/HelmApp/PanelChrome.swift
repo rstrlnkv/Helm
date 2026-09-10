@@ -248,7 +248,7 @@ struct UtilitiesSection: View {
                     Spacer()
                     // The panel keeps its own scale — 9 · 10 · 11 · 12, spelled
                     // out beside this line — and does not answer to the settings
-                    // window's four tokens (ARCHITECTURE.md § Design language).
+                    // window's four tokens (ARCHITECTURE.md § Design system).
                     Text("\(modules.count)").font(.caption).foregroundStyle(HelmText.faint)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
@@ -321,7 +321,7 @@ struct UtilitiesSection: View {
                 // `.callout` is 12, which is off the settings scale and *on*
                 // the panel's own — the sizes around it in this file are 9,
                 // 10, 11 and 12. The panel is a transient surface with its
-                // own rules (ARCHITECTURE.md § Design language); this is the
+                // own rules (ARCHITECTURE.md § Design system); this is the
                 // one style the tree-wide sweep left where it was.
                 Text(meta.shortName).font(.callout).lineLimit(1)
                 Spacer()

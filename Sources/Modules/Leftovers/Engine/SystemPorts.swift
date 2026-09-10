@@ -95,7 +95,7 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
         for item in items {
             // One `Info.plist` per application, over four directories two levels
             // deep — a bulk read of file contents, so the pool goes inside the
-            // iteration (ARCHITECTURE.md § Memory).
+            // iteration (ARCHITECTURE.md § Module pattern).
             autoreleasepool {
                 if item.pathExtension == "app" {
                     let info = item.appendingPathComponent("Contents/Info.plist")

@@ -355,7 +355,7 @@ struct VPNTunnelHero: View {
         .clipped()
         // Where the value **lands**, not where it was set: the engine publishes
         // these and a transaction is the only thing that makes them move
-        // (ARCHITECTURE.md § Motion). `.animation(_:value:)` on the outside was
+        // (ARCHITECTURE.md § Design system). `.animation(_:value:)` on the outside was
         // measured doing nothing for the same shape one module over.
         .onChange(of: tunnels) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shown = arrived }

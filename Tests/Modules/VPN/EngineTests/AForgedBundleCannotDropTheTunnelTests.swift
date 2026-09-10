@@ -117,8 +117,8 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     }
 
     /// A rule stored before identities existed refuses, and says so in the log —
-    /// a rule that has quietly stopped firing is the failure ARCHITECTURE.md § A
-    /// rule that is being ignored is not a rule that is quiet is about.
+    /// a rule that has quietly stopped firing is the failure ARCHITECTURE.md §
+    /// VPN is about.
     func testARuleWithNoRecordedIdentityRefusesAndSaysSo() {
         HelmLog.shared.setEnabled(true)
         defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }

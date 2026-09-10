@@ -92,7 +92,7 @@ public enum SSHConfigFile {
         /// field applies to *every* connection, and a `Match` field applies to
         /// none this module can name, because the condition that selects it is
         /// a grammar this parser does not read. One `nil` for both is the fold
-        /// ARCHITECTURE.md § A nil from a system read is about, and it made the
+        /// ARCHITECTURE.md § Module pattern is about, and it made the
         /// preamble unreachable — while any attempt to reach it swept the
         /// `Match` block's key into the host above.
         public let scope: Scope
