@@ -107,7 +107,7 @@ only once it has no known problems left.
 
 ## 0.10.0 — 2026-08-09
 
-*The 0.10 line: one module per release, in the order they stand in the sidebar.*
+*0.10.0 never shipped a final build; everything under it goes out inside 0.11.1.*
 
 - **NEW** Hosts & Keys: the hosts your Mac has already trusted, with a Forget button on each — the fix for the wall of text ssh prints when a server changes its key.
 - **NEW** Hosts & Keys lists the SSH keys in your .ssh folder: type, fingerprint, comment, permissions ssh will refuse, and a way into the agent and back out.
