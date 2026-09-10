@@ -9,33 +9,48 @@ cd "$REPO_ROOT"
 APP_NAME="Helm.app"
 BUILD_DIR="$REPO_ROOT/build"
 
-# Build number = git commit count, so the About page's "build N" (its only
-# reader: Sources/HelmApp/AboutPage.swift) names an exact commit. A number
-# that silently goes DOWN is worse than a build that refuses to run: it reads
-# as an older build to anyone comparing one copy's About page against
-# another's. Three ways to fail to count, and all three must be caught: no
-# `.git` at all (an archive, a tree with no history), where `rev-parse
-# --is-shallow-repository` itself exits non-zero; a shallow clone, where
-# `rev-list --count HEAD` exits 0 but counts only what was fetched (`--depth 5`
-# answers `5`), so the exit status alone does not see it — caught below by
-# asking `is-shallow-repository` explicitly; and a repository with no commits
-# at all (a fresh `git init` over sources, no `HEAD` to count), where
-# `is-shallow-repository` answers `false` and only `rev-list --count HEAD`
-# itself fails, with git's own `fatal: ambiguous argument 'HEAD'` and no word
-# this was the build number. Checked here, before the compile, so a refusal
-# costs seconds rather than a release build.
-IS_SHALLOW="$(git -C "$REPO_ROOT" rev-parse --is-shallow-repository 2>&1)" || {
+# Build number = the number of commits in the history. It rises along one
+# branch and says nothing about which commit: two branches whose histories
+# hold the same count print it for different commits. The About page's
+# "build N" (its only reader: Sources/HelmApp/AboutPage.swift) is a counter,
+# not a commit id, and a number that silently goes DOWN is worse than a
+# build that refuses to run: it reads as an older build to anyone comparing
+# one copy's About page against another's.
+#
+# Read standard output only below — git's own diagnostics, a `GIT_TRACE`
+# trail included, go to standard error, and merging the two (`2>&1`) once
+# let a shallow clone's trace lines become the build number itself. Three
+# ways to fail to count, and all three must be caught: no `.git` at all (an
+# archive, a tree with no history), where `rev-parse --is-shallow-repository`
+# itself exits non-zero; a shallow clone, where `rev-list --count HEAD`
+# exits 0 but counts only what was fetched (`--depth 5` answers `5`), so the
+# exit status alone does not see it — caught below by requiring
+# `is-shallow-repository`'s answer to be exactly `false` (an old git that
+# does not know the flag echoes it back verbatim and exits 0, which is
+# neither `true` nor `false` and refuses the same way); and a repository
+# with no commits at all (a fresh `git init` over sources, no `HEAD` to
+# count), where `is-shallow-repository` answers `false` and only
+# `rev-list --count HEAD` itself fails, with git's own `fatal: ambiguous
+# argument 'HEAD'` and no word this was the build number. The result must
+# also be plain digits before it is trusted, in case anything else ever
+# reaches standard output where only a count belongs. Checked here, before
+# the compile, so a refusal costs seconds rather than a release build.
+IS_SHALLOW="$(git -C "$REPO_ROOT" rev-parse --is-shallow-repository)" || {
   echo "!! Build number: \`git rev-list --count HEAD\` needs a readable git history, and $REPO_ROOT is not one (no .git, or sources without their history — e.g. a tarball). Refusing rather than shipping build 1 below whatever is already out." >&2
   exit 1
 }
-if [ "$IS_SHALLOW" = "true" ]; then
-  echo "!! Build number: $REPO_ROOT is a shallow clone. \`git rev-list --count HEAD\` exits 0 here but counts only the fetched commits, not the true build number. Run \`git fetch --unshallow\` and try again." >&2
+if [ "$IS_SHALLOW" != "false" ]; then
+  echo "!! Build number: \`git rev-parse --is-shallow-repository\` answered \"$IS_SHALLOW\", not \"false\". $REPO_ROOT may be a shallow clone, where \`git rev-list --count HEAD\` exits 0 but counts only the fetched commits, not the true build number — run \`git fetch --unshallow\` and try again — or this git is too old to know the flag and echoed it back, in which case a newer git is needed." >&2
   exit 1
 fi
-BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD 2>&1)" || {
+BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD)" || {
   echo "!! Build number: \`git rev-list --count HEAD\` needs at least one commit, and $REPO_ROOT has none yet (a fresh \`git init\` over sources, no HEAD to count). Refusing rather than shipping build 1 below whatever is already out." >&2
   exit 1
 }
+if ! [[ "$BUILD_NO" =~ ^[0-9]+$ ]]; then
+  echo "!! Build number: \`git rev-list --count HEAD\` printed \"$BUILD_NO\" on standard output, not a plain count. Refusing rather than writing that into CFBundleVersion." >&2
+  exit 1
+fi
 # The bundle is assembled and signed OUTSIDE the repo.
 #
 # This checkout lives under ~/Documents, which a file provider syncs, and the
