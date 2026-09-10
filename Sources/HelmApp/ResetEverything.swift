@@ -32,6 +32,7 @@ import HelmRuntime
         for step in ResetPlan.order {
             switch step {
             case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
+            case .giveBackTheLoginItem: LoginItem.setEnabled(false)
             case .trashHelmsOwnFolders: trashHelmsOwnFolders()
             case .forgetPreferences: forgetPreferences()
             case .relaunch: relaunch()

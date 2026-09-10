@@ -77,6 +77,7 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one.")),
                 ChangeItem(kind: .fix, text: L("Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown.")),
                 ChangeItem(kind: .fix, text: L("Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.")),
+                ChangeItem(kind: .fix, text: L("Reset all settings now also stops Helm opening at login.")),
                 ChangeItem(kind: .new, text: L("Keyboard’s language indicator opens the emoji palette where you were typing, the way the system’s own input menu does — the item appears once Accessibility is granted.")),
                 ChangeItem(kind: .new, text: L("Bind an application to a keyboard layout and Helm switches to it when that app comes forward. Set it beside the app’s own rule in Keyboard’s words-and-apps window.")),
                 ChangeItem(kind: .fix, text: L("Keyboard could stop switching your layout until you restarted Helm.")),

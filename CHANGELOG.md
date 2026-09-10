@@ -19,6 +19,7 @@ only once it has no known problems left.
 - **FIX** "Turn off" in Leftovers is refused when a startup folder will not open, where Helm cannot see whether a second file registers the same login item.
 - **FIX** Leftovers follows a folder that is a symbolic link and lists what is at the other end — such a folder used to come back empty.
 - **FIX** Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.
+- **FIX** Reset all settings now also stops Helm opening at login.
 - **NEW** Keyboard: the language indicator's menu opens the emoji palette where you were typing, the way the system's own input menu does — the item appears once Accessibility is granted.
 - **NEW** Bind an application to a keyboard layout — Helm switches to it when that app comes forward.
 - **FIX** Keyboard: a stuck layout reading could stop your layout switching until Helm restarted.

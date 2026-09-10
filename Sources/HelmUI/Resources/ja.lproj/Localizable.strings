@@ -258,7 +258,7 @@
 "Helm is not watching the keyboard" = "Helm はキーボードを監視していません";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm はまだ開発中です。2 つのうち Beta のほうが安定しています。";
 "Helm needs Full Disk Access to move this." = "移動にはフルディスクアクセスが必要です。";
-"Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
+"Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm はログイン時に開くかどうかも含め、インストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "残された設定・キャッシュ・サポートファイルを表示し、そのまま削除できます。App がゴミ箱にある間だけです。空にすると、どのファイルか見分けられなくなります。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS も独自の表示を出します。キーボード設定でオフにしないと2つ並びます。";
@@ -445,6 +445,7 @@
 "Reset all settings?" = "すべての設定をリセットしますか？";
 "Reset all settings…" = "すべての設定をリセット…";
 "Reset and Restart" = "リセットして再起動";
+"Reset all settings now also stops Helm opening at login." = "“すべての設定をリセット”で、ログイン時に Helm が開かないようにもなりました。";
 "Reworked icon pickers with real-size previews; smaller icon sizes." = "実寸プレビュー付きの新しいアイコンピッカー。より小さいサイズも追加。";
 "Right ⇧" = "右 ⇧";
 "Right ⌃" = "右 ⌃";

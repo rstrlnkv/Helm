@@ -258,7 +258,7 @@
 "Helm is not watching the keyboard" = "Helm ne surveille pas le clavier";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm est encore en développement. Les versions Beta sont les plus stables des deux.";
 "Helm needs Full Disk Access to move this." = "Helm a besoin de l’accès complet au disque pour le déplacer.";
-"Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm revient à son état juste après l’installation. Les accès accordés dans Réglages Système ne changent pas.";
+"Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm revient à son état juste après l’installation, y compris s’il s’ouvre à la connexion. Les accès accordés dans Réglages Système ne changent pas.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm montre les réglages, caches et fichiers de support laissés derrière, prêts à supprimer. Seulement tant que l’app est dans la corbeille : une fois vidée, plus rien ne permet de les identifier.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "La langue de Helm atteint désormais ce que macOS dessine pour lui : le sélecteur de dossier, sa barre latérale et les menus d’un champ de texte restaient en anglais. Les nombres et les dates suivent aussi la langue.";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS affiche son propre indicateur. Désactivez-le dans les réglages du clavier, sinon vous en aurez deux.";
@@ -445,6 +445,7 @@
 "Reset all settings?" = "Réinitialiser tous les réglages ?";
 "Reset all settings…" = "Réinitialiser tous les réglages…";
 "Reset and Restart" = "Réinitialiser et redémarrer";
+"Reset all settings now also stops Helm opening at login." = "Réinitialiser tous les réglages arrête désormais aussi l’ouverture de Helm à la connexion.";
 "Reworked icon pickers with real-size previews; smaller icon sizes." = "Sélecteurs d’icône repensés avec aperçus à taille réelle ; tailles plus petites.";
 "Right ⇧" = "⇧ droite";
 "Right ⌃" = "⌃ droite";

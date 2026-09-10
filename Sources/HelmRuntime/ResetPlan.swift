@@ -37,6 +37,18 @@ public enum ResetPlan {
         /// asked rather than assumed, and why it is asked **first**, while the
         /// settings an engine decides with are still there.
         case handBackWhatIsOutsideHelm
+
+        /// **Registered by the application, not by a module.** `SMAppService`
+        /// keeps the registration in a system database outside both of Helm's
+        /// folders, so trashing folders and forgetting preferences leaves Helm
+        /// opening at login — which is the one thing a person resetting an app
+        /// notices the next morning. `ModuleEngine` has no channel to it and
+        /// should not grow one: nothing a module owns registered this.
+        ///
+        /// Before `.forgetPreferences`, because unregistering reads
+        /// `Bundle.main` and reports through the log, and after the engines,
+        /// because their dialog is the step that needs the person.
+        case giveBackTheLoginItem
         case trashHelmsOwnFolders
         case forgetPreferences
         case relaunch
@@ -46,6 +58,7 @@ public enum ResetPlan {
     /// missing from it was invisible for exactly that reason.
     public static let order: [Step] = [
         .handBackWhatIsOutsideHelm,
+        .giveBackTheLoginItem,
         .trashHelmsOwnFolders,
         .forgetPreferences,
         .relaunch,

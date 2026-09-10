@@ -710,7 +710,7 @@ enum AppStr {
         L("Reset all settings…")
     }
     static var resetNote: String {
-        L("Helm returns to how it was just after installing. Access you granted in System Settings stays as it is.")
+        L("Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is.")
     }
     static var resetConfirmTitle: String {
         L("Reset all settings?")

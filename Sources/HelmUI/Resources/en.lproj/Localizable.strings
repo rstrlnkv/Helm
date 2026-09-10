@@ -258,7 +258,7 @@
 "Helm is not watching the keyboard" = "Helm is not watching the keyboard";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm is still in development. Beta builds are the steadier of the two.";
 "Helm needs Full Disk Access to move this." = "Helm needs Full Disk Access to move this.";
-"Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is.";
+"Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one.";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.";
@@ -445,6 +445,7 @@
 "Reset all settings?" = "Reset all settings?";
 "Reset all settings…" = "Reset all settings…";
 "Reset and Restart" = "Reset and Restart";
+"Reset all settings now also stops Helm opening at login." = "Reset all settings now also stops Helm opening at login.";
 "Reworked icon pickers with real-size previews; smaller icon sizes." = "Reworked icon pickers with real-size previews; smaller icon sizes.";
 "Right ⇧" = "Right ⇧";
 "Right ⌃" = "Right ⌃";
