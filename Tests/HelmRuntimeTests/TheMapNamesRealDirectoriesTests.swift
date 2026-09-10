@@ -1,39 +1,42 @@
 import HelmTestSupport
 import XCTest
 
-/// Every directory the map in `CLAUDE.md` names must be a directory.
+/// Every directory the map in `ARCHITECTURE.md` names must be a directory.
 ///
 /// **Why this is a test.** `DocumentsNameTheTreeTests` reads the backticked
 /// names in the standing documents, but only those shaped like a symbol or a
-/// `.swift` file — a path with slashes in it falls straight through. So the one
-/// table in `CLAUDE.md` that exists to answer "where do I put this" was the
-/// only prose in either document that nothing could contradict, which is the
-/// shape of every stale sentence those checks were written to catch. A renamed
-/// directory now fails here instead of misdirecting the next reader.
+/// `.swift` file — a path with slashes in it falls straight through, and so does
+/// a row of a table. The map moved out of `CLAUDE.md` into `ARCHITECTURE.md`
+/// when the documents were split by mood: a table saying where a thing lives
+/// describes how Helm is built, and that is the other document's genre. Moving
+/// it did not make it checkable — `TheDocumentsDoNotDriftTests` drops the block a
+/// table sits in whenever the block's first line begins with `|`, before it
+/// reads a word — so this is still the only thing standing between a renamed
+/// directory and the next reader being sent to it.
 ///
 /// **`<Module>` is expanded, not skipped.** A row naming a per-module
 /// directory is a claim about *every* module, and the manifest already requires
 /// all four of them; checking one module would pass while nine were wrong.
 final class TheMapNamesRealDirectoriesTests: XCTestCase {
 
-    private static let heading = "## Where to look, and where to put it"
+    private static let heading = "### Where things are"
 
     /// The rows of the map, as the paths they name.
     ///
     /// Throws rather than returning nothing when the table is gone: an empty
     /// list would let every assertion below pass over no subject at all.
     private func mappedPaths() throws -> [String] {
-        let file = RepoSource.root.appendingPathComponent("CLAUDE.md")
+        let file = RepoSource.root.appendingPathComponent("ARCHITECTURE.md")
         guard let text = try? String(contentsOf: file, encoding: .utf8) else {
-            throw XCTSkip("CLAUDE.md is not in this checkout")
+            throw XCTSkip("ARCHITECTURE.md is not in this checkout")
         }
         let lines = text.components(separatedBy: .newlines)
         guard let start = lines.firstIndex(where: { $0 == Self.heading }) else {
-            XCTFail("the map is gone from CLAUDE.md — delete this test or put it back")
+            XCTFail("the map is gone from ARCHITECTURE.md — delete this test or put it back")
             return []
         }
         let rest = lines[(start + 1)...]
-        let end = rest.firstIndex(where: { $0.hasPrefix("## ") }) ?? rest.endIndex
+        let end = rest.firstIndex(where: { $0.hasPrefix("#") }) ?? rest.endIndex
         let table = lines[(start + 1)..<end]
 
         let pattern = try NSRegularExpression(pattern: "`([^`]*/[^`]*)`")
