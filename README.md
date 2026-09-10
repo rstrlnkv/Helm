@@ -87,8 +87,7 @@ bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
 `swift test` runs the suite — read the whole log, not the tail, since the closing
-line belongs to the last bundle. Three guards over the documents are red on
-purpose right now; [CLAUDE.md](CLAUDE.md) says which, why, and everything else.
+line belongs to the last bundle; [CLAUDE.md](CLAUDE.md) says everything else.
 
 ## Licence
 

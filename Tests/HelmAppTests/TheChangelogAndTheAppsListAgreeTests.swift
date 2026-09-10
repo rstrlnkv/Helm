@@ -2,7 +2,7 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// `CLAUDE.md:145` orders one `CHANGELOG.md` section and the same entries in
+/// `CLAUDE.md:144` orders one `CHANGELOG.md` section and the same entries in
 /// `Sources/HelmApp/ChangelogData.swift` for every release, and records that the
 /// two have drifted about which versions exist before. Nothing in `Tests/` held
 /// them to that: `CHANGELOG.md` is named in two guards over the standing
