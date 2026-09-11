@@ -107,10 +107,10 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// **The emoji door and its icon test are gone.** It carried the palette's
-    /// own icon, the one TIS hands out for `com.apple.CharacterPaletteIM`, and
-    /// the test said so — but the door itself needed Accessibility on a menu
-    /// whose section on the settings page promises to work without it.
+    // **The emoji door and its icon test are gone.** It carried the palette's
+    // own icon, the one TIS hands out for `com.apple.CharacterPaletteIM`, and
+    // the test said so — but the door itself needed Accessibility on a menu
+    // whose section on the settings page promises to work without it.
 
     /// **With the grant, the emoji door is there — and only then.**
     ///
@@ -155,25 +155,25 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// The switch that used to live in section 2 was tested here for flipping
-    /// its own stored key. It is `BadgeStyle.sourceName` now — chosen from the
-    /// settings page's Style picker like every other look — so what needs
-    /// covering is the carry-over, not a menu item that no longer exists:
-    /// `TheOldNameSettingBecomesAStyleTests`.
+    // The switch that used to live in section 2 was tested here for flipping
+    // its own stored key. It is `BadgeStyle.sourceName` now — chosen from the
+    // settings page's Style picker like every other look — so what needs
+    // covering is the carry-over, not a menu item that no longer exists:
+    // `TheOldNameSettingBecomesAStyleTests`.
 
-    /// The item this pinned against `TextInputMenuCore` is gone: «Show Input
-    /// Source Name» left the menu and became `BadgeStyle.sourceName`, and the
-    /// style is named «Layout name» rather than the system's phrase.
-    ///
-    /// **Deliberate, and the rule it looks like it breaks it does not.** The
-    /// house rule is to read macOS's spelling for a thing macOS also names —
-    /// and macOS names a *switch* there. Here the words are the value of a
-    /// «Style» picker, so the row read «Вид: Показывать имя источника ввода»,
-    /// an instruction standing where a noun belongs. The rule covers the same
-    /// thing, not the same words in a different grammatical role.
-    ///
-    /// The system's phrases are still read for the two doors that remain, and
-    /// the tests for those are below.
+    // The item this pinned against `TextInputMenuCore` is gone: «Show Input
+    // Source Name» left the menu and became `BadgeStyle.sourceName`, and the
+    // style is named «Layout name» rather than the system's phrase.
+    //
+    // **Deliberate, and the rule it looks like it breaks it does not.** The
+    // house rule is to read macOS's spelling for a thing macOS also names —
+    // and macOS names a *switch* there. Here the words are the value of a
+    // «Style» picker, so the row read «Вид: Показывать имя источника ввода»,
+    // an instruction standing where a noun belongs. The rule covers the same
+    // thing, not the same words in a different grammatical role.
+    //
+    // The system's phrases are still read for the two doors that remain, and
+    // the tests for those are below.
 
     /// The settings door too: the system spells it `Open Keyboard Settings…`
     /// (`TextInputMenuCore.bundle`, key `Open Keyboard Settings`), German with
@@ -197,10 +197,10 @@ final class TheIndicatorMenuFollowsTheSystemInputMenuTests: XCTestCase {
         }
     }
 
-    /// **The palette name went with the door.** It was AppKit's own, read from
-    /// `InputManager.loctable` (key `Emoji & Symbols`), and pinned here per
-    /// language so a drift in the name could not hide behind a drift in the
-    /// template that wrapped it. Both are gone: the item needed Accessibility on
-    /// a menu whose section promises to work without it, and Globe+E opens the
-    /// same palette on every Mac.
+    // **The palette name went with the door.** It was AppKit's own, read from
+    // `InputManager.loctable` (key `Emoji & Symbols`), and pinned here per
+    // language so a drift in the name could not hide behind a drift in the
+    // template that wrapped it. Both are gone: the item needed Accessibility on
+    // a menu whose section promises to work without it, and Globe+E opens the
+    // same palette on every Mac.
 }

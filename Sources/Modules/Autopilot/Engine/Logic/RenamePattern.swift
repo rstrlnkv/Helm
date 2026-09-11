@@ -3,14 +3,14 @@ import Foundation
 /// A pattern plus a file's facts, out comes a new name — or nothing, when the
 /// pattern would produce something the filesystem should not be asked to take.
 ///
+/// `{name}` the file's name without its extension, `{date}` the date it was
+/// added as `2026-07-15`, `{counter}` a three-digit sequence number.
+///
 /// Returning nil rather than a best effort is the point. A rename that silently
 /// becomes a move (`sub/{name}`), a file that loses its identity (an empty
 /// pattern) or one that disappears from Finder (a leading dot) are all a rule
 /// doing something nobody asked for, forever, once a folder is watched.
 enum RenamePattern {
-
-    /// `{name}` the file's name without its extension, `{date}` the date it was
-    /// added as `2026-07-15`, `{counter}` a three-digit sequence number.
 
     /// The only token whose value comes from the file's name, and therefore the
     /// only reason applying a pattern twice can produce two different names.

@@ -100,9 +100,9 @@ enum LyStr {
     /// somewhere, translated faithfully into seven languages after the way
     /// moved.
     static var introWhere: String { L("Never in a password field, and never in the terminals and password managers Helm knows.") }
-    /// The two faces of one control, so a reader who opened the points can put
-    /// them away again — a disclosure that only opens is a disclosure that has
-    /// stopped being one.
+    // The two faces of one control, so a reader who opened the points can put
+    // them away again — a disclosure that only opens is a disclosure that has
+    // stopped being one.
     // MARK: - The tour
 
     /// The button on the row headed `tourTitle`. A row names, a button acts —

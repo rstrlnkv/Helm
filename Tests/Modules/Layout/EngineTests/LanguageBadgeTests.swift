@@ -23,13 +23,13 @@ final class LanguageBadgeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "en-GB", region: nil), "EN")
     }
 
-    /// **The flag built from regional indicators is gone** with the
-    /// `flagEmoji` style it drew for. Helm ships its own artwork
-    /// (`FlagAsset`, 50 PNGs), `flagDrawn` is the default and now the only flag
-    /// style, and «Flag» and «Flag, system» were one idea under two names that
-    /// nobody could tell apart from the words. `LanguageBadge.label` still
-    /// carries the rule that matters — a language is not a country, and no
-    /// country means letters rather than a guess.
+    // **The flag built from regional indicators is gone** with the
+    // `flagEmoji` style it drew for. Helm ships its own artwork
+    // (`FlagAsset`, 50 PNGs), `flagDrawn` is the default and now the only flag
+    // style, and «Flag» and «Flag, system» were one idea under two names that
+    // nobody could tell apart from the words. `LanguageBadge.label` still
+    // carries the rule that matters — a language is not a country, and no
+    // country means letters rather than a guess.
 }
 
 extension LanguageBadgeTests {

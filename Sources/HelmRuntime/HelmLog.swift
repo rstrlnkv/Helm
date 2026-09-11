@@ -1,9 +1,9 @@
 import Foundation
 import os
 
-/// Diagnostics for dev builds. Every prerelease ships with the log on: the
-/// file is the evidence trail we triage against before a build graduates to
-/// the stable channel. Stable builds stay silent unless explicitly opted in.
+// Diagnostics for dev builds. Every prerelease ships with the log on: the
+// file is the evidence trail we triage against before a build graduates to
+// the stable channel. Stable builds stay silent unless explicitly opted in.
 
 public enum LogLevel: String, Sendable {
     case info, warn, error

@@ -47,11 +47,11 @@ final class SizeIsTheOnlyThingThatChangesTheHeightTests: XCTestCase {
         }
     }
 
-    /// **`flagEmoji` is gone**, and the test that lived here went with it. It
-    /// asserted that the two flag styles fell back to the *same* drawing — they
-    /// differed, 24.0 × 15.0 against 32.4 × 17.0, until 2026-08-30 — because
-    /// the page's note under both of them promised «letters in a frame the same
-    /// size as a flag». There is one flag style now, so the promise has nothing
-    /// to disagree with: «Flag» and «Flag, system» were one idea under two
-    /// names, and nobody could tell them apart from the words.
+    // **`flagEmoji` is gone**, and the test that lived here went with it. It
+    // asserted that the two flag styles fell back to the *same* drawing — they
+    // differed, 24.0 × 15.0 against 32.4 × 17.0, until 2026-08-30 — because
+    // the page's note under both of them promised «letters in a frame the same
+    // size as a flag». There is one flag style now, so the promise has nothing
+    // to disagree with: «Flag» and «Flag, system» were one idea under two
+    // names, and nobody could tell them apart from the words.
 }

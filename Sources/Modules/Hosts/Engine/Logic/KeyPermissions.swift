@@ -23,15 +23,15 @@ enum KeyPermissions {
         case tooOpen(fix: mode_t)
     }
 
-    /// **There is no masking here, and that is a measurement rather than an
-    /// oversight.** The first draft had a `bits(_:)` helper that took
-    /// `mode & 0o777` before every comparison, on the reasoning that `st_mode`
-    /// carries `S_IFREG`/`S_IFDIR` in its high bits. Deleting it changed no
-    /// answer in any test — because the type bits are `0o170000` and every
-    /// question below is asked with `0o077` or `0o022`, which they do not
-    /// touch. A helper whose removal changes nothing is a helper that was
-    /// doing nothing, and a comment claiming it was load-bearing is worse
-    /// than none: it tells the next reader a mask is required where it is not.
+    // **There is no masking here, and that is a measurement rather than an
+    // oversight.** The first draft had a `bits(_:)` helper that took
+    // `mode & 0o777` before every comparison, on the reasoning that `st_mode`
+    // carries `S_IFREG`/`S_IFDIR` in its high bits. Deleting it changed no
+    // answer in any test — because the type bits are `0o170000` and every
+    // question below is asked with `0o077` or `0o022`, which they do not
+    // touch. A helper whose removal changes nothing is a helper that was
+    // doing nothing, and a comment claiming it was load-bearing is worse
+    // than none: it tells the next reader a mask is required where it is not.
 
     /// A private key: readable and writable by its owner, by nobody else.
     /// 0600 is what `ssh-keygen` writes; 0400 is what a careful person writes,

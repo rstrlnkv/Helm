@@ -36,12 +36,12 @@ final class MenuBarIconCountdownTests: XCTestCase {
         }
     }
 
-    /// This used to cover `dot` and `disc`, the two shapes with no ring of
-    /// their own, because the countdown setting sat beside them and had to
-    /// mean something. Both shapes are gone — that awkwardness is the reason —
-    /// so the claim is now about every shape there is, which is the assertion
-    /// above. Kept as a note rather than deleted silently: the case it guarded
-    /// was real, and reintroducing a ringless shape brings it back.
+    // This used to cover `dot` and `disc`, the two shapes with no ring of
+    // their own, because the countdown setting sat beside them and had to
+    // mean something. Both shapes are gone — that awkwardness is the reason —
+    // so the claim is now about every shape there is, which is the assertion
+    // above. Kept as a note rather than deleted silently: the case it guarded
+    // was real, and reintroducing a ringless shape brings it back.
 
     /// A countdown that has run down is not the same picture as one that has
     /// not started: the arc is the part that moves.

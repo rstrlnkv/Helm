@@ -38,9 +38,9 @@ final class LanguageBadgeShapeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "ru", region: nil), "РУ")
     }
 
-    /// **Two tests about emoji flags stood here** — that every region in the
-    /// layout table could be spelled with regional indicators, and that only a
-    /// two-letter ASCII code makes one. They went with `BadgeStyle.flagEmoji`:
-    /// Helm draws its own flags from `FlagAsset`, and `FlagAssetTests` is where
-    /// the artwork's own coverage is asserted.
+    // **Two tests about emoji flags stood here** — that every region in the
+    // layout table could be spelled with regional indicators, and that only a
+    // two-letter ASCII code makes one. They went with `BadgeStyle.flagEmoji`:
+    // Helm draws its own flags from `FlagAsset`, and `FlagAssetTests` is where
+    // the artwork's own coverage is asserted.
 }

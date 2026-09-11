@@ -35,9 +35,9 @@ struct VPNSettingsPage: View {
     /// The per-connection overrides, seeded from the store and written through
     /// on every change — the same shape the rules have, for the same reason.
     @State private var noticeBook: VPNNoticeBook
-    /// Natural height of the two swatch rows, measured so the disclosure
-    /// animates between 0 and a concrete value — the same pattern
-    /// `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
+    // Natural height of the two swatch rows, measured so the disclosure
+    // animates between 0 and a concrete value — the same pattern
+    // `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
 
     init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm

@@ -5,21 +5,21 @@ import HelmUI
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
-/// The transports this module's page tests are written against, and the store
-/// and waits that go with them.
-///
-/// **There are two kinds on purpose.** `OneAnswerTransport` answers on the
-/// spot; `HeldTransport` parks every "find" until a test releases it. A fake
-/// that answers synchronously is over before the code under test is reached, so
-/// nothing about a search *in flight* — a cancellation, an older answer landing
-/// after a newer one, a page that goes away mid-search — can be written down
-/// against it. Merging the two would make `DuplicateSearchRaceTests` and
-/// `SharedViewModelTests` vacuous rather than shorter.
-///
-/// Each was spelled twice before it moved here. The one difference between the
-/// two `HeldTransport`s was a list of the command names it had been sent, which
-/// no test in this target ever read — a recorder nobody reads is not richer
-/// behaviour, so it did not survive the merge.
+// The transports this module's page tests are written against, and the store
+// and waits that go with them.
+//
+// **There are two kinds on purpose.** `OneAnswerTransport` answers on the
+// spot; `HeldTransport` parks every "find" until a test releases it. A fake
+// that answers synchronously is over before the code under test is reached, so
+// nothing about a search *in flight* — a cancellation, an older answer landing
+// after a newer one, a page that goes away mid-search — can be written down
+// against it. Merging the two would make `DuplicateSearchRaceTests` and
+// `SharedViewModelTests` vacuous rather than shorter.
+//
+// Each was spelled twice before it moved here. The one difference between the
+// two `HeldTransport`s was a list of the command names it had been sent, which
+// no test in this target ever read — a recorder nobody reads is not richer
+// behaviour, so it did not survive the merge.
 
 // MARK: - Answers on the spot
 

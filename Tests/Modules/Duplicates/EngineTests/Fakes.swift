@@ -1,8 +1,8 @@
 import Foundation
 @testable import Module_Duplicates_Engine
 
-/// The engine-side doubles this target shares, the way the UI target's
-/// `Fakes.swift` shares its transports.
+// The engine-side doubles this target shares, the way the UI target's
+// `Fakes.swift` shares its transports.
 
 /// A verification mid-read: each call announces itself and then waits for the
 /// test, so the interleaving is chosen rather than raced. A check that answers

@@ -115,10 +115,10 @@ final class TrashOfferPlanTests: XCTestCase {
 
     // MARK: - A second app arrives while the window is open
 
-    /// Dragging two apps to the Trash is one gesture to the person and two
-    /// arrivals to the app, so the window has to take the second one. What it
-    /// must not do is take it by rebuilding: a person who unticked something and
-    /// then dropped another app would have their decision quietly undone.
+    // Dragging two apps to the Trash is one gesture to the person and two
+    // arrivals to the app, so the window has to take the second one. What it
+    // must not do is take it by rebuilding: a person who unticked something and
+    // then dropped another app would have their decision quietly undone.
 
     func testASecondAppArrivesTicked() {
         let before = [group("com.a", [leftover("/a1")])]
@@ -175,12 +175,12 @@ final class TrashOfferPlanTests: XCTestCase {
 
     // MARK: - Which apps a removal has actually answered for
 
-    /// A "no" is remembered for as long as the app sits in the Trash, and this
-    /// window is the only place some of these files are ever offered — a Group
-    /// Container, a cookie file, anything matched by name — because the module's
-    /// own Leftovers tab lists only bundle-id-named entries in nine folders. So
-    /// recording a refusal as somebody's answer takes the files off every screen
-    /// Helm has.
+    // A "no" is remembered for as long as the app sits in the Trash, and this
+    // window is the only place some of these files are ever offered — a Group
+    // Container, a cookie file, anything matched by name — because the module's
+    // own Leftovers tab lists only bundle-id-named entries in nine folders. So
+    // recording a refusal as somebody's answer takes the files off every screen
+    // Helm has.
 
     func testAppsWhosePathsAllMovedAreAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]

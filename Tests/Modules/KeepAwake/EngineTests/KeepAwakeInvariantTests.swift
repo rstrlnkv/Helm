@@ -201,13 +201,13 @@ final class ClamshellPmsetFixtureTests: XCTestCase {
         XCTAssertTrue(ClamshellRecovery.sleepDisabled(inPmsetOutput: disabled))
     }
 
-    /// Note for whoever reads this next: the check is `line.contains("1")`, not
-    /// a read of the value. It survives today only because no other line names
-    /// `SleepDisabled` and the flag is never annotated. macOS already annotates
-    /// the neighbouring `sleep` line ("sleep 0 (sleep prevented by …)"); the day
-    /// the flag line gets the same treatment, this parser inverts. Not asserted
-    /// here — that output does not exist yet, and a gate on invented text is a
-    /// red suite, not a finding.
+    // Note for whoever reads this next: the check is `line.contains("1")`, not
+    // a read of the value. It survives today only because no other line names
+    // `SleepDisabled` and the flag is never annotated. macOS already annotates
+    // the neighbouring `sleep` line ("sleep 0 (sleep prevented by …)"); the day
+    // the flag line gets the same treatment, this parser inverts. Not asserted
+    // here — that output does not exist yet, and a gate on invented text is a
+    // red suite, not a finding.
 
     /// Nothing to read is not "disabled" — restoring sleep on empty output would
     /// undo a block the user set with pmset by hand.

@@ -75,6 +75,17 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         }
     }
 
+    /// A filled circle in this colour, as an image.
+    ///
+    /// **Not an SF Symbol with a `foregroundStyle` on it.** A `Picker` with the
+    /// menu style is drawn by AppKit as an `NSMenu`, and an `NSMenuItem` takes
+    /// an *image*: the tint SwiftUI is asked to apply to a symbol inside one is
+    /// dropped, which is why the ten colours arrived as ten identical grey dots
+    /// and then as no dots at all. Drawn here and handed over already coloured,
+    /// there is nothing left for the menu to strip.
+    ///
+    /// `isTemplate` stays false for the same reason — a template image is
+    /// recoloured by the menu, which is exactly what has to not happen.
     public var swatchImage: NSImage {
         // `self.color` is read out here rather than inside the drawing block:
         // the block is `@Sendable` and capturing the case itself makes the
@@ -110,16 +121,4 @@ private extension Color {
                   blue: Double(hex & 0xFF) / 255,
                   opacity: 1)
     }
-
-    /// A filled circle in this colour, as an image.
-    ///
-    /// **Not an SF Symbol with a `foregroundStyle` on it.** A `Picker` with the
-    /// menu style is drawn by AppKit as an `NSMenu`, and an `NSMenuItem` takes
-    /// an *image*: the tint SwiftUI is asked to apply to a symbol inside one is
-    /// dropped, which is why the ten colours arrived as ten identical grey dots
-    /// and then as no dots at all. Drawn here and handed over already coloured,
-    /// there is nothing left for the menu to strip.
-    ///
-    /// `isTemplate` stays false for the same reason — a template image is
-    /// recoloured by the menu, which is exactly what has to not happen.
 }

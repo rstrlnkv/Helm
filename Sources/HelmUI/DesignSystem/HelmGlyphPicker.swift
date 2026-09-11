@@ -56,7 +56,7 @@ enum HelmGlyphCatalogue {
         ]
     }
 
-    /// Every symbol on offer, for a caller that needs to hand one out.
+    // Every symbol on offer, for a caller that needs to hand one out.
 }
 
 /// Choosing one of them: a category down the side, a grid beside it.

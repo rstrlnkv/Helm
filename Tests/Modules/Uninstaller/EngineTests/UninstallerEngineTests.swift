@@ -13,9 +13,9 @@ final class UninstallerEngineTests: XCTestCase {
         XCTAssertEqual(running.quits.map(\.1), [false, true])
     }
 
-    /// Leftover paths in the shape the engine will actually see: inside the
-    /// home the engine was given. Bare "/a" is refused by the scope gate, and
-    /// rightly — nothing at the root of the volume is an app's leftover.
+    // Leftover paths in the shape the engine will actually see: inside the
+    // home the engine was given. Bare "/a" is refused by the scope gate, and
+    // rightly — nothing at the root of the volume is an app's leftover.
 
     private func engine(fs: FakeFS, trash: FakeTrash = FakeTrash(), running: [String] = []) -> UninstallerEngine {
         UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
@@ -44,11 +44,11 @@ final class UninstallerEngineTests: XCTestCase {
         XCTAssertTrue(r.runningNow)
     }
 
-    /// What a removal says it freed is measured off the disk, not off a table of
-    /// sizes a test wrote down — `FMFileSystem.size` has always been
-    /// `FileWeight.allocated`, so a fake table was never the thing production
-    /// reads. Those three tests live in `TrashBatchFollowsTheSharedRulesTests`
-    /// now, over a real tree, beside the batch rules they are part of.
+    // What a removal says it freed is measured off the disk, not off a table of
+    // sizes a test wrote down — `FMFileSystem.size` has always been
+    // `FileWeight.allocated`, so a fake table was never the thing production
+    // reads. Those three tests live in `TrashBatchFollowsTheSharedRulesTests`
+    // now, over a real tree, beside the batch rules they are part of.
 }
 
 final class UninstallerOrphanScanTests: XCTestCase {
