@@ -17,15 +17,26 @@ import XCTest
 /// that followed it; this guard is what stops a third from going unnoticed
 /// the same way.
 ///
-/// **Why `uncommented`, not `code`.** `SwiftSource.code` blanks a `\` that
-/// ends a line inside an ordinary `"""` literal — a line continuation —
-/// together with the `\n` after it: right for a scan that only ever counts
-/// punctuation, and wrong here, because every line number after it drifts.
-/// `command grep -rhE '\\$' Tests | wc -l` finds those lines, along with the
-/// odd comment that ends in `\`; a raw `#"""` literal does not drift.
-/// `uncommented` keeps every newline where it was; a per-file line-count check
-/// against `RepoSource.lines(of:)` is the proof, run over every file
-/// `find Sources Tests -name '*.swift' | wc -l` counts.
+/// **Why `uncommented`, not `code`.** `SwiftSource.code` blanks the *inside*
+/// of every string literal along with a comment, so a `///`-looking line
+/// that only ever sits inside a literal reads back masked as empty and
+/// `classify` takes the blank for a doc line; `uncommented` keeps a
+/// literal's body instead, which is why `LineKind.code` documents itself as
+/// also true of such a line. `code` once drifted the line count
+/// too — a `\` line continuation inside an ordinary `"""` literal dropped
+/// its own newline along with itself whenever the text was not kept — but
+/// that was a defect in `skip(to:escaping:keeping:)`, since fixed, and it was
+/// never the reason this guard reaches for `uncommented`: the literal-body
+/// difference above is, on its own, both necessary and enough —
+/// `testUsingCodeInsteadOfUncommentedFindsAFalseDetachment` below is what
+/// pins "necessary", since the existing trap fixture returns `[]` under
+/// either mask and so cannot show the difference alone; that test's source
+/// reads clean under `uncommented` and finds a false
+/// `attachedAcrossGapBlankThenCode` under `code`. A per-file line-count
+/// check against `RepoSource.lines(of:)` is the proof for `uncommented`,
+/// run over every file `find Sources Tests -name '*.swift' | wc -l` counts;
+/// `CodeKeepsAsManyLinesAsTheFileTests` is the same proof for `code`, now
+/// that it holds too.
 ///
 /// **Why both trees.** The compiler and Quick Help treat `Sources` and
 /// `Tests` alike, so a guard reading only `Sources` is blind to every block
@@ -516,5 +527,31 @@ final class NoDocCommentIsDetachedTests: XCTestCase {
             """
             func run() {}
             """#), [])
+    }
+
+    /// Pins the "necessary" half of "Why `uncommented`, not `code`" above:
+    /// the trap fixture just above this one returns `[]` under both masks,
+    /// so it alone cannot show the difference the doc comment claims. This
+    /// source can, because the `///`-looking line sits above a blank rather
+    /// than directly above code — `uncommented` keeps its body, `classify`
+    /// reads it as code, and the block never forms; `code` blanks that same
+    /// body, `classify` reads the blank as a doc line, and the block forms
+    /// above a gap that ends in code, which is exactly
+    /// `attachedAcrossGapBlankThenCode`.
+    func testUsingCodeInsteadOfUncommentedFindsAFalseDetachment() {
+        let source = "let s = \"\"\"\n/// not a doc comment\n\n\"\"\"\nlet x = 1\n"
+        let raw = source.components(separatedBy: "\n")
+
+        let uncommentedMasked = SwiftSource.uncommented(source).components(separatedBy: "\n")
+        XCTAssertEqual(raw.count, uncommentedMasked.count, "the fixture itself drifted lines — «\(source)»")
+        XCTAssertEqual(Self.detachedBlocks(raw: raw, masked: uncommentedMasked).map(\.shape), [],
+            "uncommented must read the `///`-looking line inside the literal as code, not doc")
+
+        let codeMasked = SwiftSource.code(source).components(separatedBy: "\n")
+        XCTAssertEqual(raw.count, codeMasked.count, "the fixture itself drifted lines — «\(source)»")
+        XCTAssertEqual(Self.detachedBlocks(raw: raw, masked: codeMasked).map(\.shape),
+            [.attachedAcrossGapBlankThenCode],
+            "code blanks the literal's body, so the same line reads back as a dropped doc line — "
+            + "this false positive is what `uncommented` exists to avoid")
     }
 }

@@ -118,6 +118,18 @@ public enum SwiftSource {
         func skip(to close: [Character], escaping: Bool, keeping: Bool) {
             while index < count {
                 if escaping, characters[index] == "\\" {
+                    // A `\` right before a newline is Swift's own line
+                    // continuation inside a `"""` literal: the *decoded*
+                    // value drops the newline, but the raw text still has
+                    // one, and every line number below it is counted
+                    // against the raw text. Compared against `"\n"`, the
+                    // same spelling the non-escape branch below already
+                    // keeps — this file does not track `\r\n` as a second
+                    // spelling anywhere else, so the escape branch should
+                    // not start.
+                    if !keeping, index + 1 < count, characters[index + 1] == "\n" {
+                        out.append("\n")
+                    }
                     delimiter(2, keeping: keeping)
                     continue
                 }
