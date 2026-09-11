@@ -1765,7 +1765,12 @@ kills any running copy (`:51`), removes `/Applications/Helm Dev.app` (`:53`),
 strips quarantine (`:55`) and opens the fresh one (`:56`). The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
 `Scripts/package-dev.sh`; `Scripts/flags` and `Scripts/design` produce nothing
-that ships on their own.
+that ships on their own, and neither does `Scripts/test.sh`, which wraps a
+`swift test` run: it logs the whole output, reads the exit status off its own
+line, and counts a `--filter`'s alternatives against the `Test Case` lines the
+run itself selected — or, under `--parallel`, the `Testing` lines it prints
+instead — so a run naming several guards at once still fails when one of them
+stopped matching.
 
 ### The updater
 
