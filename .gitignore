@@ -4,22 +4,28 @@ build/
 *.xcodeproj/xcuserdata/
 DerivedData/
 
-# The crew is local: the agent briefs live on disk and are not part of the
-# project's history, because they are how one person drives this repository,
-# not something it ships. `agents` and `crew` are symbolic links into Core
-# Crew for that same reason — `install.sh` creates both under "2. Project
-# trees and their worktrees" (`link_dir "$t/.claude/agents" ...` and
-# `link_dir "$t/.claude/crew" ...`), and `ls -la .claude` in a checkout it has
-# run against shows the pair pointing into Core Crew.
+# `.claude/` is ignored whole, not just its two crew links. The crew is
+# local: the agent briefs live on disk and are not part of the project's
+# history, because they are how one person drives this repository, not
+# something it ships. Where `install.sh` has run over a tree, `agents` and
+# `crew` under `.claude` are symbolic links into Core Crew for that same
+# reason — it creates both under "2. Project trees and their worktrees"
+# (`link_dir "$t/.claude/agents" ...` and `link_dir "$t/.claude/crew" ...`),
+# and `ls -la .claude` in a checkout it has run against shows the pair
+# pointing into Core Crew.
 #
-# `/.claude/agents` and `/.claude/crew` carry no trailing slash because each
-# names a symbolic link: a pattern ending in `/` matches a directory and not a
-# symbolic link, so the moment a tracked copy becomes a link it would
-# reappear in `git status`. `.build/`, `build/`, `*.xcodeproj/xcuserdata/`,
-# `DerivedData/` above and `/.superpowers/` below carry the slash because each
-# of those names an ordinary directory that install.sh never turns into a link.
-/.claude/agents
-/.claude/crew
+# The rest of `.claude/` has to stay out for its own reason: where Claude
+# Code has made them, `worktrees/` holds worktree checkouts and
+# `settings.local.json` sits beside them as a plain file — nothing in this
+# repository creates either. A linked worktree's own `.git` is a text
+# pointer at the main tree's `.git/worktrees/<name>`, not a repository of
+# its own, but git still treats the directory as one: in a clone carrying
+# only this `.gitignore`, `git add -A` without this line would stage
+# `settings.local.json` and add a worktree checkout as an embedded git
+# repository, with a warning from git itself. `.claude` is itself an
+# ordinary directory, so the pattern takes a trailing slash, the same as
+# `.build/` and `build/` above and `/.superpowers/` below.
+/.claude/
 
 # Only `docs/` stays out of the tree: plans and specs are a record of decisions
 # being made, not of what the program is. ARCHITECTURE.md, CLAUDE.md,
