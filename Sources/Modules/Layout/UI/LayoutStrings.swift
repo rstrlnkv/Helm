@@ -423,7 +423,7 @@ enum LyStr {
         let table: [AppLanguage: String] = [
             .ru: "macOS не даёт словаря для \(layouts), поэтому сам Helm на этой раскладке ничего не решает. Исправление клавишей работает.",
             .es: "macOS no tiene diccionario para \(layouts), así que Helm no decide por su cuenta en esa distribución. La corrección con la tecla sigue funcionando.",
-            .fr: "macOS ne fournit pas de dictionnaire pour \(layouts) : Helm ne décide donc rien de lui-même sur cette disposition. La correction à la touche fonctionne toujours.",
+            .fr: "macOS ne fournit pas de dictionnaire pour \(layouts)\u{00A0}: Helm ne décide donc rien de lui-même sur cette disposition. La correction à la touche fonctionne toujours.",
             .de: "macOS hat kein Wörterbuch für \(layouts), deshalb entscheidet Helm auf dieser Belegung nichts von selbst. Die Korrektur per Taste funktioniert weiterhin.",
             .pt: "O macOS não tem dicionário para \(layouts), então o Helm não decide sozinho nesse leiaute. A correção pela tecla continua funcionando.",
             .ja: "macOS には \(layouts) の辞書がないため、Helm はこのレイアウトで自分から判断しません。キーによる修正は使えます。",

@@ -103,13 +103,13 @@ enum HbStr {
     /// the start of the line that the other two segments did not get. "cask"
     /// stays: it is Homebrew's own word for the thing, and translating it would
     /// name something Homebrew does not. It now has a noun in front of it.
-    static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("Packages: \(total) · Updates: \(outdated) · Casks: \(casks)", [.ru: "Пакетов: \(total) · Обновлений: \(outdated) · Пакетов cask: \(casks)", .es: "Paquetes: \(total) · actualizaciones: \(outdated) · casks: \(casks)", .fr: "Paquets : \(total) · mises à jour : \(outdated) · casks : \(casks)", .de: "Pakete: \(total) · Updates: \(outdated) · Casks: \(casks)", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "软件包 \(total) · 更新 \(outdated) · cask \(casks)", .pt: "Pacotes: \(total) · atualizações: \(outdated) · casks: \(casks)"]) }
+    static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("Packages: \(total) · Updates: \(outdated) · Casks: \(casks)", [.ru: "Пакетов: \(total) · Обновлений: \(outdated) · Пакетов cask: \(casks)", .es: "Paquetes: \(total) · actualizaciones: \(outdated) · casks: \(casks)", .fr: "Paquets\u{00A0}: \(total) · mises à jour\u{00A0}: \(outdated) · casks\u{00A0}: \(casks)", .de: "Pakete: \(total) · Updates: \(outdated) · Casks: \(casks)", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "软件包 \(total) · 更新 \(outdated) · cask \(casks)", .pt: "Pacotes: \(total) · atualizações: \(outdated) · casks: \(casks)"]) }
 
     /// The same line before `brew outdated` has ever answered: the two counts
     /// that have arrived, and silence about the one that has not. A zero there
     /// would be a statement about a question nobody asked —
     /// `AStatusLineDoesNotInventZeroUpdatesTests` holds the pairing.
-    static func packagesStatusNoUpdates(_ total: Int, _ casks: Int) -> String { L("Packages: \(total) · Casks: \(casks)", [.ru: "Пакетов: \(total) · Пакетов cask: \(casks)", .es: "Paquetes: \(total) · casks: \(casks)", .fr: "Paquets : \(total) · casks : \(casks)", .de: "Pakete: \(total) · Casks: \(casks)", .ja: "パッケージ \(total)・cask \(casks)", .zh: "软件包 \(total) · cask \(casks)", .pt: "Pacotes: \(total) · casks: \(casks)"]) }
+    static func packagesStatusNoUpdates(_ total: Int, _ casks: Int) -> String { L("Packages: \(total) · Casks: \(casks)", [.ru: "Пакетов: \(total) · Пакетов cask: \(casks)", .es: "Paquetes: \(total) · casks: \(casks)", .fr: "Paquets\u{00A0}: \(total) · casks\u{00A0}: \(casks)", .de: "Pakete: \(total) · Casks: \(casks)", .ja: "パッケージ \(total)・cask \(casks)", .zh: "软件包 \(total) · cask \(casks)", .pt: "Pacotes: \(total) · casks: \(casks)"]) }
 
     /// Shown instead of the Upgrade button. Not "cannot be upgraded": it is
     /// held on purpose, by the person reading this, and unpinning is a

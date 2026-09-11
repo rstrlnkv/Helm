@@ -27,7 +27,7 @@ public enum HelmBasket {
         let table: [AppLanguage: String] = [
             .ru: "К удалению: \(n) · \(size)",
             .es: "Para eliminar: \(n) · \(size)",
-            .fr: "À supprimer : \(n) · \(size)",
+            .fr: "À supprimer\u{00A0}: \(n) · \(size)",
             .de: "Zu entfernen: \(n) · \(size)",
             .ja: "削除予定：\(n)・\(size)",
             .zh: "待删除 \(n) · \(size)",

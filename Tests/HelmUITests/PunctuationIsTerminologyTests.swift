@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmUI
 
 /// Punctuation is terminology: which marks a language quotes with, and which
@@ -18,6 +19,11 @@ import XCTest
 /// A held-out language is a guard that cannot fail. All eight are checked now,
 /// and the corner brackets stay seeded below because no language's `Quoted`
 /// produces them, so nothing else would put them in the union.
+///
+/// Both predicates below also read every inline table (CLAUDE.md's one
+/// exception to "every string lives in `.lproj`") — a French value written at
+/// a call site is still a French value, and the mark and spacing rules do not
+/// know or care which file it came out of.
 final class PunctuationIsTerminologyTests: XCTestCase {
 
     private func table(for language: AppLanguage) throws -> [String: String] {
@@ -40,17 +46,26 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         Set(Quoted("", language: language).filter { !$0.isWhitespace })
     }
 
+    /// Every mark `text` carries that is not among `language`'s own — the
+    /// predicate both the `.lproj` test and the inline-table test apply.
+    private func foreignMarks(in text: String, language: AppLanguage,
+                              every: Set<Character>) -> Set<Character> {
+        let foreign = every.subtracting(marks(of: language))
+        return Set(text.filter { foreign.contains($0) })
+    }
+
+    /// Every mark any of the eight writes, plus the corner brackets, which none
+    /// of them do — three Chinese values had them, and Japanese had 118.
+    private var everyMark: Set<Character> {
+        AppLanguage.allCases.reduce(into: Set<Character>(["「", "」"])) { $0.formUnion(marks(of: $1)) }
+    }
+
     func testNoLanguageQuotesWithAnotherLanguagesMarks() throws {
-        // Every mark any of the eight writes, plus the corner brackets, which
-        // none of them do — three Chinese values had them, and Japanese had 118.
-        let every = AppLanguage.allCases.reduce(into: Set<Character>(["「", "」"])) {
-            $0.formUnion(marks(of: $1))
-        }
+        let every = everyMark
         var offenders: [(AppLanguage, Character, String)] = []
         for language in AppLanguage.allCases {
-            let foreign = every.subtracting(marks(of: language))
             for (key, value) in try table(for: language) {
-                for mark in foreign where value.contains(mark) {
+                for mark in foreignMarks(in: value, language: language, every: every) {
                     offenders.append((language, mark, key))
                 }
             }
@@ -59,6 +74,37 @@ final class PunctuationIsTerminologyTests: XCTestCase {
                       "\(offenders.count) value(s) quote with a mark their language does not use:\n"
                       + offenders
                         .map { "  \($0.0.rawValue) \($0.1) in \"\($0.2.prefix(60))…\"" }
+                        .sorted()
+                        .joined(separator: "\n"))
+    }
+
+    /// The same rule read off every inline table's literals instead of the
+    /// `.lproj` files — the key, when there is one, stands in as `.en` because
+    /// it is the same English the `.lproj` test reads as a value elsewhere.
+    func testNoInlineTableQuotesWithAnotherLanguagesMarks() throws {
+        let every = everyMark
+        let tables = try InlineTables.tables(under: "Sources")
+        XCTAssertGreaterThanOrEqual(tables.count, InlineTables.floor,
+                                    "only \(tables.count) table(s) found — InlineTables is not reading Sources")
+        var offenders: [(String, AppLanguage, Character, String)] = []
+        for table in tables {
+            if let key = table.key {
+                for mark in foreignMarks(in: key, language: .en, every: every) {
+                    offenders.append((table.path, .en, mark, key))
+                }
+            }
+            for row in table.rows {
+                for literal in row.literals {
+                    for mark in foreignMarks(in: literal.value, language: row.language, every: every) {
+                        offenders.append(("\(table.path):\(row.line)", row.language, mark, literal.value))
+                    }
+                }
+            }
+        }
+        XCTAssertTrue(offenders.isEmpty,
+                      "\(offenders.count) inline value(s) quote with a mark their language does not use:\n"
+                      + offenders
+                        .map { "  \($0.0) \($0.1.rawValue) \($0.2) in \"\($0.3.prefix(60))…\"" }
                         .sorted()
                         .joined(separator: "\n"))
     }
@@ -76,28 +122,60 @@ final class PunctuationIsTerminologyTests: XCTestCase {
     /// quotes an untranslated English label — the one value that names a macOS
     /// setting writes it in French inside French marks. Neither pattern has a
     /// legitimate occurrence to excuse.
-    func testFrenchSpacesItsPunctuationTheWayMacOSDoes() throws {
+    private func frenchSpacingOffences(in value: String) -> [String] {
         let breaking: Character = " "        // U+0020
         let unbreakable: Character = "\u{00A0}"
+        var offences: [String] = []
+        let characters = Array(value)
+        for (index, character) in characters.enumerated() {
+            let before = index > 0 ? characters[index - 1] : nil
+            let after = index + 1 < characters.count ? characters[index + 1] : nil
+            if character == "«", after != unbreakable {
+                offences.append("« not followed by U+00A0")
+            }
+            if character == "»", before != unbreakable {
+                offences.append("» not preceded by U+00A0")
+            }
+            if ":;?!".contains(character), before == breaking {
+                offences.append("U+0020 before \(character)")
+            }
+        }
+        return offences
+    }
+
+    func testFrenchSpacesItsPunctuationTheWayMacOSDoes() throws {
         var offenders: [String] = []
         for (key, value) in try table(for: .fr) {
-            let characters = Array(value)
-            for (index, character) in characters.enumerated() {
-                let before = index > 0 ? characters[index - 1] : nil
-                let after = index + 1 < characters.count ? characters[index + 1] : nil
-                if character == "«", after != unbreakable {
-                    offenders.append("« not followed by U+00A0 in \"\(key.prefix(50))…\"")
-                }
-                if character == "»", before != unbreakable {
-                    offenders.append("» not preceded by U+00A0 in \"\(key.prefix(50))…\"")
-                }
-                if ":;?!".contains(character), before == breaking {
-                    offenders.append("U+0020 before \(character) in \"\(key.prefix(50))…\"")
-                }
+            for offence in frenchSpacingOffences(in: value) {
+                offenders.append("\(offence) in \"\(key.prefix(50))…\"")
             }
         }
         XCTAssertTrue(offenders.isEmpty,
                       "\(offenders.count) French value(s) use an ordinary space where macOS "
+                      + "uses an unbreakable one:\n"
+                      + offenders.sorted().joined(separator: "\n").prefix(4000))
+    }
+
+    /// The same rule read off every inline table's French row.
+    func testFrenchInlineTablesSpaceTheirPunctuationTheWayMacOSDoes() throws {
+        let tables = try InlineTables.tables(under: "Sources")
+        let frenchRows = tables.flatMap { $0.rows }.filter { $0.language == .fr }
+        XCTAssertGreaterThanOrEqual(frenchRows.count, InlineTables.floor,
+                                    "only \(frenchRows.count) French row(s) found — InlineTables is not "
+                                    + "reading Sources")
+        var offenders: [String] = []
+        for table in tables {
+            for row in table.rows where row.language == .fr {
+                for literal in row.literals {
+                    for offence in frenchSpacingOffences(in: literal.value) {
+                        offenders.append("\(table.path):\(row.line) \(offence) in "
+                                        + "\"\(literal.value.prefix(50))…\"")
+                    }
+                }
+            }
+        }
+        XCTAssertTrue(offenders.isEmpty,
+                      "\(offenders.count) French inline value(s) use an ordinary space where macOS "
                       + "uses an unbreakable one:\n"
                       + offenders.sorted().joined(separator: "\n").prefix(4000))
     }

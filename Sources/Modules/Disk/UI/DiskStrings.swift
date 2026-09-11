@@ -120,7 +120,7 @@ enum DkStr {
     static func stoppedHint(_ files: Int,
                             language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)
-        return L("The walk was stopped after \(n) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(n). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(n) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(n) fichiers : un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(n) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(n) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(n) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(n) arquivos, então uma pasta pode conter mais do que mostra."], language: language)
+        return L("The walk was stopped after \(n) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(n). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(n) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(n) fichiers\u{00A0}: un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(n) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(n) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(n) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(n) arquivos, então uma pasta pode conter mais do que mostra."], language: language)
     }
     static var advice: String { L("Recommendations") }
     static var adviceHint: String { L("What could be deleted") }

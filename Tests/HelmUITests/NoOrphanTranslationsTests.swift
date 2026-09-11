@@ -33,27 +33,11 @@ final class NoOrphanTranslationsTests: XCTestCase {
     /// entries quote a control by name — `"Date Added"`, `"1000 KB"` — which
     /// Swift spells `\"` and the loaded table hands back as `"`. They were this
     /// check's first four accusations, and all four were wrong.
+    ///
+    /// `SwiftSource.decodingEscapes` now — `AnInlineTableIsReadInEverySpellingTests`
+    /// needs the same reading and this was the only copy of it.
     private func decodingEscapes(_ source: String) -> String {
-        decodingUnicodeEscapes(source).replacingOccurrences(of: "\\\"", with: "\"")
-    }
-
-    private func decodingUnicodeEscapes(_ source: String) -> String {
-        var out = ""
-        var rest = Substring(source)
-        while let start = rest.range(of: "\\u{") {
-            out += rest[rest.startIndex..<start.lowerBound]
-            guard let close = rest.range(of: "}", range: start.upperBound..<rest.endIndex),
-                  let scalar = UInt32(rest[start.upperBound..<close.lowerBound], radix: 16),
-                  let character = Unicode.Scalar(scalar)
-            else {
-                out += rest[start.lowerBound..<start.upperBound]
-                rest = rest[start.upperBound...]
-                continue
-            }
-            out.append(Character(character))
-            rest = rest[close.upperBound...]
-        }
-        return out + rest
+        SwiftSource.decodingEscapes(source)
     }
 
     /// **Every source file with its comments blanked and its literals kept, and

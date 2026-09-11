@@ -42,8 +42,17 @@ public enum RepoSource {
     }()
 
     /// A file of the repository, by its path from the root.
+    ///
+    /// Wrapped rather than left to throw whatever `String(contentsOf:)` throws
+    /// on its own: a file that is not valid UTF-8 comes back as Cocoa error
+    /// 259 with no path in it at all, so a scan over many files could not say
+    /// which one it had choked on.
     public static func text(of relative: String) throws -> String {
-        try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
+        do {
+            return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
+        } catch {
+            throw UISources.Failure("\(relative) could not be read: \(error)")
+        }
     }
 
     /// The same file, split — which is what a scan wants, since it reports the
@@ -60,15 +69,28 @@ public enum RepoSource {
     /// point at which it stops being one reader's business. The paths come back
     /// relative because that is what `text(of:)` and `lines(of:)` take, and
     /// because a finding has to name a file somebody can open.
+    ///
+    /// The enumerator carries its own error handler now: with none, Foundation
+    /// drops a subdirectory it could not read and moves on without a word, so
+    /// a mode-000 directory read as "empty" rather than "refused" — the same
+    /// failure this file's own promise, "fails on a file it cannot read", is
+    /// supposed to rule out.
     public static func swiftFiles(under relative: String) throws -> [String] {
         let base = root.appendingPathComponent(relative)
-        guard let walk = FileManager.default.enumerator(at: base, includingPropertiesForKeys: nil)
-        else { return [] }
+        var refusal: (any Error)?
+        let walk = FileManager.default.enumerator(
+            at: base, includingPropertiesForKeys: nil, options: [],
+            errorHandler: { url, error in
+                refusal = UISources.Failure("\(url.path) could not be enumerated: \(error)")
+                return false
+            })
+        guard let walk else { return [] }
         var out: [String] = []
         while let url = walk.nextObject() as? URL {
             guard url.pathExtension == "swift" else { continue }
             out.append(relative + url.path.replacingOccurrences(of: base.path, with: ""))
         }
+        if let refusal { throw refusal }
         return out
     }
 

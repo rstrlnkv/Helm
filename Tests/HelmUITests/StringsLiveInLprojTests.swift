@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmUI
 
 /// Every string belongs in the eight `.lproj` files, and a translation that is
@@ -25,24 +26,6 @@ import XCTest
 /// thing it looked at.)
 final class StringsLiveInLprojTests: XCTestCase {
 
-    private var swiftSources: [(path: String, text: String)] {
-        get throws {
-            let root = URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()   // HelmUITests
-                .deletingLastPathComponent()   // Tests
-                .deletingLastPathComponent()   // repo
-                .appendingPathComponent("Sources")
-            var found: [(String, String)] = []
-            let walker = try XCTUnwrap(FileManager.default.enumerator(at: root,
-                                                                     includingPropertiesForKeys: nil))
-            for case let url as URL in walker where url.pathExtension == "swift" {
-                found.append((url.lastPathComponent,
-                              try String(contentsOf: url, encoding: .utf8)))
-            }
-            return found
-        }
-    }
-
     private func table(for language: AppLanguage) throws -> [String: String] {
         let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path)
         let table = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
@@ -50,80 +33,33 @@ final class StringsLiveInLprojTests: XCTestCase {
         return table
     }
 
-    /// Every `L("…")` in a source, with whether a table follows the literal.
-    ///
-    /// Walked character by character rather than matched with a pattern: the
-    /// changelog entries are long, hold quotes of their own, and one of them
-    /// carries an escaped `\"` — every shortcut that reads to the next `"`
-    /// splits an entry in the middle and then measures the halves.
-    private func callSites(in source: String) -> [(literal: String, hasTable: Bool)] {
-        var found: [(String, Bool)] = []
-        var rest = Substring(source)
-        while let call = rest.range(of: "L(\"") {
-            var index = call.upperBound
-            var literal = ""
-            while index < rest.endIndex, rest[index] != "\"" {
-                if rest[index] == "\\" {
-                    literal.append(rest[index])
-                    index = rest.index(after: index)
-                    guard index < rest.endIndex else { break }
-                }
-                literal.append(rest[index])
-                index = rest.index(after: index)
-            }
-            guard index < rest.endIndex else { break }
-            // A table, not merely a second argument: skip the whitespace after
-            // the comma — a long table is written on the next line — and require
-            // the bracket that opens one.
-            var tail = rest[rest.index(after: index)...]
-            var tabled = false
-            if tail.first == "," {
-                tail = tail.dropFirst().drop(while: \.isWhitespace)
-                tabled = tail.first == "["
-            }
-            found.append((literal, tabled))
-            rest = rest[rest.index(after: index)...]
-        }
-        return found
-    }
+    /// A floor under the keyed tables the real tree carries, measured
+    /// alongside `InlineTables.floor` — the table floor alone cannot fail
+    /// this rule: every table could report `key == nil` and the loop below
+    /// would still run, filter nothing, and pass over a walk that had quietly
+    /// stopped finding any key at all.
+    private static let keyedFloor = 70
 
-    /// The scanner's own check, because it decides what every other assertion
-    /// here sees. "A comma follows the literal" is not "a table follows the
-    /// literal": `L("Connected", language: language)` is the form every
-    /// localization test uses to ask about a language other than this
-    /// machine's, and it was being read as tabled — so the guard would have
-    /// excused a real table at any call site that named its language, and
-    /// complained about one that carried none.
-    func testACallSiteThatNamesALanguageIsNotATable() {
-        let source = """
-        let a = L("Connected", language: language)
-        let b = L("Connected", [.ru: "Подключено"])
-        let c = L("Connected",
-                  [.ru: "Подключено"])
-        let d = L("Connected")
-        """
-        XCTAssertEqual(callSites(in: source).map(\.hasTable), [false, true, true, false])
-    }
-
+    /// `InlineTables` is the walk — this test is only the rule it never judges
+    /// itself: a table whose `L("…"` key is a plain literal with no `\(` in it
+    /// has nothing to justify carrying one. A `let` binding, a `return`, or a
+    /// first argument that is not a single literal carries `key == nil` and is
+    /// not flagged, because there is no key text to ask the question of.
     func testNoStringKeepsAnInlineTableUnlessItIsInterpolated() throws {
-        var scanned = 0
-        var tabled: [(file: String, literal: String)] = []
-        for (path, text) in try swiftSources {
-            let sites = callSites(in: text)
-            scanned += sites.count
-            for site in sites where site.hasTable && !site.literal.contains("\\(") {
-                tabled.append((path, site.literal))
-            }
-        }
-        XCTAssertGreaterThan(scanned, 500,
-                             "only \(scanned) L() call sites were found in the whole of Sources, "
-                             + "so a pass means nothing — the walk or the scanner is wrong")
+        let tables = try InlineTables.tables(under: "Sources")
+        XCTAssertGreaterThanOrEqual(tables.count, InlineTables.floor,
+                                    "only \(tables.count) table(s) found — InlineTables is not reading Sources")
+        let keyed = tables.filter { $0.key != nil }
+        XCTAssertGreaterThanOrEqual(keyed.count, Self.keyedFloor,
+                                    "only \(keyed.count) table(s) carry a key — the key walk has stopped "
+                                    + "finding one, not the tree having lost every plain-keyed table")
 
-        XCTAssertTrue(tabled.isEmpty,
-                      "\(tabled.count) string(s) carry an inline table with no interpolation to "
+        let unjustified = tables.filter { $0.key != nil && !($0.key!.contains("\\(")) }
+        XCTAssertTrue(unjustified.isEmpty,
+                      "\(unjustified.count) string(s) carry an inline table with no interpolation to "
                       + "justify it. The eight .lproj files are where they belong, and "
                       + "StringsCoverageTests only guards what is in them:\n"
-                      + tabled.map { "  \($0.file): \"\($0.literal.prefix(60))…\"" }
+                      + unjustified.map { "  \($0.path):\($0.line): \"\(($0.key ?? "").prefix(60))…\"" }
                         .joined(separator: "\n"))
     }
 

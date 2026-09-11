@@ -393,6 +393,259 @@ public enum SwiftSource {
         return characters.count
     }
 
+    // MARK: - Literals
+
+    /// A single string literal, as the source wrote it and as it reads once
+    /// Swift's own escapes and interpolations have run.
+    ///
+    /// `raw` keeps `\(…)` untouched — a caller reporting the offending line back
+    /// to a person wants the source, not a re-encoding of it. `value` decodes
+    /// every other escape (`decodingEscapes`) and stands each interpolation in
+    /// for one `interpolation` character, because a rule about spacing or
+    /// quotation marks is a rule about what the text reads as, and the four
+    /// characters `\`, `(`, `f`, `r` that happen to sit inside a French row
+    /// calling `files("fr")` are not that.
+    public struct Literal: Sendable, Equatable {
+        public let raw: String
+        public let value: String
+
+        public init(raw: String, value: String) {
+            self.raw = raw
+            self.value = value
+        }
+    }
+
+    /// The character `value` stands an interpolation in for — visibly neither a
+    /// space nor a mark, so a rule that reads spacing or quotation punctuation
+    /// cannot mistake one for either.
+    public static let interpolation: Character = "\u{FFFC}"
+
+    /// Swift's own escapes, decoded the way they read at runtime — one pass,
+    /// left to right, because an escape spends its own backslash. Decoding
+    /// `\u{…}` and `\"` as two separate whole-string substitutions, in either
+    /// order, cannot tell an escaped backslash from a plain one: the first
+    /// substitution to run owns every backslash alike, so `\\u{00A0}` — one
+    /// escaped backslash followed by the six literal characters `u{00A0}` —
+    /// came back as a decoded unbreakable space, the same three bytes a real
+    /// `\u{00A0}` decodes to. A single left-to-right walk spends `\\`'s two
+    /// characters before either backslash can be read again, so the text
+    /// after it is never mistaken for an escape of its own.
+    ///
+    /// Moved here from `NoOrphanTranslationsTests`, which owned the only copy of
+    /// this before `literals(in:)` needed the same reading: Swift writes
+    /// `\u{2014}` where a `.strings` file carries `—`, and the escaped double
+    /// quote is the same trap one level in — four changelog entries quote a
+    /// control by name, which Swift spells `\"`.
+    public static func decodingEscapes(_ source: String) -> String {
+        let characters = Array(source)
+        let count = characters.count
+        var out = ""
+        out.reserveCapacity(count)
+        var i = 0
+        while i < count {
+            guard characters[i] == "\\", i + 1 < count else {
+                out.append(characters[i])
+                i += 1
+                continue
+            }
+            switch characters[i + 1] {
+            case "\\": out.append("\\"); i += 2
+            case "\"": out.append("\""); i += 2
+            case "'": out.append("'"); i += 2
+            case "n": out.append("\n"); i += 2
+            case "t": out.append("\t"); i += 2
+            case "r": out.append("\r"); i += 2
+            case "0": out.append("\0" as Character); i += 2
+            case "u":
+                guard i + 2 < count, characters[i + 2] == "{",
+                      let close = characters[(i + 3)...].firstIndex(of: "}"),
+                      let scalar = UInt32(String(characters[(i + 3)..<close]), radix: 16),
+                      let unicode = Unicode.Scalar(scalar)
+                else {
+                    out.append(characters[i])
+                    i += 1
+                    continue
+                }
+                out.append(Character(unicode))
+                i = close + 1
+            default:
+                out.append(characters[i])
+                i += 1
+            }
+        }
+        return out
+    }
+
+    /// Every string literal in `code`, in the order it is written —
+    /// interpolation aware, so a literal nested inside `\( … )`
+    /// (`\(items("fr"))`) is never read as ending the literal that holds it.
+    ///
+    /// Reads `"…"`, `"""…"""` and either wrapped in **any number** of `#` —
+    /// `##"a "# b"##` is one literal closed by `"##`, not by the first `"#` a
+    /// walk that only knew one hash would stop at. `path` names what a thrown
+    /// error reports; callers with no file to report — a fixture, an
+    /// expression already sliced out of one — may leave it at its default.
+    ///
+    /// Throws rather than returning fewer literals than were written: a literal
+    /// this walk cannot close is a literal a caller must not read as absent.
+    public static func literals(in code: String, path: String = "<literal>") throws -> [Literal] {
+        let characters = Array(code)
+        let count = characters.count
+        var out: [Literal] = []
+        var index = 0
+        while index < count {
+            if isLiteralStart(characters, index) {
+                let (literal, next) = try readLiteral(characters, from: index, path: path)
+                out.append(literal)
+                index = next
+            } else {
+                index += 1
+            }
+        }
+        return out
+    }
+
+    /// One past the end of the literal opening at `index` — the boundary half
+    /// of `readLiteral(_:from:path:)`, for a caller that only needs to skip
+    /// the literal rather than read it (`InlineTables`' own walk, over the
+    /// same rule so the two can never disagree on where a literal ends).
+    static func endOfLiteral(_ characters: [Character], _ index: Int, path: String) throws -> Int {
+        try readLiteral(characters, from: index, path: path).1
+    }
+
+    /// Whether `characters[index]` opens a string literal — `"`, or one or
+    /// more `#` followed eventually by `"`.
+    private static func isLiteralStart(_ characters: [Character], _ index: Int) -> Bool {
+        guard index < characters.count else { return false }
+        if characters[index] == "\"" { return true }
+        guard characters[index] == "#" else { return false }
+        var i = index
+        while i < characters.count, characters[i] == "#" { i += 1 }
+        return i < characters.count && characters[i] == "\""
+    }
+
+    /// One literal starting at `index` — the hash count and single-versus-
+    /// triple quote are read off the text itself rather than passed in, so a
+    /// literal wrapped in any number of `#` is closed correctly and its own
+    /// interpolation marker (`\(` with no hashes, `\#(`, `\##(`, … with as
+    /// many as the literal opened with) is recognised at the same width.
+    ///
+    /// `undecoded` mirrors `raw` but with every interpolation span collapsed
+    /// to one `interpolation` character in its place, so `decodingEscapes` —
+    /// which knows nothing about interpolation — can run over the rest
+    /// unmodified. A raw literal (`hashes > 0`) processes no other escape:
+    /// `\"` inside one is two literal characters, not an escaped quote, which
+    /// is exactly why its closing delimiter has to repeat the hash count —
+    /// nothing shorter can end it by accident.
+    private static func readLiteral(_ characters: [Character], from index: Int,
+                                    path: String) throws -> (Literal, Int) {
+        let count = characters.count
+        var i = index
+        var hashes = 0
+        while i < count, characters[i] == "#" { hashes += 1; i += 1 }
+        guard i < count, characters[i] == "\"" else {
+            throw UISources.Failure("\(path):\(lineOf(characters, index)) — a literal does not open "
+                                    + "with a quote")
+        }
+        let triple = i + 2 < count && characters[i + 1] == "\"" && characters[i + 2] == "\""
+        let hashText = String(repeating: "#", count: hashes)
+        var raw = hashText + (triple ? "\"\"\"" : "\"")
+        i += triple ? 3 : 1
+        var undecoded = ""
+
+        let closeQuotes = triple ? 3 : 1
+        func matchesClose(at position: Int) -> Bool {
+            guard position + closeQuotes + hashes <= count else { return false }
+            for offset in 0..<closeQuotes where characters[position + offset] != "\"" { return false }
+            for offset in 0..<hashes where characters[position + closeQuotes + offset] != "#" {
+                return false
+            }
+            return true
+        }
+        let marker = ["\\"] + Array(repeating: Character("#"), count: hashes) + ["("]
+        func matchesInterpolation(at position: Int) -> Bool {
+            guard position + marker.count <= count else { return false }
+            for offset in 0..<marker.count where characters[position + offset] != marker[offset] {
+                return false
+            }
+            return true
+        }
+
+        while i < count {
+            if matchesClose(at: i) {
+                let closeLength = closeQuotes + hashes
+                raw += String(characters[i..<(i + closeLength)])
+                i += closeLength
+                return (Literal(raw: raw, value: decodingEscapes(undecoded)), i)
+            }
+            if matchesInterpolation(at: i) {
+                let (span, next) = try readInterpolation(characters, markerStart: i,
+                                                          hashes: hashes, path: path)
+                raw += span
+                undecoded.append(interpolation)
+                i = next
+                continue
+            }
+            // A raw literal (hashes > 0) processes no other escape — its
+            // closing delimiter is the only thing a backslash cannot hide
+            // from, since ending it takes as many `#` as opening it did.
+            if hashes == 0, characters[i] == "\\", i + 1 < count {
+                raw.append(characters[i])
+                raw.append(characters[i + 1])
+                undecoded.append(characters[i])
+                undecoded.append(characters[i + 1])
+                i += 2
+                continue
+            }
+            raw.append(characters[i])
+            undecoded.append(characters[i])
+            i += 1
+        }
+        throw UISources.Failure("\(path):\(lineOf(characters, index)) — an unterminated string literal")
+    }
+
+    /// The text of one interpolation span, from its own backslash (and, for a
+    /// raw literal, the hashes between it and the `(`) to the matching `)` —
+    /// a nested string literal, of any hash count, is skipped whole, because
+    /// its own parentheses and quotes are not the interpolation's. This is
+    /// how `\(f(#"C:\"#))` reads: the raw literal inside the call is one
+    /// token to this walk, so the `)` that closes it is never read as the
+    /// one that closes `f(`.
+    private static func readInterpolation(_ characters: [Character], markerStart: Int, hashes: Int,
+                                          path: String) throws -> (String, Int) {
+        let count = characters.count
+        let marker = "\\" + String(repeating: "#", count: hashes) + "("
+        var span = marker
+        var i = markerStart + marker.count
+        var depth = 1
+        while i < count {
+            if isLiteralStart(characters, i) {
+                let (nested, next) = try readLiteral(characters, from: i, path: path)
+                span += nested.raw
+                i = next
+                continue
+            }
+            let character = characters[i]
+            span.append(character)
+            if character == "(" {
+                depth += 1
+                i += 1
+            } else if character == ")" {
+                depth -= 1
+                i += 1
+                if depth == 0 { return (span, i) }
+            } else {
+                i += 1
+            }
+        }
+        throw UISources.Failure("\(path):\(lineOf(characters, markerStart)) — an unterminated "
+                                + "interpolation")
+    }
+
+    private static func lineOf(_ characters: [Character], _ index: Int) -> Int {
+        characters[..<index].filter { $0 == "\n" }.count + 1
+    }
+
     // MARK: - Modifier chains
 
     /// The SwiftUI modifier chain the line at `index` belongs to, by brace

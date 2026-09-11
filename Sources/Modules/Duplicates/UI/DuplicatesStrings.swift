@@ -166,7 +166,7 @@ enum DupStr {
                       language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(groups, language: language)
         let tail = onceEmptied(wasted, language: language)
-        return L("Groups: \(n) · \(tail)", [.ru: "Групп: \(n) · \(tail)", .es: "Grupos: \(n) · \(tail)", .fr: "Groupes : \(n) · \(tail)", .de: "Gruppen: \(n) · \(tail)", .ja: "\(n) グループ・\(tail)", .zh: "\(n) 组 · \(tail)", .pt: "Grupos: \(n) · \(tail)"], language: language)
+        return L("Groups: \(n) · \(tail)", [.ru: "Групп: \(n) · \(tail)", .es: "Grupos: \(n) · \(tail)", .fr: "Groupes\u{00A0}: \(n) · \(tail)", .de: "Gruppen: \(n) · \(tail)", .ja: "\(n) グループ・\(tail)", .zh: "\(n) 组 · \(tail)", .pt: "Grupos: \(n) · \(tail)"], language: language)
     }
     /// «\(size) once the Trash is emptied» — the tail of `found` above, on its
     /// own for the group headers: each group says what removing its extras
