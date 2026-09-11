@@ -113,6 +113,70 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// here is not something the prose should be pointing at.
     private static let ownMachinery: Set<String> = ["knownAbsent", "foreign"]
 
+    // MARK: - What shape a span is
+
+    /// What a backtick span turned out to be, once it is read as an address
+    /// and not as prose. `classify` sorts every span into exactly one of
+    /// these — a `Type.member` and a stray `path.ext` want different tests,
+    /// and a `path:12-40` wants a third — or into none, which is how a git
+    /// hash and an ordinary sentence stay out of the count altogether.
+    private enum Kind: String {
+        case file        // `Sources/HelmRuntime/RemovableScope.swift`, no line
+        case fileLine    // `Sources/HelmRuntime/ScanRoot.swift:42`, a range or list too
+        case member      // `AppLanguage.each` — a type this tree might declare
+        case bareName    // `RemovableScope`, `install.sh` — a word, not an address
+    }
+
+    private static let hashLike = try! NSRegularExpression(pattern: "^[0-9a-f]{6,}$")
+
+    /// A path this tree can actually hold, by extension. Deliberately short:
+    /// `.app`, `.db` and `.log` all occur bare in the documents naming things
+    /// macOS owns (`TCC.db`, `com.helm.app`, `helm.log`) or naming an
+    /// installed bundle outside the repository (`/Applications/Foo.app`), and
+    /// widening this list would turn each into a file this check goes looking
+    /// for inside the checkout.
+    private static let pathShape = try! NSRegularExpression(
+        pattern: "^([\\w./-]+\\.(?:swift|sh|py|plist|strings|json|yml|entitlements|md))"
+            + "(?::(\\d+(?:[-,]\\d+)*))?$")
+    private static let memberShape = try! NSRegularExpression(
+        pattern: "^[A-Z]\\w*\\.[A-Za-z_]\\w*$")
+    private static let bareShape = try! NSRegularExpression(
+        pattern: "^[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$")
+
+    /// One span, classified. A file address's own extension already answers
+    /// "is this a path", so a bare `README.md` is decided here and never
+    /// falls through to the `Type.member` test below it — before this was
+    /// split out, a bare `OLDDOC.md` naming a deleted document matched the
+    /// member shape too (`OLDDOC` read as a type, `md` as its member) and a
+    /// type this tree does not declare is never checked, which would have
+    /// waved a dead document through silently.
+    ///
+    /// A bare `.swift` name (`Scope.swift`, no slash, no line) is a `.file`
+    /// and not a `.bareName`: it names one file, the same claim a slashed
+    /// path makes, and `fileIsThere`'s own `byName` lookup is what has to
+    /// answer it — a substring check would call any word that happens to
+    /// occur near "swift" somewhere in the tree a match.
+    ///
+    /// `pathShape` only recognises a well-formed path; a `.swift` token it
+    /// cannot parse — a stray `+`, a line spelled with an en dash, a second
+    /// colon — is still a claim about a file's existence and not a member or
+    /// a bare word, so it falls to the file check too rather than vanishing
+    /// from the count entirely.
+    private func classify(_ token: String) -> Kind? {
+        let whole = NSRange(token.startIndex..., in: token)
+        if Self.hashLike.firstMatch(in: token, range: whole) != nil { return nil }
+        if let match = Self.pathShape.firstMatch(in: token, range: whole) {
+            let hasLine = match.range(at: 2).location != NSNotFound
+            if hasLine { return .fileLine }
+            if token.contains("/") || token.hasSuffix(".swift") { return .file }
+            return .bareName
+        }
+        if token.contains(".swift") { return token.contains(":") ? .fileLine : .file }
+        if Self.memberShape.firstMatch(in: token, range: whole) != nil { return .member }
+        if Self.bareShape.firstMatch(in: token, range: whole) != nil { return .bareName }
+        return nil
+    }
+
     // MARK: - The tree
 
     private var root: URL {
@@ -132,12 +196,30 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// namespaces and the source-reading checks' own fixtures all live in
     /// literals. The other extensions are read whole: `#` is not a comment in a
     /// plist and `//` is half of every URL in one.
-    private func tree() -> (blob: String, names: Set<String>, byName: [String: [URL]]) {
+    ///
+    /// **`declaration` is not `extension`.** `extension Color { … }` reads a
+    /// name for the second dictionary below and must never read one for the
+    /// first: it adds members to SwiftUI's own type, and a tree that treats
+    /// "extended somewhere" as "declared here" would call `Color.primary`
+    /// ours to answer for — which is exactly the platform member this rule
+    /// exists to leave alone. `site` finds where a member the tree is
+    /// answerable for might be written, `declaration` decides whether the
+    /// tree is answerable for it at all.
+    private static let declaration = try! NSRegularExpression(
+        pattern: "\\b(?:class|struct|actor|enum|protocol)\\s+([A-Za-z_]\\w*)")
+    private static let site = try! NSRegularExpression(
+        pattern: "\\b(?:class|struct|actor|enum|protocol|extension)\\s+([A-Za-z_]\\w*)")
+
+    private func tree() -> (blob: String, names: Set<String>, byName: [String: [URL]],
+                            declaredTypes: Set<String>, sites: [String: [URL]], swiftText: [URL: String]) {
         let skip: Set<String> = [".git", ".build", "build", ".backstage", "DerivedData", ".superpowers"]
         let readable: Set<String> = ["swift", "sh", "py", "plist", "strings", "json", "yml", "entitlements"]
         var blob = ""
         var names: Set<String> = []
         var byName: [String: [URL]] = [:]
+        var declaredTypes: Set<String> = []
+        var sites: [String: [URL]] = [:]
+        var swiftText: [URL: String] = [:]
         let enumerator = FileManager.default.enumerator(at: root,
                                                         includingPropertiesForKeys: [.isDirectoryKey],
                                                         options: [.skipsHiddenFiles])
@@ -164,10 +246,25 @@ final class DocumentsNameTheTreeTests: XCTestCase {
             }
             autoreleasepool {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
-                blob += url.pathExtension == "swift" ? SwiftSource.uncommented(text) : text
+                guard url.pathExtension == "swift" else {
+                    blob += text
+                    return
+                }
+                let code = SwiftSource.uncommented(text)
+                blob += code
+                swiftText[url] = code
+                let whole = NSRange(code.startIndex..., in: code)
+                for match in Self.declaration.matches(in: code, range: whole) {
+                    guard let typeRange = Range(match.range(at: 1), in: code) else { continue }
+                    declaredTypes.insert(String(code[typeRange]))
+                }
+                for match in Self.site.matches(in: code, range: whole) {
+                    guard let typeRange = Range(match.range(at: 1), in: code) else { continue }
+                    sites[String(code[typeRange]), default: []].append(url)
+                }
             }
         }
-        return (blob, names, byName)
+        return (blob, names, byName, declaredTypes, sites, swiftText)
     }
 
     // MARK: - The documents
@@ -236,38 +333,78 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// A token of nothing but hex digits is not a name: the documents quote git
     /// hashes in backticks, and `c69e17ab` is not something the tree should be
     /// asked about.
-    private func namesMentioned(in lines: [String]) -> [(token: String, line: Int)] {
+    private func namesMentioned(in lines: [String]) -> [(token: String, line: Int, kind: Kind)] {
         let pattern = try! NSRegularExpression(pattern: "`([^`]+)`")
-        let shape = try! NSRegularExpression(
-            pattern: "^[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$")
-        let hashLike = try! NSRegularExpression(pattern: "^[0-9a-f]{6,}$")
-        var found: [(String, Int)] = []
+        var found: [(String, Int, Kind)] = []
         for (index, line) in lines.enumerated() {
             let range = NSRange(line.startIndex..., in: line)
             for match in pattern.matches(in: line, range: range) {
                 guard let span = Range(match.range(at: 1), in: line) else { continue }
                 let token = String(line[span])
-                let whole = NSRange(token.startIndex..., in: token)
-                guard shape.firstMatch(in: token, range: whole) != nil
-                        || token.contains(".swift")
-                else { continue }
-                if hashLike.firstMatch(in: token, range: whole) != nil { continue }
-                found.append((token, index + 1))
+                guard let kind = classify(token) else { continue }
+                found.append((token, index + 1, kind))
             }
         }
         return found
     }
 
     private func isInTheTree(_ token: String, blob: String, names: Set<String>,
-                             byName: [String: [URL]]) -> Bool {
-        if token.contains(".swift") { return fileIsThere(token, byName: byName) }
-        if names.contains(token) { return true }
-        // Every part has to be something the tree says somewhere — the type and,
-        // when the document names one, the member. A name carried only by a
-        // *filename* counts: `OffTheCooperativePool` is a file whose symbol is a
-        // lowercase function, and the first pass at this check called it stale.
-        return token.split(separator: ".").map(String.init)
-            .allSatisfy { names.contains($0) || blob.contains($0) }
+                             byName: [String: [URL]], declaredTypes: Set<String>,
+                             sites: [String: [URL]], swiftText: [URL: String]) -> Bool {
+        switch classify(token) {
+        case .file, .fileLine:
+            return fileIsThere(token, byName: byName)
+        case .member:
+            // `Type.member`, checked as a whole word in the uncommented code
+            // of the file(s) that declare or extend the type — the same
+            // check Mafia's `DocAddressTest` makes — and never a substring of
+            // the whole blob, which is how `RepoSource.bar` used to pass:
+            // `bar` occurs somewhere, just not in a file naming `RepoSource`.
+            //
+            // A type this tree does not itself declare — `Color.primary`,
+            // `Flow.map`, but also a typo like `NoSuchTypeQq.member` — is not
+            // this check's to ask about by that route, so it falls back to
+            // the same rule a bare name gets: both halves have to be
+            // something the tree says somewhere, in a name or in the blob.
+            // Answering `true` unconditionally here made a deleted or
+            // renamed type invisible to this whole test.
+            let parts = token.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2, declaredTypes.contains(parts[0]), let files = sites[parts[0]] else {
+                return parts.allSatisfy { names.contains($0) || blob.contains($0) }
+            }
+            return memberIsDeclared(parts[1], in: files, swiftText: swiftText)
+        case .bareName:
+            if names.contains(token) { return true }
+            // Every part has to be something the tree says somewhere — the type
+            // and, when the document names one, the member. A name carried only
+            // by a *filename* counts: `OffTheCooperativePool` is a file whose
+            // symbol is a lowercase function, and the first pass at this check
+            // called it stale.
+            return token.split(separator: ".").map(String.init)
+                .allSatisfy { names.contains($0) || blob.contains($0) }
+        case nil:
+            // `namesMentioned` only ever hands back a token `classify` has
+            // already approved, so this is unreached in practice; answering
+            // `true` keeps a future caller from reading an untested branch as
+            // a silent failure.
+            return true
+        }
+    }
+
+    /// Whether `member` is declared, as a whole word, somewhere in the code of
+    /// one of `files` — the file(s) that declare its type.
+    ///
+    /// **A whole word, not a substring**, and **in code, not in a comment**:
+    /// `files` already comes from `SwiftSource.uncommented` text, so a name
+    /// that survives only in a doc comment inside that same file reads here
+    /// exactly as it should everywhere else in this class — absent.
+    private func memberIsDeclared(_ member: String, in files: [URL], swiftText: [URL: String]) -> Bool {
+        let word = try! NSRegularExpression(
+            pattern: "\\b\(NSRegularExpression.escapedPattern(for: member))\\b")
+        return files.contains { url in
+            guard let text = swiftText[url] else { return false }
+            return word.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
+        }
     }
 
     /// A file the documents point at, with or without a line number.
@@ -281,38 +418,90 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     ///
     /// A line number is checked too — `AppDelegate.swift:127` outlived the line
     /// it named by about a hundred lines, and a pointer into a file is a claim
-    /// about that file's length.
+    /// about that file's length. A range or a list (`135-146`, `12,34`) is read
+    /// for its largest number, because that is the furthest line the document
+    /// promises is there — `Int(parts[1])` used to answer `nil` for either shape
+    /// and skip the check for anything past a bare number entirely.
+    ///
+    /// **A bare name with a line number needs a *unique* match.** With no line,
+    /// "somewhere in the tree there is a file called this" is exactly the claim
+    /// being made — `SystemPorts.swift` is four different files, one per module
+    /// that has ports, and any of them answers for it. With a line, the document
+    /// is pointing at *one* file, and more than one candidate makes the address
+    /// ambiguous, which is a dead address by another name.
+    ///
+    /// **A line spec that is there and does not parse is a failure, not a
+    /// missing line.** `:99999999999999999999` overflows `Int`, `:12:5` and an
+    /// en-dash range are not this check's number syntax at all — none of
+    /// those means "no line was asked for", and `maxLineNumber` returning
+    /// `nil` for a spec that was present must not read the same as the colon
+    /// never having been there.
+    ///
+    /// **A path leaving the tree is not there.** `..` resolves against
+    /// whatever sits above the checkout, which for a worktree is not nothing,
+    /// so a `..` component is refused before either candidate is even built
+    /// rather than trusted to `fileExists` to answer honestly about a
+    /// location outside the repository.
     private func fileIsThere(_ token: String, byName: [String: [URL]]) -> Bool {
         let parts = token.split(separator: ":", maxSplits: 1).map(String.init)
         let path = parts[0]
-        let line = parts.count > 1 ? Int(parts[1]) : nil
+        let lineSpec = parts.count > 1 ? parts[1] : nil
+        guard !path.split(separator: "/").contains("..") else { return false }
 
-        // A bare name claims nothing about where the file sits, so every file
-        // with that name is a candidate — `SystemPorts.swift` is four different
-        // files, one per module that has ports.
-        let candidates: [URL] = path.contains("/")
-            ? [root, root.appendingPathComponent("Sources")].map { $0.appendingPathComponent(path) }
-            : (byName[path] ?? [])
+        guard path.contains("/") else {
+            let matches = byName[path] ?? []
+            guard let lineSpec else { return !matches.isEmpty }
+            guard let maxLine = Self.maxLineNumber(in: lineSpec) else { return false }
+            guard matches.count == 1, let only = matches.first else { return false }
+            return lineCount(of: only).map { $0 >= maxLine } ?? false
+        }
+        let candidates = [root, root.appendingPathComponent("Sources")].map {
+            $0.appendingPathComponent(path)
+        }
         let present = candidates.filter { FileManager.default.fileExists(atPath: $0.path) }
         guard !present.isEmpty else { return false }
-        guard let line else { return true }
-        return present.contains { url in
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { return true }
-            return text.components(separatedBy: .newlines).count >= line
-        }
+        guard let lineSpec else { return true }
+        guard let maxLine = Self.maxLineNumber(in: lineSpec) else { return false }
+        return present.contains { lineCount(of: $0).map { $0 >= maxLine } ?? false }
+    }
+
+    /// A file's line count, or nothing when it cannot be read — never a silent
+    /// pass. The candidates that reach here already passed `fileExists`, so an
+    /// unreadable one is a real defect (bad encoding, a broken symlink) and not
+    /// a reason to wave the address through.
+    ///
+    /// Splitting on every newline counts the empty string after the file's own
+    /// final one — a 327-line file split that way reports 328, which is a
+    /// document's `:328` reading as within range of a file that ends at 327.
+    private func lineCount(of url: URL) -> Int? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: .newlines)
+        return text.hasSuffix("\n") ? lines.count - 1 : lines.count
+    }
+
+    /// The largest number in a line spec — `135-146` and `12,34` both cite
+    /// every line up to their biggest, and that is the one a file must reach.
+    /// `nil` covers both a spec with nothing `Int` can read (an overflow, a
+    /// second colon, an en dash) and one whose biggest number is under `1` —
+    /// lines are numbered from one, so `:0` names no line a file can reach.
+    private static func maxLineNumber(in spec: String) -> Int? {
+        let numbers = spec.split(separator: ",").flatMap { $0.split(separator: "-") }.compactMap { Int($0) }
+        guard let biggest = numbers.max(), biggest >= 1 else { return nil }
+        return biggest
     }
 
     // MARK: - The check
 
     func testEveryNameTheStandingDocumentsUseExistsInTheTree() throws {
         let documents = try documents()
-        let (blob, names, byName) = tree()
+        let (blob, names, byName, declaredTypes, sites, swiftText) = tree()
         var stale: [String] = []
         for (document, lines) in documents {
-            for (token, line) in namesMentioned(in: lines) {
+            for (token, line, _) in namesMentioned(in: lines) {
                 if Self.foreign[token] != nil || Self.knownAbsent[token] != nil { continue }
                 if Self.ownMachinery.contains(token) { continue }
-                if !isInTheTree(token, blob: blob, names: names, byName: byName) {
+                if !isInTheTree(token, blob: blob, names: names, byName: byName,
+                                declaredTypes: declaredTypes, sites: sites, swiftText: swiftText) {
                     stale.append("\(document):\(line) names `\(token)`, which is not in the tree")
                 }
             }
@@ -321,6 +510,44 @@ final class DocumentsNameTheTreeTests: XCTestCase {
                       "the documents describe code that is not here:\n" + stale.joined(separator: "\n")
                       + "\n\nIf the name is deliberate history, add it to `knownAbsent` with the reason. "
                       + "If macOS owns it, add it to `foreign`. Otherwise the document is stale.")
+    }
+
+    /// **A canary on the reader itself.** Nothing above asserts how many
+    /// addresses `namesMentioned` actually found — a version that matched
+    /// nothing, or stopped recognising one kind, would leave `stale` empty and
+    /// pass. Floors, not exact counts: the documents change constantly and
+    /// pinning today's numbers would make this test as stale as the thing it
+    /// guards against. Each floor sits comfortably under what
+    /// `swift test --filter DocumentsNameTheTreeTests/testTheReaderIsActuallyReadingTheDocuments`
+    /// prints on every run — the test logs its own per-kind count before
+    /// asking anything of it, so the live figure is there whether the run
+    /// passes or fails — high enough that a reader emitting none, or almost
+    /// none, of a kind still fails, and low enough that ordinary editing of
+    /// the four documents does not. `CHANGELOG.md` legitimately contributes
+    /// almost nothing to any of them, which is why the floors are asked of
+    /// the four documents together rather than one at a time.
+    func testTheReaderIsActuallyReadingTheDocuments() throws {
+        let documents = try documents()
+        var byKind: [Kind: Int] = [:]
+        for (_, lines) in documents {
+            for (_, _, kind) in namesMentioned(in: lines) {
+                byKind[kind, default: 0] += 1
+            }
+        }
+        let floors: [(Kind, Int)] = [
+            (.file, 100), (.fileLine, 100), (.member, 40), (.bareName, 200),
+        ]
+        for (kind, _) in floors {
+            print("DocumentsNameTheTreeTests: \(byKind[kind, default: 0]) `\(kind.rawValue)` addresses across the four documents")
+        }
+        for (kind, floor) in floors {
+            let found = byKind[kind, default: 0]
+            XCTAssertGreaterThanOrEqual(found, floor, """
+                found \(found) `\(kind.rawValue)` addresses across the four documents, fewer than \
+                the \(floor) this canary expects — a reader that stopped extracting this kind would \
+                look exactly like this and still pass every other test in this file.
+                """)
+        }
     }
 
     /// A ledger nobody prunes starts excusing names that nothing answers to —
@@ -340,8 +567,10 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// opposite of the truth.
     func testNothingExcusedAsGoneHasReturned() throws {
         _ = try documents()
-        let (blob, names, byName) = tree()
-        for name in Self.knownAbsent.keys where isInTheTree(name, blob: blob, names: names, byName: byName) {
+        let (blob, names, byName, declaredTypes, sites, swiftText) = tree()
+        for name in Self.knownAbsent.keys
+        where isInTheTree(name, blob: blob, names: names, byName: byName,
+                          declaredTypes: declaredTypes, sites: sites, swiftText: swiftText) {
             XCTFail("`\(name)` is in the tree again — the document's sentence about it is now wrong")
         }
     }
