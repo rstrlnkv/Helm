@@ -10,24 +10,31 @@ import XCTest
 /// up underneath once its own subject moved away (doc, blank, code) — nothing
 /// on screen says which happened, because Quick Help simply shows nothing for
 /// the thing that lost its comment and the wrong thing for the one that
-/// inherited it. `KeyPermissions.swift:26` and `RenamePattern.swift:12` are
-/// two real cases this repository has carried; this guard is what stops a
-/// third from going unnoticed the same way.
+/// inherited it. `KeyPermissions.swift`'s note on why its mode check needed
+/// no bit-masking, and `RenamePattern.swift`'s legend for its `{name}`,
+/// `{date}` and `{counter}` tokens, are two real cases this repository has
+/// carried — each a block a blank line dropped in favour of the doc block
+/// that followed it; this guard is what stops a third from going unnoticed
+/// the same way.
 ///
-/// **Why `uncommented`, not `code`.** `SwiftSource.code` blanks a `\` at the
-/// end of an escape together with the `\n` that follows it — right for a scan
-/// that only ever counts punctuation, and wrong here, because 1,379 lines in
-/// `Tests` end in a bare `\` inside a raw string, and dropping their newline
-/// drifts every line number after them. `uncommented` keeps every newline
-/// where it was; a per-file line-count check against `RepoSource.lines(of:)`
-/// is the proof that held for all 1,544 files this was measured against.
+/// **Why `uncommented`, not `code`.** `SwiftSource.code` blanks a `\` that
+/// ends a line inside an ordinary `"""` literal — a line continuation —
+/// together with the `\n` after it: right for a scan that only ever counts
+/// punctuation, and wrong here, because every line number after it drifts.
+/// `command grep -rhE '\\$' Tests | wc -l` finds those lines, along with the
+/// odd comment that ends in `\`; a raw `#"""` literal does not drift.
+/// `uncommented` keeps every newline where it was; a per-file line-count check
+/// against `RepoSource.lines(of:)` is the proof, run over every file
+/// `find Sources Tests -name '*.swift' | wc -l` counts.
 ///
 /// **Why both trees.** The compiler and Quick Help treat `Sources` and
-/// `Tests` alike, and `Tests` alone carries 6,547 of the 10,899 `///` blocks
-/// in the tree — a guard reading only `Sources` would be blind to two-thirds
-/// of what it exists to watch. Two floors, one per directory, are what catch
-/// a reader that quietly stopped covering one of them: a single combined
-/// floor stays green when either half goes empty.
+/// `Tests` alike, so a guard reading only `Sources` is blind to every block
+/// in `Tests`; `command grep -rhc '^ *///' Sources | paste -sd+ - | bc` and the
+/// same over `Tests` count the `///` lines each holds. Two floors, one per
+/// directory, in `testTheCanaryWalksBothTreesInFull`, are what catch a reader
+/// that quietly stopped covering most of one of them: a single floor over the
+/// sum lets either half lose a large share of its blocks while the total still
+/// clears it.
 ///
 /// **What a block is.** Consecutive `///` lines, plus any run of ordinary
 /// comment lines between two `///` runs that has no blank line in it — the
@@ -64,15 +71,21 @@ final class NoDocCommentIsDetachedTests: XCTestCase {
         /// because the fix is one blank line and the block is talking about
         /// the wrong thing until somebody removes it.
         case attachedAcrossGapBlankThenCode
-        /// Nothing a comment can document: the end of the file, a closing
-        /// `}`, or an `#if`/`#elseif`/`#else`/`#endif` line.
+        /// Nothing a comment can document: the end of the file, a line
+        /// beginning with a closing `}`, `)` or `]`, a switch's catch-all
+        /// arm written on one line, in one of four spellings — `default:`,
+        /// `default :` (any run of spaces or tabs before the colon),
+        /// `@unknown default:` or `@unknown case _:` — or an
+        /// `#if`/`#elseif`/`#else`/`#endif` line. A spelling split across
+        /// lines — `@unknown` on one line and `default:` on the next, or
+        /// `default` and `:` on separate lines — is not recognised.
         case documentsNothing
 
         var description: String {
             switch self {
             case .droppedBlankThenDoc: "dropped: blank then doc"
             case .attachedAcrossGapBlankThenCode: "attached across a gap: blank then code"
-            case .documentsNothing: "documents nothing: before `}`, `#if`-family or end of file"
+            case .documentsNothing: "documents nothing: before a closing `}`/`)`/`]`, a catch-all arm (`default:`, `default :`, `@unknown default:`, `@unknown case _:`), `#if`-family or end of file"
             }
         }
     }
@@ -95,14 +108,44 @@ final class NoDocCommentIsDetachedTests: XCTestCase {
         return raw.trimmingCharacters(in: .whitespaces).hasPrefix("///") ? .doc : .comment
     }
 
-    /// Whether a masked code line is one of the three things a comment above
-    /// it cannot be documenting: a bare closing brace, or an `#if`-family
-    /// directive. Read off `masked` rather than `raw`, because `masked` is
-    /// what "code" already means for every other line here.
+    /// Whether a masked code line is one of the things a comment above it
+    /// cannot be documenting: a line beginning with a closing `}`, `)` or
+    /// `]` — `})`, `},`, `} else {`, `]` and `)` all qualify, because each
+    /// continues the statement that just closed rather than opening a
+    /// subject of its own — a switch's catch-all arm, spelled `default:`,
+    /// `default :` (any run of spaces or tabs before the colon), `@unknown
+    /// default:` or `@unknown case _:`, or an `#if`-family directive. Not plain `case`: an
+    /// enum case is a declaration and its `///` attaches to it, which
+    /// `swiftc -emit-symbol-graph` shows as a `docComment` on the case and
+    /// shows nowhere at all for a comment above any of those four catch-all
+    /// spellings, since a switch arm is a statement rather than a symbol.
+    /// Read off `masked` rather than `raw`, because `masked` is what "code"
+    /// already means for every other line here.
     static func documentsNothing(_ masked: String) -> Bool {
         let trimmed = masked.trimmingCharacters(in: .whitespaces)
-        if trimmed == "}" { return true }
+        if trimmed.hasPrefix("}") || trimmed.hasPrefix(")") || trimmed.hasPrefix("]") { return true }
+        if isDefaultArm(trimmed) { return true }
         return ["#if", "#elseif", "#else", "#endif"].contains { trimmed.hasPrefix($0) }
+    }
+
+    /// Whether `trimmed` opens a switch's catch-all arm — `default:`,
+    /// `default :`, `@unknown default:` or `@unknown case _:` — and not an
+    /// identifier that merely begins with `default`, such as
+    /// `defaultValue = 1` or `default_x`: only whitespace may sit between
+    /// `default` and the colon that follows it, and `@unknown case` only
+    /// qualifies when the pattern it introduces is the bare `_`.
+    static func isDefaultArm(_ trimmed: String) -> Bool {
+        var rest = trimmed
+        if rest.hasPrefix("@unknown") {
+            rest = rest.dropFirst("@unknown".count).trimmingCharacters(in: .whitespaces)
+            if rest.hasPrefix("case") {
+                let afterCase = rest.dropFirst("case".count).trimmingCharacters(in: .whitespaces)
+                guard afterCase.hasPrefix("_") else { return false }
+                return afterCase.dropFirst().trimmingCharacters(in: .whitespaces).hasPrefix(":")
+            }
+        }
+        guard rest.hasPrefix("default") else { return false }
+        return rest.dropFirst("default".count).trimmingCharacters(in: .whitespaces).hasPrefix(":")
     }
 
     static func lineKinds(raw: [String], masked: [String]) -> [LineKind] {
@@ -191,8 +234,8 @@ final class NoDocCommentIsDetachedTests: XCTestCase {
     // MARK: - The canary
 
     /// A guard reading nothing is green over nothing. Two floors and not one,
-    /// because a single combined number stays green when either directory's
-    /// half of the walk quietly stops running.
+    /// because a single floor over the sum stays green while either directory's
+    /// half of the walk loses a large share of what it reads.
     func testTheCanaryWalksBothTreesInFull() throws {
         let sources = try analyze(under: "Sources")
         XCTAssertGreaterThanOrEqual(sources.count, 400,
@@ -271,6 +314,162 @@ final class NoDocCommentIsDetachedTests: XCTestCase {
             let value = 1
             #endif
             """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAClosingParenAndBraceIsFound() {
+        XCTAssertEqual(shapes(in: """
+            run({
+                work()
+                /// dangling at the end of a closure argument
+            })
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAClosingBraceAndCommaIsFound() {
+        XCTAssertEqual(shapes(in: """
+            let items = [
+                Item {
+                    /// dangling
+                },
+            ]
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAClosingBraceElseIsFound() {
+        XCTAssertEqual(shapes(in: """
+            func run() {
+                if a {
+                    x()
+                    /// dangling before else
+                } else {
+                    y()
+                }
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAClosingBracketIsFound() {
+        XCTAssertEqual(shapes(in: """
+            let xs = [
+                1,
+                /// dangling in an array literal
+            ]
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAClosingParenIsFound() {
+        XCTAssertEqual(shapes(in: """
+            let v = call(
+                1
+                /// dangling in an argument list
+            )
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeADefaultArmIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case 1: break
+            /// documents a switch arm
+            default: break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeADefaultArmWithASpaceBeforeTheColonIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case 1: break
+            /// documents a switch arm
+            default : break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeADefaultArmWithASpaceBeforeTheColonAfterABlankLineIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case 1: break
+            /// documents a switch arm
+
+            default : break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAnUnknownDefaultArmIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case .a: break
+            /// documents a switch arm
+            @unknown default: break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAnUnknownDefaultArmAfterABlankLineIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case .a: break
+            /// documents a switch arm
+
+            @unknown default: break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAnUnknownCaseUnderscoreArmIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case .a: break
+            /// documents a switch arm
+            @unknown case _: break
+            }
+            """), [.documentsNothing])
+    }
+
+    func testDocumentsNothingBeforeAnUnknownCaseUnderscoreArmAfterABlankLineIsFound() {
+        XCTAssertEqual(shapes(in: """
+            switch v {
+            case .a: break
+            /// documents a switch arm
+
+            @unknown case _: break
+            }
+            """), [.documentsNothing])
+    }
+
+    /// A `case` is a declaration and its `///` attaches to it rather than
+    /// documenting nothing — `swiftc -emit-symbol-graph` records a
+    /// `docComment` on the case and nothing at all for a comment above a
+    /// switch's `default:`, which is a statement rather than a symbol.
+    func testABlockAboveAnEnumCaseIsNotFound() {
+        XCTAssertEqual(shapes(in: """
+            enum E {
+                /// Explains foo.
+                case foo
+            }
+            """), [])
+    }
+
+    /// An identifier merely beginning with `default` is not a `default` arm
+    /// — the block above it documents that identifier and is attached, the
+    /// same as any other declaration.
+    func testABlockAboveAnIdentifierMerelyBeginningWithDefaultIsNotFound() {
+        XCTAssertEqual(shapes(in: """
+            /// doc
+            defaultValue = 1
+            """), [])
+    }
+
+    /// The same identifier, now past a blank line: still attached across
+    /// the gap, not read as a `default` arm that documents nothing.
+    func testABlockAboveAnIdentifierMerelyBeginningWithDefaultAfterABlankLineIsFound() {
+        XCTAssertEqual(shapes(in: """
+            /// doc
+
+            defaultValue = 1
+            """), [.attachedAcrossGapBlankThenCode])
     }
 
     func testDocumentsNothingAtEndOfFileIsFound() {
