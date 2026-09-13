@@ -286,6 +286,31 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return hits.map { SearchRanking.rank($0, query: query) }
     }
 
+    /// Which installed packages still need `name`.
+    ///
+    /// `brew uninstall` is the only irreversible deletion in the app, and until
+    /// now it was also the only one that would not say what it takes with it:
+    /// removing `openssl@3` on this Mac breaks eight installed formulae, and the
+    /// dialog asked the same mild question it asks for a leaf.
+    ///
+    /// Casks are answered without running anything: `brew uses` takes a formula,
+    /// and handed a cask name it exits 0 with a warning on stderr that the
+    /// runner drops — a confident empty list bought for half a second.
+    ///
+    /// nil when brew refused to answer. The dialog must not promise "nothing
+    /// depends on this" on the strength of a query that never ran.
+    public func dependents(name: String, isCask: Bool) -> [String]? {
+        guard !isCask else { return [] }
+        guard let brew = locator.brewPath() else { return [] }
+        // `--` for the reason every other value in this file has one: brew reads
+        // a leading `-` as a flag wherever it finds it, and this name was parsed
+        // out of brew's own stdout.
+        let result = runner.run(brew, ["uses", "--installed", "--", name],
+                                env: Self.queryEnvironment)
+        guard let out = answered(result, query: "dependents") else { return nil }
+        return BrewUsesParser.parse(out)
+    }
+
     // MARK: - Long operations
 
     /// One phase for all five long operations, opened and closed by the busy
@@ -575,6 +600,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             case .search:
                 let query = String(decoding: cmd.payload, as: UTF8.self)
                 return self.reply(await offTheCooperativePool { self.search(query) }, for: cmd)
+            case .dependents:
+                guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
+                return self.reply(await offTheCooperativePool {
+                    self.dependents(name: r.name, isCask: r.isCask)
+                }, for: cmd)
             case .descriptions:
                 guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
                 else { return Data() }

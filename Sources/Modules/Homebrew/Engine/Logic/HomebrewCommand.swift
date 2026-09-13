@@ -12,6 +12,10 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     case outdated
     case descriptions
     case search
+    /// Which installed packages still need a given one — asked once, at the
+    /// moment the uninstall is put to the person, and never cached: the answer
+    /// is about a Cellar that changes under the app.
+    case dependents
     case install
     case uninstall
     case upgrade
