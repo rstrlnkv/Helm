@@ -62,7 +62,13 @@ struct HomebrewSettingsPage: View {
         // irreversible deletion that nobody asked for. `LatestRequest` retires
         // work on a later press and on a cancel; leaving is neither, and this
         // is the one place that knows it happened
-        // (`LeavingThePageRetiresAnUninstallAskTests`).
+        // (`LeavingThePageRetiresAnUninstallAskTests`). This page also carries
+        // `.helmIdlesOffScreen()`, so hiding the app or occluding the Settings
+        // window unmounts this subtree and fires this too — dismissing a
+        // confirmation dialog the person had left standing on screen rather
+        // than leaving it to act later on a reading taken before the
+        // interruption, which is the right call for the app's only
+        // irreversible deletion.
         .onDisappear { hb.cancelUninstall() }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.

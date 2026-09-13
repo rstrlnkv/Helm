@@ -37,9 +37,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// without the variable against 0.26/0.23/0.23 s with it — indistinguishable
     /// on a warm machine, because brew refreshes periodically rather than per
     /// call, so those runs were not paying for a refresh either. A doc comment
-    /// here once carried a 7.4 s figure read off `helm.log`; the lines it cited
-    /// are `homebrew.outdated`, which is 6.6 s and is the one query this
-    /// constant deliberately excludes. No timing claim belongs here that has not
+    /// here once carried a duration figure read off `helm.log`; the lines it
+    /// cited are `homebrew.outdated`, which is the one query this constant
+    /// deliberately excludes — the figure belongs on the deadline comment in
+    /// `SystemPorts.swift` instead. No timing claim belongs here that has not
     /// been measured on the queries this actually covers.
     ///
     /// **Not `outdated`, and not `search`.** Those two are answers *about* the

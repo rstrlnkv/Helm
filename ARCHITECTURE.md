@@ -716,8 +716,7 @@ marker through the `OpMarker` port
 so it survives the quit it exists to report and the next launch's first `status()`
 answers `interruptedOp` (`Sources/Modules/Homebrew/Engine/Model.swift:77`).
 
-One phase covers all five long operations —
-`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:324` is
+One phase covers all five long operations — `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`'s
 `operationPhase = "homebrew.operation"`, opened in `beginBusy` and closed in
 `endBusy`, which is the one `begin` in the app with no `defer` on the next line,
 because an operation ends in a callback. Four of the queries hold scoped phases
@@ -731,12 +730,12 @@ dash is a package rather than a flag, and they reach the log through `Redact.pkg
 straight off the wire with no gate of its own, which is sound only while the
 transport is in-process with one sender.
 
-The in-app installer (`installBrew`, `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:510`)
-runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL` (`:67`),
+The in-app installer (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`)
+runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL`,
 which names `HEAD` rather than a pinned revision or checksum — whatever the branch
 holds the day the button is pressed. Before the download, one administrator dialog
 authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
-/opt/homebrew` (`:530`), which is the only privileged step; the installer itself then
+/opt/homebrew`, which is the only privileged step; the installer itself then
 runs as the now-owning user. See «Giving everything back» for why that ownership
 change is the one reach this document does not describe as reversible.
 
@@ -1266,8 +1265,8 @@ folders, each only if the person switches it on, and three of them are given bac
   (`Sources/HelmApp/LoginItem.swift:64`) — unregistered as a step of the plan,
   because the application registered it and no module owns it;
 - ownership of `/opt/homebrew`, changed by the in-app Homebrew installer
-  (`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:530`). **This one is not
-  given back.** Helm does not record who owned the tree before, and handing it
+  (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`). **This one is
+  not given back.** Helm does not record who owned the tree before, and handing it
   back to root would leave a `brew` that cannot install anything without `sudo`
   — the ownership is what Homebrew needs, and it is what Homebrew's own
   installer does on any Mac.

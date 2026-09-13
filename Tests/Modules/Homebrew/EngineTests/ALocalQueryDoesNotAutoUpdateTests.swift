@@ -13,9 +13,10 @@ import XCTest
 /// each on this Mac, `brew list --versions --formula` was 0.35/0.23/0.24 s
 /// without the variable and 0.26/0.23/0.23 s with it: no difference worth the
 /// name, because brew refreshes periodically rather than per call. This comment
-/// used to claim 7.4 s from `helm.log`; those lines are `homebrew.outdated` —
-/// 6.6 s, and `outdated` is in the control case below precisely because it is
-/// *not* covered by this rule.
+/// used to claim a duration from `helm.log`; those lines are `homebrew.outdated`
+/// — the figure belongs on the deadline comment in `SystemPorts.swift` instead
+/// — and `outdated` is in the control case below precisely because it is *not*
+/// covered by this rule.
 ///
 /// `outdated` and `search` are deliberately **not** in this test. They are
 /// answers about the catalogue, and a stale catalogue makes «Updates: 0» a lie
