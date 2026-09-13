@@ -254,8 +254,15 @@ public struct FileOpMarker: OpMarker {
 ///
 /// Two whole public documents, fetched at most once a day, carrying nothing
 /// about this Mac but a `User-Agent` — no query, no package name, nothing about
-/// what is installed here. The ETag is stored beside each file, so the ordinary
-/// daily ask is a 304 and no body at all.
+/// what is installed here. The ETag is stored beside each file, so a daily ask
+/// can be a 304 with no body at all.
+///
+/// **Can be, not is.** Measured against the live endpoint on 2026-09-14: GitHub
+/// Pages answers with `W/"<mtime>-<size>"` and its nodes hold the same document
+/// with mtimes a second apart, so the same stored tag earned a 304 from one node
+/// and a 200 from the next, about half the time each. That costs nothing but the
+/// document — a 200 rewrites the same bytes and the newer tag — and the gate
+/// above it is what keeps the ask to one a day either way.
 ///
 /// **Everything here fails towards today's behaviour.** An unreadable file, a
 /// refused fetch, a document this build cannot parse: each leaves the readings
@@ -292,17 +299,20 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         url: URL(string: "https://formulae.brew.sh/api/analytics/cask-install/homebrew-cask/30d.json")!,
         file: "homebrew-installs-casks.json")
 
-    /// A read-only query gets a deadline (CLAUDE.md § What not to do). Nothing
-    /// waits on this one — it is a background refresh of a figure that only
-    /// reorders a list — but an unanswered read holds a task, and this is the
-    /// only bound on the wire: the ceiling next to it cannot be applied until
-    /// `URLSession` has already buffered whatever arrived.
-    static let deadline: TimeInterval = 30
+    /// A read-only query gets a deadline — and nothing waits on this one, since
+    /// it is a background refresh of a figure that only reorders a list, but an
+    /// unanswered read holds a task for as long as the wire lets it. It is also
+    /// the only bound *on* the wire: the ceiling beside it cannot be applied
+    /// until `URLSession` has already buffered whatever arrived
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    private static let deadline: TimeInterval = 30
 
     private let directory: URL
     private let transfer: Transfer
     private let lock = NSLock()
-    private var stored = PopularityReadings.none
+    /// nil until the first ask, which is what reads the two documents off the
+    /// disk. See `loadedUnderTheLock`.
+    private var stored: PopularityReadings?
 
     public convenience init(directory: URL = HelmSupport.directory) {
         self.init(directory: directory, transfer: FilePopularityStore.overTheNetwork)
@@ -311,15 +321,11 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     init(directory: URL, transfer: @escaping Transfer) {
         self.directory = directory
         self.transfer = transfer
-        // Whatever the last run managed to store, so the first search of a
-        // launch is ranked without waiting for the network.
-        stored = PopularityReadings(formulae: load(Self.formulae) ?? .none,
-                                    casks: load(Self.casks) ?? .none)
     }
 
     public func readings() -> PopularityReadings {
         lock.lock(); defer { lock.unlock() }
-        return stored
+        return loadedUnderTheLock()
     }
 
     public func refreshIfDue() async {
@@ -337,17 +343,37 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     // MARK: Private
 
+    /// What the last run stored, read off the disk the first time anybody asks
+    /// and kept from then on. **Called with the lock held, by every path that
+    /// touches `stored`.**
+    ///
+    /// **Not in `init`, and that is a measurement rather than a taste.** The two
+    /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
+    /// 30 ms on this Mac, optimised, three readings out of three — and `init`
+    /// runs inside `makeEngine`, which `ModuleHost.enable` calls on the main
+    /// thread at launch for every module that is switched on. The first ask
+    /// comes from `search`, which is off the cooperative pool, or from the
+    /// refresh task, which is its own; neither is the main thread, and a Mac
+    /// whose owner never searches pays nothing at all.
+    private func loadedUnderTheLock() -> PopularityReadings {
+        if let stored { return stored }
+        let loaded = PopularityReadings(formulae: load(Self.formulae) ?? .none,
+                                        casks: load(Self.casks) ?? .none)
+        stored = loaded
+        return loaded
+    }
+
     /// The two writers, synchronous and one line each, because a lock may not
     /// be held across a suspension and an `async` body may not take one at all
-    /// (CLAUDE.md § Take the lock on both sides of any such field).
+    /// (CLAUDE.md § What not to do, and what breaks if you do).
     private func replaceFormulae(with counts: InstallCounts) {
         lock.lock(); defer { lock.unlock() }
-        stored = PopularityReadings(formulae: counts, casks: stored.casks)
+        stored = PopularityReadings(formulae: counts, casks: loadedUnderTheLock().casks)
     }
 
     private func replaceCasks(with counts: InstallCounts) {
         lock.lock(); defer { lock.unlock() }
-        stored = PopularityReadings(formulae: stored.formulae, casks: counts)
+        stored = PopularityReadings(formulae: loadedUnderTheLock().formulae, casks: counts)
     }
 
     /// The only place `URLSession` appears. A non-HTTP response cannot come
@@ -396,7 +422,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         // that arrives at quit all land here. None of them is worth a line in
         // somebody's log — an offline laptop is an ordinary state, and a line
         // that is printed on an ordinary day sends an investigation after
-        // nothing (CLAUDE.md § Log only a refusal and never an absence).
+        // nothing (CLAUDE.md § What not to do, and what breaks if you do).
         guard let (data, http) = try? await transfer(request) else { return nil }
 
         switch PopularityRefresh.answer(statusCode: http.statusCode, data: data) {

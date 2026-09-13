@@ -83,6 +83,23 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
         XCTAssertEqual(store.readings(), PopularityReadings.none)
     }
 
+    /// **The disk is read on the first ask and not in `init`.** The two
+    /// documents are 850 KB of JSON — 30 ms of parse, measured — and `init`
+    /// runs inside `makeEngine`, which the host calls on the main thread at
+    /// launch for every module that is switched on. Reading a file that only
+    /// appears after construction is the observable form of that claim.
+    func testTheDocumentsAreNotParsedUntilSomebodyAsks() throws {
+        let directory = scratchDirectory("counts-lazy")
+        let store = FilePopularityStore(directory: directory,
+                                        transfer: PopularityWire.offline().transfer)
+
+        try countsDocument(["helm": 900])
+            .write(to: directory.appendingPathComponent(FilePopularityStore.formulae.file))
+
+        XCTAssertEqual(store.readings().formulae.counts, ["helm": 900],
+                       "the store read the disk before anybody asked it for a reading")
+    }
+
     /// A cache file cut off mid-write by a power failure, or one some other
     /// program wrote. Reading it is nil, and nil is not zero.
     func testACacheFileThisBuildCannotReadIsNoReadingAtAll() throws {
