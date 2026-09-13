@@ -89,15 +89,18 @@ extension SearchRankingTests {
     }
 
     /// A formula and a cask can share a name, and the two documents are
-    /// separate. Reading a cask's popularity out of the formula map would rank
-    /// `docker` the cask by `docker` the formula's numbers.
+    /// separate. Both hits here are prefix matches, so the sort really does
+    /// compare them — and the counts are planted so that reading a cask's rank
+    /// out of the *formula* map would reverse the answer.
     func testACaskIsRankedByTheCaskDocument() {
-        let mixed = [SearchHit(name: "docker", isCask: false),
+        let mixed = [SearchHit(name: "docker-compose", isCask: false),
                      SearchHit(name: "docker-desktop", isCask: true)]
         let ranked = SearchRanking.rank(mixed, query: "docker",
-                                        formulae: InstallCounts(counts: ["docker-desktop": 99]),
+                                        formulae: InstallCounts(counts: ["docker-compose": 50,
+                                                                         "docker-desktop": 9_999]),
                                         casks: InstallCounts(counts: ["docker-desktop": 1]))
-        XCTAssertEqual(ranked.map(\.name), ["docker", "docker-desktop"])
+        XCTAssertEqual(ranked.map(\.name), ["docker-compose", "docker-desktop"],
+                       "the cask was ranked by the formula document")
     }
 
     /// The control: with no readings at all, the order is exactly what it is
