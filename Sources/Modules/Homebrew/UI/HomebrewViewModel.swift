@@ -21,6 +21,13 @@ import Module_Homebrew_Engine
     public static let consoleLimit = 1000
     @Published public private(set) var consoleLines: [String] = []
     @Published public private(set) var op: OpState = .idle
+    /// The uninstall a person is being asked about, and what the Cellar said
+    /// still needs it. They move together: the names are read for *this* press
+    /// and are cleared with it, so a second dialog can never draw the first
+    /// one's answer. It lives here rather than in the page's `@State` because
+    /// the reading is asked for over the transport and arrives after the press.
+    @Published public private(set) var pendingUninstall: BrewPackage?
+    @Published public private(set) var dependentsOfPending: [String] = []
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
     /// after a list or search loads.
     @Published public private(set) var descriptions: [String: String] = [:]
@@ -259,6 +266,35 @@ import Module_Homebrew_Engine
     public func uninstall(_ pkg: BrewPackage) {
         client.fire(HomebrewCommand.uninstall,
                     encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
+    }
+
+    /// Asks the Cellar what still needs this package, then raises the dialog.
+    ///
+    /// The reading is taken here, one press before the act, because that is the
+    /// last moment at which it is true: the answer is about a Cellar that a
+    /// terminal beside this window can change. A refusal — brew hung, brew gone
+    /// — leaves the list empty and the dialog says only what it always said;
+    /// it must not invent a reassurance out of a query that never answered.
+    public func askToUninstall(_ pkg: BrewPackage) async {
+        dependentsOfPending = []
+        let answer: [String]? = await client.request(
+            HomebrewCommand.dependents,
+            encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
+        dependentsOfPending = answer ?? []
+        pendingUninstall = pkg
+    }
+
+    public func cancelUninstall() {
+        pendingUninstall = nil
+        dependentsOfPending = []
+    }
+
+    /// Sends the uninstall the dialog was raised for, and clears the reading
+    /// with it.
+    public func confirmUninstall() {
+        guard let pkg = pendingUninstall else { return }
+        cancelUninstall()
+        uninstall(pkg)
     }
     public func upgrade(_ pkg: OutdatedPackage) {
         client.fire(HomebrewCommand.upgrade, payload: Data(pkg.name.utf8))
