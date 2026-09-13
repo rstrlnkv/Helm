@@ -65,10 +65,18 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let user: String
     private let localTransport: LocalTransport
     private let marker: OpMarker
+    private let popularity: PopularityReading
     public let transport: EngineTransport
 
     private let lock = NSLock()
     private var busy = false
+    /// Started by `activate()`, cancelled by `deactivate()` — the one piece of
+    /// unstructured work this engine starts on its own. It captures only
+    /// `popularity`, never `self`, so it holds no pointer back into anything
+    /// this engine owns; cancelling it here (rather than leaving it to
+    /// `deinit`) still matters, because a module switched off mid-fetch should
+    /// not go on reaching the network on its behalf.
+    private var popularityRefresh: Task<Void, Never>?
     /// The running operation's process, for `stop` — and the retention that
     /// keeps it addressable at all: the runner's local reference used to be
     /// the only one.
@@ -82,7 +90,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
                 user: String, transport: LocalTransport = LocalTransport(),
-                marker: OpMarker = InMemoryOpMarker()) {
+                marker: OpMarker = InMemoryOpMarker(),
+                popularity: PopularityReading = NoPopularity()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
@@ -90,11 +99,30 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.localTransport = transport
         self.transport = transport
         self.marker = marker
+        self.popularity = popularity
         wireTransport()
     }
 
-    public func activate() {}
-    public func deactivate() {}
+    public func activate() {
+        // Not in `init`: the readings are for the search box, and a module that
+        // is never opened should not have gone to the network for them.
+        let popularity = self.popularity
+        lock.lock()
+        popularityRefresh = Task { [popularity] in await popularity.refreshIfDue() }
+        lock.unlock()
+    }
+
+    public func deactivate() {
+        lock.lock()
+        let task = popularityRefresh
+        popularityRefresh = nil
+        lock.unlock()
+        task?.cancel()
+    }
+
+    deinit {
+        popularityRefresh?.cancel()
+    }
 
     // MARK: - Queries
 
@@ -297,7 +325,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         }
         HelmLog.shared.memory("homebrew.search")
         // brew answers alphabetically, which buries the obvious one.
-        return hits.map { SearchRanking.rank($0, query: query) }
+        return hits.map { SearchRanking.rank($0, query: query,
+                                             formulae: popularity.formulae(),
+                                             casks: popularity.casks()) }
     }
 
     /// Which installed packages still need `name`.

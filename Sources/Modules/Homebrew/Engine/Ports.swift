@@ -55,6 +55,32 @@ public protocol PrivilegedRunner: Sendable {
     func runAdmin(_ script: String) -> Bool
 }
 
+/// Homebrew's published install counts, as this process last managed to read
+/// them.
+///
+/// Synchronous on purpose: `search` runs off the cooperative pool and asks this
+/// between two `brew` runs, so it must answer from what is already in hand. The
+/// asking that can block is `refreshIfDue`, which the engine's activation runs
+/// once and which answers nothing.
+public protocol PopularityReading: Sendable {
+    func formulae() -> InstallCounts
+    func casks() -> InstallCounts
+    /// Fetch if the stored readings are old enough to be worth replacing. Never
+    /// fails loudly: a refusal leaves whatever was already there.
+    func refreshIfDue() async
+}
+
+/// The safe default for an engine built without naming a store: no readings and
+/// no network. Eleven forgetful constructions once rolled a real rule set back
+/// in another module; the same rule applies to anything that can reach outside
+/// this process.
+public struct NoPopularity: PopularityReading {
+    public init() {}
+    public func formulae() -> InstallCounts { .none }
+    public func casks() -> InstallCounts { .none }
+    public func refreshIfDue() async {}
+}
+
 /// Remembers the operation that is running, across a quit.
 ///
 /// A child brew survives Helm — quitting mid-install leaves it changing the
