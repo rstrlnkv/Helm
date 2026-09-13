@@ -60,13 +60,17 @@ extension SearchRankingTests {
         names.map { SearchHit(name: $0, isCask: false) }
     }
 
-    /// The groups are not negotiable: an exact name beats a popular one.
+    /// The groups are not negotiable: an exact name beats a popular prefix — and
+    /// inside the prefix group the popular one still comes first. Two claims,
+    /// one fixture, because with a single hit per group the sort is never asked
+    /// anything and the case passes with it deleted.
     func testAnExactNameStillWinsOverAPopularPrefix() {
-        let ranked = SearchRanking.rank(hits(["node-build", "node"]), query: "node",
-                                        formulae: InstallCounts(counts: ["node-build": 99_999,
-                                                                         "node": 1]),
+        let ranked = SearchRanking.rank(hits(["node-build", "nodebrew", "node"]), query: "node",
+                                        formulae: InstallCounts(counts: ["node": 1,
+                                                                         "node-build": 5,
+                                                                         "nodebrew": 99_999]),
                                         casks: .none)
-        XCTAssertEqual(ranked.map(\.name), ["node", "node-build"])
+        XCTAssertEqual(ranked.map(\.name), ["node", "nodebrew", "node-build"])
     }
 
     func testInsideAGroupTheMoreInstalledComesFirst() {
@@ -103,9 +107,8 @@ extension SearchRankingTests {
                        "the cask was ranked by the formula document")
     }
 
-    /// The control: with no readings at all, the order is exactly what it is
-    /// today. Without this, a ranking that silently ignored the counts would
-    /// still pass every test above that has a count for everything.
+    /// Guards that the default is `.none` and not something else: the
+    /// two-argument call must agree with an explicit `.none, .none` call.
     func testWithNoReadingsNothingMoves() {
         let names = ["aws-shell", "cmdshelf", "hello", "helix-db"]
         XCTAssertEqual(SearchRanking.rank(hits(names), query: "hello").map(\.name),
