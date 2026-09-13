@@ -30,8 +30,9 @@ private struct NoPrivileges: PrivilegedRunner {
 
 private struct FixedPopularity: PopularityReading {
     let formulaeCounts: [String: Int]
-    func formulae() -> InstallCounts { InstallCounts(counts: formulaeCounts) }
-    func casks() -> InstallCounts { .none }
+    func readings() -> PopularityReadings {
+        PopularityReadings(formulae: InstallCounts(counts: formulaeCounts), casks: .none)
+    }
     func refreshIfDue() async {}
 }
 

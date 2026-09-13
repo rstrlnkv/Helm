@@ -55,6 +55,27 @@ public protocol PrivilegedRunner: Sendable {
     func runAdmin(_ script: String) -> Bool
 }
 
+/// Both halves of a reading, as one value.
+///
+/// **One call, because a search is one act.** `search` ranks formulae and casks
+/// from the same press, off the cooperative pool, while a refresh may be
+/// landing on another thread: asked in two calls the two lists could be ranked
+/// against two different readings, with nothing afterwards able to tell that
+/// they had been. Handing both over together is not a convenience — it is what
+/// makes that straddle unrepresentable.
+public struct PopularityReadings: Sendable, Equatable {
+    public let formulae: InstallCounts
+    public let casks: InstallCounts
+    public init(formulae: InstallCounts, casks: InstallCounts) {
+        self.formulae = formulae
+        self.casks = casks
+    }
+    /// No reading of either kind: a first launch, a refused fetch, a Mac with
+    /// no network. Search orders results exactly as it does with no counts at
+    /// all, which is brew's own order.
+    public static let none = PopularityReadings(formulae: .none, casks: .none)
+}
+
 /// Homebrew's published install counts, as this process last managed to read
 /// them.
 ///
@@ -64,8 +85,7 @@ public protocol PrivilegedRunner: Sendable {
 /// once *per activation* — so once at launch for a module that is switched on,
 /// and again on every off-and-on cycle — and which answers nothing.
 public protocol PopularityReading: Sendable {
-    func formulae() -> InstallCounts
-    func casks() -> InstallCounts
+    func readings() -> PopularityReadings
     /// Fetch if the stored readings are old enough to be worth replacing. Never
     /// fails loudly: a refusal leaves whatever was already there.
     func refreshIfDue() async
@@ -77,8 +97,7 @@ public protocol PopularityReading: Sendable {
 /// this process.
 public struct NoPopularity: PopularityReading {
     public init() {}
-    public func formulae() -> InstallCounts { .none }
-    public func casks() -> InstallCounts { .none }
+    public func readings() -> PopularityReadings { .none }
     public func refreshIfDue() async {}
 }
 

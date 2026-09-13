@@ -248,6 +248,191 @@ public struct FileOpMarker: OpMarker {
     }
 }
 
+// MARK: - Install counts
+
+/// Homebrew's published install counts, cached in Helm's own folder.
+///
+/// Two whole public documents, fetched at most once a day, carrying nothing
+/// about this Mac but a `User-Agent` — no query, no package name, nothing about
+/// what is installed here. The ETag is stored beside each file, so the ordinary
+/// daily ask is a 304 and no body at all.
+///
+/// **Everything here fails towards today's behaviour.** An unreadable file, a
+/// refused fetch, a document this build cannot parse: each leaves the readings
+/// as they were and search goes on ordering results the way it does now. The
+/// one way to get that wrong is to record a refusal as an *empty* reading —
+/// `[:]` is a well-formed answer meaning nobody installs anything — which is
+/// why `PopularityRefresh.answer` names its refusals rather than handing back
+/// an optional two things could mean.
+///
+/// **And a refusal must not stamp the clock.** The clock is the cached file's
+/// own modification date, so only a write sets it; the single exception is a
+/// 304, which is an answer — what is stored *is* current — and is worth a day.
+/// `refreshIfDue` is `async` and cannot throw, so a cancellation inside it is
+/// silent by construction, and `deactivate()` runs on every route out of the
+/// app including `applicationWillTerminate`: being cancelled mid-fetch is
+/// ordinary here, and it must read as "ask again next launch".
+public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
+
+    /// What a fetch is, as a function — the one seam in this type, so that
+    /// everything it does with an answer can be exercised without a network.
+    /// It stands for `URLSession.data(for:)` and for nothing else: the clock,
+    /// the files and the readings are the real ones in every test.
+    typealias Transfer = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
+
+    struct Endpoint {
+        let url: URL
+        let file: String
+    }
+
+    static let formulae = Endpoint(
+        url: URL(string: "https://formulae.brew.sh/api/analytics/install-on-request/homebrew-core/30d.json")!,
+        file: "homebrew-installs-formulae.json")
+    static let casks = Endpoint(
+        url: URL(string: "https://formulae.brew.sh/api/analytics/cask-install/homebrew-cask/30d.json")!,
+        file: "homebrew-installs-casks.json")
+
+    /// A read-only query gets a deadline (CLAUDE.md § What not to do). Nothing
+    /// waits on this one — it is a background refresh of a figure that only
+    /// reorders a list — but an unanswered read holds a task, and this is the
+    /// only bound on the wire: the ceiling next to it cannot be applied until
+    /// `URLSession` has already buffered whatever arrived.
+    static let deadline: TimeInterval = 30
+
+    private let directory: URL
+    private let transfer: Transfer
+    private let lock = NSLock()
+    private var stored = PopularityReadings.none
+
+    public convenience init(directory: URL = HelmSupport.directory) {
+        self.init(directory: directory, transfer: FilePopularityStore.overTheNetwork)
+    }
+
+    init(directory: URL, transfer: @escaping Transfer) {
+        self.directory = directory
+        self.transfer = transfer
+        // Whatever the last run managed to store, so the first search of a
+        // launch is ranked without waiting for the network.
+        stored = PopularityReadings(formulae: load(Self.formulae) ?? .none,
+                                    casks: load(Self.casks) ?? .none)
+    }
+
+    public func readings() -> PopularityReadings {
+        lock.lock(); defer { lock.unlock() }
+        return stored
+    }
+
+    public func refreshIfDue() async {
+        let have = readings()
+        if let counts = await fetchIfDue(Self.formulae, have: have.formulae) {
+            replaceFormulae(with: counts)
+        }
+        // A cancelled task still runs the line after its `await`, and the ask
+        // below would only fail the same way a moment later.
+        guard !Task.isCancelled else { return }
+        if let counts = await fetchIfDue(Self.casks, have: have.casks) {
+            replaceCasks(with: counts)
+        }
+    }
+
+    // MARK: Private
+
+    /// The two writers, synchronous and one line each, because a lock may not
+    /// be held across a suspension and an `async` body may not take one at all
+    /// (CLAUDE.md § Take the lock on both sides of any such field).
+    private func replaceFormulae(with counts: InstallCounts) {
+        lock.lock(); defer { lock.unlock() }
+        stored = PopularityReadings(formulae: counts, casks: stored.casks)
+    }
+
+    private func replaceCasks(with counts: InstallCounts) {
+        lock.lock(); defer { lock.unlock() }
+        stored = PopularityReadings(formulae: stored.formulae, casks: counts)
+    }
+
+    /// The only place `URLSession` appears. A non-HTTP response cannot come
+    /// back from an `https` request, so it is a throw rather than a case the
+    /// store carries: everything above this line speaks `HTTPURLResponse`.
+    private static let overTheNetwork: Transfer = { request in
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        return (data, http)
+    }
+
+    private func path(_ endpoint: Endpoint) -> URL {
+        directory.appendingPathComponent(endpoint.file)
+    }
+
+    private func etagPath(_ endpoint: Endpoint) -> URL {
+        directory.appendingPathComponent(endpoint.file + ".etag")
+    }
+
+    private func load(_ endpoint: Endpoint) -> InstallCounts? {
+        guard let data = try? Data(contentsOf: path(endpoint)) else { return nil }
+        return InstallCounts.parse(data)
+    }
+
+    /// nil for every route that is not a new reading — not due, refused,
+    /// unchanged, cancelled — so the caller has one thing to do about all of
+    /// them: leave what it has alone.
+    private func fetchIfDue(_ endpoint: Endpoint, have: InstallCounts) async -> InstallCounts? {
+        let file = path(endpoint)
+        let written = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.modificationDate] as? Date
+        guard PopularityRefresh.isDue(lastWritten: written, now: Date()) else { return nil }
+
+        var request = URLRequest(url: endpoint.url)
+        request.setValue("Helm", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = Self.deadline
+        // **A tag is a claim about a body this Mac still has.** Offered with the
+        // document gone or unreadable, it earns a 304 — "what you have is
+        // current" — about nothing at all, and the readings would stay empty
+        // with the store believing itself up to date until somebody deleted the
+        // tag by hand.
+        if written != nil, !have.counts.isEmpty,
+           let etag = try? String(contentsOf: etagPath(endpoint), encoding: .utf8) {
+            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
+        // No network, a refused connection, the deadline, and the cancellation
+        // that arrives at quit all land here. None of them is worth a line in
+        // somebody's log — an offline laptop is an ordinary state, and a line
+        // that is printed on an ordinary day sends an investigation after
+        // nothing (CLAUDE.md § Log only a refusal and never an absence).
+        guard let (data, http) = try? await transfer(request) else { return nil }
+
+        switch PopularityRefresh.answer(statusCode: http.statusCode, data: data) {
+        case .unchanged:
+            // The one answer that spends the day without writing: nothing has
+            // changed, so asking again this afternoon would learn nothing. A
+            // touch that fails leaves the store due, which is the harmless
+            // direction — one more conditional ask tomorrow morning.
+            try? FileManager.default.setAttributes([.modificationDate: Date()],
+                                                   ofItemAtPath: file.path)
+            return nil
+        case .refused(let why):
+            HelmLog.shared.warn(HomebrewEngine.moduleID, why)
+            return nil
+        case .use(let counts):
+            guard PrivateFile.writeMakingTheFolder(data, at: file) else {
+                // The reading is good and is used; only the caching failed, so
+                // the next launch asks again. Said out loud because a support
+                // folder that cannot be written is a fact about this Mac and
+                // not about Homebrew.
+                HelmLog.shared.warn(HomebrewEngine.moduleID,
+                                    "the install counts could not be cached — they will be "
+                                    + "fetched again at the next launch")
+                return counts
+            }
+            if let etag = http.value(forHTTPHeaderField: "ETag") {
+                // Discarded deliberately: a tag that does not land costs one
+                // full document tomorrow instead of a 304, and the document
+                // beside it is already stored and already the reading.
+                _ = PrivateFile.writeMakingTheFolder(Data(etag.utf8), at: etagPath(endpoint))
+            }
+            return counts
+        }
+    }
+}
+
 // MARK: - Factory
 
 public struct HomebrewSystemPorts {
@@ -255,5 +440,6 @@ public struct HomebrewSystemPorts {
     public let runner = ShellProcessRunner()
     public let privileged = OSAPrivilegedRunner()
     public let marker = FileOpMarker()
+    public let popularity = FilePopularityStore()
     public init() {}
 }

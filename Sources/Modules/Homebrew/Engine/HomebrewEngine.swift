@@ -348,10 +348,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                  + BrewSearchParser.parse(casks, isCask: true)
         }
         HelmLog.shared.memory("homebrew.search")
-        // brew answers alphabetically, which buries the obvious one.
+        // brew answers alphabetically, which buries the obvious one. One ask,
+        // because both lists are ranked from this one press and a refresh may
+        // be landing while it happens.
+        let counts = popularity.readings()
         return hits.map { SearchRanking.rank($0, query: query,
-                                             formulae: popularity.formulae(),
-                                             casks: popularity.casks()) }
+                                             formulae: counts.formulae,
+                                             casks: counts.casks) }
     }
 
     /// Which installed packages still need `name`.
