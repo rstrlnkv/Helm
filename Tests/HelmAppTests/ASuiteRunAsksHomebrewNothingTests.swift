@@ -28,15 +28,20 @@ import XCTest
 final class ASuiteRunAsksHomebrewNothingTests: XCTestCase {
 
     func testAStoreBuiltTheLiveWayNeverReachesTheNetwork() async {
-        let before = FilePopularityStore.wireAsks.count
-
         // Built exactly as `HomebrewSystemPorts` builds it, and asked to do the
         // one thing that can reach the wire. The directory is the redirected
         // scratch one under a test runner, so nothing lands in a real folder
         // either way.
         await FilePopularityStore().refreshIfDue()
 
-        XCTAssertEqual(FilePopularityStore.wireAsks.count, before,
+        // The absolute count, not a before/after delta: `wireAsks` is
+        // process-global and three other files in this bundle call
+        // `ModuleHost.bootstrap()`, which can itself reach the network path.
+        // A delta only proves this test added no *new* asks — it would pass
+        // right over a regression if one of those files happened to run
+        // first and had already driven the count above zero. Zero is the only
+        // assertion that cannot be fooled by run order.
+        XCTAssertEqual(FilePopularityStore.wireAsks.count, 0,
                        "a store built the live way handed a request to URLSession under a "
                        + "test runner — every `swift test` run downloads Homebrew's two "
                        + "analytics documents from formulae.brew.sh, silently, and nothing "
