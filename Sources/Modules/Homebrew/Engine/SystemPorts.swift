@@ -362,13 +362,17 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     public func refreshIfDue() async {
         if let counts = await fetchIfDue(Self.formulae) {
-            replaceFormulae(with: counts)
+            // On the day a fetch lands, this is the process's first ask for
+            // whichever half was not already loaded, so it is exactly the
+            // 2.84 MiB / ~30 ms parse `fetchIfDue`'s own doc comment hops for
+            // — it belongs off the pool for the same reason.
+            await offTheCooperativePool { [self] in replaceFormulae(with: counts) }
         }
         // A cancelled task still runs the line after its `await`, and the ask
         // below would only fail the same way a moment later.
         guard !Task.isCancelled else { return }
         if let counts = await fetchIfDue(Self.casks) {
-            replaceCasks(with: counts)
+            await offTheCooperativePool { [self] in replaceCasks(with: counts) }
         }
     }
 
@@ -387,9 +391,13 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// **Nor from the refresh unless the refresh needs it.** The only thing in
     /// `fetchIfDue` that wants a stored reading is the ETag gate, which is
     /// reached on a day a document is due with a tag beside it — so the whole
-    /// of this stays unpaid on an ordinary launch, and a Mac whose owner never
-    /// searches pays nothing at all. When it *is* paid it is paid off the
-    /// cooperative pool, by `fetchIfDue`'s own hop and by `search`'s.
+    /// of this stays unpaid on a launch with nothing due, and a Mac whose
+    /// owner never searches pays nothing on that launch either. **Not on a
+    /// day a fetch succeeds, though** — `replaceFormulae`/`replaceCasks` call
+    /// this to keep the half they are not replacing, which is the same first
+    /// parse paid early instead. When it *is* paid it is paid off the
+    /// cooperative pool: by `fetchIfDue`'s own hop, by `refreshIfDue`'s hop
+    /// around each replace, and by `search`'s.
     private func loadedUnderTheLock() -> PopularityReadings {
         if let stored { return stored }
         let loaded = PopularityReadings(formulae: load(Self.formulae) ?? .none,
@@ -476,9 +484,14 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// The request to make, or nil because nothing is due.
     ///
     /// Synchronous and off the pool: the last condition below reads and parses
-    /// this endpoint's cached document, and it is written last on purpose —
-    /// the conditions are evaluated in order, so nothing is parsed unless the
-    /// document is due *and* a tag is sitting beside it.
+    /// this endpoint's cached document, and it is written last so that a
+    /// request already ruled out by an earlier condition — not due — never
+    /// reaches it; `TheCountsAreAskedForOnceADayTests` holds that half.
+    /// Whether the same is true when the document is due but no tag is
+    /// sitting beside it is not something a test can observe from outside —
+    /// `readings()` caches on first call either way, so nothing distinguishes
+    /// "parsed here" from "parsed a moment later" — so this comment does not
+    /// claim it.
     private func requestIfDue(_ endpoint: Endpoint) -> URLRequest? {
         let file = path(endpoint)
         let written = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.modificationDate] as? Date
@@ -486,6 +499,14 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
         var request = URLRequest(url: endpoint.url)
         request.setValue("Helm", forHTTPHeaderField: "User-Agent")
+        // `config.timeoutIntervalForRequest` on `Self.session` is `idleDeadline`,
+        // but a hand-built `URLRequest` always carries its own `timeoutInterval`
+        // (default 60) and which of the two governs a `session.data(for:)` call
+        // is unverified — the VPN module's precedent (`TraceExit`) calls
+        // `session.data(from:)`, where the session builds the request itself and
+        // never faces this. Setting it here too costs nothing and closes the
+        // doubt: the idle deadline is `idleDeadline` whichever one wins.
+        request.timeoutInterval = Self.idleDeadline
         // **A tag is a claim about a body this Mac still has.** Offered with the
         // document gone or unreadable, it earns a 304 — "what you have is
         // current" — about nothing at all, and the readings would stay empty
