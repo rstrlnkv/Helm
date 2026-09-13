@@ -24,6 +24,27 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// stored settings already on people's machines.
     public static let moduleID = "homebrew"
 
+    /// What a query that reads only the disk runs with.
+    ///
+    /// `brew list --versions` and `brew desc` answer about packages already
+    /// installed; neither reading changes when the catalogue is refreshed. Left
+    /// to itself brew may refresh it anyway, which turns a local read into a
+    /// download — measured cold at 7.4 s on this Mac against 0.3–0.6 s warm
+    /// (helm.log, 2026-08-15 16:09:35→42), and into a failure on a Mac with no
+    /// network at all.
+    ///
+    /// **Not `outdated`, and not `search`.** Those two are answers *about* the
+    /// catalogue: refusing the refresh there would let «Updates: 0» stand over a
+    /// catalogue weeks old, which is the same lie as an empty list over a full
+    /// Cellar.
+    static let queryEnvironment = ["HOMEBREW_NO_AUTO_UPDATE": "1"]
+
+    /// What a long operation runs with. The console is a place a person reads
+    /// what brew is doing to their machine; brew's environment hints are advice
+    /// about shell profiles, several lines of it, printed beside the install
+    /// they are watching.
+    static let operationEnvironment = ["HOMEBREW_NO_ENV_HINTS": "1"]
+
     private let locator: BrewLocator
     private let runner: ProcessRunner
     private let privileged: PrivilegedRunner
@@ -154,9 +175,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             // Both halves or neither: a refusal of the cask half alone kept the
             // formulae and every installed app vanished from the page, which is
             // worse than nothing because it looks complete.
-            guard let f = answered(runner.run(brew, ["list", "--versions", "--formula"], env: [:]),
+            guard let f = answered(runner.run(brew, ["list", "--versions", "--formula"],
+                                              env: Self.queryEnvironment),
                                    query: "list formulae"),
-                  let c = answered(runner.run(brew, ["list", "--versions", "--cask"], env: [:]),
+                  let c = answered(runner.run(brew, ["list", "--versions", "--cask"],
+                                              env: Self.queryEnvironment),
                                    query: "list casks")
             else { return nil }
             return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
@@ -227,7 +250,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func describe(_ names: [String], isCask: Bool, brew: String,
                           budget: DescriptionBudget) -> [String: String] {
         guard budget.spend() else { return [:] }
-        let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula", "--"] + names, env: [:])
+        let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula", "--"] + names,
+                                env: Self.queryEnvironment)
         if result.status == 0 { return BrewDescParser.parse(result.stdout) }
         // A timeout, never split: each half would hang for the same full
         // deadline, so a fifty-name batch would park the queue for hours.
@@ -373,7 +397,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// helm.log, which is the file the dev channel is triaged against.
     private func runOp(verb: String, subject: String? = nil,
                        label: String, launch: String, args: [String],
-                       env: [String: String] = [:]) {
+                       env: [String: String] = HomebrewEngine.operationEnvironment) {
         guard beginBusy() else {
             HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
             emitLog("⚠︎ Another operation is already running.")
