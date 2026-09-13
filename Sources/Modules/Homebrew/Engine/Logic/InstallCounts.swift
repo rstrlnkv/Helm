@@ -15,8 +15,16 @@ public struct InstallCounts: Sendable, Equatable {
     public static let none = InstallCounts(counts: [:])
 
     /// nil when the bytes are not a document this parser recognises: not JSON,
-    /// cut off mid-write, or an object with no packages in it. An endpoint that
-    /// has moved must not read as a world where nobody installs anything.
+    /// not an object, cut off mid-write, or an object with no `formulae` field
+    /// at all. An endpoint that has moved must not read as a world where nobody
+    /// installs anything.
+    ///
+    /// **`{"formulae":{}}` is not one of those**, and neither is a document
+    /// whose every entry this parser skips: the field is there, so the endpoint
+    /// answered — with nothing in it. That is a reading, and the caller
+    /// (`PopularityRefresh.answer`) adopts it. The distinction this nil carries
+    /// is "nobody answered" against "the answer was empty", and only the first
+    /// of the two may leave the stored reading standing.
     public static func parse(_ data: Data) -> InstallCounts? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let packages = root["formulae"] as? [String: Any] else { return nil }

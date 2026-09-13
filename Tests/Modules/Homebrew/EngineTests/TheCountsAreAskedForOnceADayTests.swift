@@ -90,6 +90,11 @@ final class TheCountsAreAskedForOnceADayTests: XCTestCase {
     /// gone and the tag left behind, offering it earns a 304 — "what you have
     /// is current" — about nothing at all, and the readings would stay empty
     /// with the store believing itself up to date.
+    ///
+    /// The gate has two halves and this case holds one of them: the file is
+    /// missing. `…CannotBeRead` below holds the other, and it has to be a case
+    /// of its own — with the file deleted the first half alone already closes
+    /// the gate, so this one passes with the second half taken out.
     func testATagIsNotOfferedWhenTheDocumentItDescribesIsGone() async throws {
         let directory = scratchDirectory("counts-orphan-tag")
         try cache(FilePopularityStore.casks, in: directory, counts: ["figma": 40], age: 0)
@@ -102,6 +107,33 @@ final class TheCountsAreAskedForOnceADayTests: XCTestCase {
 
         XCTAssertNil(wire.asked.first?.value(forHTTPHeaderField: "If-None-Match"),
                      "a tag was offered for a document that is not on this Mac any more")
+        XCTAssertEqual(store.readings().formulae.counts, ["helm": 1000])
+    }
+
+    /// The other half of the same gate: the document is still on this Mac, and
+    /// a power failure cut it off mid-write. The tag describes bytes nobody can
+    /// read into a reading, so offering it buys a 304 over an empty store — the
+    /// state that never recovers on its own.
+    func testATagIsNotOfferedWhenTheDocumentItDescribesCannotBeRead() async throws {
+        let directory = scratchDirectory("counts-unreadable-doc")
+        let file = directory.appendingPathComponent(FilePopularityStore.formulae.file)
+        try Data("{\"formulae\":{\"helm\":[{\"cou".utf8).write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-90_000)],
+                                              ofItemAtPath: file.path)
+        try Data("\"v2\"".utf8).write(to: URL(fileURLWithPath: file.path + ".etag"))
+        // Fresh, so the only ask in this test is the one it is about.
+        try cache(FilePopularityStore.casks, in: directory, counts: ["figma": 40], age: 0)
+        let wire = PopularityWire(status: 200, body: countsDocument(["helm": 1000]))
+
+        let store = madeOn(directory, wire)
+        await store.refreshIfDue()
+
+        XCTAssertEqual(wire.asked.count, 1,
+                       "the truncated document was not asked about — this test is not "
+                       + "reaching the gate it is written for")
+        XCTAssertNil(wire.asked.first?.value(forHTTPHeaderField: "If-None-Match"),
+                     "a tag was offered for a document this build cannot read, so a 304 would "
+                     + "leave the store empty and convinced it was up to date")
         XCTAssertEqual(store.readings().formulae.counts, ["helm": 1000])
     }
 

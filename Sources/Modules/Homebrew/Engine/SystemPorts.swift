@@ -287,31 +287,63 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// the files and the readings are the real ones in every test.
     typealias Transfer = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
-    struct Endpoint {
+    struct Endpoint: Sendable {
         let url: URL
         let file: String
+        /// Which half of a reading this document is.
+        ///
+        /// The ETag gate is the only thing that asks, and it asks through
+        /// `readings()` — so the one parse it costs is the parse the rest of
+        /// the day would have paid anyway, rather than a second one of its own.
+        let half: @Sendable (PopularityReadings) -> InstallCounts
     }
 
     static let formulae = Endpoint(
         url: URL(string: "https://formulae.brew.sh/api/analytics/install-on-request/homebrew-core/30d.json")!,
-        file: "homebrew-installs-formulae.json")
+        file: "homebrew-installs-formulae.json",
+        half: { $0.formulae })
     static let casks = Endpoint(
         url: URL(string: "https://formulae.brew.sh/api/analytics/cask-install/homebrew-cask/30d.json")!,
-        file: "homebrew-installs-casks.json")
+        file: "homebrew-installs-casks.json",
+        half: { $0.casks })
 
-    /// A read-only query gets a deadline — and nothing waits on this one, since
-    /// it is a background refresh of a figure that only reorders a list, but an
-    /// unanswered read holds a task for as long as the wire lets it. It is also
-    /// the only bound *on* the wire: the ceiling beside it cannot be applied
-    /// until `URLSession` has already buffered whatever arrived
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
-    private static let deadline: TimeInterval = 30
+    /// How long a transfer may go without a byte arriving. A read-only query
+    /// gets a deadline — nothing waits on this one, since it is a background
+    /// refresh of a figure that only reorders a list, but an unanswered read
+    /// holds a task for as long as the wire lets it.
+    private static let idleDeadline: TimeInterval = 30
+
+    /// How long the whole transfer may take, whatever arrives meanwhile.
+    ///
+    /// **`idleDeadline` alone is not a bound.** It restarts on every packet, so
+    /// an endpoint trickling a byte at a time never trips it — and the ceiling
+    /// in `PopularityRefresh` cannot help either, because it is consulted once
+    /// `URLSession` has already buffered the body. This is the one thing that
+    /// ends such a transfer, which is what lets the store claim a bound on the
+    /// wire at all (CLAUDE.md § What not to do, and what breaks if you do).
+    ///
+    /// Two minutes for the larger document, 453,903 bytes on 2026-09-13, is a
+    /// floor of about 30 kbit/s — slower than any link this app is usable over,
+    /// and still inside the sitting it was started in.
+    private static let wireDeadline: TimeInterval = 120
 
     private let directory: URL
     private let transfer: Transfer
     private let lock = NSLock()
     /// nil until the first ask, which is what reads the two documents off the
     /// disk. See `loadedUnderTheLock`.
+    ///
+    /// **What this costs while it is held: 2.84 MiB.** Measured on 2026-09-14
+    /// against the allocator's own books rather than the process footprint,
+    /// because it is a per-object cost (CLAUDE.md § What not to do, and what
+    /// breaks if you do) — `malloc_zone_statistics(malloc_default_zone(),)`,
+    /// `size_in_use` across parsing both of this Mac's cached documents:
+    /// 2,976,224 / 2,975,696 / 2,975,696 bytes over 15,270 entries, three
+    /// consecutive readings. That is the module's largest standing allocation,
+    /// it lasts for the life of the process, and it is the reading itself — so
+    /// there is no version of this feature without it. What there *is* a
+    /// version without is paying it on a Mac whose owner never searches, which
+    /// is why this field starts nil.
     private var stored: PopularityReadings?
 
     public convenience init(directory: URL = HelmSupport.directory) {
@@ -329,14 +361,13 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     }
 
     public func refreshIfDue() async {
-        let have = readings()
-        if let counts = await fetchIfDue(Self.formulae, have: have.formulae) {
+        if let counts = await fetchIfDue(Self.formulae) {
             replaceFormulae(with: counts)
         }
         // A cancelled task still runs the line after its `await`, and the ask
         // below would only fail the same way a moment later.
         guard !Task.isCancelled else { return }
-        if let counts = await fetchIfDue(Self.casks, have: have.casks) {
+        if let counts = await fetchIfDue(Self.casks) {
             replaceCasks(with: counts)
         }
     }
@@ -351,10 +382,14 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
     /// 30 ms on this Mac, optimised, three readings out of three — and `init`
     /// runs inside `makeEngine`, which `ModuleHost.enable` calls on the main
-    /// thread at launch for every module that is switched on. The first ask
-    /// comes from `search`, which is off the cooperative pool, or from the
-    /// refresh task, which is its own; neither is the main thread, and a Mac
-    /// whose owner never searches pays nothing at all.
+    /// thread at launch for every module that is switched on.
+    ///
+    /// **Nor from the refresh unless the refresh needs it.** The only thing in
+    /// `fetchIfDue` that wants a stored reading is the ETag gate, which is
+    /// reached on a day a document is due with a tag beside it — so the whole
+    /// of this stays unpaid on an ordinary launch, and a Mac whose owner never
+    /// searches pays nothing at all. When it *is* paid it is paid off the
+    /// cooperative pool, by `fetchIfDue`'s own hop and by `search`'s.
     private func loadedUnderTheLock() -> PopularityReadings {
         if let stored { return stored }
         let loaded = PopularityReadings(formulae: load(Self.formulae) ?? .none,
@@ -376,11 +411,25 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         stored = PopularityReadings(formulae: loadedUnderTheLock().formulae, casks: counts)
     }
 
+    /// Its own session rather than `URLSession.shared`, for the two deadlines
+    /// above: `timeoutIntervalForResource` is the bound that cannot be written
+    /// on a request, and the shared session's is seven days. Ephemeral with no
+    /// cache, because this store keeps its own copy of both documents and
+    /// their tags — a URL cache would hold a second 850 KB saying the same
+    /// thing, and decide freshness by rules this store does not control.
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = idleDeadline
+        config.timeoutIntervalForResource = wireDeadline
+        config.urlCache = nil
+        return URLSession(configuration: config)
+    }()
+
     /// The only place `URLSession` appears. A non-HTTP response cannot come
     /// back from an `https` request, so it is a throw rather than a case the
     /// store carries: everything above this line speaks `HTTPURLResponse`.
     private static let overTheNetwork: Transfer = { request in
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
     }
@@ -401,30 +450,60 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// nil for every route that is not a new reading — not due, refused,
     /// unchanged, cancelled — so the caller has one thing to do about all of
     /// them: leave what it has alone.
-    private func fetchIfDue(_ endpoint: Endpoint, have: InstallCounts) async -> InstallCounts? {
+    ///
+    /// **Both synchronous halves are hopped off the cooperative pool**, because
+    /// between them they read a file attribute, parse up to
+    /// `PopularityRefresh.sizeCeiling` of JSON, write a file through
+    /// `PrivateFile` and set an attribute on it — and this runs inside a bare
+    /// `Task`, which is the shared pool with one thread per core, the same
+    /// shape every `brew` call in this module already goes through
+    /// `offTheCooperativePool` for (CLAUDE.md § What not to do, and what breaks
+    /// if you do). The wire itself stays *on* the pool: an `await` on a
+    /// transfer holds no thread.
+    private func fetchIfDue(_ endpoint: Endpoint) async -> InstallCounts? {
+        guard let request = await offTheCooperativePool({ [self] in requestIfDue(endpoint) })
+        else { return nil }
+        // No network, a refused connection, either deadline, and the
+        // cancellation that arrives at quit all land here. None of them is
+        // worth a line in somebody's log — an offline laptop is an ordinary
+        // state, and a line that is printed on an ordinary day sends an
+        // investigation after nothing (CLAUDE.md § What not to do, and what
+        // breaks if you do).
+        guard let (data, http) = try? await transfer(request) else { return nil }
+        return await offTheCooperativePool { [self] in adopt(data, http, from: endpoint) }
+    }
+
+    /// The request to make, or nil because nothing is due.
+    ///
+    /// Synchronous and off the pool: the last condition below reads and parses
+    /// this endpoint's cached document, and it is written last on purpose —
+    /// the conditions are evaluated in order, so nothing is parsed unless the
+    /// document is due *and* a tag is sitting beside it.
+    private func requestIfDue(_ endpoint: Endpoint) -> URLRequest? {
         let file = path(endpoint)
         let written = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.modificationDate] as? Date
         guard PopularityRefresh.isDue(lastWritten: written, now: Date()) else { return nil }
 
         var request = URLRequest(url: endpoint.url)
         request.setValue("Helm", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = Self.deadline
         // **A tag is a claim about a body this Mac still has.** Offered with the
         // document gone or unreadable, it earns a 304 — "what you have is
         // current" — about nothing at all, and the readings would stay empty
         // with the store believing itself up to date until somebody deleted the
         // tag by hand.
-        if written != nil, !have.counts.isEmpty,
-           let etag = try? String(contentsOf: etagPath(endpoint), encoding: .utf8) {
+        if written != nil,
+           let etag = try? String(contentsOf: etagPath(endpoint), encoding: .utf8),
+           !endpoint.half(readings()).counts.isEmpty {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         }
-        // No network, a refused connection, the deadline, and the cancellation
-        // that arrives at quit all land here. None of them is worth a line in
-        // somebody's log — an offline laptop is an ordinary state, and a line
-        // that is printed on an ordinary day sends an investigation after
-        // nothing (CLAUDE.md § What not to do, and what breaks if you do).
-        guard let (data, http) = try? await transfer(request) else { return nil }
+        return request
+    }
 
+    /// What is done with an answer, and the only place anything is written.
+    /// Synchronous and off the pool, for the reason `fetchIfDue` gives.
+    private func adopt(_ data: Data, _ http: HTTPURLResponse,
+                       from endpoint: Endpoint) -> InstallCounts? {
+        let file = path(endpoint)
         switch PopularityRefresh.answer(statusCode: http.statusCode, data: data) {
         case .unchanged:
             // The one answer that spends the day without writing: nothing has

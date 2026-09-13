@@ -20,9 +20,11 @@ enum PopularityRefresh {
     ///
     /// **What this bounds is the parse and the file, not the download.**
     /// `URLSession.data(for:)` hands over a body it has already buffered, so by
-    /// the time the count can be read the bytes are here. The deadline on the
-    /// request is what bounds the wire; this is what keeps whatever arrived out
-    /// of `JSONSerialization` and off the disk.
+    /// the time the count can be read the bytes are here. What bounds the wire
+    /// is `FilePopularityStore`'s `wireDeadline`, on the session rather than on
+    /// the request, because a request's own timeout is an *idle* one and
+    /// restarts on every packet; this is what keeps whatever arrived out of
+    /// `JSONSerialization` and off the disk.
     static let sizeCeiling = 5 * 1024 * 1024
 
     /// A reading dated in the future is due too: a Mac whose clock was wrong
@@ -44,7 +46,12 @@ enum PopularityRefresh {
     /// launch tries again, and `use` is the only one that writes anything.
     enum Answer: Equatable {
         /// A document this build could read. The only case that replaces a
-        /// reading.
+        /// reading — including the degenerate document, `{"formulae":{}}`,
+        /// which `InstallCounts.parse` answers with no counts in it rather
+        /// than with nil. That is the endpoint saying "nobody installed
+        /// anything", which is a thing it is entitled to say and which search
+        /// then ranks by exactly as it ranks with no reading at all: brew's own
+        /// order. What must never become that value is `refused`.
         case use(InstallCounts)
         /// A 304: what is already stored is current.
         case unchanged

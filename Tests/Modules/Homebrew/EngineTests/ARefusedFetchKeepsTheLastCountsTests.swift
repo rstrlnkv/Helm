@@ -76,8 +76,16 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
     }
 
     /// The first launch on every Mac, and every launch on one whose support
-    /// folder was cleared out.
-    func testAMacWithNothingStoredHasNoReadingsRatherThanEmptyOnes() {
+    /// folder was cleared out: it answers, it does not crash, and it invents no
+    /// counts.
+    ///
+    /// **It does not pin nil against empty, and cannot.** `InstallCounts.none`
+    /// *is* `InstallCounts(counts: [:])`, so at this layer the two are one
+    /// value and this assertion would still pass if `load` started answering an
+    /// empty reading instead of nil. The guard that really holds that
+    /// distinction is `assertTheLastReadingStands` above, where a refusal
+    /// turning into `[:]` replaces a stored reading and fails three ways.
+    func testAMacWithNothingStoredAnswersWithoutInventingCounts() {
         let store = FilePopularityStore(directory: scratchDirectory("counts-empty"),
                                         transfer: PopularityWire.offline().transfer)
         XCTAssertEqual(store.readings(), PopularityReadings.none)
@@ -100,9 +108,53 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
                        "the store read the disk before anybody asked it for a reading")
     }
 
+    /// **And a refresh with nothing due is not somebody asking.**
+    ///
+    /// This is the ordinary launch of an enabled module: `activate()` starts
+    /// the refresh, both documents were cached this morning, and there is
+    /// nothing to fetch. `refreshIfDue` used to open with one unconditional
+    /// `readings()` — 850 KB of JSON parsed and 2.84 MiB of dictionary resident
+    /// from that moment on, every launch, for a figure nobody had asked for.
+    /// The only thing in there that wants a stored reading is the ETag gate,
+    /// which is reached on a day a document is due.
+    ///
+    /// Observable the same way its sibling above is: a document rewritten
+    /// afterwards is still the one the store answers with, which it could not
+    /// be if the refresh had read and cached the earlier bytes.
+    func testARefreshWithNothingDueParsesNothing() async throws {
+        let directory = scratchDirectory("counts-not-parsed")
+        for (endpoint, counts) in [(FilePopularityStore.formulae, ["helm": 900]),
+                                   (FilePopularityStore.casks, ["figma": 40])] {
+            try countsDocument(counts).write(to: directory.appendingPathComponent(endpoint.file))
+        }
+        let wire = PopularityWire.offline()
+        let store = FilePopularityStore(directory: directory, transfer: wire.transfer)
+
+        await store.refreshIfDue()
+
+        // The subject first: a refresh that found something due would have
+        // reached the disk for its own reasons and this would prove nothing.
+        XCTAssertEqual(wire.asked.count, 0,
+                       "something was due, so this test is not the ordinary launch it describes")
+
+        try countsDocument(["helm": 1])
+            .write(to: directory.appendingPathComponent(FilePopularityStore.formulae.file))
+        XCTAssertEqual(store.readings().formulae.counts, ["helm": 1],
+                       "refreshIfDue read and parsed both documents on a launch with nothing "
+                       + "due — the cost the lazy load exists to avoid, paid anyway")
+    }
+
     /// A cache file cut off mid-write by a power failure, or one some other
-    /// program wrote. Reading it is nil, and nil is not zero.
-    func testACacheFileThisBuildCannotReadIsNoReadingAtAll() throws {
+    /// program wrote: the store answers, does not crash, and invents no counts
+    /// out of the wreckage.
+    ///
+    /// Same caveat as the case above — `PopularityReadings.none` is a reading
+    /// with empty halves, so this cannot tell nil from `[:]`. What it does hold
+    /// is that an unreadable file reaches nothing: no partial dictionary, no
+    /// throw out of `readings()`. The nil-against-empty distinction is
+    /// `assertTheLastReadingStands`'s, and the tag gate's own half of it is
+    /// `testATagIsNotOfferedWhenTheDocumentItDescribesCannotBeRead`.
+    func testACacheFileThisBuildCannotReadInventsNoCounts() throws {
         let directory = scratchDirectory("counts-corrupt")
         try Data("{\"formulae\":{\"helm\":[{\"cou".utf8)
             .write(to: directory.appendingPathComponent(FilePopularityStore.formulae.file))
