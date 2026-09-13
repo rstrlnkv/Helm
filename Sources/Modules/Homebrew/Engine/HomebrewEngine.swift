@@ -117,13 +117,21 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // would then hold strongly for as long as it runs — and `deinit` can no
         // longer run while the task is alive, so the cancel below it becomes
         // unreachable (CLAUDE.md § What not to do, and what breaks if you do).
-        let started = Task { [popularity] in await popularity.refreshIfDue() }
+        //
+        // **Started under the lock, not before it.** Creating the task outside
+        // and assigning it inside leaves a window in which the fetch is running
+        // and the field is still nil, so a `deactivate()` landing in it cancels
+        // nothing and the task goes on reaching the network for a module that
+        // has been switched off. Nothing suspends between these two lines —
+        // `Task { }` schedules and returns — and the body takes the *store's*
+        // lock, never this one, so holding this one across the creation cannot
+        // deadlock.
         lock.lock()
         // Cancel before assigning: two activations without a deactivation
         // between them would otherwise orphan the first fetch with nothing left
         // holding it to cancel.
         let orphan = popularityRefresh
-        popularityRefresh = started
+        popularityRefresh = Task { [popularity] in await popularity.refreshIfDue() }
         lock.unlock()
         orphan?.cancel()
     }
