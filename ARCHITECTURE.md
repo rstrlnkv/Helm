@@ -711,7 +711,7 @@ one query that retries halves its batch rather than its timeout.
 
 Quitting mid-operation is reported rather than prevented: every operation writes a
 marker through the `OpMarker` port
-(`Sources/Modules/Homebrew/Engine/Ports.swift:66`), whose real implementation
+(`Sources/Modules/Homebrew/Engine/Ports.swift`), whose real implementation
 `FileOpMarker` (`Sources/Modules/Homebrew/Engine/SystemPorts.swift:220`) is a file,
 so it survives the quit it exists to report and the next launch's first `status()`
 answers `interruptedOp` (`Sources/Modules/Homebrew/Engine/Model.swift:77`).
@@ -738,6 +738,30 @@ authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
 /opt/homebrew`, which is the only privileged step; the installer itself then
 runs as the now-owning user. See «Giving everything back» for why that ownership
 change is the one reach this document does not describe as reversible.
+
+The module reaches one other place on the network, and unprompted rather than on
+a press. `FilePopularityStore`
+(`Sources/Modules/Homebrew/Engine/SystemPorts.swift`) fetches Homebrew's two
+published analytics documents from `formulae.brew.sh` — the thirty-day
+install-on-request counts for formulae and the install counts for casks — at
+most once a day. The fetch is started by the engine's `activate`, so a module
+the person has switched off never makes it, and a bare `Task` around it hops its
+blocking halves through `offTheCooperativePool` the way every `brew` call in
+this module already does. The request carries `User-Agent: Helm` and nothing
+else: no query, no package name, nothing about what is installed here, and what
+it asks for is a catalogue-wide public figure rather than an answer about
+anybody. Two files land in Helm's own Application Support folder —
+`homebrew-installs-formulae.json` and `homebrew-installs-casks.json`, about
+850 KB together, each with a tag file beside it — written 0600 through
+`PrivateFile`, and the cached file's own modification date is the daily clock,
+so the gate survives a quit. `PopularityRefresh` is where everything that can
+come back is judged: a refusal, a shape this build cannot read and anything over
+`PopularityRefresh.sizeCeiling` all leave the last reading standing and leave
+the clock alone, and only a 304 spends the day without writing. The reading
+itself is 2.84 MiB of dictionary and is read off the disk on the first ask
+rather than at construction, so a Mac whose owner never searches never parses
+it. All it ever does is reorder search results (`SearchRanking`); a Mac that
+fetches nothing searches exactly as it did before any of this existed.
 
 ### Hosts
 
