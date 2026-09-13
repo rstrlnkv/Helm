@@ -28,10 +28,19 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// `brew list --versions` and `brew desc` answer about packages already
     /// installed; neither reading changes when the catalogue is refreshed. Left
-    /// to itself brew may refresh it anyway, which turns a local read into a
-    /// download — measured cold at 7.4 s on this Mac against 0.3–0.6 s warm
-    /// (helm.log, 2026-08-15 16:09:35→42), and into a failure on a Mac with no
-    /// network at all.
+    /// to itself brew may refresh it anyway, which turns a question about this
+    /// disk into a download nobody asked for — and on a Mac with no network at
+    /// all, into a failure to answer something brew already knew.
+    ///
+    /// **This is about what a local read is allowed to do, not about speed.**
+    /// `brew list --versions --formula`, three runs each, was 0.35/0.23/0.24 s
+    /// without the variable against 0.26/0.23/0.23 s with it — indistinguishable
+    /// on a warm machine, because brew refreshes periodically rather than per
+    /// call, so those runs were not paying for a refresh either. A doc comment
+    /// here once carried a 7.4 s figure read off `helm.log`; the lines it cited
+    /// are `homebrew.outdated`, which is 6.6 s and is the one query this
+    /// constant deliberately excludes. No timing claim belongs here that has not
+    /// been measured on the queries this actually covers.
     ///
     /// **Not `outdated`, and not `search`.** Those two are answers *about* the
     /// catalogue: refusing the refresh there would let «Updates: 0» stand over a
@@ -43,6 +52,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// what brew is doing to their machine; brew's environment hints are advice
     /// about shell profiles, several lines of it, printed beside the install
     /// they are watching.
+    ///
+    /// `installBrew` is the one long operation that does not carry this, and
+    /// cannot: it runs Homebrew's own `install.sh` under `/bin/bash`, not
+    /// `brew`, so there is no brew yet to read the variable.
     static let operationEnvironment = ["HOMEBREW_NO_ENV_HINTS": "1"]
 
     private let locator: BrewLocator
@@ -297,11 +310,31 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// and handed a cask name it exits 0 with a warning on stderr that the
     /// runner drops — a confident empty list bought for half a second.
     ///
-    /// nil when brew refused to answer. The dialog must not promise "nothing
-    /// depends on this" on the strength of a query that never ran.
+    /// **An empty list is not the same sentence as "nothing needs it".** The
+    /// exit-0-with-empty-stdout above is not a cask's alone: an unresolvable
+    /// *formula* name answers identically — `brew uses --installed --
+    /// no-such-formula-xyzzy` on Homebrew 7.0.1 exits 0, prints nothing on
+    /// stdout and warns on stderr, which `HelmProcess` drops (measured
+    /// 2026-09-13). That class is reachable here: a formula installed from a tap
+    /// since removed no longer resolves, which is the case `descriptions`
+    /// already documents. So the empty branch means "brew named nobody", which
+    /// covers "brew could not look" — nothing downstream may turn it into a
+    /// reassurance.
+    ///
+    /// nil when brew refused to answer, and when there is no brew to ask. The
+    /// dialog must not promise "nothing depends on this" on the strength of a
+    /// query that never ran, and a `brew` that is not on disk is the purest case
+    /// of one — `FSBrewLocator` re-reads at every call, so it can go while this
+    /// window is open.
     public func dependents(name: String, isCask: Bool) -> [String]? {
+        // Known rather than measured, which is why this one stays `[]`.
         guard !isCask else { return [] }
-        guard let brew = locator.brewPath() else { return [] }
+        guard let brew = locator.brewPath() else {
+            // Said out loud for the reason `listInstalled` says it: silence
+            // here reads downstream as a machine with nothing on it.
+            HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot ask what depends on a package")
+            return nil
+        }
         // `--` for the reason every other value in this file has one: brew reads
         // a leading `-` as a flag wherever it finds it, and this name was parsed
         // out of brew's own stdout.
@@ -590,7 +623,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             switch name {
             case .status:
                 return EngineReply.encode(await offTheCooperativePool { self.status() }, for: cmd)
-            // The three queries below can answer nil — a timeout, which must
+            // The four queries below can answer nil — a timeout, which must
             // not reach the page as an empty machine; `reply` folds it to the
             // wire's zero bytes.
             case .listInstalled:

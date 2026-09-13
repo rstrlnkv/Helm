@@ -38,6 +38,13 @@ private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
+/// Homebrew is not installed, or was uninstalled in a terminal beside this
+/// window — `FSBrewLocator` re-reads the disk at every call, so this is an
+/// ordinary answer and not a broken fixture.
+private struct NoBrew: BrewLocator {
+    func brewPath() -> String? { nil }
+}
+
 private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> Bool { false }
 }
@@ -70,5 +77,24 @@ final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
         runner.status = 1
         XCTAssertNil(engine(runner).dependents(name: "openssl@3", isCask: false),
                      "brew refusing must not read as «nothing depends on it»")
+    }
+
+    /// The same sentence one step earlier. A `brew` that is not there is the
+    /// purest case of a query that never ran, and the empty list it used to
+    /// answer with is the dialog promising nothing depends on this package on
+    /// the strength of a tool nobody could launch.
+    ///
+    /// A cask stays `[]` beside it — that answer is *known*, not measured, which
+    /// is the distinction the two halves of this case draw.
+    func testAMissingBrewIsAQueryThatNeverRan() {
+        let runner = UsesRunner()
+        let engine = HomebrewEngine(locator: NoBrew(), runner: runner,
+                                    privileged: NoPrivileges(), user: "tester",
+                                    marker: InMemoryOpMarker())
+        XCTAssertNil(engine.dependents(name: "openssl@3", isCask: false),
+                     "no brew to ask read as «nothing depends on it»")
+        XCTAssertEqual(engine.dependents(name: "firefox", isCask: true), [],
+                       "nothing depends on a cask, and that is known without a brew")
+        XCTAssertTrue(runner.calls.isEmpty, "a tool was launched with no brew to launch")
     }
 }
