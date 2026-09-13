@@ -760,8 +760,11 @@ come back is judged: a refusal, a shape this build cannot read and anything over
 the clock alone, and only a 304 spends the day without writing. The reading
 itself is 2.84 MiB of dictionary and is read off the disk on the first ask
 rather than at construction, so a Mac whose owner never searches never parses
-it. All it ever does is reorder search results (`SearchRanking`); a Mac that
-fetches nothing searches exactly as it did before any of this existed.
+it on a launch with nothing due — a day a fetch succeeds parses it anyway, to
+fold the new counts into the half not just fetched, off the cooperative pool
+the way the fetch itself is. All it ever does is reorder search results
+(`SearchRanking`); a Mac that fetches nothing searches exactly as it did
+before any of this existed.
 
 ### Hosts
 
