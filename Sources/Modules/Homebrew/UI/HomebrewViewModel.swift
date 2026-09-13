@@ -263,10 +263,16 @@ import Module_Homebrew_Engine
         client.fire(HomebrewCommand.install,
                     encoding: PackageRef(name: hit.name, isCask: hit.isCask))
     }
-    public func uninstall(_ pkg: BrewPackage) {
-        client.fire(HomebrewCommand.uninstall,
-                    encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
-    }
+    /// Which press the dialog belongs to, so an older query cannot raise one.
+    ///
+    /// The same counter `search` keeps, for the reason `LatestRequest` gives,
+    /// and here the act it guards is the app's only irreversible deletion.
+    /// Nothing is disabled while this query is out — the page's `disabled`
+    /// tracks long operations, not queries — so two presses put two queries in
+    /// flight and the last continuation to resume used to win: the answer for a
+    /// package pressed and abandoned would raise its own confirmation dialog, or
+    /// swap the title and the list under somebody reading them.
+    private var uninstallAsks = LatestRequest()
 
     /// Asks the Cellar what still needs this package, then raises the dialog.
     ///
@@ -276,25 +282,42 @@ import Module_Homebrew_Engine
     /// — leaves the list empty and the dialog says only what it always said;
     /// it must not invent a reassurance out of a query that never answered.
     public func askToUninstall(_ pkg: BrewPackage) async {
-        dependentsOfPending = []
+        let mine = uninstallAsks.take()
         let answer: [String]? = await client.request(
             HomebrewCommand.dependents,
             encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
+        // Both halves or neither, and only for the press still being waited on:
+        // the package named in the title and the names under it are one reading
+        // of one Cellar, and a dialog carrying two presses' worth is a sentence
+        // about a package that is not the one about to be deleted.
+        guard uninstallAsks.isLatest(mine) else { return }
         dependentsOfPending = answer ?? []
         pendingUninstall = pkg
     }
 
+    /// Closes the dialog and abandons whatever reading is still out — a token
+    /// taken and dropped, which is how `LatestRequest` retires work in flight.
+    /// Without that line a query for an earlier press comes back to a screen
+    /// with nothing on it and puts a confirmation there by itself.
     public func cancelUninstall() {
+        _ = uninstallAsks.take()
         pendingUninstall = nil
         dependentsOfPending = []
     }
 
     /// Sends the uninstall the dialog was raised for, and clears the reading
     /// with it.
+    ///
+    /// The only door in this target to `brew uninstall`: a row's button asks
+    /// (`askToUninstall`) and this is the press on the dialog it raised, so the
+    /// deletion cannot be reached without the sentence saying what it takes
+    /// with it. The `uninstall(_:)` that used to sit beside it was a second,
+    /// unconfirmed one, with no caller left outside this type.
     public func confirmUninstall() {
         guard let pkg = pendingUninstall else { return }
         cancelUninstall()
-        uninstall(pkg)
+        client.fire(HomebrewCommand.uninstall,
+                    encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
     }
     public func upgrade(_ pkg: OutdatedPackage) {
         client.fire(HomebrewCommand.upgrade, payload: Data(pkg.name.utf8))

@@ -52,33 +52,35 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
         let runner = UsesRunner()
         runner.answers["openssl@3"] = "aria2\nnode\n"
         let (engine, vm) = pair(runner)
-        withExtendedLifetime(engine) {}
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "openssl@3")
         XCTAssertEqual(vm.dependentsOfPending, ["aria2", "node"])
+        // Last, not first: it keeps the engine alive up to here, and the
+        // statement form guarantees nothing past its own return.
+        withExtendedLifetime(engine) {}
     }
 
     func testTheNextPackageDoesNotInheritTheLastOnesDependents() async {
         let runner = UsesRunner()
         runner.answers["openssl@3"] = "aria2\nnode\n"
         let (engine, vm) = pair(runner)
-        withExtendedLifetime(engine) {}
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()
         await vm.askToUninstall(BrewPackage(name: "yt-dlp", version: "2026.9.1", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "yt-dlp")
         XCTAssertEqual(vm.dependentsOfPending, [],
                        "the second dialog offered the first package's dependents")
+        withExtendedLifetime(engine) {}
     }
 
     func testCancellingClearsTheReading() async {
         let runner = UsesRunner()
         runner.answers["openssl@3"] = "aria2\n"
         let (engine, vm) = pair(runner)
-        withExtendedLifetime(engine) {}
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()
         XCTAssertNil(vm.pendingUninstall)
         XCTAssertEqual(vm.dependentsOfPending, [])
+        withExtendedLifetime(engine) {}
     }
 }
