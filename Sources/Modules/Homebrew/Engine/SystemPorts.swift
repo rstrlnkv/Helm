@@ -250,12 +250,23 @@ public struct FileOpMarker: OpMarker {
 
 // MARK: - Install counts
 
+/// A tally two threads may touch. A lock rather than an actor, because what
+/// increments it is a `@Sendable` closure with nowhere to await.
+final class AskCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+    func record() { lock.lock(); value += 1; lock.unlock() }
+    var count: Int { lock.lock(); defer { lock.unlock() }; return value }
+}
+
 /// Homebrew's published install counts, cached in Helm's own folder.
 ///
-/// Two whole public documents, fetched at most once a day, carrying nothing
-/// about this Mac but a `User-Agent` — no query, no package name, nothing about
-/// what is installed here. The ETag is stored beside each file, so a daily ask
-/// can be a 304 with no body at all.
+/// Two whole public documents, fetched at most once a day. Nothing this ask
+/// puts on the wire names this Mac, this person, or what was searched — no
+/// query, no package name, nothing about what is installed here, and every
+/// header that could carry such a thing is pinned to a fixed value on the
+/// session (see `session`, which carries the measurement). The ETag is stored
+/// beside each file, so a daily ask can be a 304 with no body at all.
 ///
 /// **Can be, not is.** Measured against the live endpoint on 2026-09-14: GitHub
 /// Pages answers with `W/"<mtime>-<size>"` and its nodes hold the same document
@@ -347,7 +358,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     private var stored: PopularityReadings?
 
     public convenience init(directory: URL = HelmSupport.directory) {
-        self.init(directory: directory, transfer: FilePopularityStore.overTheNetwork)
+        self.init(directory: directory, transfer: FilePopularityStore.liveTransfer)
     }
 
     init(directory: URL, transfer: @escaping Transfer) {
@@ -425,18 +436,90 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// cache, because this store keeps its own copy of both documents and
     /// their tags — a URL cache would hold a second 850 KB saying the same
     /// thing, and decide freshness by rules this store does not control.
+    ///
+    /// **The headers are pinned here because CFNetwork writes its own.** The
+    /// request four lines below sets a `User-Agent` and nothing else, which
+    /// said nothing about what actually left the process. Measured on
+    /// 2026-09-14 against a local listener printing what it received — one
+    /// fetch with this session unpinned, one with it pinned as below:
+    ///
+    ///     unpinned: Host, If-None-Match, Accept: */*, User-Agent: Helm,
+    ///               Accept-Language: ru, Accept-Encoding: gzip, deflate,
+    ///               Connection: keep-alive
+    ///     pinned:   Host, If-None-Match, Accept: application/json,
+    ///               User-Agent: Helm, Accept-Language: en,
+    ///               Accept-Encoding: gzip, deflate, Connection: keep-alive
+    ///
+    /// `Accept-Language: ru` is this Mac's own language preference, put on the
+    /// wire by CFNetwork with nobody here asking for it — a fact about the
+    /// person, handed to a third party on a fetch they did not start. Pinned to
+    /// `en`, which is what this request would rather say than anything: the
+    /// answer is a JSON document with no prose in it, so the value cannot even
+    /// change what comes back.
+    ///
+    /// **What is left is not pinned and does not need to be.** `Accept-Encoding`
+    /// is CFNetwork's own constant and setting it by hand turns off transparent
+    /// decompression; `Connection` is the same constant on every client; `Host`
+    /// is the endpoint being asked. None of the three varies with this Mac.
+    /// Cookies are off — `httpShouldSetCookies` defaults to true, and an
+    /// ephemeral session's jar is empty at launch but not after the first
+    /// `Set-Cookie`, which would then name this install back to the endpoint on
+    /// tomorrow's ask.
     private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = idleDeadline
         config.timeoutIntervalForResource = wireDeadline
         config.urlCache = nil
+        config.httpAdditionalHeaders = ["User-Agent": "Helm",
+                                        "Accept": "application/json",
+                                        "Accept-Language": "en"]
+        config.httpShouldSetCookies = false
         return URLSession(configuration: config)
     }()
+
+    /// What a store built the live way gets: the wire, or — under a test
+    /// runner — a refusal that never reaches it.
+    ///
+    /// **The guard is on the transfer and not on `refreshIfDue`.** Every test of
+    /// this store calls `refreshIfDue` deliberately, handing it a fake transfer
+    /// that stands for the wire; a guard inside `refreshIfDue` would leave all
+    /// of them asserting about a method that returns immediately. What must not
+    /// happen under a suite run is a *request*, and this is the one line a
+    /// request goes through.
+    ///
+    /// Without it `swift test` fetched both documents from `formulae.brew.sh`
+    /// on every run — about 834 KiB to a third party, silently, with nothing
+    /// failing when it failed. Three files in `Tests/HelmAppTests` call
+    /// `ModuleHost.bootstrap`, which enables every module the registry knows,
+    /// and `HomebrewEngine.activate` is what starts the refresh.
+    /// `HelmSupport.directory` already redirects the *files* a suite run would
+    /// write (`TestProcess`, which says why the question is asked this way);
+    /// the ask itself was not redirected at all.
+    /// `ASuiteRunAsksHomebrewNothingTests` is what holds this line.
+    static var liveTransfer: Transfer {
+        TestProcess.isRunning ? refusedUnderTest : overTheNetwork
+    }
+
+    /// The refusal a suite run gets. A throw, because that is the shape the
+    /// store already treats as "no new reading, leave the clock alone" — the
+    /// same route an offline laptop takes.
+    struct NoWireUnderTest: Error {}
+    static let refusedUnderTest: Transfer = { _ in throw NoWireUnderTest() }
+
+    /// How many requests have been handed to `URLSession` in this process.
+    ///
+    /// It exists for one assertion, and it is the only thing that can make it:
+    /// a test cannot see a request that was never sent, and counting *attempts*
+    /// here rather than packets on a wire is what keeps
+    /// `ASuiteRunAsksHomebrewNothingTests` from passing on a machine that
+    /// merely happens to be offline.
+    static let wireAsks = AskCount()
 
     /// The only place `URLSession` appears. A non-HTTP response cannot come
     /// back from an `https` request, so it is a throw rather than a case the
     /// store carries: everything above this line speaks `HTTPURLResponse`.
     private static let overTheNetwork: Transfer = { request in
+        wireAsks.record()
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
