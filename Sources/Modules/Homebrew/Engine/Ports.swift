@@ -64,9 +64,9 @@ public protocol PrivilegedRunner: Sendable {
 /// they had been. Handing both over together is not a convenience — it is what
 /// makes that straddle unrepresentable.
 public struct PopularityReadings: Sendable, Equatable {
-    public let formulae: InstallCounts
-    public let casks: InstallCounts
-    public init(formulae: InstallCounts, casks: InstallCounts) {
+    let formulae: InstallCounts
+    let casks: InstallCounts
+    init(formulae: InstallCounts, casks: InstallCounts) {
         self.formulae = formulae
         self.casks = casks
     }
