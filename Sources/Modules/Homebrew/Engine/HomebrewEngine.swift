@@ -71,11 +71,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let lock = NSLock()
     private var busy = false
     /// Started by `activate()`, cancelled by `deactivate()` — the one piece of
-    /// unstructured work this engine starts on its own. It captures only
-    /// `popularity`, never `self`, so it holds no pointer back into anything
-    /// this engine owns; cancelling it here (rather than leaving it to
-    /// `deinit`) still matters, because a module switched off mid-fetch should
-    /// not go on reaching the network on its behalf.
+    /// unstructured work this engine starts on its own. Cancelling it there
+    /// (rather than leaving it to `deinit`) matters on its own account, because
+    /// a module switched off mid-fetch should not go on reaching the network on
+    /// its behalf. What the task may capture is spelled out at the capture
+    /// itself in `activate()`.
     private var popularityRefresh: Task<Void, Never>?
     /// The running operation's process, for `stop` — and the retention that
     /// keeps it addressable at all: the runner's local reference used to be
@@ -104,24 +104,48 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {
-        // Not in `init`: the readings are for the search box, and a module that
-        // is never opened should not have gone to the network for them.
-        let popularity = self.popularity
+        // Not in `init`, because `init` runs for every module the host knows
+        // about and `activate` only for the ones that are switched on: a module
+        // the person has turned off never reaches the network for readings its
+        // search box will not draw. Activation itself runs at launch, so this
+        // does fire on an ordinary launch — the daily gate inside the store is
+        // what keeps that from being a fetch every time.
+        //
+        // **`[popularity]` and nothing else.** The capture list holds the port
+        // by value, so the task points at no part of this engine and `deinit`
+        // can cancel it. Add a `self` capture — even a weak one, which the body
+        // would then hold strongly for as long as it runs — and `deinit` can no
+        // longer run while the task is alive, so the cancel below it becomes
+        // unreachable (CLAUDE.md § What not to do, and what breaks if you do).
+        let started = Task { [popularity] in await popularity.refreshIfDue() }
         lock.lock()
-        popularityRefresh = Task { [popularity] in await popularity.refreshIfDue() }
+        // Cancel before assigning: two activations without a deactivation
+        // between them would otherwise orphan the first fetch with nothing left
+        // holding it to cancel.
+        let orphan = popularityRefresh
+        popularityRefresh = started
         lock.unlock()
+        orphan?.cancel()
     }
 
     public func deactivate() {
+        cancelTheRefresh()
+    }
+
+    /// The backstop for the routes that do not go through `deactivate()`.
+    /// ARCHITECTURE.md § "An observer outlives the thing it points at".
+    deinit {
+        cancelTheRefresh()
+    }
+
+    /// Taken under the lock like every other reading of the field, and
+    /// cancelled outside it.
+    private func cancelTheRefresh() {
         lock.lock()
         let task = popularityRefresh
         popularityRefresh = nil
         lock.unlock()
         task?.cancel()
-    }
-
-    deinit {
-        popularityRefresh?.cancel()
     }
 
     // MARK: - Queries

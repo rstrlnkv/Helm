@@ -61,7 +61,8 @@ public protocol PrivilegedRunner: Sendable {
 /// Synchronous on purpose: `search` runs off the cooperative pool and asks this
 /// between two `brew` runs, so it must answer from what is already in hand. The
 /// asking that can block is `refreshIfDue`, which the engine's activation runs
-/// once and which answers nothing.
+/// once *per activation* — so once at launch for a module that is switched on,
+/// and again on every off-and-on cycle — and which answers nothing.
 public protocol PopularityReading: Sendable {
     func formulae() -> InstallCounts
     func casks() -> InstallCounts
