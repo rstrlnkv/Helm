@@ -52,6 +52,18 @@ struct HomebrewSettingsPage: View {
         // already loaded instead of paying for `brew list` and a `brew desc`
         // batch again.
         .task { await hb.loadIfNeeded() }
+        // The other side of that: the view model outliving the page is exactly
+        // why the page has to say it has gone. An uninstall ask is asked over
+        // the transport and can be out for the whole query deadline, and the
+        // `Task` the press launches is not tied to this subtree — so switching
+        // modules or closing Settings leaves a query whose answer would set
+        // `pendingUninstall` on a view model with nothing mounted, and the next
+        // visit to Homebrew opens a confirmation for the app's only
+        // irreversible deletion that nobody asked for. `LatestRequest` retires
+        // work on a later press and on a cancel; leaving is neither, and this
+        // is the one place that knows it happened
+        // (`LeavingThePageRetiresAnUninstallAskTests`).
+        .onDisappear { hb.cancelUninstall() }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.
         .confirmationDialog(hb.pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
