@@ -144,6 +144,36 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
                        + "due — the cost the lazy load exists to avoid, paid anyway")
     }
 
+    /// **The line drawn from the other side.** Everything above is a refusal
+    /// that must not become `[:]`; this is `[:]` arriving as an answer, which
+    /// must not be read as a refusal. `{"formulae":{}}` is Homebrew saying
+    /// nobody installed anything over the window — a thing it is entitled to
+    /// say — so it replaces the stored reading and is cached like any other
+    /// document. Read it as a refusal instead and the store never writes it,
+    /// so every launch from then on re-fetches the same document for ever.
+    ///
+    /// What it costs the person is nothing: search ranks against an empty
+    /// reading exactly as it ranks with no reading at all, which is brew's own
+    /// order.
+    func testAnEmptyDocumentOffTheWireReplacesTheStoredReading() async throws {
+        let directory = try directoryWithADayOldReading("counts-empty-document")
+        let wire = PopularityWire(status: 200, body: countsDocument([:]))
+        let store = FilePopularityStore(directory: directory, transfer: wire.transfer)
+
+        await store.refreshIfDue()
+
+        XCTAssertEqual(wire.asked.count, 1,
+                       "the formula document was not fetched, so this case is not about what "
+                       + "came back")
+        XCTAssertEqual(store.readings().formulae.counts, [:],
+                       "an empty document was treated as a refusal and the day-old reading "
+                       + "kept — the store now believes counts it was told are gone")
+        XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent(
+            FilePopularityStore.formulae.file)), countsDocument([:]),
+                       "the empty document was not cached, so every launch from here re-fetches "
+                       + "the same answer")
+    }
+
     /// A cache file cut off mid-write by a power failure, or one some other
     /// program wrote: the store answers, does not crash, and invents no counts
     /// out of the wreckage.

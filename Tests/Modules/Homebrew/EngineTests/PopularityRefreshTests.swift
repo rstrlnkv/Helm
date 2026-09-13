@@ -88,4 +88,26 @@ final class PopularityRefreshTests: XCTestCase {
                                                        data: Data("<html>Sign in</html>".utf8))
         else { return XCTFail("a document that is not the counts was read as counts") }
     }
+
+    /// **The other side of that line, which `Answer.use` argues for at length
+    /// and nothing held.** `{"formulae":{}}` is the endpoint answering — with
+    /// nothing in it — and it is entitled to. `InstallCountsParserTests` covers
+    /// the parse; what was uncovered is this, the decision to adopt, which is
+    /// the only place the difference between "nobody answered" and "the answer
+    /// was empty" is acted on. Turn this into a refusal and the document that
+    /// says so is never cached, so every launch re-fetches it for ever.
+    func testAnEmptyDocumentIsAReadingAndIsAdopted() {
+        XCTAssertEqual(PopularityRefresh.answer(statusCode: 200,
+                                                data: Data(#"{"formulae":{}}"#.utf8)),
+                       .use(InstallCounts(counts: [:])))
+    }
+
+    /// And the same for a document whose every entry this parser skips, which
+    /// is the shape a published schema change would arrive in: the field is
+    /// there, so the endpoint answered.
+    func testADocumentWhoseEntriesAreAllUnreadableIsStillAReading() {
+        XCTAssertEqual(PopularityRefresh.answer(statusCode: 200,
+                                                data: Data(#"{"formulae":{"helm":[{"n":7}]}}"#.utf8)),
+                       .use(InstallCounts(counts: [:])))
+    }
 }

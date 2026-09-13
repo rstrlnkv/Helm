@@ -747,22 +747,29 @@ install-on-request counts for formulae and the install counts for casks — at
 most once a day. The fetch is started by the engine's `activate`, so a module
 the person has switched off never makes it, and a bare `Task` around it hops its
 blocking halves through `offTheCooperativePool` the way every `brew` call in
-this module already does. The request carries `User-Agent: Helm` and nothing
-else: no query, no package name, nothing about what is installed here, and what
-it asks for is a catalogue-wide public figure rather than an answer about
-anybody. Two files land in Helm's own Application Support folder —
+this module already does; under a test runner the transfer refuses instead, so a
+suite run asks the endpoint nothing. Nothing the request puts on the wire names
+this Mac, this person, or what was searched: no query, no package name, nothing
+about what is installed here, and what it asks for is a catalogue-wide public
+figure rather than an answer about anybody. `User-Agent`, `Accept` and
+`Accept-Language` are pinned to fixed values on the session and cookies are off,
+because an unpinned session sends CFNetwork's own defaults — measured on
+2026-09-14 against a local listener, those included this Mac's configured
+language. Two files land in Helm's own Application Support folder —
 `homebrew-installs-formulae.json` and `homebrew-installs-casks.json`, about
-850 KB together, each with a tag file beside it — written 0600 through
-`PrivateFile`, and the cached file's own modification date is the daily clock,
-so the gate survives a quit. `PopularityRefresh` is where everything that can
-come back is judged: a refusal, a shape this build cannot read and anything over
-`PopularityRefresh.sizeCeiling` all leave the last reading standing and leave
-the clock alone, and only a 304 spends the day without writing. The reading
-itself is 2.84 MiB of dictionary and is read off the disk on the first ask
-rather than at construction, so a Mac whose owner never searches never parses
-it on a launch with nothing due — a day a fetch succeeds parses it anyway, to
-fold the new counts into the half not just fetched, off the cooperative pool
-the way the fetch itself is. All it ever does is reorder search results
+850 KB together (453,903 and 399,502 bytes on 2026-09-13), each with a tag file
+beside it — written 0600 through `PrivateFile`, and the cached file's own
+modification date is the daily clock, so the gate survives a quit.
+`PopularityRefresh` is where everything that can come back is judged: a refusal,
+a shape this build cannot read and anything over `PopularityRefresh.sizeCeiling`
+all leave the last reading standing and leave the clock alone, only a 304 spends
+the day without writing, and a document with nothing in it is an answer rather
+than a refusal. The reading itself is 2.84 MiB of dictionary (measured
+2026-09-14) and is read off the disk on the first ask rather than at
+construction, so a Mac whose owner never searches never parses it on a launch
+with nothing due — a day a fetch succeeds parses the half not just fetched, off
+the cooperative pool the way the fetch itself is, inside the activity phase
+`FilePopularityStore.phaseLabel` names. All it ever does is reorder search results
 (`SearchRanking`); a Mac that fetches nothing searches exactly as it did
 before any of this existed.
 
