@@ -717,22 +717,26 @@ so it survives the quit it exists to report and the next launch's first `status(
 answers `interruptedOp` (`Sources/Modules/Homebrew/Engine/Model.swift:77`).
 
 One phase covers all five long operations —
-`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:275` is
+`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:324` is
 `operationPhase = "homebrew.operation"`, opened in `beginBusy` and closed in
 `endBusy`, which is the one `begin` in the app with no `defer` on the next line,
-because an operation ends in a callback. The queries hold scoped phases of their
-own. Package names travel as array elements after `--`, so a name starting with a
+because an operation ends in a callback. Four of the queries hold scoped phases
+of their own — `listInstalled`, `outdated`, `search` and `descriptions`, each of
+which sweeps the whole Cellar or the whole catalogue. `dependents` holds none,
+deliberately: it is one `brew uses` over one name, well under a second, and the
+registry is phase-level and must not be told that a single sub-second tool run is
+bulk work. Package names travel as array elements after `--`, so a name starting with a
 dash is a package rather than a flag, and they reach the log through `Redact.pkg`
 (`Sources/HelmRuntime/Redact.swift:143`). The engine executes a package reference
 straight off the wire with no gate of its own, which is sound only while the
 transport is in-process with one sender.
 
-The in-app installer (`installBrew`, `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:461`)
-runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL` (`:46`),
+The in-app installer (`installBrew`, `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:510`)
+runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL` (`:67`),
 which names `HEAD` rather than a pinned revision or checksum — whatever the branch
 holds the day the button is pressed. Before the download, one administrator dialog
 authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
-/opt/homebrew` (`:481`), which is the only privileged step; the installer itself then
+/opt/homebrew` (`:530`), which is the only privileged step; the installer itself then
 runs as the now-owning user. See «Giving everything back» for why that ownership
 change is the one reach this document does not describe as reversible.
 
@@ -1262,7 +1266,7 @@ folders, each only if the person switches it on, and three of them are given bac
   (`Sources/HelmApp/LoginItem.swift:64`) — unregistered as a step of the plan,
   because the application registered it and no module owns it;
 - ownership of `/opt/homebrew`, changed by the in-app Homebrew installer
-  (`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:481`). **This one is not
+  (`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:530`). **This one is not
   given back.** Helm does not record who owned the tree before, and handing it
   back to root would leave a `brew` that cannot install anything without `sudo`
   — the ownership is what Homebrew needs, and it is what Homebrew's own
