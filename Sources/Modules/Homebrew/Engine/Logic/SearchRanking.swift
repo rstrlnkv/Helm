@@ -9,11 +9,15 @@ import Foundation
 /// statement of intent the search box can receive, and it was worth two
 /// scrolls.
 ///
-/// Three groups, and inside each one brew's order is left alone — it is
-/// alphabetical, and re-sorting it would only make the list harder to scan.
+/// Three groups, and the groups themselves never move — what the person
+/// typed beats any popularity figure. Inside a group, a package installed
+/// more often comes first; brew's own alphabetical order is what is left to
+/// break a tie, including the tie of "nobody has a reading for either one".
 enum SearchRanking {
 
-    static func rank(_ hits: [SearchHit], query: String) -> [SearchHit] {
+    static func rank(_ hits: [SearchHit], query: String,
+                     formulae: InstallCounts = .none,
+                     casks: InstallCounts = .none) -> [SearchHit] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !needle.isEmpty else { return hits }
 
@@ -29,6 +33,29 @@ enum SearchRanking {
                 rest.append(hit)
             }
         }
-        return exact + prefixed + rest
+        // Inside a group only. The groups are about what the person typed,
+        // which is a better statement of intent than anything a popularity
+        // figure can say.
+        func byInstalls(_ group: [SearchHit]) -> [SearchHit] {
+            // A cask's popularity comes from the cask document: the two files
+            // are separate and a shared name — `docker` is both — would
+            // otherwise be ranked by the wrong one.
+            func count(_ hit: SearchHit) -> Int? {
+                (hit.isCask ? casks : formulae).counts[hit.name]
+            }
+            guard group.contains(where: { count($0) != nil }) else { return group }
+            // `enumerated` keeps brew's alphabetical order as the tie-break, so
+            // the sort is stable without depending on the sort being stable.
+            return group.enumerated().sorted { a, b in
+                let l = count(a.element), r = count(b.element)
+                switch (l, r) {
+                case let (l?, r?) where l != r: return l > r
+                case (nil, .some): return false
+                case (.some, nil): return true
+                default: return a.offset < b.offset
+                }
+            }.map(\.element)
+        }
+        return byInstalls(exact) + byInstalls(prefixed) + byInstalls(rest)
     }
 }
