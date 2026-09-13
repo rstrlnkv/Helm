@@ -34,6 +34,10 @@ enum HbStr {
     static var uninstallIsPermanent: String {
         L("Homebrew removes it right away. It does not go to the Trash, and this cannot be undone.")
     }
+    /// What the removal takes with it. Drawn only when the Cellar named
+    /// something: an empty line under a question is a reassurance nobody
+    /// checked, and a refused query answers with nothing to say.
+    static var stillNeededBy: String { L("Other installed packages still need it:") }
     static var cancel: String { L("Cancel") }
     static var uninstall: String { L("Uninstall") }
     static var upgrade: String { L("Upgrade") }

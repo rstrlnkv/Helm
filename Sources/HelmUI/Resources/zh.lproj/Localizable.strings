@@ -1133,3 +1133,4 @@
 "“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one." = "当启动文件夹打不开时，“残留”里的“关闭”会被拒绝。Helm 无法看到里面是否有第二个文件注册了同一个登录项，此时关闭该项会把另一个弄坏。";
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残留”会跟随作为符号链接的文件夹，列出链接另一端的内容。这样的文件夹以前返回为空，留在那里的东西从未显示过。";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "安装失败时，Homebrew 也会删除下载的安装脚本，而不是只在成功时删除。";
+"Other installed packages still need it:" = "其他已安装的软件包仍需要它：";
