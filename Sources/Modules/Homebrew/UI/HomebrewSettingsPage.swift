@@ -18,7 +18,6 @@ struct HomebrewSettingsPage: View {
     }
 
     @ObservedObject private var hb: HomebrewViewModel
-    @State private var pendingUninstall: BrewPackage?
     @State private var segment: Segment = .installed
     @State private var query = ""
     /// The search a press of Return started, held so the next press can drop it.
@@ -55,19 +54,23 @@ struct HomebrewSettingsPage: View {
         .task { await hb.loadIfNeeded() }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.
-        .confirmationDialog(pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
-                            isPresented: Binding(get: { pendingUninstall != nil },
-                                                 set: { if !$0 { pendingUninstall = nil } }),
+        .confirmationDialog(hb.pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
+                            isPresented: Binding(get: { hb.pendingUninstall != nil },
+                                                 set: { if !$0 { hb.cancelUninstall() } }),
                             titleVisibility: .visible) {
-            Button(HbStr.uninstall, role: .destructive) {
-                if let package = pendingUninstall { hb.uninstall(package) }
-                pendingUninstall = nil
-            }
-            Button(HbStr.cancel, role: .cancel) { pendingUninstall = nil }
+            Button(HbStr.uninstall, role: .destructive) { hb.confirmUninstall() }
+            Button(HbStr.cancel, role: .cancel) { hb.cancelUninstall() }
         } message: {
-            // The title alone asked the same question the recoverable deletions
-            // ask, for the one deletion nothing can undo.
-            Text(HbStr.uninstallIsPermanent)
+            // Two sentences, and the second only when there is something to say:
+            // a heading over an empty list reads as a reassurance that nothing
+            // depends on this, which a refused query has not earned.
+            if hb.dependentsOfPending.isEmpty {
+                Text(HbStr.uninstallIsPermanent)
+            } else {
+                Text(HbStr.uninstallIsPermanent + "\n\n"
+                     + HbStr.stillNeededBy + "\n"
+                     + hb.dependentsOfPending.joined(separator: ", "))
+            }
         }
     }
 
@@ -185,7 +188,7 @@ struct HomebrewSettingsPage: View {
                    desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
                 // Every other destructive action in Helm asks first; this one
                 // removed a cask — an app — on a single click.
-                Button(HbStr.uninstall) { pendingUninstall = pkg }
+                Button(HbStr.uninstall) { Task { await hb.askToUninstall(pkg) } }
                     .disabled(hb.running)
                     .accessibilityLabel("\(HbStr.uninstall), \(pkg.name)")
             }
