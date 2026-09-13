@@ -1133,4 +1133,4 @@
 "“Turn off” in Leftovers is refused when a startup folder will not open. Helm cannot see inside it whether a second file registers the same login item, and turning the item off would then break the other one." = "起動フォルダが開けないとき、“残存物”の“オフにする”は拒まれます。同じログイン項目を登録する二つ目のファイルがその中にあるかどうかを Helm は見られず、項目をオフにするともう一方が壊れてしまうからです。";
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残存物”は、シンボリックリンクであるフォルダをたどり、その先にあるものを一覧します。これまでそうしたフォルダは空として返り、そこに残されたものは表示されませんでした。";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew は、インストールが失敗したときにも、ダウンロードしたインストーラを削除します。成功したときだけではありません。";
-"Other installed packages still need it:" = "インストール済みの他のパッケージがまだ必要としています:";
+"Other installed packages still need it:" = "これを必要としているパッケージ:";
