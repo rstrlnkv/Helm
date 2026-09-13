@@ -15,7 +15,14 @@ import XCTest
 ///     aarch64-elf-binutils …                                  ← searched for "-n"
 ///
 /// `--` is accepted by every subcommand this module runs (`desc`, `search`,
-/// `install`, `uninstall`, `upgrade`, with and without `--cask`).
+/// `install`, `uninstall`, `upgrade`, `uses`, with and without `--cask`).
+/// `uses` was the last one verified, on 2026-09-13 against Homebrew 6.x:
+///
+///     $ brew uses --installed -- openssl@3
+///     aria2 libngtcp2 libssh2 llama.cpp nmap node python@3.14 yt-dlp
+///
+/// — exit 0 and eight dependents, so the terminator is read as a terminator
+/// there too and is not mistaken for the name of a formula.
 private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []
@@ -97,6 +104,15 @@ final class BrewArgumentsTests: XCTestCase {
             XCTAssertEqual(runner.calls.count, 1)
             assertBehindTerminator(runner.calls[0], value: "-n")
         }
+    }
+
+    /// A cask is answered without a tool run, so there is nothing to assert
+    /// about its arguments — `ACaskIsNeverAskedWhatUsesItTests` owns that half.
+    func testDependentsPutTheNameBehindATerminator() {
+        let runner = RecordingRunner()
+        _ = engine(runner).dependents(name: "-n", isCask: false)
+        XCTAssertEqual(runner.calls.count, 1)
+        assertBehindTerminator(runner.calls[0], value: "-n")
     }
 
     func testUpgradePutsTheNameBehindATerminator() {
