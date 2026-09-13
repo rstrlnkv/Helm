@@ -18,13 +18,21 @@ enum PopularityRefresh {
     /// times the larger leaves room for the catalogue to grow for years and
     /// still refuses whatever a moved endpoint might be serving instead.
     ///
-    /// **What this bounds is the parse and the file, not the download.**
+    /// **What this bounds is what came back over the wire, and only that.**
     /// `URLSession.data(for:)` hands over a body it has already buffered, so by
-    /// the time the count can be read the bytes are here. What bounds the wire
-    /// is `FilePopularityStore`'s `wireDeadline`, on the session rather than on
+    /// the time the count can be read the bytes are here; what the ceiling
+    /// prevents is handing whatever arrived to `JSONSerialization` and writing
+    /// it into the support folder. What bounds the wire itself is
+    /// `FilePopularityStore`'s `wireDeadline`, on the session rather than on
     /// the request, because a request's own timeout is an *idle* one and
-    /// restarts on every packet; this is what keeps whatever arrived out of
-    /// `JSONSerialization` and off the disk.
+    /// restarts on every packet.
+    ///
+    /// **It does not bound the cached document.** `FilePopularityStore.load`
+    /// reads the file this store wrote with `Data(contentsOf:)` and parses it
+    /// with no size check at all, and that is the path every launch that
+    /// searches takes. No cache read in this tree is size-bounded: the file is
+    /// one Helm wrote itself, 0600 through `PrivateFile`, and anything able to
+    /// rewrite it is already able to rewrite the rest of the support folder.
     static let sizeCeiling = 5 * 1024 * 1024
 
     /// A reading dated in the future is due too: a Mac whose clock was wrong

@@ -7,12 +7,12 @@ import Foundation
 /// the only difference is the name of a field inside each entry that this
 /// parser never reads. The dictionary key is the package name.
 public struct InstallCounts: Sendable, Equatable {
-    public let counts: [String: Int]
-    public init(counts: [String: Int]) { self.counts = counts }
+    let counts: [String: Int]
+    init(counts: [String: Int]) { self.counts = counts }
     /// No reading yet, or one that was refused. Distinct from a reading that
     /// came back with nothing in it only in what the caller does about it —
     /// which is, in both cases, leave the order alone.
-    public static let none = InstallCounts(counts: [:])
+    static let none = InstallCounts(counts: [:])
 
     /// nil when the bytes are not a document this parser recognises: not JSON,
     /// not an object, cut off mid-write, or an object with no `formulae` field
@@ -25,7 +25,7 @@ public struct InstallCounts: Sendable, Equatable {
     /// (`PopularityRefresh.answer`) adopts it. The distinction this nil carries
     /// is "nobody answered" against "the answer was empty", and only the first
     /// of the two may leave the stored reading standing.
-    public static func parse(_ data: Data) -> InstallCounts? {
+    static func parse(_ data: Data) -> InstallCounts? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let packages = root["formulae"] as? [String: Any] else { return nil }
         var counts: [String: Int] = [:]

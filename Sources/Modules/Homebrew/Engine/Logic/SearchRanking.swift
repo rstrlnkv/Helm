@@ -40,6 +40,18 @@ enum SearchRanking {
             // A cask's popularity comes from the cask document: the two files
             // are separate and a shared name — `docker` is both — would
             // otherwise be ranked by the wrong one.
+            //
+            // **The name as brew spelled it, and not the lowercased form the
+            // grouping above compares with.** Homebrew keys both documents by
+            // the package's own name, so this lookup is exact: a hit whose name
+            // is not spelled the way the document spells it — a tap's `Foo`,
+            // anything not already lowercase — finds no count and keeps brew's
+            // own position inside its group. That is the degradation this
+            // wants. Folding case to widen the match would let one package
+            // collect a figure published for a differently-spelled one, and a
+            // rank invented from somebody else's number is worse than no rank
+            // at all, which costs nothing but the alphabetical order the
+            // search box drew before any of this existed.
             func count(_ hit: SearchHit) -> Int? {
                 (hit.isCask ? casks : formulae).counts[hit.name]
             }

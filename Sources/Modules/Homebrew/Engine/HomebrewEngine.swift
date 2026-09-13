@@ -355,14 +355,24 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return BrewSearchParser.parse(formulae, isCask: false)
                  + BrewSearchParser.parse(casks, isCask: true)
         }
-        HelmLog.shared.memory("homebrew.search")
+        // **After the ranking, not before it** — hence the `defer`. The reading
+        // below is this process's first call to `readings()` on most Macs, and
+        // that call is the 2.84 MiB parse `FilePopularityStore.stored`
+        // measures. Taken one line earlier, the figure was read *before* the
+        // largest allocation this search makes, so the search that paid for it
+        // looked free and the next one inherited the whole of it — which is
+        // the mis-attribution CLAUDE.md names, arriving from the other side.
+        defer { HelmLog.shared.memory("homebrew.search") }
+        // Behind the guard: a search brew refused has nothing to rank, and
+        // there is no reason for it to pay for a reading.
+        guard let hits else { return nil }
         // brew answers alphabetically, which buries the obvious one. One ask,
         // because both lists are ranked from this one press and a refresh may
         // be landing while it happens.
         let counts = popularity.readings()
-        return hits.map { SearchRanking.rank($0, query: query,
-                                             formulae: counts.formulae,
-                                             casks: counts.casks) }
+        return SearchRanking.rank(hits, query: query,
+                                  formulae: counts.formulae,
+                                  casks: counts.casks)
     }
 
     /// Which installed packages still need `name`.

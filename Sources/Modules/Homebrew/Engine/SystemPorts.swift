@@ -373,21 +373,50 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     public func refreshIfDue() async {
         if let counts = await fetchIfDue(Self.formulae) {
-            // On the day a fetch lands, this is the process's first ask for
-            // whichever half was not already loaded, so it is exactly the
-            // 2.84 MiB / ~30 ms parse `fetchIfDue`'s own doc comment hops for
-            // — it belongs off the pool for the same reason.
-            await offTheCooperativePool { [self] in replaceFormulae(with: counts) }
+            // On the day a fetch lands, this is the process's first ask for the
+            // half that was not fetched, so it is exactly the parse
+            // `fetchIfDue`'s own doc comment hops for — it belongs off the pool
+            // for the same reason.
+            await offThePoolInThePhase { [self] in replaceFormulae(with: counts) }
         }
         // A cancelled task still runs the line after its `await`, and the ask
         // below would only fail the same way a moment later.
         guard !Task.isCancelled else { return }
         if let counts = await fetchIfDue(Self.casks) {
-            await offTheCooperativePool { [self] in replaceCasks(with: counts) }
+            await offThePoolInThePhase { [self] in replaceCasks(with: counts) }
         }
+        // Taken whether or not anything was due: the first reading for a label
+        // is the baseline every later one is a delta against, and a refresh
+        // that fetched nothing is the cheapest place to establish it.
+        HelmLog.shared.memory(Self.phaseLabel)
     }
 
     // MARK: Private
+
+    /// What this store's work is called in the activity trail, and the label
+    /// its memory reading is filed under.
+    ///
+    /// **A bulk phase carries both or neither** (CLAUDE.md § What not to do,
+    /// and what breaks if you do). Every synchronous hop in this store can
+    /// reach `InstallCounts.parse`: the ETag gate through `readings()`, `adopt`
+    /// through `PopularityRefresh.answer`, and each replace through `load`.
+    /// That parse is the module's largest standing allocation — 2.84 MiB, see
+    /// `stored` — so this is not work to leave out of the trail, and a named
+    /// interval with no figure beside it would be the half of the trail that
+    /// cannot be read.
+    ///
+    /// Prefixed with the module's own id, because that is what
+    /// `HelmActivity.sweep(module:)` matches on when the host drops the module.
+    static let phaseLabel = HomebrewEngine.moduleID + ".popularity"
+
+    /// Off the pool and inside the phase, in one call — the two things every
+    /// synchronous half of this refresh needs, so no call site can carry one
+    /// and forget the other.
+    private func offThePoolInThePhase<T: Sendable>(
+        _ body: @escaping @Sendable () -> T
+    ) async -> T {
+        await offTheCooperativePool { HelmActivity.phase(Self.phaseLabel, body) }
+    }
 
     /// What the last run stored, read off the disk the first time anybody asks
     /// and kept from then on. **Called with the lock held, by every path that
@@ -403,12 +432,13 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// `fetchIfDue` that wants a stored reading is the ETag gate, which is
     /// reached on a day a document is due with a tag beside it — so the whole
     /// of this stays unpaid on a launch with nothing due, and a Mac whose
-    /// owner never searches pays nothing on that launch either. **Not on a
-    /// day a fetch succeeds, though** — `replaceFormulae`/`replaceCasks` call
-    /// this to keep the half they are not replacing, which is the same first
-    /// parse paid early instead. When it *is* paid it is paid off the
-    /// cooperative pool: by `fetchIfDue`'s own hop, by `refreshIfDue`'s hop
-    /// around each replace, and by `search`'s.
+    /// owner never searches pays nothing on that launch either. **A day a
+    /// fetch succeeds pays for one half**, not for this: `replaceFormulae` and
+    /// `replaceCasks` read the document they are *not* replacing rather than
+    /// calling this, which would also read back the one `adopt` has just
+    /// written and whose counts are in the caller's hand. When it *is* paid it
+    /// is paid off the cooperative pool: by `fetchIfDue`'s own hop, by
+    /// `refreshIfDue`'s hop around each replace, and by `search`'s.
     private func loadedUnderTheLock() -> PopularityReadings {
         if let stored { return stored }
         let loaded = PopularityReadings(formulae: load(Self.formulae) ?? .none,
@@ -420,14 +450,23 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// The two writers, synchronous and one line each, because a lock may not
     /// be held across a suspension and an `async` body may not take one at all
     /// (CLAUDE.md § What not to do, and what breaks if you do).
+    ///
+    /// **Only the other half is read.** These used to call
+    /// `loadedUnderTheLock()`, which on the first ask — the ordinary case on a
+    /// fetch day, since nothing before this has needed a reading — parses
+    /// *both* cached documents, including the one `adopt` wrote a moment
+    /// earlier whose counts are the argument here. That is about 450 KB read
+    /// and parsed for a value already in hand, once per fetch day.
     private func replaceFormulae(with counts: InstallCounts) {
         lock.lock(); defer { lock.unlock() }
-        stored = PopularityReadings(formulae: counts, casks: loadedUnderTheLock().casks)
+        stored = PopularityReadings(formulae: counts,
+                                    casks: stored?.casks ?? load(Self.casks) ?? .none)
     }
 
     private func replaceCasks(with counts: InstallCounts) {
         lock.lock(); defer { lock.unlock() }
-        stored = PopularityReadings(formulae: loadedUnderTheLock().formulae, casks: counts)
+        stored = PopularityReadings(formulae: stored?.formulae ?? load(Self.formulae) ?? .none,
+                                    casks: counts)
     }
 
     /// Its own session rather than `URLSession.shared`, for the two deadlines
@@ -438,8 +477,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// thing, and decide freshness by rules this store does not control.
     ///
     /// **The headers are pinned here because CFNetwork writes its own.** The
-    /// request four lines below sets a `User-Agent` and nothing else, which
-    /// said nothing about what actually left the process. Measured on
+    /// request `requestIfDue` builds sets a `User-Agent` and nothing else,
+    /// which said nothing about what actually left the process. Measured on
     /// 2026-09-14 against a local listener printing what it received — one
     /// fetch with this session unpinned, one with it pinned as below:
     ///
@@ -552,7 +591,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// if you do). The wire itself stays *on* the pool: an `await` on a
     /// transfer holds no thread.
     private func fetchIfDue(_ endpoint: Endpoint) async -> InstallCounts? {
-        guard let request = await offTheCooperativePool({ [self] in requestIfDue(endpoint) })
+        guard let request = await offThePoolInThePhase({ [self] in requestIfDue(endpoint) })
         else { return nil }
         // No network, a refused connection, either deadline, and the
         // cancellation that arrives at quit all land here. None of them is
@@ -561,7 +600,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         // investigation after nothing (CLAUDE.md § What not to do, and what
         // breaks if you do).
         guard let (data, http) = try? await transfer(request) else { return nil }
-        return await offTheCooperativePool { [self] in adopt(data, http, from: endpoint) }
+        return await offThePoolInThePhase { [self] in adopt(data, http, from: endpoint) }
     }
 
     /// The request to make, or nil because nothing is due.
