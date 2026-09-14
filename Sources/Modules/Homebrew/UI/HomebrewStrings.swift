@@ -122,9 +122,13 @@ enum HbStr {
         L("Pinned")
     }
 
-    /// The inspector with nothing to describe. It says where to look rather
-    /// than what is missing: the list is right there on the left.
-    static var nothingSelected: String { L("Select a package on the left") }
+    /// The package view with nothing to describe. Not "on the left": there is
+    /// no left below `HomebrewSplit`'s threshold, where the package replaces
+    /// the list rather than sitting beside it, and one key serves both layouts.
+    /// Japanese and Chinese had gone further than the English and named the
+    /// list itself («左のリストから», «请在左侧»), so the sentence was wrong in
+    /// two languages more loudly than in the other six.
+    static var nothingSelected: String { L("Select a package") }
     /// The narrow screen's way out of a selected package, back to the list —
     /// the same key Disk's breadcrumb and Uninstaller's own step already read,
     /// spelled once for the eight languages that answer it.

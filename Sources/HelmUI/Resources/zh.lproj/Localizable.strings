@@ -1134,6 +1134,6 @@
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残留”会跟随作为符号链接的文件夹，列出链接另一端的内容。这样的文件夹以前返回为空，留在那里的东西从未显示过。";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "安装失败时，Homebrew 也会删除下载的安装脚本，而不是只在成功时删除。";
 "Other installed packages still need it:" = "其他已安装的软件包仍需要它：";
-"Select a package on the left" = "请在左侧选择一个软件包";
+"Select a package" = "请选择一个软件包";
 "already installed" = "已安装";
 "Update available" = "有可用更新";

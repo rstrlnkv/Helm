@@ -1134,6 +1134,6 @@
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "“残存物”は、シンボリックリンクであるフォルダをたどり、その先にあるものを一覧します。これまでそうしたフォルダは空として返り、そこに残されたものは表示されませんでした。";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew は、インストールが失敗したときにも、ダウンロードしたインストーラを削除します。成功したときだけではありません。";
 "Other installed packages still need it:" = "これを必要としているパッケージ：";
-"Select a package on the left" = "左のリストからパッケージを選んでください";
+"Select a package" = "パッケージを選んでください";
 "already installed" = "インストール済み";
 "Update available" = "アップデートあり";
