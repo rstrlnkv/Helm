@@ -8,15 +8,20 @@ import HelmUI
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **Below `HomebrewSplit`'s threshold the page draws a list nobody can act on.**
+/// **Below `HomebrewSplit`'s threshold, selecting a package must still offer
+/// its action.**
 ///
-/// Every action this module has — Uninstall, Upgrade, Install — is drawn by
-/// `HomebrewSettingsPage.inspectorAction`, which only the *split* branch of
-/// `managerBody` reaches. The other branch, `listArea(showsDesc: true)`, draws
-/// rows and a description and no control at all, and it is the branch that runs
-/// whenever the pane is narrower than 560 pt. Before this page became a master
-/// list and an inspector the row carried its own button, so this is a capability
-/// the change removed rather than a width nobody thought about.
+/// Narrow used to mean "no inspector and no action anywhere" — the defect this
+/// file was first written against. The repair that followed put the action back
+/// on the *row*, which meant two switches deciding what a package offers and
+/// one of them (`testAPinnedRowDrawsThePinnedBadgeOnlyOnce`, below) catching the
+/// two disagreeing about a pinned formula's badge. That repair is withdrawn.
+///
+/// **The shape now: below the threshold, a screen, not a row.** Selecting a
+/// package replaces the list with `HomebrewSettingsPage.packageDetail` — the
+/// same builder the wide layout puts beside the list — behind a `backBar` that
+/// returns to it. There is exactly one place an action is ever drawn, at either
+/// width, which is what this file now reads for.
 ///
 /// **The band is reachable, and it is reachable by arithmetic rather than by
 /// opinion.** `SettingsWindow` refuses a content width under 860 and lets the
@@ -24,27 +29,16 @@ import HelmUI
 /// 860 − 320 = 540 pt — twenty points under the threshold, one drag of the
 /// sidebar divider at the smallest window the app allows. The detail item's own
 /// `minimumThickness` of 420 is the floor below that, and is what the band would
-/// open out to if the window minimum ever fell. All four numbers are read out of
-/// `Sources/HelmApp/SettingsWindow.swift` rather than copied here, so the day the
-/// band closes this file fails and says so instead of passing over a page that
-/// no longer has the problem.
+/// open out to if the window minimum ever fell. All three numbers are read out
+/// of `Sources/HelmApp/SettingsWindow.swift` rather than copied here, so the day
+/// the band closes this file fails and says so instead of passing over a page
+/// that no longer has the problem.
 ///
-/// **Measured against HEAD, 2026-09-14, three consecutive runs.** In the
-/// installed segment the page draws a `ListCoreScrollView` at 540, 549 and
-/// 559 pt — the rows are there — and **zero** `_FocusRingView`s at every one of
-/// them; at 834 pt with the same package selected it draws exactly one, the
-/// inspector's. In the updates segment the only ring at any narrow width is the
-/// «Upgrade all» button above the list, and none inside it.
-///
-/// **Why runtime and not a source scan.** Which branch draws is a function of a
-/// width, and the whole defect is that one branch has controls and the other
-/// does not — a scan reading `HomebrewSettingsPage.swift` finds `Button(HbStr.
-/// uninstall)` in the file and cannot say which widths reach it. It would also
-/// go green the moment somebody wrote a second switch, which is the other half
-/// of what this file is for: the count of actions the page draws is compared
-/// against what `InspectorState.of` says the same packages offer, so a narrow
-/// branch that offers an upgrade on a pinned formula is red even though it draws
-/// «more» than HEAD does.
+/// **Why runtime and not a source scan.** Which screen draws is a function of a
+/// width and a selection, and the whole defect is that one branch could offer
+/// nothing, or two branches could each decide on their own — a scan reading
+/// `HomebrewSettingsPage.swift` finds `Button(HbStr.uninstall)` in the file and
+/// cannot say which widths and which selections reach it.
 @MainActor
 final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
 
@@ -150,16 +144,14 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
     // MARK: - Reading the page
 
     private struct Reading {
-        /// Every focus ring on the page — a control with a border, which is
-        /// what all three of this module's actions are.
+        /// Every focus ring on the page — a bordered control, which is what
+        /// every action here is, and what `backBar`'s own glyph button is too.
         let rings: [CGRect]
-        /// The ones drawn on a row of the master list rather than above it;
-        /// «Upgrade all» sits outside and must not be counted as a row's action.
-        let onRows: [CGRect]
-        let lists: [CGRect]
+        let lists: Int
     }
 
-    /// Mounts the page at `width` with `segment` showing, and reads what drew.
+    /// Mounts the page at `width` with `segment` showing, selects `id`, and
+    /// reads what drew.
     ///
     /// Light, named: an unnamed appearance is a reading of whatever this Mac is
     /// set to at this hour (`RenderedInk`'s reason).
@@ -172,20 +164,11 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(25)
         let lists = mount.host.everyView
-            .filter { $0.appKitClassName.contains("ListCoreScrollView") }
+            .filter { $0.appKitClassName.contains("ListCoreScrollView") }.count
+        let rings = mount.host.everyView(named: "_FocusRingView")
             .map { $0.convert($0.bounds, to: mount.host) }
-        var rings: [CGRect] = []
-        var onRows: [CGRect] = []
-        for (view, ancestry) in mount.host.everyViewWithAncestry
-        where view.appKitClassName == "_FocusRingView" {
-            let frame = view.convert(view.bounds, to: mount.host)
-            rings.append(frame)
-            if ancestry.contains(where: { $0.appKitClassName.contains("ListCoreScrollView") }) {
-                onRows.append(frame)
-            }
-        }
         mount.drop()
-        return Reading(rings: rings, onRows: onRows, lists: lists)
+        return Reading(rings: rings, lists: lists)
     }
 
     private func loaded() async -> (HomebrewViewModel, ModuleViewModel, Cellar) {
@@ -198,7 +181,7 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
     }
 
     /// What `InspectorState.of` says a package offers — the one place that
-    /// decides, and the thing the row has to agree with.
+    /// decides, and the thing the narrow screen has to agree with.
     private func action(_ hb: HomebrewViewModel, _ segment: HomebrewViewModel.Segment,
                         _ id: String) -> InspectorSubject.Action? {
         guard case let .package(subject) = InspectorState.of(
@@ -208,97 +191,50 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
         return subject.action
     }
 
-    // MARK: - The capability
+    // MARK: - The screen
 
-    /// **A list you cannot act on, at every width the window can be dragged to.**
-    func testThePageOffersAnActionAtEveryWidthUnderTheSplit() async {
-        let (hb, mvm, transport) = await loaded()
-        defer { withExtendedLifetime(transport) {} }
-        let band = narrowBand()
-        guard !band.isEmpty else { return }
-
-        for width in band {
-            let wide = draw(hb, mvm, at: width, segment: .installed, selecting: nil)
-            // The subject before the absence: rows have to be there at all, or
-            // "no action drew" is true of a page that drew nothing.
-            XCTAssertEqual(wide.lists.count, 1, """
-                no master list drew at \(width) pt, so nothing below is a reading of a page with \
-                packages on it
-                """)
-            XCTAssertFalse(HomebrewSplit(availableWidth: width).showsInspector, """
-                \(width) pt is not under the split after all — the band was computed from the \
-                window's own numbers and one of them has moved
-                """)
-            XCTAssertGreaterThanOrEqual(wide.rings.count, 1, """
-                at \(width) pt the Homebrew page draws \(hb.installed.count) packages and \
-                \(wide.rings.count) controls. The pane can be this narrow — the window refuses to \
-                be smaller than its own minimum and the sidebar drags to its own maximum — and at \
-                this width `HomebrewSplit.showsInspector` is false, so `inspectorAction` is never \
-                reached and there is no Uninstall, no Upgrade and no Install anywhere on the page.
-                """)
-        }
-    }
-
-    // MARK: - The agreement
-
-    /// **And the narrow rows must offer what the inspector offers — including
-    /// the package it offers nothing for.**
-    ///
-    /// Two outdated packages, one of them pinned. `InspectorState.of` answers
-    /// `.upgrade` for one and `.pinned` for the other, so exactly one action may
-    /// be drawn on the rows. A narrow branch that carried its own switch would
-    /// draw two, and a narrow branch that draws none — which is HEAD — draws
-    /// zero; both are this assertion.
-    ///
-    /// «Upgrade all» is a control on this segment too, above the list rather
-    /// than on a row, which is why the reading is of the rings inside the list
-    /// and its presence is asserted first.
-    func testTheNarrowRowsOfferExactlyWhatTheInspectorWouldOffer() async {
+    /// **A selection replaces the list with a screen carrying its action.**
+    func testANarrowSelectionShowsThePackageScreenAndNoList() async {
         let (hb, mvm, transport) = await loaded()
         defer { withExtendedLifetime(transport) {} }
         let band = narrowBand()
         guard let width = band.first else { return }
 
-        let offered = hb.outdated.filter { action(hb, .updates, $0.id) != .pinned }
-        XCTAssertEqual(offered.count, 1, """
-            the fixture is meant to hold one upgradeable package and one pinned one, and \
-            `InspectorState.of` offers an action for \(offered.count) of \(hb.outdated.count) — \
-            nothing below tells a missing action from a wrongly offered one
-            """)
+        let none = draw(hb, mvm, at: width, segment: .installed, selecting: nil)
+        XCTAssertEqual(none.lists, 1, "no master list drew at \(width) pt with nothing selected")
 
-        let reading = draw(hb, mvm, at: width, segment: .updates, selecting: nil)
-        XCTAssertEqual(reading.lists.count, 1, "no master list drew at \(width) pt")
-        XCTAssertEqual(reading.rings.count - reading.onRows.count, 1, """
-            \(reading.rings.count - reading.onRows.count) controls drew above the list at \
-            \(width) pt where «Upgrade all» is the only one — the split between a row's own \
-            action and the segment's is being read wrong and the count below means nothing
+        let selected = draw(hb, mvm, at: width, segment: .installed, selecting: Cellar.wget.id)
+        XCTAssertEqual(selected.lists, 0, """
+            the master list still drew at \(width) pt with \(Cellar.wget.name) selected — a \
+            selection at this width should replace the list with the package screen, not sit \
+            beside a list that has no room for a second column
             """)
-        XCTAssertEqual(reading.onRows.count, offered.count, """
-            at \(width) pt the updates list draws \(reading.onRows.count) actions on its rows \
-            where `InspectorState.of` offers \(offered.count) for the same two packages. Zero is \
-            the single-column branch drawing no action at all; two is a narrow branch that \
-            decided for itself and offered an upgrade for a pinned formula, which `brew upgrade` \
-            answers with «…is pinned».
+        XCTAssertGreaterThanOrEqual(selected.rings.count, 1, """
+            \(selected.rings.count) controls drew at \(width) pt with \(Cellar.wget.name) selected \
+            — the package screen offers no action, `backBar` included, where the fixture's own \
+            package is offered Uninstall
             """)
     }
 
-    /// **The verb, not only the button.**
+    // MARK: - The agreement
+
+    /// **The verb, not only the button — and it has to be the wide inspector's
+    /// own verb, because both come from one builder.**
     ///
-    /// The action a row offers has to be the action the inspector offers for the
-    /// same package above the threshold. A rendered SwiftUI button carries no
-    /// readable title — `NSHostingView` builds no accessibility tree until a
-    /// client connects, measured here as zero children under the host — so the
-    /// verb is identified by the width the word gives a bordered button, against
-    /// `ControlMetrics`' own measurement of each of the three.
+    /// A rendered SwiftUI button carries no readable title — `NSHostingView`
+    /// builds no accessibility tree until a client connects, measured here as
+    /// zero children under the host — so the verb is identified by the width the
+    /// word gives a bordered button, against `ControlMetrics`' own measurement
+    /// of each of the three.
     ///
     /// **The language is chosen by measurement, and that is not a nicety.** In
     /// English «Uninstall» and «Upgrade» are both 77 pt and in Chinese all three
     /// are 50, so this check is blind in two of the eight and would pass over a
-    /// row offering the wrong verb. The language used is the first one whose six
-    /// candidate widths — three verbs at both control sizes — are all more than
-    /// 4 pt apart; if no language separates them the test fails rather than
+    /// screen offering the wrong verb. The language used is the first one whose
+    /// six candidate widths — three verbs at both control sizes — are all more
+    /// than 4 pt apart; if no language separates them the test fails rather than
     /// passing on a reading that cannot tell them apart.
-    func testTheActionOnANarrowRowIsTheOneTheInspectorOffersAbove() async {
+    func testTheNarrowScreenOffersTheSameActionAsTheWideInspector() async {
         let (hb, mvm, transport) = await loaded()
         defer { withExtendedLifetime(transport) {} }
         let band = narrowBand()
@@ -321,72 +257,131 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
             XCTAssertEqual(expected, .uninstall, "precondition: the inspector's own answer")
 
             let above = draw(hb, mvm, at: wide, segment: .installed, selecting: selected)
-            XCTAssertEqual(above.rings.count, 1, """
-                \(above.rings.count) controls at \(wide) pt where the inspector's action is the \
-                only one — the reading below has nothing known-good to compare against
-                """)
-            guard let inspector = above.rings.first else { return }
-            XCTAssertEqual(verb(ofWidth: inspector.width, widths), expected, """
-                the inspector's own button measures \(inspector.width) pt in \(language), which \
-                this reading does not call \(expected) — the identification is wrong before any \
-                row is looked at
+            let aboveVerbs = above.rings.compactMap { verb(ofWidth: $0.width, widths) }
+            XCTAssertEqual(aboveVerbs, [expected], """
+                \(aboveVerbs) is what the wide inspector's own rings measure as, at \(wide) pt in \
+                \(language), where the only offer should be \(expected) — the reading below has \
+                nothing known-good to compare against
                 """)
 
             let below = draw(hb, mvm, at: narrow, segment: .installed, selecting: selected)
-            guard let row = below.rings.first else {
-                return XCTFail("""
-                    at \(narrow) pt the page draws no action for \(Cellar.wget.name), where the \
-                    same package selected at \(wide) pt is offered \(expected). One fact, two \
-                    placements — and at this width there is no placement at all.
-                    """)
-            }
-            XCTAssertEqual(verb(ofWidth: row.width, widths), expected, """
-                the action drawn for \(Cellar.wget.name) at \(narrow) pt measures \(row.width) pt, \
-                which is not \(expected) — the row and the inspector disagree about what this \
-                package offers, which is two switches where the design says one
+            let belowVerbs = below.rings.compactMap { verb(ofWidth: $0.width, widths) }
+            XCTAssertEqual(belowVerbs, [expected], """
+                the narrow screen for \(Cellar.wget.name) at \(narrow) pt measures \(belowVerbs) \
+                where the wide inspector for the same package measures \(aboveVerbs) — both read \
+                `packageDetail`, so a disagreement here means two builders exist where the design \
+                says one
                 """)
         }
     }
 
-    // MARK: - The pinned row's own badge
+    // MARK: - The resize invariant
 
-    /// **A pinned row must not say «Pinned» twice.**
+    /// **Pushed into a package narrow, then widened past the split, lands
+    /// beside the list — not on nothing.**
     ///
-    /// `pkgRow` draws the badge itself — `if pinned { HelmBadge(HbStr.pinned) }`
-    /// — and, in the narrow branch, also passes the row's own `action` to
-    /// `inspectorAction`. For a pinned formula `InspectorState.of` answers
-    /// `.pinned`, whose case in `inspectorAction` is `HelmBadge(HbStr.pinned)`
-    /// again — so the condition `action.action != .pinned` in
-    /// `HomebrewSettingsPage.swift` is the only thing standing between one badge
-    /// and two. Nothing else on this page draws a capsule fill, which is what
-    /// makes counting them a direct reading of the defect rather than a proxy:
-    /// a badge has no focus ring, so `rings`/`onRows` above cannot see it, and
-    /// that is exactly why the existing coverage of this branch stayed green
-    /// with the condition deleted.
+    /// Selection lives in `HomebrewViewModel`, per segment, and neither branch
+    /// of `managerBody` clears it — so this falls out of state rather than
+    /// needing anything held for it. Same fixture, same `hb`, mounted twice.
+    func testWideningPastTheSplitWithASelectionLandsBesideTheList() async {
+        let (hb, mvm, transport) = await loaded()
+        defer { withExtendedLifetime(transport) {} }
+        let band = narrowBand()
+        guard let narrow = band.first else { return }
+        let wide = threshold + 274
+
+        let selected = Cellar.wget.id
+        let pushed = draw(hb, mvm, at: narrow, segment: .installed, selecting: selected)
+        XCTAssertEqual(pushed.lists, 0, "precondition: narrow with a selection shows no list")
+
+        // Nothing re-selects here — the same `hb` carries the selection over,
+        // the way widening the real window would.
+        XCTAssertEqual(hb.selected, selected, "the selection did not survive the narrow reading")
+        let widened = draw(hb, mvm, at: wide, segment: .installed, selecting: hb.selected)
+        XCTAssertEqual(widened.lists, 1, """
+            widening to \(wide) pt with \(Cellar.wget.name) still selected drew \(widened.lists) \
+            master lists — the wide branch should show the list beside the package, not drop it
+            """)
+        XCTAssertGreaterThanOrEqual(widened.rings.count, 1, """
+            widening to \(wide) pt with a selection carried over drew no controls at all — landing \
+            "on nothing" is exactly the failure this invariant is against
+            """)
+    }
+
+    // MARK: - Back
+
+    /// **The button's own action, read from the source it is defined in.**
     ///
-    /// **Measured against HEAD, 2026-09-14, three consecutive runs**, on the
-    /// fixture's one pinned package (`git`) at the band's narrowest width: one
-    /// capsule with the condition in place. Deleting `action.action != .pinned`
-    /// gives two, both 71.5 × 15 pt, one drawn over the name and the other at
-    /// the row's trailing edge — `command grep -n 'capsule frame=' <the run's
-    /// own log>` is how that pair was read off, not carried over as a number.
-    func testAPinnedRowDrawsThePinnedBadgeOnlyOnce() async {
+    /// A rendered SwiftUI button carries no closure a test can call, so the
+    /// wiring is read the way `narrowBand` reads the window's numbers: as text,
+    /// inside the one computed property that defines it, rather than assumed.
+    private func backBarCallsSelectNil(file: StaticString = #filePath,
+                                       line: UInt = #line) -> Bool {
+        guard let text = try? RepoSource.text(of: "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
+        else {
+            XCTFail("HomebrewSettingsPage.swift could not be read", file: file, line: line)
+            return false
+        }
+        guard let range = text.range(of: "private var backBar: some View {"),
+              let end = text.range(of: "\n    }", range: range.upperBound..<text.endIndex)
+        else {
+            XCTFail("backBar's own declaration could not be found in the source", file: file, line: line)
+            return false
+        }
+        return text[range.upperBound..<end.lowerBound].contains("hb.select(nil)")
+    }
+
+    /// **Back is `select(nil)`, and `select(nil)` is what returns the list.**
+    ///
+    /// Two halves: the source read above says what `backBar`'s press does, and
+    /// this reads what that call produces — a selection is not held anywhere
+    /// `backBar` would have to reach into and clear by hand.
+    func testBackClearsTheSelectionAndTheListReturns() async {
+        XCTAssertTrue(backBarCallsSelectNil(), """
+            backBar no longer calls select(nil) — the runtime half of this test would then be \
+            reading a screen that presses a button doing something else
+            """)
+
+        let (hb, mvm, transport) = await loaded()
+        defer { withExtendedLifetime(transport) {} }
+        let band = narrowBand()
+        guard let width = band.first else { return }
+
+        let pushed = draw(hb, mvm, at: width, segment: .installed, selecting: Cellar.wget.id)
+        XCTAssertEqual(pushed.lists, 0, "precondition: a selection shows the package screen")
+
+        hb.select(nil)   // what backBar's press does
+        let backed = draw(hb, mvm, at: width, segment: .installed, selecting: hb.selected)
+        XCTAssertEqual(backed.lists, 1, "select(nil) did not bring the list back at \(width) pt")
+        XCTAssertNil(hb.selected, "select(nil) left a selection in place")
+    }
+
+    // MARK: - The pinned package's own badge
+
+    /// **A pinned package must not say «Pinned» twice.**
+    ///
+    /// `packageDetail` draws the badge once, from `inspectorAction`'s `.pinned`
+    /// case — the row that used to carry its own copy alongside it is gone, and
+    /// with it the condition (`action.action != .pinned`) that used to be all
+    /// that stood between one badge and two. What this now guards is the single
+    /// builder itself: nothing here should ever draw the badge from two places
+    /// again, at either width, because there is supposed to be only one.
+    func testAPinnedPackagesScreenDrawsThePinnedBadgeOnlyOnce() async {
         let (hb, mvm, transport) = await loaded()
         defer { withExtendedLifetime(transport) {} }
         let band = narrowBand()
         guard let width = band.first else { return }
         hb.segment = .updates
-        hb.select(nil)
+        hb.select(Cellar.git.id)
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(25)
         let capsules = capsuleLayers(on: mount.host)
         mount.drop()
         XCTAssertEqual(capsules.count, 1, """
-            the narrow updates page draws \(capsules.count) capsule-shaped layers \
-            (\(capsules)) where the fixture's one pinned package should draw its «Pinned» \
-            badge exactly once — a second one is `inspectorAction` repeating what the row \
-            already said.
+            the narrow screen for \(Cellar.git.name) draws \(capsules.count) capsule-shaped layers \
+            (\(capsules)) where the fixture's one pinned package should draw its «Pinned» badge \
+            exactly once
             """)
     }
 
@@ -429,7 +424,8 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
     }
 
     /// Which verb a button of this width carries, or nil when it is none of
-    /// them or more than one of them.
+    /// them or more than one of them — which is also what a `backBar` glyph
+    /// ring's width answers, since it matches no verb's measured width.
     ///
     /// A focus ring is drawn half a point inside the control's own width, so the
     /// tolerance is 1.5 against a separation of more than 4.

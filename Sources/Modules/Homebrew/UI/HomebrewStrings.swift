@@ -125,6 +125,10 @@ enum HbStr {
     /// The inspector with nothing to describe. It says where to look rather
     /// than what is missing: the list is right there on the left.
     static var nothingSelected: String { L("Select a package on the left") }
+    /// The narrow screen's way out of a selected package, back to the list —
+    /// the same key Disk's breadcrumb and Uninstaller's own step already read,
+    /// spelled once for the eight languages that answer it.
+    static var back: String { L("Back") }
     /// The row badge for a search hit already on this Mac. Not `segInstalled`
     /// — that names the tab, and this names a fact about one row; the two
     /// read differently even in English ("Installed" vs "already installed").

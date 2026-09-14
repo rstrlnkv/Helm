@@ -8,23 +8,26 @@ import HelmUI
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **The narrow branch has three segments, and one guard covered one and a half
-/// of them.**
+/// **The narrow package screen has three segments, and one guard reading a
+/// single package is not a sweep.**
 ///
-/// `TheNarrowPaneCanStillActOnAPackageTests` reads `.installed` at all three
-/// widths of the reachable band and `.updates` at one of them; `.search` is not
-/// read at any width by anything. That is the segment where `InspectorState.of`
-/// *branches* — a hit already on this Mac is offered `.uninstall` and a hit that
-/// is not is offered `.install`, decided inside the `.search` arm rather than
-/// handed down whole the way `.installed` hands down `.uninstall` — so it is the
-/// one segment where the narrow row can be right about one package and wrong
-/// about the one under it, and the one segment nothing was looking at.
+/// `TheNarrowPaneCanStillActOnAPackageTests` reads the installed segment in
+/// depth — the verb itself, the resize invariant, Back. What it does not do is
+/// walk every package in every segment: `.search` is the one place
+/// `InspectorState.of` *branches* on its own — a hit already on this Mac is
+/// offered `.uninstall` and a hit that is not is offered `.install`, decided
+/// inside the `.search` arm rather than handed down whole the way `.installed`
+/// hands down `.uninstall` — so it is the one segment where selecting one
+/// package can be right and the next one wrong, and nothing swept it.
 ///
-/// So this sweeps the cross product: every segment at every width of the band.
-/// For each cell the rows' own actions are counted against what
-/// `InspectorState.of` offers for exactly those packages, which is the same
-/// comparison the installed guard makes — an absence and an invention both fail
-/// it, and it does not care what the row's control is called.
+/// So this sweeps the cross product: every segment, every package in it, every
+/// width of the band. For each selection this reads whether the narrow screen
+/// replaced the list and whether it offered exactly the one action
+/// `InspectorState.of` says it should — nothing, for a pinned formula; the one
+/// action, for anything else — measured against a screen that is known to
+/// offer nothing (the fixture's own pinned formula), so the count needs no
+/// language to read: `backBar`'s own ring is the same shape at every width and
+/// every segment, and what varies is only whether a second one joined it.
 ///
 /// **The band is the same arithmetic and it is read out of the same file.**
 /// 860 − 320 = 540 is the narrowest pane the settings window can be dragged to,
@@ -41,12 +44,6 @@ import HelmUI
 /// that only filled `searchHits` would sit on the prompt and read zero rows,
 /// which is an absence that passes for the wrong reason; the row count is
 /// asserted before any action is counted for exactly that reason.
-///
-/// **Measured against 25daa5b5, 2026-09-14, three consecutive runs.** Installed
-/// 2 rows / 2 actions, updates 2 rows / 1 action (one pinned), search 2 rows /
-/// 2 actions, at each of 540, 550 and 559 pt. With `searchView`'s `action:`
-/// argument alone removed — the repair backed out of that one list — the search
-/// cells read 0 where 2 are offered and the other six cells stay green.
 @MainActor
 final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
@@ -62,14 +59,14 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         static let wget = BrewPackage(name: "wget", version: "1.25.0", isCask: false)
         static let openssl = BrewPackage(name: "openssl@3", version: "3.6.4", isCask: false)
         /// One upgradeable and one pinned: `InspectorState.of` offers an action
-        /// for one of the two, so a row count and an offer count differ here
-        /// and a check that confused them would show it.
+        /// for one of the two, and nothing for the other — the pinned one also
+        /// doubles as this file's "backBar alone" baseline.
         static let node = OutdatedPackage(name: "node", installed: "26.8.2", latest: "26.9.0",
                                           isCask: false)
         static let git = OutdatedPackage(name: "git", installed: "2.54.0", latest: "2.55.0",
                                          isCask: false, pinned: true)
         /// One hit already installed and one not — the two arms of the
-        /// `.search` branch, which is why this segment is worth its own cell.
+        /// `.search` branch, which is why this segment is worth its own cells.
         static let hits = [SearchHit(name: "wget", isCask: false),
                            SearchHit(name: "ripgrep", isCask: false)]
 
@@ -153,28 +150,22 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     // MARK: - Reading the page
 
     private struct Reading {
-        /// Focus rings inside the master list — one per bordered control a row
-        /// drew. A control above the list («Upgrade all», the search field) is
-        /// not one of these.
-        let onRows: [CGRect]
-        /// Rows of the master list, by their own cell views: "no action drew"
-        /// is true of a list with no rows in it, so the rows are the subject
-        /// that has to be there before the absence means anything.
-        let rows: Int
+        /// Every focus ring on the page — a bordered control, which is what
+        /// `backBar`'s own glyph button is, and what every action button is.
+        let rings: Int
         let lists: Int
     }
 
-    /// Mounts the page at `width` with `segment` showing and nothing selected,
-    /// types `query` into the search field when there is one, and reads what
-    /// drew.
+    /// Mounts the page at `width` with `segment` showing, types `query` into
+    /// the search field when there is one, selects `id`, and reads what drew.
     ///
     /// Light, named: an unnamed appearance is a reading of whatever this Mac is
     /// set to at this hour (`RenderedInk`'s reason).
     private func draw(_ hb: HomebrewViewModel, _ mvm: ModuleViewModel,
                       at width: CGFloat, segment: HomebrewViewModel.Segment,
-                      typing query: String? = nil) -> Reading {
+                      typing query: String? = nil, selecting id: String?) -> Reading {
         hb.segment = segment
-        hb.select(nil)
+        hb.select(id)
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(25)
@@ -187,21 +178,11 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
                                             object: field)
             mount.settle(25)
         }
-        var lists = 0
-        var onRows: [CGRect] = []
-        for (view, ancestry) in mount.host.everyViewWithAncestry {
-            let insideList = ancestry.contains { $0.appKitClassName.contains("ListCoreScrollView") }
-            if view.appKitClassName.contains("ListCoreScrollView") { lists += 1 }
-            if insideList, view.appKitClassName == "_FocusRingView" {
-                onRows.append(view.convert(view.bounds, to: mount.host))
-            }
-        }
-        // `NSTableRowView` and not a SwiftUI class name: `List` on macOS is an
-        // `NSTableView`, and its row view is the one class in this tree with a
-        // public symbol to match by type rather than by text.
-        let rows = mount.host.everyView(ofType: NSTableRowView.self).count
+        let lists = mount.host.everyView
+            .filter { $0.appKitClassName.contains("ListCoreScrollView") }.count
+        let rings = mount.host.everyView(named: "_FocusRingView").count
         mount.drop()
-        return Reading(onRows: onRows, rows: rows, lists: lists)
+        return Reading(rings: rings, lists: lists)
     }
 
     private func loaded() async -> (HomebrewViewModel, ModuleViewModel, Cellar) {
@@ -214,9 +195,10 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         return (hb, mvm, transport)
     }
 
-    /// What `InspectorState.of` offers for one package in one segment — the one
-    /// place that decides, and the thing the row has to agree with. `.pinned` is
-    /// not an offer: it is the badge the row already carries.
+    /// Whether `InspectorState.of` offers an action for one package in one
+    /// segment — the one place that decides, and the thing the narrow screen
+    /// has to agree with. `.pinned` is not an offer: it is the badge the
+    /// screen already carries.
     private func offers(_ hb: HomebrewViewModel, _ segment: HomebrewViewModel.Segment,
                         _ id: String) -> Bool {
         guard case let .package(subject) = InspectorState.of(
@@ -228,7 +210,9 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
     // MARK: - The cross product
 
-    func testEverySegmentOffersItsActionsAtEveryWidthUnderTheSplit() async {
+    /// **Every segment, every package, every width — replaced list, right
+    /// action count.**
+    func testEverySegmentOffersItsSelectionsActionAtEveryWidthUnderTheSplit() async {
         let (hb, mvm, transport) = await loaded()
         defer { withExtendedLifetime(transport) {} }
         let band = narrowBand()
@@ -239,37 +223,47 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
             (.updates, hb.outdated.map(\.id), nil),
             (.search, hb.searchHits.map(\.id), "w"),
         ]
+        // At least one package in the fixture that offers nothing, so "0
+        // extra" is a fact this file checked rather than an assumption.
+        XCTAssertFalse(offers(hb, .updates, Cellar.git.id), "precondition: the pinned fixture package")
 
-        for (segment, ids, query) in cells {
-            let expected = ids.filter { offers(hb, segment, $0) }.count
-            XCTAssertGreaterThan(expected, 0, """
-                the fixture leaves \(segment) with nothing `InspectorState.of` offers an action \
-                for, so every count below is zero against zero and this cell cannot fail
+        for width in band {
+            XCTAssertFalse(HomebrewSplit(availableWidth: width).showsInspector, """
+                \(width) pt is not under the split after all — the band was computed from the \
+                window's own numbers and one of them has moved
                 """)
+            // `backBar` alone, read off a package that offers nothing — the
+            // baseline every other reading at this width is compared against,
+            // so the count below needs no language to read.
+            let backOnly = draw(hb, mvm, at: width, segment: .updates, selecting: Cellar.git.id)
+            XCTAssertEqual(backOnly.lists, 0, "precondition: a selection replaces the list at \(width) pt")
 
-            for width in band {
-                XCTAssertFalse(HomebrewSplit(availableWidth: width).showsInspector, """
-                    \(width) pt is not under the split after all — the band was computed from the \
-                    window's own numbers and one of them has moved
+            for (segment, ids, query) in cells {
+                XCTAssertGreaterThan(ids.count, 0, "the fixture leaves \(segment) with nothing to select")
+
+                let none = draw(hb, mvm, at: width, segment: segment, typing: query, selecting: nil)
+                XCTAssertEqual(none.lists, 1, """
+                    \(none.lists) master lists drew for \(segment) at \(width) pt with nothing \
+                    selected, where one is the list this whole cell is about
                     """)
-                let reading = draw(hb, mvm, at: width, segment: segment, typing: query)
-                XCTAssertEqual(reading.lists, 1, """
-                    \(reading.lists) master lists drew for \(segment) at \(width) pt, where one \
-                    is the page — nothing below is a reading of the list this cell is about
-                    """)
-                XCTAssertEqual(reading.rows, ids.count, """
-                    \(segment) drew \(reading.rows) rows at \(width) pt where the fixture holds \
-                    \(ids.count) packages — «no action drew» is true of a list with no rows in it, \
-                    so the count below would pass for the wrong reason
-                    """)
-                XCTAssertEqual(reading.onRows.count, expected, """
-                    at \(width) pt the \(segment) list draws \(reading.onRows.count) actions on \
-                    its rows where `InspectorState.of` offers \(expected) for the same \
-                    \(ids.count) packages. Zero is the single-column branch drawing no action at \
-                    all — a list below 560 pt with nothing on it to press; more than \(expected) \
-                    is a narrow branch that decided for itself and offered something the \
-                    inspector refuses.
-                    """)
+
+                for id in ids {
+                    let expectsAction = offers(hb, segment, id)
+                    let reading = draw(hb, mvm, at: width, segment: segment, typing: query, selecting: id)
+                    XCTAssertEqual(reading.lists, 0, """
+                        selecting \(id) in \(segment) at \(width) pt still drew \(reading.lists) \
+                        master lists — a selection under the split should replace the list with \
+                        the package screen, not sit beside a list with no room for it
+                        """)
+                    let expected = backOnly.rings + (expectsAction ? 1 : 0)
+                    XCTAssertEqual(reading.rings, expected, """
+                        \(segment)'s screen for \(id) at \(width) pt draws \(reading.rings) \
+                        controls where \(backOnly.rings) (`backBar` alone) plus \
+                        \(expectsAction ? 1 : 0) (`InspectorState.of`'s own offer) is \(expected). \
+                        Equal to \(backOnly.rings) is a screen offering nothing where one action \
+                        was due; more is a second control nobody asked for.
+                        """)
+                }
             }
         }
     }

@@ -160,11 +160,17 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// **And one point below it the other branch really is the one drawing.**
     ///
     /// A threshold that gates nothing would pass the test above at every width.
-    /// Below it there is one column, so the list runs to the pane's own 12 pt
-    /// inset rather than stopping at a 310 pt master.
+    /// Below it and with nothing selected there is one column, so the list runs
+    /// to the pane's own 12 pt inset rather than stopping at a 310 pt master.
+    ///
+    /// **Nothing selected, unlike the test above.** Below the threshold a
+    /// selection now replaces the list with the package screen rather than
+    /// sitting beside it — that shape is `TheNarrowPaneCanStillActOnAPackage-
+    /// Tests`' subject — so the list is the pane's one column only while there
+    /// is nothing to select into, which is what this test is actually about.
     func testOnePointBelowTheThresholdOneColumnFillsThePane() async {
         let width = threshold - 1
-        let picked = await draw(at: width, selecting: TwoPackages.wget.id)
+        let picked = await draw(at: width, selecting: nil)
         guard let list = picked.lists.first else {
             return XCTFail("no list drew at \(width) pt, so no column was measured")
         }

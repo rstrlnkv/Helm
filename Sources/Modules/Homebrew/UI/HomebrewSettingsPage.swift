@@ -167,19 +167,41 @@ struct HomebrewSettingsPage: View {
             // The split is asked of the pane, not of the window: `HomebrewSplit`
             // carries the measured threshold, and a `private var` inside `body`
             // would be out of a test's reach (`SearchDisplay.swift`'s own reason).
+            //
+            // **The width decides the container, `packageDetail` decides the
+            // content.** Above the threshold the list and the package sit side
+            // by side; below it, selecting a row replaces the list with that
+            // same package view at full width, with `backBar` above it to
+            // return — there is exactly one builder for what a package draws,
+            // called from both places, so a wide inspector and a narrow screen
+            // cannot drift into offering two different things for one package.
             GeometryReader { proxy in
                 if HomebrewSplit(availableWidth: proxy.size.width).showsInspector {
                     HStack(spacing: HelmSpace.s5) {
                         listArea(showsDesc: false)
                             .frame(minWidth: 240, idealWidth: 310, maxWidth: 310)
                         Divider()
-                        inspector
+                        packageDetail
                             .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity,
                                   alignment: .topLeading)
                     }
+                } else if hb.selected != nil {
+                    // Selection already lives in `HomebrewViewModel`, per
+                    // segment, so a non-nil `selected` is the whole of what
+                    // puts this screen up — nothing new to hold here, and
+                    // widening past the threshold with a package selected
+                    // lands on that same package beside the list rather than
+                    // on nothing, because both branches read the one selection.
+                    VStack(spacing: 0) {
+                        backBar
+                        Divider()
+                        packageDetail
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
                 } else {
-                    // No inspector at this width, so the description — the one
-                    // thing the inspector was carrying — comes back to the row.
+                    // No selection and no room for a second column: the list
+                    // alone, with the description back on the row — the one
+                    // thing the package view was carrying for it.
                     listArea(showsDesc: true)
                 }
             }
@@ -214,8 +236,7 @@ struct HomebrewSettingsPage: View {
                     busy: HbStr.packagesLoading) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    hasUpdate: hasUpdate(pkg.id),
-                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil,
-                   action: showsDesc ? rowSubject(for: pkg.id) : nil)
+                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
         }
     }
 
@@ -237,8 +258,7 @@ struct HomebrewSettingsPage: View {
                 // choosing between them.
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
                        pinned: pkg.pinned,
-                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil,
-                       action: showsDesc ? rowSubject(for: pkg.id) : nil)
+                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
             }
         }
     }
@@ -262,33 +282,24 @@ struct HomebrewSettingsPage: View {
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
                            alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
                                                                               installed: hb.installed) != nil,
-                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil,
-                           action: showsDesc ? rowSubject(for: hit.id) : nil)
+                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
                 }
             }
         }
     }
 
-    /// What `InspectorState.of` would offer this package, read for a row of the
-    /// master list exactly the way `inspector` reads it for the selection — the
-    /// row and the inspector must not disagree about what a package offers, so
-    /// both come from this one call rather than a second switch that decides on
-    /// its own (CLAUDE.md). `nil` when the id names nothing `InspectorState.of`
-    /// recognises for the current segment, which a row from the same list never
-    /// hits.
-    private func rowSubject(for id: String) -> InspectorSubject? {
-        guard case let .package(subject) = InspectorState.of(
-            segment: hb.segment, selected: id, installed: hb.installed, outdated: hb.outdated,
-            loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, descriptions: hb.descriptions)
-        else { return nil }
-        return subject
-    }
+    // MARK: - Package detail
 
-    // MARK: - Inspector
-
-    /// The right column: what `InspectorState.of` decides about the current
-    /// selection, and nothing this page has not already read from `hb`.
-    private var inspector: some View {
+    /// **The one builder for what a package draws — there is no second one.**
+    ///
+    /// Above `HomebrewSplit`'s threshold this sits beside the list, in
+    /// `managerBody`'s `HStack`; below it, `managerBody` puts the same builder
+    /// full width behind `backBar`, in place of the list. Neither call site
+    /// passes it anything beyond what it already reads off `hb` — the width
+    /// only decides which container it sits in, never what it draws, which is
+    /// what keeps a wide reading and a narrow one from disagreeing about what
+    /// one package offers.
+    private var packageDetail: some View {
         Group {
             switch InspectorState.of(segment: hb.segment, selected: hb.selected,
                                      installed: hb.installed, outdated: hb.outdated,
@@ -323,6 +334,26 @@ struct HomebrewSettingsPage: View {
                 .padding(HelmSpace.s5)
             }
         }
+    }
+
+    /// The narrow screen's way out of `packageDetail`, back to the list —
+    /// `select(nil)` is the whole of it, the same setter the list's own
+    /// deselect already calls, so there is nothing new to hold for this. Same
+    /// shape as Disk's own `BreadcrumbBar` back control — a bordered glyph
+    /// button, `.help` for a sighted press and `.accessibilityLabel` for
+    /// VoiceOver, which is what a control with no word needs to be read at all.
+    private var backBar: some View {
+        HStack(spacing: HelmSpace.s3) {
+            Button {
+                hb.select(nil)
+            } label: {
+                Image(systemName: "chevron.backward")
+            }
+            .help(HbStr.back)
+            .accessibilityLabel(HbStr.back)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     /// Looked up by `BrewKey` id and never by name — `docker` is both a
@@ -430,22 +461,23 @@ struct HomebrewSettingsPage: View {
 
     // MARK: - Row helpers
 
-    /// A row of the master list. Below `HomebrewSplit`'s threshold there is no
-    /// inspector to carry an action, so the row carries its own again — the
-    /// same width that gets the description back (`design/Main.dc.html:86-98`
-    /// was the split layout's prototype and predates the narrow branch losing
-    /// its own control). `action` is `rowSubject(for:)`'s answer, the same call
-    /// `inspector` makes for the selection, so a row and the inspector cannot
-    /// offer two different things for one package.
+    /// A row of the master list — no button, at any width
+    /// (`design/Main.dc.html:86-98`): `dot · name(ellipsis) · badge · trailing`.
+    /// The one place an action ever draws is `packageDetail`, whether it sits
+    /// beside this list or replaces it — selecting a row is what reaches it,
+    /// which is the only way a selectable `List` row and a button never fight
+    /// the same click.
     ///
-    /// `desc` and `action` are passed only from the single-column branch, where
-    /// there is no inspector to carry either — `nil` omits the second line and
-    /// the trailing control entirely rather than reserving empty space, since
-    /// the split layout never re-flows a row that never draws them at all.
+    /// `desc` is passed only from the single-column branch, where there is no
+    /// package view beside the row to carry it — the row has the whole pane
+    /// to itself there, and keeps the description rather than dropping it,
+    /// since nothing else on that screen says what the package is before it is
+    /// selected. `nil` omits the second line entirely rather than reserving an
+    /// empty one, since the split layout never re-flows a row that never draws
+    /// a description at all.
     private func pkgRow(name: String, detail: String?, isCask: Bool,
                         pinned: Bool = false, alreadyInstalled: Bool = false,
-                        hasUpdate: Bool = false, desc: String? = nil,
-                        action: InspectorSubject? = nil) -> some View {
+                        hasUpdate: Bool = false, desc: String? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
             if hasUpdate {
                 // The only carrier of "an update exists" for this row — named,
@@ -471,13 +503,6 @@ struct HomebrewSettingsPage: View {
                 }
             }
             Spacer(minLength: 0)
-            // `.pinned` draws nothing here: the badge above already carries
-            // that fact for every row, selected or not, where `inspectorAction`
-            // would otherwise repeat it as a second badge on the one row that
-            // happens to be selected.
-            if let action, action.action != .pinned {
-                inspectorAction(action)
-            }
         }
         .frame(minHeight: 34)
     }
