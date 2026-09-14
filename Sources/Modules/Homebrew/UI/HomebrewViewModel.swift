@@ -38,14 +38,20 @@ import Module_Homebrew_Engine
     enum Segment: String, Hashable, CaseIterable, Sendable {
         case installed, updates, search
     }
-    @Published var segment: Segment = .installed
+    /// Written by the segmented picker's own binding, which never goes through
+    /// `select(_:)` — so this half of the subject carries its own retirement.
+    @Published var segment: Segment = .installed {
+        didSet { if segment != oldValue { subjectMoved() } }
+    }
 
     /// What is selected in each segment, as a `BrewKey` id.
     ///
     /// Per segment, because the three lists hold different things: the
     /// package being read in Установленные is not the hit being read in
     /// Поиск, and coming back to a segment should find what was left there.
-    @Published private(set) var selection: [Segment: String] = [:]
+    @Published private(set) var selection: [Segment: String] = [:] {
+        didSet { if selection[segment] != oldValue[segment] { subjectMoved() } }
+    }
 
     /// The current segment's selection, or nil when nothing is selected.
     var selected: String? { selection[segment] }
@@ -54,6 +60,27 @@ import Module_Homebrew_Engine
     /// person clicks the empty space below the rows, and a setter that
     /// cannot take it turns a deselect into a selection that never goes away.
     func select(_ id: String?) { selection[segment] = id }
+
+    /// The page has stopped describing the package an uninstall was asked
+    /// about, so the ask is retired — including one still out over the wire.
+    ///
+    /// **The subject of an ask is the pair `(segment, selection[segment])`**,
+    /// because that pair is what `packageDetail` draws and the Uninstall button
+    /// is raised from what it drew. Three gestures move off a package without
+    /// pressing Cancel and without leaving the page — Back on the narrow
+    /// screen, a click on another row, and the segmented picker — and none of
+    /// the three is a later press, so `LatestRequest` does not retire the query
+    /// on its own and the answer arrived to raise the app's only irreversible
+    /// deletion over a list, a different package or a different segment
+    /// (`MovingOffThePackageRetiresAnUninstallAskTests`). Both fields observe
+    /// this rather than each gesture: the two are the only writers of the pair,
+    /// and a fourth gesture cannot forget to call it.
+    ///
+    /// Unconditional once the value has actually moved, and that is the point:
+    /// a query still in flight has set nothing yet, so a guard on
+    /// `pendingUninstall != nil` would pass over exactly the case this exists
+    /// for. `cancelUninstall` retires the token as well as the dialog.
+    private func subjectMoved() { cancelUninstall() }
 
     /// Drops `segment`'s selection when its package is no longer in `ids`.
     ///
