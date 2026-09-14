@@ -1134,3 +1134,6 @@
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "Restos segue uma pasta que é um link simbólico e lista o que está na outra ponta. Antes essa pasta voltava vazia, então o que tinha ficado ali nunca aparecia.";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "O Homebrew remove o instalador baixado quando uma instalação falha, não só quando dá certo.";
 "Other installed packages still need it:" = "Outros pacotes instalados ainda precisam dele:";
+"Select a package on the left" = "Selecione um pacote à esquerda";
+"already installed" = "já instalado";
+"Update available" = "Atualização disponível";

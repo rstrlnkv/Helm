@@ -381,11 +381,21 @@ extension ModulePageRender {
     /// Four packages, and each one is a different row.
     ///
     /// A cask and a formula, because the row draws a badge for one and not the
-    /// other; a package with no description in the batch below, because a row whose
-    /// second line is missing is the row that reflows; and one name of 45
-    /// characters, because the row was measured against a long cask name beside a
-    /// German description and that is the case a ratchet should be reading rather
-    /// than the comfortable one.
+    /// other; and one name of 45 characters, because the row was measured
+    /// against a long cask name beside a German description and that is the
+    /// case a ratchet should be reading rather than the comfortable one.
+    ///
+    /// **`fixture-undescribed` no longer distinguishes a row at this render's
+    /// width.** It used to be the row whose second line was missing — a reflow
+    /// guard, from when every row carried its description. The description
+    /// moved into the inspector; at `ModulePageRender.pageWidth` (744, past
+    /// `HomebrewSplit`'s measured threshold) no row draws a second line at
+    /// all, described or not, so this package currently reads the same as a
+    /// described one in every ratchet built on this fixture. Kept rather than
+    /// renamed: it still exercises `brew desc` answering for three of four
+    /// names and not the fourth, which is what `descriptions` below is for,
+    /// and it is the row a narrower render — below the split threshold, where
+    /// the description returns to the row — would tell apart.
     private static let brewInstalled = [
         BrewPackage(name: "fixture-formula", version: "1.2.3", isCask: false),
         BrewPackage(name: "fixture-cask", version: "2026.7", isCask: true),

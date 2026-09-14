@@ -164,11 +164,23 @@ struct HomebrewSettingsPage: View {
             }
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
             Divider()
-            Group {
-                switch hb.segment {
-                case .installed: installedList
-                case .updates: updatesList
-                case .search: searchView
+            // The split is asked of the pane, not of the window: `HomebrewSplit`
+            // carries the measured threshold, and a `private var` inside `body`
+            // would be out of a test's reach (`SearchDisplay.swift`'s own reason).
+            GeometryReader { proxy in
+                if HomebrewSplit(availableWidth: proxy.size.width).showsInspector {
+                    HStack(spacing: HelmSpace.s5) {
+                        listArea(showsDesc: false)
+                            .frame(minWidth: 240, idealWidth: 310, maxWidth: 310)
+                        Divider()
+                        inspector
+                            .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity,
+                                  alignment: .topLeading)
+                    }
+                } else {
+                    // No inspector at this width, so the description — the one
+                    // thing the inspector was carrying — comes back to the row.
+                    listArea(showsDesc: true)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -188,21 +200,25 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    private var installedList: some View {
-        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil,
-                    busy: HbStr.packagesLoading) { pkg in
-            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
-                   desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
-                // Every other destructive action in Helm asks first; this one
-                // removed a cask — an app — on a single click.
-                Button(HbStr.uninstall) { Task { await hb.askToUninstall(pkg) } }
-                    .disabled(hb.running)
-                    .accessibilityLabel("\(HbStr.uninstall), \(pkg.name)")
-            }
+    @ViewBuilder
+    private func listArea(showsDesc: Bool) -> some View {
+        switch hb.segment {
+        case .installed: installedList(showsDesc: showsDesc)
+        case .updates: updatesList(showsDesc: showsDesc)
+        case .search: searchView(showsDesc: showsDesc)
         }
     }
 
-    private var updatesList: some View {
+    private func installedList(showsDesc: Bool) -> some View {
+        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil,
+                    busy: HbStr.packagesLoading) { pkg in
+            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
+                   hasUpdate: hasUpdate(pkg.id),
+                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+        }
+    }
+
+    private func updatesList(showsDesc: Bool) -> some View {
         VStack(spacing: 0) {
             if !hb.outdated.isEmpty {
                 HStack {
@@ -213,24 +229,16 @@ struct HomebrewSettingsPage: View {
             }
             listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil,
                         busy: HbStr.checkingForUpdates) { pkg in
-                pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask) {
-                    if pkg.pinned {
-                        // Still listed — somebody who pinned a formula still
-                        // wants to know a newer one exists — but not offered.
-                        // `brew upgrade` answers a pinned formula with "…is
-                        // pinned", so the button could only ever fail.
-                        HelmBadge(HbStr.pinned)
-                    } else {
-                        Button(HbStr.upgrade) { hb.upgrade(pkg) }
-                            .disabled(hb.running)
-                            .accessibilityLabel("\(HbStr.upgrade), \(pkg.name)")
-                    }
-                }
+                // Pinned and cask never overlap — `brew pin` is formulae only —
+                // so both badges may be drawn without choosing between them.
+                pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
+                       pinned: pkg.pinned,
+                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
             }
         }
     }
 
-    private var searchView: some View {
+    private func searchView(showsDesc: Bool) -> some View {
         VStack(spacing: 0) {
             HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
                             onSubmit: {
@@ -247,14 +255,98 @@ struct HomebrewSettingsPage: View {
             } else {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults, busy: HbStr.searching) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
-                           desc: hb.description(name: hit.name, isCask: hit.isCask)) {
-                        Button(HbStr.install) { hb.install(hit) }
-                            .disabled(hb.running)
-                            .accessibilityLabel("\(HbStr.install), \(hit.name)")
-                    }
+                           alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
+                                                                              installed: hb.installed) != nil,
+                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
                 }
             }
         }
+    }
+
+    // MARK: - Inspector
+
+    /// The right column: what `InspectorState.of` decides about the current
+    /// selection, and nothing this page has not already read from `hb`.
+    private var inspector: some View {
+        Group {
+            switch InspectorState.of(segment: hb.segment, selected: hb.selected,
+                                     installed: hb.installed, outdated: hb.outdated,
+                                     loadedOutdated: hb.loadedOutdated,
+                                     hits: hb.searchHits, descriptions: hb.descriptions) {
+            case .nothingSelected:
+                HelmEmptyState(message: HbStr.nothingSelected)
+            case let .package(subject):
+                VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                    HStack(spacing: HelmSpace.s3) {
+                        Text(subject.name).font(HelmText.sectionHeading)
+                        if subject.isCask { HelmBadge(HbStr.cask, tint: .purple) }
+                        if !subject.version.isEmpty {
+                            Text(subject.version).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        }
+                        Spacer(minLength: 0)
+                        inspectorAction(subject)
+                    }
+                    // The same fact the row's dot carries, said in words here —
+                    // the one place `InspectorSubject.updates` is read, since
+                    // `.installed`'s own action stays Uninstall either way.
+                    if case .available = subject.updates {
+                        Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
+                            .foregroundStyle(HelmSignal.warning)
+                            .font(HelmText.rowDetail)
+                    }
+                    if let desc = subject.desc {
+                        Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(HelmSpace.s5)
+            }
+        }
+    }
+
+    /// Looked up by `BrewKey` id and never by name — `docker` is both a
+    /// formula and a cask, which is the defect `BrewKey` was written against.
+    @ViewBuilder
+    private func inspectorAction(_ subject: InspectorSubject) -> some View {
+        switch subject.action {
+        case .uninstall:
+            Button(HbStr.uninstall) {
+                guard let pkg = hb.installed.first(where: { $0.id == subject.id }) else { return }
+                // Every other destructive action in Helm asks first; this one
+                // removed a cask — an app — on a single click.
+                Task { await hb.askToUninstall(pkg) }
+            }
+            .disabled(hb.running)
+        case .upgrade:
+            Button(HbStr.upgrade) {
+                guard let pkg = hb.outdated.first(where: { $0.id == subject.id }) else { return }
+                hb.upgrade(pkg)
+            }
+            .disabled(hb.running)
+        case .install:
+            Button(HbStr.install) {
+                guard let hit = hb.searchHits.first(where: { $0.id == subject.id }) else { return }
+                hb.install(hit)
+            }
+            .disabled(hb.running)
+        case .pinned:
+            // Still listed — somebody who pinned a formula still wants to know
+            // a newer one exists — but not offered. `brew upgrade` answers a
+            // pinned formula with "…is pinned", so the button could only ever
+            // fail.
+            HelmBadge(HbStr.pinned)
+        }
+    }
+
+    /// Whether an installed package has an update waiting, for the row's dot.
+    /// The same reading `InspectorState.of` takes for the same package, so the
+    /// row and the inspector cannot disagree about one fact.
+    private func hasUpdate(_ id: String) -> Bool {
+        if case .available = PackageStanding.updates(for: id, outdated: hb.outdated,
+                                                      loadedOutdated: hb.loadedOutdated) {
+            return true
+        }
+        return false
     }
 
     // MARK: - Console
@@ -317,26 +409,42 @@ struct HomebrewSettingsPage: View {
 
     // MARK: - Row helpers
 
-    private func pkgRow<Action: View>(name: String, detail: String?, isCask: Bool,
-                                      desc: String? = nil,
-                                      @ViewBuilder action: () -> Action) -> some View {
-        HStack(spacing: HelmSpace.s5) {
+    /// A row of the master list — no button, per the approved prototype
+    /// (`design/Main.dc.html:86-98`): `dot · name(ellipsis) · badge · trailing`.
+    /// Every action lives in the inspector now, which is the only way a
+    /// selectable `List` row and a button do not fight the same click.
+    ///
+    /// `desc` is passed only from the single-column branch, where there is no
+    /// inspector to carry it — `nil` omits the second line entirely rather
+    /// than reserving an empty one, since the split layout never re-flows a
+    /// row that never draws a description at all.
+    private func pkgRow(name: String, detail: String?, isCask: Bool,
+                        pinned: Bool = false, alreadyInstalled: Bool = false,
+                        hasUpdate: Bool = false, desc: String? = nil) -> some View {
+        HStack(spacing: HelmSpace.s3) {
+            if hasUpdate {
+                // The only carrier of "an update exists" for this row — named,
+                // so a colourblind or VoiceOver reading still has the fact.
+                Circle().fill(HelmSignal.warning).frame(width: 6, height: 6)
+                    .accessibilityLabel(HbStr.updateAvailable)
+            }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 HStack(spacing: 6) {
                     Text(name).lineLimit(1)
                     // Only when it says something: 46 of 47 rows were
                     // "formula", and a label with one value is an ornament.
+                    // Pinned and cask never overlap — `brew pin` is formulae
+                    // only — so both may be drawn without choosing one.
                     if isCask { HelmBadge(HbStr.cask, tint: .purple) }
+                    if pinned { HelmBadge(HbStr.pinned) }
+                    if alreadyInstalled { HelmBadge(HbStr.alreadyInstalled) }
                     if let detail { Text(detail).font(.caption2).foregroundStyle(HelmText.quiet) }
                 }
-                // The description arrives from a separate `brew desc` batch.
-                // The line is always present (empty until then) so rows keep
-                // their height and the list doesn't re-flow twice on load.
-                Text(desc ?? " ")
-                    .font(.caption2).foregroundStyle(HelmText.quiet).lineLimit(1)
+                if let desc {
+                    Text(desc).font(.caption2).foregroundStyle(HelmText.quiet).lineLimit(1)
+                }
             }
-            Spacer()
-            action().controlSize(.small)
+            Spacer(minLength: 0)
         }
         .frame(minHeight: 34)
     }
@@ -359,8 +467,12 @@ struct HomebrewSettingsPage: View {
         }
     }
 
+    /// `T.ID == String`: every list here is keyed by a `BrewKey` id, which is
+    /// also what `hb.selection` holds — no `String(describing:)` conversion
+    /// needed at the boundary.
     private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?, busy: String,
-                                                         @ViewBuilder row: @escaping (T) -> Row) -> some View {
+                                                         @ViewBuilder row: @escaping (T) -> Row) -> some View
+        where T.ID == String {
         Group {
             if items.isEmpty, let empty {
                 HelmEmptyState(message: empty)
@@ -370,9 +482,16 @@ struct HomebrewSettingsPage: View {
                 // still has to say what is being waited on.
                 HelmBusyState(busy)
             } else {
-                List(items) { row($0) }
-                    .listStyle(.inset)
-                    .padding(.horizontal, 12)
+                // A `List` with no selection has no focusable rows at all —
+                // arrow keys did nothing. Selecting is also how the inspector
+                // is reached, so this is the row's only door into the app now.
+                // No `.onTapGesture`, no `.listRowBackground`: macOS draws the
+                // system selection itself.
+                List(items, selection: Binding(get: { hb.selected }, set: { hb.select($0) })) { item in
+                    row(item)
+                }
+                .listStyle(.inset)
+                .padding(.horizontal, 12)
             }
         }
     }

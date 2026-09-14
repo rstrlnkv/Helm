@@ -605,8 +605,16 @@ extension ModulePageRender.Page {
     /// now draws, by the same arithmetic VPN's 124 uses — so the floor can
     /// still fail on a section disappearing rather than passing whatever is
     /// left. Lowered on the measurement, not to make a red test green.
+    ///
+    /// **Homebrew fell from 70 to 61 when the master list and inspector shell
+    /// landed.** The per-row Uninstall/Upgrade/Install button — several layers
+    /// apiece, on every row the fixture draws — moved out of the list and into
+    /// one inspector button for whichever row is selected, which is none by
+    /// default. Measured three consecutive runs of
+    /// `testTheWiredHomebrewPageIsTheManagerAndNotTheInstallScreen`, 61 every
+    /// time. Lowered on the measurement, not to make a red test green.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 70,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 61,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

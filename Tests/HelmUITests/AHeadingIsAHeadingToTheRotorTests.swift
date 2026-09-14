@@ -72,7 +72,11 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
                  why: "the watched folder in its row, between the switch that names it and the buttons"),
         RowTitle(file: "Sources/HelmUI/DesignSystem/HelmExplainer.swift", subject: "content.title",
                  why: "the same judgement as the custom-duration popover above: an explanation's "
-                     + "single title, over the points it introduces and nothing to jump between")
+                     + "single title, over the points it introduces and nothing to jump between"),
+        RowTitle(file: "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift", subject: "subject.name",
+                 why: "the inspector's own selected package, beside the badges and version that "
+                     + "describe it — the same judgement as `KeysTable.row.name`, a card's title "
+                     + "and not a heading over rows")
     ]
 
     // MARK: - The finding

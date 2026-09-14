@@ -121,4 +121,15 @@ enum HbStr {
     static var pinned: String {
         L("Pinned")
     }
+
+    /// The inspector with nothing to describe. It says where to look rather
+    /// than what is missing: the list is right there on the left.
+    static var nothingSelected: String { L("Select a package on the left") }
+    /// The row badge for a search hit already on this Mac. Not `segInstalled`
+    /// — that names the tab, and this names a fact about one row; the two
+    /// read differently even in English ("Installed" vs "already installed").
+    static var alreadyInstalled: String { L("already installed") }
+    /// The accessibility label of the row's coloured dot — the only carrier
+    /// of "an update exists" for a colourblind reader or one using VoiceOver.
+    static var updateAvailable: String { L("Update available") }
 }

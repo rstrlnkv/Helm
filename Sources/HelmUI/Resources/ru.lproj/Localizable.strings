@@ -1134,3 +1134,6 @@
 "Leftovers follows a folder that is a symbolic link and lists what is at the other end. Such a folder used to come back empty, so anything left behind there was never shown." = "«Остатки» проходят по папке, которая является символической ссылкой, и показывают то, что лежит на другом её конце. Раньше такая папка возвращалась пустой, и оставленное в ней не показывалось вовсе.";
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew удаляет скачанный установщик и когда установка не удалась, а не только когда она прошла успешно.";
 "Other installed packages still need it:" = "Он ещё нужен другим установленным пакетам:";
+"Select a package on the left" = "Выберите пакет слева";
+"already installed" = "уже установлен";
+"Update available" = "Доступно обновление";
