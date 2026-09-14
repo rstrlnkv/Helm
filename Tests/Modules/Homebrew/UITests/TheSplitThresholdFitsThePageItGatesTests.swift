@@ -1,0 +1,177 @@
+import XCTest
+import AppKit
+import SwiftUI
+import Foundation
+import HelmContract
+import HelmTestSupport
+import HelmUI
+@testable import Module_Homebrew_Engine
+@testable import Module_Homebrew_UI
+
+/// **A threshold is a claim about a layout, and `HomebrewSplitTests` pins the
+/// number rather than the claim.**
+///
+/// Those four cases assert `HomebrewSplit(490/543/560/834).showsInspector`
+/// against literal widths: a mutation of the constant goes red, and a constant
+/// that is *wrong about the page* does not. The measurement that chose 560 —
+/// 544 pt, "the master still crawling into the gutter at 543" — was taken on a
+/// probe of two bare rectangles and a `Divider()`, and it is not in the tree;
+/// nothing re-takes it, so the day `pkgRow` grows, the inspector's button gets a
+/// longer word, or SwiftUI changes how it splits a shortfall between two ranged
+/// children, 560 becomes a number with nothing behind it and no test notices.
+///
+/// So this asks the real page. It finds the threshold by asking `HomebrewSplit`
+/// itself (the constant is private, and reading it twice would be an assertion
+/// against its own declaration), mounts `HomebrewSettingsPage` there with a
+/// package selected, and reads where the two columns actually land.
+///
+/// **What it measures, as measured on 2026-09-14, three consecutive runs.** The
+/// master column is a `List` inset 12 pt inside its own frame; the inspector's
+/// action is the page's only `_FocusRingView` while a package is selected — the
+/// segmented picker and the borderless Refresh draw none. At the threshold the
+/// button ends at x = 548 in a 560 pt pane. Below the real floor it does not:
+/// with the threshold substituted for 460 the same button is drawn at
+/// 437.5…513.0 in a 460 pt pane — 53 pt past the edge, clipped, in a page that
+/// reports nothing wrong.
+///
+/// **And the floor of the shipping page is 521, not 544.** Swept one point at a
+/// time with the threshold substituted low, the action first fits inside the
+/// pane at 521 pt (520 draws it to 520.5) — which is the arithmetic floor
+/// 240 + 12 + 1 + 12 + 260 = 525 rounded down by the button's own trailing
+/// padding, not the 544 the doc comment records. 544 was measured on the probe
+/// shape, whose master carried `idealWidth: 310, maxWidth: 310` with no content
+/// of its own; the real master is a `List` that compresses, and the column that
+/// gets squeezed first is the *inspector*, not the master. So 560 sits 39 pt
+/// above the floor rather than 16.
+@MainActor
+final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
+
+    /// Answers the list query and nothing else; the page needs a Cellar to draw
+    /// rows from and a status saying brew is here, and no more than that.
+    private final class TwoPackages: EngineTransport, @unchecked Sendable {
+        private let stream = AsyncStream<EngineEvent>.makeStream()
+        var events: AsyncStream<EngineEvent> { stream.stream }
+
+        static let wget = BrewPackage(name: "wget", version: "1.25.0", isCask: false)
+        static let openssl = BrewPackage(name: "openssl@3", version: "3.6.4", isCask: false)
+
+        func send(_ command: EngineCommand) async throws -> Data {
+            switch HomebrewCommand(rawValue: command.name) {
+            case .status:
+                return try JSONEncoder().encode(
+                    BrewStatus(installed: true, brewPath: "/opt/fixture/bin/brew"))
+            case .listInstalled:
+                return try JSONEncoder().encode([Self.wget, Self.openssl])
+            case .descriptions:
+                return try JSONEncoder().encode(["wget": "retrieve files from the web"])
+            default:
+                return Data()
+            }
+        }
+    }
+
+    /// The narrowest width `HomebrewSplit` answers `true` for, asked of the type
+    /// rather than read off its private constant.
+    ///
+    /// A sweep and not a bisection on purpose: a bisection assumes the answer is
+    /// monotone, which is the property being taken on trust everywhere else here.
+    private var threshold: CGFloat {
+        var found: CGFloat?
+        for width in stride(from: CGFloat(200), through: 1200, by: 1) {
+            let shows = HomebrewSplit(availableWidth: width).showsInspector
+            if shows, found == nil { found = width }
+            // Monotone: once it shows, it must keep showing.
+            if let found, width > found { XCTAssertTrue(shows, "the split is not monotone in width") }
+        }
+        return found ?? 0
+    }
+
+    private struct Reading {
+        let rings: [CGRect]
+        let lists: [CGRect]
+    }
+
+    private func draw(at width: CGFloat, selecting id: String?) async -> Reading {
+        let transport = TwoPackages()
+        let mvm = ModuleViewModel(transport: transport)
+        let hb = HomebrewViewModel.shared(vm: mvm)
+        await hb.loadIfNeeded()
+        hb.select(id)
+        // Light, named: `RenderedInk`'s reason — an unnamed appearance is a
+        // reading of whatever this Mac is set to at this hour. Geometry is not
+        // ink, but a control's metrics are not guaranteed to be either.
+        let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
+                                  width: width, height: 700, appearance: .aqua)
+        mount.settle(30)
+        let rings = mount.host.everyView(named: "_FocusRingView")
+            .map { $0.convert($0.bounds, to: mount.host) }
+        let lists = mount.host.everyView
+            .filter { $0.appKitClassName.contains("ListCoreScrollView") }
+            .map { $0.convert($0.bounds, to: mount.host) }
+        mount.drop()
+        withExtendedLifetime(transport) {}
+        return Reading(rings: rings, lists: lists)
+    }
+
+    /// **The pane at the threshold holds everything the split branch draws.**
+    ///
+    /// The subject is asserted before the absence: the button has to be in the
+    /// tree at all, or "nothing is outside the pane" is true of a page that drew
+    /// nothing.
+    func testTheInspectorsActionIsInsideThePaneAtTheThreshold() async {
+        let width = threshold
+        XCTAssertGreaterThan(width, 0, "no width in 200…1200 shows the inspector")
+
+        let quiet = await draw(at: width, selecting: nil)
+        XCTAssertEqual(quiet.rings.count, 0, """
+            \(quiet.rings.count) control(s) on the page with nothing selected, where the \
+            inspector's action is the only one — the reading below cannot tell that action \
+            from whatever else has grown a focus ring
+            """)
+
+        let picked = await draw(at: width, selecting: TwoPackages.wget.id)
+        XCTAssertEqual(picked.rings.count, 1, """
+            selecting a package added \(picked.rings.count) control(s) at \(width) pt, where the \
+            inspector offers exactly one action — nothing below is a measurement of the button
+            """)
+        guard let button = picked.rings.first else { return }
+        XCTAssertLessThanOrEqual(button.maxX, width, """
+            the inspector's action is drawn to x = \(button.maxX) in a \(width) pt pane — past \
+            the edge, so it is clipped on the very width `HomebrewSplit` chose as wide enough \
+            for two columns. The threshold is a claim about this layout and the layout has \
+            moved under it.
+            """)
+        XCTAssertGreaterThanOrEqual(button.minX, 0,
+                                    "the inspector's action begins at x = \(button.minX)")
+
+        guard let list = picked.lists.first else {
+            return XCTFail("no master list drew at \(width) pt, so no column was measured")
+        }
+        XCTAssertGreaterThanOrEqual(list.minX, 0, """
+            the master column begins at x = \(list.minX) in a \(width) pt pane: it has crawled \
+            into the gutter, which is the failure the 544 pt measurement was taken against
+            """)
+        XCTAssertLessThan(list.maxX, button.minX, """
+            the master list runs to x = \(list.maxX) and the inspector's action begins at \
+            x = \(button.minX) — the two columns overlap
+            """)
+    }
+
+    /// **And one point below it the other branch really is the one drawing.**
+    ///
+    /// A threshold that gates nothing would pass the test above at every width.
+    /// Below it there is one column, so the list runs to the pane's own 12 pt
+    /// inset rather than stopping at a 310 pt master.
+    func testOnePointBelowTheThresholdOneColumnFillsThePane() async {
+        let width = threshold - 1
+        let picked = await draw(at: width, selecting: TwoPackages.wget.id)
+        guard let list = picked.lists.first else {
+            return XCTFail("no list drew at \(width) pt, so no column was measured")
+        }
+        XCTAssertEqual(list.maxX, width - 12, accuracy: 1, """
+            at \(width) pt the list runs to x = \(list.maxX) where a single column inset 12 pt \
+            ends at \(width - 12) — the split branch is still the one drawing below its own \
+            threshold, or the inset has moved and the reading above is measuring something else
+            """)
+    }
+}
