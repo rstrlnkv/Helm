@@ -612,9 +612,29 @@ extension ModulePageRender.Page {
     /// one inspector button for whichever row is selected, which is none by
     /// default. Measured three consecutive runs of
     /// `testTheWiredHomebrewPageIsTheManagerAndNotTheInstallScreen`, 61 every
-    /// time. Lowered on the measurement, not to make a red test green.
+    /// time.
+    ///
+    /// **61 carried no slack, unlike its neighbours, and it stayed 61 when
+    /// `inspectorAction` was rewritten to draw nothing for every case** — no
+    /// Uninstall, no Upgrade, no Install anywhere on the page, at any width —
+    /// because this fixture selects nothing and `pageWidth` (744) is above
+    /// `HomebrewSplit`'s 560 pt threshold, so neither the branch this reading
+    /// renders nor the state it renders it in ever reaches that button.
+    /// `TheNarrowPaneCanStillActOnAPackageTests` and
+    /// `TheSplitThresholdFitsThePageItGatesTests` are what catch that mutation
+    /// now, each at a width or a selection this reading does not carry — this
+    /// floor cannot be tightened into seeing it.
+    ///
+    /// What it *is* is a reading of the manager shell wired but with nothing
+    /// picked, and that much can still drift a little without meaning
+    /// anything: selecting a package adds the inspector's one action button,
+    /// measured at 67 layers against 61 unselected — three consecutive runs,
+    /// 2026-09-14. 55 is that six-layer margin under the unselected reading,
+    /// the way VPN and Layout carry a margin under theirs, so a page that has
+    /// quietly lost a section still fails here while an odd layer or two from
+    /// a future change does not.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 61,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 55,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

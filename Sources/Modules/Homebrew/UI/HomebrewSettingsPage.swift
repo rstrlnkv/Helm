@@ -214,7 +214,8 @@ struct HomebrewSettingsPage: View {
                     busy: HbStr.packagesLoading) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    hasUpdate: hasUpdate(pkg.id),
-                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil,
+                   action: showsDesc ? rowSubject(for: pkg.id) : nil)
         }
     }
 
@@ -229,11 +230,15 @@ struct HomebrewSettingsPage: View {
             }
             listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil,
                         busy: HbStr.checkingForUpdates) { pkg in
-                // Pinned and cask never overlap — `brew pin` is formulae only —
-                // so both badges may be drawn without choosing between them.
+                // A pinned formula and a cask can both carry a badge here — the
+                // parser does not refuse a `pinned` flag on a cask entry, even
+                // though `brew pin` only ever sets one on a formula
+                // (`BrewOutdatedParser.swift`) — so both may be drawn without
+                // choosing between them.
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
                        pinned: pkg.pinned,
-                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil,
+                       action: showsDesc ? rowSubject(for: pkg.id) : nil)
             }
         }
     }
@@ -257,10 +262,26 @@ struct HomebrewSettingsPage: View {
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
                            alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
                                                                               installed: hb.installed) != nil,
-                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
+                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil,
+                           action: showsDesc ? rowSubject(for: hit.id) : nil)
                 }
             }
         }
+    }
+
+    /// What `InspectorState.of` would offer this package, read for a row of the
+    /// master list exactly the way `inspector` reads it for the selection — the
+    /// row and the inspector must not disagree about what a package offers, so
+    /// both come from this one call rather than a second switch that decides on
+    /// its own (CLAUDE.md). `nil` when the id names nothing `InspectorState.of`
+    /// recognises for the current segment, which a row from the same list never
+    /// hits.
+    private func rowSubject(for id: String) -> InspectorSubject? {
+        guard case let .package(subject) = InspectorState.of(
+            segment: hb.segment, selected: id, installed: hb.installed, outdated: hb.outdated,
+            loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, descriptions: hb.descriptions)
+        else { return nil }
+        return subject
     }
 
     // MARK: - Inspector
@@ -409,18 +430,22 @@ struct HomebrewSettingsPage: View {
 
     // MARK: - Row helpers
 
-    /// A row of the master list — no button, per the approved prototype
-    /// (`design/Main.dc.html:86-98`): `dot · name(ellipsis) · badge · trailing`.
-    /// Every action lives in the inspector now, which is the only way a
-    /// selectable `List` row and a button do not fight the same click.
+    /// A row of the master list. Below `HomebrewSplit`'s threshold there is no
+    /// inspector to carry an action, so the row carries its own again — the
+    /// same width that gets the description back (`design/Main.dc.html:86-98`
+    /// was the split layout's prototype and predates the narrow branch losing
+    /// its own control). `action` is `rowSubject(for:)`'s answer, the same call
+    /// `inspector` makes for the selection, so a row and the inspector cannot
+    /// offer two different things for one package.
     ///
-    /// `desc` is passed only from the single-column branch, where there is no
-    /// inspector to carry it — `nil` omits the second line entirely rather
-    /// than reserving an empty one, since the split layout never re-flows a
-    /// row that never draws a description at all.
+    /// `desc` and `action` are passed only from the single-column branch, where
+    /// there is no inspector to carry either — `nil` omits the second line and
+    /// the trailing control entirely rather than reserving empty space, since
+    /// the split layout never re-flows a row that never draws them at all.
     private func pkgRow(name: String, detail: String?, isCask: Bool,
                         pinned: Bool = false, alreadyInstalled: Bool = false,
-                        hasUpdate: Bool = false, desc: String? = nil) -> some View {
+                        hasUpdate: Bool = false, desc: String? = nil,
+                        action: InspectorSubject? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
             if hasUpdate {
                 // The only carrier of "an update exists" for this row — named,
@@ -432,9 +457,10 @@ struct HomebrewSettingsPage: View {
                 HStack(spacing: 6) {
                     Text(name).lineLimit(1)
                     // Only when it says something: 46 of 47 rows were
-                    // "formula", and a label with one value is an ornament.
-                    // Pinned and cask never overlap — `brew pin` is formulae
-                    // only — so both may be drawn without choosing one.
+                    // "formula", and a label with one value is an ornament. A
+                    // pinned formula and a cask can both carry a badge here —
+                    // see `updatesList`'s own comment on why that is
+                    // representable even though `brew pin` never does it.
                     if isCask { HelmBadge(HbStr.cask, tint: .purple) }
                     if pinned { HelmBadge(HbStr.pinned) }
                     if alreadyInstalled { HelmBadge(HbStr.alreadyInstalled) }
@@ -445,6 +471,13 @@ struct HomebrewSettingsPage: View {
                 }
             }
             Spacer(minLength: 0)
+            // `.pinned` draws nothing here: the badge above already carries
+            // that fact for every row, selected or not, where `inspectorAction`
+            // would otherwise repeat it as a second badge on the one row that
+            // happens to be selected.
+            if let action, action.action != .pinned {
+                inspectorAction(action)
+            }
         }
         .frame(minHeight: 34)
     }
