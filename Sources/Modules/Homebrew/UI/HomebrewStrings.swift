@@ -129,9 +129,14 @@ enum HbStr {
     /// list itself («左のリストから», «请在左侧»), so the sentence was wrong in
     /// two languages more loudly than in the other six.
     static var nothingSelected: String { L("Select a package") }
-    /// The narrow screen's way out of a selected package, back to the list —
-    /// the same key Disk's breadcrumb and Uninstaller's own step already read,
-    /// spelled once for the eight languages that answer it.
+    /// The narrow screen's way out of a selected package, back to the list.
+    ///
+    /// The English text is the key, so every back control in the app that
+    /// means this word shares one entry in the eight `.strings` files and one
+    /// translation each. Which modules those are is not written here: this
+    /// comment named two of the four that already existed, and a list or a
+    /// count in prose is a thing that goes stale at the next module.
+    /// `command grep -rn 'L("Back")' Sources` answers it today.
     static var back: String { L("Back") }
     /// The row badge for a search hit already on this Mac. Not `segInstalled`
     /// — that names the tab, and this names a fact about one row; the two
