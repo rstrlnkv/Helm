@@ -250,15 +250,6 @@ public struct FileOpMarker: OpMarker {
 
 // MARK: - Install counts
 
-/// A tally two threads may touch. A lock rather than an actor, because what
-/// increments it is a `@Sendable` closure with nowhere to await.
-final class AskCount: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = 0
-    func record() { lock.lock(); value += 1; lock.unlock() }
-    var count: Int { lock.lock(); defer { lock.unlock() }; return value }
-}
-
 /// Homebrew's published install counts, cached in Helm's own folder.
 ///
 /// Two whole public documents, fetched at most once a day. Nothing this ask
@@ -542,23 +533,18 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// The refusal a suite run gets. A throw, because that is the shape the
     /// store already treats as "no new reading, leave the clock alone" — the
     /// same route an offline laptop takes.
+    ///
+    /// Named rather than anonymous because `ASuiteRunAsksHomebrewNothingTests`
+    /// asserts on it directly: `liveTransfer` under a test runner must throw
+    /// exactly this, which is the branch observable without a counter or a
+    /// listener — a request that is never sent leaves nothing else to see.
     struct NoWireUnderTest: Error {}
     static let refusedUnderTest: Transfer = { _ in throw NoWireUnderTest() }
-
-    /// How many requests have been handed to `URLSession` in this process.
-    ///
-    /// It exists for one assertion, and it is the only thing that can make it:
-    /// a test cannot see a request that was never sent, and counting *attempts*
-    /// here rather than packets on a wire is what keeps
-    /// `ASuiteRunAsksHomebrewNothingTests` from passing on a machine that
-    /// merely happens to be offline.
-    static let wireAsks = AskCount()
 
     /// The only place `URLSession` appears. A non-HTTP response cannot come
     /// back from an `https` request, so it is a throw rather than a case the
     /// store carries: everything above this line speaks `HTTPURLResponse`.
     private static let overTheNetwork: Transfer = { request in
-        wireAsks.record()
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
