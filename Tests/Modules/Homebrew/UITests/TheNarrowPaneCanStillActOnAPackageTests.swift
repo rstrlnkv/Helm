@@ -348,6 +348,65 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
         }
     }
 
+    // MARK: - The pinned row's own badge
+
+    /// **A pinned row must not say «Pinned» twice.**
+    ///
+    /// `pkgRow` draws the badge itself — `if pinned { HelmBadge(HbStr.pinned) }`
+    /// — and, in the narrow branch, also passes the row's own `action` to
+    /// `inspectorAction`. For a pinned formula `InspectorState.of` answers
+    /// `.pinned`, whose case in `inspectorAction` is `HelmBadge(HbStr.pinned)`
+    /// again — so the condition `action.action != .pinned` in
+    /// `HomebrewSettingsPage.swift` is the only thing standing between one badge
+    /// and two. Nothing else on this page draws a capsule fill, which is what
+    /// makes counting them a direct reading of the defect rather than a proxy:
+    /// a badge has no focus ring, so `rings`/`onRows` above cannot see it, and
+    /// that is exactly why the existing coverage of this branch stayed green
+    /// with the condition deleted.
+    ///
+    /// **Measured against HEAD, 2026-09-14, three consecutive runs**, on the
+    /// fixture's one pinned package (`git`) at the band's narrowest width: one
+    /// capsule with the condition in place. Deleting `action.action != .pinned`
+    /// gives two, both 71.5 × 15 pt, one drawn over the name and the other at
+    /// the row's trailing edge — `command grep -n 'capsule frame=' <the run's
+    /// own log>` is how that pair was read off, not carried over as a number.
+    func testAPinnedRowDrawsThePinnedBadgeOnlyOnce() async {
+        let (hb, mvm, transport) = await loaded()
+        defer { withExtendedLifetime(transport) {} }
+        let band = narrowBand()
+        guard let width = band.first else { return }
+        hb.segment = .updates
+        hb.select(nil)
+        let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
+                                  width: width, height: 700, appearance: .aqua)
+        mount.settle(25)
+        let capsules = capsuleLayers(on: mount.host)
+        mount.drop()
+        XCTAssertEqual(capsules.count, 1, """
+            the narrow updates page draws \(capsules.count) capsule-shaped layers \
+            (\(capsules)) where the fixture's one pinned package should draw its «Pinned» \
+            badge exactly once — a second one is `inspectorAction` repeating what the row \
+            already said.
+            """)
+    }
+
+    /// CALayer shapes whose corner radius is half their height — the signature a
+    /// SwiftUI `Capsule` fill leaves, which is the only shape `HelmBadge` draws
+    /// and the only capsule this page has any other reason to draw.
+    private func capsuleLayers(on view: NSView) -> [CGRect] {
+        guard let root = view.layer else { return [] }
+        var out: [CGRect] = []
+        func walk(_ layer: CALayer) {
+            let frame = root.convert(layer.bounds, from: layer)
+            if layer.cornerRadius > 1, abs(layer.cornerRadius - frame.height / 2) < 0.6 {
+                out.append(frame)
+            }
+            for sub in layer.sublayers ?? [] { walk(sub) }
+        }
+        walk(root)
+        return out
+    }
+
     /// The three verbs' button widths in a language where all six are separable.
     private func tellableApartLanguage() -> (AppLanguage, [InspectorSubject.Action: [CGFloat]])? {
         var found: (AppLanguage, [InspectorSubject.Action: [CGFloat]])?
