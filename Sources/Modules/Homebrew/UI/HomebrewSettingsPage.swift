@@ -7,18 +7,7 @@ import Module_Homebrew_Engine
 // cache is read by, which is the half that has to agree with the row.
 
 struct HomebrewSettingsPage: View {
-    /// Which list is on screen — and therefore which one Refresh reloads.
-    ///
-    /// It was an `Int`, tagged 0/1/2 in the picker, switched on in the body and
-    /// switched on again in `refresh`, where the third value fell through a
-    /// `default`. A fourth segment would have been drawn and would have
-    /// refreshed nothing, silently. Over an enum both switches are exhaustive.
-    private enum Segment: Hashable, CaseIterable {
-        case installed, updates, search
-    }
-
     @ObservedObject private var hb: HomebrewViewModel
-    @State private var segment: Segment = .installed
     @State private var query = ""
     /// The search a press of Return started, held so the next press can drop it.
     ///
@@ -147,10 +136,10 @@ struct HomebrewSettingsPage: View {
     private var managerBody: some View {
         VStack(spacing: 0) {
             HStack(spacing: HelmSpace.s5) {
-                Picker(HelmA11y.whatToShow, selection: $segment) {
-                    Text(HbStr.segInstalled).tag(Segment.installed)
-                    Text(HbStr.segUpdates).tag(Segment.updates)
-                    Text(HbStr.segSearch).tag(Segment.search)
+                Picker(HelmA11y.whatToShow, selection: $hb.segment) {
+                    Text(HbStr.segInstalled).tag(HomebrewViewModel.Segment.installed)
+                    Text(HbStr.segUpdates).tag(HomebrewViewModel.Segment.updates)
+                    Text(HbStr.segSearch).tag(HomebrewViewModel.Segment.search)
                 }
                 .pickerStyle(.segmented).labelsHidden()
                 // Its own width, not 300: the control asks 226.5 pt in English
@@ -158,12 +147,12 @@ struct HomebrewSettingsPage: View {
                 // languages and centred the rest — which walked the row's left
                 // edge from 20 pt to 75.5 while every row below it starts at 20.
                 .fixedSize()
-                .onChange(of: segment) { _, seg in
+                .onChange(of: hb.segment) { _, seg in
                     Task { await refresh(seg) }
                 }
                 Spacer(minLength: 0)
                 Button {
-                    Task { await refresh(segment) }
+                    Task { await refresh(hb.segment) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .helmSteadySpin(hb.running)
@@ -176,7 +165,7 @@ struct HomebrewSettingsPage: View {
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
             Divider()
             Group {
-                switch segment {
+                switch hb.segment {
                 case .installed: installedList
                 case .updates: updatesList
                 case .search: searchView
@@ -360,7 +349,7 @@ struct HomebrewSettingsPage: View {
     /// The switcher's answer is the right one — Search has nothing cached to
     /// refresh, and a button that quietly reloads a list you are not looking at
     /// is a button that did nothing.
-    private func refresh(_ segment: Segment) async {
+    private func refresh(_ segment: HomebrewViewModel.Segment) async {
         switch segment {
         case .installed: await hb.refreshInstalled()
         case .updates: await hb.refreshOutdated()

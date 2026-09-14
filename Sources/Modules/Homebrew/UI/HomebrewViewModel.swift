@@ -32,6 +32,43 @@ import Module_Homebrew_Engine
     /// after a list or search loads.
     @Published public private(set) var descriptions: [String: String] = [:]
 
+    /// Which list the page is showing, and therefore which selection below
+    /// applies. Internal, not `public` — nothing outside this target reads
+    /// it (`public` here means "another target uses this").
+    enum Segment: String, Hashable, CaseIterable, Sendable {
+        case installed, updates, search
+    }
+    @Published var segment: Segment = .installed
+
+    /// What is selected in each segment, as a `BrewKey` id.
+    ///
+    /// Per segment, because the three lists hold different things: the
+    /// package being read in Установленные is not the hit being read in
+    /// Поиск, and coming back to a segment should find what was left there.
+    @Published private(set) var selection: [Segment: String] = [:]
+
+    /// The current segment's selection, or nil when nothing is selected.
+    var selected: String? { selection[segment] }
+
+    /// `nil` as well as an id: `List(selection:)` writes `nil` when the
+    /// person clicks the empty space below the rows, and a setter that
+    /// cannot take it turns a deselect into a selection that never goes away.
+    func select(_ id: String?) { selection[segment] = id }
+
+    /// Drops `segment`'s selection when its package is no longer in `ids`.
+    ///
+    /// One segment per call, at the assignment that just replaced *that*
+    /// list — a reconcile run against a list that did not change is a silent
+    /// way to lose a selection. A list is replaced under a standing
+    /// selection for the most ordinary reasons: an uninstall in a terminal,
+    /// an upgrade finishing, a second search. A selection that survives its
+    /// package leaves the inspector describing something that is gone, with
+    /// buttons that would act on it.
+    private func reconcile(_ segment: Segment, against ids: Set<String>) {
+        guard let id = selection[segment], !ids.contains(id) else { return }
+        selection[segment] = nil
+    }
+
     /// One instance per host view model, for the app's lifetime.
     ///
     /// Leaving the page in Settings tears down the subtree and its
@@ -175,6 +212,7 @@ import Module_Homebrew_Engine
         guard let answer: [BrewPackage] = await client.request(HomebrewCommand.listInstalled)
         else { return }
         installed = answer
+        reconcile(.installed, against: Set(answer.map(\.id)))
         loadedInstalled = true
         listedBrew = status.brewPath
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
@@ -184,6 +222,7 @@ import Module_Homebrew_Engine
         guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
         else { return }
         outdated = answer
+        reconcile(.updates, against: Set(answer.map(\.id)))
         loadedOutdated = true
     }
     @Published public private(set) var loadedOutdated = false
@@ -215,6 +254,7 @@ import Module_Homebrew_Engine
         // has already drawn.
         guard searches.isLatest(mine) else { return }
         searchHits = hits
+        reconcile(.search, against: Set(hits.map(\.id)))
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name),
                                token: mine)
