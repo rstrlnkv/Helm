@@ -133,7 +133,8 @@ enum HbStr {
     /// — that names the tab, and this names a fact about one row; the two
     /// read differently even in English ("Installed" vs "already installed").
     static var alreadyInstalled: String { L("already installed") }
-    /// The accessibility label of the row's coloured dot — the only carrier
-    /// of "an update exists" for a colourblind reader or one using VoiceOver.
+    /// The accessibility label of the row's update marker, and the word the
+    /// package screen spells beside the same symbol — the only carrier of "an
+    /// update exists" for a colourblind reader or one using VoiceOver.
     static var updateAvailable: String { L("Update available") }
 }

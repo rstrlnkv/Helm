@@ -318,9 +318,10 @@ struct HomebrewSettingsPage: View {
                         Spacer(minLength: 0)
                         inspectorAction(subject)
                     }
-                    // The same fact the row's dot carries, said in words here —
-                    // the one place `InspectorSubject.updates` is read, since
-                    // `.installed`'s own action stays Uninstall either way.
+                    // The same fact the row's marker carries, said in words
+                    // here and with the same symbol — the one place
+                    // `InspectorSubject.updates` is read, since `.installed`'s
+                    // own action stays Uninstall either way.
                     if case .available = subject.updates {
                         Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
                             .foregroundStyle(HelmSignal.warning)
@@ -480,9 +481,20 @@ struct HomebrewSettingsPage: View {
                         hasUpdate: Bool = false, desc: String? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
             if hasUpdate {
-                // The only carrier of "an update exists" for this row — named,
-                // so a colourblind or VoiceOver reading still has the fact.
-                Circle().fill(HelmSignal.warning).frame(width: 6, height: 6)
+                // The only carrier of "an update exists" for this row, and a
+                // glyph rather than a dot for two reasons it takes both to
+                // settle. SwiftUI does not make a `Shape` an accessibility
+                // element, so the `.accessibilityLabel` a `Circle` used to
+                // carry here sat on nothing and VoiceOver read the row without
+                // the fact; an `Image` is an element and the label lands on it.
+                // And a dot has colour and no form, so the one reader who most
+                // needs a second channel — somebody who sees the screen but not
+                // the orange — had a marker that differs from "no marker" by
+                // hue alone. The arrow is `packageDetail`'s own symbol for this
+                // same fact, so the row and the package screen say it one way.
+                Image(systemName: "arrow.up.circle.fill")
+                    .foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail)
                     .accessibilityLabel(HbStr.updateAvailable)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
