@@ -29,17 +29,27 @@ final class InspectorStateTests: XCTestCase {
     /// would find whichever one comes first.
     private let dockerFormula = BrewPackage(name: "docker", version: "1.0.0", isCask: false)
     private let dockerCask = BrewPackage(name: "docker", version: "2.0.0", isCask: true)
+    /// A `brew doctor` finding, with the fix the engine judged runnable. The
+    /// body is the real one from this Mac's own output, heading and all, because
+    /// that is what `DoctorFixCandidate` reads — a reconstruction would let the
+    /// fixture and the extractor drift.
+    private let deprecated = DoctorIssue(
+        severity: .caution, title: "Some installed formulae are deprecated or disabled.",
+        body: "You should find replacements for the following formulae:\n\n  periphery",
+        fix: DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable))
 
     private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
                        installed: [BrewPackage]? = nil,
                        hits: [SearchHit]? = nil,
                        loadedOutdated: Bool = true,
+                       issues: [DoctorIssue]? = nil,
                        descriptions: [String: String] = [:]) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected,
                           installed: installed ?? [openssl, node],
                           outdated: [nodeOutdated, pinned],
                           loadedOutdated: loadedOutdated,
-                          hits: hits ?? [helm], descriptions: descriptions)
+                          hits: hits ?? [helm], issues: issues ?? [deprecated],
+                          descriptions: descriptions)
     }
 
     func testNothingSelectedIsItsOwnState() {
@@ -146,5 +156,37 @@ final class InspectorStateTests: XCTestCase {
                                               descriptions: [openssl.id: "Cryptography and SSL/TLS Toolkit"])
         else { return XCTFail("expected a package") }
         XCTAssertEqual(with.desc, "Cryptography and SSL/TLS Toolkit")
+    }
+
+    // MARK: - The health segment
+
+    /// A finding is its own kind of subject: nothing about it is composed from
+    /// two containers, and nothing about it is waited on.
+    func testASelectedFindingIsTheIssueItself() {
+        XCTAssertEqual(state(.health, deprecated.id), .issue(deprecated))
+    }
+
+    /// The same rule the other three segments carry, and it has to be the same
+    /// rule: a finding the last `brew doctor` no longer names is a stale
+    /// sentence about the machine with a live button under it.
+    func testASelectionTheIssueListNoLongerHoldsIsNothing() {
+        // A *different* finding rather than an empty list: with nothing in the
+        // list at all, a lookup that ignored the id and took whatever was first
+        // would answer nil by accident and this would pass over it.
+        let other = DoctorIssue(severity: .danger, title: "Something else", body: "", fix: nil)
+        XCTAssertEqual(state(.health, deprecated.id, issues: [other]), .nothingSelected)
+        XCTAssertEqual(state(.health, deprecated.id, issues: []), .nothingSelected)
+    }
+
+    /// **A finding is never read as a package, and a package never as a
+    /// finding.** The two lists are keyed differently — a `BrewKey` id against
+    /// `DoctorIssue`'s content-built one — but nothing stops a lookup that
+    /// ignored the segment from finding one in the other's list, and the
+    /// inspector would then offer Uninstall for a `brew doctor` warning.
+    func testTheSegmentDecidesWhichListIsSearched() {
+        XCTAssertEqual(state(.health, openssl.id), .nothingSelected,
+                       "a package id selected in the health segment found a package")
+        XCTAssertEqual(state(.installed, deprecated.id), .nothingSelected,
+                       "a finding's id selected in the installed segment found a finding")
     }
 }

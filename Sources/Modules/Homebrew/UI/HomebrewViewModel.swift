@@ -71,7 +71,25 @@ import Module_Homebrew_Engine
     /// applies. Internal, not `public` — nothing outside this target reads
     /// it (`public` here means "another target uses this").
     enum Segment: String, Hashable, CaseIterable, Sendable {
-        case installed, updates, search
+        case installed, updates, search, health
+
+        /// The word on the picker, beside the case it names.
+        ///
+        /// **The list of segments and the list of labels are one list.** The
+        /// picker used to spell three `Text(…).tag(…)` rows by hand, so a case
+        /// added to this enum drew no row at all: the segment existed, every
+        /// `switch` in the page had an arm for it, and there was no way to
+        /// reach it. A `switch` with no `default:` makes forgetting a label a
+        /// build error instead, and
+        /// `ARefusedDoctorIsNotAHealthyMacTests` names all four.
+        var label: String {
+            switch self {
+            case .installed: return HbStr.segInstalled
+            case .updates: return HbStr.segUpdates
+            case .search: return HbStr.segSearch
+            case .health: return HbStr.segHealth
+            }
+        }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.
@@ -160,6 +178,12 @@ import Module_Homebrew_Engine
             return outdated.first { $0.id == id }.map { ref($0.name, $0.isCask) }
         case .search:
             return searchHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+        // A finding is not a package: there is no `brew info` to ask about it,
+        // and `InspectorState.of` draws its second tier from nothing. Returning
+        // nil here is what keeps a click on an issue from spending a `brew
+        // info` run on a name that is not one.
+        case .health:
+            return nil
         }
     }
 
@@ -314,6 +338,15 @@ import Module_Homebrew_Engine
         await refreshStatus()
         await refreshInstalled()
         await refreshOutdated()
+        // And what `brew doctor` said, but **only if it has ever been asked**.
+        // An operation changes the machine the findings are about — running a
+        // fix is the clearest case, since the issue it answers is the one that
+        // should now be gone — so a kept reading is the page offering a fix for
+        // something already fixed. `brew doctor` is the slowest query in the
+        // module, though, and asking it after every install on behalf of
+        // somebody who has never opened this segment is a minute of `brew` for
+        // an answer nobody is waiting for; `.notAsked` is exactly that person.
+        if doctor != .notAsked { await refreshDoctor() }
         // And what `brew info` said, which an upgrade rewrites: the first tier
         // takes its version from the list above, so a kept answer left the
         // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
@@ -347,6 +380,71 @@ import Module_Homebrew_Engine
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
+    /// What `brew doctor` said, and **which of the three things it said**.
+    ///
+    /// A named reason per outcome rather than one array read three ways, for
+    /// the rule the port's own doc comment carries: "no issues" and "the
+    /// question could not be put" are the same empty array and must never be
+    /// the same sentence on screen. A machine nobody could examine is not a
+    /// healthy machine, and «Nothing to fix» over a refused query is the app
+    /// telling somebody their Mac is fine on the strength of a `brew` that
+    /// never answered.
+    @Published private(set) var doctor: DoctorReading = .notAsked
+
+    /// The issues to draw, which only an `.examined` reading has. Computed
+    /// rather than stored beside `doctor`: two fields are two accounts of one
+    /// answer, and the one that goes stale is the one a page reads.
+    var issues: [DoctorIssue] { doctor.issues }
+
+    /// **A refusal replaces the issues rather than keeping them.** The other
+    /// three lists keep their last answer when a query is refused, because a
+    /// stale package list is still a list of packages and the page says nothing
+    /// about it either way. This one is different in kind: the list *is* the
+    /// claim about the machine's health, and holding two issues on screen under
+    /// a reading that failed states that those two are still what is wrong. The
+    /// honest answer is that nothing is known right now, and the page says so.
+    /// Internal, not `public`: nothing outside `Module_Homebrew_UI` calls it,
+    /// and `public` in this tree means "another target uses this". Its public
+    /// neighbours predate that rule being applied to this file.
+    func refreshDoctor() async {
+        // **The installed list first, because the verdict is about it.**
+        // `DoctorFixCandidate.judging` decides `.runnable` against what is on
+        // this Mac, and opening this segment on a fresh launch finds that list
+        // unread — every fix would then read `.copyOnly` because the page has
+        // no Cellar rather than because the name is not in it. A list that
+        // refuses leaves `loadedInstalled` false and every fix copy-only, which
+        // is the safe direction and the honest one: Helm withholds the button it
+        // has no reading to justify.
+        if !loadedInstalled { await refreshInstalled() }
+        guard let answer: [DoctorIssue] = await client.request(HomebrewCommand.doctor) else {
+            doctor = .refused
+            reconcile(.health, against: [])
+            return
+        }
+        // The parser always answers `fix: nil` — a command read out of a tool's
+        // output is data until it has been judged — so this is where a body
+        // becomes a candidate and the candidate gets a verdict. The verdict
+        // decides what is *drawn*; `HomebrewEngine.runDoctorFix` takes its own
+        // against a list read at the press, which is what decides what runs.
+        let installedNames = installed.map(\.name)
+        doctor = .examined(answer.map { DoctorFixCandidate.judging($0, installed: installedNames) })
+        reconcile(.health, against: Set(issues.map(\.id)))
+    }
+
+    /// Sends one `brew doctor` fix to the engine, which judges it again before
+    /// it runs anything.
+    ///
+    /// The argv goes over the wire as it was drawn, and that is deliberate:
+    /// this side does not re-read the Cellar and does not re-judge, because a
+    /// second judgement here would be a second one against the same stale
+    /// reading. `HomebrewEngine.runDoctorFix` reads the installed list at the
+    /// press and refuses anything `DoctorFix.judge` will not admit — including
+    /// the case this design exists for, a package uninstalled in a terminal
+    /// between the draw and the press.
+    func runDoctorFix(_ fix: DoctorFix) {
+        client.fire(HomebrewCommand.doctorFix, encoding: fix.argv)
+    }
+
     public func refreshOutdated() async {
         guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
         else { return }

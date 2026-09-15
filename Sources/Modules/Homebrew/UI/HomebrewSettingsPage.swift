@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import HelmUI
 import Module_Homebrew_Engine
@@ -136,10 +137,14 @@ struct HomebrewSettingsPage: View {
     private var managerBody: some View {
         VStack(spacing: 0) {
             HStack(spacing: HelmSpace.s5) {
+                // Over `allCases`, not three rows spelled by hand: a segment
+                // whose label was forgotten used to be a segment with no row at
+                // all, reachable from nowhere and visible in no test.
+                // `Segment.label` is the `switch` that cannot forget one.
                 Picker(HelmA11y.whatToShow, selection: $hb.segment) {
-                    Text(HbStr.segInstalled).tag(HomebrewViewModel.Segment.installed)
-                    Text(HbStr.segUpdates).tag(HomebrewViewModel.Segment.updates)
-                    Text(HbStr.segSearch).tag(HomebrewViewModel.Segment.search)
+                    ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
+                        Text(segment.label).tag(segment)
+                    }
                 }
                 .pickerStyle(.segmented).labelsHidden()
                 // Its own width, not 300: the control asks 226.5 pt in English
@@ -168,20 +173,20 @@ struct HomebrewSettingsPage: View {
             // carries the measured threshold, and a `private var` inside `body`
             // would be out of a test's reach (`SearchDisplay.swift`'s own reason).
             //
-            // **The width decides the container, `packageDetail` decides the
-            // content.** Above the threshold the list and the package sit side
+            // **The width decides the container, `detail` decides the
+            // content.** Above the threshold the list and the subject sit side
             // by side; below it, selecting a row replaces the list with that
-            // same package view at full width, with `backBar` above it to
-            // return — there is exactly one builder for what a package draws,
-            // called from both places, so a wide inspector and a narrow screen
-            // cannot drift into offering two different things for one package.
+            // same view at full width, with `backBar` above it to return —
+            // there is exactly one builder per kind of subject, called from
+            // both places, so a wide inspector and a narrow screen cannot
+            // drift into offering two different things for one of them.
             GeometryReader { proxy in
                 if HomebrewSplit(availableWidth: proxy.size.width).showsInspector {
                     HStack(spacing: HelmSpace.s5) {
                         listArea(showsDesc: false)
                             .frame(minWidth: 240, idealWidth: 310, maxWidth: 310)
                         Divider()
-                        packageDetail
+                        detail
                             .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity,
                                   alignment: .topLeading)
                     }
@@ -195,7 +200,7 @@ struct HomebrewSettingsPage: View {
                     VStack(spacing: 0) {
                         backBar
                         Divider()
-                        packageDetail
+                        detail
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
                 } else {
@@ -228,6 +233,70 @@ struct HomebrewSettingsPage: View {
         case .installed: installedList(showsDesc: showsDesc)
         case .updates: updatesList(showsDesc: showsDesc)
         case .search: searchView(showsDesc: showsDesc)
+        case .health: healthList()
+        }
+    }
+
+    /// What `brew doctor` found, one row per finding.
+    ///
+    /// **Three states, and the middle two are not one state.** `listOrEmpty`'s
+    /// `empty: nil` is its wait, and that is the right shape for `.notAsked`;
+    /// the other two are the distinction this whole segment turns on. An empty
+    /// list after a reading that *happened* may be drawn as a clean machine;
+    /// the same empty list after a refusal may not, and says so in words of its
+    /// own. Folding them together would be the app telling somebody their Mac
+    /// is fine on the strength of a `brew` that never answered.
+    ///
+    /// No description line and no `showsDesc`: a finding's body is prose, often
+    /// several lines of it, and one clipped line of it in a row says less than
+    /// nothing. The title is the row.
+    @ViewBuilder
+    private func healthList() -> some View {
+        switch HealthListState.of(hb.doctor) {
+        case .busy:
+            HelmBusyState(HbStr.examiningThisMac)
+        case .clean:
+            HelmEmptyState(message: HbStr.nothingToFix)
+        case .unexaminable:
+            HelmEmptyState(message: HbStr.couldNotExamine)
+        case let .rows(issues):
+            // `listOrEmpty`'s own empty and busy arms are unreachable here —
+            // `.rows` is non-empty by construction — so the two sentences it
+            // would draw are spelled above, where the reading that earns each
+            // one is named.
+            listOrEmpty(issues, empty: HbStr.nothingToFix, busy: HbStr.examiningThisMac) { issue in
+                issueRow(issue)
+            }
+        }
+    }
+
+    /// A row of the health list: the severity as a badge, then the title.
+    /// Same shape as `pkgRow` — no button, at any width — since selecting is
+    /// what reaches the one place an action ever draws.
+    private func issueRow(_ issue: DoctorIssue) -> some View {
+        HStack(spacing: HelmSpace.s3) {
+            HelmBadge(Self.severityWord(issue.severity),
+                      tint: Self.severityTint(issue.severity))
+            Text(issue.title).lineLimit(2)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 34)
+    }
+
+    /// The badge's word and the badge's tint, apart from the views that draw
+    /// them: which severity reads as which word is a decision a test can hold,
+    /// and a `body` is not somewhere a test can reach.
+    static func severityWord(_ severity: DoctorSeverity) -> String {
+        switch severity {
+        case .caution: return HbStr.severityCaution
+        case .danger: return HbStr.severityDanger
+        }
+    }
+
+    static func severityTint(_ severity: DoctorSeverity) -> Color {
+        switch severity {
+        case .caution: return HelmSignal.warning
+        case .danger: return HelmSignal.danger
         }
     }
 
@@ -288,9 +357,10 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    // MARK: - Package detail
+    // MARK: - The inspector
 
-    /// **The one builder for what a package draws — there is no second one.**
+    /// The one dispatcher over `InspectorState`, and the only thing either
+    /// container mounts.
     ///
     /// Above `HomebrewSplit`'s threshold this sits beside the list, in
     /// `managerBody`'s `HStack`; below it, `managerBody` puts the same builder
@@ -298,58 +368,159 @@ struct HomebrewSettingsPage: View {
     /// passes it anything beyond what it already reads off `hb` — the width
     /// only decides which container it sits in, never what it draws, which is
     /// what keeps a wide reading and a narrow one from disagreeing about what
-    /// one package offers.
-    private var packageDetail: some View {
+    /// one subject offers.
+    ///
+    /// It decides nothing itself: `InspectorState.of` answers what is being
+    /// looked at, and each kind of subject has exactly one builder below.
+    ///
+    /// **The empty sentence belongs to the segment.** «Select a package» is
+    /// wrong over a list of findings, and one key means one thing — a finding
+    /// is not a package, and the languages that inflect the two differently are
+    /// the ones a shared key would have read worst in.
+    private var detail: some View {
         Group {
             switch InspectorState.of(segment: hb.segment, selected: hb.selected,
                                      installed: hb.installed, outdated: hb.outdated,
                                      loadedOutdated: hb.loadedOutdated,
-                                     hits: hb.searchHits, descriptions: hb.descriptions) {
+                                     hits: hb.searchHits, issues: hb.issues,
+                                     descriptions: hb.descriptions) {
             case .nothingSelected:
-                HelmEmptyState(message: HbStr.nothingSelected)
+                HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFinding
+                                                              : HbStr.nothingSelected)
             case let .package(subject):
-                // Scrolled, because the second tier is as long as the package
-                // makes it: openssl@3 answers with three tiles, a homepage, a
-                // tap, two notes, a dependency chip and four lines of caveats,
-                // and below `HomebrewSplit`'s threshold this has the console
-                // under it as well. A fixed column simply clipped the caveats.
-                ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                    HStack(spacing: HelmSpace.s3) {
-                        Text(subject.name).font(HelmText.sectionHeading)
-                        if subject.isCask { HelmBadge(HbStr.cask, tint: .purple) }
-                        if !subject.version.isEmpty {
-                            Text(subject.version).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        }
-                        Spacer(minLength: 0)
-                        inspectorAction(subject)
+                packageDetail(subject)
+            case let .issue(issue):
+                issueDetail(issue)
+            }
+        }
+    }
+
+    /// **The one builder for what a package draws — there is no second one.**
+    ///
+    /// Scrolled, because the second tier is as long as the package makes it:
+    /// openssl@3 answers with three tiles, a homepage, a tap, two notes, a
+    /// dependency chip and four lines of caveats, and below `HomebrewSplit`'s
+    /// threshold this has the console under it as well. A fixed column simply
+    /// clipped the caveats.
+    private func packageDetail(_ subject: InspectorSubject) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                HStack(spacing: HelmSpace.s3) {
+                    Text(subject.name).font(HelmText.sectionHeading)
+                    if subject.isCask { HelmBadge(HbStr.cask, tint: .purple) }
+                    if !subject.version.isEmpty {
+                        Text(subject.version).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     }
-                    // The same fact the row's marker carries, said in words
-                    // here and with the same symbol — the one place
-                    // `InspectorSubject.updates` is read, since `.installed`'s
-                    // own action stays Uninstall either way.
-                    if case .available = subject.updates {
-                        Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
-                            .foregroundStyle(HelmSignal.warning)
-                            .font(HelmText.rowDetail)
-                    }
-                    if let desc = subject.desc {
-                        Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    }
-                    // **The second tier, and only when there is an answer.**
-                    // Everything above this line is a function of the lists the
-                    // page already holds, so it is on screen the moment a row
-                    // is clicked. `hb.info` is nil while `brew info` is out and
-                    // stays nil when it refused — and a refusal, a missing brew
-                    // and a document this build cannot read are one nil
-                    // (`HomebrewEngine.info`), none of which has measured
-                    // anything. So there is no spinner in place of the package
-                    // and no tile with nothing in it: the tier is absent.
-                    if let info = hb.info { PackageSecondTier(info: info) }
+                    Spacer(minLength: 0)
+                    inspectorAction(subject)
                 }
-                .padding(HelmSpace.s5)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+                // The same fact the row's marker carries, said in words
+                // here and with the same symbol — the one place
+                // `InspectorSubject.updates` is read, since `.installed`'s
+                // own action stays Uninstall either way.
+                if case .available = subject.updates {
+                    Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
+                        .foregroundStyle(HelmSignal.warning)
+                        .font(HelmText.rowDetail)
                 }
+                if let desc = subject.desc {
+                    Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                }
+                // **The second tier, and only when there is an answer.**
+                // Everything above this line is a function of the lists the
+                // page already holds, so it is on screen the moment a row
+                // is clicked. `hb.info` is nil while `brew info` is out and
+                // stays nil when it refused — and a refusal, a missing brew
+                // and a document this build cannot read are one nil
+                // (`HomebrewEngine.info`), none of which has measured
+                // anything. So there is no spinner in place of the package
+                // and no tile with nothing in it: the tier is absent.
+                if let info = hb.info { PackageSecondTier(info: info) }
+            }
+            .padding(HelmSpace.s5)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    /// **The one builder for what a `brew doctor` finding draws.**
+    ///
+    /// Three shapes, and which one is drawn is `DoctorFix.kind`'s answer and
+    /// not this view's: a fix the engine judged `.runnable` gets the command
+    /// and a button that acts; a `.copyOnly` fix gets the command, a copy
+    /// affordance and **no button that acts**; an issue with no fix at all gets
+    /// neither, because there is nothing to say and a well with nothing in it
+    /// is a promise this page cannot keep.
+    ///
+    /// Scrolled for the reason `packageDetail` is: a `brew doctor` body is
+    /// prose of whatever length brew felt like, and the postflight block on
+    /// this Mac is three lines one of which is a full path.
+    private func issueDetail(_ issue: DoctorIssue) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                HStack(spacing: HelmSpace.s3) {
+                    HelmBadge(Self.severityWord(issue.severity),
+                              tint: Self.severityTint(issue.severity))
+                    Text(issue.title).font(HelmText.sectionHeading)
+                    Spacer(minLength: 0)
+                }
+                // Brew's own words, kept as brew wrote them — the parser keeps
+                // body lines verbatim on purpose (`DoctorParser.body`), and a
+                // body line naming a path is somebody's path.
+                Text(issue.body)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .textSelection(.enabled)
+                if let fix = issue.fix { fixBlock(fix) }
+            }
+            .padding(HelmSpace.s5)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    /// The command, whose label says whose reading it is, and whatever this app
+    /// may do with it.
+    ///
+    /// **No control here attributes the command to Homebrew.** Measured on this
+    /// Mac (Homebrew 7.0.1, 2026-09-15): `brew doctor` printed 1,194 bytes and
+    /// not one `brew …` command line, so `uninstall <name>` is Helm's reading
+    /// of a heading brew printed and not a line brew wrote —
+    /// `HbStr.helmReadsThisAs` and `HbStr.brewNamedNoCommand` are the two
+    /// places that say so, and the second is drawn for both kinds of fix,
+    /// because the provenance is a fact about the command rather than about the
+    /// button beside it.
+    ///
+    /// The copy is a pasteboard write from the view, the way `KeysTable` and
+    /// `LogView` already do it: there is no engine command for it, because
+    /// nothing leaves this process.
+    private func fixBlock(_ fix: DoctorFix) -> some View {
+        let command = (["brew"] + fix.argv).joined(separator: " ")
+        return VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            Text(HbStr.helmReadsThisAs).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            HStack(spacing: HelmSpace.s3) {
+                Text(command)
+                    .font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    // The token's own doc comment names a well of this kind as
+                    // its call site; the console above uses the same fill.
+                    .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
+                        .fill(HelmSurface.wellFill))
+                Button(HbStr.copyThisCommand) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                }
+                if fix.kind == .runnable {
+                    // The press hands the engine the argv and nothing else:
+                    // `HomebrewEngine.runDoctorFix` reads the installed list
+                    // again and judges it again, so what this starts is not
+                    // what this page judged.
+                    Button(HbStr.runThisCommand) { hb.runDoctorFix(fix) }
+                        .disabled(hb.running)
+                }
+            }
+            Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            if fix.kind == .copyOnly {
+                Text(HbStr.helmDoesNotRunThis).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
         }
     }
@@ -551,6 +722,9 @@ struct HomebrewSettingsPage: View {
         // Nothing cached to reload: the hits belong to a query, and reloading
         // the installed list behind a search is a button that did nothing.
         case .search: break
+        // The slowest query in the module, and the whole content of this
+        // segment: there is nothing else on the screen for Refresh to mean.
+        case .health: await hb.refreshDoctor()
         }
     }
 

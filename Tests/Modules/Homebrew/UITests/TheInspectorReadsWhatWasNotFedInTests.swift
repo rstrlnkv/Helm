@@ -23,10 +23,11 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
                        installed: [BrewPackage] = [], outdated: [OutdatedPackage] = [],
-                       hits: [SearchHit] = [], loadedOutdated: Bool = true) -> InspectorState {
+                       hits: [SearchHit] = [], issues: [DoctorIssue] = [],
+                       loadedOutdated: Bool = true) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
                           outdated: outdated, loadedOutdated: loadedOutdated,
-                          hits: hits, descriptions: [:])
+                          hits: hits, issues: issues, descriptions: [:])
     }
 
     private func subject(_ state: InspectorState, _ what: String,

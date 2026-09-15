@@ -76,7 +76,11 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
         RowTitle(file: "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift", subject: "subject.name",
                  why: "the inspector's own selected package, beside the badges and version that "
                      + "describe it — the same judgement as `KeysTable.row.name`, a card's title "
-                     + "and not a heading over rows")
+                     + "and not a heading over rows"),
+        RowTitle(file: "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift", subject: "issue.title",
+                 why: "the selected `brew doctor` finding's own title, beside the severity badge "
+                     + "that describes it — the same judgement as `subject.name` above, since "
+                     + "what follows is that one finding's prose and not a group of rows"),
     ]
 
     // MARK: - The finding

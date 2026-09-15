@@ -14,6 +14,12 @@ import Module_Homebrew_Engine
 enum InspectorState: Equatable {
     case nothingSelected
     case package(InspectorSubject)
+    /// One `brew doctor` finding, whole. Unlike a package, nothing is composed
+    /// for it from two containers and nothing about it is waited on — the
+    /// severity, the title and the body all arrive together from the one query,
+    /// and the fix beside them was put there by `HomebrewViewModel.refreshDoctor`
+    /// before this was ever asked.
+    case issue(DoctorIssue)
 
     static func of(segment: HomebrewViewModel.Segment,
                    selected: String?,
@@ -21,6 +27,7 @@ enum InspectorState: Equatable {
                    outdated: [OutdatedPackage],
                    loadedOutdated: Bool,
                    hits: [SearchHit],
+                   issues: [DoctorIssue],
                    descriptions: [String: String]) -> InspectorState {
         guard let selected else { return .nothingSelected }
         let desc = descriptions[selected]
@@ -54,6 +61,72 @@ enum InspectorState: Equatable {
             return .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
                                              version: "", desc: desc, updates: .notApplicable,
                                              action: .install))
+        case .health:
+            // The same shape as the three above: a selection the list no
+            // longer holds is nothing at all, not a stale finding kept on
+            // screen because it was there a moment ago.
+            guard let issue = issues.first(where: { $0.id == selected }) else { return .nothingSelected }
+            return .issue(issue)
+        }
+    }
+}
+
+/// What `brew doctor` answered — **and which of the three things it answered**.
+///
+/// The enum exists because two of the three are the same empty array, and the
+/// port's own doc comment (`DoctorParser.parse`) says so: nil is "the tool said
+/// nothing", `[]` is "it ran and found nothing". A caller that must tell them
+/// apart gets an enum naming each reason rather than a convention for reading
+/// one optional two ways — and here the caller that must tell them apart is a
+/// sentence a person decides whether to trust their Mac on.
+enum DoctorReading: Equatable {
+    /// Nobody has asked yet. The ordinary state of every launch: `loadIfNeeded`
+    /// does not run `brew doctor`, which is the slowest query in the module, so
+    /// this is what the segment shows until somebody opens it.
+    case notAsked
+    /// `brew doctor` ran and this is what it found — possibly nothing, which is
+    /// the one reading that may be drawn as a healthy machine.
+    case examined([DoctorIssue])
+    /// The question could not be put: brew is gone, the run timed out, or the
+    /// tool printed nothing at all where it always prints something. Not a
+    /// clean machine — an unexamined one.
+    case refused
+
+    var issues: [DoctorIssue] {
+        if case let .examined(issues) = self { return issues }
+        return []
+    }
+}
+
+/// What the health master list puts on screen — **four answers, and the middle
+/// two are the whole point.**
+///
+/// `SearchDisplay.state` is the shape this follows, for the reason that file
+/// gives: which sentence stands over which state is the whole of the decision,
+/// and a `body` is nowhere a test can reach.
+///
+/// `.clean` and `.unexaminable` are both an empty screen and they are not the
+/// same sentence. One is `brew doctor` having looked and found nothing, which
+/// is the only reading that may be drawn as a healthy machine; the other is the
+/// question never having been put — brew gone, the run cut off at the deadline,
+/// or a tool that printed nothing where it always prints something. Collapsed
+/// into one they read as «Nothing to fix» over a Mac nobody examined, which is
+/// this app telling somebody their machine is fine on the strength of an answer
+/// it never got.
+enum HealthListState: Equatable {
+    /// Nobody has asked yet, and something is on its way.
+    case busy
+    /// Examined, and nothing was found.
+    case clean
+    /// The question could not be put. Not a clean machine — an unread one.
+    case unexaminable
+    case rows([DoctorIssue])
+
+    static func of(_ reading: DoctorReading) -> HealthListState {
+        switch reading {
+        case .notAsked: return .busy
+        case .refused: return .unexaminable
+        case let .examined(issues): return issues.isEmpty ? .clean : .rows(issues)
         }
     }
 }

@@ -186,7 +186,8 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
                         _ id: String) -> InspectorSubject.Action? {
         guard case let .package(subject) = InspectorState.of(
             segment: segment, selected: id, installed: hb.installed, outdated: hb.outdated,
-            loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, descriptions: hb.descriptions)
+            loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, issues: hb.issues,
+            descriptions: hb.descriptions)
         else { return nil }
         return subject.action
     }
