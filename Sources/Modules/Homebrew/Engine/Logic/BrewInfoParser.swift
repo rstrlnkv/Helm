@@ -2,12 +2,13 @@ import Foundation
 
 /// Reads the document `brew info --json=v2` answers about one package.
 ///
-/// The document has ninety-odd keys, three of which differ in kind between a
+/// The document has ninety-odd keys, four of which differ in kind between a
 /// formula and a cask: the install facts (`installed` array of objects versus
 /// `installed`/`installed_time` scalars), the name (`name` string versus a
 /// `name` *array* that is a display list, not an identity — a cask's identity
-/// is `token`), and the licence (present for a formula, absent from a cask's
-/// document altogether). A synthesized `Decodable` over a struct that only
+/// is `token`), the current version (`versions.stable` inside an object versus
+/// a flat `version`), and the licence (present for a formula, absent from a
+/// cask's document altogether). A synthesized `Decodable` over a struct that only
 /// names the fields this module cares about cannot tell "a key was renamed
 /// upstream" from "Homebrew has nothing to say about this field" — both come
 /// back the same way, as a value quietly missing — so a renamed key would
@@ -53,6 +54,19 @@ enum BrewInfoParser {
                 ?? (entry["deprecation_replacement_cask"] as? String))
             : nil
 
+        // The fourth shape the two documents disagree about: a formula's
+        // current version is `versions.stable` — an object, beside `head` and a
+        // `bottle` flag — while a cask carries a flat `version`. Read here
+        // rather than left out because it is the *only* version a package that
+        // is not installed has anywhere in this module: `brew search` answers
+        // with names alone.
+        let latestVersion: String?
+        if isCask {
+            latestVersion = entry["version"] as? String
+        } else {
+            latestVersion = (entry["versions"] as? [String: Any])?["stable"] as? String
+        }
+
         var installedVersion: String?
         var installedAt: Date?
         var installedOnRequest: Bool?
@@ -79,6 +93,7 @@ enum BrewInfoParser {
             homepage: entry["homepage"] as? String,
             license: isCask ? nil : entry["license"] as? String,
             tap: entry["tap"] as? String,
+            latestVersion: latestVersion,
             installedVersion: installedVersion,
             installedAt: installedAt,
             installedOnRequest: installedOnRequest,

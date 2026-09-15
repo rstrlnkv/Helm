@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_Homebrew_Engine
 
-/// The document `brew info --json=v2` answers, and the three places a formula
+/// The document `brew info --json=v2` answers, and the four places a formula
 /// and a cask disagree about shape.
 ///
 /// Every fixture here is trimmed from a real document captured on this Mac on
@@ -21,6 +21,7 @@ final class BrewInfoParserTests: XCTestCase {
     {"formulae":[{"name":"openssl@3","desc":"Cryptography and SSL/TLS Toolkit",
     "homepage":"https://openssl-library.org","license":"Apache-2.0","tap":"homebrew/core",
     "deprecated":false,"deprecation_reason":"repo_archived","deprecation_replacement_formula":"openssl@4",
+    "versions":{"stable":"3.6.4","head":"HEAD","bottle":true},
     "versioned_formulae":["openssl@4","openssl@3.5"],"dependencies":["ca-certificates"],
     "caveats":"To add additional certificates…",
     "installed":[{"version":"3.6.4","time":1757800000,"installed_on_request":false}]}],"casks":[]}
@@ -41,6 +42,7 @@ final class BrewInfoParserTests: XCTestCase {
     {"formulae":[{"name":"periphery","desc":"Identify unused code in Swift projects",
     "homepage":"https://github.com/peripheryapp/periphery","license":"MIT","tap":"homebrew/core",
     "deprecated":true,"deprecation_reason":"repo_archived","deprecation_replacement_formula":null,
+    "versions":{"stable":"3.8.0","head":null,"bottle":true},
     "versioned_formulae":[],"dependencies":[],"caveats":null,
     "installed":[{"version":"3.8.0","time":1753500000,"installed_on_request":true}]}],"casks":[]}
     """
@@ -54,6 +56,8 @@ final class BrewInfoParserTests: XCTestCase {
         XCTAssertEqual(info.homepage, "https://openssl-library.org")
         XCTAssertEqual(info.license, "Apache-2.0")
         XCTAssertEqual(info.installedVersion, "3.6.4")
+        XCTAssertEqual(info.latestVersion, "3.6.4",
+                       "a formula's current version is `versions.stable`, not a flat key")
         XCTAssertEqual(info.installedOnRequest, false)
         XCTAssertEqual(info.siblings, ["openssl@4", "openssl@3.5"])
         XCTAssertEqual(info.dependencies, ["ca-certificates"])
@@ -72,6 +76,8 @@ final class BrewInfoParserTests: XCTestCase {
         XCTAssertEqual(info.name, "claude-code")
         XCTAssertNil(info.license, "a cask has no licence field, and an invented one is worse than none")
         XCTAssertEqual(info.installedVersion, "2.1.236")
+        XCTAssertEqual(info.latestVersion, "2.1.236",
+                       "a cask's current version is a flat `version`, with no `versions` object")
         XCTAssertNotNil(info.installedAt, "a cask's install time is top-level, not inside an array")
         XCTAssertNil(info.installedOnRequest, "a cask does not record who asked for it")
     }
@@ -93,6 +99,7 @@ final class BrewInfoParserTests: XCTestCase {
         let json = """
         {"formulae":[{"name":"helm","desc":"Kubernetes package manager","homepage":"https://helm.sh",
         "license":"Apache-2.0","tap":"homebrew/core","deprecated":false,"versioned_formulae":[],
+        "versions":{"stable":"3.19.1","head":null,"bottle":true},
         "dependencies":[],"caveats":null,"installed":[]}],"casks":[]}
         """
         guard let info = BrewInfoParser.parse(data(json), isCask: false) else {
@@ -101,6 +108,11 @@ final class BrewInfoParserTests: XCTestCase {
         XCTAssertNil(info.installedVersion)
         XCTAssertNil(info.installedAt)
         XCTAssertNil(info.installedOnRequest)
+        XCTAssertEqual(info.latestVersion, "3.19.1", """
+            a package that is not installed has no version anywhere else in this module — \
+            the lists carry one only for what is on disk, and `brew search` answers with \
+            names alone
+            """)
         XCTAssertEqual(info.desc, "Kubernetes package manager")
     }
 

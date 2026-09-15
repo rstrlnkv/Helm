@@ -154,10 +154,10 @@ final class TheInspectorDoesNotWaitForInfoTests: XCTestCase {
     }
 
     private static func info(_ name: String, version: String,
-                            onRequest: Bool? = false) -> PackageInfo {
+                             onRequest: Bool? = false) -> PackageInfo {
         PackageInfo(name: name, isCask: false, desc: "Cryptography and SSL/TLS Toolkit",
                     homepage: "https://openssl-library.org", license: "Apache-2.0",
-                    tap: "homebrew/core", installedVersion: version,
+                    tap: "homebrew/core", latestVersion: version, installedVersion: version,
                     installedAt: Date(timeIntervalSince1970: 1_757_700_000),
                     installedOnRequest: onRequest, deprecationReason: nil, replacement: nil,
                     siblings: ["openssl@1.1"], dependencies: ["ca-certificates"], caveats: nil)

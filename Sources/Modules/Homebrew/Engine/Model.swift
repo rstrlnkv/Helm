@@ -96,6 +96,14 @@ public struct PackageInfo: Codable, Equatable, Sendable {
     /// nil for every cask — the field does not exist in that document at all.
     public let license: String?
     public let tap: String?
+    /// What Homebrew would install right now — a formula's `versions.stable`,
+    /// a cask's `version`. nil when the document names neither.
+    ///
+    /// The only version a package that is **not** installed has: the lists the
+    /// page draws its first tier from carry a version for an installed package
+    /// and an outdated one, and `brew search` answers with names alone, so a
+    /// search hit has no version anywhere else in this module.
+    public let latestVersion: String?
     public let installedVersion: String?
     public let installedAt: Date?
     /// nil when not installed, and also nil for a cask, which never records
@@ -110,11 +118,13 @@ public struct PackageInfo: Codable, Equatable, Sendable {
     public let caveats: String?
 
     public init(name: String, isCask: Bool, desc: String?, homepage: String?, license: String?,
-                tap: String?, installedVersion: String?, installedAt: Date?,
-                installedOnRequest: Bool?, deprecationReason: String?, replacement: String?,
-                siblings: [String], dependencies: [String], caveats: String?) {
+                tap: String?, latestVersion: String?, installedVersion: String?,
+                installedAt: Date?, installedOnRequest: Bool?, deprecationReason: String?,
+                replacement: String?, siblings: [String], dependencies: [String],
+                caveats: String?) {
         self.name = name; self.isCask = isCask; self.desc = desc; self.homepage = homepage
-        self.license = license; self.tap = tap; self.installedVersion = installedVersion
+        self.license = license; self.tap = tap; self.latestVersion = latestVersion
+        self.installedVersion = installedVersion
         self.installedAt = installedAt; self.installedOnRequest = installedOnRequest
         self.deprecationReason = deprecationReason; self.replacement = replacement
         self.siblings = siblings; self.dependencies = dependencies; self.caveats = caveats
