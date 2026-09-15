@@ -446,9 +446,18 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                                     env: Self.queryEnvironment)
         guard !refused(result.status, query: "info") else { return nil }
         guard let parsed = BrewInfoParser.parse(result.stdout, isCask: isCask) else {
+            // **Not "keeping the last answer".** That is this file's wording for
+            // the queries whose caller does keep — `outdated` two hundred lines
+            // up says it truthfully, because a full Cellar drawn as "no
+            // packages" is the failure there. This one is the other kind:
+            // `HomebrewViewModel.refillInfo` clears `info` before every ask and
+            // assigns this nil over the cleared field, so nothing is kept and
+            // the second tier is simply absent. The dev channel is triaged off
+            // this log, and a line that names the wrong outcome sends the
+            // reading after a stale answer that does not exist.
             HelmLog.shared.warn(Self.moduleID,
                                 "info: brew answered a shape this build cannot read "
-                                + "— keeping the last answer")
+                                + "— nothing is drawn for this package")
             return nil
         }
         return parsed
