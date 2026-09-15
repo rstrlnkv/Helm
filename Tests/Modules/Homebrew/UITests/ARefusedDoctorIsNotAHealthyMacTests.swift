@@ -52,6 +52,13 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     private final class Clinic: EngineTransport, @unchecked Sendable {
         private let stream = AsyncStream<EngineEvent>.makeStream()
         var events: AsyncStream<EngineEvent> { stream.stream }
+        /// The engine's own door for an operation's state, used here for the
+        /// one state no launch produces: a fix judged again and refused.
+        func emit(_ state: OpState) {
+            stream.continuation.yield(EngineEvent(
+                name: HomebrewEvent.opState.rawValue,
+                payload: (try? JSONEncoder().encode(state)) ?? Data()))
+        }
 
         private let lock = NSLock()
         private var _issues: [DoctorIssue]?
@@ -292,6 +299,64 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
                            "\(language.rawValue): two segments share a word — \(words)")
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language.rawValue): an unnamed segment")
         }
+    }
+
+    // MARK: - The refusal reaches the page
+
+    /// **Every reason the engine can name has a sentence, or is one the page
+    /// draws its own pill for.**
+    ///
+    /// The console's note was an `if` against one reason, so a second one drew
+    /// a bare «Failed» with nothing saying why — a refusal reaching the page as
+    /// an empty fact. `.stopped` is the only nil, and it is nil because the arm
+    /// above draws its own pill for it: the person asked for that end.
+    func testEveryFailureReasonHasSomethingToSay() {
+        AppLanguage.each { language in
+            for reason in OpFailureReason.allCases where reason != .stopped {
+                let note = HomebrewSettingsPage.failureNote(reason)
+                XCTAssertNotNil(note, """
+                    \(language.rawValue): \(reason.rawValue) draws «Failed» and no reason, so \
+                    the person is told the operation failed and nothing about why
+                    """)
+                XCTAssertFalse(note?.isEmpty ?? true, "\(language.rawValue): \(reason.rawValue)")
+            }
+            let notes = OpFailureReason.allCases.compactMap(HomebrewSettingsPage.failureNote)
+            XCTAssertEqual(Set(notes).count, notes.count, """
+                \(language.rawValue): two reasons share a sentence, so the page says the same \
+                thing about brew vanishing and about a command it judged again and refused
+                """)
+        }
+    }
+
+    /// And the console it is drawn in is on the page at all. A refusal is
+    /// emitted before anything launches, so it writes no output line — with the
+    /// console gated on having output, the whole report had nowhere to appear.
+    func testARefusalIsDrawnEvenWithNothingInTheConsole() async {
+        let (hb, mvm, clinic) = model([])
+        await hb.loadIfNeeded()
+        XCTAssertTrue(hb.consoleLines.isEmpty, "precondition: nothing has been written")
+
+        let idle = MountedRender(HomebrewSettingsPage(vm: mvm),
+                                 width: 900, height: 700, appearance: .aqua)
+        idle.settle(20)
+        let quiet = idle.host.everyView.count
+        idle.drop()
+
+        clinic.emit(OpState(phase: .failed, label: "uninstall periphery", reason: .fixRefused))
+        // The view model consumes the stream on a task of its own; a turn of
+        // the loop is what delivers it.
+        for _ in 0..<20 where hb.op.phase != .failed { await Task.yield() }
+        XCTAssertEqual(hb.op.reason, .fixRefused, "the refusal never reached the view model")
+        let failed = MountedRender(HomebrewSettingsPage(vm: mvm),
+                                   width: 900, height: 700, appearance: .aqua)
+        failed.settle(20)
+        let loud = failed.host.everyView.count
+        failed.drop()
+
+        XCTAssertGreaterThan(loud, quiet, """
+            a refused fix drew nothing at all: the console is where the reason goes and it was \
+            gated on there being output, which a refusal before the launch never produces
+            """)
     }
 
     // MARK: - The fix, read off a mounted page

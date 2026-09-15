@@ -33,7 +33,11 @@ struct HomebrewSettingsPage: View {
             } else {
                 installScreen
             }
-            if !hb.consoleLines.isEmpty || hb.running {
+            // `.failed` as well, and that is not cosmetic: an operation the
+            // engine refused before it launched anything writes no console
+            // line, so a refusal with an empty console had no console to be
+            // drawn in and reached the page as nothing at all.
+            if !hb.consoleLines.isEmpty || hb.running || hb.op.phase == .failed {
                 Divider()
                 console
             }
@@ -281,6 +285,24 @@ struct HomebrewSettingsPage: View {
             Spacer(minLength: 0)
         }
         .frame(minHeight: 34)
+    }
+
+    /// What the console says beside «Failed», when the engine knew more than an
+    /// exit code.
+    ///
+    /// **A `switch` over every reason, with no `default:`.** This was an `if`
+    /// against one reason, so a second one — a `brew doctor` fix the engine
+    /// judged again and would not run — drew a bare «Failed» with nothing
+    /// saying why, which is a refusal reaching the page as an empty fact.
+    /// `.stopped` is nil because the arm above this one draws its own pill: the
+    /// person asked for that end, and it is not a failure to explain.
+    static func failureNote(_ reason: OpFailureReason?) -> String? {
+        guard let reason else { return nil }
+        switch reason {
+        case .brewMissing: return HbStr.brewGone
+        case .stopped: return nil
+        case .fixRefused: return HbStr.fixNotRunnable
+        }
     }
 
     /// The badge's word and the badge's tint, apart from the views that draw
@@ -639,8 +661,8 @@ struct HomebrewSettingsPage: View {
         case .failed:
             HStack(spacing: 6) {
                 Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
-                if hb.op.reason == .brewMissing {
-                    Text(HbStr.brewGone).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                if let note = Self.failureNote(hb.op.reason) {
+                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 }
             }
         case .idle:
