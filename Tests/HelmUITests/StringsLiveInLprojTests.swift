@@ -139,6 +139,11 @@ final class StringsLiveInLprojTests: XCTestCase {
         // non-Latin scripts have a word of their own and use it.
         "Hosts": [.es, .de, .pt],
         "Image": [.fr],
+        // The package view's licence tile. The English key is the British
+        // spelling, which is the French word — «licence», capitalised as a
+        // label. The other six each have their own: «Лицензия», «Licencia»,
+        // «Lizenz», «ライセンス», «许可证», «Licença».
+        "Licence": [.fr],
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
         "MB": [.es, .de, .ja, .zh, .pt],
@@ -173,6 +178,12 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Timer": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],
+        // The same two languages as the dial above it, for the same reason
+        // and now at the package view's version tile: French and German
+        // both write the word the way English does. The four non-Latin
+        // scripts and the two Iberian languages do not — «Версия»,
+        // «Versión», «バージョン», «版本», «Versão».
+        "Version": [.fr, .de],
         "Video": [.de],
         "VPN": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],
