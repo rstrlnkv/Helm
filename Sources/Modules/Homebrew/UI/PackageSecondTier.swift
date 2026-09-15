@@ -41,14 +41,15 @@ struct PackageSecondTier: View {
             if !info.dependencies.isEmpty {
                 chips(HbStr.dependsOn, info.dependencies)
             }
-            if let caveats = info.caveats, !caveats.isEmpty {
+            if let caveats = info.caveats {
                 caveatsBlock(caveats)
             }
         }
     }
 
-    /// The tile grid: two columns of label over value, as the prototype draws
-    /// them (`design/Main.dc.html`).
+    /// The tile grid: two columns of label over value, as the approved artboard
+    /// draws them. (No path: the drawing is the owner's scratch, untracked, so
+    /// naming a file here is a citation no checkout can follow.)
     ///
     /// A `LazyVGrid` of flexible columns rather than a fixed pair of `HStack`s,
     /// because the number of tiles is three, two, one or none depending on what
@@ -87,25 +88,32 @@ struct PackageSecondTier: View {
     /// text.
     @ViewBuilder
     private var origin: some View {
-        HStack(spacing: HelmSpace.s5) {
-            if let homepage = info.homepage, !homepage.isEmpty {
-                if let url = URL(string: homepage),
-                   let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
-                    Link(destination: url) {
-                        Label(homepage, systemImage: "globe")
-                    }
-                    .font(HelmText.rowDetail)
-                    .lineLimit(1).truncationMode(.middle)
-                } else {
-                    Label(homepage, systemImage: "globe")
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+        // Collapsed to nothing rather than drawn empty, the way `factTiles`
+        // above is: a `VStack`'s step is not paid around an absent child, and an
+        // `HStack` of nothing is a child. `PackageBlocks` is the one that
+        // decides, so a test can read the answer.
+        if PackageBlocks.hasOrigin(info) {
+            HStack(spacing: HelmSpace.s5) {
+                if let homepage = info.homepage {
+                    if let url = URL(string: homepage), let scheme = url.scheme?.lowercased(),
+                       scheme == "http" || scheme == "https" {
+                        Link(destination: url) {
+                            Label(homepage, systemImage: "globe")
+                        }
+                        .font(HelmText.rowDetail)
                         .lineLimit(1).truncationMode(.middle)
+                    } else {
+                        Label(homepage, systemImage: "globe")
+                            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                            .lineLimit(1).truncationMode(.middle)
+                    }
                 }
+                if let tap = info.tap {
+                    Text(tap).font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
-            if let tap = info.tap, !tap.isEmpty {
-                Text(tap).font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
-            }
-            Spacer(minLength: 0)
         }
     }
 
@@ -119,21 +127,26 @@ struct PackageSecondTier: View {
     /// of them reading as the one that matters.
     @ViewBuilder
     private var notes: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s2) {
-            if let reason = info.deprecationReason {
-                // Three sentences, and the third only when Homebrew named a
-                // replacement: "nothing was offered instead" is worth saying and
-                // "use nothing instead" is not. Composed out of whole sentences
-                // rather than clauses, so no language has to bend one into a
-                // frame another language chose.
-                let said = HbStr.deprecated + " " + HbStr.deprecationReason(reason)
-                HelmBanner(info.replacement.map { said + " " + HbStr.useInstead($0) } ?? said)
-            }
-            if info.installedOnRequest == false {
-                quietNote(HbStr.cameAsDependency)
-            }
-            if !info.siblings.isEmpty {
-                quietNote(HbStr.otherVersionLines(info.siblings.joined(separator: ", ")))
+        // And the same for this one: most packages are not deprecated, were
+        // asked for by name and have no other version lines, which is an empty
+        // `VStack` on the commonest screen in the module.
+        if PackageBlocks.hasNotes(info) {
+            VStack(alignment: .leading, spacing: HelmSpace.s2) {
+                if let reason = info.deprecationReason {
+                    // Three sentences, and the third only when Homebrew named a
+                    // replacement: "nothing was offered instead" is worth saying
+                    // and "use nothing instead" is not. Composed out of whole
+                    // sentences rather than clauses, so no language has to bend
+                    // one into a frame another language chose.
+                    let said = HbStr.deprecated + " " + HbStr.deprecationReason(reason)
+                    HelmBanner(info.replacement.map { said + " " + HbStr.useInstead($0) } ?? said)
+                }
+                if info.installedOnRequest == false {
+                    quietNote(HbStr.cameAsDependency)
+                }
+                if !info.siblings.isEmpty {
+                    quietNote(HbStr.otherVersionLines(info.siblings.joined(separator: ", ")))
+                }
             }
         }
     }
@@ -177,7 +190,12 @@ struct PackageSecondTier: View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(HbStr.packageNotes).font(.caption2).foregroundStyle(HelmText.faint)
             Text(caveats)
-                .font(.system(size: 11, design: .monospaced))
+                // A text *style* rather than a frozen 11 pt: it resolves to the
+                // same 11 at the default setting and follows the system text
+                // size from there, which a literal size cannot. The one other
+                // deliberate monospaced face in the tree
+                // (`HelmExplainer`) is spelled the same way.
+                .font(.system(.subheadline, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)

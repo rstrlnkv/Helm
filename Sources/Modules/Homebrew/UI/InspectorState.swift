@@ -139,6 +139,40 @@ enum PackageFacts {
     }
 }
 
+/// Whether the second tier's two always-present blocks have anything to draw.
+///
+/// **A stack that resolves to zero height is not the same as no stack.** A
+/// `VStack`'s spacing is not paid around an absent child, which is why
+/// `factTiles` collapses to nothing when it earns no tile — but `origin` and
+/// `notes` were unconditional stacks, so for the commonest package of all (an
+/// installed formula somebody asked for, no other version lines, not deprecated)
+/// the tier paid its 24 pt step around each of two empty blocks where the
+/// design's rhythm is 12.
+///
+/// Here rather than as computed properties of the view, for the reason
+/// `PackageFacts` is here: a `body` is nowhere a test can reach, and the question
+/// is about the answer rather than about the layout.
+///
+/// Presence is all these ask, because presence is all there is to ask:
+/// `BrewInfoParser` maps a blank value to nil at the one place the document is
+/// read, so a field that is there has something in it.
+enum PackageBlocks {
+    /// Either half of the origin line is enough to draw it — a package with a
+    /// homepage and no tap is an ordinary answer, and so is the reverse.
+    static func hasOrigin(_ info: PackageInfo) -> Bool {
+        info.homepage != nil || info.tap != nil
+    }
+
+    /// The deprecation banner, "it came in as a dependency", and the other
+    /// version lines. `installedOnRequest` is read as a *value* rather than for
+    /// presence: nil is a cask, which records nobody, `true` is somebody asked
+    /// for it, and only `false` is something to say.
+    static func hasNotes(_ info: PackageInfo) -> Bool {
+        info.deprecationReason != nil || info.installedOnRequest == false
+            || !info.siblings.isEmpty
+    }
+}
+
 /// The two questions the rows and the inspector both ask, answered once —
 /// "build them from the same expressions the behaviour consults" (CLAUDE.md).
 enum PackageStanding {

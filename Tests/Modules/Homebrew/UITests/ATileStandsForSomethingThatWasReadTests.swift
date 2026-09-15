@@ -21,18 +21,53 @@ import HelmUI
 /// (CLAUDE.md, `Tests/Support/EachLanguage.swift`).
 final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
 
-    private func info(isCask: Bool = false, licence: String? = "Apache-2.0",
+    private func info(isCask: Bool = false, homepage: String? = "https://openssl-library.org",
+                      tap: String? = "homebrew/core", licence: String? = "Apache-2.0",
                       latest: String? = "3.6.4", installed: String? = "3.6.4",
                       at: Date? = Date(timeIntervalSince1970: 1_757_700_000),
                       onRequest: Bool? = true, deprecated: String? = nil,
                       replacement: String? = nil, siblings: [String] = [],
                       dependencies: [String] = [], caveats: String? = nil) -> PackageInfo {
         PackageInfo(name: "openssl@3", isCask: isCask, desc: "Cryptography and SSL/TLS Toolkit",
-                    homepage: "https://openssl-library.org", license: licence,
-                    tap: "homebrew/core", latestVersion: latest, installedVersion: installed,
+                    homepage: homepage, license: licence,
+                    tap: tap, latestVersion: latest, installedVersion: installed,
                     installedAt: at, installedOnRequest: onRequest,
                     deprecationReason: deprecated, replacement: replacement,
                     siblings: siblings, dependencies: dependencies, caveats: caveats)
+    }
+
+    /// The shapes the initialiser above cannot express: a value the *document*
+    /// carried as an empty string.
+    ///
+    /// **An empty string is not an absent fact, and the tile grid is where that
+    /// shows.** `"license": ""` drew a licence tile with nothing under it, which
+    /// is exactly what this test exists to forbid — and none of the six shapes
+    /// below could see it, because they are built by hand and the emptiness
+    /// enters through `brew info`. It is collapsed in `BrewInfoParser` (its
+    /// `text` helper), the one place the document is read, so these two shapes
+    /// come through the parser: that is what makes the case a statement about
+    /// the module rather than about an initialiser call.
+    private func blankValueShapes() -> [PackageInfo] {
+        // Hand-made, unlike every fixture in `BrewInfoParserTests`: nobody has
+        // seen Homebrew print an empty licence, and it does not have to — these
+        // are strings out of a document fetched over the network.
+        let uninstalled = """
+        {"formulae":[{"name":"wget","desc":"","homepage":"","license":"","tap":"  ",
+        "deprecated":false,"versions":{"stable":"1.25.0"},"caveats":"","installed":[]}],"casks":[]}
+        """
+        let installedBlankVersion = """
+        {"formulae":[{"name":"wget","license":"Apache-2.0","tap":"homebrew/core",
+        "deprecated":false,"versions":{"stable":"1.25.0"},
+        "installed":[{"version":"   ","time":1757800000,
+        "installed_on_request":true}]}],"casks":[]}
+        """
+        let shapes = [uninstalled, installedBlankVersion].compactMap {
+            BrewInfoParser.parse(Data($0.utf8), isCask: false)
+        }
+        // Asserted rather than assumed: a fixture the parser refuses drops out
+        // of the list, and a loop over nothing passes every assertion in it.
+        XCTAssertEqual(shapes.count, 2, "a fixture was refused, so it asserts nothing")
+        return shapes
     }
 
     // MARK: - What an answer earns
@@ -108,6 +143,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
                       info(isCask: true, licence: nil, latest: nil, installed: nil, at: nil,
                            onRequest: nil),
                       info(licence: nil, latest: nil, installed: nil, at: nil, onRequest: nil)]
+            + blankValueShapes()
         AppLanguage.each { language in
             for shape in shapes {
                 for fact in PackageFacts.of(shape) {
@@ -120,6 +156,47 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
                 }
             }
         }
+    }
+
+    // MARK: - A block with nothing in it is not a block
+
+    /// **The commonest package there is draws neither of the other two blocks.**
+    /// An installed formula somebody asked for, not deprecated, with no other
+    /// version lines: `origin` and `notes` were always-present stacks that
+    /// resolved to zero height rather than to nothing, so the tier paid its 24 pt
+    /// step around each of them where the rhythm is 12.
+    ///
+    /// Asked of the predicate rather than of the rendered page: `PackageBlocks`
+    /// is where the decision lives for the reason `PackageFacts` is, a `body`
+    /// being nowhere a test can reach. What this cannot see is the view
+    /// forgetting to ask — that is one line in `PackageSecondTier`, and the
+    /// price of reaching it is a measured height.
+    func testAPackageWithNothingToSayDrawsNeitherBlock() {
+        let bare = info(homepage: nil, tap: nil)
+        XCTAssertFalse(PackageBlocks.hasOrigin(bare), "an origin line with no origin in it")
+        XCTAssertFalse(PackageBlocks.hasNotes(bare),
+                       "«somebody asked for it» is not a note — only «it came as a dependency» is")
+    }
+
+    /// Either half of the origin line is enough to draw it: a package with a
+    /// homepage and no tap is an ordinary answer, and so is the reverse.
+    func testEitherHalfOfTheOriginLineKeepsIt() {
+        XCTAssertTrue(PackageBlocks.hasOrigin(info(tap: nil)))
+        XCTAssertTrue(PackageBlocks.hasOrigin(info(homepage: nil)))
+    }
+
+    /// And each note on its own keeps the notes block — including the one that
+    /// is read as a *value*: nil is a cask, which records nobody, and only
+    /// `false` is something to say.
+    func testEachNoteOnItsOwnKeepsTheBlock() {
+        XCTAssertTrue(PackageBlocks.hasNotes(info(homepage: nil, tap: nil,
+                                                  deprecated: "repo_archived")))
+        XCTAssertTrue(PackageBlocks.hasNotes(info(homepage: nil, tap: nil, onRequest: false)))
+        XCTAssertTrue(PackageBlocks.hasNotes(info(homepage: nil, tap: nil,
+                                                  siblings: ["openssl@4"])))
+        XCTAssertFalse(PackageBlocks.hasNotes(info(isCask: true, homepage: nil, tap: nil,
+                                                   onRequest: nil)),
+                       "a cask records nobody, and that absence is not a note")
     }
 
     /// A package brew answered nothing measurable about earns no grid at all —
