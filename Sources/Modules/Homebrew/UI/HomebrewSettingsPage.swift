@@ -637,7 +637,7 @@ struct HomebrewSettingsPage: View {
                     // its call site; the console above uses the same fill.
                     .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                         .fill(HelmSurface.wellFill))
-                Button(HbStr.copyThisCommand) {
+                Button(HbStr.copyTheFix) {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(command, forType: .string)
                 }
@@ -646,7 +646,7 @@ struct HomebrewSettingsPage: View {
                     // `HomebrewEngine.runDoctorFix` reads the installed list
                     // again and judges it again, so what this starts is not
                     // what this page judged.
-                    Button(HbStr.runThisCommand) { hb.runDoctorFix(fix) }
+                    Button(HbStr.runTheFix) { hb.runDoctorFix(fix) }
                         .disabled(hb.running)
                 }
             }

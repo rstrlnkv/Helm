@@ -1173,8 +1173,8 @@
 "Select a finding or a part of the configuration" = "请选择一项或配置的一部分";
 "Helm reads this as" = "Helm 将其理解为";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew 在这里没有给出任何命令，它只说明了问题所在。上面那行是 Helm 自己的解读。";
-"Run this command" = "运行此命令";
-"Copy this command" = "复制此命令";
+"Run" = "运行";
+"Copy" = "复制";
 "Helm does not run this one. It is here to read and to copy." = "这一条 Helm 不会执行。它放在这里是供你阅读和复制的。";
 "Helm checked the command again and would not run it." = "Helm 重新检查了该命令，没有执行它。";
 "Checkup" = "检查";

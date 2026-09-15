@@ -1173,8 +1173,8 @@
 "Select a finding or a part of the configuration" = "Select a finding or a part of the configuration";
 "Helm reads this as" = "Helm reads this as";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that.";
-"Run this command" = "Run this command";
-"Copy this command" = "Copy this command";
+"Run" = "Run";
+"Copy" = "Copy";
 "Helm does not run this one. It is here to read and to copy." = "Helm does not run this one. It is here to read and to copy.";
 "Helm checked the command again and would not run it." = "Helm checked the command again and would not run it.";
 "Checkup" = "Checkup";

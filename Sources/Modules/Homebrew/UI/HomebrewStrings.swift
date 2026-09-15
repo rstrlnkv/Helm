@@ -275,9 +275,16 @@ enum HbStr {
     }
     /// The button that acts. `runDoctorFix` re-judges it in the engine before
     /// anything runs, so what this button starts is not what the page judged.
-    static var runThisCommand: String { L("Run this command") }
-    /// The copy affordance beside a command Helm will not run itself.
-    static var copyThisCommand: String { L("Copy this command") }
+    ///
+    /// **One word, because the command is beside it.** This was «Run this
+    /// command», which names an object the person can already see — and next
+    /// to «Copy this command» the two controls were 188 and 175 pt of a 625 pt
+    /// column, measured 2026-09-15. The approved drawing this module was built
+    /// from draws the verb alone.
+    static var runTheFix: String { L("Run") }
+    /// The copy affordance beside a command Helm will not run itself. One word,
+    /// for the reason above.
+    static var copyTheFix: String { L("Copy") }
     /// Why there is no button for this one. It names no control: the word on
     /// the control is a key of its own, and a sentence spelling a label by hand
     /// is a sentence a rename leaves behind in seven translations.

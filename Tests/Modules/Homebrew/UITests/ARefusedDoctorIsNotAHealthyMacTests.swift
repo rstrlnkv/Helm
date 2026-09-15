@@ -431,7 +431,7 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     /// count of two is not a proof of two *distinct* offers.
     func testTheTwoAffordancesAreNotOneWord() {
         AppLanguage.each { language in
-            XCTAssertNotEqual(HbStr.runThisCommand, HbStr.copyThisCommand,
+            XCTAssertNotEqual(HbStr.runTheFix, HbStr.copyTheFix,
                               "\(language.rawValue): one word for running and for copying")
         }
     }
@@ -446,7 +446,7 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     /// would act on that is the one who trusted Homebrew rather than Helm.
     func testTheFixIsNeverAttributedToHomebrew() {
         AppLanguage.each { language in
-            for word in [HbStr.helmReadsThisAs, HbStr.runThisCommand, HbStr.copyThisCommand] {
+            for word in [HbStr.helmReadsThisAs, HbStr.runTheFix, HbStr.copyTheFix] {
                 XCTAssertFalse(word.contains("Homebrew"), """
                     \(language.rawValue): \(word.debugDescription) names Homebrew over a command \
                     Homebrew never printed

@@ -1173,8 +1173,8 @@
 "Select a finding or a part of the configuration" = "項目または構成の一部を選んでください";
 "Helm reads this as" = "Helm はこう読み取ります";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew はここでコマンドを示していません。何が問題かを述べただけです。上の行は、それを Helm が読み取った結果です。";
-"Run this command" = "このコマンドを実行";
-"Copy this command" = "このコマンドをコピー";
+"Run" = "実行";
+"Copy" = "コピー";
 "Helm does not run this one. It is here to read and to copy." = "これは Helm では実行しません。読んでコピーするためにここにあります。";
 "Helm checked the command again and would not run it." = "Helm はコマンドを確認し直し、実行しませんでした。";
 "Checkup" = "点検";
