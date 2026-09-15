@@ -81,6 +81,46 @@ public struct BrewStatus: Codable, Equatable, Sendable {
     }
 }
 
+/// What `brew info --json=v2` knows about one package.
+///
+/// A formula and a cask disagree about shape in three places — the install
+/// facts, the name, the licence — which is why `BrewInfoParser` reads the
+/// document by hand rather than through a synthesized decode: see that file's
+/// doc comment for why a struct here does not save the work it looks like it
+/// would.
+public struct PackageInfo: Codable, Equatable, Sendable {
+    public let name: String
+    public let isCask: Bool
+    public let desc: String?
+    public let homepage: String?
+    /// nil for every cask — the field does not exist in that document at all.
+    public let license: String?
+    public let tap: String?
+    public let installedVersion: String?
+    public let installedAt: Date?
+    /// nil when not installed, and also nil for a cask, which never records
+    /// who asked for it.
+    public let installedOnRequest: Bool?
+    /// nil unless the package is actually deprecated.
+    public let deprecationReason: String?
+    /// What to use instead, when Homebrew names one.
+    public let replacement: String?
+    public let siblings: [String]
+    public let dependencies: [String]
+    public let caveats: String?
+
+    public init(name: String, isCask: Bool, desc: String?, homepage: String?, license: String?,
+                tap: String?, installedVersion: String?, installedAt: Date?,
+                installedOnRequest: Bool?, deprecationReason: String?, replacement: String?,
+                siblings: [String], dependencies: [String], caveats: String?) {
+        self.name = name; self.isCask = isCask; self.desc = desc; self.homepage = homepage
+        self.license = license; self.tap = tap; self.installedVersion = installedVersion
+        self.installedAt = installedAt; self.installedOnRequest = installedOnRequest
+        self.deprecationReason = deprecationReason; self.replacement = replacement
+        self.siblings = siblings; self.dependencies = dependencies; self.caveats = caveats
+    }
+}
+
 public enum OpPhase: String, Codable, Sendable { case idle, running, done, failed }
 
 /// Why a failed operation failed, when the engine knows more than an exit code.
