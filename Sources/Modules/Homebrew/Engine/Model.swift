@@ -163,3 +163,31 @@ public struct OpState: Codable, Equatable, Sendable {
     }
     public static let idle = OpState(phase: .idle, label: "")
 }
+
+/// How bad `brew doctor` thinks a finding is — the two prefixes it prints,
+/// `Warning:` and `Error:`, named rather than reused as raw strings past
+/// `DoctorParser`.
+public enum DoctorSeverity: String, Codable, Sendable {
+    case caution
+    case danger
+}
+
+/// One block from `brew doctor`'s answer, produced by `DoctorParser.parse`.
+///
+/// `fix` is left nil by the parser — a command parsed out of a tool's output
+/// is data, not an instruction, and judging one runnable is `DoctorFix.judge`'s
+/// job alone (the module's security surface for this feature), not something
+/// this struct or its parser may decide on construction.
+public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
+    public let severity: DoctorSeverity
+    public let title: String
+    public let body: String
+    public let fix: DoctorFix?
+    /// Built from content rather than position: two blocks with the same text
+    /// are the same issue, which is exactly the case `DoctorParser` collapses
+    /// before this is ever read.
+    public var id: String { severity.rawValue + "\u{0}" + title + "\u{0}" + body }
+    public init(severity: DoctorSeverity, title: String, body: String, fix: DoctorFix? = nil) {
+        self.severity = severity; self.title = title; self.body = body; self.fix = fix
+    }
+}
