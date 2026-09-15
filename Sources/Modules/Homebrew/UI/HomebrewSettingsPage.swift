@@ -318,13 +318,29 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    /// A row of the health list: the severity as a badge, then the title.
+    /// A row of the health list: the finding's title, and nothing else.
     /// Same shape as `pkgRow` — no button, at any width — since selecting is
     /// what reaches the one place an action ever draws.
+    ///
+    /// **The severity badge is not here, and that is a measurement rather than
+    /// a preference.** The master column is pinned at 310 pt, so the title has
+    /// about 286 pt whatever the window does; the badge took roughly 50 of them
+    /// plus a step, and the two findings this Mac's own `brew doctor` produces
+    /// read «Caution Calling `postflight` is depre…» and «Caution Some installed
+    /// formulae are…» — cut mid-word to make room for a word that is the same on
+    /// both rows. Moving it to the trailing edge was the other candidate and
+    /// buys nothing: with a `Spacer` between them the title competes for the
+    /// same width and truncates at the same character, only further left.
+    ///
+    /// **Where the severity went, and why nobody loses it.** `issueDetail`
+    /// draws the same `HelmBadge` at full size beside the full title, one
+    /// selection away and — above the threshold — on the same screen. That badge
+    /// carries `severityWord`, so the difference between a `.danger` finding and
+    /// a `.caution` one is a **word**, not a hue: it never lived in the tint,
+    /// and a reader who cannot see colour reads it exactly as anyone else does.
+    /// What this row drops, it drops for everybody equally.
     private func issueRow(_ issue: DoctorIssue) -> some View {
         HStack(spacing: HelmSpace.s3) {
-            HelmBadge(Self.severityWord(issue.severity),
-                      tint: Self.severityTint(issue.severity))
             // One line, like `pkgRow`'s name and for the same reason: the row
             // is the handle and `issueDetail` beside it carries the whole
             // title.
