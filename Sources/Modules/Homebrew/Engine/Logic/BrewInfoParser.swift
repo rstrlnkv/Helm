@@ -23,7 +23,10 @@ enum BrewInfoParser {
     /// naming no entry of the requested kind at all — an empty array is a
     /// name brew could not resolve, not a package with no facts, and a
     /// formula document read as a cask (or the reverse) is not an answer
-    /// about the kind that was asked for.
+    /// about the kind that was asked for. An entry whose name is blank is
+    /// refused with them: a package with no identity is nothing the rest of
+    /// this module can act on, and an empty display name has claimed a whole
+    /// directory elsewhere in this app before.
     static func parse(_ data: Data, isCask: Bool) -> PackageInfo? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
@@ -38,9 +41,9 @@ enum BrewInfoParser {
             // A cask's `name` field is a display list ("Claude Code"), not
             // its identity — `token` is what every other command names it
             // by, and what the rest of this app keys it under.
-            name = entry["token"] as? String
+            name = text(entry["token"])
         } else {
-            name = entry["name"] as? String
+            name = text(entry["name"])
         }
         guard let name else { return nil }
 
@@ -48,10 +51,10 @@ enum BrewInfoParser {
         // Read only when the package is actually deprecated: a stray
         // `deprecation_reason` on an entry that isn't would say something
         // Homebrew itself is not claiming.
-        let deprecationReason = deprecated ? entry["deprecation_reason"] as? String : nil
+        let deprecationReason = deprecated ? text(entry["deprecation_reason"]) : nil
         let replacement = deprecated
-            ? ((entry["deprecation_replacement_formula"] as? String)
-                ?? (entry["deprecation_replacement_cask"] as? String))
+            ? (text(entry["deprecation_replacement_formula"])
+                ?? text(entry["deprecation_replacement_cask"]))
             : nil
 
         // The fourth shape the two documents disagree about: a formula's
@@ -62,24 +65,33 @@ enum BrewInfoParser {
         // with names alone.
         let latestVersion: String?
         if isCask {
-            latestVersion = entry["version"] as? String
+            latestVersion = text(entry["version"])
         } else {
-            latestVersion = (entry["versions"] as? [String: Any])?["stable"] as? String
+            latestVersion = text((entry["versions"] as? [String: Any])?["stable"])
         }
 
         var installedVersion: String?
         var installedAt: Date?
         var installedOnRequest: Bool?
+        // **The version is the fact the rest hang off.** Every reader keys "is
+        // this package here" on `installedVersion` (`PackageFacts.of` decides the
+        // whole tile set on it), so a date or a "came as a dependency" read from
+        // a record whose version is unreadable is a fact about a package
+        // reported as not installed — one screen with two accounts of one
+        // package, which is the shape this module's other defects took.
         if isCask {
             // A cask's install facts are top-level scalars — there is no
             // array of past installs to look inside, and no record of who
             // asked for it.
-            installedVersion = entry["installed"] as? String
-            if let epoch = entry["installed_time"] as? Double {
-                installedAt = Date(timeIntervalSince1970: epoch)
+            if let version = text(entry["installed"]) {
+                installedVersion = version
+                if let epoch = entry["installed_time"] as? Double {
+                    installedAt = Date(timeIntervalSince1970: epoch)
+                }
             }
-        } else if let installs = entry["installed"] as? [[String: Any]], let first = installs.first {
-            installedVersion = first["version"] as? String
+        } else if let installs = entry["installed"] as? [[String: Any]], let first = installs.first,
+                  let version = text(first["version"]) {
+            installedVersion = version
             if let epoch = first["time"] as? Double {
                 installedAt = Date(timeIntervalSince1970: epoch)
             }
@@ -89,19 +101,49 @@ enum BrewInfoParser {
         return PackageInfo(
             name: name,
             isCask: isCask,
-            desc: entry["desc"] as? String,
-            homepage: entry["homepage"] as? String,
-            license: isCask ? nil : entry["license"] as? String,
-            tap: entry["tap"] as? String,
+            desc: text(entry["desc"]),
+            homepage: text(entry["homepage"]),
+            license: isCask ? nil : text(entry["license"]),
+            tap: text(entry["tap"]),
             latestVersion: latestVersion,
             installedVersion: installedVersion,
             installedAt: installedAt,
             installedOnRequest: installedOnRequest,
             deprecationReason: deprecationReason,
             replacement: replacement,
-            siblings: entry["versioned_formulae"] as? [String] ?? [],
-            dependencies: entry["dependencies"] as? [String] ?? [],
-            caveats: entry["caveats"] as? String
+            siblings: texts(entry["versioned_formulae"]),
+            dependencies: texts(entry["dependencies"]),
+            caveats: text(entry["caveats"])
         )
+    }
+
+    /// A value the document has something in, or nil.
+    ///
+    /// **An empty string is not an absent fact, and nothing downstream can tell
+    /// the two apart.** `PackageInfo` carries optionals precisely so that "brew
+    /// had nothing to say" is a shape the page cannot draw — and a `""` walks
+    /// straight past that: `"license": ""` drew a licence tile with nothing
+    /// under it, which reads as Homebrew having been asked and having had no
+    /// answer, and `"deprecation_replacement_formula": ""` drew "use  instead".
+    /// So blankness is collapsed here, at the one place the document is read,
+    /// rather than at each of the sites that draw one of these values — a check
+    /// in every view is a check in no parser, and the next reader of a new field
+    /// would have to know to add one.
+    ///
+    /// Whitespace counts as blank: one space is the same absence spelled less
+    /// obviously. What is *carried* is the original string rather than the
+    /// trimmed one — the only question asked here is whether the fact is there,
+    /// and `caveats` is the tool's own text, usually a path or a command
+    /// somebody has to copy, which this parser has no business re-spelling.
+    private static func text(_ raw: Any?) -> String? {
+        guard let value = raw as? String,
+              !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return value
+    }
+
+    /// The same question of a list of names: a blank entry draws an empty pill
+    /// in the dependency row and an empty gap in "other version lines".
+    private static func texts(_ raw: Any?) -> [String] {
+        (raw as? [String] ?? []).compactMap(text)
     }
 }

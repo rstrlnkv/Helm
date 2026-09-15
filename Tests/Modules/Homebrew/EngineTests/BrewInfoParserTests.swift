@@ -27,15 +27,17 @@ final class BrewInfoParserTests: XCTestCase {
     "installed":[{"version":"3.6.4","time":1757800000,"installed_on_request":false}]}],"casks":[]}
     """
 
-    // license carries a value here on purpose, though a cask document never
-    // actually has this key — a fixture that simply omits the key cannot
+    // license and installed_on_request carry values here on purpose, though a
+    // cask document has neither key — a fixture that simply omits a key cannot
     // tell "the parser drops a cask's license" from "there was never one to
-    // drop" (JSONSerialization answers the same nil either way).
+    // drop" (JSONSerialization answers the same nil either way), and the same
+    // holds for the record of who asked for it.
     private let cask = """
     {"formulae":[],"casks":[{"token":"claude-code","name":["Claude Code"],
     "desc":"Terminal-based AI coding assistant","homepage":"https://claude.com/product/claude-code",
     "tap":"homebrew/cask","license":"MIT","deprecated":false,"deprecation_reason":null,
-    "version":"2.1.236","installed":"2.1.236","installed_time":1757800000,"caveats":null}]}
+    "version":"2.1.236","installed":"2.1.236","installed_time":1757800000,
+    "installed_on_request":true,"caveats":null}]}
     """
 
     private let deprecated = """
@@ -68,7 +70,7 @@ final class BrewInfoParserTests: XCTestCase {
                       "not deprecated — a replacement present in the document must not surface")
     }
 
-    /// The three shapes a cask does differently, in one case.
+    /// The four shapes a cask does differently, in one case.
     func testACaskCarriesItsOwnShape() {
         guard let info = BrewInfoParser.parse(data(cask), isCask: true) else {
             return XCTFail("the document was refused")
@@ -125,5 +127,73 @@ final class BrewInfoParserTests: XCTestCase {
                      "an empty array is a name brew could not resolve, not a package with no facts")
         XCTAssertNil(BrewInfoParser.parse(data(formula), isCask: true),
                      "a formula document asked about as a cask is not an answer about a cask")
+        XCTAssertNil(BrewInfoParser.parse(data(#"{"formulae":[{"name":""}],"casks":[]}"#),
+                                          isCask: false),
+                     "an entry with a blank name has no identity to act on")
+    }
+
+    /// **A blank value is not a fact, and nothing downstream can tell the two
+    /// apart.** `"license": ""` drew a «Лицензия» tile with nothing under it —
+    /// which reads as Homebrew having been asked and having had no answer — and
+    /// `"deprecation_replacement_formula": ""` drew «Вместо него стоит взять .».
+    /// The optionals on `PackageInfo` exist to make that unrepresentable, so the
+    /// emptiness is collapsed here, at the one place the document is read,
+    /// rather than at each of the nine sites that draw one of these values.
+    ///
+    /// Hand-made rather than captured, and said out loud because every other
+    /// fixture in this file is a real document: nobody has seen Homebrew print
+    /// an empty licence. It does not have to. These are strings out of a
+    /// document fetched over the network, the schema promises nothing about
+    /// emptiness, and one of them is enough. Whitespace is the same absence
+    /// spelled less obviously, which is why a space and a newline are in here
+    /// beside the empty string.
+    func testABlankValueIsAnAbsentFactRatherThanAnEmptyTile() {
+        let json = """
+        {"formulae":[{"name":"openssl@3","desc":"","homepage":"   ","license":"","tap":"\\n",
+        "deprecated":true,"deprecation_reason":" ","deprecation_replacement_formula":"",
+        "versions":{"stable":""},"versioned_formulae":["","openssl@4"],"dependencies":[" "],
+        "caveats":"  ","installed":[{"version":"","time":1757800000,
+        "installed_on_request":true}]}],"casks":[]}
+        """
+        guard let info = BrewInfoParser.parse(data(json), isCask: false) else {
+            return XCTFail("the document was refused")
+        }
+        XCTAssertEqual(info.name, "openssl@3", "the name is the one fact this document does carry")
+        XCTAssertNil(info.desc)
+        XCTAssertNil(info.homepage)
+        XCTAssertNil(info.license, "an empty licence drew a tile with nothing under it")
+        XCTAssertNil(info.tap)
+        XCTAssertNil(info.latestVersion)
+        XCTAssertNil(info.installedVersion)
+        XCTAssertNil(info.installedAt, """
+            the version is what every reader keys «is it here» on, so a date beside an \
+            unreadable version is a date for a package reported as not installed
+            """)
+        XCTAssertNil(info.installedOnRequest)
+        XCTAssertNil(info.deprecationReason)
+        XCTAssertNil(info.replacement, "«use nothing instead» is the sentence an empty one draws")
+        XCTAssertNil(info.caveats)
+        XCTAssertEqual(info.siblings, ["openssl@4"], "a blank name in the list is an empty pill")
+        XCTAssertEqual(info.dependencies, [])
+    }
+
+    /// The other side of that: a value with something in it is carried
+    /// unchanged, spaces and all.
+    ///
+    /// The tool's text is the tool's — `caveats` is the case that matters, since
+    /// it is usually a path or a command somebody has to copy, and a parser that
+    /// trimmed it would be re-spelling what brew printed. Blankness is the only
+    /// question asked above.
+    func testAValueWithSomethingInItIsNotReformatted() {
+        let json = """
+        {"formulae":[{"name":"openssl@3","license":" Apache-2.0 ","deprecated":false,
+        "versions":{"stable":"3.6.4"},"caveats":"  run this:\\n  brew services start x\\n",
+        "installed":[]}],"casks":[]}
+        """
+        guard let info = BrewInfoParser.parse(data(json), isCask: false) else {
+            return XCTFail("the document was refused")
+        }
+        XCTAssertEqual(info.license, " Apache-2.0 ")
+        XCTAssertEqual(info.caveats, "  run this:\n  brew services start x\n")
     }
 }
