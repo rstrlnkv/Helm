@@ -482,6 +482,18 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// The gate that actually matters is `DoctorParser.parse`: nil for empty
     /// input (the tool said nothing, which this module must not read as a
     /// clean machine), an empty array for real output naming no issue.
+    ///
+    /// **No fix is filled in here, and this query reads nothing but `brew
+    /// doctor`.** `DoctorFixCandidate.judging` is what turns a body into a
+    /// candidate, and it needs an installed list — a second reading, on plain
+    /// `run`. Taking it here would make this query call `run` as well as
+    /// `runCapturingDiagnostics`, and `ADoctorReadingIsNotGatedOnExitStatusTests`
+    /// watches that boundary for a reason worth keeping: `run` answers `(0, "")`
+    /// for `brew doctor`, so a query that slipped onto it would go on answering
+    /// nil for ever with nothing anywhere to say why. The candidate is built on
+    /// the page's side, where the installed list already is, and judged again by
+    /// `runDoctorFix` against a list read at the press — which is the judgement
+    /// that decides whether anything runs.
     public func doctor() -> [DoctorIssue]? {
         guard let brew = locator.brewPath() else {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot run doctor")
@@ -686,6 +698,53 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         runOp(verb: "upgrade all", label: "upgrade all", launch: brew, args: ["upgrade"])
     }
 
+    /// Runs one command `brew doctor`'s answer was read as proposing — **after
+    /// judging it again here**, and through the same `runOp` every other
+    /// operation goes through.
+    ///
+    /// **The UI's judgement decides what to draw; this one decides what to
+    /// run.** `DoctorFixCandidate.judging(_:installed:)` runs on the page's
+    /// side against the installed list the page was holding when the issue was
+    /// drawn, and that reading is older than the press by however long somebody
+    /// spent reading the issue — a minute, a day with the window left open. In
+    /// between, a terminal uninstalls `periphery`, or Helm's own Installed tab
+    /// does, and the argv the page still carries names a package that is not on
+    /// this Mac any more. So the list is read **now**, one line before the act,
+    /// and `DoctorFix.judge` is asked again; nothing that arrives on this wire
+    /// is trusted to have been judged already, including an argv no page ever
+    /// drew.
+    ///
+    /// A Cellar that could not be read is not a Cellar the name is in:
+    /// `listInstalled` answers nil for a refused or timed-out `brew list`, and
+    /// that refuses the run rather than falling through to an empty list, which
+    /// would refuse `uninstall` by luck and admit `cleanup` by mistake.
+    ///
+    /// Every operand goes behind `--`, for the reason the type's own doc
+    /// comment gives: `brew` reads a leading `-` as a flag wherever it finds
+    /// one, and these operands are words parsed out of brew's own prose.
+    /// `["cleanup"]` has no operand and gets no `--`.
+    public func runDoctorFix(_ argv: [String]) {
+        // The command itself, which is what the console's pill and the marker
+        // both show — "uninstall periphery", the same shape the other labels
+        // have. `brew` is not in it, which is the shape `DoctorFix` judges.
+        let label = argv.joined(separator: " ")
+        guard let brew = brewOrRefuse(verb: "doctor fix", label: label) else { return }
+        guard let names = listInstalled()?.map(\.name),
+              DoctorFix.judge(argv, installed: names).kind == .runnable else {
+            // Named, never silent — and the argv is redacted for the same
+            // reason every other package name in this log is: it is a
+            // description of somebody's machine.
+            HelmLog.shared.warn(Self.moduleID,
+                                "doctor fix refused: \(Redact.pkg(label)) is not runnable "
+                                + "against the Cellar as it is now")
+            emitState(OpState(phase: .failed, label: label, reason: .fixRefused))
+            return
+        }
+        let operands = Array(argv.dropFirst())
+        runOp(verb: "doctor fix", subject: operands.first, label: label, launch: brew,
+              args: operands.isEmpty ? argv : [argv[0], "--"] + operands)
+    }
+
     /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
     /// native admin prompt, then run the official installer non-interactively.
     public func installBrew() {
@@ -806,6 +865,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 if let r = EngineReply.decode(PackageRef.self, from: cmd) {
                     self.uninstall(name: r.name, isCask: r.isCask)
                 }
+            // Off the pool, unlike its four neighbours: every other operation
+            // arm only *starts* a child and returns, while this one re-reads
+            // the installed list first — two blocking `brew list` runs on the
+            // way to the judge, which is a transport handler parking a
+            // Swift-concurrency pool thread for seconds.
+            case .doctorFix:
+                guard let argv = EngineReply.decode([String].self, from: cmd) else { return Data() }
+                await offTheCooperativePool { self.runDoctorFix(argv) }
             // A bare name, like `search` — the one-field struct that used to
             // wrap it bought nothing and cost a second declaration.
             case .upgrade: self.upgrade(name: String(decoding: cmd.payload, as: UTF8.self))

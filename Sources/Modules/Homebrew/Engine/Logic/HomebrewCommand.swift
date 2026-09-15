@@ -24,6 +24,15 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     /// its whole answer on — see `HomebrewEngine.doctor()` and
     /// `ProcessRunner.runCapturingDiagnostics`.
     case doctor
+    /// Run one of the commands `brew doctor`'s answer was read as proposing.
+    ///
+    /// The payload is the argv itself — `["uninstall", "periphery"]` — and the
+    /// engine **judges it again** before running it, against the installed list
+    /// it reads at that moment. The UI's own judgement decides what to draw and
+    /// nothing else: between the draw and the press a terminal can uninstall
+    /// the very package the button names, and the argv the page carries is a
+    /// reading of a Cellar that has moved (`HomebrewEngine.runDoctorFix`).
+    case doctorFix
     case install
     case uninstall
     case upgrade

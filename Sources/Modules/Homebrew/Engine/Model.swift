@@ -139,7 +139,7 @@ public enum OpPhase: String, Codable, Sendable { case idle, running, done, faile
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
 /// the eight languages live where `L()` can reach them.
-public enum OpFailureReason: String, Codable, Sendable {
+public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
@@ -148,6 +148,16 @@ public enum OpFailureReason: String, Codable, Sendable {
     /// the log names the outcome — an operation state about no operation
     /// would loop the view model's refresh-on-failure.)
     case stopped
+    /// A `brew doctor` fix the engine re-judged and would not run.
+    ///
+    /// The ordinary cause is the race this design exists for: the page drew a
+    /// button for `uninstall <name>` and the name left the Cellar before the
+    /// press — a terminal, or Helm's own uninstall of it. It also covers an
+    /// argv no entry on `DoctorFix.Allowed` admits, and a Cellar the engine
+    /// could not read at all, which is not a Cellar the name is in. A refusal
+    /// is an outcome and it is named: a press that answered nothing at all is
+    /// the defect `AVanishedBrewIsNotASilentPressTests` was written against.
+    case fixRefused
 }
 
 public struct OpState: Codable, Equatable, Sendable {

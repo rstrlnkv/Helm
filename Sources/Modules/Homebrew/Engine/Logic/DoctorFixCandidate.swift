@@ -42,7 +42,12 @@ import Foundation
 ///   `DoctorFix.judge(_:installed:)`, which owns the allowlist, the argument
 ///   counts and the spelling alphabet. This file does not re-check any of
 ///   those: a second copy of the alphabet is a second alphabet.
-enum DoctorFixCandidate {
+///
+/// `public` because the UI target reads it: the *drawing* judgement is taken
+/// there, beside the installed list the page already holds, while the judgement
+/// that decides whether anything runs is taken in `HomebrewEngine.runDoctorFix`
+/// against a list read at the press.
+public enum DoctorFixCandidate {
 
     /// Every heading `brew doctor` prints that Helm reads as proposing an act,
     /// and the act each one proposes. One entry today; `Heading.allCases` is
@@ -165,7 +170,7 @@ enum DoctorFixCandidate {
     /// nothing except whether there is an argv to hand over. An issue whose body
     /// proposes nothing keeps `fix: nil`, which is a different thing from a fix
     /// that exists and may only be copied.
-    static func judging(_ issue: DoctorIssue, installed: [String]) -> DoctorIssue {
+    public static func judging(_ issue: DoctorIssue, installed: [String]) -> DoctorIssue {
         guard let argv = argv(inBodyOf: issue.body) else { return issue }
         return DoctorIssue(severity: issue.severity, title: issue.title, body: issue.body,
                            fix: DoctorFix.judge(argv, installed: installed))
