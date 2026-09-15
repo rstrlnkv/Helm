@@ -1163,3 +1163,16 @@
 "It is no longer available upstream." = "Il n’est plus disponible chez ses auteurs.";
 "It no longer meets Homebrew’s conditions for a cask." = "Il ne remplit plus les conditions de Homebrew pour un cask.";
 "It does not pass the macOS Gatekeeper check." = "Il ne passe pas le contrôle Gatekeeper de macOS.";
+"Health" = "État";
+"Caution" = "Attention";
+"Problem" = "Problème";
+"Checking this Mac…" = "Vérification de ce Mac…";
+"Nothing to fix." = "Rien à corriger.";
+"Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew n’a pas répondu, donc rien n’est connu de l’état de ce Mac pour l’instant.";
+"Select a finding" = "Sélectionnez une remarque";
+"Helm reads this as" = "Helm l’interprète ainsi";
+"Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew n’a nommé aucune commande ici\U00A0: il a dit ce qui n’allait pas et s’en est tenu là. La ligne ci-dessus est la lecture qu’en fait Helm.";
+"Run this command" = "Exécuter cette commande";
+"Copy this command" = "Copier cette commande";
+"Helm does not run this one. It is here to read and to copy." = "Helm n’exécute pas celle-ci. Elle est là pour être lue et copiée.";
+"Helm checked the command again and would not run it." = "Helm a vérifié la commande à nouveau et ne l’a pas exécutée.";

@@ -101,6 +101,13 @@ final class StringsLiveInLprojTests: XCTestCase {
         // lists «Passphrase» and the alternatives — «Kennwortsatz» — are
         // dictionary words nobody types. The other six all differ.
         "Passphrase": [.de],
+        // The severity badge over a `brew doctor` finding that is an `Error:`
+        // rather than a `Warning:`. German spells it exactly as English does —
+        // Duden lists «Problem» and the alternatives («Schwierigkeit»,
+        // «Missstand») are longer words for something else — and the other six
+        // all differ (Проблема, Problema, Problème, 問題, 问题), which is what
+        // makes this an identity rather than a row nobody filled in.
+        "Problem": [.de],
         "BETA": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "BUILD": [.fr, .de, .pt],

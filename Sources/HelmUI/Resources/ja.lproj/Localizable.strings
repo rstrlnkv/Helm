@@ -1163,3 +1163,16 @@
 "It is no longer available upstream." = "上流ではもう入手できません。";
 "It no longer meets Homebrew’s conditions for a cask." = "cask に対する Homebrew の条件を満たさなくなりました。";
 "It does not pass the macOS Gatekeeper check." = "macOS の Gatekeeper のチェックを通りません。";
+"Health" = "状態";
+"Caution" = "注意";
+"Problem" = "問題";
+"Checking this Mac…" = "この Mac を確認しています…";
+"Nothing to fix." = "直すところはありません。";
+"Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew が応答しなかったため、この Mac の状態は今のところ分かりません。";
+"Select a finding" = "項目を選んでください";
+"Helm reads this as" = "Helm はこう読み取ります";
+"Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew はここでコマンドを示していません。何が問題かを述べただけです。上の行は、それを Helm が読み取った結果です。";
+"Run this command" = "このコマンドを実行";
+"Copy this command" = "このコマンドをコピー";
+"Helm does not run this one. It is here to read and to copy." = "これは Helm では実行しません。読んでコピーするためにここにあります。";
+"Helm checked the command again and would not run it." = "Helm はコマンドを確認し直し、実行しませんでした。";

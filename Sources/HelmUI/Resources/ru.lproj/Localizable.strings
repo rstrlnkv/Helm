@@ -1163,3 +1163,16 @@
 "It is no longer available upstream." = "Его больше нет у разработчиков.";
 "It no longer meets Homebrew’s conditions for a cask." = "Он больше не отвечает требованиям Homebrew к пакетам cask.";
 "It does not pass the macOS Gatekeeper check." = "Он не проходит проверку Gatekeeper в macOS.";
+"Health" = "Состояние";
+"Caution" = "Внимание";
+"Problem" = "Проблема";
+"Checking this Mac…" = "Проверка этого Mac…";
+"Nothing to fix." = "Исправлять нечего.";
+"Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew не ответил, поэтому о состоянии этого Mac сейчас ничего не известно.";
+"Select a finding" = "Выберите замечание";
+"Helm reads this as" = "Helm читает это так";
+"Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew не назвал здесь никакой команды — он сказал, что не так, и на этом остановился. Строка выше — это то, как её прочитал сам Helm.";
+"Run this command" = "Выполнить эту команду";
+"Copy this command" = "Скопировать эту команду";
+"Helm does not run this one. It is here to read and to copy." = "Helm сам её не выполняет. Она здесь для того, чтобы её прочитать и скопировать.";
+"Helm checked the command again and would not run it." = "Helm проверил команду ещё раз и выполнять её не стал.";

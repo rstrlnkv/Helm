@@ -21,6 +21,10 @@ enum HbStr {
     static var segInstalled: String { L("Installed") }
     static var segUpdates: String { L("Updates") }
     static var segSearch: String { L("Search") }
+    /// What `brew doctor` found. Not "Doctor" — that is Homebrew's own name for
+    /// the subcommand and names a tool rather than a question; the segment
+    /// beside three lists of packages is about the state of the machine.
+    static var segHealth: String { L("Health") }
 
     static var searchPlaceholder: String { L("Search packages") }
     static var install: String { L("Install") }
@@ -170,6 +174,72 @@ enum HbStr {
     /// installed has anywhere in this module.
     static var tileVersion: String { L("Version") }
     static var tileLicence: String { L("Licence") }
+
+    // MARK: - What `brew doctor` found
+
+    /// The two severities `DoctorParser` reads off brew's own `Warning:` and
+    /// `Error:` prefixes. Neither is brew's word: `Warning` is already a key in
+    /// this app about something else, and one key means one thing — and
+    /// `Error` beside a tap's deprecation notice would call somebody's machine
+    /// broken over a cask that still works. These are what the *badge* says.
+    static var severityCaution: String { L("Caution") }
+    static var severityDanger: String { L("Problem") }
+
+    /// While `brew doctor` is out. It is the slowest query in the module and
+    /// the one with least to look at, so it says what is being waited on
+    /// rather than spinning — the rule `checkingForUpdates` above carries.
+    static var examiningThisMac: String { L("Checking this Mac…") }
+    /// `brew doctor` ran and named nothing. **The one reading that may be drawn
+    /// as a healthy machine**, and it is a separate key from the refusal below
+    /// for exactly that reason.
+    static var nothingToFix: String { L("Nothing to fix.") }
+    /// `brew doctor` could not be asked, or answered nothing at all where it
+    /// always answers something. Deliberately says nothing about the machine:
+    /// a Mac nobody could examine is not a Mac that is fine, and the sentence a
+    /// person decides whether to trust the app on must not claim a reading that
+    /// was never taken.
+    static var couldNotExamine: String {
+        L("Homebrew did not answer, so nothing is known about this Mac right now.")
+    }
+    /// The inspector with nothing chosen in this segment. Not `nothingSelected`
+    /// — that says "Select a package", and a finding is not a package; one key
+    /// means one thing, and several languages inflect the two differently.
+    static var selectAFinding: String { L("Select a finding") }
+
+    /// The label over the command in its well.
+    ///
+    /// **Not «Homebrew suggests».** Measured on this Mac (Homebrew 7.0.1,
+    /// 2026-09-15): `brew doctor` printed 1,194 bytes and **not one `brew …`
+    /// command line** — the deprecated-formulae block prints a heading asking
+    /// the person to find replacements and an indented name under it, and
+    /// nothing else. `uninstall <name>` is Helm reading that heading
+    /// (`DoctorFixCandidate.Heading`), so a label attributing it to Homebrew
+    /// would put Helm's own decision in somebody else's mouth — and the one
+    /// reader who would act on that attribution is the one who trusted
+    /// Homebrew rather than this app.
+    static var helmReadsThisAs: String { L("Helm reads this as") }
+    /// Said under the well, both when the command may be run and when it may
+    /// only be copied: the provenance is a fact about the command, not about
+    /// the button beside it.
+    static var brewNamedNoCommand: String {
+        L("Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that.")
+    }
+    /// The button that acts. `runDoctorFix` re-judges it in the engine before
+    /// anything runs, so what this button starts is not what the page judged.
+    static var runThisCommand: String { L("Run this command") }
+    /// The copy affordance beside a command Helm will not run itself.
+    static var copyThisCommand: String { L("Copy this command") }
+    /// Why there is no button for this one. It names no control: the word on
+    /// the control is a key of its own, and a sentence spelling a label by hand
+    /// is a sentence a rename leaves behind in seven translations.
+    static var helmDoesNotRunThis: String {
+        L("Helm does not run this one. It is here to read and to copy.")
+    }
+    /// Drawn beside "Failed" when the engine judged the command again at the
+    /// press and would not run it — the ordinary cause being the race this
+    /// whole design is built around: the package left the Cellar between the
+    /// screen being drawn and the button being pressed.
+    static var fixNotRunnable: String { L("Helm checked the command again and would not run it.") }
 
     /// The heading over the dependency chips.
     static var dependsOn: String { L("Depends on") }
