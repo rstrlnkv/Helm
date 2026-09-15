@@ -20,6 +20,10 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     /// the person opens its detail, and never cached: the answer is about a
     /// Cellar and a catalogue that both change under the app.
     case info
+    /// What `brew doctor` found, parsed from the diagnostics stream it prints
+    /// its whole answer on — see `HomebrewEngine.doctor()` and
+    /// `ProcessRunner.runCapturingDiagnostics`.
+    case doctor
     case install
     case uninstall
     case upgrade

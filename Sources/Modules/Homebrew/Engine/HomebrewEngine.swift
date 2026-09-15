@@ -463,6 +463,35 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return parsed
     }
 
+    /// What `brew doctor` found, parsed from its diagnostics stream.
+    ///
+    /// **The exit status is not the gate here.** Measured on this Mac,
+    /// 2026-09-15, Homebrew 7.0.1: `brew doctor` exits 1 with two real issues
+    /// on the machine — it exits non-zero whenever it has something to say, so
+    /// `refused`/`answered` (which read a non-zero exit as brew declining to
+    /// answer) would report a clean machine exactly when the machine is not
+    /// clean. `completed` is the right helper for the same reason it is right
+    /// for `search`: only the deadline disqualifies the reading, and a
+    /// non-zero exit is itself part of the answer.
+    ///
+    /// `runCapturingDiagnostics`, not `run` — `brew doctor` prints its whole
+    /// answer on standard error and nothing on standard output (see that
+    /// method's doc comment for the measurement), so `run` here would come
+    /// back with one empty byte and this would answer nil on every call.
+    ///
+    /// The gate that actually matters is `DoctorParser.parse`: nil for empty
+    /// input (the tool said nothing, which this module must not read as a
+    /// clean machine), an empty array for real output naming no issue.
+    public func doctor() -> [DoctorIssue]? {
+        guard let brew = locator.brewPath() else {
+            HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot run doctor")
+            return nil
+        }
+        let result = runner.runCapturingDiagnostics(brew, ["doctor"], env: Self.queryEnvironment)
+        guard let out = completed((result.status, result.output), query: "doctor") else { return nil }
+        return DoctorParser.parse(out)
+    }
+
     // MARK: - Long operations
 
     /// One phase for all five long operations, opened and closed by the busy
@@ -762,6 +791,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 return self.reply(await offTheCooperativePool {
                     self.info(name: r.name, isCask: r.isCask)
                 }, for: cmd)
+            case .doctor:
+                return self.reply(await offTheCooperativePool { self.doctor() }, for: cmd)
             case .descriptions:
                 guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
                 else { return Data() }
