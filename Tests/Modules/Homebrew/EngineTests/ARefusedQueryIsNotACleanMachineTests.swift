@@ -98,6 +98,11 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
             return (status, Data(out.utf8))
         }
 
+        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
+        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
+            (0, "")
+        }
+
         func stream(_ launchPath: String, _ args: [String], env: [String: String],
                     onLine: @escaping @Sendable (String) -> Void,
                     onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {

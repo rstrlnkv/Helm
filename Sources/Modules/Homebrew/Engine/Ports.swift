@@ -38,6 +38,23 @@ public protocol ProcessRunner: Sendable {
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
                 onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess
+
+    /// Standard output and standard error together, in the order the child
+    /// wrote them — for the one query whose whole answer is on the wrong
+    /// stream. Everywhere else in this module, `run` sends standard error to
+    /// the null device on purpose (see its own doc comment): a tap's
+    /// deprecation warning would otherwise become a package name to a parser
+    /// that reads the first word of every line. `brew doctor` is the
+    /// exception — measured on this Mac, 2026-09-14, Homebrew 7.0.1: 1 byte of
+    /// stdout against 1,194 of stderr, exit status 1 — so it needs the one
+    /// method that goes and gets the other stream, rather than a change to
+    /// `run` that would break every other parser here.
+    ///
+    /// **No default implementation.** A protocol extension that quietly fell
+    /// back to `run` would make this method's whole reason for existing
+    /// untestable: every fake would keep passing while the live path went
+    /// back to silence on the one query that needs the other stream.
+    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String)
 }
 
 public extension ProcessRunner {
