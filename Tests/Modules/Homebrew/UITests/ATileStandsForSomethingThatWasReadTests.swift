@@ -75,7 +75,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     /// An installed formula: what is on disk, when it arrived, and why.
     func testAnInstalledFormulaEarnsItsThreeTiles() {
         AppLanguage.each { language in
-            let facts = PackageFacts.of(info(), sizeBytes: nil)
+            let facts = PackageFacts.of(info(), size: .notMeasured)
             XCTAssertEqual(facts.map(\.label),
                            [HbStr.tileInstalledVersion, HbStr.tileInstalledOn,
                             HbStr.tileHowItGotHere],
@@ -89,7 +89,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     /// two tiles rather than three with one of them blank.
     func testACaskIsNotGivenATileForWhatItDoesNotRecord() {
         AppLanguage.each { language in
-            let facts = PackageFacts.of(info(isCask: true, licence: nil, onRequest: nil), sizeBytes: nil)
+            let facts = PackageFacts.of(info(isCask: true, licence: nil, onRequest: nil), size: .notMeasured)
             XCTAssertEqual(facts.map(\.label),
                            [HbStr.tileInstalledVersion, HbStr.tileInstalledOn],
                            "\(language.rawValue): a cask was given a tile for a fact its own "
@@ -101,7 +101,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     /// Cellar restored from a backup, a formula linked by hand.
     func testAnUndatedInstallEarnsNoDateTile() {
         AppLanguage.each { language in
-            let facts = PackageFacts.of(info(at: nil), sizeBytes: nil)
+            let facts = PackageFacts.of(info(at: nil), size: .notMeasured)
             XCTAssertFalse(facts.contains { $0.label == HbStr.tileInstalledOn },
                            "\(language.rawValue): a package with no recorded install time was "
                            + "given a date tile to fill")
@@ -112,7 +112,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     /// and nothing that claims it is on this Mac.
     func testAPackageThatIsNotInstalledEarnsTheOtherSet() {
         AppLanguage.each { language in
-            let facts = PackageFacts.of(info(installed: nil, at: nil, onRequest: nil), sizeBytes: nil)
+            let facts = PackageFacts.of(info(installed: nil, at: nil, onRequest: nil), size: .notMeasured)
             XCTAssertEqual(facts.map(\.label), [HbStr.tileVersion, HbStr.tileLicence],
                            "\(language.rawValue): the tiles a search hit earns have moved")
             XCTAssertEqual(facts.first?.value, "3.6.4",
@@ -129,7 +129,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     func testAHitWithNoLicenceEarnsOneTile() {
         AppLanguage.each { language in
             let facts = PackageFacts.of(info(isCask: true, licence: nil, installed: nil,
-                                             at: nil, onRequest: nil), sizeBytes: nil)
+                                             at: nil, onRequest: nil), size: .notMeasured)
             XCTAssertEqual(facts.map(\.label), [HbStr.tileVersion],
                            "\(language.rawValue): a licence nobody answered became a tile")
         }
@@ -146,7 +146,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
             + blankValueShapes()
         AppLanguage.each { language in
             for shape in shapes {
-                for fact in PackageFacts.of(shape, sizeBytes: nil) {
+                for fact in PackageFacts.of(shape, size: .notMeasured) {
                     XCTAssertFalse(fact.label.trimmingCharacters(in: .whitespaces).isEmpty,
                                    "\(language.rawValue): a tile with no label")
                     XCTAssertFalse(fact.value.trimmingCharacters(in: .whitespaces).isEmpty, """
@@ -168,7 +168,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     /// the tiles around it as it landed.
     func testAWalkedFigureEarnsTheLastTile() {
         AppLanguage.each { language in
-            let facts = PackageFacts.of(info(), sizeBytes: 41_353_216)
+            let facts = PackageFacts.of(info(), size: .measured(41_353_216))
             XCTAssertEqual(facts.map(\.label),
                            [HbStr.tileInstalledVersion, HbStr.tileInstalledOn,
                             HbStr.tileHowItGotHere, HbStr.tileOnDisk],
@@ -185,7 +185,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     func testTheFigureFollowsTheAppsLanguage() {
         var spellings: [AppLanguage: String] = [:]
         AppLanguage.each { language in
-            spellings[language] = PackageFacts.of(info(), sizeBytes: 41_353_216)
+            spellings[language] = PackageFacts.of(info(), size: .measured(41_353_216))
                 .first { $0.label == HbStr.tileOnDisk }?.value
         }
         XCTAssertEqual(spellings.count, AppLanguage.allCases.count)
@@ -208,7 +208,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
         AppLanguage.each { language in
             for shape in [info(), info(isCask: true, licence: nil, onRequest: nil),
                           info(installed: nil, at: nil, onRequest: nil)] {
-                let facts = PackageFacts.of(shape, sizeBytes: nil)
+                let facts = PackageFacts.of(shape, size: .notMeasured)
                 XCTAssertFalse(facts.contains { $0.label == HbStr.tileOnDisk }, """
                     \(language.rawValue): a package nothing was walked for was given a size tile
                     """)
@@ -219,13 +219,66 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
         }
     }
 
+    /// **A walk that is out earns the tile the figure will land in, and says so
+    /// in words.**
+    ///
+    /// The one state in this file that is not a fact about the package: it is a
+    /// fact about Helm, true only while a walk is running for the package on
+    /// screen (`HomebrewViewModel.size`, and
+    /// `TheSizeIsAskedForAfterTheRestTests`, which reads it with the walk really
+    /// parked). Here it is only the mapping — that `.measuring` is a tile at
+    /// all, that it is the last one, and that it carries the word rather than a
+    /// number.
+    ///
+    /// Asserted against `Bytes(0)` as well, for the reason the case below gives:
+    /// the failure this state could grow into is a placeholder that reads as a
+    /// measurement.
+    func testAWalkInFlightEarnsTheTileTheFigureWillLandIn() {
+        AppLanguage.each { language in
+            let facts = PackageFacts.of(info(), size: .measuring)
+            XCTAssertEqual(facts.map(\.label),
+                           [HbStr.tileInstalledVersion, HbStr.tileInstalledOn,
+                            HbStr.tileHowItGotHere, HbStr.tileOnDisk],
+                           "\(language.rawValue): the waiting tile is not where the figure lands")
+            XCTAssertEqual(facts.last?.value, HbStr.countingTheSize, """
+                \(language.rawValue): the tile reads «\(facts.last?.value ?? "")» while the walk \
+                is out, where it should say the figure is being counted
+                """)
+            XCTAssertNotEqual(facts.last?.value, Bytes(0), """
+                \(language.rawValue): a walk with no answer yet was written as a figure
+                """)
+        }
+    }
+
+    /// And the word is the reader's own, not one English string in eight
+    /// languages.
+    ///
+    /// Read as a difference between languages rather than against a literal, the
+    /// way the date and the units above are: a key missing from seven `.strings`
+    /// files falls back to the English in all eight, which is exactly what this
+    /// has to be able to fail on.
+    func testTheWaitingWordFollowsTheAppsLanguage() {
+        var spellings: [AppLanguage: String] = [:]
+        AppLanguage.each { language in
+            spellings[language] = PackageFacts.of(info(), size: .measuring)
+                .first { $0.label == HbStr.tileOnDisk }?.value
+        }
+        XCTAssertEqual(spellings.count, AppLanguage.allCases.count)
+        XCTAssertGreaterThan(Set(spellings.values).count, 1, """
+            all eight languages say «\(spellings[.en] ?? "")» while the walk is out — the key is \
+            answering with itself, which is what a missing translation looks like
+            """)
+        XCTAssertNotEqual(spellings[.ru], spellings[.ja],
+                          "Russian and Japanese say the same word for a walk in progress")
+    }
+
     /// A package that is not installed still earns its own two tiles and no
     /// third: there is no keg to walk, and the design says so in words the
     /// tiles do not carry — nothing here stands in for the figure.
     func testAPackageThatIsNotInstalledIsNotGivenAPlaceholder() {
         AppLanguage.each { language in
             let facts = PackageFacts.of(info(installed: nil, at: nil, onRequest: nil),
-                                        sizeBytes: nil)
+                                        size: .notMeasured)
             XCTAssertEqual(facts.map(\.label), [HbStr.tileVersion, HbStr.tileLicence],
                            "\(language.rawValue): a hit was given a tile for a keg it does not have")
         }
@@ -277,7 +330,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     func testAnAnswerWithNothingInItEarnsNoTiles() {
         AppLanguage.each { language in
             let facts = PackageFacts.of(info(licence: nil, latest: nil, installed: nil,
-                                             at: nil, onRequest: nil), sizeBytes: nil)
+                                             at: nil, onRequest: nil), size: .notMeasured)
             XCTAssertTrue(facts.isEmpty,
                           "\(language.rawValue): \(facts.count) tile(s) were drawn for an answer "
                           + "with no fact in it")
@@ -297,7 +350,7 @@ final class ATileStandsForSomethingThatWasReadTests: XCTestCase {
     func testTheInstallDateFollowsTheAppsLanguage() {
         var spellings: [AppLanguage: String] = [:]
         AppLanguage.each { language in
-            let dated = PackageFacts.of(info(), sizeBytes: nil).first { $0.label == HbStr.tileInstalledOn }
+            let dated = PackageFacts.of(info(), size: .notMeasured).first { $0.label == HbStr.tileInstalledOn }
             spellings[language] = dated?.value
             XCTAssertNotNil(dated, "\(language.rawValue): no install date tile to read")
         }

@@ -1145,6 +1145,7 @@
 "Version" = "Versión";
 "Licence" = "Licencia";
 "On disk" = "En el disco";
+"Counting…" = "Calculando…";
 "Depends on" = "Depende de";
 "Package notes" = "Notas del paquete";
 "Homebrew has deprecated this package." = "Homebrew ha marcado este paquete como obsoleto.";

@@ -1145,6 +1145,7 @@
 "Version" = "Версия";
 "Licence" = "Лицензия";
 "On disk" = "На диске";
+"Counting…" = "Считаем…";
 "Depends on" = "Зависит от";
 "Package notes" = "Замечания пакета";
 "Homebrew has deprecated this package." = "Homebrew снял этот пакет с поддержки.";

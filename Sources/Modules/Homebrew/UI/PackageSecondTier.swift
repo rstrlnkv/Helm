@@ -27,13 +27,20 @@ import Module_Homebrew_Engine
 /// **The size is the one input that is not part of `info`**, and it is a
 /// parameter of its own because it arrives on its own: `brew info` carries no
 /// size in either direction, so the figure is a walk of the package's Cellar
-/// directory that lands after this tier has already been drawn once. nil until
-/// then, and nil for good whenever there was nothing to measure — which draws
-/// as no tile at all, the same as every other absent fact here.
+/// directory that lands after this tier has already been drawn once.
+///
+/// It is also the one input with three states rather than two. While that walk
+/// is out for the package on screen, the tile is there and says the figure is
+/// being counted; when it answers, the figure replaces the word in the tile that
+/// is already there; when there was nothing to measure — a cask, a keg that
+/// would not open, a package that is not installed — there is no tile at all,
+/// the same as every other absent fact here. `SizeReading` is what carries the
+/// difference, and `PackageFacts` is where it is spent.
 struct PackageSecondTier: View {
     let info: PackageInfo
-    /// Bytes the package occupies, or nil when nothing measured any.
-    let sizeBytes: Int?
+    /// What is known about the disk this package occupies: nothing, a walk that
+    /// is out now, or a figure.
+    let size: SizeReading
 
     /// The same stack the first tier's blocks sit in, with the same step: this
     /// used to be a `@ViewBuilder` member of the page, spaced by the page's own
@@ -103,7 +110,7 @@ struct PackageSecondTier: View {
     /// fewer as the inspector narrows, one when there is only room for one.
     @ViewBuilder
     private var factTiles: some View {
-        let tiles = PackageFacts.of(info, sizeBytes: sizeBytes)
+        let tiles = PackageFacts.of(info, size: size)
         if !tiles.isEmpty {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.tileMinimum),
                                          spacing: HelmSpace.s4)],

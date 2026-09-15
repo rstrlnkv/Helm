@@ -275,6 +275,38 @@ struct PackageFact: Equatable {
     let value: String
 }
 
+/// What is known about the disk a package occupies: nothing, a walk that is out
+/// right now, or a figure.
+///
+/// **Three states rather than an optional, because the middle one is not an
+/// absence.** `brew info --json=v2` carries no size in either direction, so the
+/// figure is a walk of the package's own Cellar directory — the one reading in
+/// the inspector that takes long enough to be worth saying something about. An
+/// `Int?` folded «nobody has asked», «a walk is out» and «the walk answered
+/// nothing» into one nil, and a view given that nil can only ever draw the same
+/// thing for all three: it cannot say a measurement is under way without
+/// claiming one where none was started, which is the whole of what
+/// `PackageFacts` refuses.
+///
+/// A fourth state for «the walk was refused» would be a distinction with nothing
+/// to say: the tile is absent either way, and a person who never saw one cannot
+/// tell «no walk» from «a walk that failed» because neither is a fact about the
+/// package. So a refusal lands back on `.notMeasured`, deliberately.
+///
+/// Never `.measured(0)` from the engine: a missing keg, a directory that would
+/// not open and a cask are all nil there (`HomebrewEngine.size`), because a zero
+/// in a tile is not a gap on the page — it is a measurement, and it says the
+/// package occupies nothing.
+enum SizeReading: Equatable, Sendable {
+    /// Nothing has been walked and nothing is being walked: no tile.
+    case notMeasured
+    /// A walk is in flight **for the package on screen now**: the tile is there
+    /// and says so.
+    case measuring
+    /// The walk answered, in bytes.
+    case measured(Int)
+}
+
 /// Which tiles `brew info`'s answer earns — and no others.
 ///
 /// **An absent fact is an absent tile.** Installed and not installed are two
@@ -292,15 +324,21 @@ struct PackageFact: Equatable {
 /// **The size is the one fact here that did not come with the answer.** `brew
 /// info` carries no size in either direction, so it is a walk of the package's
 /// own Cellar directory that lands later than everything else — a separate
-/// parameter rather than a field of `PackageInfo`, and `nil` for every reason a
-/// walk can fail to produce a figure: nothing selected, not installed, a keg
-/// that would not open, a cask. It earns its tile only when there is a figure,
-/// by exactly the rule the four above obey. There is deliberately no
-/// «measuring…» and no «you will know once it is installed»: both are a tile
-/// standing in for a figure nobody has, which is the one thing this type exists
-/// to refuse.
+/// parameter rather than a field of `PackageInfo`.
+///
+/// **It is also the one tile that may stand for a state rather than a figure,
+/// and only for the one state that is really happening.** `.measuring` means a
+/// walk is out *now, for this package*, so the tile says the figure is being
+/// counted and then swaps it in place; `.notMeasured` covers everything else —
+/// nothing selected, not installed, the walk refused — and earns no tile at all,
+/// by exactly the rule the four above obey. There is deliberately still no «you
+/// will know once it is installed» for a package that is not here: nothing is
+/// walking, nothing ever will, and that sentence promises a number that never
+/// comes. The distinction is carried by `SizeReading` rather than by a word this
+/// enum would have to recognise, because a string a caller can spell is a state
+/// a caller can invent.
 enum PackageFacts {
-    static func of(_ info: PackageInfo, sizeBytes: Int?) -> [PackageFact] {
+    static func of(_ info: PackageInfo, size: SizeReading) -> [PackageFact] {
         var facts: [PackageFact] = []
         if let installed = info.installedVersion {
             facts.append(PackageFact(label: HbStr.tileInstalledVersion, value: installed))
@@ -327,12 +365,20 @@ enum PackageFacts {
         }
         // Last, and in both sets: it is the tile that arrives last, and a grid
         // whose earlier tiles moved when it landed would re-flow the page under
-        // somebody's eyes. `Bytes` and not a formatter of its own — a
-        // Foundation one built with no locale answers in the *system's*
-        // language, which on a Mac outside Helm's eight is an English page with
-        // somebody else's units spliced into it.
-        if let sizeBytes {
-            facts.append(PackageFact(label: HbStr.tileOnDisk, value: Bytes(sizeBytes)))
+        // somebody's eyes. Holding the place while the walk is out is the other
+        // half of that — the figure then swaps into a tile that is already
+        // there rather than pushing one in beside the others.
+        //
+        // `Bytes` and not a formatter of its own — a Foundation one built with
+        // no locale answers in the *system's* language, which on a Mac outside
+        // Helm's eight is an English page with somebody else's units spliced
+        // into it.
+        switch size {
+        case .notMeasured: break
+        case .measuring:
+            facts.append(PackageFact(label: HbStr.tileOnDisk, value: HbStr.countingTheSize))
+        case let .measured(bytes):
+            facts.append(PackageFact(label: HbStr.tileOnDisk, value: Bytes(bytes)))
         }
         return facts
     }

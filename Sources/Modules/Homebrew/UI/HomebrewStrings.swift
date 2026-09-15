@@ -177,11 +177,21 @@ enum HbStr {
     static var tileLicence: String { L("Licence") }
     /// How much disk the installed package occupies. **Walked, not read**:
     /// `brew info --json=v2` carries no size in either direction, so this tile
-    /// is the only fact in the tier that arrives after the rest — and it is
-    /// absent until it does, because a tile that says «measuring…» is a tile
-    /// standing in for a figure nobody has. Its value goes through `Bytes`, so
-    /// the unit is the app's own language rather than the system's.
+    /// is the only fact in the tier that arrives after the rest. Its value goes
+    /// through `Bytes`, so the unit is the app's own language rather than the
+    /// system's.
     static var tileOnDisk: String { L("On disk") }
+    /// What the tile above says while the walk is out — and only while it is
+    /// out, for the package on screen (`SizeReading`). A state, not a figure:
+    /// this is the one thing the tier says about a number nobody has yet, and it
+    /// is said only because the walk really is running.
+    ///
+    /// **Its own key rather than VPN's «Measuring…».** That one is about a link
+    /// being driven for twenty seconds and its eight translations are written
+    /// for that — Russian «Измеряю…», Japanese 測定中 — where this is a directory
+    /// being added up. One key means one thing, and the two would have shared a
+    /// word that several of the eight do not share.
+    static var countingTheSize: String { L("Counting…") }
 
     // MARK: - What `brew doctor` found
 

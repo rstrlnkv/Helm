@@ -50,22 +50,30 @@ import Module_Homebrew_Engine
     /// "another target uses this".
     @Published private(set) var info: PackageInfo?
 
-    /// How much disk **the package selected now** occupies, or nil because
-    /// nothing is selected, it is not installed, the walk has not answered yet,
-    /// or it answered nil.
+    /// How much disk **the package selected now** occupies — or that a walk for
+    /// it is out right now, or that there is nothing to say.
     ///
-    /// One value for all of those, for the reason `info` above is one value for
-    /// its three: the tile is drawn from a figure that was measured or it is
-    /// not drawn at all. `brew info` carries no size in either direction, so
-    /// this is a walk of the package's own Cellar directory and it lands after
-    /// the rest of the inspector — which is why it is a field of its own rather
-    /// than one more optional on `PackageInfo`, arriving with the rest.
+    /// **Three states rather than an optional, and the middle one is the whole
+    /// reason.** `brew info` carries no size in either direction, so this is a
+    /// walk of the package's own Cellar directory and it lands after the rest of
+    /// the inspector — the one wait in the tier long enough that arriving with
+    /// no warning reads as a tile appearing out of nowhere. An `Int?` could not
+    /// say that: «nothing is selected», «a walk is out» and «the walk answered
+    /// nothing» were one nil, so the page could not tell a measurement that is
+    /// happening from one that is not. `SizeReading` carries the difference;
+    /// this field is where it is known.
     ///
-    /// **Never 0.** The engine folds a missing keg, a directory that would not
-    /// open and a cask into nil (`HomebrewEngine.size`), because a zero in a
-    /// tile is not a gap on the page — it is a measurement, and it says the
-    /// package occupies nothing.
-    @Published private(set) var size: Int?
+    /// `.measuring` is written immediately before the ask goes out and only for
+    /// a package `brew info` said is installed, so it can never stand over a
+    /// package nothing is walking. Every move of the subject puts it back to
+    /// `.notMeasured` (`refillInfo`), including while an older walk is still in
+    /// flight — that answer is then dropped by its token rather than drawn.
+    ///
+    /// **Never `.measured(0)`.** The engine folds a missing keg, a directory
+    /// that would not open and a cask into nil (`HomebrewEngine.size`), which
+    /// lands here as `.notMeasured`, because a zero in a tile is not a gap on
+    /// the page — it is a measurement, and it says the package occupies nothing.
+    @Published private(set) var size: SizeReading = .notMeasured
 
     /// Which ask an answer belongs to, so an older one is dropped rather than
     /// drawn over a newer package.
@@ -179,7 +187,12 @@ import Module_Homebrew_Engine
         // 41 MB left standing under the heading wget is a measurement of the
         // wrong thing — the most believable kind of wrong, because it is a
         // real figure about *something*.
-        size = nil
+        //
+        // All the way back to `.notMeasured`, never to `.measuring`: at this
+        // line nothing has been asked for the new package yet, and «counting»
+        // over a walk that has not been started is the same false promise as a
+        // figure nobody measured.
+        size = .notMeasured
         let mine = infoAsks.take()
         guard let ref = selectedPackage else { infoAsk = nil; return }
         infoAsk = Task { [weak self] in await self?.loadInfo(ref, token: mine) }
@@ -236,14 +249,26 @@ import Module_Homebrew_Engine
         // reading it from anywhere else would let a figure be filed under a
         // number `brew info` never said.
         guard let version = answer?.installedVersion, !version.isEmpty else { return }
+        // **Said before the ask, and it is the ask that earns it.** This line
+        // and the one under it are one gesture: the tile says a walk is running
+        // exactly while a walk is running, so there is no state in which the
+        // page claims to be counting and nothing is. A package with no installed
+        // version never reaches here, which is why a search hit gets no tile
+        // instead of a promise about a keg that does not exist.
+        size = .measuring
         let measured: Int? = await client.request(
             HomebrewCommand.size,
             encoding: PackageSizeRequest(name: ref.name, isCask: ref.isCask, version: version))
         // The same token, asked again: the walk is the longest wait in the
         // inspector, so the screen is likelier to have moved under it than
-        // under anything else here.
+        // under anything else here. Returning here leaves nothing behind —
+        // whatever moved the subject already wrote `.notMeasured`, and this
+        // answer belongs to a package nobody is looking at.
         guard infoAsks.isLatest(token) else { return }
-        size = measured
+        // A refusal is `.notMeasured` and not a lingering «counting»: the walk
+        // is over, there is no figure, and the tile goes rather than sitting
+        // there for ever saying something is still happening.
+        size = measured.map(SizeReading.measured) ?? .notMeasured
     }
 
     /// Drops `segment`'s selection when its package is no longer in `ids`.

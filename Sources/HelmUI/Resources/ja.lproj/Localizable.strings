@@ -1145,6 +1145,7 @@
 "Version" = "バージョン";
 "Licence" = "ライセンス";
 "On disk" = "ディスク上のサイズ";
+"Counting…" = "計算中…";
 "Depends on" = "依存先";
 "Package notes" = "パッケージからのお知らせ";
 "Homebrew has deprecated this package." = "Homebrew はこのパッケージを非推奨にしました。";

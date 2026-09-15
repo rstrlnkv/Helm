@@ -541,7 +541,7 @@ struct HomebrewSettingsPage: View {
                 // (`HomebrewEngine.info`), none of which has measured
                 // anything. So there is no spinner in place of the package
                 // and no tile with nothing in it: the tier is absent.
-                if let info = hb.info { PackageSecondTier(info: info, sizeBytes: hb.size) }
+                if let info = hb.info { PackageSecondTier(info: info, size: hb.size) }
             }
             .helmInspectorColumn()
         }
