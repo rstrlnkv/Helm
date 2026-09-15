@@ -1169,10 +1169,15 @@
 "Checking this Mac…" = "Comprobando este Mac…";
 "Nothing to fix." = "No hay nada que arreglar.";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew no respondió, así que ahora mismo no se sabe nada sobre este Mac.";
-"Select a finding" = "Selecciona una observación";
+"Select a finding or a part of the configuration" = "Selecciona una observación o una parte de la configuración";
 "Helm reads this as" = "Helm lo interpreta así";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew no indicó aquí ningún comando: dijo qué va mal y se quedó ahí. La línea de arriba es la lectura que Helm hace de eso.";
 "Run this command" = "Ejecutar este comando";
 "Copy this command" = "Copiar este comando";
 "Helm does not run this one. It is here to read and to copy." = "Helm no ejecuta este comando. Está aquí para leerlo y copiarlo.";
 "Helm checked the command again and would not run it." = "Helm volvió a comprobar el comando y no lo ejecutó.";
+"Checkup" = "Revisión";
+"Configuration" = "Configuración";
+"Machine" = "Equipo";
+"Tools" = "Herramientas";
+"Copy for a bug report" = "Copiar para un informe de error";

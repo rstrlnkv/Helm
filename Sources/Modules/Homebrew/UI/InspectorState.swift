@@ -20,6 +20,10 @@ enum InspectorState: Equatable {
     /// and the fix beside them was put there by `HomebrewViewModel.refreshDoctor`
     /// before this was ever asked.
     case issue(DoctorIssue)
+    /// One group of `brew config`'s lines, whole. The other half of what the
+    /// health list holds: the segment's list has two kinds of thing in it, and
+    /// the inspector describes whichever is selected.
+    case configSection(ConfigGroup)
 
     static func of(segment: HomebrewViewModel.Segment,
                    selected: String?,
@@ -28,6 +32,7 @@ enum InspectorState: Equatable {
                    loadedOutdated: Bool,
                    hits: [SearchHit],
                    issues: [DoctorIssue],
+                   config: [ConfigGroup],
                    descriptions: [String: String]) -> InspectorState {
         guard let selected else { return .nothingSelected }
         let desc = descriptions[selected]
@@ -62,11 +67,21 @@ enum InspectorState: Equatable {
                                              version: "", desc: desc, updates: .notApplicable,
                                              action: .install))
         case .health:
-            // The same shape as the three above: a selection the list no
-            // longer holds is nothing at all, not a stale finding kept on
-            // screen because it was there a moment ago.
-            guard let issue = issues.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return .issue(issue)
+            // **Two lists, not one.** This segment's list holds `brew doctor`'s
+            // findings under one heading and `brew config`'s groups under
+            // another, so the selection is looked for in both before it is
+            // read as nothing. The ids cannot collide: a `DoctorIssue`'s is
+            // built from its own text around NUL separators and a
+            // `ConfigGroup`'s is `cfg:` and a case name.
+            //
+            // The same shape as the three above otherwise: a selection neither
+            // list holds any more is nothing at all, not a stale finding kept
+            // on screen because it was there a moment ago.
+            if let issue = issues.first(where: { $0.id == selected }) { return .issue(issue) }
+            guard let group = config.first(where: { $0.id == selected }) else {
+                return .nothingSelected
+            }
+            return .configSection(group)
         }
     }
 }
@@ -127,6 +142,101 @@ enum HealthListState: Equatable {
         case .notAsked: return .busy
         case .refused: return .unexaminable
         case let .examined(issues): return issues.isEmpty ? .clean : .rows(issues)
+        }
+    }
+}
+
+/// One group of `brew config`'s lines, under one of the three headings this
+/// app invented for them.
+///
+/// **The grouping is presentation and lives here rather than in the engine.**
+/// `brew config` prints one flat list; `ConfigLine.section` is the engine's
+/// answer for *which* heading a line belongs under, and this is the list the
+/// health segment draws a row for. A group with no lines in it is not a group:
+/// an empty heading over nothing is a promise the document did not make.
+struct ConfigGroup: Equatable, Identifiable {
+    let section: ConfigSection
+    let lines: [ConfigLine]
+    /// Prefixed, so a group's id can never be read as a package's `BrewKey`
+    /// (`f:`/`c:`) nor as a `DoctorIssue`'s, which is built from the finding's
+    /// own text around NUL separators.
+    var id: String { "cfg:" + section.rawValue }
+
+    /// The groups in `ConfigSection.allCases` order — which is the order the
+    /// approved drawing puts them in — each keeping brew's own order inside it.
+    ///
+    /// Not a `Dictionary(grouping:)`: that answers in whatever order the hash
+    /// happens to give, so the three headings would change places between
+    /// launches, and the lines inside a group would too.
+    static func grouping(_ lines: [ConfigLine]) -> [ConfigGroup] {
+        ConfigSection.allCases.compactMap { section in
+            let own = lines.filter { $0.section == section }
+            return own.isEmpty ? nil : ConfigGroup(section: section, lines: own)
+        }
+    }
+}
+
+/// The sentence the health list has instead of findings — named rather than
+/// spelled, so the value the tests read carries no language in it.
+///
+/// Each of the three is `HealthListState`'s own reading of `brew doctor`, and
+/// the three stay three for the reason that type spells out: «Nothing to fix»
+/// and «Homebrew did not answer» are one empty list and must never be one
+/// sentence.
+enum HealthNote: String, Equatable { case busy, clean, unexaminable }
+
+/// One row under the Checkup heading: a finding, or the one sentence that
+/// stands in for the findings when there are none to draw.
+enum HealthRow: Equatable, Identifiable {
+    case note(HealthNote)
+    case issue(DoctorIssue)
+    /// A note is not selectable and the list says so; the id is still distinct,
+    /// because a `ForEach` needs one and two rows sharing an id is a row that
+    /// redraws as the other.
+    var id: String {
+        switch self {
+        case let .note(note): return "note:" + note.rawValue
+        case let .issue(issue): return issue.id
+        }
+    }
+}
+
+/// **What the whole health segment puts on screen — one list with two kinds of
+/// thing in it, or one sentence and nothing else.**
+///
+/// The segment held only `brew doctor`'s findings, so an empty reading was an
+/// empty screen and `HelmEmptyState` was the whole of it. It holds `brew
+/// config` as well now, and that changes what an empty reading means: a Mac
+/// whose findings could not be read still has a configuration to show, and
+/// collapsing to the centred sentence would throw away rows that were read
+/// successfully. Collapsing the other way would be worse — the sentence saying
+/// **why** there are no findings is the one a person decides whether to trust
+/// their Mac on, and it has to survive the configuration being there.
+///
+/// So: the sentence becomes a row under its own heading when there is anything
+/// else on the list, and stays the centred empty state when there is not. Both
+/// readings are kept in one place a test can reach, for the reason
+/// `HealthListState` gives about a `body`.
+enum HealthScreen: Equatable {
+    /// The whole segment is one sentence: `brew doctor` has nothing to draw and
+    /// `brew config` answered nothing either.
+    case sentence(HealthNote)
+    /// A list. `configuration` empty means that heading is not drawn at all.
+    case groups(checkup: [HealthRow], configuration: [ConfigGroup])
+
+    static func of(_ reading: DoctorReading, config: [ConfigGroup]) -> HealthScreen {
+        func checkup(_ note: HealthNote) -> HealthScreen {
+            config.isEmpty ? .sentence(note)
+                           : .groups(checkup: [.note(note)], configuration: config)
+        }
+        switch HealthListState.of(reading) {
+        case .busy: return checkup(.busy)
+        case .clean: return checkup(.clean)
+        case .unexaminable: return checkup(.unexaminable)
+        // Findings are rows whether or not there is a configuration beside
+        // them: a list is already the shape, so there is nothing to collapse.
+        case let .rows(issues): return .groups(checkup: issues.map(HealthRow.issue),
+                                               configuration: config)
         }
     }
 }

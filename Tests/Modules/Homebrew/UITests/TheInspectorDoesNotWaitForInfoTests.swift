@@ -185,7 +185,7 @@ final class TheInspectorDoesNotWaitForInfoTests: XCTestCase {
             segment: model.segment, selected: model.selected, installed: model.installed,
             outdated: model.outdated, loadedOutdated: model.loadedOutdated,
             hits: model.searchHits, issues: model.issues,
-            descriptions: model.descriptions)
+            config: model.configGroups, descriptions: model.descriptions)
         else { return nil }
         return subject
     }

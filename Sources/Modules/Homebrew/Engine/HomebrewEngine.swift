@@ -504,6 +504,42 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return DoctorParser.parse(out)
     }
 
+    /// What `brew config` says about this Homebrew and this Mac — the version,
+    /// the prefix, the checkout, the compiler, the Command Line Tools.
+    ///
+    /// **`run`, and `answered`, and both for measured reasons.** `brew config`
+    /// is the opposite of `brew doctor` on every count that decides these two
+    /// choices — measured on this Mac, Homebrew 7.0.1, 2026-09-15: 555 bytes of
+    /// standard output, 0 of standard error, exit 0. So `run` is the right
+    /// runner (`runCapturingDiagnostics` would fold a tap's deprecation warning
+    /// into the document, and a warning's own colon parses as a configuration
+    /// key), and `answered` is the right gate (a non-zero exit is brew
+    /// declining rather than part of the answer, which is what made `completed`
+    /// right for `doctor`).
+    ///
+    /// nil when brew refused, when there is no brew to ask, and when the
+    /// document holds no `key: value` line at all — `BrewConfigParser.parse`'s
+    /// own doc comment says why the last of those is not an empty reading.
+    public func config() -> BrewConfig? {
+        guard let brew = locator.brewPath() else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "brew is not installed — cannot read its configuration")
+            return nil
+        }
+        let result = runner.run(brew, ["config"], env: Self.queryEnvironment)
+        guard let out = answered(result, query: "config") else { return nil }
+        guard let lines = BrewConfigParser.parse(out) else {
+            // Named, for the reason `info`'s nil is named: a shape this build
+            // cannot read is not the same sentence as brew having nothing to
+            // say, and the dev channel is triaged off this log.
+            HelmLog.shared.warn(Self.moduleID,
+                                "config: brew printed nothing this build reads as `key: value` "
+                                + "— no configuration is drawn")
+            return nil
+        }
+        return BrewConfig(lines: lines, text: out)
+    }
+
     // MARK: - Long operations
 
     /// One phase for all five long operations, opened and closed by the busy
@@ -852,6 +888,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 }, for: cmd)
             case .doctor:
                 return self.reply(await offTheCooperativePool { self.doctor() }, for: cmd)
+            case .config:
+                return self.reply(await offTheCooperativePool { self.config() }, for: cmd)
             case .descriptions:
                 guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
                 else { return Data() }

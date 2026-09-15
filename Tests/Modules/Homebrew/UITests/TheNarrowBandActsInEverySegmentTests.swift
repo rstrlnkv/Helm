@@ -204,7 +204,7 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         guard case let .package(subject) = InspectorState.of(
             segment: segment, selected: id, installed: hb.installed, outdated: hb.outdated,
             loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, issues: hb.issues,
-            descriptions: hb.descriptions)
+            config: hb.configGroups, descriptions: hb.descriptions)
         else { return false }
         return subject.action != .pinned
     }

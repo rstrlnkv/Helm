@@ -126,6 +126,16 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Control": [.ru, .es, .ja, .zh],
         "Option": [.ru, .fr, .ja, .zh],
         "Shift": [.ru, .pt, .zh],
+        // The two `brew config` group headings French spells exactly as
+        // English does. Larousse gives «configuration» and «machine» for both
+        // senses — the settings of an installation, and the computer itself —
+        // and neither has a shorter French word to prefer. The other six all
+        // differ (Конфигурация/Машина, Configuración/Equipo,
+        // Konfiguration/Rechner, 構成/マシン, 配置/本机, Configuração/Máquina),
+        // which is what makes these identities rather than rows nobody filled
+        // in.
+        "Configuration": [.fr],
+        "Machine": [.fr],
         "Cyan": [.fr, .de],
         "DEV": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Dev": [.ru, .es, .fr, .de, .ja, .zh, .pt],

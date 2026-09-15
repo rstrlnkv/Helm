@@ -201,3 +201,59 @@ public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
         self.severity = severity; self.title = title; self.body = body; self.fix = fix
     }
 }
+
+/// Which heading one `brew config` line is drawn under.
+///
+/// **Ours, not Homebrew's.** `brew config` prints one flat list of eighteen
+/// `key: value` lines with no headings anywhere in it; the three groups are
+/// Helm's reading of that list, which is why their names are translated where
+/// the keys beside them never are. The mapping from key to group is
+/// `BrewConfigParser.sections` — hand-written, beside the parser, with a test
+/// naming every key this Mac produced.
+public enum ConfigSection: String, Codable, Sendable, CaseIterable {
+    /// Homebrew's own installation: its version, its prefix, its checkout, the
+    /// Ruby it vendors.
+    case brew
+    /// The Mac underneath it: macOS, the processor, Rosetta.
+    case machine
+    /// The other programs Homebrew builds and downloads with — the compiler,
+    /// git, curl, the Command Line Tools.
+    case tools
+}
+
+/// One `key: value` line of `brew config`, and the heading it belongs under.
+///
+/// The key keeps Homebrew's own spelling and is never translated: `CLT`,
+/// `HOMEBREW_PREFIX` and `Rosetta 2` are Homebrew's words for these things, and
+/// a translated key would name something a person could not then look up.
+public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
+    public let key: String
+    /// Everything after the **first** `: ` — values carry colons of their own
+    /// (`https://github.com/Homebrew/brew`, `4.0.6 => /opt/homebrew/…/ruby`),
+    /// so a split on every separator loses the end of five of the eighteen.
+    public let value: String
+    public let section: ConfigSection
+    /// The key, because `brew config` prints each key once. Nothing selects a
+    /// line — the *group* is what the health list holds a row for — but the
+    /// conformance is what lets a `ForEach` draw them without an index.
+    public var id: String { key }
+    public init(key: String, value: String, section: ConfigSection) {
+        self.key = key; self.value = value; self.section = section
+    }
+}
+
+/// What `brew config` answered: the reading, **and the document it was read
+/// from**.
+///
+/// Both, because two different things ask for them. The lines are a reading —
+/// regrouped under headings this app invented, and short of whatever the parser
+/// could not make a `key: value` of. `text` is the document, byte for byte as
+/// brew printed it, and it is what «Copy for a bug report» puts on the
+/// pasteboard: a bug report asks for what the tool said, not for Helm's reading
+/// of it. The same rule `HostsFile` carries — a parse is a reading and never
+/// the document.
+public struct BrewConfig: Codable, Equatable, Sendable {
+    public let lines: [ConfigLine]
+    public let text: String
+    public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
+}

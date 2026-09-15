@@ -347,6 +347,13 @@ import Module_Homebrew_Engine
         // somebody who has never opened this segment is a minute of `brew` for
         // an answer nobody is waiting for; `.notAsked` is exactly that person.
         if doctor != .notAsked { await refreshDoctor() }
+        // And what `brew config` said, on the same terms and for the same
+        // reason: `installBrew` is one of the operations that ends here and it
+        // rewrites every line of that document, while `upgrade` of Homebrew
+        // itself moves the version and the checkout. Only when it has ever been
+        // read — a person who has never opened this segment is not waiting for
+        // an answer, and this is a `brew` run per operation.
+        if config != nil { await refreshConfig() }
         // And what `brew info` said, which an upgrade rewrites: the first tier
         // takes its version from the list above, so a kept answer left the
         // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
@@ -396,6 +403,44 @@ import Module_Homebrew_Engine
     /// answer, and the one that goes stale is the one a page reads.
     var issues: [DoctorIssue] { doctor.issues }
 
+    /// What `brew config` last answered — the lines the Configuration heading
+    /// is drawn from, **and the document «Copy for a bug report» puts on the
+    /// pasteboard**. nil until it has been asked, which is every launch:
+    /// `loadIfNeeded` does not ask, the segment's own refresh does.
+    @Published private(set) var config: BrewConfig?
+
+    /// Those lines as the three groups the list draws a row each for. Computed
+    /// rather than stored beside `config`, for the reason `issues` is: two
+    /// fields are two accounts of one answer.
+    var configGroups: [ConfigGroup] { ConfigGroup.grouping(config?.lines ?? []) }
+
+    /// **Everything the health list can have selected — findings *and*
+    /// configuration groups.**
+    ///
+    /// The segment's list holds two kinds of thing and `reconcile` takes one
+    /// set of ids, so a reconcile that knew only the findings dropped the
+    /// person's selection every time the other half was re-read — and a refused
+    /// `brew doctor` deselected the configuration group they were reading,
+    /// which has nothing to do with `brew doctor` at all.
+    private var healthSelectableIDs: Set<String> {
+        Set(issues.map(\.id)).union(configGroups.map(\.id))
+    }
+
+    /// What `brew config` says about this Homebrew and this Mac.
+    ///
+    /// **A refusal keeps the last answer**, which is the opposite of
+    /// `refreshDoctor` one method down and deliberate: a `brew doctor` reading
+    /// *is* the claim about the machine's health, so stale findings under a
+    /// failed reading state that those are still what is wrong. A configuration
+    /// makes no such claim — it is the module's own `installed`/`outdated` rule
+    /// ("no `?? []` on any list reply"), where the last answer is still a true
+    /// thing about a machine that has almost certainly not moved.
+    func refreshConfig() async {
+        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else { return }
+        config = answer
+        reconcile(.health, against: healthSelectableIDs)
+    }
+
     /// **A refusal replaces the issues rather than keeping them.** The other
     /// three lists keep their last answer when a query is refused, because a
     /// stale package list is still a list of packages and the page says nothing
@@ -418,7 +463,11 @@ import Module_Homebrew_Engine
         if !loadedInstalled { await refreshInstalled() }
         guard let answer: [DoctorIssue] = await client.request(HomebrewCommand.doctor) else {
             doctor = .refused
-            reconcile(.health, against: [])
+            // Against everything the list still holds, not against nothing: the
+            // configuration groups are on this list too and a refused `brew
+            // doctor` says nothing about them, so sweeping them out here took
+            // away the group the person was reading.
+            reconcile(.health, against: healthSelectableIDs)
             return
         }
         // The parser always answers `fix: nil` — a command read out of a tool's
@@ -428,7 +477,7 @@ import Module_Homebrew_Engine
         // against a list read at the press, which is what decides what runs.
         let installedNames = installed.map(\.name)
         doctor = .examined(answer.map { DoctorFixCandidate.judging($0, installed: installedNames) })
-        reconcile(.health, against: Set(issues.map(\.id)))
+        reconcile(.health, against: healthSelectableIDs)
     }
 
     /// Sends one `brew doctor` fix to the engine, which judges it again before

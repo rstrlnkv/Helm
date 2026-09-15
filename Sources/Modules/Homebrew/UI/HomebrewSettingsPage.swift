@@ -241,36 +241,80 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    /// What `brew doctor` found, one row per finding.
+    /// What `brew doctor` found and what `brew config` said, under one heading
+    /// each, in one list.
     ///
-    /// **Three states, and the middle two are not one state.** `listOrEmpty`'s
-    /// `empty: nil` is its wait, and that is the right shape for `.notAsked`;
-    /// the other two are the distinction this whole segment turns on. An empty
-    /// list after a reading that *happened* may be drawn as a clean machine;
-    /// the same empty list after a refusal may not, and says so in words of its
-    /// own. Folding them together would be the app telling somebody their Mac
-    /// is fine on the strength of a `brew` that never answered.
+    /// **Two kinds of thing on one list, and every sentence kept.** The three
+    /// readings `brew doctor` can be in are still three — «Checking this Mac…»,
+    /// «Nothing to fix» and «Homebrew did not answer» are the distinction this
+    /// segment turns on, and an empty list that was *measured* is not the empty
+    /// list nobody could take. What has changed is where that sentence goes: a
+    /// Mac whose findings could not be read still has a configuration to draw,
+    /// so the sentence becomes a row under its own heading instead of taking
+    /// the whole pane. `HealthScreen.of` decides which of the two, and a test
+    /// reads it rather than a `body`.
     ///
     /// No description line and no `showsDesc`: a finding's body is prose, often
     /// several lines of it, and one clipped line of it in a row says less than
     /// nothing. The title is the row.
     @ViewBuilder
     private func healthList() -> some View {
-        switch HealthListState.of(hb.doctor) {
-        case .busy:
-            HelmBusyState(HbStr.examiningThisMac)
-        case .clean:
-            HelmEmptyState(message: HbStr.nothingToFix)
-        case .unexaminable:
-            HelmEmptyState(message: HbStr.couldNotExamine)
-        case let .rows(issues):
-            // `listOrEmpty`'s own empty and busy arms are unreachable here —
-            // `.rows` is non-empty by construction — so the two sentences it
-            // would draw are spelled above, where the reading that earns each
-            // one is named.
-            listOrEmpty(issues, empty: HbStr.nothingToFix, busy: HbStr.examiningThisMac) { issue in
-                issueRow(issue)
+        switch HealthScreen.of(hb.doctor, config: hb.configGroups) {
+        case let .sentence(note):
+            // The whole segment is this one sentence, so it is centred rather
+            // than sitting in a list with nothing else in it.
+            if note == .busy {
+                HelmBusyState(Self.healthNote(note))
+            } else {
+                HelmEmptyState(message: Self.healthNote(note))
             }
+        case let .groups(checkup, configuration):
+            // `Section`, not rows with a heading drawn by hand: a section
+            // header is not selectable, which is the whole of what a heading in
+            // a selectable list has to be, and macOS draws it.
+            List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
+                Section(HbStr.headingCheckup) {
+                    ForEach(checkup) { row in healthRow(row) }
+                }
+                if !configuration.isEmpty {
+                    Section(HbStr.headingConfiguration) {
+                        ForEach(configuration) { group in
+                            Text(HbStr.configSectionName(group.section))
+                                .frame(minHeight: 34)
+                        }
+                    }
+                }
+            }
+            .listStyle(.inset)
+            .padding(.horizontal, HelmSpace.s5)
+        }
+    }
+
+    @ViewBuilder
+    private func healthRow(_ row: HealthRow) -> some View {
+        switch row {
+        case let .issue(issue):
+            issueRow(issue)
+        case let .note(note):
+            // **Not selectable, because there is nothing to select.** A note is
+            // the sentence standing in for findings there are none of, and a
+            // row that highlights and then describes nothing in the inspector
+            // is a row that looks broken.
+            Text(Self.healthNote(note))
+                .foregroundStyle(HelmText.quiet)
+                .frame(minHeight: 34)
+                .selectionDisabled()
+        }
+    }
+
+    /// The sentence each reading draws, apart from the views that draw it —
+    /// the same reason `severityWord` is out here: which reading says which
+    /// sentence is a decision a test can hold, and a `body` is not.
+    static func healthNote(_ note: HealthNote) -> String {
+        switch note {
+        case .busy: return HbStr.examiningThisMac
+        case .clean: return HbStr.nothingToFix
+        case .unexaminable: return HbStr.couldNotExamine
         }
     }
 
@@ -405,14 +449,17 @@ struct HomebrewSettingsPage: View {
                                      installed: hb.installed, outdated: hb.outdated,
                                      loadedOutdated: hb.loadedOutdated,
                                      hits: hb.searchHits, issues: hb.issues,
+                                     config: hb.configGroups,
                                      descriptions: hb.descriptions) {
             case .nothingSelected:
-                HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFinding
+                HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFindingOrASection
                                                               : HbStr.nothingSelected)
             case let .package(subject):
                 packageDetail(subject)
             case let .issue(issue):
                 issueDetail(issue)
+            case let .configSection(group):
+                configDetail(group)
             }
         }
     }
@@ -492,6 +539,69 @@ struct HomebrewSettingsPage: View {
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .textSelection(.enabled)
                 if let fix = issue.fix { fixBlock(fix) }
+            }
+            .padding(HelmSpace.s5)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    /// **The one builder for what a group of `brew config` lines draws.**
+    ///
+    /// The heading, the lines under it as they were read, and one action: the
+    /// whole document on the pasteboard. Scrolled for the reason the two
+    /// builders above are — nine lines under the Homebrew heading, each with a
+    /// path in it, below `HomebrewSplit`'s threshold with the console under it.
+    ///
+    /// The key is drawn as Homebrew spells it and the value in a monospaced
+    /// face: eight of the eighteen are a version, a path or a hash, which is
+    /// what a reader compares character by character rather than reads as a
+    /// word. The value is selectable, because a person who is not copying the
+    /// whole document is copying exactly one of these.
+    private func configDetail(_ group: ConfigGroup) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                // A header to VoiceOver as well as to the eye: it introduces
+                // the rows under it, so the rotor has to be able to jump to it
+                // (`AHeadingIsAHeadingToTheRotorTests`).
+                Text(HbStr.configSectionName(group.section))
+                    .font(HelmText.sectionHeading)
+                    .accessibilityAddTraits(.isHeader)
+                // A `Grid`, so the key column is as wide as the widest key and
+                // not a number written down here. The drawing fixes that column
+                // at 150 pt; a constant would be a threshold nothing measures,
+                // and while these keys are Homebrew's own and never translated,
+                // Homebrew adds keys between releases — `Core cask tap` and
+                // `Metal Toolchain` are both newer than the capture this was
+                // designed against — so the column has to be able to grow.
+                Grid(alignment: .leadingFirstTextBaseline,
+                     horizontalSpacing: HelmSpace.s5, verticalSpacing: HelmSpace.s3) {
+                    ForEach(group.lines) { line in
+                        GridRow {
+                            Text(line.key)
+                                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                            Text(line.value)
+                                .font(HelmText.rowDetail.monospaced())
+                                .textSelection(.enabled)
+                                .gridColumnAlignment(.leading)
+                        }
+                    }
+                }
+                // **The document, not this group, and not Helm's reading of
+                // it.** `BrewConfig.text` is what brew printed byte for byte;
+                // the lines above are a reading regrouped under headings this
+                // app invented, and a bug report asks for the first. Drawn only
+                // when there is a document — a button that copies an empty
+                // string is a button that silently does nothing.
+                //
+                // A pasteboard write from the view, the way `fixBlock` and
+                // `LogView` already do it: nothing leaves this process, so
+                // there is no engine command for it.
+                if let text = hb.config?.text {
+                    Button(HbStr.copyForABugReport) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                    }
+                }
             }
             .padding(HelmSpace.s5)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -744,9 +854,13 @@ struct HomebrewSettingsPage: View {
         // Nothing cached to reload: the hits belong to a query, and reloading
         // the installed list behind a search is a button that did nothing.
         case .search: break
-        // The slowest query in the module, and the whole content of this
-        // segment: there is nothing else on the screen for Refresh to mean.
-        case .health: await hb.refreshDoctor()
+        // Both halves of this segment, and `brew config` first on purpose: it
+        // is one fast local run where `brew doctor` is the slowest query in the
+        // module, so asking it first puts the Configuration heading on screen
+        // while the Checkup one is still saying what it is waiting for.
+        case .health:
+            await hb.refreshConfig()
+            await hb.refreshDoctor()
         }
     }
 

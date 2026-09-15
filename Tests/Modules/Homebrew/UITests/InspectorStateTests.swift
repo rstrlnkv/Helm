@@ -43,13 +43,14 @@ final class InspectorStateTests: XCTestCase {
                        hits: [SearchHit]? = nil,
                        loadedOutdated: Bool = true,
                        issues: [DoctorIssue]? = nil,
+                       config: [ConfigGroup] = [],
                        descriptions: [String: String] = [:]) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected,
                           installed: installed ?? [openssl, node],
                           outdated: [nodeOutdated, pinned],
                           loadedOutdated: loadedOutdated,
                           hits: hits ?? [helm], issues: issues ?? [deprecated],
-                          descriptions: descriptions)
+                          config: config, descriptions: descriptions)
     }
 
     func testNothingSelectedIsItsOwnState() {

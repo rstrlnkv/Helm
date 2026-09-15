@@ -9,6 +9,7 @@
 // it excuses.
 
 import HelmUI
+import Module_Homebrew_Engine
 
 enum HbStr {
     static var moduleName: String { L("Homebrew") }
@@ -202,9 +203,50 @@ enum HbStr {
         L("Homebrew did not answer, so nothing is known about this Mac right now.")
     }
     /// The inspector with nothing chosen in this segment. Not `nothingSelected`
-    /// — that says "Select a package", and a finding is not a package; one key
-    /// means one thing, and several languages inflect the two differently.
-    static var selectAFinding: String { L("Select a finding") }
+    /// — that says "Select a package", and neither a finding nor a group of
+    /// `brew config` lines is a package; one key means one thing, and several
+    /// languages inflect them differently.
+    ///
+    /// It said «Select a finding» while findings were all this list held. The
+    /// list holds the configuration as well now, and half a sentence about a
+    /// list with two kinds of thing on it is a sentence that is wrong whenever
+    /// somebody is looking at the other kind.
+    static var selectAFindingOrASection: String { L("Select a finding or a part of the configuration") }
+
+    // MARK: - The two headings the health list is divided by
+
+    /// Over `brew doctor`'s findings. Not "Doctor", for `segHealth`'s reason —
+    /// that is Homebrew's name for the subcommand — and not the segment's own
+    /// word either: a heading repeating the tab above it says nothing.
+    static var headingCheckup: String { L("Checkup") }
+    /// Over `brew config`'s groups.
+    static var headingConfiguration: String { L("Configuration") }
+
+    /// The three groups `brew config`'s flat list is drawn in.
+    ///
+    /// **Ours, so translated — the keys beside them are Homebrew's, so never.**
+    /// `brew config` prints eighteen `key: value` lines and no heading at all;
+    /// `CLT` and `HOMEBREW_PREFIX` are Homebrew's words for those things and a
+    /// person looking one up needs the word Homebrew uses, while "Machine" and
+    /// "Tools" are this app's reading and belong to whoever is reading it.
+    ///
+    /// `.brew` answers with the module's own name rather than a second key
+    /// spelling «Homebrew» again: it is the same word for the same thing in all
+    /// eight languages, and two `.strings` entries with the same key is a file
+    /// whose value depends on which one the reader reaches.
+    static func configSectionName(_ section: ConfigSection) -> String {
+        switch section {
+        case .brew: return moduleName
+        case .machine: return L("Machine")
+        case .tools: return L("Tools")
+        }
+    }
+
+    /// What the whole of `brew config` is for, put on the pasteboard in one
+    /// press. Not «Copy» — the button copies the entire document and not the
+    /// group on screen, and a person pressing it is almost always about to
+    /// paste it into somebody's issue tracker.
+    static var copyForABugReport: String { L("Copy for a bug report") }
 
     /// The label over the command in its well.
     ///

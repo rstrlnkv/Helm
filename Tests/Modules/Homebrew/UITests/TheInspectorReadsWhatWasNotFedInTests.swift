@@ -27,7 +27,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
                        loadedOutdated: Bool = true) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
                           outdated: outdated, loadedOutdated: loadedOutdated,
-                          hits: hits, issues: issues, descriptions: [:])
+                          hits: hits, issues: issues, config: [], descriptions: [:])
     }
 
     private func subject(_ state: InspectorState, _ what: String,

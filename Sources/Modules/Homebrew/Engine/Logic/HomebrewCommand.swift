@@ -24,6 +24,10 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     /// its whole answer on — see `HomebrewEngine.doctor()` and
     /// `ProcessRunner.runCapturingDiagnostics`.
     case doctor
+    /// What `brew config` says about this Homebrew and this Mac — read-only,
+    /// and printed on standard output rather than `doctor`'s diagnostics
+    /// stream, so it goes through the ordinary runner (`BrewConfigParser`).
+    case config
     /// Run one of the commands `brew doctor`'s answer was read as proposing.
     ///
     /// The payload is the argv itself — `["uninstall", "periphery"]` — and the
