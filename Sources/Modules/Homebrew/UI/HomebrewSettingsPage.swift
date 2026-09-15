@@ -474,14 +474,23 @@ struct HomebrewSettingsPage: View {
     private func packageDetail(_ subject: InspectorSubject) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                // **The action stands next to the name it acts on, not at the
+                // pane's far edge.** It used to sit behind the `Spacer`, which
+                // is the drawing's own arrangement and was right at the width
+                // the drawing was made for — but nothing bounded this column,
+                // so at the pane the app draws (measured 2026-09-15: 984 pt,
+                // a 649 pt inspector) «Uninstall» was 549 pt from the package
+                // name and read as belonging to the pane rather than to the
+                // package. The `Spacer` stays, after the button: it is what
+                // keeps the row left-packed once the column is bounded.
                 HStack(spacing: HelmSpace.s3) {
                     Text(subject.name).font(HelmText.sectionHeading)
                     if subject.isCask { HelmBadge(HbStr.cask, tint: .purple) }
                     if !subject.version.isEmpty {
                         Text(subject.version).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     }
-                    Spacer(minLength: 0)
                     inspectorAction(subject)
+                    Spacer(minLength: 0)
                 }
                 // The same fact the row's marker carries, said in words
                 // here and with the same symbol — the one place
@@ -506,8 +515,7 @@ struct HomebrewSettingsPage: View {
                 // and no tile with nothing in it: the tier is absent.
                 if let info = hb.info { PackageSecondTier(info: info, sizeBytes: hb.size) }
             }
-            .padding(HelmSpace.s5)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .helmInspectorColumn()
         }
     }
 
@@ -540,8 +548,7 @@ struct HomebrewSettingsPage: View {
                     .textSelection(.enabled)
                 if let fix = issue.fix { fixBlock(fix) }
             }
-            .padding(HelmSpace.s5)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .helmInspectorColumn()
         }
     }
 
@@ -603,8 +610,7 @@ struct HomebrewSettingsPage: View {
                     }
                 }
             }
-            .padding(HelmSpace.s5)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .helmInspectorColumn()
         }
     }
 
@@ -893,4 +899,30 @@ struct HomebrewSettingsPage: View {
         }
     }
 
+}
+
+/// **The inspector's one bound, and the whole of what keeps it from stretching.**
+///
+/// Every builder the inspector mounts ends on this instead of on a padding and
+/// an `.infinity` frame of its own — which is what the three of them used to
+/// end on, and the reason the pane the app actually draws handed a tile holding
+/// `2.11.4` 308 pt and a sentence 625. `HelmLayout.readingColumn` carries the
+/// number and the measurement behind it.
+///
+/// Read outwards: the content is capped at the reading column, the padding is
+/// paid around that, and the outermost frame takes the pane's whole width so
+/// the block sits at its leading edge. The last of the three is not decoration
+/// — SwiftUI hit-tests a scroll view's *content*, so a block that stopped at
+/// 468 pt would leave the rest of the inspector dead to the wheel, which is the
+/// half of this shape `helmSettingsColumn`'s own doc comment was written about.
+///
+/// Private to this file: one module draws it, and the house's rule is that a
+/// thing two modules draw moves to `HelmUI` rather than that everything starts
+/// there.
+private extension View {
+    func helmInspectorColumn() -> some View {
+        frame(maxWidth: HelmLayout.readingColumn, alignment: .topLeading)
+            .padding(HelmSpace.s5)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
 }

@@ -53,20 +53,60 @@ struct PackageSecondTier: View {
         }
     }
 
-    /// The tile grid: two columns of label over value, as the approved artboard
-    /// draws them. (No path: the drawing is the owner's scratch, untracked, so
-    /// naming a file here is a citation no checkout can follow.)
+    /// The narrowest a fact tile may be drawn, which is also what decides how
+    /// many go across.
     ///
-    /// A `LazyVGrid` of flexible columns rather than a fixed pair of `HStack`s,
-    /// because the number of tiles is three, two, one or none depending on what
-    /// brew answered, and a hand-built row of two has to know which case it is
-    /// in. `PackageFacts` is the one that decides.
+    /// **Derived from the narrowest inspector this module ever draws, not
+    /// chosen.** Measured 2026-09-15 at `HomebrewSplit`'s own threshold, where
+    /// the master compresses and the inspector is squeezed hardest: 244 pt of
+    /// content. That is the narrow end of the whole span this has to cover — the
+    /// wide end is `HelmLayout.readingColumn`, since nothing in the inspector
+    /// grows past it any more.
+    ///
+    /// **And the arithmetic is the framework's, not the obvious one.** A
+    /// `LazyVGrid` of adaptive columns fits `floor(available / (minimum +
+    /// spacing))` of them rather than solving for the gaps it will actually
+    /// draw: measured at that 244 pt, a minimum of 118 with an 8 pt gap drew
+    /// **one** column — a 243 pt tile holding `3.6.4`, which is the complaint
+    /// this change exists to answer — where 2 × 118 + 8 ≤ 244 says two. So the
+    /// minimum solves the framework's inequality instead: 244 / 2 − 8 = 114,
+    /// which draws two there and three at the reading column.
+    ///
+    /// **What it does not buy is a label on one line at that narrow end, and
+    /// that is the trade taken deliberately.** At the faces these draw in on
+    /// macOS 27 — `.caption2` for the label, `.subheadline` for the value — the
+    /// widest Latin label is the French «Comment il est arrivé» at 105.2 pt and
+    /// the widest value the French «comme dépendance» at 106.3, which with this
+    /// tile's own 8 pt each side want 121.2 and 122.3. So those two wrap in a
+    /// 114 pt tile and nowhere else, since every wider measure gives the column
+    /// 142 pt or more; one wrapped line at the narrowest inspector is the
+    /// cheaper of the two prices. The Japanese label is wider still (137.7 pt)
+    /// and is not a case to size for at all: Japanese breaks between characters,
+    /// so it wraps happily at any width a Latin label survives.
+    private static let tileMinimum: CGFloat = 114
+
+    /// The tile grid: label over value, as the approved artboard draws them.
+    /// (No path: the drawing is the owner's scratch, untracked, so naming a file
+    /// here is a citation no checkout can follow.)
+    ///
+    /// A `LazyVGrid` rather than a fixed pair of `HStack`s, because the number
+    /// of tiles is four, three, two, one or none depending on what brew
+    /// answered, and a hand-built row of two has to know which case it is in.
+    /// `PackageFacts` is the one that decides.
+    ///
+    /// **Adaptive, not two flexible columns.** Two flexible columns divide
+    /// whatever they are given, so the tiles were a function of the window
+    /// rather than of what is in them: measured 2026-09-15 at the pane the app
+    /// draws, a tile holding `2.11.4` came out 308 pt wide — six characters in a
+    /// box a third of the window. Adaptive sizes the *columns* instead and fits
+    /// as many as the measure holds: three across at `HelmLayout.readingColumn`,
+    /// fewer as the inspector narrows, one when there is only room for one.
     @ViewBuilder
     private var factTiles: some View {
         let tiles = PackageFacts.of(info, sizeBytes: sizeBytes)
         if !tiles.isEmpty {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: HelmSpace.s4),
-                                GridItem(.flexible(), spacing: HelmSpace.s4)],
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.tileMinimum),
+                                         spacing: HelmSpace.s4)],
                       alignment: .leading, spacing: HelmSpace.s4) {
                 ForEach(tiles, id: \.label) { tile in
                     VStack(alignment: .leading, spacing: HelmSpace.s1) {

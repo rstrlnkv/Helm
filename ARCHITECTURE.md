@@ -1945,7 +1945,7 @@ fixed `.system(size:)` gives a Mac whose owner raised the interface text size a 
 that did not follow. `.headline` is not the heading — on macOS it is bold rather than
 semibold, so mapping `sectionHeading` onto it would weight every heading a step heavier
 with the size unchanged, which no layout test can see. `HelmText.rowDetailNSFont`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:476`) is the same style as AppKit sees it,
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:505`) is the same style as AppKit sees it,
 for the two places that measure text rather than draw it. `HelmText.figureFont` is the one
 face for a figure — a byte size, a count, a version — because a monospaced face and a
 tabular proportional one at nominally similar sizes render the same number at visibly

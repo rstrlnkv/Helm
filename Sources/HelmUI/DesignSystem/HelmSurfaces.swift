@@ -304,6 +304,35 @@ public enum HelmLayout {
     /// `ThePageKeepsOneRhythmTests` compares the two gaps off one photograph
     /// instead of asserting this constant against itself.
     public static let groupedHeaderGap: CGFloat = 10
+
+    /// The widest a column of prose, facts or fields may be drawn — for the
+    /// panes that are **not** a grouped `Form` and therefore have nothing
+    /// capping them.
+    ///
+    /// `settingsColumn` is the other half of this story and does not answer
+    /// here: 744 is a page's width in a window, and the places that need this
+    /// are second columns inside a page. Homebrew's inspector is the one that
+    /// made it visible — nothing in it was bounded, so at the pane the app
+    /// actually draws (measured 2026-09-15: a 1210 pt window, a 984 pt module
+    /// pane, a 310 pt master) it was handed 649 pt and everything inside it
+    /// stretched to fill: a tile holding `2.11.4` came out 308 pt wide and a
+    /// sentence ran the full 625 pt of content.
+    ///
+    /// **444, and it is the same number from three directions.** A reading
+    /// measure is 60–75 characters; measured on macOS 27, `HelmText.rowDetail`
+    /// (`.subheadline`, 11 pt) averages 5.89 pt per lowercase letter, so 75 of
+    /// them are 442, and `HelmText.rowTitle` (`.body`, 13 pt) averages 6.81, so
+    /// 65 of them are 442 as well. The approved drawing this module was built
+    /// from puts its inspector at 472 pt with 14 pt of padding each side, which
+    /// is 444 of content. Being the *maximum*, it only ever narrows a pane that
+    /// is wider: below it nothing is gated, which is what keeps a control from
+    /// being reachable only on a big screen.
+    ///
+    /// Left-aligned at the call site rather than centred, unlike
+    /// `helmSettingsColumn`: a second column that centres its content leaves a
+    /// gutter on the side it shares with the master list, and the two columns
+    /// then read as drifting apart.
+    public static let readingColumn: CGFloat = 444
 }
 
 /// Text that recedes, at contrasts that were measured rather than assumed.
