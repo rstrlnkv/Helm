@@ -939,10 +939,25 @@ struct HomebrewSettingsPage: View {
 ///
 /// Read outwards: the content is capped at the reading column, the padding is
 /// paid around that, and the outermost frame takes the pane's whole width so
-/// the block sits at its leading edge. The last of the three is not decoration
-/// — SwiftUI hit-tests a scroll view's *content*, so a block that stopped at
+/// the block is **centred** in it. The last of the three is not decoration —
+/// SwiftUI hit-tests a scroll view's *content*, so a block that stopped at
 /// 468 pt would leave the rest of the inspector dead to the wheel, which is the
 /// half of this shape `helmSettingsColumn`'s own doc comment was written about.
+///
+/// **`.top`, not `.topLeading`, and the two halves of that are separate
+/// decisions.** Horizontally the block is centred, because once it is capped the
+/// pane is wider than it: measured 2026-09-16 at the pane the app draws, the
+/// bounded column sat at 347…791 of a 335…984 inspector, which is 193 pt of
+/// nothing down one side and none down the other — a column shoved into a
+/// corner rather than a column. Vertically it stays at the top, because a detail
+/// pane fills from the top and centring would float a two-line finding in the
+/// middle of the pane.
+///
+/// Centring costs nothing where there is nothing to centre: below
+/// `HomebrewSplit`'s threshold the inspector is narrower than the cap, so the
+/// block already fills it and both readings are the same number — measured at
+/// the threshold's own 268 pt pane, 304…548 before and after. It is not a
+/// margin: the width of the content never changes, only where the slack falls.
 ///
 /// Private to this file: one module draws it, and the house's rule is that a
 /// thing two modules draw moves to `HelmUI` rather than that everything starts
@@ -951,7 +966,7 @@ private extension View {
     func helmInspectorColumn() -> some View {
         frame(maxWidth: HelmLayout.readingColumn, alignment: .topLeading)
             .padding(HelmSpace.s5)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 
