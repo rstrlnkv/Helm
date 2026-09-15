@@ -32,6 +32,41 @@ import Module_Homebrew_Engine
     /// after a list or search loads.
     @Published public private(set) var descriptions: [String: String] = [:]
 
+    /// What `brew info --json=v2` knows about **the package selected now**, or
+    /// nil because nothing is selected, the query has not answered yet, or it
+    /// answered nil.
+    ///
+    /// Those three are one value on purpose: the page's second tier is drawn
+    /// from an answer or not drawn at all. The engine folds a refusal, a
+    /// missing brew and a document this build cannot read into the same nil
+    /// (`HomebrewEngine.info`) — and none of the three has measured anything, so
+    /// a `PackageInfo` of empty fields standing in for "not answered" would be
+    /// the page stating facts about a Cellar nobody read. The first tier —
+    /// name, version, description, action — is a function of the lists this
+    /// object already holds and never waits on this.
+    ///
+    /// Internal rather than `public`, for the reason `segment` gives: nothing
+    /// outside `Module_Homebrew_UI` reads it, and `public` in this tree means
+    /// "another target uses this".
+    @Published private(set) var info: PackageInfo?
+
+    /// Which ask an answer belongs to, so an older one is dropped rather than
+    /// drawn over a newer package.
+    ///
+    /// The third `LatestRequest` in this file, for the third reading that
+    /// arrives after the screen may have moved. Clicking down a list of fifty
+    /// rows leaves fifty `brew info` runs out behind a 90 s deadline, and
+    /// whichever answered last used to be the one on screen — under whatever
+    /// heading the person had reached by then.
+    private var infoAsks = LatestRequest()
+
+    /// The ask in flight. Held so a superseded one can be dropped rather than
+    /// left to resume into a screen that has moved on, and read by
+    /// `TheInspectorDoesNotWaitForInfoTests` to await the answer it is about to
+    /// drop — a guard about arrival order cannot be written against work it
+    /// has no handle on.
+    private(set) var infoAsk: Task<Void, Never>?
+
     /// Which list the page is showing, and therefore which selection below
     /// applies. Internal, not `public` — nothing outside this target reads
     /// it (`public` here means "another target uses this").
@@ -80,7 +115,68 @@ import Module_Homebrew_Engine
     /// a query still in flight has set nothing yet, so a guard on
     /// `pendingUninstall != nil` would pass over exactly the case this exists
     /// for. `cancelUninstall` retires the token as well as the dialog.
-    private func subjectMoved() { cancelUninstall() }
+    ///
+    /// The second reader of this pair is the `brew info` fill, and it is here
+    /// for the same reason the retirement is: the subject moves through two
+    /// write points and three gestures, and a fill hung off `select(_:)` alone
+    /// would leave the segmented picker landing on a remembered selection with
+    /// the *previous* segment's package described under it. Both halves of
+    /// "stop describing the old package" and "start describing the new one"
+    /// happen at the one place the pair is known to have moved.
+    private func subjectMoved() {
+        cancelUninstall()
+        refillInfo()
+    }
+
+    /// Drops whatever the second tier was showing and asks about the package
+    /// the page is describing now — or about nothing, when nothing is selected.
+    ///
+    /// **Cleared before the ask, unconditionally.** The facts belong to the
+    /// package that was selected when they were read; keeping them across a
+    /// move draws openssl@3's licence and homepage under the heading wget for
+    /// as long as the new query takes. A refusal leaves it cleared, which is
+    /// the same sentence said by a different route.
+    private func refillInfo() {
+        infoAsk?.cancel()
+        info = nil
+        let mine = infoAsks.take()
+        guard let ref = selectedPackage else { infoAsk = nil; return }
+        infoAsk = Task { [weak self] in await self?.loadInfo(ref, token: mine) }
+    }
+
+    /// The selected package as the engine names one, read from the same list
+    /// `InspectorState.of` reads for the same segment — so a selection the
+    /// inspector draws nothing for costs no `brew` run either, and the two
+    /// cannot disagree about which package is on screen.
+    private var selectedPackage: PackageRef? {
+        guard let id = selected else { return nil }
+        func ref(_ name: String, _ isCask: Bool) -> PackageRef {
+            PackageRef(name: name, isCask: isCask)
+        }
+        switch segment {
+        case .installed:
+            return installed.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+        case .updates:
+            return outdated.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+        case .search:
+            return searchHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+        }
+    }
+
+    /// Asks, then assigns only if this is still the ask the page is waiting on.
+    ///
+    /// The token, not a comparison of names: every move of the subject takes a
+    /// token, so `isLatest` answers "is the page still describing the package
+    /// this was asked about" in one reading, including the case where the
+    /// person moved away and came back — a second ask is out, and this one's
+    /// answer is not the one to draw.
+    private func loadInfo(_ ref: PackageRef, token: Int) async {
+        let answer: PackageInfo? = await client.request(HomebrewCommand.info, encoding: ref)
+        guard infoAsks.isLatest(token) else { return }
+        // Assigned including nil: a refusal is what the page must show nothing
+        // for, and this is the line that says so.
+        info = answer
+    }
 
     /// Drops `segment`'s selection when its package is no longer in `ids`.
     ///
@@ -218,6 +314,12 @@ import Module_Homebrew_Engine
         await refreshStatus()
         await refreshInstalled()
         await refreshOutdated()
+        // And what `brew info` said, which an upgrade rewrites: the first tier
+        // takes its version from the list above, so a kept answer left the
+        // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
+        // screen carrying two accounts of one package. Last, so the ask goes
+        // out against the selection the reconciles above have settled on.
+        refillInfo()
     }
 
     // MARK: - Queries
