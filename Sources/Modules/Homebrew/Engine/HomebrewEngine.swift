@@ -420,6 +420,40 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return BrewUsesParser.parse(out)
     }
 
+    /// What `brew info --json=v2` knows about one package — its description,
+    /// homepage, licence, deprecation, whether it is installed and by whom.
+    /// Asked once, when the person opens a package's detail, and never
+    /// cached: the answer is about a Cellar and a catalogue that both change
+    /// under the app.
+    ///
+    /// `runData`, for the reason `outdated` uses it: the payload is JSON and
+    /// the parser wants bytes, so routing it through a `String` would hold a
+    /// second copy of the whole document for the parse.
+    ///
+    /// nil when brew refused to answer, when there is no brew to ask, and
+    /// when the document itself is not one `BrewInfoParser` recognises — a
+    /// shape this build cannot read is not the same sentence as "brew has
+    /// nothing to say about this package".
+    public func info(name: String, isCask: Bool) -> PackageInfo? {
+        guard let brew = locator.brewPath() else {
+            HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot ask about a package")
+            return nil
+        }
+        // `--` for the reason every other value in this file has one: `name`
+        // was parsed out of brew's own stdout or typed by the person.
+        let result = runner.runData(brew,
+                                    ["info", "--json=v2", isCask ? "--cask" : "--formula", "--", name],
+                                    env: Self.queryEnvironment)
+        guard !refused(result.status, query: "info") else { return nil }
+        guard let parsed = BrewInfoParser.parse(result.stdout, isCask: isCask) else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "info: brew answered a shape this build cannot read "
+                                + "— keeping the last answer")
+            return nil
+        }
+        return parsed
+    }
+
     // MARK: - Long operations
 
     /// One phase for all five long operations, opened and closed by the busy
@@ -713,6 +747,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
                 return self.reply(await offTheCooperativePool {
                     self.dependents(name: r.name, isCask: r.isCask)
+                }, for: cmd)
+            case .info:
+                guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
+                return self.reply(await offTheCooperativePool {
+                    self.info(name: r.name, isCask: r.isCask)
                 }, for: cmd)
             case .descriptions:
                 guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)

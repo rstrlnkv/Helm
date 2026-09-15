@@ -16,6 +16,10 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     /// moment the uninstall is put to the person, and never cached: the answer
     /// is about a Cellar that changes under the app.
     case dependents
+    /// What `brew info --json=v2` knows about one package — asked once, when
+    /// the person opens its detail, and never cached: the answer is about a
+    /// Cellar and a catalogue that both change under the app.
+    case info
     case install
     case uninstall
     case upgrade
