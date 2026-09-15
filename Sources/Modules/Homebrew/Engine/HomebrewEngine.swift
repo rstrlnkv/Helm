@@ -66,6 +66,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let localTransport: LocalTransport
     private let marker: OpMarker
     private let popularity: PopularityReading
+    private let weight: PackageWeight
     public let transport: EngineTransport
 
     private let lock = NSLock()
@@ -85,13 +86,21 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// they requested is reported as `.stopped` and one they did not stays an
     /// honest failure. Cleared when the next operation starts.
     private var stopRequested = false
+    /// What each package was last measured to occupy, keyed `f:name@version`.
+    ///
+    /// Under the same `lock` as every other field here, read and written in
+    /// `size(name:isCask:version:)` and emptied in `concludeOp` — never held
+    /// across the walk itself, which happens outside the lock because it is the
+    /// part that takes time.
+    private var sizes: [String: Int] = [:]
 
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
                 user: String, transport: LocalTransport = LocalTransport(),
                 marker: OpMarker = InMemoryOpMarker(),
-                popularity: PopularityReading = NoPopularity()) {
+                popularity: PopularityReading = NoPopularity(),
+                weight: PackageWeight = NoPackageWeight()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
@@ -100,6 +109,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.transport = transport
         self.marker = marker
         self.popularity = popularity
+        self.weight = weight
         wireTransport()
     }
 
@@ -463,6 +473,45 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return parsed
     }
 
+    /// How much disk one installed package occupies — walked, because nothing
+    /// tells us.
+    ///
+    /// `brew info --json=v2` carries no size in either direction (measured
+    /// against Homebrew 7.0.1, 2026-09-15: `bottle.files.*.size` is null and
+    /// `installed[]` has no size field), so the figure is a walk of the
+    /// package's own Cellar directory and nothing else — `PackageWeight`, off
+    /// the cooperative pool at the transport arm that calls this.
+    ///
+    /// **Remembered per `name@version`, for this engine's life.** The walk is
+    /// the whole cost, and its answer cannot change while that version is the
+    /// one on disk. The version is in the key rather than beside it because
+    /// that is the fact which makes a kept figure honest: an upgrade replaces
+    /// the keg that was measured, and the ask that follows it carries the new
+    /// number, so the old entry is missed rather than trusted. Every entry is
+    /// dropped when any operation finishes as well (`forgetSizes`) — `brew
+    /// reinstall` and a `brew doctor` fix rewrite a keg without moving its
+    /// version string, and `upgrade all` moves packages this key knows nothing
+    /// about.
+    ///
+    /// **nil is never remembered.** «Nothing was measured» is a live fact about
+    /// a directory — a refusal that may be lifted, a keg that may arrive — and
+    /// a remembered nil would keep the tile absent for the life of the app.
+    public func size(name: String, isCask: Bool, version: String) -> Int? {
+        let key = BrewKey.of(name: name, isCask: isCask) + "@" + version
+        lock.lock(); let remembered = sizes[key]; lock.unlock()
+        if let remembered { return remembered }
+        guard let measured = weight.bytes(ofPackage: name, isCask: isCask) else { return nil }
+        lock.lock(); sizes[key] = measured; lock.unlock()
+        return measured
+    }
+
+    /// Drops every remembered figure. Called from `concludeOp`, so it runs
+    /// whatever the operation was and however it ended — a failed `brew
+    /// upgrade` has already moved everything ahead of the package it failed on.
+    private func forgetSizes() {
+        lock.lock(); sizes.removeAll(); lock.unlock()
+    }
+
     /// What `brew doctor` found, parsed from its diagnostics stream.
     ///
     /// **The exit status is not the gate here.** Measured on this Mac,
@@ -588,6 +637,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let stopped = wasStopped
         marker.clear()
         endBusy()
+        // Whatever it was, it may have rewritten a keg: the figures are a
+        // reading of a Cellar that has just moved.
+        forgetSizes()
         // nil is "no child ever ran", which is not a success.
         let phase: OpPhase = code == 0 ? .done : .failed
         emitState(OpState(phase: phase, label: label, exitCode: code.map(Int.init),
@@ -885,6 +937,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
                 return self.reply(await offTheCooperativePool {
                     self.info(name: r.name, isCask: r.isCask)
+                }, for: cmd)
+            // Off the pool like its neighbours, and for the plainest form of
+            // the reason: this one *is* the filesystem work — a walk of one
+            // package's Cellar directory, which parks whatever thread it runs
+            // on for as long as that directory takes.
+            case .size:
+                guard let r = EngineReply.decode(PackageSizeRequest.self, from: cmd)
+                else { return Data() }
+                return self.reply(await offTheCooperativePool {
+                    self.size(name: r.name, isCask: r.isCask, version: r.version)
                 }, for: cmd)
             case .doctor:
                 return self.reply(await offTheCooperativePool { self.doctor() }, for: cmd)

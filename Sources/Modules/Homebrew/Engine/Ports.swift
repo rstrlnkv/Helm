@@ -149,3 +149,39 @@ public final class InMemoryOpMarker: OpMarker, @unchecked Sendable {
         return label
     }
 }
+
+/// What one installed package occupies on disk.
+///
+/// A port of its own, because **`brew info --json=v2` carries no size in either
+/// direction**: measured on this Mac against Homebrew 7.0.1, 2026-09-15,
+/// `bottle.files.*.size` is null in every document and the `installed[]` entry
+/// of a package that is here carries no size field at all. So a figure is a
+/// directory walk or it is nothing — which is why it is not another optional on
+/// `PackageInfo`, arriving with the rest of a `brew info` answer, and why the
+/// tile it draws is the one that lands late.
+///
+/// **nil is the careful half of the contract, and it means «nothing was
+/// measured».** No Cellar directory, a directory that would not open, a name
+/// that could not be one — and a cask, which has no Cellar at all. None of
+/// those may be folded to 0 anywhere downstream: a zero in a tile is not a gap,
+/// it is a measurement, and it says a package occupies nothing.
+public protocol PackageWeight: Sendable {
+    /// Bytes allocated to the package's own directory, or nil when there is
+    /// nothing this could have measured.
+    ///
+    /// Allocated rather than logical, for the reason `FileWeight` gives: it is
+    /// what the disk would get back, which is the question somebody reading a
+    /// package's size is actually asking.
+    func bytes(ofPackage name: String, isCask: Bool) -> Int?
+}
+
+/// The safe default for an engine built without naming one: nothing is
+/// measured, and no directory on this Mac is read.
+///
+/// `NoPopularity` above is the same default for the same reason — an engine
+/// built in a test with a port left off must not quietly become an integration
+/// test against the owner's own machine.
+public struct NoPackageWeight: PackageWeight {
+    public init() {}
+    public func bytes(ofPackage name: String, isCask: Bool) -> Int? { nil }
+}

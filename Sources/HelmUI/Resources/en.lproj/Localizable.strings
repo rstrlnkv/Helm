@@ -1144,6 +1144,7 @@
 "as a dependency" = "as a dependency";
 "Version" = "Version";
 "Licence" = "Licence";
+"On disk" = "On disk";
 "Depends on" = "Depends on";
 "Package notes" = "Package notes";
 "Homebrew has deprecated this package." = "Homebrew has deprecated this package.";

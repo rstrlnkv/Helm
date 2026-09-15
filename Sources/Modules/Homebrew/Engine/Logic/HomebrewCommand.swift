@@ -20,6 +20,13 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     /// the person opens its detail, and never cached: the answer is about a
     /// Cellar and a catalogue that both change under the app.
     case info
+    /// How much disk one installed package occupies — a walk of its own Cellar
+    /// directory, because `brew info` carries no size in either direction
+    /// (`PackageWeight`). Asked after `info` has answered and only for a
+    /// package that is installed; cached in the engine per `name@version`,
+    /// since the walk is the expensive part and the answer cannot change while
+    /// that version is the one on disk.
+    case size
     /// What `brew doctor` found, parsed from the diagnostics stream it prints
     /// its whole answer on — see `HomebrewEngine.doctor()` and
     /// `ProcessRunner.runCapturingDiagnostics`.

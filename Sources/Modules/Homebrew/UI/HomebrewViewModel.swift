@@ -50,6 +50,23 @@ import Module_Homebrew_Engine
     /// "another target uses this".
     @Published private(set) var info: PackageInfo?
 
+    /// How much disk **the package selected now** occupies, or nil because
+    /// nothing is selected, it is not installed, the walk has not answered yet,
+    /// or it answered nil.
+    ///
+    /// One value for all of those, for the reason `info` above is one value for
+    /// its three: the tile is drawn from a figure that was measured or it is
+    /// not drawn at all. `brew info` carries no size in either direction, so
+    /// this is a walk of the package's own Cellar directory and it lands after
+    /// the rest of the inspector — which is why it is a field of its own rather
+    /// than one more optional on `PackageInfo`, arriving with the rest.
+    ///
+    /// **Never 0.** The engine folds a missing keg, a directory that would not
+    /// open and a cask into nil (`HomebrewEngine.size`), because a zero in a
+    /// tile is not a gap on the page — it is a measurement, and it says the
+    /// package occupies nothing.
+    @Published private(set) var size: Int?
+
     /// Which ask an answer belongs to, so an older one is dropped rather than
     /// drawn over a newer package.
     ///
@@ -157,6 +174,12 @@ import Module_Homebrew_Engine
     private func refillInfo() {
         infoAsk?.cancel()
         info = nil
+        // And the figure beside it, for the reason the facts are cleared: a
+        // size belongs to the package it was walked for, and openssl@3's
+        // 41 MB left standing under the heading wget is a measurement of the
+        // wrong thing — the most believable kind of wrong, because it is a
+        // real figure about *something*.
+        size = nil
         let mine = infoAsks.take()
         guard let ref = selectedPackage else { infoAsk = nil; return }
         infoAsk = Task { [weak self] in await self?.loadInfo(ref, token: mine) }
@@ -200,6 +223,27 @@ import Module_Homebrew_Engine
         // Assigned including nil: a refusal is what the page must show nothing
         // for, and this is the line that says so.
         info = answer
+
+        // **Then the walk, on the same token and never before this line.** The
+        // size is the one fact in the inspector that nothing can tell us — it
+        // is a walk of a directory (`HomebrewEngine.size`) — so it is asked
+        // after the tier it joins has been drawn, and only for a package that
+        // is actually on this Mac: a search hit has no keg, and asking about
+        // one would spend a walk to learn that.
+        //
+        // The version comes from the answer above rather than from the list,
+        // because it is the version the engine remembers the figure against —
+        // reading it from anywhere else would let a figure be filed under a
+        // number `brew info` never said.
+        guard let version = answer?.installedVersion, !version.isEmpty else { return }
+        let measured: Int? = await client.request(
+            HomebrewCommand.size,
+            encoding: PackageSizeRequest(name: ref.name, isCask: ref.isCask, version: version))
+        // The same token, asked again: the walk is the longest wait in the
+        // inspector, so the screen is likelier to have moved under it than
+        // under anything else here.
+        guard infoAsks.isLatest(token) else { return }
+        size = measured
     }
 
     /// Drops `segment`'s selection when its package is no longer in `ids`.
@@ -359,6 +403,17 @@ import Module_Homebrew_Engine
         // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
         // screen carrying two accounts of one package. Last, so the ask goes
         // out against the selection the reconciles above have settled on.
+        //
+        // **And the Cellar walk that now hangs off it, deliberately.** This
+        // line runs after every finished operation, so a directory walk is paid
+        // here too — one package's Cellar directory, and only while something
+        // is selected. That is the cost worth paying rather than avoiding: an
+        // install, an upgrade and a `brew doctor` fix each rewrite the very keg
+        // the figure was walked from, so a kept figure is the second account of
+        // one package this comment already exists about. The engine drops every
+        // remembered figure at the same moment (`HomebrewEngine.size`), so this
+        // ask really does re-measure rather than read back what the operation
+        // invalidated.
         refillInfo()
     }
 

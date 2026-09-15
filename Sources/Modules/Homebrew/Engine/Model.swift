@@ -257,3 +257,27 @@ public struct BrewConfig: Codable, Equatable, Sendable {
     public let text: String
     public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
 }
+
+/// What the UI sends to ask how much disk one package occupies.
+///
+/// `PackageRef` and a version, rather than `PackageRef` alone, because **the
+/// answer is remembered against the version it was measured for**. The engine
+/// keeps one figure per `name@version` for its own life; the version is the
+/// half that makes a kept figure honest, since an upgrade replaces the keg the
+/// walk measured. The page already holds it — it is `PackageInfo`'s
+/// `installedVersion`, the very tile this figure is drawn beside — so nothing
+/// has to be read twice to name it.
+///
+/// Declared here for the reason `PackageRef`'s own comment gives: a payload
+/// declared once in the engine and read from the UI is a wire contract with a
+/// compiler between its halves.
+public struct PackageSizeRequest: Codable, Sendable {
+    public let name: String
+    public let isCask: Bool
+    /// The version the figure will be remembered against. Never empty: a
+    /// package with no installed version has no keg to walk.
+    public let version: String
+    public init(name: String, isCask: Bool, version: String) {
+        self.name = name; self.isCask = isCask; self.version = version
+    }
+}

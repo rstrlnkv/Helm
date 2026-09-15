@@ -1144,6 +1144,7 @@
 "as a dependency" = "依存関係として";
 "Version" = "バージョン";
 "Licence" = "ライセンス";
+"On disk" = "ディスク上のサイズ";
 "Depends on" = "依存先";
 "Package notes" = "パッケージからのお知らせ";
 "Homebrew has deprecated this package." = "Homebrew はこのパッケージを非推奨にしました。";

@@ -175,6 +175,13 @@ enum HbStr {
     /// installed has anywhere in this module.
     static var tileVersion: String { L("Version") }
     static var tileLicence: String { L("Licence") }
+    /// How much disk the installed package occupies. **Walked, not read**:
+    /// `brew info --json=v2` carries no size in either direction, so this tile
+    /// is the only fact in the tier that arrives after the rest — and it is
+    /// absent until it does, because a tile that says «measuring…» is a tile
+    /// standing in for a figure nobody has. Its value goes through `Bytes`, so
+    /// the unit is the app's own language rather than the system's.
+    static var tileOnDisk: String { L("On disk") }
 
     // MARK: - What `brew doctor` found
 

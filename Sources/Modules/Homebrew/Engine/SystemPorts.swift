@@ -737,6 +737,80 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     }
 }
 
+// MARK: - What a package occupies
+
+/// The size of a package, walked out of `<prefix>/Cellar/<name>`.
+///
+/// **The prefix is asked for at every call and never remembered.** It is
+/// derived from the locator's own answer — `/opt/homebrew/bin/brew` two
+/// components up is `/opt/homebrew` — because that is the one reading in this
+/// process that already re-reads the disk each time it is asked
+/// (`FSBrewLocator`). Homebrew can be moved from `/usr/local` to
+/// `/opt/homebrew` while this window is open, and a prefix frozen at
+/// construction would go on measuring a Cellar that is not the one the rest of
+/// the module is talking to.
+public struct CellarWeight: PackageWeight {
+    private let locator: BrewLocator
+    public init(locator: BrewLocator) { self.locator = locator }
+
+    public func bytes(ofPackage name: String, isCask: Bool) -> Int? {
+        // **First, and before the prefix is even asked for.** A cask has no
+        // Cellar directory — it unpacks into `Caskroom` and puts an application
+        // somewhere macOS owns — so «nothing to measure» is *known* here rather
+        // than discovered by failing to find a directory, exactly as
+        // `HomebrewEngine.dependents` knows a cask needs no `brew uses` run.
+        // Asking the locator first would still answer nil, and would make
+        // «nothing was walked» unprovable from outside.
+        guard !isCask, isAPackageName(name) else { return nil }
+        guard let brew = locator.brewPath() else { return nil }
+        // `/opt/homebrew/bin/brew` → `/opt/homebrew`. Two components, because
+        // that is the shape Homebrew has in both its prefixes and the shape
+        // `FSBrewLocator` looks for.
+        let keg = URL(fileURLWithPath: brew)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Cellar").appendingPathComponent(name)
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: keg.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return nil }
+
+        // **Zero is a refusal here, not a measurement.** `FileWeight.allocated`
+        // answers 0 for a path it could not read at all, and `BulkWalk` reports
+        // a directory that would not open as denied rather than as empty — a
+        // `chmod` in somebody's terminal, or any TCC refusal, arrives that way.
+        // A keg that really is installed occupies blocks; nothing that
+        // occupies none is a package worth drawing a figure for, so both
+        // readings fold into the one nil the tile is absent for.
+        let measured = FileWeight.allocated(of: keg)
+        guard measured > 0 else {
+            // Said once, and only about a directory that is *there*: an absent
+            // keg is the ordinary answer for half the questions this port is
+            // asked, and a line about one would send a reading after something
+            // that has not happened — a refusal is logged, an absence is not
+            // (CLAUDE.md § What not to do, and what breaks if you do).
+            HelmLog.shared.warn(HomebrewEngine.moduleID,
+                                "the Cellar directory of \(Redact.pkg(name)) measured nothing "
+                                + "— it is there and could not be read")
+            return nil
+        }
+        return measured
+    }
+
+    /// Whether `name` can name a directory *inside* the Cellar and nothing else.
+    ///
+    /// **The string is appended to a path that is then walked**, and it reaches
+    /// this port from `brew`'s own stdout and from the search box somebody types
+    /// into. `..` points the walk at the prefix, `.` at the whole Cellar, and a
+    /// name with a separator in it at wherever the separator leads: measured
+    /// with this guard removed, `bytes(ofPackage: "..")` walked 3,0 GB of a real
+    /// Homebrew installation and reported it as one package's size. A formula's
+    /// own name is one path component with no separator in it, so this refuses
+    /// everything else rather than trying to repair it.
+    private func isAPackageName(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".." && !name.contains("/")
+    }
+}
+
 // MARK: - Factory
 
 public struct HomebrewSystemPorts {
@@ -745,5 +819,8 @@ public struct HomebrewSystemPorts {
     public let privileged = OSAPrivilegedRunner()
     public let marker = FileOpMarker()
     public let popularity = FilePopularityStore()
+    /// Built over the same locator the engine uses, so «which brew» has one
+    /// answer on this Mac rather than two.
+    public var weight: CellarWeight { CellarWeight(locator: locator) }
     public init() {}
 }

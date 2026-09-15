@@ -8,7 +8,8 @@ import Module_Homebrew_Engine
 /// Its own file rather than five more members on `HomebrewSettingsPage`, which
 /// was already the longest view in the module and went past the house's file
 /// length with them in it. Nothing here reads the page or the view model: the
-/// whole input is one `PackageInfo`, which is why it can stand alone at all.
+/// whole input is one `PackageInfo` and the figure beside it, which is why it
+/// can stand alone at all.
 /// `packageDetail` stays the one builder of what a package draws, and this is
 /// one of the things it draws.
 ///
@@ -23,11 +24,16 @@ import Module_Homebrew_Engine
 /// is the rule the tier exists under: a selection with no answer yet, or one
 /// whose answer was refused, draws the first tier and nothing false.
 ///
-/// Size is deliberately not here. It is a directory walk that belongs to a later
-/// phase, and a tile that says it is working something out for a phase that has
-/// not landed is a promise this code cannot keep.
+/// **The size is the one input that is not part of `info`**, and it is a
+/// parameter of its own because it arrives on its own: `brew info` carries no
+/// size in either direction, so the figure is a walk of the package's Cellar
+/// directory that lands after this tier has already been drawn once. nil until
+/// then, and nil for good whenever there was nothing to measure — which draws
+/// as no tile at all, the same as every other absent fact here.
 struct PackageSecondTier: View {
     let info: PackageInfo
+    /// Bytes the package occupies, or nil when nothing measured any.
+    let sizeBytes: Int?
 
     /// The same stack the first tier's blocks sit in, with the same step: this
     /// used to be a `@ViewBuilder` member of the page, spaced by the page's own
@@ -57,7 +63,7 @@ struct PackageSecondTier: View {
     /// in. `PackageFacts` is the one that decides.
     @ViewBuilder
     private var factTiles: some View {
-        let tiles = PackageFacts.of(info)
+        let tiles = PackageFacts.of(info, sizeBytes: sizeBytes)
         if !tiles.isEmpty {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: HelmSpace.s4),
                                 GridItem(.flexible(), spacing: HelmSpace.s4)],

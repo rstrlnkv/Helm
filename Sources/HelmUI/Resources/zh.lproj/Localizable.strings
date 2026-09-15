@@ -1144,6 +1144,7 @@
 "as a dependency" = "作为依赖装上的";
 "Version" = "版本";
 "Licence" = "许可证";
+"On disk" = "磁盘上的大小";
 "Depends on" = "依赖于";
 "Package notes" = "软件包说明";
 "Homebrew has deprecated this package." = "Homebrew 已弃用这个软件包。";

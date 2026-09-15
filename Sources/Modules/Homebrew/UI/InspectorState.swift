@@ -289,11 +289,18 @@ struct PackageFact: Equatable {
 /// A placeholder would be worse than the gap in both directions: a dash reads as
 /// "Homebrew answered and had nothing", and a zero reads as a measurement.
 ///
-/// Size is deliberately not here — it is a directory walk belonging to a later
-/// phase, and a tile that says it is working something out for a phase that has
-/// not landed is a promise this code cannot keep.
+/// **The size is the one fact here that did not come with the answer.** `brew
+/// info` carries no size in either direction, so it is a walk of the package's
+/// own Cellar directory that lands later than everything else — a separate
+/// parameter rather than a field of `PackageInfo`, and `nil` for every reason a
+/// walk can fail to produce a figure: nothing selected, not installed, a keg
+/// that would not open, a cask. It earns its tile only when there is a figure,
+/// by exactly the rule the four above obey. There is deliberately no
+/// «measuring…» and no «you will know once it is installed»: both are a tile
+/// standing in for a figure nobody has, which is the one thing this type exists
+/// to refuse.
 enum PackageFacts {
-    static func of(_ info: PackageInfo) -> [PackageFact] {
+    static func of(_ info: PackageInfo, sizeBytes: Int?) -> [PackageFact] {
         var facts: [PackageFact] = []
         if let installed = info.installedVersion {
             facts.append(PackageFact(label: HbStr.tileInstalledVersion, value: installed))
@@ -317,6 +324,15 @@ enum PackageFacts {
             if let licence = info.license {
                 facts.append(PackageFact(label: HbStr.tileLicence, value: licence))
             }
+        }
+        // Last, and in both sets: it is the tile that arrives last, and a grid
+        // whose earlier tiles moved when it landed would re-flow the page under
+        // somebody's eyes. `Bytes` and not a formatter of its own — a
+        // Foundation one built with no locale answers in the *system's*
+        // language, which on a Mac outside Helm's eight is an English page with
+        // somebody else's units spliced into it.
+        if let sizeBytes {
+            facts.append(PackageFact(label: HbStr.tileOnDisk, value: Bytes(sizeBytes)))
         }
         return facts
     }

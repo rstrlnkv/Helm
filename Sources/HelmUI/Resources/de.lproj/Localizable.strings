@@ -1144,6 +1144,7 @@
 "as a dependency" = "als Abhängigkeit";
 "Version" = "Version";
 "Licence" = "Lizenz";
+"On disk" = "Auf dem Datenträger";
 "Depends on" = "Hängt ab von";
 "Package notes" = "Hinweise zum Paket";
 "Homebrew has deprecated this package." = "Homebrew hat dieses Paket als veraltet markiert.";
