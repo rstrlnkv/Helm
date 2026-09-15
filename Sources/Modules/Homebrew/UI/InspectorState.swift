@@ -1,4 +1,5 @@
 import Foundation
+import HelmUI
 import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
@@ -78,6 +79,64 @@ struct InspectorSubject: Equatable {
     let desc: String?
     let updates: Updates
     let action: Action
+}
+
+/// One tile of the package view's second tier: a label, and a value that was
+/// actually read.
+///
+/// A value type rather than a view, for the reason `InspectorState` above gives:
+/// which tiles an answer earns is the whole of the decision, and a `body` is not
+/// somewhere a test can reach.
+struct PackageFact: Equatable {
+    let label: String
+    let value: String
+}
+
+/// Which tiles `brew info`'s answer earns — and no others.
+///
+/// **An absent fact is an absent tile.** Installed and not installed are two
+/// different sets rather than one set with holes in it: "Version" over the
+/// catalogue's number is a different sentence from "Installed version" over what
+/// is on disk, and a package that is not installed has no install date and
+/// nobody asked for it. Inside each set every tile is still dropped when its own
+/// fact is nil, because the fields are optional for reasons that happen
+/// constantly rather than rarely — a cask's document records neither a licence
+/// nor who asked for it, so a cask simply has fewer tiles than a formula.
+///
+/// A placeholder would be worse than the gap in both directions: a dash reads as
+/// "Homebrew answered and had nothing", and a zero reads as a measurement.
+///
+/// Size is deliberately not here — it is a directory walk belonging to a later
+/// phase, and a tile that says it is working something out for a phase that has
+/// not landed is a promise this code cannot keep.
+enum PackageFacts {
+    static func of(_ info: PackageInfo) -> [PackageFact] {
+        var facts: [PackageFact] = []
+        if let installed = info.installedVersion {
+            facts.append(PackageFact(label: HbStr.tileInstalledVersion, value: installed))
+            if let at = info.installedAt {
+                // The shared helper, keyed by the app's language: a
+                // `DateFormatter` built with no locale answers in the
+                // *system's*, which on a Mac outside Helm's eight means an
+                // English page with somebody else's dates spliced into it.
+                facts.append(PackageFact(label: HbStr.tileInstalledOn,
+                                         value: HelmDates.day(at)))
+            }
+            if let onRequest = info.installedOnRequest {
+                facts.append(PackageFact(label: HbStr.tileHowItGotHere,
+                                         value: onRequest ? HbStr.installedOnRequest
+                                                          : HbStr.installedAsDependency))
+            }
+        } else {
+            if let version = info.latestVersion {
+                facts.append(PackageFact(label: HbStr.tileVersion, value: version))
+            }
+            if let licence = info.license {
+                facts.append(PackageFact(label: HbStr.tileLicence, value: licence))
+            }
+        }
+        return facts
+    }
 }
 
 /// The two questions the rows and the inspector both ask, answered once —

@@ -308,6 +308,12 @@ struct HomebrewSettingsPage: View {
             case .nothingSelected:
                 HelmEmptyState(message: HbStr.nothingSelected)
             case let .package(subject):
+                // Scrolled, because the second tier is as long as the package
+                // makes it: openssl@3 answers with three tiles, a homepage, a
+                // tap, two notes, a dependency chip and four lines of caveats,
+                // and below `HomebrewSplit`'s threshold this has the console
+                // under it as well. A fixed column simply clipped the caveats.
+                ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpace.s5) {
                     HStack(spacing: HelmSpace.s3) {
                         Text(subject.name).font(HelmText.sectionHeading)
@@ -330,9 +336,20 @@ struct HomebrewSettingsPage: View {
                     if let desc = subject.desc {
                         Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     }
-                    Spacer(minLength: 0)
+                    // **The second tier, and only when there is an answer.**
+                    // Everything above this line is a function of the lists the
+                    // page already holds, so it is on screen the moment a row
+                    // is clicked. `hb.info` is nil while `brew info` is out and
+                    // stays nil when it refused — and a refusal, a missing brew
+                    // and a document this build cannot read are one nil
+                    // (`HomebrewEngine.info`), none of which has measured
+                    // anything. So there is no spinner in place of the package
+                    // and no tile with nothing in it: the tier is absent.
+                    if let info = hb.info { PackageSecondTier(info: info) }
                 }
                 .padding(HelmSpace.s5)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
             }
         }
     }

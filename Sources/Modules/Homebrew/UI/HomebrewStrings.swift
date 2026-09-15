@@ -146,4 +146,99 @@ enum HbStr {
     /// package screen spells beside the same symbol — the only carrier of "an
     /// update exists" for a colourblind reader or one using VoiceOver.
     static var updateAvailable: String { L("Update available") }
+
+    // MARK: - The package view's second tier
+
+    /// The version a package is installed at.
+    ///
+    /// Not `segInstalled`, which is also "Installed" in English: that names the
+    /// tab and this names a fact about one package, and one key means one thing
+    /// — several languages draw the distinction the English has lost, and a
+    /// shared key would have given them one word for both.
+    static var tileInstalledVersion: String { L("Installed version") }
+    /// The day it was installed. Its value goes through `HelmDates.day`, never a
+    /// `DateFormatter` built with no locale.
+    static var tileInstalledOn: String { L("Installed on") }
+    /// Whether Homebrew installed it because somebody asked for it or because
+    /// something else needed it. Drawn only for a formula — a cask's document
+    /// records no such fact, and inventing "you asked for it" would be the page
+    /// answering a question brew never answered.
+    static var tileHowItGotHere: String { L("How it got here") }
+    static var installedOnRequest: String { L("you asked for it") }
+    static var installedAsDependency: String { L("as a dependency") }
+    /// What Homebrew would install now — the only version a package that is not
+    /// installed has anywhere in this module.
+    static var tileVersion: String { L("Version") }
+    static var tileLicence: String { L("Licence") }
+
+    /// The heading over the dependency chips.
+    static var dependsOn: String { L("Depends on") }
+    /// The heading over what `brew info` prints after an install — paths to
+    /// edit, a service to start. Homebrew's own word is "caveats", which reads
+    /// as a warning in English and is not one.
+    static var packageNotes: String { L("Package notes") }
+
+    /// The first sentence of the deprecation note. The reason follows it as a
+    /// sentence of its own, so no language has to bend a clause into a frame
+    /// another language chose.
+    static var deprecated: String { L("Homebrew has deprecated this package.") }
+    /// Drawn when `installed_on_request` is false: the person did not ask for
+    /// this, and removing it alone is how a dependency comes straight back.
+    static var cameAsDependency: String {
+        L("It came in as a dependency — you did not ask for it. It is worth removing together with whatever brought it.")
+    }
+
+    /// What to use instead, when Homebrew names one. Interpolated, so the table
+    /// is inline: interpolation runs before the lookup, and a `.lproj` key with
+    /// a package name baked into it could never match.
+    static func useInstead(_ name: String) -> String { L("Use \(name) instead.", [.ru: "Вместо него стоит взять \(name).", .es: "En su lugar conviene usar \(name).", .fr: "Il vaut mieux utiliser \(name) à la place.", .de: "Stattdessen sollte \(name) verwendet werden.", .ja: "代わりに \(name) を使ってください。", .zh: "请改用 \(name)。", .pt: "Em vez dele, convém usar \(name)."]) }
+
+    /// A deprecation reason Homebrew spells as a token this build has no
+    /// sentence for — a free-text reason a formula wrote by hand, or a token
+    /// added upstream since this release. The token itself, said to be
+    /// Homebrew's word rather than Helm's, because inventing a translation for
+    /// a reason nobody has read is worse than showing the raw one.
+    static func brewsOwnReason(_ reason: String) -> String { L("Homebrew’s reason: \(reason)", [.ru: "Причина, которую называет Homebrew: \(reason)", .es: "El motivo que indica Homebrew: \(reason)", .fr: "La raison indiquée par Homebrew\u{00A0}: \(reason)", .de: "Der von Homebrew genannte Grund: \(reason)", .ja: "Homebrew が挙げている理由: \(reason)", .zh: "Homebrew 给出的理由：\(reason)", .pt: "O motivo indicado pelo Homebrew: \(reason)"]) }
+
+    /// The other version lines of the same package sitting in the catalogue —
+    /// `openssl@1.1` beside `openssl@3`. A joined list, so the table is inline.
+    static func otherVersionLines(_ names: String) -> String { L("Other version lines are here too: \(names)", [.ru: "Рядом есть другие линии: \(names)", .es: "También hay otras líneas de versión: \(names)", .fr: "D’autres lignes de version existent aussi\u{00A0}: \(names)", .de: "Es gibt auch andere Versionslinien: \(names)", .ja: "ほかのバージョン系列もあります: \(names)", .zh: "还有其他版本线：\(names)", .pt: "Também existem outras linhas de versão: \(names)"]) }
+
+    /// Homebrew's deprecation reason as a sentence, or the token itself.
+    ///
+    /// The tokens are Homebrew's own enumeration, read out of
+    /// `/opt/homebrew/Library/Homebrew/deprecate_disable.rb` on 2026-09-15
+    /// against Homebrew 7.0.1 — the formula set and the cask set, which share
+    /// `unmaintained` and `unreachable` and otherwise do not overlap. A formula
+    /// may also deprecate itself with a sentence of its own rather than a token,
+    /// and upstream adds tokens between releases: both land on
+    /// `brewsOwnReason`, which says whose word it is instead of translating one
+    /// nobody has read. `repo_archived` is the one this Mac produces today
+    /// (`periphery`).
+    static func deprecationReason(_ token: String) -> String {
+        reasonSentences[token].map { $0() } ?? brewsOwnReason(token)
+    }
+
+    /// A table against Homebrew's table, rather than a `switch`: this is a
+    /// lookup and not a decision, and the two hashes read side by side. Each
+    /// value is a closure because `L` reads the app's language at the moment it
+    /// is called, and the language changes while the app runs — a dictionary of
+    /// *strings* would answer in whichever language happened to build it.
+    private static let reasonSentences: [String: @Sendable () -> String] = [
+        "does_not_build": { L("It does not build.") },
+        "no_license": { L("It has no licence.") },
+        "repo_archived": { L("Its upstream repository has been archived.") },
+        "repo_removed": { L("Its upstream repository has been removed.") },
+        "unmaintained": { L("Nobody maintains it upstream any more.") },
+        "unreachable": { L("It can no longer be reliably downloaded from upstream.") },
+        "unsupported": { L("Upstream does not support it.") },
+        "deprecated_upstream": { L("Upstream has deprecated it.") },
+        "versioned_formula": { L("It is an older version line rather than the current one.") },
+        "checksum_mismatch": { L("It was built from a source file upstream has since replaced, so that repository may have been tampered with.") },
+        "discontinued": { L("Upstream has discontinued it.") },
+        "moved_to_mas": { L("It is now distributed only through the Mac App Store.") },
+        "no_longer_available": { L("It is no longer available upstream.") },
+        "no_longer_meets_criteria": { L("It no longer meets Homebrew’s conditions for a cask.") },
+        "fails_gatekeeper_check": { L("It does not pass the macOS Gatekeeper check.") },
+    ]
 }
