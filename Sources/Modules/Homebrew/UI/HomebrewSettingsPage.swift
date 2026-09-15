@@ -280,7 +280,7 @@ struct HomebrewSettingsPage: View {
                     Section(HbStr.headingConfiguration) {
                         ForEach(configuration) { group in
                             Text(HbStr.configSectionName(group.section))
-                                .frame(minHeight: 34)
+                                .helmListRow()
                         }
                     }
                 }
@@ -302,7 +302,7 @@ struct HomebrewSettingsPage: View {
             // is a row that looks broken.
             Text(Self.healthNote(note))
                 .foregroundStyle(HelmText.quiet)
-                .frame(minHeight: 34)
+                .helmListRow()
                 .selectionDisabled()
         }
     }
@@ -325,10 +325,22 @@ struct HomebrewSettingsPage: View {
         HStack(spacing: HelmSpace.s3) {
             HelmBadge(Self.severityWord(issue.severity),
                       tint: Self.severityTint(issue.severity))
-            Text(issue.title).lineLimit(2)
+            // One line, like `pkgRow`'s name and for the same reason: the row
+            // is the handle and `issueDetail` beside it carries the whole
+            // title.
+            //
+            // **It said two, and two was never what it drew.** Measured
+            // 2026-09-15 with a 73-character title in a 286 pt column: the row
+            // came out one line tall either way, because a `Text` in an
+            // `HStack` beside a `Spacer` is compressed to one line and
+            // truncated rather than allowed to wrap — `lineLimit(2)` permits a
+            // second line and nothing here asks for one. So this is the number
+            // that says what happens, and it is also the one that keeps saying
+            // it if a future layout stops compressing.
+            Text(issue.title).lineLimit(1)
             Spacer(minLength: 0)
         }
-        .frame(minHeight: 34)
+        .helmListRow()
     }
 
     /// What the console says beside «Failed», when the engine knew more than an
@@ -842,7 +854,7 @@ struct HomebrewSettingsPage: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(minHeight: 34)
+        .helmListRow()
     }
 
     /// `empty` is nil while the first query is still out: "nothing installed"
@@ -894,7 +906,7 @@ struct HomebrewSettingsPage: View {
                     row(item)
                 }
                 .listStyle(.inset)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, HelmSpace.s5)
             }
         }
     }
@@ -924,5 +936,31 @@ private extension View {
         frame(maxWidth: HelmLayout.readingColumn, alignment: .topLeading)
             .padding(HelmSpace.s5)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
+/// **One row of either list on this page: how tall it is, and what does not
+/// divide it from the next one.**
+///
+/// The height is `HelmSpace.s7` where it was 34 — a number off the ladder, and
+/// one that a `List`'s own row insets then took to a 42 pt step for a single
+/// line of content, measured 2026-09-15 on both of this page's lists. A step
+/// that long over one line of text reads as a settings form rather than as a
+/// list of things.
+///
+/// **And the separator goes with it.** macOS draws one per row across the whole
+/// column, which at this step is a rule every few lines in a 310 pt column of
+/// short names; the approved drawing has a hairline at a twentieth of that
+/// weight, which macOS's is not and cannot be made into. What separates one row
+/// from the next instead is the row's own content and the selection macOS draws
+/// under it — and in the health list the two `Section` headers, which carry the
+/// structure the rules were standing in for. Hiding them also puts this page
+/// with the app's other two list screens rather than against them:
+/// `OrphansView` and `DiskResultView` hide theirs already, and Homebrew was the
+/// one list still drawing rules.
+private extension View {
+    func helmListRow() -> some View {
+        frame(minHeight: HelmSpace.s7)
+            .listRowSeparator(.hidden)
     }
 }
