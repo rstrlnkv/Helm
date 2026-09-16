@@ -38,7 +38,9 @@ struct HomebrewSplit {
     /// Russian window across 560…566 reorganised the page **twice in six
     /// points** — the columns collapsed, then the switcher became a menu — and
     /// Japanese did it across twelve. Neither change is wrong; two of them ten
-    /// points apart is.
+    /// points apart is. (Those widths predate the reserved «Обновить всё» slot
+    /// in the bar; swept again with it, the one boundary is es 581 · ru 593 ·
+    /// ja 599 and 560 in the other five.)
     ///
     /// `headerBar` folds this file's floor into the segmented candidate's own
     /// ideal width, so the one thing `ViewThatFits` answers is «is this pane

@@ -36,8 +36,8 @@ import XCTest
 final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
 
     /// One installed formula, one outdated one and one `brew doctor` finding that
-    /// carries a fix — so the Updates bar, both lists and the fix well are all
-    /// reachable from one fixture.
+    /// carries a fix — so both lists and the fix well are reachable from one
+    /// fixture.
     private final class Cellar: EngineTransport, @unchecked Sendable {
         let stream = AsyncStream<EngineEvent>.makeStream()
         var events: AsyncStream<EngineEvent> { stream.stream }
@@ -116,47 +116,17 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
         return out
     }
 
-    // MARK: - The Upgrade-all bar
-
-    /// **A bar directly under another bar has to end where that one ends.**
-    ///
-    /// It was `.padding(8)` all round where every other bar in Helm is
-    /// `HelmLayout.formInset` / `HelmSpace.s5`, so in a single column the Refresh
-    /// button above it and this button missed each other by 12 pt.
-    /// `OrphansView` wrote this exact defect down first — «20/12 like every other
-    /// bar in Helm. At 12/10 this one sat narrower than the toolbar above it and
-    /// the footer below.»
-    ///
-    /// **Read against the column it is in, not against the window.** Above
-    /// `HomebrewSplit`'s threshold the bar sits inside the master column, so the
-    /// edge it has to agree with is that column's — which is the list's own
-    /// trailing edge, below it. Both widths are checked for that reason: in one
-    /// the column is the pane, in the other it is not.
-    func testTheUpgradeBarEndsWhereTheBarAboveItEnds() async throws {
-        for width in [threshold - 1, 984] as [CGFloat] {
-            let (hb, mount) = await page(width: width, segment: .updates)
-            XCTAssertFalse(hb.outdated.isEmpty,
-                           "precondition: nothing is outdated, so there is no Upgrade-all bar")
-            let list = try XCTUnwrap(list(mount), "no list drew at \(width) pt")
-
-            // The bordered button's own bezel. The picker in the bar above draws
-            // one too at the narrow width, where it is a menu rather than
-            // segments — so the one wanted is the lowest ring above the list.
-            let rings = mount.host.everyView(named: "_FocusRingView")
-                .map { $0.convert($0.bounds, to: mount.host) }
-                .filter { $0.maxY <= list.minY }
-            let button = try XCTUnwrap(rings.max(by: { $0.minY < $1.minY }),
-                                       "no control drew between the header bar and the list "
-                                       + "at \(width) pt")
-
-            XCTAssertEqual(list.maxX - button.maxX, HelmLayout.formInset, accuracy: 1, """
-                at \(width) pt the Upgrade-all button ends \(list.maxX - button.maxX) pt inside \
-                its column's trailing edge, where every bar in this app ends \
-                \(HelmLayout.formInset) pt inside it — so it does not line up with Refresh one \
-                hairline above it
-                """)
-        }
-    }
+    // MARK: - The Upgrade-all bar, retired
+    //
+    // This file held `testTheUpgradeBarEndsWhereTheBarAboveItEnds`: «Обновить
+    // всё» sat in a strip of its own under the header, and at `.padding(8)` it
+    // missed Refresh one hairline above it by 12 pt. The strip is gone —
+    // the button is in the header's own row beside Refresh (`upgradeAll`), one
+    // `HStack` and one inset — so two bars that end in different places are no
+    // longer something this page can draw, and the case measured a control
+    // that no longer exists. What that move put at risk instead is the width
+    // the header asks for, and `TheBarAsksForOneWidthInEverySegmentTests` is
+    // what holds it.
 
     // MARK: - The lists
 
@@ -279,11 +249,5 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
                 \(HelmRadius.ctl)
                 """)
         }
-    }
-
-    private var threshold: CGFloat {
-        for width in stride(from: CGFloat(200), through: 1400, by: 1)
-        where HomebrewSplit(availableWidth: width).showsInspector { return width }
-        return 0
     }
 }

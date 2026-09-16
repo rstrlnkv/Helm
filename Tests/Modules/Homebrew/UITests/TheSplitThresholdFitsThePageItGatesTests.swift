@@ -132,8 +132,9 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// one boundary now — `headerBar` folds this file's threshold into the
     /// segmented bar's own ideal width, so the columns appear exactly where the
     /// switcher fits — and that width is a fact about the language's strings:
-    /// swept 2026-09-16, ru needs 566 pt and ja 572 against `HomebrewSplit`'s
-    /// own 560. This Mac runs in Russian, so a bare mount at 560 draws the
+    /// swept 2026-09-16, ru needs 593 pt and ja 599 against `HomebrewSplit`'s
+    /// own 560 — since the bar gained «Обновить всё»'s reserved slot; it was
+    /// 566 and 572 before. This Mac runs in Russian, so a bare mount at 560 draws the
     /// one-column page and nothing here would be measuring the split at all.
     /// English is the language whose bar fits under every reachable pane, which
     /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is
@@ -205,8 +206,9 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// one boundary now — `headerBar` folds this file's threshold into the
     /// segmented bar's own ideal width, so the columns appear exactly where the
     /// switcher fits — and that width is a fact about the language's strings:
-    /// swept 2026-09-16, ru needs 566 pt and ja 572 against `HomebrewSplit`'s
-    /// own 560. This Mac runs in Russian, so a bare mount at 560 draws the
+    /// swept 2026-09-16, ru needs 593 pt and ja 599 against `HomebrewSplit`'s
+    /// own 560 — since the bar gained «Обновить всё»'s reserved slot; it was
+    /// 566 and 572 before. This Mac runs in Russian, so a bare mount at 560 draws the
     /// one-column page and nothing here would be measuring the split at all.
     /// English is the language whose bar fits under every reachable pane, which
     /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is

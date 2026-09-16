@@ -12,7 +12,8 @@ import HelmUI
 ///
 /// The switcher is `.fixedSize()`, so it is as wide as the language makes it:
 /// measured 2026-09-16, zh 252 · en 302 · de 320 · fr 388 · pt 404 · es 476 ·
-/// ru 488 · ja 494 pt, with the bar needing `picker + 65.5`. The narrowest pane
+/// ru 488 · ja 494 pt, with the bar needing `picker + 65.5` before «Обновить всё»
+/// took its reserved slot beside Refresh (`upgradeAll`). The narrowest pane
 /// is **540** — `max(detailItem.minimumThickness, minSize.width −
 /// sidebarMaximum)` from `SettingsWindow.swift` — and at 540 in Russian the
 /// picker sat at x = 7.5 where the page's inset is 20, with Refresh drawn 13 pt

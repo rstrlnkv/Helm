@@ -315,7 +315,7 @@ struct HomebrewSettingsPage: View {
     /// The switcher is `.fixedSize()` and therefore as wide as its eight
     /// languages make it: measured 2026-09-16, zh 252 · en 302 · de 320 ·
     /// fr 388 · pt 404 · es 476 · ru 488 · ja 494 pt, with the bar needing
-    /// `picker + 65.5` around it. The narrowest pane a person can reach is
+    /// `picker + 65.5` around it before `upgradeAll` took its slot. The narrowest pane a person can reach is
     /// **540** — `max(detailItem.minimumThickness, minSize.width −
     /// sidebarMaximum)` from `SettingsWindow.swift` — so Russian and Japanese
     /// do not fit, and nothing said so: SwiftUI centres the overflow, which put
@@ -342,7 +342,9 @@ struct HomebrewSettingsPage: View {
     /// fits at en/zh/de below 400 pt · fr 466 · pt 482 · es 554 · ru 566 ·
     /// ja 572, while `HomebrewSplit` dropped the inspector at 560 — so a
     /// Russian window dragged across 560…566 reorganised twice in six points
-    /// and a Japanese one twice in twelve. `.frame(minWidth:)` on the segmented
+    /// and a Japanese one twice in twelve. (Those are the bar's widths before
+    /// `upgradeAll` reserved its slot; with it, the one boundary below is
+    /// es 581 · ru 593 · ja 599 and 560 elsewhere.) `.frame(minWidth:)` on the segmented
     /// candidate puts the split's own floor into that candidate's ideal width,
     /// so the one question `ViewThatFits` answers is «is this pane wide enough
     /// for the whole wide page» — `max(560, what the bar needs here)` — and
@@ -401,6 +403,7 @@ struct HomebrewSettingsPage: View {
                 Task { await refresh(seg) }
             }
             Spacer(minLength: 0)
+            upgradeAll
             Button {
                 Task { await refresh(hb.segment) }
             } label: {
@@ -411,6 +414,64 @@ struct HomebrewSettingsPage: View {
             .disabled(hb.running)
             .help(HbStr.refreshList)
             .accessibilityLabel(HbStr.refreshList)
+        }
+    }
+
+    /// **«Обновить всё», in the bar where the page's other verbs are — and
+    /// taking the same room in all four segments whether or not it is drawn.**
+    ///
+    /// It was a bar of its own between the header and the updates list: a
+    /// second strip carrying one button, present in one segment, which is a
+    /// row of chrome the page pays for in height every time Обновления is
+    /// open. The action belongs beside Refresh.
+    ///
+    /// **Reserved rather than conditional, and that is the whole of the
+    /// design.** `headerBar` puts `HomebrewSplit.masterAndInspector` into the
+    /// segmented candidate's ideal width, so what the bar asks for is what
+    /// decides whether the page draws two columns at all
+    /// (`ThePageReorganisesOnceTests`). A control that appears in one segment
+    /// would make that answer depend on the segment — and switching to
+    /// Обновления at a pane in the band would drop the inspector in the one
+    /// segment whose rows are things to act on. So both branches build the
+    /// same control and only its visibility differs; the width is the same
+    /// number in every segment, and the page has one boundary.
+    ///
+    /// **A glyph and not the word, which is the price of that.** Measured
+    /// 2026-09-16 with the real button in all eight languages, the word is
+    /// zh 76 · ja 87 · en 94 · pt 109 · ru 111 · es 116 · de 127 · fr 132 pt.
+    /// Reserved in every segment, the word and its gap add to what the bar
+    /// already needs — by that arithmetic about 676 pt in Russian and 670 in
+    /// Spanish, not swept: a hundred points of window in which the inspector
+    /// would disappear because of a button. The glyph costs a fraction of
+    /// that, and this one *was* swept on the real page with the slot reserved:
+    /// the boundary stays at 560 in en · zh · fr · de · pt and moves to
+    /// es 581 · ru 593 · ja 599, from 560 · 566 · 572.
+    ///
+    /// The symbol is the one this module already draws for «there is an update
+    /// here» — in the row's marker and on the package screen — so the bulk act
+    /// and the single fact are said with one mark. It carries the word in
+    /// `help` and in its accessibility label, which is what a glyph-only
+    /// control owes.
+    @ViewBuilder
+    private var upgradeAll: some View {
+        let offered = hb.segment == .updates && !hb.outdated.isEmpty
+        let button = Button {
+            hb.upgradeAll()
+        } label: {
+            Image(systemName: "arrow.up.circle")
+        }
+        .buttonStyle(.borderless)
+        .disabled(hb.running)
+        .help(HbStr.upgradeAll)
+        .accessibilityLabel(HbStr.upgradeAll)
+
+        if offered {
+            button
+        } else {
+            // Keeps the slot and takes the control out of the tree a reader
+            // walks: a disabled button nobody can reach is still something
+            // VoiceOver stops on, in three segments where it means nothing.
+            button.hidden()
         }
     }
 
@@ -678,19 +739,9 @@ struct HomebrewSettingsPage: View {
 
     private func updatesList(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
-            if !hb.outdated.isEmpty {
-                HStack {
-                    Spacer()
-                    Button(HbStr.upgradeAll) { hb.upgradeAll() }.disabled(hb.running)
-                }
-                // 20/12 like every other bar in Helm — `OrphansView` found and
-                // wrote down this exact defect first. At 8 all round this bar sat
-                // narrower than the header bar directly above it, so Refresh's
-                // right edge and this button's right edge missed each other by
-                // 12 pt — two buttons one hairline apart, neither lining up.
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-                Divider()
-            }
+            // No bar of its own any more: «Обновить всё» is in the page's own
+            // bar, beside Refresh, and `upgradeAll` says why it is reserved
+            // there rather than drawn only here.
             listOrEmpty(hb.outdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates) { pkg in

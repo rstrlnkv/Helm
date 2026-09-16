@@ -94,8 +94,15 @@ final class ThePageReorganisesOnceTests: XCTestCase {
     /// The narrowest pane a person can reach — `SettingsWindow.swift` carries
     /// the three numbers behind it — and the bottom of the sweep.
     private static let narrowestPane: CGFloat = 540
-    /// Above `ja`'s 572, which is the widest boundary any language has.
-    private static let topOfTheSweep: CGFloat = 600
+    /// Above every language's boundary. It was 600, which cleared `ja`'s 572
+    /// by 28 — and then the bar gained the reserved slot «Обновить всё» sits
+    /// in (`upgradeAll`), which moved the boundary in the three languages
+    /// whose switcher was already the widest: swept 2026-09-16, es 581 ·
+    /// ru 593 · ja 599, the other five still at 560. Japanese sat one point
+    /// under the old top, which is a sweep that passes by luck. The sweep has to end above the widest of the eight,
+    /// or the failure it reports is «no boundary here» rather than the two
+    /// boundaries it exists to compare.
+    private static let topOfTheSweep: CGFloat = 660
 
     func testTheHeaderAndTheColumnsTurnOverAtOneWidthInEveryLanguage() {
         AppLanguage.each { language in

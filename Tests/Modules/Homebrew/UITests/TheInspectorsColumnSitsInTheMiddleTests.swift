@@ -223,7 +223,7 @@ final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
     /// the pane, so both gaps are the block's own padding and neither grew.
     /// **Asked in English, named rather than inherited.** The page takes its
     /// wide shape at one boundary now, and that boundary is `max(560, what the
-    /// segmented bar needs in this language)` — 566 pt in Russian, which this
+    /// segmented bar needs in this language)` — 593 pt in Russian, which this
     /// Mac runs in, so a bare mount at 560 draws the one-column page and there
     /// is no inspector to measure a column inside. English is the language
     /// whose bar fits under every reachable pane;
