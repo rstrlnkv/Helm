@@ -366,6 +366,7 @@
 "No modules enabled" = "有効なモジュールがありません";
 "No packages installed." = "インストール済みパッケージはありません。";
 "No results." = "結果がありません。";
+"Homebrew did not answer." = "Homebrew が応答しませんでした。";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew が応答しなかったため、インストール済みパッケージは今のところ分かりません。";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew が応答しなかったため、更新は今のところ分かりません。";
 "Homebrew did not answer, so the search could not be carried out right now." = "Homebrew が応答しなかったため、検索は今のところ実行できませんでした。";

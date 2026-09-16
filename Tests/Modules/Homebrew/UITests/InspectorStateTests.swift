@@ -176,7 +176,11 @@ final class InspectorStateTests: XCTestCase {
         // would answer nil by accident and this would pass over it.
         let other = DoctorIssue(severity: .danger, title: "Something else", body: "", fix: nil)
         XCTAssertEqual(state(.health, deprecated.id, issues: [other]), .nothingSelected)
-        XCTAssertEqual(state(.health, deprecated.id, issues: []), .nothingSelected)
+        // And with the list gone the answer is the *other* nothing:
+        // `.nothingToSelect`, which `AnInvitationNeedsSomethingToChooseTests`
+        // holds. The two are not one case — one means "choose a row", and over
+        // an empty list that is an instruction nobody can follow.
+        XCTAssertEqual(state(.health, deprecated.id, issues: []), .nothingToSelect)
     }
 
     /// **A finding is never read as a package, and a package never as a

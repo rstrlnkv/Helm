@@ -122,6 +122,24 @@ enum HbStr {
     /// is a statement of fact about a machine nobody has looked at yet, and it
     /// is shown for the whole second after every install.
     static var packagesLoading: String { L("Reading the package list…") }
+    /// **The counts bar when there is nothing to count, and the one sentence on
+    /// this page that exists only because two of them disagreed.**
+    ///
+    /// `statusLine` gated on `loadedInstalled`, which is `installedReading ==
+    /// .answered` and therefore false for a refusal as well as for a wait. So
+    /// the page drawn over a `brew list` that could not be put said «Homebrew
+    /// did not answer, so nothing is known about the installed packages right
+    /// now.» in the middle of the master and «Reading the package list…» in the
+    /// bar 327 pt below it — measured on a 984 pt pane, 2026-09-16. One screen,
+    /// two accounts of one fact, and the quieter of the two is the one that
+    /// gets believed.
+    ///
+    /// Short, and not `couldNotList` a second time: the long sentence is
+    /// already on the page and says what is not known. This is the counts bar
+    /// saying why it has no counts, which is a different job in the same
+    /// screenful — and a bar that stays blank reads as «nothing to report»,
+    /// which is the reading the refusal has to displace.
+    static var couldNotCount: String { L("Homebrew did not answer.") }
     /// The three lists each spent their wait as a bare spinner on an otherwise
     /// empty page — `HelmBusyState`'s own comment calls that one of the three
     /// shapes it exists to end, and `OrphansView` has said what it is doing all

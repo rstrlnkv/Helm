@@ -127,7 +127,22 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// The subject is asserted before the absence: the button has to be in the
     /// tree at all, or "nothing is outside the pane" is true of a page that drew
     /// nothing.
+    ///
+    /// **Asked in English, named rather than inherited.** The page's shape is
+    /// one boundary now — `headerBar` folds this file's threshold into the
+    /// segmented bar's own ideal width, so the columns appear exactly where the
+    /// switcher fits — and that width is a fact about the language's strings:
+    /// swept 2026-09-16, ru needs 566 pt and ja 572 against `HomebrewSplit`'s
+    /// own 560. This Mac runs in Russian, so a bare mount at 560 draws the
+    /// one-column page and nothing here would be measuring the split at all.
+    /// English is the language whose bar fits under every reachable pane, which
+    /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is
+    /// what checks the boundary in all eight.
     func testTheInspectorsActionIsInsideThePaneAtTheThreshold() async {
+        await AppLanguage.only(.en) { await theInspectorsActionIsInsideThePane() }
+    }
+
+    private func theInspectorsActionIsInsideThePane() async {
         let width = threshold
         XCTAssertGreaterThan(width, 0, "no width in 200…1200 shows the inspector")
 
@@ -185,7 +200,22 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// sitting beside it — that shape is `TheNarrowPaneCanStillActOnAPackage-
     /// Tests`' subject — so the list is the pane's one column only while there
     /// is nothing to select into, which is what this test is actually about.
+    ///
+    /// **Asked in English, named rather than inherited.** The page's shape is
+    /// one boundary now — `headerBar` folds this file's threshold into the
+    /// segmented bar's own ideal width, so the columns appear exactly where the
+    /// switcher fits — and that width is a fact about the language's strings:
+    /// swept 2026-09-16, ru needs 566 pt and ja 572 against `HomebrewSplit`'s
+    /// own 560. This Mac runs in Russian, so a bare mount at 560 draws the
+    /// one-column page and nothing here would be measuring the split at all.
+    /// English is the language whose bar fits under every reachable pane, which
+    /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is
+    /// what checks the boundary in all eight.
     func testOnePointBelowTheThresholdOneColumnFillsThePane() async {
+        await AppLanguage.only(.en) { await onePointBelowTheThresholdOneColumnFillsThePane() }
+    }
+
+    private func onePointBelowTheThresholdOneColumnFillsThePane() async {
         let width = threshold - 1
         let picked = await draw(at: width, selecting: nil)
         guard let list = picked.lists.first else {

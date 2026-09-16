@@ -128,10 +128,17 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     /// knows nothing about. The selection is reconciled away by the view model,
     /// but the state function is asked before and after that and must never
     /// fall back to whatever row happens to be first.
+    ///
+    /// **`.nothingToSelect` and not `.nothingSelected`**: a list that emptied
+    /// has nothing to offer, and the invitation the second case draws is an
+    /// instruction nobody can follow — `AnInvitationNeedsSomethingToChooseTests`
+    /// is where that distinction lives. What this file is about is unchanged:
+    /// the lookup must not fall back to whatever row happens to be first, and
+    /// neither answer is a row.
     func testASelectionIntoAnEmptiedListIsNothingSelectedInEverySegment() {
-        XCTAssertEqual(state(.installed, node.id, installed: []), .nothingSelected)
-        XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingSelected)
-        XCTAssertEqual(state(.search, "f:helm", hits: []), .nothingSelected)
+        XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
+        XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
+        XCTAssertEqual(state(.search, "f:helm", hits: []), .nothingToSelect)
     }
 
     /// The same three, asked for an id that a *different* segment's list holds —

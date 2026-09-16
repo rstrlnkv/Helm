@@ -24,6 +24,40 @@ struct HomebrewSettingsPage: View {
     /// the child is the engine's and runs to its end.
     @State private var searching: Task<Void, Never>?
 
+    /// **Whether the page is in its wide shape — one fact, read from the one
+    /// place that can answer it.**
+    ///
+    /// `headerBar`'s `ViewThatFits` is the only thing on this page that can say
+    /// whether the segmented switcher fits the pane *in the language being
+    /// drawn*, and `HomebrewSplit`'s floor is folded into the same question
+    /// there, so the answer it publishes is the whole boundary. The columns
+    /// below read it rather than asking the width a second time — that second
+    /// asking is what put two reorganisations six points apart in Russian.
+    ///
+    /// `true` until the first pass publishes: the page opens at 984 pt on this
+    /// Mac, where it is true in all eight languages, so the opening frame is
+    /// not a guess that has to be corrected on screen.
+    @State private var pageIsWide = true
+
+    /// What `headerBar` publishes and `managerBody` reads.
+    ///
+    /// **`Bool?`, and the default is nil rather than either answer.** Written
+    /// as a plain `Bool` defaulting to `true` it read `true` at every width and
+    /// in every language: the default is contributed by *every* view under the
+    /// reader that does not set one — the two dividers, the columns, the status
+    /// bar — and `value = nextValue()` takes the last of them, which is never
+    /// the bar. Measured 2026-09-16: the header switched at the coupled
+    /// boundary and the columns went on switching at 560, which is the defect
+    /// this was written to end, still there and now invisible in the source.
+    /// nil means "this view is not the bar", so the one contributor that is
+    /// survives wherever it sits in the order.
+    private struct PageIsWideKey: PreferenceKey {
+        static let defaultValue: Bool? = nil
+        static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
+            value = nextValue() ?? value
+        }
+    }
+
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
     var body: some View {
@@ -161,10 +195,21 @@ struct HomebrewSettingsPage: View {
     /// `statusLine` gives: which sentence stands over which loading state is
     /// the whole of a fix, and a `body` is not somewhere a test can reach.
     var statusLine: String {
-        // A count that has not arrived is not a count of zero. The list reloads
-        // after every operation, and for that second the line read
-        // "0 packages · 0 updates · 0 casks" over a machine with 53 of them.
-        guard hb.loadedInstalled else { return HbStr.packagesLoading }
+        // **Three readings, three sentences.** A count that has not arrived is
+        // not a count of zero — the list reloads after every operation, and for
+        // that second the line read "0 packages · 0 updates · 0 casks" over a
+        // machine with 53 of them. And a count that *cannot* arrive is not a
+        // count on its way: this used to read `loadedInstalled`, which is
+        // `installedReading == .answered` and so false for `.waiting` and
+        // `.unanswerable` alike, which put «Reading the package list…» in the
+        // bar under a master already saying Homebrew had not answered.
+        // `ListScreen.of` makes the same three-way distinction for the list
+        // itself; this is the bar's half of it.
+        switch hb.installedReading {
+        case .notAsked, .waiting: return HbStr.packagesLoading
+        case .unanswerable: return HbStr.couldNotCount
+        case .answered: break
+        }
         // The same rule for updates, which this guard fixed only half of the
         // first time: `loadIfNeeded` deliberately never asks `brew outdated`,
         // so on first open the line said «Updates: 0» about a question with no
@@ -194,7 +239,8 @@ struct HomebrewSettingsPage: View {
             // both places, so a wide inspector and a narrow screen cannot
             // drift into offering two different things for one of them.
             GeometryReader { proxy in
-                let split = HomebrewSplit(availableWidth: proxy.size.width)
+                let split = HomebrewSplit(availableWidth: proxy.size.width,
+                                          segmentedHeaderFits: pageIsWide)
                 if split.showsInspector {
                     HStack(spacing: HelmSpace.s5) {
                         listArea(showsDesc: false)
@@ -258,6 +304,10 @@ struct HomebrewSettingsPage: View {
         // packages beside the list would animate a pane that is not swapping.
         .animation(HelmMotion.interface, value: hb.segment)
         .animation(HelmMotion.interface, value: hb.selected == nil)
+        // The bar is above the columns and a preference travels upward, so this
+        // is where the page's own shape lands — one value, set by whichever of
+        // the bar's two candidates `ViewThatFits` actually mounted.
+        .onPreferenceChange(PageIsWideKey.self) { if let shape = $0 { pageIsWide = shape } }
     }
 
     /// **The segment switcher and Refresh, in whichever shape fits the pane.**
@@ -286,12 +336,42 @@ struct HomebrewSettingsPage: View {
     /// The fallback is a menu, not a compressed segmented control: a segmented
     /// control under pressure truncates its labels, and «Уста…» beside «Обно…»
     /// is four words nobody can tell apart.
+    ///
+    /// **And it decides the whole page's shape, not just the bar's.** Swept a
+    /// point at a time on the real page, 2026-09-16, the segmented bar first
+    /// fits at en/zh/de below 400 pt · fr 466 · pt 482 · es 554 · ru 566 ·
+    /// ja 572, while `HomebrewSplit` dropped the inspector at 560 — so a
+    /// Russian window dragged across 560…566 reorganised twice in six points
+    /// and a Japanese one twice in twelve. `.frame(minWidth:)` on the segmented
+    /// candidate puts the split's own floor into that candidate's ideal width,
+    /// so the one question `ViewThatFits` answers is «is this pane wide enough
+    /// for the whole wide page» — `max(560, what the bar needs here)` — and
+    /// `managerBody` reads the answer rather than measuring the width again.
+    ///
+    /// **What it costs, said plainly.** In the five languages whose bar fits
+    /// under 540 — the narrowest pane a person can open — the switcher now
+    /// becomes a menu between 540 and 560, where its segments would still have
+    /// fitted. That band is the bottom 20 pt of everything reachable, the page
+    /// is already in its one-column shape throughout it, and in exchange the
+    /// narrow page is one page in all eight languages instead of two. The
+    /// alternative was to move the split, and the split cannot be moved to meet
+    /// a boundary that sits at a different width in every language.
+    ///
+    /// **The padding moved inside the candidates** so the number here is the
+    /// pane's threshold and not the pane's threshold less its own insets: with
+    /// the padding outside, `ViewThatFits` is offered `pane − 2 ×
+    /// HelmLayout.formInset` and a floor written as 560 would have gated the
+    /// page at 600.
     private var headerBar: some View {
         ViewThatFits(in: .horizontal) {
             headerRow(.segmented)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                .frame(minWidth: HomebrewSplit.masterAndInspector, alignment: .leading)
+                .preference(key: PageIsWideKey.self, value: true)
             headerRow(.menu)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                .preference(key: PageIsWideKey.self, value: false)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     /// One shape of the bar. Both are built here, from one `Picker` and one
@@ -677,6 +757,17 @@ struct HomebrewSettingsPage: View {
             case .nothingSelected:
                 HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFindingOrASection
                                                               : HbStr.nothingSelected)
+            case .nothingToSelect:
+                // **Nothing, deliberately.** The list next to this already
+                // carries the sentence for whichever of the three readings it
+                // is in, and that sentence is the page's one account of the
+                // fact; a second one here in the inspector's own words is the
+                // defect this page has just been repaired of twice. What is
+                // wrong with the invitation is not its wording — there is no
+                // wording that makes «choose one» true of a list with nothing
+                // in it — so the column describes nothing, which is what there
+                // is to describe. It comes back the moment a row does.
+                Color.clear
             case let .package(subject):
                 packageDetail(subject)
             case let .issue(issue):
@@ -719,10 +810,40 @@ struct HomebrewSettingsPage: View {
                 // here and with the same symbol — the one place
                 // `InspectorSubject.updates` is read, since `.installed`'s
                 // own action stays Uninstall either way.
-                if case .available = subject.updates {
-                    Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
-                        .foregroundStyle(HelmSignal.warning)
-                        .font(HelmText.rowDetail)
+                //
+                // **And the thing it announces, offered where it is
+                // announced.** Measured 2026-09-16 on the 984 pt pane: this
+                // line sat 12 pt under a 75.5 × 24 Uninstall button and
+                // nothing on the screen acted on it — the upgrade was a
+                // segment away, reachable only by leaving the package. The
+                // module has had the path all along, gated and tested; what
+                // it did not have was the button beside the sentence.
+                //
+                // **The two actions are a row apart and that is the whole of
+                // the ordering.** The destructive one keeps the title row,
+                // where it belongs to the name; the constructive one sits with
+                // the sentence it answers, `HelmSpace.s5` below. A press meant
+                // for one cannot land on the other, and the uninstall question
+                // is untouched. Weight is carried by ink rather than by
+                // position: `destructive` marks Uninstall, and Upgrade is a
+                // plain button, so the louder of the two is the one that
+                // cannot be taken back.
+                if case let .available(_, pinned) = subject.updates {
+                    HStack(spacing: HelmSpace.s3) {
+                        Label(HbStr.updateAvailable, systemImage: "arrow.up.circle.fill")
+                            .foregroundStyle(HelmSignal.warning)
+                            .font(HelmText.rowDetail)
+                        // A pinned formula is listed and not offered, here for
+                        // the same reason `inspectorAction` gives one segment
+                        // over: `brew upgrade` answers it with "…is pinned",
+                        // so the button could only ever fail.
+                        if pinned {
+                            HelmBadge(HbStr.pinned)
+                        } else {
+                            upgradeAction(subject)
+                        }
+                        Spacer(minLength: 0)
+                    }
                 }
                 if let desc = subject.desc {
                     Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -908,9 +1029,19 @@ struct HomebrewSettingsPage: View {
                     // The step before it is `HelmSpace.s5` where the row's own
                     // is `s3`: a press meant for Copy that lands on this one is
                     // not a press anybody can take back.
-                    Button(HbStr.runTheFix, role: .destructive) { hb.askToRunFix(fix) }
-                        .disabled(hb.running)
-                        .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
+                    //
+                    // **And the role is kept without being trusted to show.**
+                    // The gap and the question both landed and the weight did
+                    // not: measured again on 2026-09-16, «Скопировать» and
+                    // «Выполнить» sampled the *same* darkest pixel, `#303030`
+                    // at 11.49:1 on the same `#EFEFEF` fill. `helmDestructive`
+                    // carries what a person can actually see; the role stays
+                    // because it is still what this button means.
+                    Button(role: .destructive) { hb.askToRunFix(fix) } label: {
+                        Text(HbStr.runTheFix).helmDestructive()
+                    }
+                    .disabled(hb.running)
+                    .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
                 }
             }
             Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -946,19 +1077,17 @@ struct HomebrewSettingsPage: View {
     private func inspectorAction(_ subject: InspectorSubject) -> some View {
         switch subject.action {
         case .uninstall:
-            Button(HbStr.uninstall) {
+            Button {
                 guard let pkg = hb.installed.first(where: { $0.id == subject.id }) else { return }
                 // Every other destructive action in Helm asks first; this one
                 // removed a cask — an app — on a single click.
                 Task { await hb.askToUninstall(pkg) }
+            } label: {
+                Text(HbStr.uninstall).helmDestructive()
             }
             .disabled(hb.running)
         case .upgrade:
-            Button(HbStr.upgrade) {
-                guard let pkg = hb.outdated.first(where: { $0.id == subject.id }) else { return }
-                hb.upgrade(pkg)
-            }
-            .disabled(hb.running)
+            upgradeAction(subject)
         case .install:
             Button(HbStr.install) {
                 guard let hit = hb.searchHits.first(where: { $0.id == subject.id }) else { return }
@@ -972,6 +1101,22 @@ struct HomebrewSettingsPage: View {
             // fail.
             HelmBadge(HbStr.pinned)
         }
+    }
+
+    /// **The one Upgrade button — the Обновления segment's action and the one
+    /// beside «Update available» on Установленные are the same builder.**
+    ///
+    /// Two call sites, one body, for the reason `detail` gives at the top of
+    /// this section: a package that offers an upgrade from one screen and a
+    /// different upgrade from another is a defect with nothing to catch it.
+    /// Looked up by `BrewKey` id and never by name — `docker` is both a formula
+    /// and a cask.
+    private func upgradeAction(_ subject: InspectorSubject) -> some View {
+        Button(HbStr.upgrade) {
+            guard let pkg = hb.outdated.first(where: { $0.id == subject.id }) else { return }
+            hb.upgrade(pkg)
+        }
+        .disabled(hb.running)
     }
 
     /// Whether an installed package has an update waiting, for the row's dot.
@@ -1299,4 +1444,48 @@ private extension View {
         frame(minHeight: HelmSpace.s7)
             .listRowSeparator(.hidden)
     }
+}
+
+/// **The mark a control that destroys something carries, spelled once.**
+///
+/// `role: .destructive` is not it, and this page is where that was measured
+/// rather than assumed. On a 984 pt pane in light appearance, 2026-09-16: the
+/// darkest pixel of «Скопировать»'s label was `#303030` on the button's own
+/// `#EFEFEF` fill, 11.49:1 — and of «Выполнить», a `role: .destructive`
+/// bordered button 12 pt away, exactly `#303030` at exactly 11.49:1. On this
+/// macOS the role changes what a button *does* in a menu and nothing at all
+/// about what it draws, so the only marked thing about it was the source.
+/// `GeneralSettingsPage` had already found this out for a form row — "the role
+/// reaches menus and dialogs, not form rows" — and this is the same sentence
+/// about a bordered button.
+///
+/// **On the label, and deliberately not on the button.** The same token handed
+/// to the *button* is SwiftUI's tint channel and macOS fills the whole control
+/// with it — a pale red button, which is the louder mark and was measured too.
+/// It fails where it matters least often and worst: `disabled` while a `brew`
+/// runs, the tinted control dimmed to `#F1CBCA` on `#F9EEEE`, **1.31:1**, a
+/// word gone rather than a word greyed. On the label the fill lightens to
+/// `#F7F7F7` and the word stays legible at 3.60:1.
+///
+/// Nor `.borderedProminent` with a danger tint: in a window that is not key —
+/// a settings pane behind a sheet, and every still this house verifies by
+/// photograph — it drew a `#EFEFEF` fill under a `#FFFFFF` label, 1.1:1.
+///
+/// **What it measures on the surface it is actually on**, which is the button's
+/// own fill and not the white pane behind it. Light: `#D9584D` on `#EFEFEF`,
+/// 3.35:1 where its neighbour reads 11.49:1. Dark: `#F16B60` on `#3F3F3F`,
+/// 3.52:1 where its neighbour reads 8.40:1. The two labels are no longer one
+/// ink in either appearance, which is what
+/// `TheDestructiveControlIsMarkedInInkTests` reads back.
+///
+/// **And the shortfall is named rather than hidden.** `HelmSignal.danger` is
+/// specified at 4.52:1 and that is against white; a bordered button's fill is
+/// six per cent darker, which puts the pure token at 3.94:1 there and the
+/// antialiased rendering at the 3.35:1 above — under the 4.5:1 the token was
+/// chosen for. Every styling that clears it needs either a control that is not
+/// a button (a borderless label on the white pane measures the token's own
+/// 4.52:1) or a second, darker danger for text in `HelmSignal`. Neither is
+/// this page's to decide.
+extension View {
+    func helmDestructive() -> some View { foregroundStyle(HelmSignal.danger) }
 }

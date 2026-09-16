@@ -366,6 +366,7 @@
 "No modules enabled" = "No modules enabled";
 "No packages installed." = "No packages installed.";
 "No results." = "No results.";
+"Homebrew did not answer." = "Homebrew did not answer.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew did not answer, so nothing is known about the installed packages right now.";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew did not answer, so nothing is known about updates right now.";
 "Homebrew did not answer, so the search could not be carried out right now." = "Homebrew did not answer, so the search could not be carried out right now.";

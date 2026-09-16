@@ -39,3 +39,29 @@ public extension AppLanguage {
         body()
     }
 }
+
+/// The asynchronous half of `only`, for a claim about one language whose body
+/// has to mount and settle a page.
+///
+/// A separate entry point rather than an `async` version of `each`: the reason
+/// `only` exists — a claim that is about *that* language rather than about all
+/// of them — is unchanged, and so is the `defer`. A body that fails or throws
+/// mid-way would otherwise leave the whole process in a language nobody chose,
+/// which is the failure that reports itself three files away.
+///
+/// **It runs on the caller's own actor**, which is what `isolated (any Actor)?
+/// = #isolation` buys. Every body that needs this mounts a view, so it is
+/// `@MainActor`, and a helper that took a `@Sendable` or `sending` closure
+/// would be asking to hop off the actor the page has to be laid out on —
+/// neither compiles, and the second only stopped compiling after the first was
+/// tried.
+public extension AppLanguage {
+    static func only(_ language: AppLanguage,
+                     isolation: isolated (any Actor)? = #isolation,
+                     _ body: () async -> Void) async {
+        let previous = override
+        defer { override = previous }
+        override = language
+        await body()
+    }
+}

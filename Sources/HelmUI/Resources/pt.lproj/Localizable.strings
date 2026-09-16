@@ -366,6 +366,7 @@
 "No modules enabled" = "Nenhum módulo ativado";
 "No packages installed." = "Nenhum pacote instalado.";
 "No results." = "Sem resultados.";
+"Homebrew did not answer." = "O Homebrew não respondeu.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "O Homebrew não respondeu, por isso nada se sabe sobre os pacotes instalados neste momento.";
 "Homebrew did not answer, so nothing is known about updates right now." = "O Homebrew não respondeu, por isso nada se sabe sobre as atualizações neste momento.";
 "Homebrew did not answer, so the search could not be carried out right now." = "O Homebrew não respondeu, por isso a pesquisa não pôde ser realizada neste momento.";

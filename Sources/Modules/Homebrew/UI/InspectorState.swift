@@ -12,7 +12,26 @@ import Module_Homebrew_Engine
 /// Internal, not `public` — nothing outside `Module_Homebrew_UI` reads this
 /// (`public` in this tree means "another target uses this").
 enum InspectorState: Equatable {
+    /// **There are rows, and none of them is picked.** The invitation, and the
+    /// only reading it is honest under.
     case nothingSelected
+    /// **There is nothing to pick.** The list beside this is empty — because
+    /// the query is still out, because it answered nothing, or because it could
+    /// not be put at all — and «Select a package» over it invites a choice
+    /// nobody can make. Measured 2026-09-16 on a 984 pt pane: the invitation
+    /// occupied 515 of 984 pt, 52 % of the pane, beside a master saying
+    /// Homebrew had not answered; at its worst, on a Состояние whose findings
+    /// *and* configuration both refused, one unselectable sentence on the left
+    /// and an invitation on the right.
+    ///
+    /// **One case for all three of waiting, empty and refused, and that is the
+    /// point.** The list's own three sentences are `ListScreen`'s job and they
+    /// differ; the inspector's answer to all three is the same, because what
+    /// makes the invitation wrong is that the list holds nothing, not why. Two
+    /// accounts of one fact on one screen is what the page is being repaired
+    /// of — the inspector repeating the master's sentence in its own words
+    /// would be a third.
+    case nothingToSelect
     case package(InspectorSubject)
     /// One `brew doctor` finding, whole. Unlike a package, nothing is composed
     /// for it from two containers and nothing about it is waited on — the
@@ -34,6 +53,21 @@ enum InspectorState: Equatable {
                    issues: [DoctorIssue],
                    config: [ConfigGroup],
                    descriptions: [String: String]) -> InspectorState {
+        // **Asked before the selection is, and of the same list the master
+        // draws.** A pane with nothing in it cannot have something picked out
+        // of it, so a stale `selected` left over from a list that has since
+        // emptied is not a reason to go on offering the invitation either.
+        // Состояние counts both of its lists: `brew doctor` refusing still
+        // leaves `brew config`'s groups to choose from, and those rows are
+        // selectable.
+        let empty: Bool
+        switch segment {
+        case .installed: empty = installed.isEmpty
+        case .updates: empty = outdated.isEmpty
+        case .search: empty = hits.isEmpty
+        case .health: empty = issues.isEmpty && config.isEmpty
+        }
+        if empty { return .nothingToSelect }
         guard let selected else { return .nothingSelected }
         let desc = descriptions[selected]
         switch segment {
@@ -247,7 +281,17 @@ struct InspectorSubject: Equatable {
     /// Four named reasons rather than one optional read three ways:
     /// `loadIfNeeded` never asks `brew outdated`, so `.notAsked` is the
     /// ordinary state on first open and must not be drawn as `.upToDate`.
-    enum Updates: Equatable { case notApplicable, notAsked, upToDate, available(String) }
+    /// `pinned` rides on `.available` rather than standing beside it because it
+    /// is a fact about *that* update and nothing else: a pinned formula still
+    /// has a newer version, so the row's marker and the sentence are unchanged,
+    /// and only the action beside them is. `brew upgrade` answers a pinned
+    /// formula with "…is pinned", so a button offered here could only ever
+    /// fail — the same reason `Action.pinned` exists one segment over, said
+    /// once so the two cannot disagree about one package.
+    enum Updates: Equatable {
+        case notApplicable, notAsked, upToDate
+        case available(String, pinned: Bool = false)
+    }
 
     /// The `BrewKey` id — the only thing an action may look a package up by.
     /// A name alone collides: `docker` is both a formula and a cask.
@@ -427,7 +471,9 @@ enum PackageStanding {
     /// come back.
     static func updates(for id: String, outdated: [OutdatedPackage],
                         loadedOutdated: Bool) -> InspectorSubject.Updates {
-        if let op = outdated.first(where: { $0.id == id }) { return .available(op.latest) }
+        if let op = outdated.first(where: { $0.id == id }) {
+            return .available(op.latest, pinned: op.pinned)
+        }
         return loadedOutdated ? .upToDate : .notAsked
     }
 
