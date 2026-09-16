@@ -215,9 +215,21 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
     /// **A one-line field well takes the control corner, not the card's.**
     ///
     /// The fix command drew at `HelmRadius.card`, which made the smallest box in
-    /// the inspector the roundest one — rounder than the fact tiles, the quiet
-    /// notes and the multi-line caveats block beside it, all of which are
-    /// `HelmRadius.ctl`, and as round as the 148 pt console.
+    /// the inspector as round as the cards around it and the 148 pt console.
+    ///
+    /// **Only the one-line boxes are asked.** The inspector is now built of
+    /// cards — the finding's body and the card the command sits in are both
+    /// `helmCard`, at the card radius, and wider than 100 pt — so «every rounded
+    /// layer in the pane» is no longer a set that should share one corner. A
+    /// field well is one line of text and its padding; a card holding even one
+    /// line of body text is taller than that by its own padding. The cut sits
+    /// between the two.
+    /// Taller than a one-line field well — a line of `.subheadline` and
+    /// `HelmSpace.s3` above and below it, about 26 pt — and shorter than the
+    /// smallest card, one line of body text inside `HelmSpace.s5` of padding
+    /// all round, about 40.
+    private static let oneLineWell: CGFloat = 34
+
     func testTheFixCommandsWellIsAControlAndNotACard() async throws {
         let (hb, mount) = await page(width: 984, segment: .health)
         let issue = try XCTUnwrap(hb.issues.first, "the fixture's finding never reached the page")
@@ -236,11 +248,11 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
         let inside = wells(mount).filter {
             $0.frame.midX >= pane.minX && $0.frame.midX <= pane.maxX
                 && $0.frame.midY >= pane.minY && $0.frame.midY <= pane.maxY
-                && $0.frame.width > 100
+                && $0.frame.width > 100 && $0.frame.height < Self.oneLineWell
         }
         XCTAssertFalse(inside.isEmpty, """
-            no well wider than 100 pt drew inside the inspector, so the fix block is not on \
-            screen and there is no radius here to judge
+            no one-line well wider than 100 pt drew inside the inspector, so the fix block is \
+            not on screen and there is no radius here to judge
             """)
         for well in inside {
             XCTAssertEqual(well.radius, HelmRadius.ctl, accuracy: 0.01, """

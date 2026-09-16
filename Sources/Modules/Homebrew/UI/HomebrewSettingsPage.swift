@@ -936,18 +936,28 @@ struct HomebrewSettingsPage: View {
     private func issueDetail(_ issue: DoctorIssue) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                HStack(spacing: HelmSpace.s3) {
+                // **The word over the title, not beside it.** Beside it the
+                // badge took its own width out of every line the title had, so
+                // a long `brew doctor` heading wrapped under a pill and began
+                // its second line at a different edge from its first. Stacked,
+                // the title keeps the column's whole measure and one left edge.
+                VStack(alignment: .leading, spacing: HelmSpace.s3) {
                     HelmBadge(Self.severityWord(issue.severity),
                               tint: Self.severityTint(issue.severity))
                     Text(issue.title).font(HelmText.sectionHeading)
-                    Spacer(minLength: 0)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 // Brew's own words, kept as brew wrote them — the parser keeps
                 // body lines verbatim on purpose (`DoctorParser.body`), and a
                 // body line naming a path is somebody's path.
+                //
+                // In a card and at full ink: this is what the person opened the
+                // finding to read, and it was the quietest text in the pane.
                 Text(issue.body)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .helmCard(padding: HelmSpace.s5)
                 if let fix = issue.fix { fixBlock(fix) }
             }
             .helmInspectorColumn()
@@ -982,9 +992,14 @@ struct HomebrewSettingsPage: View {
                 // Homebrew adds keys between releases — `Core cask tap` and
                 // `Metal Toolchain` are both newer than the capture this was
                 // designed against — so the column has to be able to grow.
+                //
+                // In a card, one rule between lines — the facts card's shape. A
+                // view that is not a `GridRow` spans every column, which is what
+                // makes the rule run the card's width without a number for it.
                 Grid(alignment: .leadingFirstTextBaseline,
                      horizontalSpacing: HelmSpace.s5, verticalSpacing: HelmSpace.s3) {
-                    ForEach(group.lines) { line in
+                    ForEach(Array(group.lines.enumerated()), id: \.element.id) { index, line in
+                        if index > 0 { Divider() }
                         GridRow {
                             Text(line.key)
                                 .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -1002,6 +1017,8 @@ struct HomebrewSettingsPage: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .helmCard(padding: HelmSpace.s5)
                 // **The document, not this group, and not Helm's reading of
                 // it.** `BrewConfig.text` is what brew printed byte for byte;
                 // the lines above are a reading regrouped under headings this
@@ -1041,7 +1058,13 @@ struct HomebrewSettingsPage: View {
     private func fixBlock(_ fix: DoctorFix) -> some View {
         let command = Self.commandLine(fix)
         return VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            Text(HbStr.helmReadsThisAs).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            // Whose reading this is, as the heading of the card below it
+            // rather than a quiet line inside the same stack — so the card
+            // is visibly Helm's and the body above it visibly brew's.
+            HelmSectionTitle(HbStr.helmReadsThisAs)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.leading, HelmSpace.s5)
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
             HStack(spacing: HelmSpace.s3) {
                 Text(command)
                     // A text *style* rather than a frozen 11 pt, for the reason
@@ -1103,9 +1126,14 @@ struct HomebrewSettingsPage: View {
                 }
             }
             Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
             if fix.kind == .copyOnly {
                 Text(HbStr.helmDoesNotRunThis).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .helmCard(padding: HelmSpace.s5)
         }
     }
 
