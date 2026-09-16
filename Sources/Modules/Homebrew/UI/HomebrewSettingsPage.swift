@@ -1305,9 +1305,18 @@ struct HomebrewSettingsPage: View {
     /// a description at all.
     private func pkgRow(name: String, detail: String?, isCask: Bool, singleColumn: Bool,
                         pinned: Bool = false, alreadyInstalled: Bool = false,
-                        hasUpdate: Bool = false, desc: String? = nil) -> some View {
+                        hasUpdate: Bool? = nil, desc: String? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
-            if hasUpdate {
+            // **nil is «this list never marks updates», and draws no column at
+            // all** — the search hits, and the updates list, where every row is
+            // outdated and a mark on each would be an ornament. A `Bool` is
+            // «this list marks them», and then every row keeps the slot whether
+            // or not its own package has an update: rendered 2026-09-16 on the
+            // installed list, the marked row's name started a mark's width to
+            // the right of every other name in the column, so the one package
+            // that wanted attention was the one whose name did not line up.
+            // A leading column is the shape Mail's unread dot has always had.
+            if let hasUpdate {
                 // The only carrier of "an update exists" for this row, and a
                 // glyph rather than a dot for two reasons it takes both to
                 // settle. SwiftUI does not make a `Shape` an accessibility
@@ -1323,6 +1332,12 @@ struct HomebrewSettingsPage: View {
                     .foregroundStyle(HelmSignal.warning)
                     .font(HelmText.rowDetail)
                     .accessibilityLabel(HbStr.updateAvailable)
+                    // Kept in the layout and taken out of both readings when
+                    // there is nothing to say: invisible, and not an element
+                    // VoiceOver stops on to read «Update available» over a
+                    // package that has none.
+                    .opacity(hasUpdate ? 1 : 0)
+                    .accessibilityHidden(!hasUpdate)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 HStack(spacing: HelmSpace.s3) {
