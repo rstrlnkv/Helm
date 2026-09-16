@@ -24,40 +24,6 @@ struct HomebrewSettingsPage: View {
     /// the child is the engine's and runs to its end.
     @State private var searching: Task<Void, Never>?
 
-    /// **Whether the page is in its wide shape — one fact, read from the one
-    /// place that can answer it.**
-    ///
-    /// `headerBar`'s `ViewThatFits` is the only thing on this page that can say
-    /// whether the segmented switcher fits the pane *in the language being
-    /// drawn*, and `HomebrewSplit`'s floor is folded into the same question
-    /// there, so the answer it publishes is the whole boundary. The columns
-    /// below read it rather than asking the width a second time — that second
-    /// asking is what put two reorganisations six points apart in Russian.
-    ///
-    /// `true` until the first pass publishes: the page opens at 984 pt on this
-    /// Mac, where it is true in all eight languages, so the opening frame is
-    /// not a guess that has to be corrected on screen.
-    @State private var pageIsWide = true
-
-    /// What `headerBar` publishes and `managerBody` reads.
-    ///
-    /// **`Bool?`, and the default is nil rather than either answer.** Written
-    /// as a plain `Bool` defaulting to `true` it read `true` at every width and
-    /// in every language: the default is contributed by *every* view under the
-    /// reader that does not set one — the two dividers, the columns, the status
-    /// bar — and `value = nextValue()` takes the last of them, which is never
-    /// the bar. Measured 2026-09-16: the header switched at the coupled
-    /// boundary and the columns went on switching at 560, which is the defect
-    /// this was written to end, still there and now invisible in the source.
-    /// nil means "this view is not the bar", so the one contributor that is
-    /// survives wherever it sits in the order.
-    private struct PageIsWideKey: PreferenceKey {
-        static let defaultValue: Bool? = nil
-        static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
-            value = nextValue() ?? value
-        }
-    }
-
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
     var body: some View {
@@ -225,8 +191,6 @@ struct HomebrewSettingsPage: View {
 
     private var managerBody: some View {
         VStack(spacing: 0) {
-            headerBar
-            Divider()
             // The split is asked of the pane, not of the window: `HomebrewSplit`
             // carries the measured threshold, and a `private var` inside `body`
             // would be out of a test's reach (`SearchDisplay.swift`'s own reason).
@@ -239,8 +203,7 @@ struct HomebrewSettingsPage: View {
             // both places, so a wide inspector and a narrow screen cannot
             // drift into offering two different things for one of them.
             GeometryReader { proxy in
-                let split = HomebrewSplit(availableWidth: proxy.size.width,
-                                          segmentedHeaderFits: pageIsWide)
+                let split = HomebrewSplit(availableWidth: proxy.size.width)
                 if split.showsInspector {
                     HStack(spacing: HelmSpace.s5) {
                         listArea(singleColumn: split.singleColumn)
@@ -304,174 +267,82 @@ struct HomebrewSettingsPage: View {
         // packages beside the list would animate a pane that is not swapping.
         .animation(HelmMotion.interface, value: hb.segment)
         .animation(HelmMotion.interface, value: hb.selected == nil)
-        // The bar is above the columns and a preference travels upward, so this
-        // is where the page's own shape lands — one value, set by whichever of
-        // the bar's two candidates `ViewThatFits` actually mounted.
-        .onPreferenceChange(PageIsWideKey.self) { if let shape = $0 { pageIsWide = shape } }
-    }
-
-    /// **The segment switcher and Refresh, in whichever shape fits the pane.**
-    ///
-    /// The switcher is `.fixedSize()` and therefore as wide as its eight
-    /// languages make it: measured 2026-09-16, zh 252 · en 302 · de 320 ·
-    /// fr 388 · pt 404 · es 476 · ru 488 · ja 494 pt, with the bar needing
-    /// `picker + 65.5` around it before `upgradeAll` took its slot. The narrowest pane a person can reach is
-    /// **540** — `max(detailItem.minimumThickness, minSize.width −
-    /// sidebarMaximum)` from `SettingsWindow.swift` — so Russian and Japanese
-    /// do not fit, and nothing said so: SwiftUI centres the overflow, which put
-    /// the picker at x = 7.5 where the page's inset is 20 and ran Refresh 13 pt
-    /// past the edge. A hundred points narrower again — the same arithmetic on
-    /// a smaller window — «Установленные» is cut off and Refresh is *outside*
-    /// the pane, so the list cannot be reloaded at all.
-    ///
-    /// **`ViewThatFits` rather than a threshold constant**, and the difference
-    /// is the eight languages. A number here would be one number for all of
-    /// them: 559.5 is what Japanese needs and Chinese fits its segments in 317,
-    /// so a constant tuned for the widest gates the menu on seven languages
-    /// that never needed it — which is the house rule about a control gated
-    /// above a width nobody reaches, read from the other end. `ViewThatFits`
-    /// asks the control itself, in the language it is actually drawing, and the
-    /// answer moves with the strings rather than with a comment.
-    ///
-    /// The fallback is a menu, not a compressed segmented control: a segmented
-    /// control under pressure truncates its labels, and «Уста…» beside «Обно…»
-    /// is four words nobody can tell apart.
-    ///
-    /// **And it decides the whole page's shape, not just the bar's.** Swept a
-    /// point at a time on the real page, 2026-09-16, the segmented bar first
-    /// fits at en/zh/de below 400 pt · fr 466 · pt 482 · es 554 · ru 566 ·
-    /// ja 572, while `HomebrewSplit` dropped the inspector at 560 — so a
-    /// Russian window dragged across 560…566 reorganised twice in six points
-    /// and a Japanese one twice in twelve. (Those are the bar's widths before
-    /// `upgradeAll` reserved its slot; with it, the one boundary below is
-    /// es 581 · ru 593 · ja 599 and 560 elsewhere.) `.frame(minWidth:)` on the segmented
-    /// candidate puts the split's own floor into that candidate's ideal width,
-    /// so the one question `ViewThatFits` answers is «is this pane wide enough
-    /// for the whole wide page» — `max(560, what the bar needs here)` — and
-    /// `managerBody` reads the answer rather than measuring the width again.
-    ///
-    /// **What it costs, said plainly.** In the five languages whose bar fits
-    /// under 540 — the narrowest pane a person can open — the switcher now
-    /// becomes a menu between 540 and 560, where its segments would still have
-    /// fitted. That band is the bottom 20 pt of everything reachable, the page
-    /// is already in its one-column shape throughout it, and in exchange the
-    /// narrow page is one page in all eight languages instead of two. The
-    /// alternative was to move the split, and the split cannot be moved to meet
-    /// a boundary that sits at a different width in every language.
-    ///
-    /// **The padding moved inside the candidates** so the number here is the
-    /// pane's threshold and not the pane's threshold less its own insets: with
-    /// the padding outside, `ViewThatFits` is offered `pane − 2 ×
-    /// HelmLayout.formInset` and a floor written as 560 would have gated the
-    /// page at 600.
-    private var headerBar: some View {
-        ViewThatFits(in: .horizontal) {
-            headerRow(.segmented)
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-                .frame(minWidth: HomebrewSplit.masterAndInspector, alignment: .leading)
-                .preference(key: PageIsWideKey.self, value: true)
-            headerRow(.menu)
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-                .preference(key: PageIsWideKey.self, value: false)
+        .toolbar { pageToolbar }
+        // On the page rather than on the picker: a toolbar item's view is
+        // hosted by the window's toolbar and its lifetime is the toolbar's,
+        // so a change handler hung on it is not something this page can
+        // count on being mounted when the segment moves.
+        .onChange(of: hb.segment) { _, segment in
+            Task { await refresh(segment) }
         }
     }
 
-    /// One shape of the bar. Both are built here, from one `Picker` and one
-    /// Refresh, so the two cannot drift into offering different things — the
-    /// reason `detail` has exactly one builder per kind of subject.
-    private func headerRow(_ style: SegmentPickerStyle) -> some View {
-        HStack(spacing: HelmSpace.s5) {
-            // Over `allCases`, not three rows spelled by hand: a segment
-            // whose label was forgotten used to be a segment with no row at
-            // all, reachable from nowhere and visible in no test.
-            // `Segment.label` is the `switch` that cannot forget one.
+    /// **The page's controls, in the window's own toolbar.**
+    ///
+    /// They were a bar the page drew above its columns, and that bar spent most
+    /// of its life fighting for width it did not own: the switcher is as wide
+    /// as its language makes it — measured 2026-09-16, zh 252 · en 302 ·
+    /// de 320 · fr 388 · pt 404 · es 476 · ru 488 · ja 494 pt — so it needed a
+    /// `ViewThatFits` with a menu fallback, a preference carrying the answer
+    /// down to the columns so the page changed shape once and not twice, and
+    /// a reserved slot for «Обновить всё» so the answer did not change with the
+    /// segment. All of that was this page redoing, less well, what a toolbar
+    /// does: an `NSToolbar` lays its items out against the whole title bar and
+    /// puts whatever does not fit into its own overflow menu.
+    ///
+    /// On macOS 26 and later the system draws these as Liquid Glass — the
+    /// switcher as a glass capsule, the two glyph buttons as glass circles —
+    /// because they are standard controls in the functional layer, which is
+    /// exactly where the guidelines put glass and the only place they want it.
+    /// `SettingsSplitViewController` bridges them from this pane into the
+    /// window's toolbar (`sceneBridgingOptions`), and the toolbar tracks the
+    /// sidebar's divider, so the switcher centres over this page and not over
+    /// the window.
+    ///
+    /// **The page's shape is now a question of width alone** (`HomebrewSplit`):
+    /// nothing in the pane depends on how wide a string is any more.
+    ///
+    /// «Обновить всё» is drawn only where it can act — in Обновления, with
+    /// something outdated. It had to be *reserved* in every segment while it
+    /// lived in the page's bar, because that bar's width decided the page's
+    /// shape; a toolbar item decides nothing about the pane under it. It keeps
+    /// the module's own «an update exists» symbol and carries its word in help
+    /// and in its accessibility label, which is what a glyph-only control owes.
+    @ToolbarContentBuilder
+    private var pageToolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            // Over `allCases`, not rows spelled by hand: a segment whose label
+            // was forgotten used to be a segment with no row at all, reachable
+            // from nowhere and visible in no test. `Segment.label` is the
+            // `switch` that cannot forget one.
             Picker(HelmA11y.whatToShow, selection: $hb.segment) {
                 ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
                     Text(segment.label).tag(segment)
                 }
             }
-            .modifier(style)
+            .pickerStyle(.segmented)
             .labelsHidden()
-            // Its own width, not 300: the control asks 302 pt in English
-            // and 494 in Japanese, so a fixed number clipped four
-            // languages and centred the rest — which walked the row's left
-            // edge from 20 pt to 75.5 while every row below it starts at 20.
-            // It is also what `ViewThatFits` above measures: a picker free to
-            // compress fits every pane and tells the bar nothing.
-            .fixedSize()
-            .onChange(of: hb.segment) { _, seg in
-                Task { await refresh(seg) }
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            if hb.segment == .updates && !hb.outdated.isEmpty {
+                Button {
+                    hb.upgradeAll()
+                } label: {
+                    Image(systemName: "arrow.up.circle")
+                }
+                .disabled(hb.running)
+                .help(HbStr.upgradeAll)
+                .accessibilityLabel(HbStr.upgradeAll)
             }
-            Spacer(minLength: 0)
-            upgradeAll
             Button {
                 Task { await refresh(hb.segment) }
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .helmSteadySpin(hb.running)
             }
-            .buttonStyle(.borderless)
             .disabled(hb.running)
             .help(HbStr.refreshList)
             .accessibilityLabel(HbStr.refreshList)
-        }
-    }
-
-    /// **«Обновить всё», in the bar where the page's other verbs are — and
-    /// taking the same room in all four segments whether or not it is drawn.**
-    ///
-    /// It was a bar of its own between the header and the updates list: a
-    /// second strip carrying one button, present in one segment, which is a
-    /// row of chrome the page pays for in height every time Обновления is
-    /// open. The action belongs beside Refresh.
-    ///
-    /// **Reserved rather than conditional, and that is the whole of the
-    /// design.** `headerBar` puts `HomebrewSplit.masterAndInspector` into the
-    /// segmented candidate's ideal width, so what the bar asks for is what
-    /// decides whether the page draws two columns at all
-    /// (`ThePageReorganisesOnceTests`). A control that appears in one segment
-    /// would make that answer depend on the segment — and switching to
-    /// Обновления at a pane in the band would drop the inspector in the one
-    /// segment whose rows are things to act on. So both branches build the
-    /// same control and only its visibility differs; the width is the same
-    /// number in every segment, and the page has one boundary.
-    ///
-    /// **A glyph and not the word, which is the price of that.** Measured
-    /// 2026-09-16 with the real button in all eight languages, the word is
-    /// zh 76 · ja 87 · en 94 · pt 109 · ru 111 · es 116 · de 127 · fr 132 pt.
-    /// Reserved in every segment, the word and its gap add to what the bar
-    /// already needs — by that arithmetic about 676 pt in Russian and 670 in
-    /// Spanish, not swept: a hundred points of window in which the inspector
-    /// would disappear because of a button. The glyph costs a fraction of
-    /// that, and this one *was* swept on the real page with the slot reserved:
-    /// the boundary stays at 560 in en · zh · fr · de · pt and moves to
-    /// es 581 · ru 593 · ja 599, from 560 · 566 · 572.
-    ///
-    /// The symbol is the one this module already draws for «there is an update
-    /// here» — in the row's marker and on the package screen — so the bulk act
-    /// and the single fact are said with one mark. It carries the word in
-    /// `help` and in its accessibility label, which is what a glyph-only
-    /// control owes.
-    @ViewBuilder
-    private var upgradeAll: some View {
-        let offered = hb.segment == .updates && !hb.outdated.isEmpty
-        let button = Button {
-            hb.upgradeAll()
-        } label: {
-            Image(systemName: "arrow.up.circle")
-        }
-        .buttonStyle(.borderless)
-        .disabled(hb.running)
-        .help(HbStr.upgradeAll)
-        .accessibilityLabel(HbStr.upgradeAll)
-
-        if offered {
-            button
-        } else {
-            // Keeps the slot and takes the control out of the tree a reader
-            // walks: a disabled button nobody can reach is still something
-            // VoiceOver stops on, in three segments where it means nothing.
-            button.hidden()
         }
     }
 
@@ -756,9 +627,8 @@ struct HomebrewSettingsPage: View {
 
     private func updatesList(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
-            // No bar of its own any more: «Обновить всё» is in the page's own
-            // bar, beside Refresh, and `upgradeAll` says why it is reserved
-            // there rather than drawn only here.
+            // No bar of its own any more: «Обновить всё» is in the window's
+            // toolbar beside Refresh (`pageToolbar`).
             listOrEmpty(hb.outdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates,
@@ -1598,24 +1468,6 @@ struct HomebrewSettingsPage: View {
 /// Private to this file: one module draws it, and the house's rule is that a
 /// thing two modules draw moves to `HelmUI` rather than that everything starts
 /// there.
-/// **The two shapes the segment switcher takes, as a modifier rather than a
-/// value.** `PickerStyle`'s conformers are different types, so the style cannot
-/// be held in a `let` and handed to one `Picker`; written as two `Picker`s
-/// behind an `if`, the control would be two views rather than one, and SwiftUI
-/// interpolates between two states of one view and never between two views.
-private enum SegmentPickerStyle: ViewModifier {
-    case segmented
-    case menu
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        switch self {
-        case .segmented: content.pickerStyle(.segmented)
-        case .menu: content.pickerStyle(.menu)
-        }
-    }
-}
-
 private extension View {
     func helmInspectorColumn() -> some View {
         frame(maxWidth: HelmLayout.readingColumn, alignment: .topLeading)

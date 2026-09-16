@@ -469,7 +469,22 @@ build, because the logging switch lives in it
 
 ### The page header
 
-The strip a settings page opens with is the system's 52 pt and lies over the page
+In the settings window a page's header and its controls live in the window's own
+toolbar. The detail pane bridges SwiftUI's `.toolbar` into the window's AppKit toolbar
+(`sceneBridgingOptions`), where macOS 26 and later draw a page's switcher and
+actions as Liquid Glass, and keeps AppKit's safe area so content starts under the
+bar. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
+toolbar only while an item exists and a page without controls would otherwise have
+a shorter title bar. The header itself takes one of two shapes, chosen by
+`PageBarStyle` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), a developer
+option while both drafts are lived with: the page's name as the window title with
+its status as the subtitle — set on the `NSWindow` from `HelmPageTitleKey`, since
+the bridge carries a subtitle and drops a title — or the module's plate and name as
+a toolbar item with no glass behind it. The environment value `helmPageBar` is what
+the window sets; where it is nil — a sheet, a page mounted on its own — the header
+is the strip below.
+
+That strip is the system's 52 pt and lies over the page
 rather than above it: `helmPageHeader`
 (`Sources/HelmUI/DesignSystem/HelmPageHeader.swift`) applies it as a modifier, so
 content scrolls behind its material. A page whose top band stays put draws

@@ -49,6 +49,32 @@ import HelmUI
         self.window = window
         super.init()
         window.delegate = self
+        // **The window's title is the page's name**, set here on the
+        // `NSWindow` rather than through SwiftUI: the bridge that carries a
+        // detail pane's toolbar into the window carries its subtitle and drops
+        // its title (measured on macOS 27 — «Untitled» over a pane that had
+        // set one). The page says what it is called with `HelmPageTitleKey`;
+        // this is the one place that listens.
+        titleWatch = model.$pageTitle.sink { [weak self] title in
+            self?.applyTitle(title)
+        }
+        NotificationCenter.default.addObserver(
+            forName: .helmPageBarStyleChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyTitle(self?.model.pageTitle) }
+        }
+    }
+
+    private var titleWatch: AnyCancellable?
+
+    /// Name and status in the title bar for the style that draws them there;
+    /// for the style that draws the module's plate and name as a toolbar item
+    /// the title stays the window's — the Window menu and Mission Control name
+    /// the window by it — and is simply not drawn a second time.
+    private func applyTitle(_ title: HelmPageTitle?) {
+        let style = AppSettings.pageBarStyle
+        window.title = title?.title ?? AppStr.settingsWindowTitle
+        window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
+        window.titleVisibility = style == .windowTitle ? .visible : .hidden
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -94,6 +120,8 @@ enum SettingsSelection: Hashable {
 @MainActor final class SettingsModel: ObservableObject {
     let host: ModuleHost
     @Published var selection: SettingsSelection? = .general
+    /// What the page on screen calls itself, for the window's title bar.
+    @Published var pageTitle: HelmPageTitle?
     /// Bumped when the module order changes, so the sidebar redraws with it —
     /// the order is read from settings, which SwiftUI cannot observe.
     @Published private(set) var orderRevision = 0
@@ -208,6 +236,21 @@ final class SettingsSplitViewController: NSSplitViewController {
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
+                // **Every page has a toolbar, including a page with nothing to
+                // put in it.** The bridge creates the window's toolbar only
+                // while some item exists, so a page without controls dropped
+                // it: photographed 2026-09-16, the traffic lights sat 18 pt
+                // higher on Settings than on Homebrew, and every page header
+                // jumped by that much on a click in the sidebar. A toolbar
+                // handed to the window ahead of time is no way round it — the
+                // bridge then publishes nothing. A fixed system spacer is an
+                // item with no glass and no view of its own; a clear 1 pt view
+                // was tried first and drew a glass sliver.
+                .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }
+                .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
+                    model.pageTitle = title
+                }
+                .helmTracksPageBarStyle { AppSettings.pageBarStyle }
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // The pane as well as the sidebar: a module page's header plate
                 // and its empty state are module icons too, and «Module icons»
@@ -217,10 +260,19 @@ final class SettingsSplitViewController: NSSplitViewController {
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.
                 .helmIdlesOffScreen())
-        // fullSizeContentView + a transparent title bar makes AppKit inset the
-        // detail pane by the title-bar height, leaving a dead gap above the
-        // module header. The pane draws its own top padding, so drop the inset.
-        detail.safeAreaRegions = []
+        // **A page's controls and its header go to the window's toolbar**,
+        // where macOS 26 and later draw controls as Liquid Glass: a page
+        // declares them with SwiftUI's `.toolbar` and this bridges them out of
+        // the pane into the window. The toolbar tracks the sidebar's divider,
+        // so an item a page centres stands over that page, not the window.
+        //
+        // **And the pane keeps AppKit's safe area, which it used to drop.** It
+        // was `safeAreaRegions = []`, because under a transparent title bar the
+        // inset was a dead strip above a header each page drew for itself.
+        // The inset is the toolbar now, and dropping it put content under the
+        // glass: photographed 2026-09-16, the Homebrew list's heading ran
+        // straight through the segment switcher.
+        detail.sceneBridgingOptions = [.toolbars]
         detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420
@@ -561,6 +613,7 @@ private struct ModuleDetailView: View {
             .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                             tint: descriptor.moduleTint.colour,
                             title: descriptor.moduleMetadata.name,
+                            subtitle: statusWord,
                             bleeds: descriptor.pageBleeds) {
                 // Only for a module that can say. Most answer nil, and nil
                 // draws nothing rather than «Not active» for a module with no
@@ -594,6 +647,20 @@ private struct ModuleDetailView: View {
             // observe, so without this it is right once per visit and stale
             // after.
             .onReceive(activityChanges) { _ in activityRevision &+= 1 }
+    }
+
+    /// The same status the header's trailing view draws, said in words — for
+    /// the style that puts it under the window's title, where a badge cannot
+    /// go. nil for a module with no notion of running, like the view.
+    private var statusWord: String? {
+        _ = activityRevision
+        guard let live = host.liveModule(id), let activity = descriptor.activity(live.vm) else {
+            return nil
+        }
+        switch activity {
+        case .active: return AppStr.moduleActive
+        case .idle: return AppStr.moduleIdle
+        }
     }
 
     /// The module's own page, or the invitation to switch it on.

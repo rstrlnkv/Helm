@@ -112,13 +112,23 @@ final class TheFirstScreenOffersOneScanTests: XCTestCase {
 
         XCTAssertTrue(model.items.isEmpty, "precondition: the removal emptied the list")
         XCTAssertNotNil(model.banner, "precondition: the removal reported something")
-        XCTAssertGreaterThan(try XCTUnwrap(mount.ink(480...539)), 0,
+        // The bottom 60 pt of whatever height the page drew at, rather than a
+        // band written for one height: without the strip that carried the filter
+        // and Scan, this render comes out at 572 pt where it was 540, and a fixed
+        // 480…539 then reads the empty state above the foot.
+        let bottom = Int(mount.host.bounds.height)
+        XCTAssertGreaterThan(try XCTUnwrap(mount.ink((bottom - 60)...(bottom - 1))), 0,
                              "the page dropped its whole foot with the rows, and with it the "
                              + "report of the removal that took them")
     }
 
-    /// And once there is a list, the toolbar's Scan is back: it is the only way to
-    /// scan again, and the invitation is gone.
+    /// **Once there is a list, Scan is the window's and nowhere in the page.**
+    ///
+    /// The toolbar's Scan left the page's own strip for the settings window's
+    /// toolbar (2026-09-16), which a page drawn on its own does not have — so
+    /// what this render can hold is the other half of «one Scan»: nothing in
+    /// the page offers a second one. Whether the toolbar offers it is the rule
+    /// the page reads, `LeftoversEmpty.invites`, asserted directly.
     func testOnceSomethingHasBeenFoundTheToolbarCarriesTheScan() async throws {
         let previous = AppLanguage.override
         defer { AppLanguage.override = previous }
@@ -130,15 +140,16 @@ final class TheFirstScreenOffersOneScanTests: XCTestCase {
         XCTAssertNil(model.nothingToShow, "precondition: the page drew a list")
         let controls = LeftoversPageRender.controls(in: mount)
 
-        XCTAssertEqual(controls.filter { $0.minY < 48 }.count, 1,
-                       "the toolbar lost the Scan button along with the duplicate")
+        XCTAssertEqual(controls.filter { $0.minY < 48 }.count, 0,
+                       "the page draws a control of its own above the list, where Scan used to "
+                       + "be — a second Scan beside the window toolbar's")
         XCTAssertEqual(controls.filter { $0.minY > 400 }.count, 3,
                        "the bar lost its buttons along with the empty page's")
     }
 
-    /// A scan that found nothing is a **statement**, so the invitation draws no
-    /// button — which makes the toolbar's the only one on the page. Losing it there
-    /// would leave a screen that cannot be scanned again.
+    /// And a scan that found nothing is a statement with no verb of its own, so
+    /// the only way to scan again is the window toolbar's Scan — which the page
+    /// offers exactly when the empty state does not invite.
     func testAScanThatFoundNothingKeepsTheToolbarsScan() async throws {
         let previous = AppLanguage.override
         defer { AppLanguage.override = previous }
@@ -148,17 +159,20 @@ final class TheFirstScreenOffersOneScanTests: XCTestCase {
         defer { mount.drop() }
         XCTAssertEqual(model.nothingToShow, .nothingFound,
                        "precondition: the scan came back with nothing")
-        XCTAssertFalse(LeftoversEmpty.invites(.nothingFound),
-                       "precondition: this screen is a statement and draws no verb of its own")
+        XCTAssertFalse(LeftoversEmpty.invites(.nothingFound), """
+            the found-nothing screen invites a scan of its own, so the page drops the toolbar's \
+            Scan — and one of the two has to go
+            """)
+        XCTAssertTrue(LeftoversEmpty.invites(.notScanned), """
+            the first screen no longer invites a scan, so the page offers the toolbar's Scan \
+            there instead — and a sentence asking for a scan stands with nothing beside it
+            """)
 
         let controls = LeftoversPageRender.controls(in: mount)
-        XCTAssertEqual(controls.count, 1, """
-            a page that found nothing draws \(controls.count) controls at \
+        XCTAssertEqual(controls.count, 0, """
+            a page that found nothing draws \(controls.count) controls of its own at \
             \(controls.map { "(\(Int($0.minX)),\(Int($0.minY)))" }.joined(separator: " ")): \
-            one Scan in the toolbar, and nothing else to press.
+            the one Scan it may offer is the window toolbar's.
             """)
-        XCTAssertLessThan(controls.first?.minY ?? .infinity, 48,
-                          "the one control is not the toolbar's Scan, so this page cannot be "
-                          + "scanned again at all")
     }
 }

@@ -78,12 +78,10 @@ final class TheUpdateIsOfferedWhereItIsSaidTests: XCTestCase {
             let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                       width: 984, height: 700, appearance: .aqua)
             mount.settle(30)
-            // Below the segment bar, which draws a focus ring of its own
-            // wherever the pane is too narrow for the segments — the reason
-            // `TheSplitThresholdFitsThePageItGatesTests` bands its own reading.
+            // Every ring on the page: the segment bar that once drew one of its
+            // own above the inspector is in the window's toolbar now.
             let rings = mount.host.everyView(named: "_FocusRingView")
                 .map { $0.convert($0.bounds, to: mount.host) }
-                .filter { $0.minY >= 48 }
                 .sorted { $0.minY < $1.minY }
             mount.drop()
             withExtendedLifetime(transport) {}

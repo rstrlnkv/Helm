@@ -109,57 +109,42 @@ struct LeftoversSettingsPage: View {
             }
             Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
         }
+        .toolbar { pageToolbar }
         .animation(HelmMotion.interface, value: lvm.items.count)
         .animation(HelmMotion.interface, value: lvm.showAll)
     }
 
+    /// **What is left of the page's bar once its controls are in the
+    /// window's toolbar: what the scan found.** The filter, the kind menu and
+    /// Scan moved to `pageToolbar`; the captions stay in the page because they
+    /// describe the list under them rather than act on it, and a count is not
+    /// a control to put glass behind.
     private var toolbar: some View {
-        // **Controls, and no prose.** The sentence used to live here, beside
-        // the scan button — a quiet caption at one end of a strip and a button
-        // at the other, which is exactly the shape of the permission note
-        // underneath it. Two bars of the same weight, stacked, read as one
-        // thing said twice. Every other list screen puts controls here and
-        // nothing else; this one does now too.
-        //
-        // **The main filter is at the left edge, and the rail is after it.** The
-        // `Spacer` was first, so every control in this row began where the longest
-        // translation of the three to its right left off: the first of them stood
-        // at x 463.5 in English, 435.5 in German and 384.0 in Russian at 845 pt —
-        // 79.5 pt of the row moving because a word got longer, over 440 pt of empty
-        // rail. What the page is filtered by is the thing a person comes back to,
-        // so it starts where every row under it starts.
         HStack(spacing: HelmSpace.s5) {
-            if !lvm.items.isEmpty { statusFilter }
-            Spacer(minLength: 8)
-            if !lvm.items.isEmpty {
-                // What the scan found, beside the control that filters it. It
-                // used to sit in the bar at the bottom joined to the size of the
-                // selection, where the two read as one measurement.
-                //
-                // Counted over the list, so it is drawn only where there is one:
-                // «Found: 0 items» over «Everything found is hidden by the filter»
-                // is one screen contradicting itself, and over «No leftovers
-                // found» it is the same sentence twice. The filter controls stay
-                // whatever the list holds — the menu that hid the rows has to
-                // remain reachable.
-                // **Last in the queue for width, and it has to be said out
-                // loud.** `ViewThatFits` chooses against the proposal it is
-                // handed, and inside an `HStack` that is the room left after the
-                // *equal-priority* children have taken their ideal — so with the
-                // default priority the strip offered it more than it had and the
-                // button paid the difference (Russian 154.0 → 128.0 at 606 pt).
-                // Lowest priority is what makes the proposal the truth.
-                if lvm.nothingToShow == nil { captions.layoutPriority(-1) }
-                kindFilter
-            }
-            // **One Scan, not two.** Before the first scan this drew the same
-            // button, with the same word and the same key, 312 pt from the one on
-            // the invitation — measured at (480, 12) and (248, 324) in Russian.
-            // Asked of the same rule the invitation asks, so neither can start
-            // offering it without the other giving it up.
-            if !invitationCarriesTheScan { scanButton }
+            captions
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
+
+    /// **The page's controls, in the window's toolbar**, where macOS 26 and
+    /// later draw them as Liquid Glass.
+    ///
+    /// The filter is what a person comes back to, so it is the switcher at the
+    /// centre; the kind menu and Scan are actions at the trailing edge. The
+    /// rules for when each is offered did not change: the filters only over a
+    /// list, since there is nothing to filter before a scan, and Scan only when
+    /// the invitation on the page is not already offering it — one Scan, not
+    /// two, for the reason `invitationCarriesTheScan` gives.
+    @ToolbarContentBuilder
+    private var pageToolbar: some ToolbarContent {
+        if !lvm.items.isEmpty {
+            ToolbarItem(placement: .principal) { statusFilter }
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            if !lvm.items.isEmpty { kindFilter }
+            if !invitationCarriesTheScan { scanButton }
+        }
     }
 
     /// What the scan found, and what it could not judge — one caption or two,
@@ -212,7 +197,7 @@ struct LeftoversSettingsPage: View {
     /// Whether the top strip holds anything: the filters, which are behind
     /// `items.isEmpty`, or the Scan the invitation is not carrying.
     private var toolbarHasSomethingToSay: Bool {
-        !lvm.items.isEmpty || !invitationCarriesTheScan
+        !lvm.items.isEmpty && lvm.nothingToShow == nil
     }
 
     /// And the same question at the other end. A page holding no rows still draws

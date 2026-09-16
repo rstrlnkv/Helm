@@ -121,8 +121,12 @@ final class TheReasonIsNotWhatGetsCutTests: XCTestCase {
                                                         appearance: .aqua)
         defer { mount.drop() }
         // The first row's second line, in points from the top of the page: the
-        // toolbar, the note about nothing being ticked, the section header and the
-        // row's own name are all above it.
-        return try XCTUnwrap(mount.ink(138...152), "the detail line's band was not drawn")
+        // found-caption strip, the note about nothing being ticked, the section
+        // header and the row's own name are all above it. It was 138…152 while
+        // that strip also carried the filter and Scan at a taller control height;
+        // with those in the window's toolbar (2026-09-16) the line swept at
+        // 130…138 in German at 845 pt, and a band that misses it reads the same
+        // picture twice and fails rather than passing.
+        return try XCTUnwrap(mount.ink(128...142), "the detail line's band was not drawn")
     }
 }

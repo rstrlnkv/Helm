@@ -108,9 +108,9 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     /// one.** `HomebrewSettingsPage.body` branches on `hb.status.installed`, which
     /// arrives as a *reply* — so under a transport that never answered, every
     /// reading was of «Homebrew is not installed»: 12 layers, on a machine that has
-    /// brew. The toolbar's segmented control is the sharper half of the assertion:
-    /// it exists only in the manager body, so its presence *is* the branch, where
-    /// the layer count is only the size.
+    /// brew. The package list is the sharper half of the assertion: it exists only
+    /// in the manager body, so its presence *is* the branch, where the layer count
+    /// is only the size.
     func testTheWiredHomebrewPageIsTheManagerAndNotTheInstallScreen() {
         let silent = page(for: homebrew, wiredBy: ModulePageRender.unwired)
         let wired = page(for: homebrew, wiredBy: ModulePageRender.answering)
@@ -124,13 +124,14 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
             \(silent.layers.count) unwired, so the status reply is not arriving and the render is \
             still measuring the install screen of a Mac that has brew.
             """)
-        XCTAssertEqual(segmentedControls(in: silent), 0,
-                       "the install screen has no toolbar, so it has no segmented control")
-        XCTAssertEqual(segmentedControls(in: wired), 1, """
-            the wired Homebrew page draws \(segmentedControls(in: wired)) segmented controls where \
-            the manager's toolbar has one — so either the toolbar is missing, which is the whole \
-            second half of `LongStringGeometryRatchetTests`' recorded inventory, or there are now \
-            two and that inventory is the place to say so.
+        // The manager's list is the branch now. Its segmented control was, until
+        // the switcher moved into the settings window's toolbar (2026-09-16) —
+        // which a page drawn on its own in this host does not have.
+        XCTAssertEqual(lists(in: silent), 0,
+                       "the install screen has no package list")
+        XCTAssertGreaterThan(lists(in: wired), 0, """
+            the wired Homebrew page draws no list, so the status reply is not arriving and this \
+            is still the install screen of a Mac that has brew.
             """)
     }
 
@@ -162,13 +163,13 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     /// on the invitation whatever the fixture holds. `ModulePageRender.Priming` is
     /// the press, and this is the guard that it lands.
     ///
-    /// Three assertions about structure rather than one about size. The segmented
-    /// control is the sharpest: the status filter is inside `if !lvm.items.isEmpty`,
-    /// so it exists on a page with rows and on no other. The model's own state is the
-    /// second — a list of the fixture's length, and a report of one moved file and
-    /// two refusals, which is the row that rendered in no ratchet before this. The
-    /// layer count is the loosest and is asserted as a comparison, because it is the
-    /// one that moves when a row gains a badge.
+    /// Structure first, then size. The model's own state — a list of the
+    /// fixture's length, and a report of one moved file and two refusals, which is
+    /// the row that rendered in no ratchet before this — and the layer count as a
+    /// comparison, because it is the one that moves when a row gains a badge. The
+    /// status filter was the sharpest marker of a page with rows until it moved
+    /// into the settings window's toolbar (2026-09-16), which a page drawn on its
+    /// own here does not have.
     func testTheWiredLeftoversPageDrawsTheListAndTheRemovalReport() throws {
         let silent = page(for: leftovers, wiredBy: ModulePageRender.unwired)
         let wired = page(for: leftovers, wiredBy: ModulePageRender.answering)
@@ -180,15 +181,6 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
         // eight layers. Measured at 12, twice.
         silent.assertItDrewSomething(atLeast: 10)
         wired.assertItDrewSomething()
-
-        XCTAssertEqual(segmentedControls(in: silent), 0,
-                       "the status filter is behind `!items.isEmpty`, so a page with no rows "
-                       + "has none")
-        XCTAssertEqual(segmentedControls(in: wired), 1, """
-            the wired leftovers page draws \(segmentedControls(in: wired)) segmented controls where \
-            a page with rows has one — so either the scan reply is not arriving or the toolbar has \
-            gained a second, and `LongStringGeometryRatchetTests`' inventory is where that is said.
-            """)
 
         let model = LeftoversViewModel.shared(vm: wired.viewModel)
         XCTAssertTrue(model.scanned, """
@@ -294,10 +286,10 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
         // and a bar of three. Measured at 12, twice.
         untouched.assertItDrewSomething(atLeast: 10)
 
-        XCTAssertEqual(segmentedControls(in: untouched), 0, """
-            an unprimed leftovers page has \(segmentedControls(in: untouched)) segmented controls, \
-            so it is holding rows — something now asks for the scan by itself, and if that is \
-            deliberate the priming is what should go rather than this assertion.
+        XCTAssertTrue(LeftoversViewModel.shared(vm: untouched.viewModel).items.isEmpty, """
+            an unprimed leftovers page is holding rows — something now asks for the scan by \
+            itself, and if that is deliberate the priming is what should go rather than this \
+            assertion.
             """)
         XCTAssertGreaterThan(pressed.layers.count, untouched.layers.count + 100,
                             "the press is what the fixture needs, and it changed nothing")
@@ -402,10 +394,6 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
                               seededBy: seed, wiredBy: wire)
     }
 
-    private func switches(in page: ModulePageRender.Page) -> Int {
-        page.controls.filter { $0.shortName == "AppKitSwitch" }.count
-    }
-
     /// The connection cards' verbs: `VPNConnectionCard` draws each as a 28 pt
     /// circle, which is a fill nothing else on this page has. A layer reading and
     /// not a control walk, because the button is `.plain` — SwiftUI draws it
@@ -417,8 +405,8 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
         }.count
     }
 
-    private func segmentedControls(in page: ModulePageRender.Page) -> Int {
-        page.controls.filter { $0.shortName == "AppKitSegmentedControl" }.count
+    private func lists(in page: ModulePageRender.Page) -> Int {
+        page.host.everyView.filter { $0.appKitClassName.contains("ListCoreScrollView") }.count
     }
 
     private func descriptor(_ id: String) -> any ModuleDescriptor {

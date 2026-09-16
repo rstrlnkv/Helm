@@ -103,17 +103,13 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(30)
-        // **Below the segment bar.** The inspector's action was "the page's only
-        // focus ring" while the bar drew a segmented control, which draws none —
-        // and the bar draws a *menu* wherever the segments do not fit the pane,
-        // which at this very threshold is what several languages get. That
-        // picker carries a ring of its own, so an unbanded count reads two
-        // controls where the claim is about one. 48 pt is the bar and its
-        // divider: `HelmSpace.s5` of padding around a 24 pt control.
-        let belowTheBar: CGFloat = 48
+        // Every ring on the page. This read only below a 48 pt band while the
+        // page drew its own segment bar, whose menu shape carried a ring of its
+        // own; the switcher is in the window's toolbar now, which a page
+        // mounted on its own does not draw, so the band would only cut off the
+        // inspector's title row, which starts at the top of the pane.
         let rings = mount.host.everyView(named: "_FocusRingView")
             .map { $0.convert($0.bounds, to: mount.host) }
-            .filter { $0.minY >= belowTheBar }
         let lists = mount.host.everyView
             .filter { $0.appKitClassName.contains("ListCoreScrollView") }
             .map { $0.convert($0.bounds, to: mount.host) }
@@ -128,17 +124,11 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// tree at all, or "nothing is outside the pane" is true of a page that drew
     /// nothing.
     ///
-    /// **Asked in English, named rather than inherited.** The page's shape is
-    /// one boundary now — `headerBar` folds this file's threshold into the
-    /// segmented bar's own ideal width, so the columns appear exactly where the
-    /// switcher fits — and that width is a fact about the language's strings:
-    /// swept 2026-09-16, ru needs 593 pt and ja 599 against `HomebrewSplit`'s
-    /// own 560 — since the bar gained «Обновить всё»'s reserved slot; it was
-    /// 566 and 572 before. This Mac runs in Russian, so a bare mount at 560 draws the
-    /// one-column page and nothing here would be measuring the split at all.
-    /// English is the language whose bar fits under every reachable pane, which
-    /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is
-    /// what checks the boundary in all eight.
+    /// **Asked in English, named rather than inherited** — a language is named
+    /// because a bare mount reads whatever this Mac is set to. The page's shape
+    /// is a question of width alone since its switcher moved into the window's
+    /// toolbar (`pageToolbar`): the language decided the boundary only while the
+    /// page's own bar had to fit the pane, and that bar is gone.
     func testTheInspectorsActionIsInsideThePaneAtTheThreshold() async {
         await AppLanguage.only(.en) { await theInspectorsActionIsInsideThePane() }
     }
@@ -202,17 +192,11 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// Tests`' subject — so the list is the pane's one column only while there
     /// is nothing to select into, which is what this test is actually about.
     ///
-    /// **Asked in English, named rather than inherited.** The page's shape is
-    /// one boundary now — `headerBar` folds this file's threshold into the
-    /// segmented bar's own ideal width, so the columns appear exactly where the
-    /// switcher fits — and that width is a fact about the language's strings:
-    /// swept 2026-09-16, ru needs 593 pt and ja 599 against `HomebrewSplit`'s
-    /// own 560 — since the bar gained «Обновить всё»'s reserved slot; it was
-    /// 566 and 572 before. This Mac runs in Russian, so a bare mount at 560 draws the
-    /// one-column page and nothing here would be measuring the split at all.
-    /// English is the language whose bar fits under every reachable pane, which
-    /// makes 560 this file's subject again; `ThePageReorganisesOnceTests` is
-    /// what checks the boundary in all eight.
+    /// **Asked in English, named rather than inherited** — a language is named
+    /// because a bare mount reads whatever this Mac is set to. The page's shape
+    /// is a question of width alone since its switcher moved into the window's
+    /// toolbar (`pageToolbar`): the language decided the boundary only while the
+    /// page's own bar had to fit the pane, and that bar is gone.
     func testOnePointBelowTheThresholdOneColumnFillsThePane() async {
         await AppLanguage.only(.en) { await onePointBelowTheThresholdOneColumnFillsThePane() }
     }

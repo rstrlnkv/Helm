@@ -1191,3 +1191,6 @@
 "Machine" = "Машина";
 "Tools" = "Инструменты";
 "Copy for a bug report" = "Скопировать для отчёта об ошибке";
+"Page header" = "Шапка страниц";
+"Window title" = "Заголовок окна";
+"Module icon and name" = "Иконка и имя модуля";

@@ -55,54 +55,54 @@ struct HostsSettingsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            tabs
-            Divider()
             switch tab {
             case .ssh: sshTab
             case .keys: keysTab
             }
         }
+        .toolbar { pageToolbar }
     }
 
     /// The two files, as one segmented control on the pane. Above the per-file
     /// header rather than beside it: which file you are looking at is a bigger
     /// question than which of its two views you are in, and a page that asks
     /// both in one row asks them as if they were the same size.
-    private var tabs: some View {
-        HStack {
+    /// **The page's two choices, in the window's toolbar — placed by what
+    /// they are rather than side by side.**
+    ///
+    /// They were a row of two segmented pickers at one weight, one colour and
+    /// an 8 pt gap, although they do not ask the same kind of question: which
+    /// file is navigation, table-or-text is a view of whichever file that is.
+    /// So the file is the switcher at the centre of the bar, and the view is a
+    /// pair of glyphs among the actions at the trailing edge, where a view
+    /// mode sits in every Mac app that has one. macOS 26 and later draw both as
+    /// Liquid Glass because they are standard controls in the functional layer.
+    ///
+    /// **One view picker for both files, not one each.** They ask the same
+    /// question with the same two words, and the choice of table-or-text
+    /// follows the person across the tabs, which is what somebody who prefers
+    /// the raw file wants. Its words are kept as the glyphs' labels, so the
+    /// control is named aloud and in its tooltip exactly as it was written.
+    @ToolbarContentBuilder
+    private var pageToolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
             Picker(HostsStr.moduleName, selection: $tab) {
                 Text(HostsStr.keysTab).tag(Tab.keys)
                 Text(HostsStr.sshHostsTab).tag(Tab.ssh)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            // **No imposed width here**, unlike the pair below it. A
-            // segmented control sizes itself to its labels, and a number
-            // computed to be exactly that leaves the labels no headroom — which
-            // is what `AnImposedPickerWidthFitsItsLabelsTests` counts, and the
-            // count is only ever lowered. `fixedSize` asks for the same result
-            // without anybody having to keep the arithmetic true.
-            .fixedSize()
-
-            // **One view picker for both files, not one each.** They ask the
-            // same question with the same two words, and a second copy is a
-            // second control with no headroom of its own — measured by
-            // `AnImposedPickerWidthFitsItsLabelsTests`, which counts pickers
-            // whose imposed width leaves their labels nothing. It also means
-            // the choice of table-or-text follows the person across the tabs,
-            // which is what somebody who prefers the raw file wants.
+        }
+        ToolbarItem(placement: .primaryAction) {
             Picker(HostsStr.tableView, selection: $showingText) {
-                Text(HostsStr.tableView).tag(false)
-                Text(HostsStr.textView).tag(true)
+                Label(HostsStr.tableView, systemImage: "tablecells").tag(false)
+                Label(HostsStr.textView, systemImage: "text.alignleft").tag(true)
             }
             .pickerStyle(.segmented)
+            .labelStyle(.iconOnly)
             .labelsHidden()
-            .frame(width: HelmPickerWidth.segmented([HostsStr.tableView, HostsStr.textView]))
-
-            Spacer()
+            .help(showingText ? HostsStr.textView : HostsStr.tableView)
         }
-        .padding(.horizontal, HelmLayout.formInset)
-        .padding(.vertical, HelmSpace.s3)
     }
 
     private var hostsTab: some View {

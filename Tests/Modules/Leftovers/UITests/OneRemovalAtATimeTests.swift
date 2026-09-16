@@ -199,40 +199,37 @@ final class OneRemovalAtATimeTests: XCTestCase {
     /// **And the page has to say so**, or the model's refusal is a press that does
     /// nothing — «the model refuses; the page dims. Both, or neither is reliable.»
     ///
-    /// Read off the drawing rather than off the source: `.disabled` leaves no view
-    /// to ask, and what a person sees is ink. The band is the toolbar's own 48 pt,
-    /// which holds the filter, the caption and this button — nothing else in it
-    /// changes when a removal starts, so a difference there is this control
-    /// dimming. Measured before the fix: 1 272 404 idle and 1 272 404 busy, the
-    /// same number to the unit.
-    func testTheToolbarsScanGoesDimWhileARemovalRuns() async throws {
-        for appearance in RenderedInk.bothAppearances {
-            let one = item("/tmp/one.plist")
-            let transport = HeldTransport(items: [one])
-            // The model the mount hands back is the page's own — `shared(vm:)`,
-            // keyed to the view model the page was built on.
-            let (mount, page) = await LeftoversPageRender.page(on: transport, language: .en,
-                                                               width: 606,
-                                                               appearance: appearance)
-            defer { mount.drop() }
-            let idle = try XCTUnwrap(mount.ink(0...48), "the toolbar band was not drawn")
-            XCTAssertGreaterThan(idle, 0, "precondition: the toolbar drew something at all")
-
-            page.selected = Set(page.selectablePaths)
-            let removal = Task { await page.removeSelected() }
-            for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
-            XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
-            mount.settle(20)
-            let busy = try XCTUnwrap(mount.ink(0...48))
-
-            XCTAssertLessThan(busy, idle, """
-                the toolbar is drawn identically while a removal runs, in \
-                \(RenderedInk.label(of: appearance)): Scan is live under a press the model \
-                now refuses, which is a button that does nothing.
-                """)
-            transport.release()
-            await removal.value
+    /// This was read off the drawing, as ink in the page's own 48 pt strip:
+    /// measured before the fix, 1 272 404 idle and 1 272 404 busy. Scan has since
+    /// moved into the settings window's toolbar (2026-09-16), which a page drawn
+    /// on its own does not have, so the ink is out of reach and the claim is
+    /// read off the construction instead: the button is disabled by the very
+    /// flag `LeftoversViewModel.scan` refuses on. The model's half is the case
+    /// above. What this cannot prove is that macOS draws a disabled toolbar
+    /// item dimmed — which is the system's promise, not this page's.
+    func testTheToolbarsScanGoesDimWhileARemovalRuns() throws {
+        let page = "Sources/Modules/Leftovers/UI/LeftoversSettingsPage.swift"
+        let code = SwiftSource.code(try RepoSource.text(of: page))
+        // A computed property rather than a `func`, which `SwiftSource`'s body
+        // reader does not cover: from the declaration to its matching brace.
+        let declaration = try XCTUnwrap(code.range(of: "var scanButton"),
+                                        "\(page) no longer declares scanButton")
+        var depth = 0, opened = false
+        var end = declaration.upperBound
+        for index in code[declaration.upperBound...].indices {
+            let character = code[index]
+            if character == "{" { depth += 1; opened = true }
+            if character == "}" { depth -= 1 }
+            if opened && depth == 0 { end = code.index(after: index); break }
         }
+        let button = String(code[declaration.lowerBound..<end])
+        XCTAssertTrue(button.contains("lvm.scan()"),
+                      "scanButton no longer scans — the rule below would pass over a button "
+                      + "that does something else")
+        XCTAssertTrue(button.contains(".disabled(") && button.contains("lvm.busy"), """
+            Scan is not disabled by `lvm.busy`, so it stays live under a press the model now \
+            refuses while a removal runs — a button that does nothing.
+            """)
     }
 
     /// And the row's own delete, which is the control the Uninstaller's pass found

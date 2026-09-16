@@ -302,12 +302,17 @@ enum ModulePageRender {
         /// a full-width rule — is a question about the pane.
         let width: CGFloat
         let layers: [Drawn]
+        /// The AppKit-backed controls in it, read the way a module page's are —
+        /// so a control that has left every module page for the window's
+        /// toolbar can still be drawn on its own and measured by the same walk.
+        let controls: [Control]
         /// Held so the objects behind the measurement outlive it.
         private let keepAlive: [AnyObject]
 
-        init(width: CGFloat, layers: [Drawn], keepAlive: [AnyObject]) {
+        init(width: CGFloat, layers: [Drawn], controls: [Control], keepAlive: [AnyObject]) {
             self.width = width
             self.layers = layers
+            self.controls = controls
             self.keepAlive = keepAlive
         }
     }
@@ -328,7 +333,8 @@ enum ModulePageRender {
         host.appearance = NSAppearance(named: appearance)
         window.contentView = host
         settle(host)
-        return Shell(width: width, layers: layers(of: host), keepAlive: [host, window])
+        return Shell(width: width, layers: layers(of: host),
+                     controls: controls(of: host, module: "shell"), keepAlive: [host, window])
     }
 
     /// A flag two isolated contexts share: the priming's task sets it, the pump
@@ -647,8 +653,14 @@ extension ModulePageRender.Page {
     /// `TheNarrowPaneCanStillActOnAPackageTests` and
     /// `TheSplitThresholdFitsThePageItGatesTests` are where those are caught,
     /// not here.
+    /// **Uninstaller's is 30 from 2026-09-16, down from 45, and the drop is a
+    /// control leaving the page rather than the page losing content.** Its
+    /// Apps / Orphans switcher and its Refresh moved into the settings window's
+    /// toolbar, which a page drawn on its own in this host does not have; the
+    /// same renders then read 34 and 42 layers on consecutive tests. 30 sits
+    /// under the lower reading, as the other floors sit under theirs.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 61,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 30, "homebrew": 61,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

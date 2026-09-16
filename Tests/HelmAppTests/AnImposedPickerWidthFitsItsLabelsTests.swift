@@ -114,7 +114,6 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     private static let recorded: [String: @Sendable () -> [String]] = [
         "LogView.swift|HelmPickerWidth": { [AppStr.logLevelAll, AppStr.logLevelWarnings,
                                             AppStr.logLevelErrors] },
-        "HostsSettingsPage.swift|HelmPickerWidth": { [HostsStr.tableView, HostsStr.textView] },
     ]
 
     /// **Measured 2026-08-11, three consecutive runs in agreement.** Both numbers
@@ -153,8 +152,13 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// 1.00 × in all eight languages by construction. Padding it to make this
     /// number stay 1 would put back the defect `HelmPickerWidth` exists to end.
     /// `clipping` is unmoved at 0, which is the half of this pair that can fall.
+    ///
+    /// **`tight` is 1 again from 2026-09-16**, and it fell for a reason the
+    /// number cannot see: the hosts page's view picker moved into the settings
+    /// window's toolbar as a pair of glyphs and no longer carries a width of its
+    /// own, so its record went with it.
     private static let recordedClipping = 0
-    private static let recordedTight = 2
+    private static let recordedTight = 1
     private static let inflation: CGFloat = 1.4
 
     /// Every file a picker can be written in: the shared enumeration the ladder
@@ -285,27 +289,33 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
 
     /// **Calibration, and it is the first assertion for a reason.** The offscreen
     /// host and the rendered page are two instruments, and every number below comes
-    /// from the first one. The Uninstaller's segmented control is the one control
-    /// both can see: the page reports 161 pt in English, 208 in Russian and 117 in
-    /// German (`LongStringGeometryRatchetTests` records the first two), and this
-    /// host has to agree to the point.
+    /// from the first one. The Uninstaller's segmented control was the one control
+    /// both could see — 161 pt in English, 208 in Russian, 117 in German — until it
+    /// left the page for the settings window's toolbar (2026-09-16), which a page
+    /// drawn on its own does not have. So the same control, with the same two
+    /// labels, is drawn on its own through `ModulePageRender.drawn` — the page
+    /// renderer's host, settling and control walk — and this host has to agree
+    /// with that to the point.
     func testTheHostAgreesWithThePageOnTheOneControlBothCanSee() throws {
-        let uninstaller = try XCTUnwrap(ModuleRegistry.all.first { $0.idRaw == "uninstaller" })
         let previous = AppLanguage.override
         defer { AppLanguage.override = previous }
 
         for language in [AppLanguage.en, .ru, .de] {
             AppLanguage.override = language
-            let page = ModulePageRender.page(for: uninstaller, in: .aqua,
-                                             width: ModulePageRender.pageWidth)
-            page.assertItDrewSomething()
-            let drawn = try XCTUnwrap(page.controls.first { $0.name.contains("SegmentedControl") },
-                                      "the uninstaller page drew no segmented control in "
+            let drawnAlone = ModulePageRender.drawn(
+                Picker(HelmA11y.whatToShow, selection: .constant(0)) {
+                    Text(UnStr.tabApps).tag(0)
+                    Text(UnStr.tabOrphans).tag(1)
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize(),
+                in: .aqua, width: ModulePageRender.pageWidth, height: 80)
+            let drawn = try XCTUnwrap(drawnAlone.controls.first { $0.name.contains("SegmentedControl") },
+                                      "the page renderer drew no segmented control in "
                                       + "\(language.rawValue)")
             let mine = wanted([UnStr.tabApps, UnStr.tabOrphans])
 
             XCTAssertEqual(mine, drawn.intrinsic.width, accuracy: 0.5,
-                           "the page says the uninstaller's picker wants "
+                           "the page renderer says the uninstaller's picker wants "
                            + "\(drawn.intrinsic.width) pt in \(language.rawValue) and this "
                            + "file's own host says \(mine) — the two are not measuring the "
                            + "same control, so every number here is about something else")

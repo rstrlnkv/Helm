@@ -27,50 +27,20 @@ import HelmUI
 struct HomebrewSplit {
     let availableWidth: CGFloat
 
-    /// **Whether the segmented switcher fitted the bar at this pane** — the
-    /// second half of one boundary, and the reason this is a parameter rather
-    /// than another number.
-    ///
-    /// The header's shape is `ViewThatFits`' answer and it moves with the
-    /// language: swept a point at a time on the real page, 2026-09-16, the
-    /// segmented bar first fits at en/zh/de below 400 · fr 466 · pt 482 ·
-    /// es 554 · ru 566 · ja 572, against this file's own 560. So dragging a
-    /// Russian window across 560…566 reorganised the page **twice in six
-    /// points** — the columns collapsed, then the switcher became a menu — and
-    /// Japanese did it across twelve. Neither change is wrong; two of them ten
-    /// points apart is. (Those widths predate the reserved «Обновить всё» slot
-    /// in the bar; swept again with it, the one boundary is es 581 · ru 593 ·
-    /// ja 599 and 560 in the other five.)
-    ///
-    /// `headerBar` folds this file's floor into the segmented candidate's own
-    /// ideal width, so the one thing `ViewThatFits` answers is «is this pane
-    /// wide enough for the whole wide page», and this reads that answer. The
-    /// boundary is therefore `max(560, what the bar needs in this language)`,
-    /// one width, in all eight.
-    ///
-    /// **Defaulted to `true`** so a caller asking only about width — the sweep
-    /// in `TheSplitThresholdFitsThePageItGatesTests`, `HomebrewSplitTests` —
-    /// still gets this type's own floor and nothing else.
-    var segmentedHeaderFits: Bool = true
-
     /// 560. `TheSplitThresholdFitsThePageItGatesTests` is what re-measures the
     /// floor this sits above; nothing here should be trusted as a number that
     /// stays true on its own.
     ///
-    /// Internal rather than private because `headerBar` needs the same number:
-    /// it is the minimum width the wide page asks for, and the bar asks for it
-    /// on the page's behalf. Read in exactly those two places.
+    /// It was also folded into the page's own header bar, whose width had to
+    /// agree with it; the page's controls are in the window's toolbar now
+    /// (`pageToolbar`) and this is the one boundary there is.
     static let masterAndInspector: CGFloat = 560
 
     /// Below this there is no inspector: one column at full width, and the
     /// description returns to the row, which is where it reads at a pane too
     /// narrow for a second column.
-    ///
-    /// Both conditions, and the `&&` is not redundant belt: the header's answer
-    /// already carries the floor, and this type still has to be able to answer
-    /// for itself when nobody has asked the header.
     var showsInspector: Bool {
-        segmentedHeaderFits && availableWidth >= Self.masterAndInspector
+        availableWidth >= Self.masterAndInspector
     }
 
     /// **Whether the list is the whole pane** — and therefore whether a press

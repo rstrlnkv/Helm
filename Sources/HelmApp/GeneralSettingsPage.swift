@@ -25,6 +25,7 @@ struct MenuBarSettingsView: View {
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
+    @State private var pageBarStyle: PageBarStyle = AppSettings.pageBarStyle
     @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var showPanelEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
@@ -330,6 +331,14 @@ struct MenuBarSettingsView: View {
                     Text(AppStr.interfaceLanguageNote)
                         .font(.system(size: 11))
                         .foregroundStyle(HelmText.quiet)
+                    // Two drafts of the header in the window's toolbar, both in
+                    // this build so they can be lived with rather than looked
+                    // at; one of them is expected to be cut (`PageBarStyle`).
+                    Picker(AppStr.pageBar, selection: $pageBarStyle) {
+                        Text(AppStr.pageBarWindowTitle).tag(PageBarStyle.windowTitle)
+                        Text(AppStr.pageBarModuleName).tag(PageBarStyle.moduleName)
+                    }
+                    .onChange(of: pageBarStyle) { _, choice in AppSettings.pageBarStyle = choice }
                 }
             }
 

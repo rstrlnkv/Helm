@@ -17,6 +17,10 @@ import HelmUI
 /// two places for one subject, and the one a person is told to press when they
 /// report a problem was not the one named after it.
 struct LogView: View {
+    /// Set by the settings window, where the page's header lives in the
+    /// window's toolbar instead of in this stack.
+    @Environment(\.helmPageBar) private var pageBar
+
     /// Where the lines come from, and whether there is a log on disk behind them.
     ///
     /// The app passes the log; the defaults are what every caller uses. They are
@@ -64,9 +68,14 @@ struct LogView: View {
             // `bleeds: true` like every other full-width page: without it the
             // header caps at `HelmLayout.settingsColumn` and centres, which put
             // its icon at x = 53 against the rows' x = 21 on this pane.
-            HelmPageHeader(symbol: "text.alignleft", tint: .gray,
-                           title: AppStr.logPane,
-                           bleeds: true)
+            //
+            // In the settings window the header is in the window's toolbar
+            // (`PageBarStyle`), and this row is not drawn at all.
+            if pageBar == nil {
+                HelmPageHeader(symbol: "text.alignleft", tint: .gray,
+                               title: AppStr.logPane,
+                               bleeds: true)
+            }
             writing
             Divider()
             filters
@@ -75,6 +84,7 @@ struct LogView: View {
             Divider()
             footer
         }
+        .helmPageBar(symbol: "text.alignleft", tint: .gray, title: AppStr.logPane)
         .onAppear {
             refresh()
             // One second: the log is read, not animated, and a person watching

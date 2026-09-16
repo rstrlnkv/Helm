@@ -43,6 +43,18 @@ extension Notification.Name {
         }
     }
 
+    /// Which of the two drafted shapes the page header takes in the window's
+    /// toolbar (`PageBarStyle`). Dev builds only, like `language`: it exists to
+    /// choose between two drafts, and the row that writes it is in the
+    /// developer section.
+    static var pageBarStyle: PageBarStyle {
+        get { PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: "")) }
+        set {
+            store.set(newValue.rawValue, for: PageBarStyle.storageKey)
+            NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
+        }
+    }
+
     /// The language the interface is drawn in, or nil for the Mac's own.
     ///
     /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and

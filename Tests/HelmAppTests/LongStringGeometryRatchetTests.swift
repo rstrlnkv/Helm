@@ -121,8 +121,15 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// construction in each of the eight languages. Eight more readings, and
     /// not one of them a control that stopped fitting: `atFullSize` is still 0,
     /// which is the half of this pair that can fall.
+    ///
+    /// **0 from 2026-09-16, and every one of the forty went the same way.** All
+    /// five segmented controls these renders could see — Homebrew's, the
+    /// Uninstaller's, Leftovers' filter and the hosts page's two — moved into the
+    /// settings window's toolbar, which a module page drawn on its own does not
+    /// have. Not one of them was fixed: they left the field this ratchet looks
+    /// at, and the system lays toolbar items out and overflows them itself.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 40
+    private static let recordedAtFortyPercent = 0
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -214,12 +221,15 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// exact shape CLAUDE.md warns about, a language filtered out of its own
     /// guard.
     ///
-    /// Asserted through a control's own intrinsic width, which is set by the
-    /// text in it: the Uninstaller's segmented control is 161 pt in English and
-    /// 208 in Russian, and a render that ignored the override would answer 161
-    /// twice.
+    /// Asserted through what the page draws, whose sizes are set by the text in
+    /// it: a render that ignored the override would draw English twice.
     func testTheLanguageChangesWhatIsDrawn() {
-        var widths: [String: CGFloat] = [:]
+        // Measured over what the whole page draws rather than one control's
+        // intrinsic width: the Uninstaller's segmented control was that control
+        // — 161 pt in English, 208 in Russian — until it moved into the settings
+        // window's toolbar (2026-09-16). A render that ignored the override
+        // draws the same layers, at the same sizes, in both languages.
+        var drawn: [String: [CGFloat]] = [:]
         for language in [AppLanguage.en, .ru] {
             let previous = AppLanguage.override
             AppLanguage.override = language
@@ -227,12 +237,11 @@ final class LongStringGeometryRatchetTests: XCTestCase {
             let page = ModulePageRender.page(for: uninstaller, in: .aqua,
                                              width: ModulePageRender.pageWidth)
             page.assertItDrewSomething()
-            let segmented = page.controls.first { $0.name.contains("SegmentedControl") }
-            widths[language.rawValue] = segmented?.intrinsic.width ?? 0
+            drawn[language.rawValue] = page.layers.map(\.frame.width).sorted()
         }
-        XCTAssertGreaterThan(widths["en"] ?? 0, 0, "no segmented control was found to compare")
-        XCTAssertNotEqual(widths["en"], widths["ru"],
-                          "English and Russian drew the same control width — "
+        XCTAssertFalse((drawn["en"] ?? []).isEmpty, "no layers were drawn to compare")
+        XCTAssertNotEqual(drawn["en"], drawn["ru"],
+                          "English and Russian drew the same page — "
                           + "the language override is not reaching the page")
     }
 
@@ -341,8 +350,12 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // went with them. The fixture renders pages, not the windows a page can
         // open, so a control that moved out of view here has moved out of this
         // count by definition.
+        // **And no segmented control at all from 2026-09-16.** The five above
+        // left their pages for the settings window's toolbar — the page's tabs
+        // and view modes are the window's controls now, drawn by the toolbar
+        // bridge, which a page rendered on its own in this host never reaches.
         XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
+                               "AppKitSearchField": 1], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

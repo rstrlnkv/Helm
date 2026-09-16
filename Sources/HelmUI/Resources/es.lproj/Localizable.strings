@@ -1191,3 +1191,6 @@
 "Machine" = "Equipo";
 "Tools" = "Herramientas";
 "Copy for a bug report" = "Copiar para un informe de error";
+"Page header" = "Encabezado de página";
+"Window title" = "Título de la ventana";
+"Module icon and name" = "Icono y nombre del módulo";

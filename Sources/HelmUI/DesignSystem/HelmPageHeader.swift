@@ -305,12 +305,42 @@ public extension View {
     /// gets the same 52 pt strip and no scroll edge, because there is no scroll
     /// to be the edge of; a rule there would be the hairline this app measured
     /// away (`ThePageHeaderCarriesNoRuleTests`) under a different name.
+    ///
+    /// **Where the window has a toolbar, the header goes there instead**
+    /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws
+    /// no row in the page at all. `subtitle` is the status said in words, for
+    /// the style that puts it under the window's title; `trailing` is the same
+    /// status as the page draws it, for the other two.
     func helmPageHeader<Trailing: View>(
-        symbol: String, tint: Color, title: String, bleeds: Bool = false,
+        symbol: String, tint: Color, title: String, subtitle: String? = nil, bleeds: Bool = false,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) -> some View {
-        modifier(PageHeaderOverContent(symbol: symbol, tint: tint, title: title,
-                                       bleeds: bleeds, trailing: trailing()))
+        modifier(PageHeaderPlacement(symbol: symbol, tint: tint, title: title, subtitle: subtitle,
+                                     bleeds: bleeds, trailing: trailing()))
+    }
+}
+
+/// The row in the page, or the header in the window's bar — one question,
+/// asked of the environment, so no page has to know which window it is in.
+private struct PageHeaderPlacement<Trailing: View>: ViewModifier {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let subtitle: String?
+    let bleeds: Bool
+    let trailing: Trailing
+
+    @Environment(\.helmPageBar) private var bar
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if bar == nil {
+            content.modifier(PageHeaderOverContent(symbol: symbol, tint: tint, title: title,
+                                                   bleeds: bleeds, trailing: trailing))
+        } else {
+            content.modifier(PageBarContent(symbol: symbol, tint: tint, title: title,
+                                            subtitle: subtitle, trailing: trailing))
+        }
     }
 }
 

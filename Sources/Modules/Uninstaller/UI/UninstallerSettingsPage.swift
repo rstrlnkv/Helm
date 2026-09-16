@@ -59,59 +59,59 @@ struct UninstallerSettingsPage: View {
             }
     }
 
+    /// **The page's switcher and Refresh, in the window's toolbar**, where
+    /// macOS 26 and later draw them as Liquid Glass: the switcher as a capsule
+    /// centred over this page, Refresh as a glass circle at the trailing edge.
+    ///
+    /// They were one row of the page with the search field between them. The
+    /// segmented control carries no width of its own, for the reason it never
+    /// did — it sizes itself from its labels, and a fixed number was slack in
+    /// some languages and a squeeze in others — and it is still disabled while
+    /// a removal is being reviewed, when switching tabs would abandon it.
+    @ToolbarContentBuilder
+    private var pageToolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Picker(HelmA11y.whatToShow, selection: $tab) {
+                Text(UnStr.tabApps).tag(0)
+                Text(UnStr.tabOrphans).tag(1)
+            }
+            .pickerStyle(.segmented).labelsHidden()
+            .disabled(step == .review)
+        }
+        // Only on the Apps tab: Orphans has its own scan and its own Rescan
+        // button, so here this spun an icon and changed nothing the user could
+        // see.
+        if tab == 0 {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    Task { await refreshApps() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .helmSteadySpin(loading)
+                }
+                .disabled(loading)
+                .help(UnStr.refreshList)
+                .accessibilityLabel(UnStr.refreshList)
+            }
+        }
+    }
+
     private var pageBody: some View {
         // The module had no motion at all: three steps and two lists, and
         // moving between them — or losing the app you just removed — happened
         // in a single frame. One token on the three things that change, the
         // same one the other list screens use.
         VStack(spacing: 0) {
-            // One toolbar row instead of a metric panel, a segmented row and a
-            // search row stacked on top of each other.
-            HStack(spacing: HelmSpace.s5) {
-                Picker(HelmA11y.whatToShow, selection: $tab) {
-                    Text(UnStr.tabApps).tag(0)
-                    Text(UnStr.tabOrphans).tag(1)
-                }
-                .pickerStyle(.segmented).labelsHidden()
-                // No width, because a segmented control sizes itself from its own
-                // labels and never stretches past that — so a fixed number is
-                // slack in the languages below it and a squeeze in the ones
-                // above. 200 was both: 39 pt of slack in English, where the
-                // control drew itself at x=39.5, indented from the 20 pt every
-                // row below it starts at, and 8 pt short in Russian, where AppKit
-                // took the difference out of the segments' padding until
-                // «Приложения» sat against the edge of its pill. A bigger number
-                // would only move which language pays.
-                .disabled(step == .review)
-
-                if tab == 0 && step == .pick {
-                    HelmSearchField(text: $search, placeholder: UnStr.searchApps)
-                        .frame(height: 22)
-                }
-                Spacer(minLength: 0)
-                // Only on the Apps tab: Orphans has its own scan and its own
-                // Rescan button, so here this spun an icon and changed nothing
-                // the user could see.
-                if tab == 0 {
-                Button {
-                    Task { await refreshApps() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        // Was `.rotationEffect(.degrees(loading ? 360 : 0))`,
-                        // which is geometrically a no-op — and nothing wrapped
-                        // the mutation in an animation either, so the button
-                        // sat perfectly still through every reload.
-                        .helmSteadySpin(loading)
-                }
-                .buttonStyle(.borderless)
-                .disabled(loading)
-                .help(UnStr.refreshList)
-                .accessibilityLabel(UnStr.refreshList)
-                }
+            // The switcher and Refresh are in the window's toolbar
+            // (`pageToolbar`); what stays in the page is the one control that
+            // belongs to the list under it, and only while there is a list of
+            // apps to narrow.
+            if tab == 0 && step == .pick {
+                HelmSearchField(text: $search, placeholder: UnStr.searchApps)
+                    .frame(height: 22)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                Divider()
             }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-
-            Divider()
 
             // Page level: the user used to tick apps, sit through a scan and
             // only then learn the removal would be refused.
@@ -134,6 +134,7 @@ struct UninstallerSettingsPage: View {
                 OrphansView(uvm: uvm)
             }
         }
+        .toolbar { pageToolbar }
         .animation(HelmMotion.interface, value: step)
         .animation(HelmMotion.interface, value: tab)
         .animation(HelmMotion.interface, value: apps.count)

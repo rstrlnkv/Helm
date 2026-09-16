@@ -223,13 +223,9 @@ final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
     /// This is the width the inspector is squeezed hardest at, and the one where
     /// a centring that behaved like a padding would show first: the column fills
     /// the pane, so both gaps are the block's own padding and neither grew.
-    /// **Asked in English, named rather than inherited.** The page takes its
-    /// wide shape at one boundary now, and that boundary is `max(560, what the
-    /// segmented bar needs in this language)` — 593 pt in Russian, which this
-    /// Mac runs in, so a bare mount at 560 draws the one-column page and there
-    /// is no inspector to measure a column inside. English is the language
-    /// whose bar fits under every reachable pane;
-    /// `ThePageReorganisesOnceTests` is what checks the boundary in all eight.
+    /// **Asked in English, named rather than inherited** — a bare mount reads
+    /// whatever language this Mac is set to. The boundary is `HomebrewSplit`'s
+    /// width alone since the page's switcher moved into the window's toolbar.
     func testAtTheThresholdTheColumnStillFillsTheInspector() async {
         await AppLanguage.only(.en) { await atTheThresholdTheColumnStillFillsTheInspector() }
     }
