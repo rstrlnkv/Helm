@@ -44,6 +44,26 @@ public enum HelmA11y {
     public static var whatToShow: String {
         L("What to show")
     }
+    /// The search field (`HelmSearchField`), which had no name at all.
+    ///
+    /// **A placeholder is not a name**, and this one is the house rule read from
+    /// the other end: «Search formulae and casks» disappears the moment there is
+    /// a value, so the field was anonymous exactly while somebody was using it.
+    /// AppKit does not promote it either — measured on a bare `NSSearchField`,
+    /// `accessibilityLabel()` is nil with the field empty **and** nil with a word
+    /// typed into it, so the label is ours to set.
+    ///
+    /// **The word is «Search» and nothing longer.** VoiceOver already says the
+    /// role — "search field" — so a label spelling the role again reads as
+    /// "search field search field". This is the same key the Homebrew segment
+    /// draws, which is deliberate rather than an accident of the lookup: the
+    /// English text *is* the key, so a second key reading «Search» is not
+    /// representable, and the eight translations of that one word are the word
+    /// macOS itself uses for this control in each of them.
+    public static var searchField: String {
+        L("Search")
+    }
+
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
     /// rotor gets `.isButton` and nothing else — so the state has to be said,
     /// and a control whose whole purpose is to open and close must say it.
