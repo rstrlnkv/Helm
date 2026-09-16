@@ -45,6 +45,14 @@ enum HbStr {
     static var stillNeededBy: String { L("Other installed packages still need it:") }
     static var cancel: String { L("Cancel") }
     static var uninstall: String { L("Uninstall") }
+    /// **The Uninstall button, as opposed to the dialog's own Uninstall.**
+    ///
+    /// The ellipsis is the Mac's convention and it carries a fact: pressing
+    /// this does not remove anything, it asks. The dialog's confirming button
+    /// does the removing and keeps the bare word. One key means one thing, so
+    /// the two are two keys — and a translation cannot put the mark on the
+    /// wrong one of them.
+    static var uninstallAsking: String { L("Uninstall…") }
     static var upgrade: String { L("Upgrade") }
     static var upgradeAll: String { L("Upgrade all") }
 
@@ -343,6 +351,10 @@ enum HbStr {
     /// column, measured 2026-09-15. The approved drawing this module was built
     /// from draws the verb alone.
     static var runTheFix: String { L("Run") }
+    /// Run, when pressing it raises a question first — `uninstallAsking`'s
+    /// reason. Not for `brew cleanup`, which runs on the press:
+    /// `HomebrewSettingsPage.runLabel` is where the two are told apart.
+    static var runTheFixAsking: String { L("Run…") }
     /// The question a press on Run raises when the command is one this build
     /// has no sentence for — `FixAsk.unrecognised`, which nothing on
     /// `DoctorFix.Allowed` reaches today and which a third entry added without

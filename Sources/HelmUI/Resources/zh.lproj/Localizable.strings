@@ -576,6 +576,7 @@
 "Type ghbdtn and press space" = "输入 ghbdtn 后按空格";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "用错布局输入 ghbdtn，它会变成 привет，输入法也随之切换。";
 "Uninstall" = "卸载";
+"Uninstall…" = "卸载…";
 "Uninstaller" = "卸载器";
 "Unknown" = "未知";
 "Unreadable" = "无法读取";
@@ -1180,6 +1181,7 @@
 "Helm reads this as" = "Helm 将其理解为";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew 在这里没有给出任何命令，它只说明了问题所在。上面那行是 Helm 自己的解读。";
 "Run" = "运行";
+"Run…" = "运行…";
 "Copy" = "复制";
 "Helm does not run this one. It is here to read and to copy." = "这一条 Helm 不会执行。它放在这里是供你阅读和复制的。";
 "Helm checked the command again and would not run it." = "Helm 重新检查了该命令，没有执行它。";

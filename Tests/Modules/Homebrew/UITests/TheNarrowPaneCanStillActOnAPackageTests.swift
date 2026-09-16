@@ -37,7 +37,7 @@ import HelmUI
 /// **Why runtime and not a source scan.** Which screen draws is a function of a
 /// width and a selection, and the whole defect is that one branch could offer
 /// nothing, or two branches could each decide on their own — a scan reading
-/// `HomebrewSettingsPage.swift` finds `Button(HbStr.uninstall)` in the file and
+/// `HomebrewSettingsPage.swift` finds `HbStr.uninstallAsking` in the file and
 /// cannot say which widths and which selections reach it.
 @MainActor
 final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
@@ -409,8 +409,11 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
         AppLanguage.each { language in
             guard found == nil else { return }
             let table: [InspectorSubject.Action: [CGFloat]] = [
-                .uninstall: [ControlMetrics.button(HbStr.uninstall),
-                             ControlMetrics.smallButton(HbStr.uninstall)],
+                // The word the inspector's button draws, which carries the
+                // ellipsis of a press that asks first — not the dialog's own
+                // bare «Uninstall», which is a different button on a sheet.
+                .uninstall: [ControlMetrics.button(HbStr.uninstallAsking),
+                             ControlMetrics.smallButton(HbStr.uninstallAsking)],
                 .upgrade: [ControlMetrics.button(HbStr.upgrade),
                            ControlMetrics.smallButton(HbStr.upgrade)],
                 .install: [ControlMetrics.button(HbStr.install),

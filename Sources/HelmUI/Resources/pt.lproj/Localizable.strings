@@ -576,6 +576,7 @@
 "Type ghbdtn and press space" = "Digite ghbdtn e aperte espaço";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Digite ghbdtn no layout errado e vira привет, com a fonte de entrada acompanhando.";
 "Uninstall" = "Desinstalar";
+"Uninstall…" = "Desinstalar…";
 "Uninstaller" = "Desinstalador";
 "Unknown" = "Desconhecido";
 "Unreadable" = "Ilegível";
@@ -1180,6 +1181,7 @@
 "Helm reads this as" = "O Helm interpreta assim";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "O Homebrew não indicou aqui nenhum comando: disse o que está errado e ficou por aí. A linha acima é a leitura que o Helm faz disso.";
 "Run" = "Executar";
+"Run…" = "Executar…";
 "Copy" = "Copiar";
 "Helm does not run this one. It is here to read and to copy." = "O Helm não executa este comando. Está aqui para ser lido e copiado.";
 "Helm checked the command again and would not run it." = "O Helm verificou o comando de novo e não o executou.";

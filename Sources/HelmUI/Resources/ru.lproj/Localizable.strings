@@ -576,6 +576,7 @@
 "Type ghbdtn and press space" = "Наберите ghbdtn и нажмите пробел";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Набрали ghbdtn, забыв переключить раскладку, — Helm заменит это на «привет» и переключит раскладку сам.";
 "Uninstall" = "Удалить";
+"Uninstall…" = "Удалить…";
 "Uninstaller" = "Удаление приложений";
 "Unknown" = "Неизвестно";
 "Unreadable" = "Не читается";
@@ -1180,6 +1181,7 @@
 "Helm reads this as" = "Helm читает это так";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew не назвал здесь никакой команды — он сказал, что не так, и на этом остановился. Строка выше — это то, как её прочитал сам Helm.";
 "Run" = "Выполнить";
+"Run…" = "Выполнить…";
 "Copy" = "Скопировать";
 "Helm does not run this one. It is here to read and to copy." = "Helm сам её не выполняет. Она здесь для того, чтобы её прочитать и скопировать.";
 "Helm checked the command again and would not run it." = "Helm проверил команду ещё раз и выполнять её не стал.";

@@ -576,6 +576,7 @@
 "Type ghbdtn and press space" = "Type ghbdtn and press space";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.";
 "Uninstall" = "Uninstall";
+"Uninstall…" = "Uninstall…";
 "Uninstaller" = "Uninstaller";
 "Unknown" = "Unknown";
 "Unreadable" = "Unreadable";
@@ -1180,6 +1181,7 @@
 "Helm reads this as" = "Helm reads this as";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that.";
 "Run" = "Run";
+"Run…" = "Run…";
 "Copy" = "Copy";
 "Helm does not run this one. It is here to read and to copy." = "Helm does not run this one. It is here to read and to copy.";
 "Helm checked the command again and would not run it." = "Helm checked the command again and would not run it.";

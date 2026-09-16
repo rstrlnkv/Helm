@@ -697,6 +697,20 @@ struct HomebrewSettingsPage: View {
         }
     }
 
+    /// **What the Run button says: whether a question comes before the act.**
+    ///
+    /// The ellipsis is the Mac's own mark for a control that opens something
+    /// rather than doing it, and `FixAsk` is what knows which of the two this
+    /// press is — so the mark is read off the same answer that decides whether
+    /// the dialog is raised, and cannot claim a question that never comes.
+    /// `brew cleanup` runs on the press and keeps the bare word.
+    static func runLabel(_ fix: DoctorFix) -> String {
+        switch FixAsk.of(fix.argv) {
+        case .runsOnThePress: return HbStr.runTheFix
+        case .uninstalls, .unrecognised: return HbStr.runTheFixAsking
+        }
+    }
+
     /// The second sentence, and only where there is one to say: a heading over
     /// a reassurance nobody checked is `stillNeededBy`'s own lesson.
     static func fixQuestionNote(_ fix: DoctorFix) -> String? {
@@ -1119,7 +1133,7 @@ struct HomebrewSettingsPage: View {
                     // carries what a person can actually see; the role stays
                     // because it is still what this button means.
                     Button(role: .destructive) { hb.askToRunFix(fix) } label: {
-                        Text(HbStr.runTheFix).helmDestructive()
+                        Text(Self.runLabel(fix)).helmDestructive()
                     }
                     .disabled(hb.running)
                     .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
@@ -1169,7 +1183,7 @@ struct HomebrewSettingsPage: View {
                 // removed a cask — an app — on a single click.
                 Task { await hb.askToUninstall(pkg) }
             } label: {
-                Text(HbStr.uninstall).helmDestructive()
+                Text(HbStr.uninstallAsking).helmDestructive()
             }
             .disabled(hb.running)
         case .upgrade:
