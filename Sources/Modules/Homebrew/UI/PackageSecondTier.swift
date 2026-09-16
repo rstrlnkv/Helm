@@ -48,7 +48,7 @@ struct PackageSecondTier: View {
     /// every block on the screen.
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            factTiles
+            facts
             origin
             notes
             if !info.dependencies.isEmpty {
@@ -60,73 +60,51 @@ struct PackageSecondTier: View {
         }
     }
 
-    /// The narrowest a fact tile may be drawn, which is also what decides how
-    /// many go across.
+    /// **The facts, as the rows of one grouped card: label leading, value
+    /// trailing** — the shape macOS itself uses for exactly this, in System
+    /// Settings' own «About» and in every grouped `Form`.
     ///
-    /// **Derived from the narrowest inspector this module ever draws, not
-    /// chosen.** Measured 2026-09-15 at `HomebrewSplit`'s own threshold, where
-    /// the master compresses and the inspector is squeezed hardest: 244 pt of
-    /// content. That is the narrow end of the whole span this has to cover — the
-    /// wide end is `HelmLayout.readingColumn`, since nothing in the inspector
-    /// grows past it any more.
+    /// It was a `LazyVGrid` of adaptive tiles, label over value, each in a well
+    /// of its own. The grid needed a measured minimum to decide how many went
+    /// across (114 pt, solved against the framework's own inequality at the
+    /// narrowest inspector), and still gave a French label two lines at that
+    /// width; and a column of wells side by side read as a set of controls
+    /// rather than as statements about one package. Rows need no such number:
+    /// there is one of them per fact at every width, and the only thing the
+    /// width decides is whether a long value takes a second line.
     ///
-    /// **And the arithmetic is the framework's, not the obvious one.** A
-    /// `LazyVGrid` of adaptive columns fits `floor(available / (minimum +
-    /// spacing))` of them rather than solving for the gaps it will actually
-    /// draw: measured at that 244 pt, a minimum of 118 with an 8 pt gap drew
-    /// **one** column — a 243 pt tile holding `3.6.4`, which is the complaint
-    /// this change exists to answer — where 2 × 118 + 8 ≤ 244 says two. So the
-    /// minimum solves the framework's inequality instead: 244 / 2 − 8 = 114,
-    /// which draws two there and three at the reading column.
+    /// **The label recedes and the value does not**, which is the hierarchy the
+    /// tiles already had and the mockup inverted by accident. The person came
+    /// for «3.6.4», not for «Installed version».
     ///
-    /// **What it does not buy is a label on one line at that narrow end, and
-    /// that is the trade taken deliberately.** At the faces these draw in on
-    /// macOS 27 — `.caption2` for the label, `.subheadline` for the value — the
-    /// widest Latin label is the French «Comment il est arrivé» at 105.2 pt and
-    /// the widest value the French «comme dépendance» at 106.3, which with this
-    /// tile's own 8 pt each side want 121.2 and 122.3. So those two wrap in a
-    /// 114 pt tile and nowhere else, since every wider measure gives the column
-    /// 142 pt or more; one wrapped line at the narrowest inspector is the
-    /// cheaper of the two prices. The Japanese label is wider still (137.7 pt)
-    /// and is not a case to size for at all: Japanese breaks between characters,
-    /// so it wraps happily at any width a Latin label survives.
-    private static let tileMinimum: CGFloat = 114
-
-    /// The tile grid: label over value, as the approved artboard draws them.
-    /// (No path: the drawing is the owner's scratch, untracked, so naming a file
-    /// here is a citation no checkout can follow.)
-    ///
-    /// A `LazyVGrid` rather than a fixed pair of `HStack`s, because the number
-    /// of tiles is four, three, two, one or none depending on what brew
-    /// answered, and a hand-built row of two has to know which case it is in.
-    /// `PackageFacts` is the one that decides.
-    ///
-    /// **Adaptive, not two flexible columns.** Two flexible columns divide
-    /// whatever they are given, so the tiles were a function of the window
-    /// rather than of what is in them: measured 2026-09-15 at the pane the app
-    /// draws, a tile holding `2.11.4` came out 308 pt wide — six characters in a
-    /// box a third of the window. Adaptive sizes the *columns* instead and fits
-    /// as many as the measure holds: three across at `HelmLayout.readingColumn`,
-    /// fewer as the inspector narrows, one when there is only room for one.
+    /// The value may wrap and keeps to the trailing edge when it does:
+    /// measured 2026-09-15, the widest pair is French at 105.2 pt of label and
+    /// 106.3 of value, which with the row's own gaps is a few points more than
+    /// the 244 pt inspector at `HomebrewSplit`'s threshold. One wrapped value in
+    /// one language at one width is the price, and the same one the tiles paid.
     @ViewBuilder
-    private var factTiles: some View {
-        let tiles = PackageFacts.of(info, size: size)
-        if !tiles.isEmpty {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.tileMinimum),
-                                         spacing: HelmSpace.s4)],
-                      alignment: .leading, spacing: HelmSpace.s4) {
-                ForEach(tiles, id: \.label) { tile in
-                    VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                        Text(tile.label).font(.caption2).foregroundStyle(HelmText.faint)
-                        Text(tile.value).font(HelmText.rowDetail)
+    private var facts: some View {
+        let rows = PackageFacts.of(info, size: size)
+        if !rows.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.label) { index, row in
+                    if index > 0 {
+                        // Inset to the text, the way a grouped `Form` draws
+                        // its own: a rule across the card's whole width reads
+                        // as the card being cut in two.
+                        Divider().padding(.leading, HelmSpace.s5)
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
+                        Text(row.label).foregroundStyle(HelmText.quiet)
+                        Spacer(minLength: 0)
+                        Text(row.value)
+                            .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s3)
-                    .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                        .fill(HelmSurface.wellFill))
+                    .padding(.horizontal, HelmSpace.s5).padding(.vertical, HelmSpace.s3)
                 }
             }
+            .helmCard(padding: 0)
         }
     }
 
@@ -141,7 +119,7 @@ struct PackageSecondTier: View {
     /// text.
     @ViewBuilder
     private var origin: some View {
-        // Collapsed to nothing rather than drawn empty, the way `factTiles`
+        // Collapsed to nothing rather than drawn empty, the way `facts`
         // above is: a `VStack`'s step is not paid around an absent child, and an
         // `HStack` of nothing is a child. `PackageBlocks` is the one that
         // decides, so a test can read the answer.
@@ -184,7 +162,7 @@ struct PackageSecondTier: View {
         // asked for by name and have no other version lines, which is an empty
         // `VStack` on the commonest screen in the module.
         if PackageBlocks.hasNotes(info) {
-            VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 if let reason = info.deprecationReason {
                     // Three sentences, and the third only when Homebrew named a
                     // replacement: "nothing was offered instead" is worth saying
@@ -194,27 +172,33 @@ struct PackageSecondTier: View {
                     let said = HbStr.deprecated + " " + HbStr.deprecationReason(reason)
                     HelmBanner(info.replacement.map { said + " " + HbStr.useInstead($0) } ?? said)
                 }
-                if info.installedOnRequest == false {
-                    quietNote(HbStr.cameAsDependency)
-                }
-                if !info.siblings.isEmpty {
-                    quietNote(HbStr.otherVersionLines(info.siblings.joined(separator: ", ")))
+                let quiet = quietNotes
+                if !quiet.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(quiet.enumerated()), id: \.offset) { index, text in
+                            if index > 0 { Divider().padding(.leading, HelmSpace.s5) }
+                            Text(text)
+                                .foregroundStyle(HelmText.quiet)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, HelmSpace.s5).padding(.vertical, HelmSpace.s3)
+                        }
+                    }
+                    .helmCard(padding: 0)
                 }
             }
         }
     }
 
-    /// A fact about the package in a field of its own, at the same radius and
-    /// the same fill the tiles use — so the tier reads as one surface rather
-    /// than as a grid and then some loose sentences.
-    private func quietNote(_ text: String) -> some View {
-        Text(text)
-            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s3)
-            .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                .fill(HelmSurface.wellFill))
+    /// The two notes that are facts about the package rather than warnings
+    /// about it, in the order they are drawn.
+    private var quietNotes: [String] {
+        var out: [String] = []
+        if info.installedOnRequest == false { out.append(HbStr.cameAsDependency) }
+        if !info.siblings.isEmpty {
+            out.append(HbStr.otherVersionLines(info.siblings.joined(separator: ", ")))
+        }
+        return out
     }
 
     /// A heading and a wrapping row of pills — the dependencies.
@@ -224,12 +208,16 @@ struct PackageSecondTier: View {
     /// `node` answers with eight names in a column that is 260 pt at its
     /// narrowest.
     private func chips(_ heading: String, _ names: [String]) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s2) {
-            Text(heading).font(.caption2).foregroundStyle(HelmText.faint)
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            HelmSectionTitle(heading)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.leading, HelmSpace.s5)
             HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
                             alignment: .leading) {
                 ForEach(names, id: \.self) { HelmBadge($0) }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .helmCard(padding: HelmSpace.s5)
         }
     }
 
@@ -238,10 +226,14 @@ struct PackageSecondTier: View {
     /// Monospaced and kept whole, because it is the tool's own text and usually
     /// carries a path or a command somebody has to copy — re-flowing it would
     /// change what it says, and `textSelection` is what makes copying possible
-    /// at all. Its own well, at the tiles' radius.
+    /// at all. In a card of its own under the house's section title, the same
+    /// surface as the facts above it rather than a recessed well — it is
+    /// something to read, not something to type into.
     private func caveatsBlock(_ caveats: String) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s2) {
-            Text(HbStr.packageNotes).font(.caption2).foregroundStyle(HelmText.faint)
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            HelmSectionTitle(HbStr.packageNotes)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.leading, HelmSpace.s5)
             Text(caveats)
                 // A text *style* rather than a frozen 11 pt: it resolves to the
                 // same 11 at the default setting and follows the system text
@@ -253,9 +245,7 @@ struct PackageSecondTier: View {
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(HelmSpace.s4)
-                .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                    .fill(HelmSurface.wellFill))
+                .helmCard(padding: HelmSpace.s5)
         }
     }
 }

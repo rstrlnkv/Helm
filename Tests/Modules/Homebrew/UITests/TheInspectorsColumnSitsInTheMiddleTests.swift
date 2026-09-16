@@ -10,7 +10,7 @@ import HelmUI
 /// **Once the inspector's content is capped, the slack belongs to both sides.**
 ///
 /// `HelmLayout.readingColumn` bounds what the package view draws to 444 pt so a
-/// tile holding `3.6.4` is not a third of the window wide. That left the pane
+/// fact reading `3.6.4` is not a third of the window wide. That left the pane
 /// wider than the column, and the block sat against the leading edge: measured
 /// 2026-09-16 at the 984 pt pane the app draws, the column was 347…791 inside a
 /// 335…984 inspector — 193 pt of empty pane down one side and 12 down the other.
@@ -27,10 +27,12 @@ import HelmUI
 /// exactly as wide as it was», because the narrow branch is where the page can
 /// least afford a new inset.
 ///
-/// **The instrument is the fact tiles' own wells.** They are `RoundedRectangle`
-/// fills, which become `CALayer`s with a corner radius, and the grid they sit in
-/// spans the bounded column — so the leftmost and rightmost of them are the
-/// column's own edges, read in the host's coordinate space. Frames are converted
+/// **The instrument is the facts' own card.** `helmCard` is a
+/// `RoundedRectangle` fill, which becomes a `CALayer` with the card's corner
+/// radius, and the card spans the bounded column — so its two edges are the
+/// column's own, read in the host's coordinate space. (It was the fact tiles'
+/// wells, at the control radius, until the facts became rows of one card; the
+/// leftmost and rightmost of those were the same two edges.) Frames are converted
 /// through the **layer** tree: a layer's `frame` is in its superlayer's space,
 /// and asking an `NSView` to convert it instead reads a number that happens to
 /// look plausible and moves with the wrong thing (found here by a reading that
@@ -39,7 +41,7 @@ import HelmUI
 final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
 
     /// One installed formula and everything the package view needs to draw its
-    /// second tier — the tiles are the instrument, so a fixture that earns none
+    /// second tier — the facts' card is the instrument, so a fixture that earns none
     /// would leave every case below measuring nothing.
     private final class Cellar: EngineTransport, @unchecked Sendable {
         private let stream = AsyncStream<EngineEvent>.makeStream()
@@ -113,21 +115,21 @@ final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
             return nil
         }
 
-        var tiles: [CGRect] = []
+        var cards: [CGRect] = []
         func walk(_ layer: CALayer) {
-            if abs(layer.cornerRadius - HelmRadius.ctl) < 0.01 {
+            if abs(layer.cornerRadius - HelmRadius.card) < 0.01 {
                 let frame = layer.convert(layer.bounds, to: root)
                 // **Inside the pane in both directions.** This asked only about
                 // x, and a control *above* the pane shares its x range: the
-                // segment switcher's own bezel carries this radius and is wider
-                // than 100 pt, so the day the bar drew a menu instead of
-                // segments the leftmost «tile» was the picker at x = 20 and the
-                // column read 452 pt where it is 444. The vertical centre rather
-                // than the whole frame, because a tile inside a scroll view may
+                // segment switcher's own bezel was wider than 100 pt, so the
+                // day the bar drew a menu instead of segments the leftmost
+                // reading was the picker at x = 20 and the column read 452 pt
+                // where it is 444. The vertical centre rather
+                // than the whole frame, because a card inside a scroll view may
                 // be clipped by it and still be one of ours.
                 if frame.minX >= pane.minX, frame.maxX <= pane.maxX, frame.width > 100,
                    frame.midY >= pane.minY, frame.midY <= pane.maxY {
-                    tiles.append(frame)
+                    cards.append(frame)
                 }
             }
             layer.sublayers?.forEach(walk)
@@ -135,13 +137,13 @@ final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
         walk(root)
 
         // The subject, before anything about where it sits: a fixture that
-        // earned no tiles would make every measurement below read zero, and a
+        // earned no card would make every measurement below read zero, and a
         // rule about two equal gaps is satisfied by no column at all.
-        guard let low = tiles.map(\.minX).min(), let high = tiles.map(\.maxX).max(),
-              tiles.count >= 2 else {
+        guard let low = cards.map(\.minX).min(), let high = cards.map(\.maxX).max(),
+              !cards.isEmpty else {
             XCTFail("""
-                the package view drew \(tiles.count) fact tiles at \(width) pt, where this \
-                fixture earns four — there is nothing here whose position could be measured
+                the package view drew no facts card at \(width) pt, where this fixture earns \
+                four facts — there is nothing here whose position could be measured
                 """, file: file, line: line)
             return nil
         }
