@@ -170,7 +170,15 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     ///
     /// A threshold that gates nothing would pass the test above at every width.
     /// Below it and with nothing selected there is one column, so the list runs
-    /// to the pane's own 12 pt inset rather than stopping at a 310 pt master.
+    /// to the pane's own trailing edge rather than stopping at a 310 pt master.
+    ///
+    /// **It read `width - 12` until 2026-09-16**, and the 12 was this page's own
+    /// extra `.padding(.horizontal, HelmSpace.s5)` on top of `.listStyle(.inset)`
+    /// — an inset no other list in the app had, which put these rows 28 pt from
+    /// the pane where every other list screen's sit at 16. The list is flush with
+    /// its pane now, and the reading discriminates exactly as it did: above the
+    /// threshold the master stops at `HomebrewSplit.masterWidth`, which is
+    /// nowhere near the pane's edge.
     ///
     /// **Nothing selected, unlike the test above.** Below the threshold a
     /// selection now replaces the list with the package screen rather than
@@ -183,10 +191,11 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
         guard let list = picked.lists.first else {
             return XCTFail("no list drew at \(width) pt, so no column was measured")
         }
-        XCTAssertEqual(list.maxX, width - 12, accuracy: 1, """
-            at \(width) pt the list runs to x = \(list.maxX) where a single column inset 12 pt \
-            ends at \(width - 12) — the split branch is still the one drawing below its own \
-            threshold, or the inset has moved and the reading above is measuring something else
+        XCTAssertEqual(list.maxX, width, accuracy: 1, """
+            at \(width) pt the list runs to x = \(list.maxX) where a single column flush with \
+            its pane ends at \(width) — the split branch is still the one drawing below its own \
+            threshold, or the list has taken an inset of its own again and the reading above is \
+            measuring something else
             """)
     }
 }
