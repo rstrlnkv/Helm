@@ -1149,6 +1149,7 @@
 "you asked for it" = "你自己要求的";
 "as a dependency" = "作为依赖装上的";
 "Version" = "版本";
+"Package" = "软件包";
 "Licence" = "许可证";
 "On disk" = "磁盘上的大小";
 "Counting…" = "计算中…";

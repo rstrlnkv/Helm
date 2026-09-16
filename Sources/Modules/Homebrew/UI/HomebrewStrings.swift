@@ -233,6 +233,10 @@ enum HbStr {
     /// What Homebrew would install now — the only version a package that is not
     /// installed has anywhere in this module.
     static var tileVersion: String { L("Version") }
+    /// The heading over the names in a package list. «Package» and not
+    /// «Name»: the column is the package, of which the name is the handle, and
+    /// «Name» is already Autopilot's word for what a person calls a rule.
+    static var columnPackage: String { L("Package") }
     static var tileLicence: String { L("Licence") }
     /// How much disk the installed package occupies. **Walked, not read**:
     /// `brew info --json=v2` carries no size in either direction, so this tile

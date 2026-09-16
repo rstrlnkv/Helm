@@ -1149,6 +1149,7 @@
 "you asked for it" = "по вашей просьбе";
 "as a dependency" = "как зависимость";
 "Version" = "Версия";
+"Package" = "Пакет";
 "Licence" = "Лицензия";
 "On disk" = "На диске";
 "Counting…" = "Считаем…";

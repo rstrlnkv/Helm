@@ -744,7 +744,10 @@ struct HomebrewSettingsPage: View {
     private func installedList(singleColumn: Bool) -> some View {
         listOrEmpty(hb.installed, reading: hb.installedReading,
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
-                    waiting: HbStr.packagesLoading) { pkg in
+                    waiting: HbStr.packagesLoading,
+                    columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
+                                         marksUpdates: true),
+                    singleColumn: singleColumn) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
                    hasUpdate: hasUpdate(pkg.id),
                    desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
@@ -758,7 +761,10 @@ struct HomebrewSettingsPage: View {
             // there rather than drawn only here.
             listOrEmpty(hb.outdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
-                        waiting: HbStr.checkingForUpdates) { pkg in
+                        waiting: HbStr.checkingForUpdates,
+                        columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
+                                             marksUpdates: false),
+                        singleColumn: singleColumn) { pkg in
                 // A pinned formula and a cask can both carry a badge here — the
                 // parser does not refuse a `pinned` flag on a cask entry, even
                 // though `brew pin` only ever sets one on a formula
@@ -788,7 +794,13 @@ struct HomebrewSettingsPage: View {
             } else {
                 listOrEmpty(hb.searchHits, reading: hb.searchReading,
                             nothing: HbStr.noResults, unanswerable: HbStr.couldNotSearch,
-                            waiting: HbStr.searching) { hit in
+                            waiting: HbStr.searching,
+                            // No version column: `brew search` answers names
+                            // and nothing else, so a «Version» heading here
+                            // would stand over a column that is always empty.
+                            columns: ListColumns(leading: HbStr.columnPackage, trailing: nil,
+                                                 marksUpdates: false),
+                            singleColumn: singleColumn) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
                            alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
                                                                               installed: hb.installed) != nil,
@@ -1331,8 +1343,10 @@ struct HomebrewSettingsPage: View {
 
     // MARK: - Row helpers
 
-    /// A row of the master list — no button, at any width
-    /// (`design/Main.dc.html:86-98`): `dot · name(ellipsis) · badge · trailing`.
+    /// A row of the master list — no button, at any width:
+    /// `mark · name · badges … version · chevron`. (No path to the drawing: it
+    /// is the owner's scratch and untracked, so a line number into it is a
+    /// citation no checkout can follow, and it was redrawn since.)
     /// The one place an action ever draws is `packageDetail`, whether it sits
     /// beside this list or replaces it — selecting a row is what reaches it,
     /// which is the only way a selectable `List` row and a button never fight
@@ -1370,9 +1384,9 @@ struct HomebrewSettingsPage: View {
                 // the orange — had a marker that differs from "no marker" by
                 // hue alone. The arrow is `packageDetail`'s own symbol for this
                 // same fact, so the row and the package screen say it one way.
-                Image(systemName: "arrow.up.circle.fill")
-                    .foregroundStyle(HelmSignal.warning)
+                Image(systemName: Self.updateMarkSymbol)
                     .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmSignal.warning)
                     .accessibilityLabel(HbStr.updateAvailable)
                     // Kept in the layout and taken out of both readings when
                     // there is nothing to say: invisible, and not an element
@@ -1392,17 +1406,63 @@ struct HomebrewSettingsPage: View {
                     if isCask { HelmBadge(HbStr.cask, tint: .purple) }
                     if pinned { HelmBadge(HbStr.pinned) }
                     if alreadyInstalled { HelmBadge(HbStr.alreadyInstalled) }
-                    if let detail { Text(detail).font(.caption2).foregroundStyle(HelmText.quiet) }
                 }
                 if let desc {
                     Text(desc).font(.caption2).foregroundStyle(HelmText.quiet).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
+            // **A column, not a word after the name.** Inline, every version
+            // began wherever its name happened to end, so a list of them could
+            // not be read down — and «26.8.2 → 26.9.0» is exactly what a person
+            // scans the updates list for. At the trailing edge they line up
+            // under the column's own heading (`columnHeader`), in figures that
+            // do not jump as they change.
+            if let detail {
+                Text(detail).font(HelmText.figureFont).foregroundStyle(HelmText.quiet)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+            }
             goesToItsOwnScreen(singleColumn)
         }
         .helmListRow()
         .helmOpensAScreen(singleColumn)
+    }
+
+    /// The update mark's symbol — named once because the heading over the
+    /// installed list reserves exactly its width (`columnHeader`), and a
+    /// heading that reserved a different glyph's would put «Package» a point or
+    /// two off the names under it. The symbol and not a built view: the row's
+    /// mark has to stay an `Image` at its own call site, which is what
+    /// `TheRowsUpdateMarkerIsMoreThanAColourTests` reads.
+    static let updateMarkSymbol = "arrow.up.circle.fill"
+
+    /// **The heading over a list's columns: what the names are, and what the
+    /// figure at the trailing edge is.**
+    ///
+    /// A `Section` header inside the `List` rather than a strip above it, which
+    /// is the whole of how it lines up: the list insets its headers and rows by
+    /// one amount, so nothing here measures an inset — the Health list's two
+    /// headings are built the same way. The one thing a header cannot know is
+    /// what a row puts at its two edges, so it reserves those widths with the
+    /// same views, hidden: the update mark's slot on the installed list, and
+    /// the chevron in the single-column pane, which would otherwise push every
+    /// version a chevron's width left of «Version».
+    ///
+    /// In the house's section voice (`HelmSectionTitle`), and marked a header
+    /// for the rotor, as the Health list's headings are.
+    private func columnHeader(_ columns: ListColumns, singleColumn: Bool) -> some View {
+        HStack(spacing: HelmSpace.s3) {
+            if columns.marksUpdates {
+                Image(systemName: Self.updateMarkSymbol).font(HelmText.rowDetail).hidden()
+            }
+            HelmSectionTitle(columns.leading)
+            Spacer(minLength: 0)
+            if let trailing = columns.trailing { HelmSectionTitle(trailing) }
+            goesToItsOwnScreen(singleColumn).hidden()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     /// **The mark that says a row leads somewhere, and only where it does.**
@@ -1466,6 +1526,7 @@ struct HomebrewSettingsPage: View {
     private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], reading: ListReading,
                                                          nothing: String, unanswerable: String,
                                                          waiting: String,
+                                                         columns: ListColumns, singleColumn: Bool,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
         Group {
@@ -1488,8 +1549,10 @@ struct HomebrewSettingsPage: View {
                 // is reached, so this is the row's only door into the app now.
                 // No `.onTapGesture`, no `.listRowBackground`: macOS draws the
                 // system selection itself.
-                List(items, selection: Binding(get: { hb.selected }, set: { hb.select($0) })) { item in
-                    row(item)
+                List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
+                    Section(header: columnHeader(columns, singleColumn: singleColumn)) {
+                        ForEach(items) { item in row(item) }
+                    }
                 }
                 // No inset of its own, for the reason `healthList`'s own list
                 // gives: `.listStyle(.inset)` is where every other list in the
@@ -1651,4 +1714,13 @@ private extension View {
 /// this page's to decide.
 extension View {
     func helmDestructive() -> some View { foregroundStyle(HelmSignal.danger) }
+}
+
+/// What a package list's heading names, and whether the rows under it keep
+/// the update mark's slot — the three facts `columnHeader` needs and nothing
+/// else, so the three call sites spell them in one place each.
+struct ListColumns {
+    let leading: String
+    let trailing: String?
+    let marksUpdates: Bool
 }

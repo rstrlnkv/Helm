@@ -1149,6 +1149,7 @@
 "you asked for it" = "porque lo pediste";
 "as a dependency" = "como dependencia";
 "Version" = "Versión";
+"Package" = "Paquete";
 "Licence" = "Licencia";
 "On disk" = "En el disco";
 "Counting…" = "Calculando…";

@@ -62,10 +62,12 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
         }
     }
 
-    /// Where each line of near-black text in `area` begins, in pixels, top to
-    /// bottom. A line is a run of pixel rows that each hold at least one
-    /// near-black pixel; the run's leftmost such pixel is where it starts.
-    private func lineStarts(in rep: NSBitmapImageRep, area: CGRect, scale: CGFloat) -> [Int] {
+    /// Where each line of ink darker than `limit` in `area` begins, in pixels,
+    /// top to bottom. A line is a run of pixel rows that each hold at least one
+    /// such pixel; the run's leftmost is where it starts. The default is near
+    /// black, which is label ink and not the mark's orange or a version's grey.
+    private func lineStarts(in rep: NSBitmapImageRep, area: CGRect, scale: CGFloat,
+                            darkerThan limit: UInt8 = 70) -> [Int] {
         guard let data = rep.bitmapData, rep.samplesPerPixel >= 3, rep.bitsPerSample == 8 else {
             return []
         }
@@ -78,9 +80,7 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
             var leftmost: Int?
             for x in x0..<x1 {
                 let i = y * rep.bytesPerRow + x * stride
-                // Near black and opaque: label ink, not the warning orange and
-                // not the quiet grey of the version beside it.
-                if data[i] < 70, data[i + 1] < 70, data[i + 2] < 70,
+                if data[i] < limit, data[i + 1] < limit, data[i + 2] < limit,
                    stride < 4 || data[i + 3] > 200 {
                     leftmost = x
                     break
@@ -97,7 +97,32 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
         return starts
     }
 
-    func testTheOutdatedPackagesNameLinesUpWithEveryOther() async throws {
+    /// **And the heading over the column names the names.** «Package» sits in
+    /// a `Section` header, which the list insets by the same amount as its
+    /// rows — but the rows of this list begin with the update mark's slot, and
+    /// a heading that did not reserve it stood over the marks rather than over
+    /// the names. The heading is drawn in the section voice, which is grey
+    /// rather than near black, so it is read as the first line of *any* ink
+    /// above the first name.
+    func testTheColumnsHeadingStandsOverTheNames() async throws {
+        let (starts, heading, scale) = try await readList()
+        guard let names = starts.min() else {
+            XCTFail("no names drew, so there is nothing for the heading to stand over")
+            return
+        }
+        let head = try XCTUnwrap(heading, """
+            no line of ink drew above the first name in the list, so the column has no heading \
+            and there is nothing to align
+            """)
+        XCTAssertEqual(CGFloat(head - names) / scale, 0, accuracy: 1, """
+            «Package» begins \(CGFloat(head - names) / scale) pt from the names under it — the \
+            heading stands over the update mark's column instead of over the column it names
+            """)
+    }
+
+    /// One render of the installed list: where each name begins, where the
+    /// heading above them begins, and the bitmap's scale.
+    private func readList() async throws -> (names: [Int], heading: Int?, scale: CGFloat) {
         let transport = Cellar()
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
@@ -105,16 +130,13 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
         await hb.refreshOutdated()
         hb.segment = .installed
         hb.select(nil)
-
-        // The subject first: a list in which nothing is outdated draws no
-        // mark, and every name then lines up for a reason that proves nothing.
         XCTAssertTrue(hb.outdated.contains { $0.name == "node" },
                       "the fixture's outdated package never reached the page, so no row is marked")
 
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: 834, height: 700, appearance: .aqua)
         mount.settle(40)
-        defer { mount.drop() }
+        defer { mount.drop(); withExtendedLifetime(transport) {} }
 
         let list = try XCTUnwrap(mount.host.everyView(named: "ListCoreScrollView")
             .map { $0.convert($0.bounds, to: mount.host) }.first, "no list drew")
@@ -123,13 +145,23 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
                                 "the host gave no bitmap to read")
         view.cacheDisplay(in: view.bounds, to: rep)
         let scale = CGFloat(rep.pixelsWide) / view.bounds.width
-
         // The bitmap's rows run top-down and so does a flipped host; an
         // unflipped one has to be turned over before its y means the list's.
         let area = view.isFlipped ? list
             : CGRect(x: list.minX, y: view.bounds.height - list.maxY,
                      width: list.width, height: list.height)
-        let starts = lineStarts(in: rep, area: area, scale: scale)
+        let names = lineStarts(in: rep, area: area, scale: scale)
+        // Any ink at all, grey included: the first such line is the heading,
+        // since the list draws nothing above it.
+        let heading = lineStarts(in: rep, area: area, scale: scale, darkerThan: 200).first
+        return (names, heading, scale)
+    }
+
+    func testTheOutdatedPackagesNameLinesUpWithEveryOther() async throws {
+        // `readList` asserts the subject first: a list in which nothing is
+        // outdated draws no mark, and every name then lines up for a reason
+        // that proves nothing.
+        let (starts, _, scale) = try await readList()
 
         XCTAssertEqual(starts.count, 6, """
             \(starts.count) lines of near-black text in the list where six names drew — this \
@@ -141,6 +173,5 @@ final class EveryNameInTheListStartsInOneColumnTests: XCTestCase {
             one of them starts \(CGFloat(last - first) / scale) pt to the right of the others, \
             and the row it belongs to is the one carrying the update mark
             """)
-        withExtendedLifetime(transport) {}
     }
 }
