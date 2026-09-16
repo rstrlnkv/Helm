@@ -11,11 +11,29 @@ import Module_Homebrew_Engine
 
     @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
     @Published public private(set) var installed: [BrewPackage] = []
-    /// True until the first list has come back, so the UI can tell "loading"
-    /// apart from "genuinely nothing installed".
-    @Published public private(set) var loadedInstalled = false
+    /// What happened to the last `brew list` — which is three things and not
+    /// two. This was a `Bool`, and the state it could not hold is a refusal:
+    /// the flag stayed down for ever and the page spun over it (`ListReading`).
+    @Published private(set) var installedReading: ListReading = .notAsked
+    /// Whether there is an installed list to speak from, for the readers that
+    /// only need that much — the status line's counts and the fix judge.
+    /// Derived rather than stored beside the reading, for the reason `issues`
+    /// is derived from `doctor`: two fields are two accounts of one answer, and
+    /// the one that goes stale is the one a page reads.
+    public var loadedInstalled: Bool { installedReading == .answered }
     @Published public private(set) var outdated: [OutdatedPackage] = []
+    /// `installedReading`'s twin for `brew outdated`.
+    @Published private(set) var outdatedReading: ListReading = .notAsked
     @Published public private(set) var searchHits: [SearchHit] = []
+    /// `installedReading`'s twin for `brew search` — **and the one the page had
+    /// nothing at all for.** A search is two `brew search` runs, measured at
+    /// about nine seconds, and for those nine seconds the results pane said
+    /// «Ничего не найдено.»: the answer to the question, drawn while it was
+    /// still being asked and pixel-identical to a true zero and to a refusal.
+    /// `HbStr.searching` was translated into all eight languages and drawn
+    /// nowhere, because the branch that would have drawn it was unreachable by
+    /// construction.
+    @Published private(set) var searchReading: ListReading = .notAsked
     /// The last of what `brew` said, not all of it. 1000 is `LogTail`'s bound
     /// and this is the same problem: a running record somebody reads the end of.
     public static let consoleLimit = 1000
@@ -458,11 +476,20 @@ import Module_Homebrew_Engine
     /// replace a real package list with "No packages installed." The last
     /// answer stays; the log names the outcome; Refresh stays live for a retry.
     public func refreshInstalled() async {
+        installedReading = .waiting
         guard let answer: [BrewPackage] = await client.request(HomebrewCommand.listInstalled)
-        else { return }
+        else {
+            // The last answer stays, and so does the reading that describes it:
+            // rows on screen are an answer somebody got, and a refusal on top of
+            // them is a thing for the log rather than a sentence over a list
+            // that is still true. With nothing behind it there is nothing to
+            // keep, and the pane says so instead of waiting for ever.
+            installedReading = installed.isEmpty ? .unanswerable : .answered
+            return
+        }
         installed = answer
         reconcile(.installed, against: Set(answer.map(\.id)))
-        loadedInstalled = true
+        installedReading = .answered
         listedBrew = status.brewPath
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
@@ -560,8 +587,45 @@ import Module_Homebrew_Engine
         reconcile(.health, against: healthSelectableIDs)
     }
 
+    /// The fix a person is being asked about, or nil because nothing is being
+    /// asked. Beside `pendingUninstall` and for its reason: the page's own
+    /// `@State` would answer nobody, and which press raised which question is
+    /// the whole of what a test has to be able to see.
+    @Published private(set) var pendingFix: DoctorFix?
+
+    /// The press on Run, which is not the same thing as running it.
+    ///
+    /// `FixAsk` decides — `brew cleanup` goes straight to the engine, and
+    /// anything that takes a package off this Mac raises the question the
+    /// Uninstall button has raised since somebody noticed it removed an
+    /// application on a single click. The judgement is `FixAsk.of`'s and not
+    /// this method's, so a test reads it without a `body` in the way.
+    func askToRunFix(_ fix: DoctorFix) {
+        switch FixAsk.of(fix.argv) {
+        case .runsOnThePress: runDoctorFix(fix)
+        case .uninstalls, .unrecognised: pendingFix = fix
+        }
+    }
+
+    /// Closes the question without running anything. Called by the dialog's
+    /// Cancel and by the page going away, for `cancelUninstall`'s reason: this
+    /// object outlives the page, and a question left standing is one the next
+    /// visit opens with.
+    func cancelFix() { pendingFix = nil }
+
+    /// The press on the dialog Run raised. The only door to a destructive fix.
+    func confirmFix() {
+        guard let fix = pendingFix else { return }
+        pendingFix = nil
+        runDoctorFix(fix)
+    }
+
     /// Sends one `brew doctor` fix to the engine, which judges it again before
     /// it runs anything.
+    ///
+    /// **Private: `askToRunFix` is the door.** It was the page's own call site,
+    /// so a fix that removes a package for good went on a single click while
+    /// every other irreversible deletion in Helm asked first.
     ///
     /// The argv goes over the wire as it was drawn, and that is deliberate:
     /// this side does not re-read the Cellar and does not re-judge, because a
@@ -570,18 +634,26 @@ import Module_Homebrew_Engine
     /// press and refuses anything `DoctorFix.judge` will not admit — including
     /// the case this design exists for, a package uninstalled in a terminal
     /// between the draw and the press.
-    func runDoctorFix(_ fix: DoctorFix) {
+    private func runDoctorFix(_ fix: DoctorFix) {
         client.fire(HomebrewCommand.doctorFix, encoding: fix.argv)
     }
 
     public func refreshOutdated() async {
+        outdatedReading = .waiting
         guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
-        else { return }
+        else {
+            outdatedReading = outdated.isEmpty ? .unanswerable : .answered
+            return
+        }
         outdated = answer
         reconcile(.updates, against: Set(answer.map(\.id)))
-        loadedOutdated = true
+        outdatedReading = .answered
     }
-    @Published public private(set) var loadedOutdated = false
+    /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
+    /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
+    /// is false on every launch until somebody opens the segment — which is
+    /// what `AStatusLineDoesNotInventZeroUpdatesTests` holds.
+    public var loadedOutdated: Bool { outdatedReading == .answered }
 
     /// Which search the hits belong to, so an older answer cannot land on a
     /// newer one — and so a search nobody is waiting for any more stops
@@ -603,13 +675,27 @@ import Module_Homebrew_Engine
 
     public func search(_ q: String) async {
         let mine = searches.take()
+        // **The old hits go before the new query is sent.** They belong to the
+        // word that was typed over, and holding them for the nine seconds this
+        // takes is the results of one search drawn under another — which is
+        // also what left the busy sentence with nothing to stand over.
+        searchHits = []
+        reconcile(.search, against: [])
+        searchReading = .waiting
         guard let hits: [SearchHit] = await client.request(HomebrewCommand.search,
                                                            payload: Data(q.utf8))
-        else { return }
+        else {
+            // Only for the press still being waited on: a refusal for a word
+            // the person has typed over must not put its sentence over a newer
+            // search's results.
+            if searches.isLatest(mine) { searchReading = .unanswerable }
+            return
+        }
         // The hits first: a stale answer must not replace what a newer search
         // has already drawn.
         guard searches.isLatest(mine) else { return }
         searchHits = hits
+        searchReading = .answered
         reconcile(.search, against: Set(hits.map(\.id)))
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name),

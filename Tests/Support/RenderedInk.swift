@@ -114,6 +114,47 @@ public enum RenderedInk {
         return ink
     }
 
+    /// **The pixels of a band, for the checks whose claim is that two drawings
+    /// are not the same drawing.**
+    ///
+    /// `read` above answers *how much* was drawn, and two different sentences
+    /// can weigh the same — which is no use to a check whose subject is a page
+    /// that draws one sentence where it should draw three. What that check needs
+    /// is equality, so what this hands back is the bytes.
+    ///
+    /// **The band is not an optimisation.** A whole-page comparison is dominated
+    /// by whatever else differs between two mounts: a status line reading
+    /// «Reading the package list…» in one and «Packages: 0» in the other makes
+    /// the two pages differ no matter what the pane below them says. Measured
+    /// 2026-09-16 with the defect deliberately back in — a page drawing the
+    /// refusal sentence over *both* an empty Cellar and a refused one — the
+    /// whole-page reading passed, and it was the status bar that saved it. Name
+    /// the band the claim is about.
+    ///
+    /// nil on the same terms `read` uses, and for the same reason: a band that
+    /// runs off the end must not read as a drawing with nothing in it.
+    public static func bytes(_ view: NSView, points band: ClosedRange<Int>? = nil) -> Data? {
+        guard view.bounds.width > 0, view.bounds.height > 0,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let data = rep.bitmapData, rep.pixelsWide > 0, rep.pixelsHigh > 0 else { return nil }
+        let scale = max(1, rep.pixelsHigh / max(1, Int(view.bounds.height)))
+        let rows: Range<Int>
+        if let band {
+            guard band.lowerBound >= 0, band.upperBound * scale <= rep.pixelsHigh else { return nil }
+            rows = (band.lowerBound * scale)..<(band.upperBound * scale)
+        } else {
+            rows = 0..<rep.pixelsHigh
+        }
+        guard !rows.isEmpty else { return nil }
+        var out = Data(capacity: rows.count * rep.bytesPerRow)
+        for y in rows {
+            out.append(contentsOf: UnsafeBufferPointer(start: data + y * rep.bytesPerRow,
+                                                       count: rep.bytesPerRow))
+        }
+        return out
+    }
+
     /// The band's own background: the pixel value that occurs most often in it.
     ///
     /// Sampled every fourth row and column rather than counted in full — a
@@ -192,6 +233,13 @@ public final class MountedRender {
 
     public func ink(_ band: ClosedRange<Int>? = nil) -> Int? {
         RenderedInk.read(host, points: band)
+    }
+
+    /// The pixels of a band, for a claim that two mounts are not one drawing.
+    /// `RenderedInk.bytes` carries the reason the band is named rather than
+    /// defaulted.
+    public func pixels(_ band: ClosedRange<Int>? = nil) -> Data? {
+        RenderedInk.bytes(host, points: band)
     }
 
     /// The first reading that has repeated `steady` turns running, or `nil` if

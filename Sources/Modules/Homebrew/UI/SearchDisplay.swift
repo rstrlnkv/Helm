@@ -13,7 +13,17 @@ enum SearchDisplay: Equatable {
 
     /// Trimmed, because the engine trims: `search` refuses a whitespace-only
     /// query, so results shown over one are results no query owns.
-    static func state(query: String, hasHits: Bool) -> SearchDisplay {
-        query.trimmingCharacters(in: .whitespaces).isEmpty ? .prompt : .results
+    ///
+    /// **And a word typed with Return not yet pressed is still the prompt.**
+    /// The second argument was `hasHits`, which this never read — a vestige of
+    /// the `@State` this replaced. What it has to know instead is whether any
+    /// query is out or answered, because the results area is now three
+    /// drawings: a search really running says so and moves, and a search that
+    /// has not been *started* must not draw either that or «No results.» over
+    /// a word the person is still typing. `ListReading.notAsked` is exactly
+    /// that person.
+    static func state(query: String, reading: ListReading) -> SearchDisplay {
+        if query.trimmingCharacters(in: .whitespaces).isEmpty { return .prompt }
+        return reading == .notAsked ? .prompt : .results
     }
 }

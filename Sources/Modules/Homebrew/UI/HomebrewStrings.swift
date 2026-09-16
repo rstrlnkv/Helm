@@ -55,6 +55,31 @@ enum HbStr {
     static var noResults: String { L("No results.") }
     static var typeToSearch: String { L("Type a name and press Return.") }
 
+    /// **The three refusals, one per list — and each is a separate key from the
+    /// empty answer above it.**
+    ///
+    /// `couldNotExamine` is the shape, and these are the same sentence about
+    /// the other three questions: Homebrew did not answer, and the app says
+    /// what it therefore does not know rather than what it wishes were true.
+    /// Drawn where «No packages installed.» and «No results.» used to stand
+    /// over a query that refused — which is the module's own rule, written in
+    /// `refreshDoctor`'s doc comment and honoured in one segment of four: "no
+    /// issues" and "the question could not be put" are the same empty list and
+    /// must never be one sentence on screen.
+    ///
+    /// Three keys and not one, because one key means one thing: what is not
+    /// known differs, and several of the eight languages inflect the three
+    /// differently.
+    static var couldNotList: String {
+        L("Homebrew did not answer, so nothing is known about the installed packages right now.")
+    }
+    static var couldNotCheckForUpdates: String {
+        L("Homebrew did not answer, so nothing is known about updates right now.")
+    }
+    static var couldNotSearch: String {
+        L("Homebrew did not answer, so the search could not be carried out right now.")
+    }
+
     static var done: String { L("Done") }
     static var failed: String { L("Failed") }
     static var clear: String { L("Clear") }
@@ -292,6 +317,14 @@ enum HbStr {
     /// column, measured 2026-09-15. The approved drawing this module was built
     /// from draws the verb alone.
     static var runTheFix: String { L("Run") }
+    /// The question a press on Run raises when the command is one this build
+    /// has no sentence for — `FixAsk.unrecognised`, which nothing on
+    /// `DoctorFix.Allowed` reaches today and which a third entry added without
+    /// reading that file would. It names the command, because a question that
+    /// names nothing is a question people learn to dismiss. Interpolated, so
+    /// the table is inline: a `.lproj` key with a command baked into it could
+    /// never match.
+    static func confirmRunTheFix(_ command: String) -> String { L("Run \(command)?", [.ru: "Выполнить \(command)?", .es: "¿Ejecutar \(command)?", .fr: "Exécuter \(command)\u{00A0}?", .de: "\(command) ausführen?", .ja: "\(command) を実行しますか？", .zh: "执行 \(command)？", .pt: "Executar \(command)?"]) }
     /// The copy affordance beside a command Helm will not run itself. One word,
     /// for the reason above.
     static var copyTheFix: String { L("Copy") }

@@ -63,7 +63,23 @@ struct HomebrewSettingsPage: View {
         // than leaving it to act later on a reading taken before the
         // interruption, which is the right call for the app's only
         // irreversible deletion.
-        .onDisappear { hb.cancelUninstall() }
+        // And the other question this page can have standing: a `brew doctor`
+        // fix that removes a package waits on a dialog too, and it is asked of
+        // the same view model, which outlives this subtree.
+        .onDisappear { hb.cancelUninstall(); hb.cancelFix() }
+        // The second irreversible deletion this page can reach, and it used to
+        // go on a single click six points from Copy. The question names the
+        // package with the words the Uninstall dialog uses — `FixAsk` decides
+        // which of the two questions is asked, and whether one is asked at all.
+        .confirmationDialog(hb.pendingFix.flatMap { Self.fixQuestion($0) } ?? "",
+                            isPresented: Binding(get: { hb.pendingFix != nil },
+                                                 set: { if !$0 { hb.cancelFix() } }),
+                            titleVisibility: .visible) {
+            Button(HbStr.runTheFix, role: .destructive) { hb.confirmFix() }
+            Button(HbStr.cancel, role: .cancel) { hb.cancelFix() }
+        } message: {
+            if let note = hb.pendingFix.flatMap({ Self.fixQuestionNote($0) }) { Text(note) }
+        }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.
         .confirmationDialog(hb.pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
@@ -140,38 +156,7 @@ struct HomebrewSettingsPage: View {
 
     private var managerBody: some View {
         VStack(spacing: 0) {
-            HStack(spacing: HelmSpace.s5) {
-                // Over `allCases`, not three rows spelled by hand: a segment
-                // whose label was forgotten used to be a segment with no row at
-                // all, reachable from nowhere and visible in no test.
-                // `Segment.label` is the `switch` that cannot forget one.
-                Picker(HelmA11y.whatToShow, selection: $hb.segment) {
-                    ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
-                        Text(segment.label).tag(segment)
-                    }
-                }
-                .pickerStyle(.segmented).labelsHidden()
-                // Its own width, not 300: the control asks 226.5 pt in English
-                // and 370.5 in Japanese, so a fixed number clipped four
-                // languages and centred the rest — which walked the row's left
-                // edge from 20 pt to 75.5 while every row below it starts at 20.
-                .fixedSize()
-                .onChange(of: hb.segment) { _, seg in
-                    Task { await refresh(seg) }
-                }
-                Spacer(minLength: 0)
-                Button {
-                    Task { await refresh(hb.segment) }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .helmSteadySpin(hb.running)
-                }
-                .buttonStyle(.borderless)
-                .disabled(hb.running)
-                .help(HbStr.refreshList)
-                .accessibilityLabel(HbStr.refreshList)
-            }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+            headerBar
             Divider()
             // The split is asked of the pane, not of the window: `HomebrewSplit`
             // carries the measured threshold, and a `private var` inside `body`
@@ -185,10 +170,17 @@ struct HomebrewSettingsPage: View {
             // both places, so a wide inspector and a narrow screen cannot
             // drift into offering two different things for one of them.
             GeometryReader { proxy in
-                if HomebrewSplit(availableWidth: proxy.size.width).showsInspector {
+                let split = HomebrewSplit(availableWidth: proxy.size.width)
+                if split.showsInspector {
                     HStack(spacing: HelmSpace.s5) {
                         listArea(showsDesc: false)
-                            .frame(minWidth: 240, idealWidth: 310, maxWidth: 310)
+                            // `minWidth` and the compressibility it buys are
+                            // kept exactly as they were: the split threshold
+                            // was measured against a master that gives way
+                            // before the inspector does, and a fixed `width:`
+                            // here would move the floor that test re-measures.
+                            .frame(minWidth: 240, idealWidth: split.masterWidth,
+                                   maxWidth: split.masterWidth)
                         Divider()
                         detail
                             .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity,
@@ -228,6 +220,80 @@ struct HomebrewSettingsPage: View {
             // jumped when switching between them.
             .frame(minHeight: 25)
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        }
+    }
+
+    /// **The segment switcher and Refresh, in whichever shape fits the pane.**
+    ///
+    /// The switcher is `.fixedSize()` and therefore as wide as its eight
+    /// languages make it: measured 2026-09-16, zh 252 · en 302 · de 320 ·
+    /// fr 388 · pt 404 · es 476 · ru 488 · ja 494 pt, with the bar needing
+    /// `picker + 65.5` around it. The narrowest pane a person can reach is
+    /// **540** — `max(detailItem.minimumThickness, minSize.width −
+    /// sidebarMaximum)` from `SettingsWindow.swift` — so Russian and Japanese
+    /// do not fit, and nothing said so: SwiftUI centres the overflow, which put
+    /// the picker at x = 7.5 where the page's inset is 20 and ran Refresh 13 pt
+    /// past the edge. A hundred points narrower again — the same arithmetic on
+    /// a smaller window — «Установленные» is cut off and Refresh is *outside*
+    /// the pane, so the list cannot be reloaded at all.
+    ///
+    /// **`ViewThatFits` rather than a threshold constant**, and the difference
+    /// is the eight languages. A number here would be one number for all of
+    /// them: 559.5 is what Japanese needs and Chinese fits its segments in 317,
+    /// so a constant tuned for the widest gates the menu on seven languages
+    /// that never needed it — which is the house rule about a control gated
+    /// above a width nobody reaches, read from the other end. `ViewThatFits`
+    /// asks the control itself, in the language it is actually drawing, and the
+    /// answer moves with the strings rather than with a comment.
+    ///
+    /// The fallback is a menu, not a compressed segmented control: a segmented
+    /// control under pressure truncates its labels, and «Уста…» beside «Обно…»
+    /// is four words nobody can tell apart.
+    private var headerBar: some View {
+        ViewThatFits(in: .horizontal) {
+            headerRow(.segmented)
+            headerRow(.menu)
+        }
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
+
+    /// One shape of the bar. Both are built here, from one `Picker` and one
+    /// Refresh, so the two cannot drift into offering different things — the
+    /// reason `detail` has exactly one builder per kind of subject.
+    private func headerRow(_ style: SegmentPickerStyle) -> some View {
+        HStack(spacing: HelmSpace.s5) {
+            // Over `allCases`, not three rows spelled by hand: a segment
+            // whose label was forgotten used to be a segment with no row at
+            // all, reachable from nowhere and visible in no test.
+            // `Segment.label` is the `switch` that cannot forget one.
+            Picker(HelmA11y.whatToShow, selection: $hb.segment) {
+                ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
+                    Text(segment.label).tag(segment)
+                }
+            }
+            .modifier(style)
+            .labelsHidden()
+            // Its own width, not 300: the control asks 302 pt in English
+            // and 494 in Japanese, so a fixed number clipped four
+            // languages and centred the rest — which walked the row's left
+            // edge from 20 pt to 75.5 while every row below it starts at 20.
+            // It is also what `ViewThatFits` above measures: a picker free to
+            // compress fits every pane and tells the bar nothing.
+            .fixedSize()
+            .onChange(of: hb.segment) { _, seg in
+                Task { await refresh(seg) }
+            }
+            Spacer(minLength: 0)
+            Button {
+                Task { await refresh(hb.segment) }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .helmSteadySpin(hb.running)
+            }
+            .buttonStyle(.borderless)
+            .disabled(hb.running)
+            .help(HbStr.refreshList)
+            .accessibilityLabel(HbStr.refreshList)
         }
     }
 
@@ -300,10 +366,23 @@ struct HomebrewSettingsPage: View {
             // the sentence standing in for findings there are none of, and a
             // row that highlights and then describes nothing in the inspector
             // is a row that looks broken.
-            Text(Self.healthNote(note))
-                .foregroundStyle(HelmText.quiet)
-                .helmListRow()
-                .selectionDisabled()
+            HStack(spacing: HelmSpace.s3) {
+                // **Waiting moves.** `HealthScreen.of` puts this sentence in a
+                // row rather than in the centred `HelmBusyState` whenever
+                // `brew config` has anything to draw beside it — which it
+                // almost always does, because `refresh` asks it first on
+                // purpose, and it is fast where `brew doctor` is the slowest
+                // query in the module. So the ordinary Состояние wait was a
+                // plain 36 pt text row with **no progress indicator anywhere on
+                // the page**, while every other wait in this module and in the
+                // app spins. The refusal keeps the still row it had: there is
+                // nothing on its way to indicate.
+                if note == .busy { ProgressView().controlSize(.small) }
+                Text(Self.healthNote(note))
+                    .foregroundStyle(HelmText.quiet)
+            }
+            .helmListRow()
+            .selectionDisabled()
         }
     }
 
@@ -380,6 +459,42 @@ struct HomebrewSettingsPage: View {
     /// The badge's word and the badge's tint, apart from the views that draw
     /// them: which severity reads as which word is a decision a test can hold,
     /// and a `body` is not somewhere a test can reach.
+    /// The title of the question a press on Run raises, and the sentence under
+    /// it — apart from the view that draws them, for `severityWord`'s reason:
+    /// which act is asked about in which words is a decision a test can hold.
+    ///
+    /// nil is «this fix raises no question», which is `FixAsk.runsOnThePress`
+    /// and never reaches `pendingFix` — `askToRunFix` sends that one straight
+    /// to the engine. It is nil rather than an empty string so that the one
+    /// caller cannot draw a dialog with no title if that ever stops being true.
+    static func fixQuestion(_ fix: DoctorFix) -> String? {
+        switch FixAsk.of(fix.argv) {
+        case .runsOnThePress: return nil
+        // The same words the Uninstall button's own dialog uses, naming the
+        // same thing: it is the same act, reached by a different control.
+        case let .uninstalls(name): return HbStr.confirmUninstall(name)
+        // Nothing to name but the command, and naming nothing is how a dialog
+        // becomes a reflex.
+        case .unrecognised: return HbStr.confirmRunTheFix(Self.commandLine(fix))
+        }
+    }
+
+    /// The second sentence, and only where there is one to say: a heading over
+    /// a reassurance nobody checked is `stillNeededBy`'s own lesson.
+    static func fixQuestionNote(_ fix: DoctorFix) -> String? {
+        switch FixAsk.of(fix.argv) {
+        case .uninstalls: return HbStr.uninstallIsPermanent
+        case .runsOnThePress, .unrecognised: return nil
+        }
+    }
+
+    /// The command as a person would type it, which is what the well shows and
+    /// what a question about an unnamed command has to name. Spelled once here
+    /// rather than at the two places that draw it.
+    static func commandLine(_ fix: DoctorFix) -> String {
+        (["brew"] + fix.argv).joined(separator: " ")
+    }
+
     static func severityWord(_ severity: DoctorSeverity) -> String {
         switch severity {
         case .caution: return HbStr.severityCaution
@@ -395,8 +510,9 @@ struct HomebrewSettingsPage: View {
     }
 
     private func installedList(showsDesc: Bool) -> some View {
-        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil,
-                    busy: HbStr.packagesLoading) { pkg in
+        listOrEmpty(hb.installed, reading: hb.installedReading,
+                    nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
+                    waiting: HbStr.packagesLoading) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    hasUpdate: hasUpdate(pkg.id),
                    desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
@@ -412,8 +528,9 @@ struct HomebrewSettingsPage: View {
                 }.padding(8)
                 Divider()
             }
-            listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil,
-                        busy: HbStr.checkingForUpdates) { pkg in
+            listOrEmpty(hb.outdated, reading: hb.outdatedReading,
+                        nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
+                        waiting: HbStr.checkingForUpdates) { pkg in
                 // A pinned formula and a cask can both carry a badge here — the
                 // parser does not refuse a `pinned` flag on a cask entry, even
                 // though `brew pin` only ever sets one on a formula
@@ -438,10 +555,12 @@ struct HomebrewSettingsPage: View {
                 .padding(.top, 12)
                 .padding(.bottom, HelmSpace.s5)
             Divider()
-            if SearchDisplay.state(query: query, hasHits: !hb.searchHits.isEmpty) == .prompt {
+            if SearchDisplay.state(query: query, reading: hb.searchReading) == .prompt {
                 HelmEmptyState(message: HbStr.typeToSearch)
             } else {
-                listOrEmpty(hb.searchHits, empty: HbStr.noResults, busy: HbStr.searching) { hit in
+                listOrEmpty(hb.searchHits, reading: hb.searchReading,
+                            nothing: HbStr.noResults, unanswerable: HbStr.couldNotSearch,
+                            waiting: HbStr.searching) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
                            alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
                                                                               installed: hb.installed) != nil,
@@ -658,7 +777,7 @@ struct HomebrewSettingsPage: View {
     /// `LogView` already do it: there is no engine command for it, because
     /// nothing leaves this process.
     private func fixBlock(_ fix: DoctorFix) -> some View {
-        let command = (["brew"] + fix.argv).joined(separator: " ")
+        let command = Self.commandLine(fix)
         return VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(HbStr.helmReadsThisAs).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             HStack(spacing: HelmSpace.s3) {
@@ -676,12 +795,24 @@ struct HomebrewSettingsPage: View {
                     NSPasteboard.general.setString(command, forType: .string)
                 }
                 if fix.kind == .runnable {
-                    // The press hands the engine the argv and nothing else:
-                    // `HomebrewEngine.runDoctorFix` reads the installed list
-                    // again and judges it again, so what this starts is not
-                    // what this page judged.
-                    Button(HbStr.runTheFix) { hb.runDoctorFix(fix) }
+                    // **The destructive one, drawn and behaved as the
+                    // destructive one it is.** Measured 2026-09-16: it sat 6 pt
+                    // from Copy, at the same weight, with no role and no
+                    // question — and the command behind it on this Mac is
+                    // `brew uninstall periphery`, the same irreversible
+                    // deletion the Uninstall button raises a dialog for. The
+                    // role is what makes it read differently; `askToRunFix` is
+                    // what makes it *behave* differently, and `FixAsk` decides
+                    // which of the two commands on the allowlist that means —
+                    // `brew cleanup` still runs on the press, because a cached
+                    // download comes back.
+                    //
+                    // The step before it is `HelmSpace.s5` where the row's own
+                    // is `s3`: a press meant for Copy that lands on this one is
+                    // not a press anybody can take back.
+                    Button(HbStr.runTheFix, role: .destructive) { hb.askToRunFix(fix) }
                         .disabled(hb.running)
+                        .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
                 }
             }
             Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -873,8 +1004,6 @@ struct HomebrewSettingsPage: View {
         .helmListRow()
     }
 
-    /// `empty` is nil while the first query is still out: "nothing installed"
-    /// must not be shown to someone who is simply waiting for the list.
     /// Which list a segment is showing, and therefore which one Refresh
     /// reloads. There were two answers: switching to Search reloaded nothing,
     /// while pressing Refresh on Search reloaded the installed list behind it.
@@ -901,18 +1030,34 @@ struct HomebrewSettingsPage: View {
     /// `T.ID == String`: every list here is keyed by a `BrewKey` id, which is
     /// also what `hb.selection` holds — no `String(describing:)` conversion
     /// needed at the boundary.
-    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?, busy: String,
+    ///
+    /// **Three sentences for three states, and the third one is new.** This
+    /// took one `empty:` that went nil while a query was out, which is two
+    /// states in one optional and no room at all for the third: a `brew` that
+    /// refused left the flag behind it down for ever, so the pane drew the
+    /// spinner and «Reading the package list…» over a question nothing was
+    /// going to answer, with no timeout anywhere in the UI. `ListScreen` is
+    /// where the three are told apart.
+    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], reading: ListReading,
+                                                         nothing: String, unanswerable: String,
+                                                         waiting: String,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
         Group {
-            if items.isEmpty, let empty {
-                HelmEmptyState(message: empty)
-            } else if items.isEmpty {
+            switch ListScreen.of(isEmpty: items.isEmpty, reading: reading) {
+            case .nothing:
+                HelmEmptyState(message: nothing)
+            case .unanswerable:
+                // The same still drawing as `.nothing` and a different
+                // sentence: nothing is on its way, so nothing moves, and what
+                // separates the two is the only thing that can — the words.
+                HelmEmptyState(message: unanswerable)
+            case .waiting:
                 // `HelmBusyState()` is the bare spinner its own doc comment
                 // names as one of the three shapes it exists to end; the caller
                 // still has to say what is being waited on.
-                HelmBusyState(busy)
-            } else {
+                HelmBusyState(waiting)
+            case .rows:
                 // A `List` with no selection has no focusable rows at all —
                 // arrow keys did nothing. Selecting is also how the inspector
                 // is reached, so this is the row's only door into the app now.
@@ -962,6 +1107,24 @@ struct HomebrewSettingsPage: View {
 /// Private to this file: one module draws it, and the house's rule is that a
 /// thing two modules draw moves to `HelmUI` rather than that everything starts
 /// there.
+/// **The two shapes the segment switcher takes, as a modifier rather than a
+/// value.** `PickerStyle`'s conformers are different types, so the style cannot
+/// be held in a `let` and handed to one `Picker`; written as two `Picker`s
+/// behind an `if`, the control would be two views rather than one, and SwiftUI
+/// interpolates between two states of one view and never between two views.
+private enum SegmentPickerStyle: ViewModifier {
+    case segmented
+    case menu
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch self {
+        case .segmented: content.pickerStyle(.segmented)
+        case .menu: content.pickerStyle(.menu)
+        }
+    }
+}
+
 private extension View {
     func helmInspectorColumn() -> some View {
         frame(maxWidth: HelmLayout.readingColumn, alignment: .topLeading)

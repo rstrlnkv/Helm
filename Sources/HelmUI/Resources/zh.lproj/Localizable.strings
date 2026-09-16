@@ -366,6 +366,9 @@
 "No modules enabled" = "未启用任何模块";
 "No packages installed." = "未安装任何软件包。";
 "No results." = "无结果。";
+"Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew 没有回应，因此目前无法得知已安装的软件包。";
+"Homebrew did not answer, so nothing is known about updates right now." = "Homebrew 没有回应，因此目前无法得知有哪些更新。";
+"Homebrew did not answer, so the search could not be carried out right now." = "Homebrew 没有回应，因此目前无法执行搜索。";
 "No rules yet" = "还没有规则";
 "None" = "无";
 "Not checked" = "未检查";

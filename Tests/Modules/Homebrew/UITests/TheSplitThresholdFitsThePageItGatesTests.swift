@@ -103,8 +103,17 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(30)
+        // **Below the segment bar.** The inspector's action was "the page's only
+        // focus ring" while the bar drew a segmented control, which draws none —
+        // and the bar draws a *menu* wherever the segments do not fit the pane,
+        // which at this very threshold is what several languages get. That
+        // picker carries a ring of its own, so an unbanded count reads two
+        // controls where the claim is about one. 48 pt is the bar and its
+        // divider: `HelmSpace.s5` of padding around a 24 pt control.
+        let belowTheBar: CGFloat = 48
         let rings = mount.host.everyView(named: "_FocusRingView")
             .map { $0.convert($0.bounds, to: mount.host) }
+            .filter { $0.minY >= belowTheBar }
         let lists = mount.host.everyView
             .filter { $0.appKitClassName.contains("ListCoreScrollView") }
             .map { $0.convert($0.bounds, to: mount.host) }

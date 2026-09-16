@@ -276,7 +276,11 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
         guard let fix = hb.issues.first?.fix else { return XCTFail("no fix was drawn") }
         XCTAssertEqual(fix.kind, .runnable, "precondition: this is the fix with a button on it")
 
-        hb.runDoctorFix(fix)
+        // Through the door the page presses, which for this fix — an uninstall
+        // — is a question first: `ADestructiveFixIsAskedBeforeItRunsTests` is
+        // what holds that half.
+        hb.askToRunFix(fix)
+        hb.confirmFix()
         for _ in 0..<20 where clinic.fired.isEmpty { await Task.yield() }
         XCTAssertEqual(clinic.fired, [["uninstall", "periphery"]], """
             the page sent something other than the judged argv — `DoctorFix.judge` refuses \

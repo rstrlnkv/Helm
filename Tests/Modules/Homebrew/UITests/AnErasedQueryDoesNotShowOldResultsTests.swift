@@ -11,19 +11,32 @@ import HelmTestSupport
 final class AnErasedQueryDoesNotShowOldResultsTests: XCTestCase {
 
     func testAnEmptyQueryShowsThePromptEvenWithOldHitsStillHeld() {
-        XCTAssertEqual(SearchDisplay.state(query: "", hasHits: true), .prompt,
+        XCTAssertEqual(SearchDisplay.state(query: "", reading: .answered), .prompt,
                        "the previous search's results outlived the query that asked for them")
     }
 
     /// The engine refuses a whitespace-only query (`search` trims before it
     /// runs), so the page showing results over one shows results no query owns.
     func testAWhitespaceQueryIsAnEmptyQuery() {
-        XCTAssertEqual(SearchDisplay.state(query: "   ", hasHits: true), .prompt)
+        XCTAssertEqual(SearchDisplay.state(query: "   ", reading: .answered), .prompt)
     }
 
     func testATypedQueryShowsTheResultsArea() {
-        XCTAssertEqual(SearchDisplay.state(query: "wget", hasHits: false), .results)
-        XCTAssertEqual(SearchDisplay.state(query: "wget", hasHits: true), .results)
+        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .waiting), .results)
+        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .answered), .results)
+        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .unanswerable), .results)
+    }
+
+    /// **A word typed with Return not yet pressed is still the prompt.**
+    ///
+    /// The results area now says which of three things is true — a search is
+    /// running, it answered nothing, it could not be put — and none of the
+    /// three is true of somebody who is still typing. Drawn from the query
+    /// alone, that person got the busy spinner and «Searching…» over a `brew`
+    /// nobody had started.
+    func testATypedQueryNobodyHasSubmittedIsStillThePrompt() {
+        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .notAsked), .prompt,
+                       "a word that has not been submitted drew an answer to a question nobody asked")
     }
 
     /// The seam only guards the page if the page reads it: the decision used to

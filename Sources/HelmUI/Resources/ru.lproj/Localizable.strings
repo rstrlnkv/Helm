@@ -366,6 +366,9 @@
 "No modules enabled" = "Нет включённых модулей";
 "No packages installed." = "Нет установленных пакетов.";
 "No results." = "Ничего не найдено.";
+"Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew не ответил, поэтому об установленных пакетах сейчас ничего не известно.";
+"Homebrew did not answer, so nothing is known about updates right now." = "Homebrew не ответил, поэтому об обновлениях сейчас ничего не известно.";
+"Homebrew did not answer, so the search could not be carried out right now." = "Homebrew не ответил, поэтому поиск сейчас выполнить не удалось.";
 "No rules yet" = "Правил пока нет";
 "None" = "Нет";
 "Not checked" = "Не проверено";

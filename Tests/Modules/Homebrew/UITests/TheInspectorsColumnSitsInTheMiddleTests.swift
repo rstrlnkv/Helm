@@ -117,7 +117,16 @@ final class TheInspectorsColumnSitsInTheMiddleTests: XCTestCase {
         func walk(_ layer: CALayer) {
             if abs(layer.cornerRadius - HelmRadius.ctl) < 0.01 {
                 let frame = layer.convert(layer.bounds, to: root)
-                if frame.minX >= pane.minX, frame.maxX <= pane.maxX, frame.width > 100 {
+                // **Inside the pane in both directions.** This asked only about
+                // x, and a control *above* the pane shares its x range: the
+                // segment switcher's own bezel carries this radius and is wider
+                // than 100 pt, so the day the bar drew a menu instead of
+                // segments the leftmost «tile» was the picker at x = 20 and the
+                // column read 452 pt where it is 444. The vertical centre rather
+                // than the whole frame, because a tile inside a scroll view may
+                // be clipped by it and still be one of ours.
+                if frame.minX >= pane.minX, frame.maxX <= pane.maxX, frame.width > 100,
+                   frame.midY >= pane.minY, frame.midY <= pane.maxY {
                     tiles.append(frame)
                 }
             }
