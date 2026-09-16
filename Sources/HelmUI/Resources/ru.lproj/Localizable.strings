@@ -67,6 +67,7 @@
 "BETA" = "BETA";
 "BUILD" = "СБОРКА";
 "Back" = "Назад";
+"Opens its own screen" = "Открывает свой экран";
 "Beta" = "Beta";
 "Blue" = "Синий";
 "Cache — apps rebuild it" = "Кеш — приложения создадут заново";

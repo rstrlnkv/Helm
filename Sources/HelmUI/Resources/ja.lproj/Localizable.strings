@@ -67,6 +67,7 @@
 "BETA" = "BETA";
 "BUILD" = "ビルド";
 "Back" = "戻る";
+"Opens its own screen" = "専用の画面を開きます";
 "Beta" = "Beta";
 "Blue" = "青";
 "Cache — apps rebuild it" = "キャッシュ — アプリが作り直します";

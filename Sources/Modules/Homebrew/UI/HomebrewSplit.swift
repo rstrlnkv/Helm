@@ -71,6 +71,20 @@ struct HomebrewSplit {
         segmentedHeaderFits && availableWidth >= Self.masterAndInspector
     }
 
+    /// **Whether the list is the whole pane** — and therefore whether a press
+    /// on a row replaces it with that row's own screen instead of moving the
+    /// inspector beside it.
+    ///
+    /// The same fact as `showsInspector`, said the way the list needs to hear
+    /// it. It is a property rather than a `!` at each call site because three
+    /// separate things follow from it and they must not be able to disagree:
+    /// the description comes back into the row, the chevron that promises the
+    /// push is drawn, and the row gains the accessibility hint that says what
+    /// the press does. A page that drew the chevron from its own `width < 560`
+    /// would have two thresholds, and the one that moved would be the one
+    /// nobody re-measured.
+    var singleColumn: Bool { !showsInspector }
+
     /// **How wide the master column is at this pane — a share of the slack
     /// rather than none of it.**
     ///

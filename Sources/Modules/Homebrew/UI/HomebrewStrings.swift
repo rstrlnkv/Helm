@@ -186,6 +186,14 @@ enum HbStr {
     /// count in prose is a thing that goes stale at the next module.
     /// `command grep -rn 'L("Back")' Sources` answers it today.
     static var back: String { L("Back") }
+    /// **What a row in the single-column list does when it is pressed** — the
+    /// accessibility hint the chevron beside it cannot carry, because a mark
+    /// is not an element.
+    ///
+    /// Its own key rather than `back`'s neighbour in some shared file: the
+    /// sentence is about this module's own two-screen shape, and the one other
+    /// place in the app with that shape spells its own.
+    static var opensItsOwnScreen: String { L("Opens its own screen") }
     /// The row badge for a search hit already on this Mac. Not `segInstalled`
     /// — that names the tab, and this names a fact about one row; the two
     /// read differently even in English ("Installed" vs "already installed").

@@ -243,7 +243,7 @@ struct HomebrewSettingsPage: View {
                                           segmentedHeaderFits: pageIsWide)
                 if split.showsInspector {
                     HStack(spacing: HelmSpace.s5) {
-                        listArea(showsDesc: false)
+                        listArea(singleColumn: split.singleColumn)
                             // `minWidth` and the compressibility it buys are
                             // kept exactly as they were: the split threshold
                             // was measured against a master that gives way
@@ -273,7 +273,7 @@ struct HomebrewSettingsPage: View {
                     // No selection and no room for a second column: the list
                     // alone, with the description back on the row — the one
                     // thing the package view was carrying for it.
-                    listArea(showsDesc: true)
+                    listArea(singleColumn: split.singleColumn)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -415,12 +415,12 @@ struct HomebrewSettingsPage: View {
     }
 
     @ViewBuilder
-    private func listArea(showsDesc: Bool) -> some View {
+    private func listArea(singleColumn: Bool) -> some View {
         switch hb.segment {
-        case .installed: installedList(showsDesc: showsDesc)
-        case .updates: updatesList(showsDesc: showsDesc)
-        case .search: searchView(showsDesc: showsDesc)
-        case .health: healthList()
+        case .installed: installedList(singleColumn: singleColumn)
+        case .updates: updatesList(singleColumn: singleColumn)
+        case .search: searchView(singleColumn: singleColumn)
+        case .health: healthList(singleColumn: singleColumn)
         }
     }
 
@@ -437,11 +437,11 @@ struct HomebrewSettingsPage: View {
     /// the whole pane. `HealthScreen.of` decides which of the two, and a test
     /// reads it rather than a `body`.
     ///
-    /// No description line and no `showsDesc`: a finding's body is prose, often
+    /// No description line whatever the pane's width: a finding's body is prose, often
     /// several lines of it, and one clipped line of it in a row says less than
     /// nothing. The title is the row.
     @ViewBuilder
-    private func healthList() -> some View {
+    private func healthList(singleColumn: Bool) -> some View {
         switch HealthScreen.of(hb.doctor, config: hb.configGroups) {
         case let .sentence(note):
             // The whole segment is this one sentence, so it is centred rather
@@ -474,13 +474,18 @@ struct HomebrewSettingsPage: View {
             // is the list; the majority is not close.
             List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
                 Section(header: sectionHeader(HbStr.headingCheckup)) {
-                    ForEach(checkup) { row in healthRow(row) }
+                    ForEach(checkup) { row in healthRow(row, singleColumn: singleColumn) }
                 }
                 if !configuration.isEmpty {
                     Section(header: sectionHeader(HbStr.headingConfiguration)) {
                         ForEach(configuration) { group in
-                            Text(HbStr.configSectionName(group.section))
-                                .helmListRow()
+                            HStack(spacing: HelmSpace.s3) {
+                                Text(HbStr.configSectionName(group.section))
+                                Spacer(minLength: 0)
+                                goesToItsOwnScreen(singleColumn)
+                            }
+                            .helmListRow()
+                            .helmOpensAScreen(singleColumn)
                         }
                     }
                 }
@@ -507,10 +512,10 @@ struct HomebrewSettingsPage: View {
     }
 
     @ViewBuilder
-    private func healthRow(_ row: HealthRow) -> some View {
+    private func healthRow(_ row: HealthRow, singleColumn: Bool) -> some View {
         switch row {
         case let .issue(issue):
-            issueRow(issue)
+            issueRow(issue, singleColumn: singleColumn)
         case let .note(note):
             // **Not selectable, because there is nothing to select.** A note is
             // the sentence standing in for findings there are none of, and a
@@ -568,7 +573,7 @@ struct HomebrewSettingsPage: View {
     /// a `.caution` one is a **word**, not a hue: it never lived in the tint,
     /// and a reader who cannot see colour reads it exactly as anyone else does.
     /// What this row drops, it drops for everybody equally.
-    private func issueRow(_ issue: DoctorIssue) -> some View {
+    private func issueRow(_ issue: DoctorIssue, singleColumn: Bool) -> some View {
         HStack(spacing: HelmSpace.s3) {
             // One line, like `pkgRow`'s name and for the same reason: the row
             // is the handle and `issueDetail` beside it carries the whole
@@ -584,8 +589,10 @@ struct HomebrewSettingsPage: View {
             // it if a future layout stops compressing.
             Text(issue.title).lineLimit(1)
             Spacer(minLength: 0)
+            goesToItsOwnScreen(singleColumn)
         }
         .helmListRow()
+        .helmOpensAScreen(singleColumn)
     }
 
     /// What the console says beside «Failed», when the engine knew more than an
@@ -659,17 +666,17 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    private func installedList(showsDesc: Bool) -> some View {
+    private func installedList(singleColumn: Bool) -> some View {
         listOrEmpty(hb.installed, reading: hb.installedReading,
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
                     waiting: HbStr.packagesLoading) { pkg in
-            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
+            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
                    hasUpdate: hasUpdate(pkg.id),
-                   desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                   desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
         }
     }
 
-    private func updatesList(showsDesc: Bool) -> some View {
+    private func updatesList(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
             if !hb.outdated.isEmpty {
                 HStack {
@@ -693,13 +700,13 @@ struct HomebrewSettingsPage: View {
                 // (`BrewOutdatedParser.swift`) — so both may be drawn without
                 // choosing between them.
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
-                       pinned: pkg.pinned,
-                       desc: showsDesc ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
+                       singleColumn: singleColumn, pinned: pkg.pinned,
+                       desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
             }
         }
     }
 
-    private func searchView(showsDesc: Bool) -> some View {
+    private func searchView(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
             HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
                             onSubmit: {
@@ -717,10 +724,10 @@ struct HomebrewSettingsPage: View {
                 listOrEmpty(hb.searchHits, reading: hb.searchReading,
                             nothing: HbStr.noResults, unanswerable: HbStr.couldNotSearch,
                             waiting: HbStr.searching) { hit in
-                    pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
+                    pkgRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
                            alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
                                                                               installed: hb.installed) != nil,
-                           desc: showsDesc ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
+                           desc: singleColumn ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
                 }
             }
         }
@@ -1245,7 +1252,7 @@ struct HomebrewSettingsPage: View {
     /// selected. `nil` omits the second line entirely rather than reserving an
     /// empty one, since the split layout never re-flows a row that never draws
     /// a description at all.
-    private func pkgRow(name: String, detail: String?, isCask: Bool,
+    private func pkgRow(name: String, detail: String?, isCask: Bool, singleColumn: Bool,
                         pinned: Bool = false, alreadyInstalled: Bool = false,
                         hasUpdate: Bool = false, desc: String? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
@@ -1284,8 +1291,34 @@ struct HomebrewSettingsPage: View {
                 }
             }
             Spacer(minLength: 0)
+            goesToItsOwnScreen(singleColumn)
         }
         .helmListRow()
+        .helmOpensAScreen(singleColumn)
+    }
+
+    /// **The mark that says a row leads somewhere, and only where it does.**
+    ///
+    /// Below `HomebrewSplit`'s threshold a press on a row replaces the list
+    /// with that row's own screen; above it the same press moves the inspector
+    /// beside the list and the pane does not change. So the chevron is drawn
+    /// from the one fact that decides which of those happens, and never
+    /// otherwise: a chevron over a row that opens nothing is a promise the
+    /// wide page does not keep.
+    ///
+    /// `HelmText.separator` is the token for exactly this — "marks, never
+    /// text", 3.07:1 light and 4.07:1 dark, over the 3:1 a mark that carries
+    /// meaning answers to. It is hidden from the accessibility tree because it
+    /// is not a control and says nothing the row does not: the row itself
+    /// carries the hint, in `helmOpensAScreen`.
+    @ViewBuilder
+    private func goesToItsOwnScreen(_ singleColumn: Bool) -> some View {
+        if singleColumn {
+            Image(systemName: "chevron.forward")
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.separator)
+                .accessibilityHidden(true)
+        }
     }
 
     /// Which list a segment is showing, and therefore which one Refresh
@@ -1443,6 +1476,28 @@ private extension View {
     func helmListRow() -> some View {
         frame(minHeight: HelmSpace.s7)
             .listRowSeparator(.hidden)
+    }
+
+    /// **What a row promises when pressing it changes the whole pane.**
+    ///
+    /// The chevron beside the row is a mark and not an element
+    /// (`goesToItsOwnScreen` says why), so without this the single-column list
+    /// reads to VoiceOver exactly as the two-column one does — same rows, same
+    /// names, and no word anywhere about the press replacing the list. A hint
+    /// is the right channel for it: it is read after the row's own name, it is
+    /// skipped by anyone who has hints off, and it does not become part of the
+    /// row's name the way a label would.
+    ///
+    /// Nothing at all above the threshold, rather than a hint saying something
+    /// milder: there the press moves the inspector beside the list, which is a
+    /// selection and is what macOS already announces for a selectable row.
+    @ViewBuilder
+    func helmOpensAScreen(_ singleColumn: Bool) -> some View {
+        if singleColumn {
+            accessibilityHint(HbStr.opensItsOwnScreen)
+        } else {
+            self
+        }
     }
 }
 
