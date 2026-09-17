@@ -5,8 +5,9 @@ set -euo pipefail
 #
 # Why a separate bundle rather than replacing /Applications/Helm.app:
 #
-# - The bundle is ad-hoc signed, so its cdhash is a hash of its contents and
-#   every build is a different program to TCC. Installing over the real app
+# - Unless this Mac names a signing identity (`signing-identity.sh`), the
+#   bundle is ad-hoc signed, so its cdhash is a hash of its contents and every
+#   build is a different program to TCC. Installing over the real app then
 #   drops Accessibility and Full Disk Access every single time, and this is a
 #   loop somebody watches after each rebuild.
 # - A different bundle id is a different preferences domain, so the dev build
@@ -43,7 +44,8 @@ PLIST="$DEV/Contents/Info.plist"
 # Editing Info.plist invalidates the seal `package-app.sh` just made: the
 # plist is inside what was signed. Re-sign, do not repair.
 echo "==> Re-signing"
-codesign --force --deep --sign - "$DEV" 2>&1 | sed 's/^/    /'
+codesign --force --deep --timestamp=none \
+  --sign "$(bash "$SCRIPT_DIR/signing-identity.sh")" "$DEV" 2>&1 | sed 's/^/    /'
 codesign --verify --deep --strict "$DEV"
 echo "==> Signature verified"
 

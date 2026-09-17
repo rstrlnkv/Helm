@@ -310,9 +310,25 @@ xcrun actool "$REPO_ROOT/Resources/Icon/Helm.icon" \
 cp "$ICONOUT/Assets.car" "$RESOURCES_DIR/Assets.car"
 cp "$ICONOUT/Helm.icns" "$RESOURCES_DIR/Helm.icns"
 
-echo "==> Ad-hoc signing"
+# Ad-hoc unless this Mac names an identity of its own — `signing-identity.sh`
+# says why a local build wants one and why a release must not have it.
+SIGN_IDENTITY="$(bash "$SCRIPT_DIR/signing-identity.sh")"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+  echo "==> Ad-hoc signing"
+else
+  # Refused here rather than left to codesign: a name that matches nothing
+  # would otherwise fall through to an error mid-build, and one that silently
+  # became ad-hoc would cost every grant this Mac holds without a word.
+  IDENTITIES="$(security find-identity -p codesigning 2>/dev/null || true)"
+  printf '%s\n' "$IDENTITIES" | grep -F "\"$SIGN_IDENTITY\"" >/dev/null || {
+    echo "no code-signing identity named \"$SIGN_IDENTITY\" in the keychain — fix" \
+         "~/.config/helm/signing-identity, or sign ad-hoc with HELM_SIGN_IDENTITY=-" >&2
+    exit 1
+  }
+  echo "==> Signing with \"$SIGN_IDENTITY\""
+fi
 xattr -cr "$APP_DIR"
-codesign --force --deep --sign - "$APP_DIR"
+codesign --force --deep --timestamp=none --sign "$SIGN_IDENTITY" "$APP_DIR"
 # Verified here, where the signature is intact. This check was missing: signing
 # reported success for months while producing a bundle codesign rejects.
 codesign --verify --deep --strict "$APP_DIR"
