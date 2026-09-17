@@ -474,11 +474,13 @@ toolbar. The detail pane bridges SwiftUI's `.toolbar` into the window's AppKit t
 (`sceneBridgingOptions`), where macOS 26 and later draw a page's switcher and
 actions as Liquid Glass, and keeps AppKit's safe area so content starts under the
 bar. The switcher is `HelmToolbarSwitcher`
-(`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`), not the system segmented
-control: each segment as wide as what it shows, with a hairline between unselected
-ones, labelled by `ToolbarSwitcherStyle` — words, glyphs, both, or glyphs with the
+(`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`): the system's segmented
+control, told to size each segment to what it shows rather than to the longest word,
+and labelled by `ToolbarSwitcherStyle` — words, glyphs, both, or glyphs with the
 selected segment's word — which a right-click on any switcher changes for all of
-them. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
+them. It is the system's control because everything Liquid Glass does under a press
+— the glass swelling, and following the pointer from segment to segment — is the
+control's own and cannot be drawn from SwiftUI. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
 toolbar only while an item exists and a page without controls would otherwise have
 a shorter title bar. The header itself takes one of two shapes, chosen by
 `PageBarStyle` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), a developer

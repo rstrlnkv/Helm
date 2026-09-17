@@ -66,11 +66,28 @@ import HelmUI
 
     private var titleWatch: AnyCancellable?
 
+    /// **The bar never changes its own display mode.**
+    ///
+    /// Right-clicking a toolbar raises AppKit's own menu — «Icon and Text /
+    /// Icon Only» — and choosing from it lays the items out with labels under
+    /// them, which grows the title bar: photographed 2026-09-17, the 52 pt bar
+    /// became 68. Every item here is a custom view whose label the system never
+    /// draws, so that menu changes nothing but the height. Turned off, AppKit
+    /// raises nothing over the bar and the switcher's own menu
+    /// (`HelmToolbarSwitcher`) is the only one.
+    private func settleDisplayMode() {
+        guard let toolbar = window.toolbar else { return }
+        toolbar.allowsDisplayModeCustomization = false
+        toolbar.displayMode = .iconOnly
+    }
+
     /// Name and status in the title bar for the style that draws them there;
     /// for the style that draws the module's plate and name as a toolbar item
     /// the title stays the window's — the Window menu and Mission Control name
     /// the window by it — and is simply not drawn a second time.
     private func applyTitle(_ title: HelmPageTitle?) {
+        // A page change rebuilds the bar, and the setting goes with it.
+        DispatchQueue.main.async { [weak self] in self?.settleDisplayMode() }
         let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
         window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
@@ -96,6 +113,9 @@ import HelmUI
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        // After the bridge has published this page's items, which is when the
+        // toolbar exists at all.
+        DispatchQueue.main.async { [weak self] in self?.settleDisplayMode() }
     }
 
     func windowWillClose(_ notification: Notification) {

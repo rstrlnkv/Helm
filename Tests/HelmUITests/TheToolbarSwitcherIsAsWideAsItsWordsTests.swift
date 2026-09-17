@@ -7,8 +7,10 @@ import HelmTestSupport
 ///
 /// Asked for 2026-09-17: the toolbar's segmented control spent 4 × 122 pt on
 /// Homebrew in Russian, «Поиск» sitting in a field three times its size. The
-/// widths below are `HelmToolbarSwitcher.width`, the numbers the page decides
-/// with and the drawing is laid out by.
+/// widths below are `HelmToolbarSwitcher.width`, asked of a control built the
+/// same way the toolbar's is — the numbers the page decides the pop-up fallback
+/// with.
+@MainActor
 final class TheToolbarSwitcherIsAsWideAsItsWordsTests: XCTestCase {
 
     private let homebrew = ["Installed", "Updates", "Search", "Health"]
@@ -35,7 +37,6 @@ final class TheToolbarSwitcherIsAsWideAsItsWordsTests: XCTestCase {
         XCTAssertLessThan(icons, naming, "glyphs alone are not narrower than glyphs with one name")
         XCTAssertLessThan(naming, text, "one name is not narrower than every name")
         XCTAssertLessThan(text, both, "words alone are not narrower than words with glyphs")
-        XCTAssertEqual(icons, 4 * 40 + 3 + 6, "four glyph segments, three dividers and the inset")
     }
 
     func testAnUnknownStoredStyleIsWords() {

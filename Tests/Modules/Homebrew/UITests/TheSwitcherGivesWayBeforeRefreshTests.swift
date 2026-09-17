@@ -35,16 +35,23 @@ final class TheSwitcherGivesWayBeforeRefreshTests: XCTestCase {
         }
     }
 
-    /// A glyph beside every word is the widest style: at the smallest window it
-    /// gives way, or the toolbar takes Refresh with it.
-    func testGlyphsAndWordsGiveWayAtTheSmallestWindow() {
-        for language in [AppLanguage.ru, .ja] {
-            AppLanguage.only(language) {
-                XCTAssertFalse(HomebrewSettingsPage.switcherFits(paneWidth: smallest, style: .iconsAndText), """
-                    \(language.rawValue): glyphs and words are kept in a \(smallest) pt pane, where \
-                    the toolbar puts the switcher and Refresh into its overflow menu
-                    """)
-            }
+    /// A glyph beside every word is the widest style, and Russian is the widest
+    /// language for it: 452 pt of switcher, measured off the control itself,
+    /// where Japanese asks 394 and fits. Photographed at the smallest window:
+    /// Russian draws the pop-up, Japanese keeps its segments and Refresh beside
+    /// them.
+    func testGlyphsAndWordsGiveWayInTheWidestLanguage() {
+        AppLanguage.only(.ru) {
+            XCTAssertFalse(HomebrewSettingsPage.switcherFits(paneWidth: smallest, style: .iconsAndText), """
+                glyphs and words are kept in a \(smallest) pt pane in Russian, where the toolbar \
+                puts the switcher and Refresh into its overflow menu
+                """)
+        }
+        AppLanguage.only(.ja) {
+            XCTAssertTrue(HomebrewSettingsPage.switcherFits(paneWidth: smallest, style: .iconsAndText), """
+                Japanese is given the pop-up in a \(smallest) pt pane, where its glyphs and words \
+                were photographed fitting beside Refresh
+                """)
         }
     }
 

@@ -44,13 +44,14 @@ public extension Notification.Name {
 public extension EnvironmentValues {
     @Entry var helmSwitcherStyle: ToolbarSwitcherStyle = .text
     /// Where a right-click on a switcher writes the choice. Nil where nothing
-    /// stores it — a page mounted on its own — and the menu is then not offered.
+    /// stores it — a page mounted on its own — and the menu is then not raised.
     @Entry var helmSetSwitcherStyle: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)? = nil
 }
 
 public extension View {
     /// Follows `ToolbarSwitcherStyle` as it is changed and hands every switcher
-    /// below the way to change it.
+    /// below the way to change it — a right-click on the switcher, which is the
+    /// gesture Finder's own display-mode menu teaches.
     func helmTracksSwitcherStyle(_ current: @escaping () -> ToolbarSwitcherStyle,
                                  set: @escaping @MainActor @Sendable (ToolbarSwitcherStyle) -> Void)
         -> some View {
@@ -92,22 +93,37 @@ public struct HelmSwitcherSegment<Value: Hashable> {
     }
 }
 
-/// **A switcher for the window's toolbar, drawn by Helm rather than by the
-/// system segmented control** — because the system control has one width per
-/// segment and draws no divider there, and those were the two things asked for.
+/// **The switcher in the window's toolbar: the system's own segmented control,
+/// sized to what it shows.**
 ///
-/// The toolbar gives the item its glass capsule; this draws what is inside it.
-public struct HelmToolbarSwitcher<Value: Hashable>: View {
+/// It was drawn by hand for a while, to get segments as wide as their words and
+/// a divider between them — and that cost everything the system control does
+/// for free, which is most of what Liquid Glass *is*: measured 2026-09-17 against
+/// Apple Music's toolbar, pressing a segment swells its glass and dragging
+/// carries that glass from segment to segment. None of it can be imitated from
+/// SwiftUI, and none of it was.
+///
+/// What the system control had to be told: `segmentDistribution = .fit`, which
+/// is what stops every segment taking the longest word's width — 4 × 122 pt for
+/// Homebrew in Russian, «Поиск» in a field three times its size.
+///
+/// **The right-click is caught before AppKit answers it.** Four arrangements
+/// were tried on the dev build and each was measured: SwiftUI's `.contextMenu`
+/// on a toolbar item opens nothing; a view of ours answering `hitTest` never
+/// sees the press; a menu hung on the item's own views loses to the toolbar's;
+/// and the control's own `menu` is never consulted either, because the bar
+/// answers first — with its display-mode menu, which `SettingsWindow` turns off
+/// because it only changed the bar's height. A local event monitor is ahead of
+/// all of it: a right-click inside this control opens this menu and goes no
+/// further, and every other press in the bar is left alone.
+public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     private let name: String
     private let segments: [HelmSwitcherSegment<Value>]
     @Binding private var selection: Value
 
     @Environment(\.helmSwitcherStyle) private var style
     @Environment(\.helmSetSwitcherStyle) private var setStyle
-    /// The selected pill is one shape that moves between segments rather than
-    /// one that ends here and starts there — the panel's tab strip is the same
-    /// arrangement, and without it switching drew a cut.
-    @Namespace private var pill
+    @Environment(\.isEnabled) private var isEnabled
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>]) {
         self.name = name
@@ -115,186 +131,162 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
         self._selection = selection
     }
 
-    // MARK: - Geometry, one set of numbers for the drawing and the estimate
+    public func makeCoordinator() -> Coordinator { Coordinator() }
 
-    static var textPadding: CGFloat { 12 }
-    static var iconSegment: CGFloat { 40 }
-    static var iconAndTextPadding: CGFloat { 11 }
-    static var iconColumn: CGFloat { 15 }
-    static var iconGap: CGFloat { 6 }
-    static var inset: CGFloat { 3 }
-    static var divider: CGFloat { 1 }
+    public func makeNSView(context: Context) -> NSSegmentedControl {
+        let control = NSSegmentedControl()
+        control.segmentStyle = .automatic
+        control.segmentDistribution = .fit
+        control.trackingMode = .selectOne
+        control.target = context.coordinator
+        control.action = #selector(Coordinator.picked(_:))
+        context.coordinator.watch(control)
+        return control
+    }
 
-    /// How wide the switcher draws in `style` — the word widths measured at the
-    /// font the segments set them in. For `iconsNamingSelected` the widest word
-    /// is the one counted, so the answer does not change with the selection.
-    public static func width(of labels: [String], in style: ToolbarSwitcherStyle) -> CGFloat {
-        guard !labels.isEmpty else { return 0 }
-        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let inks = labels.map { ceil(($0 as NSString).size(withAttributes: [.font: font]).width) }
-        let count = CGFloat(labels.count)
-        let chrome = (count - 1) * divider + inset * 2
-        switch style {
-        case .text:
-            return inks.reduce(0, +) + count * textPadding * 2 + chrome
-        case .icons:
-            return count * iconSegment + chrome
-        case .iconsAndText:
-            return inks.reduce(0, +) + count * (iconColumn + iconGap + iconAndTextPadding * 2) + chrome
-        case .iconsNamingSelected:
-            let named = (inks.max() ?? 0) + iconColumn + iconGap + textPadding * 2
-            return (count - 1) * iconSegment + named + chrome
+    public static func dismantleNSView(_ control: NSSegmentedControl, coordinator: Coordinator) {
+        coordinator.stop()
+    }
+
+    /// **The gesture that opens a menu on a Mac**: the right button, or the left
+    /// one with Control held, which is how a trackpad without a right click
+    /// sends it.
+    static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
+        switch type {
+        case .rightMouseDown: return true
+        case .leftMouseDown: return modifiers.contains(.control)
+        default: return false
         }
     }
 
-    public var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-                segmentButton(segment)
-                if index < segments.count - 1 {
-                    // Only between two segments neither of which is selected:
-                    // the selected pill is its own edge, as in AppKit's own
-                    // segmented controls.
-                    let quiet = segment.value != selection && segments[index + 1].value != selection
-                    Rectangle()
-                        .fill(quiet ? HelmSurface.hairline : Color.clear)
-                        .frame(width: Self.divider, height: 16)
-                }
-            }
+    public func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.pick = { index in
+            guard segments.indices.contains(index) else { return }
+            selection = segments[index].value
         }
-        .padding(Self.inset)
-        .fixedSize()
-        .animation(HelmMotion.interface, value: selection)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(name)
-        // AppKit's own menu, on a view that answers a right-click and nothing
-        // else: SwiftUI's `.contextMenu` on a toolbar item opened nothing at
-        // all — measured 2026-09-17 on the shipped build.
-        .overlay {
-            if let setStyle {
-                RightClickMenu(title: L("Tab labels"), style: style, choose: setStyle)
-            }
+        context.coordinator.choose = setStyle
+        Self.fill(control, segments: segments, style: style,
+                  selected: segments.firstIndex { $0.value == selection })
+        control.isEnabled = isEnabled
+        control.setAccessibilityLabel(name)
+        let styleMenu = setStyle == nil ? nil
+            : Self.menu(title: L("Tab labels"), style: style, target: context.coordinator)
+        context.coordinator.styleMenu = styleMenu
+        // Kept as the control's own menu as well: it costs nothing, and it is
+        // what answers anywhere AppKit does consult the control.
+        control.menu = styleMenu
+    }
+
+    /// The segments as the chosen style shows them. Written every update
+    /// because the style, the words and the selection can each change under it.
+    private static func fill(_ control: NSSegmentedControl,
+                             segments: [HelmSwitcherSegment<Value>],
+                             style: ToolbarSwitcherStyle, selected: Int?) {
+        if control.segmentCount != segments.count { control.segmentCount = segments.count }
+        for (index, segment) in segments.enumerated() {
+            let showsGlyph = style != .text
+            let showsWord = style == .text || style == .iconsAndText
+                || (style == .iconsNamingSelected && index == selected)
+            control.setLabel(showsWord ? segment.label : "", forSegment: index)
+            control.setImage(showsGlyph
+                ? NSImage(systemSymbolName: segment.symbol, accessibilityDescription: segment.label)
+                : nil, forSegment: index)
+            control.setImageScaling(.scaleProportionallyDown, forSegment: index)
+            // The word, for a segment showing only its glyph — the pointer is
+            // where a glyph-only control says what it is.
+            control.setToolTip(segment.label, forSegment: index)
+            // 0 is «as wide as it needs», which `segmentDistribution` then
+            // leaves alone.
+            control.setWidth(0, forSegment: index)
+        }
+        if let selected, control.selectedSegment != selected {
+            control.setSelected(true, forSegment: selected)
         }
     }
 
-    private func segmentButton(_ segment: HelmSwitcherSegment<Value>) -> some View {
-        let selected = segment.value == selection
-        return Button {
-            selection = segment.value
-        } label: {
-            label(segment, selected: selected)
-                .foregroundStyle(selected ? Color.primary : HelmText.quiet)
-                .frame(height: 30)
-                .background {
-                    if selected {
-                        Capsule()
-                            .fill(HelmSurface.panelSelection)
-                            .matchedGeometryEffect(id: "switcher.selection", in: pill)
-                    }
-                }
-                .contentShape(Capsule())
+    /// How wide the switcher draws in `style` — asked of a control built the
+    /// same way, because the system decides its own metrics.
+    @MainActor
+    public static func width(of labels: [String], in style: ToolbarSwitcherStyle,
+                             symbol: String = "circle") -> CGFloat {
+        let control = NSSegmentedControl()
+        control.segmentStyle = .automatic
+        control.segmentDistribution = .fit
+        let segments = labels.enumerated().map { index, label in
+            HelmSwitcherSegment(index, label, symbol: symbol)
         }
-        .buttonStyle(.plain)
-        .help(segment.label)
-        .accessibilityLabel(segment.label)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        HelmToolbarSwitcher<Int>.fill(control, segments: segments, style: style, selected: 0)
+        return control.fittingSize.width
     }
 
-    @ViewBuilder
-    private func label(_ segment: HelmSwitcherSegment<Value>, selected: Bool) -> some View {
-        switch style {
-        case .text:
-            Text(segment.label)
-                .lineLimit(1)
-                .padding(.horizontal, Self.textPadding)
-        case .icons:
-            Image(systemName: segment.symbol)
-                .frame(width: Self.iconSegment)
-        case .iconsAndText:
-            HStack(spacing: Self.iconGap) {
-                Image(systemName: segment.symbol).frame(width: Self.iconColumn)
-                Text(segment.label).lineLimit(1)
-            }
-            .padding(.horizontal, Self.iconAndTextPadding)
-        case .iconsNamingSelected:
-            if selected {
-                HStack(spacing: Self.iconGap) {
-                    Image(systemName: segment.symbol).frame(width: Self.iconColumn)
-                    Text(segment.label).lineLimit(1)
-                }
-                .padding(.horizontal, Self.textPadding)
-            } else {
-                Image(systemName: segment.symbol)
-                    .frame(width: Self.iconSegment)
-            }
-        }
-    }
-}
-
-
-/// The style menu, raised by a right-click (or a Control-click) anywhere on the
-/// switcher.
-///
-/// **The menu is hung on the item's own AppKit views, not on a SwiftUI
-/// overlay.** Measured on the dev build: SwiftUI's `.contextMenu` inside a
-/// bridged toolbar item opens nothing, and neither does a view of ours that
-/// answers `hitTest` for a right-click — the press never reaches the item's
-/// SwiftUI content at all. What does work is AppKit's own lookup: a
-/// right-click walks up the view tree asking each view for a menu, so the menu
-/// goes on every ancestor between this view and the toolbar's own container,
-/// which is where the item ends and the shared bar begins.
-private struct RightClickMenu: NSViewRepresentable {
-    let title: String
-    let style: ToolbarSwitcherStyle
-    let choose: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSView { PassThroughView() }
-
-    func updateNSView(_ view: NSView, context: Context) {
-        context.coordinator.choose = choose
+    /// Every style, the current one ticked, each item carrying the style it
+    /// stands for.
+    static func menu(title: String, style: ToolbarSwitcherStyle, target: AnyObject?) -> NSMenu {
         let menu = NSMenu(title: title)
         for choice in ToolbarSwitcherStyle.allCases {
             let item = NSMenuItem(title: choice.label,
-                                  action: #selector(Coordinator.picked(_:)), keyEquivalent: "")
-            item.target = context.coordinator
+                                  action: #selector(Coordinator.chose(_:)), keyEquivalent: "")
+            item.target = target
             item.representedObject = choice.rawValue
             item.state = choice == style ? .on : .off
             menu.addItem(item)
         }
-        view.menu = menu
-        // Every view this item is made of, and no further. Logged from the dev
-        // build 2026-09-17, an item's tree is
-        // `ToolbarItemHostingView < NSToolbarItemViewer < NSView <
-        // ContentHolderView < NSGlassEffectView < NSToolbarPlatterView < NSView`
-        // and then a plain `NSView` shared by every item, `NSGlassContainerView`
-        // and `NSToolbarView`, which carries the bar's own menu — the menu that
-        // was answering these right-clicks with nothing. The platter is the
-        // item's own glass and the last view that is only this switcher's: set
-        // one view further and a right-click over Refresh opened this menu too,
-        // which the same probe showed.
-        let shared = ["NSGlassContainerView", "NSToolbarView"]
-        var ancestor = view.superview
-        while let current = ancestor, !shared.contains(String(describing: type(of: current))) {
-            current.menu = menu
-            if String(describing: type(of: current)) == "NSToolbarPlatterView" { break }
-            ancestor = current.superview
-        }
+        return menu
     }
 
-    @MainActor final class Coordinator: NSObject {
-        var choose: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void = { _ in }
+    @MainActor public final class Coordinator: NSObject {
+        var pick: (Int) -> Void = { _ in }
+        var choose: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)?
+        var styleMenu: NSMenu?
+        private weak var control: NSSegmentedControl?
+        private var monitor: Any?
 
-        @objc func picked(_ sender: NSMenuItem) {
+        func watch(_ control: NSSegmentedControl) {
+            self.control = control
+            stop()
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) {
+                [weak self] event in
+                // The handler is `@Sendable` and `NSEvent` is not, although this
+                // one arrives on the main thread — which is where it is read and
+                // where the menu is raised. `Press` carries it over that line,
+                // and only a `Bool` comes back.
+                let press = Press(event: event)
+                return MainActor.assumeIsolated { self?.took(press) ?? false } ? nil : event
+            }
+        }
+
+        /// Whether this menu took the press — true only for the gesture, inside
+        /// this control, which is then not passed on.
+        private func took(_ press: Press) -> Bool {
+            let event = press.event
+            guard HelmToolbarSwitcher.isTheGesture(type: event.type, modifiers: event.modifierFlags),
+                  let control, let styleMenu,
+                  let window = control.window, event.window === window
+            else { return false }
+            let point = control.convert(event.locationInWindow, from: nil)
+            guard control.bounds.contains(point) else { return false }
+            styleMenu.popUp(positioning: nil, at: point, in: control)
+            return true
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        @objc func picked(_ sender: NSSegmentedControl) {
+            pick(sender.selectedSegment)
+        }
+
+        @objc func chose(_ sender: NSMenuItem) {
             guard let raw = sender.representedObject as? String else { return }
-            choose(ToolbarSwitcherStyle(stored: raw))
+            choose?(ToolbarSwitcherStyle(stored: raw))
         }
     }
+}
 
-    /// Takes no press of its own: the segments underneath are what a left-click
-    /// is for, and the menu is answered by the view tree rather than by a hit.
-    private final class PassThroughView: NSView {
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    }
+/// One press, over the line between a monitor's `@Sendable` handler and the
+/// main actor it is already on.
+private struct Press: @unchecked Sendable {
+    let event: NSEvent
 }
