@@ -1194,3 +1194,7 @@
 "Page header" = "Cabeçalho da página";
 "Window title" = "Título da janela";
 "Module icon and name" = "Ícone e nome do módulo";
+"Text Only" = "Somente Texto";
+"Icon Only" = "Somente Ícones";
+"Icon and Text" = "Ícone e Texto";
+"Icon Only, Text When Selected" = "Somente Ícones, Texto ao Selecionar";

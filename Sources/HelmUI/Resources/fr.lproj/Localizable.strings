@@ -1194,3 +1194,7 @@
 "Page header" = "En-tête de page";
 "Window title" = "Titre de la fenêtre";
 "Module icon and name" = "Icône et nom du module";
+"Text Only" = "Texte seulement";
+"Icon Only" = "Icône seulement";
+"Icon and Text" = "Icône et texte";
+"Icon Only, Text When Selected" = "Icône seulement, texte si sélectionné";

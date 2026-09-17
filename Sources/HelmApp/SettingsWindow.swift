@@ -255,6 +255,8 @@ final class SettingsSplitViewController: NSSplitViewController {
                     model.pageTitle = title
                 }
                 .helmTracksPageBarStyle { AppSettings.pageBarStyle }
+                .helmTracksSwitcherStyle({ AppSettings.toolbarSwitcherStyle },
+                                         set: { AppSettings.toolbarSwitcherStyle = $0 })
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // The pane as well as the sidebar: a module page's header plate
                 // and its empty state are module icons too, and «Module icons»

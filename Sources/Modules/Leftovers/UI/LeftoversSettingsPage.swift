@@ -228,14 +228,13 @@ struct LeftoversSettingsPage: View {
     /// `AnImposedPickerWidthFitsItsLabelsTests` is what keeps a seventh from
     /// arriving unmeasured.
     private var statusFilter: some View {
-        Picker(HelmA11y.whatToShow, selection: $lvm.showAll) {
-            Text(LfStr.filterLeftovers).tag(false)
-            Text(LfStr.filterAll).tag(true)
-        }
-        .pickerStyle(.segmented).labelsHidden()
+        HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $lvm.showAll, segments: [
+            HelmSwitcherSegment(false, LfStr.filterLeftovers, symbol: "doc.badge.ellipsis"),
+            HelmSwitcherSegment(true, LfStr.filterAll, symbol: "list.bullet"),
+        ])
         // Narrowing the list drops the ticks it hides, the way the kind
-        // filter and a fresh scan already do. Without this the segmented
-        // control was the one way a selection could outlive its row.
+        // filter and a fresh scan already do. Without this the switcher was
+        // the one way a selection could outlive its row.
         .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
         .fixedSize()
     }

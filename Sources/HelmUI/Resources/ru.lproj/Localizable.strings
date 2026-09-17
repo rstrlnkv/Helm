@@ -1194,3 +1194,7 @@
 "Page header" = "Шапка страниц";
 "Window title" = "Заголовок окна";
 "Module icon and name" = "Иконка и имя модуля";
+"Text Only" = "Только текст";
+"Icon Only" = "Только значок";
+"Icon and Text" = "Значок и текст";
+"Icon Only, Text When Selected" = "Значок, у выбранного — текст";

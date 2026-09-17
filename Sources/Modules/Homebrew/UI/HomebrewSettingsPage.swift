@@ -24,9 +24,10 @@ struct HomebrewSettingsPage: View {
     /// the child is the engine's and runs to its end.
     @State private var searching: Task<Void, Never>?
     /// The pane's width, for the one decision the toolbar cannot make well on
-    /// its own — `switcherIsSegmented`. Nil until measured: the first frame
-    /// draws the segmented control rather than flashing a menu into it.
+    /// its own — `switcherFits`. Nil until measured: the first frame
+    /// draws the switcher rather than flashing a pop-up into it.
     @State private var paneWidth: CGFloat?
+    @Environment(\.helmSwitcherStyle) private var switcherStyle
 
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
@@ -299,12 +300,15 @@ struct HomebrewSettingsPage: View {
     /// `NSToolbar` lays its items out against the whole title bar. What it does
     /// not do is give way gracefully — out of room it moves the whole bar into
     /// its overflow menu, Refresh included — so the one decision left to the page
-    /// is the switcher's shape (`switcherIsSegmented`).
+    /// is the switcher's shape (`switcherFits`).
     ///
-    /// On macOS 26 and later the system draws these as Liquid Glass — the
-    /// switcher as a glass capsule, the two glyph buttons as glass circles —
-    /// because they are standard controls in the functional layer, which is
-    /// exactly where the guidelines put glass and the only place they want it.
+    /// On macOS 26 and later the toolbar draws these as Liquid Glass — the
+    /// switcher in a glass capsule, the two glyph buttons as glass circles —
+    /// which is the functional layer, exactly where the guidelines put glass.
+    /// The switcher inside the capsule is Helm's (`HelmToolbarSwitcher`): the
+    /// system segmented control gave every segment the longest word's width
+    /// and drew no dividers, and its labels are words, glyphs or both as the
+    /// person chose by right-clicking it.
     /// `SettingsSplitViewController` bridges them from this pane into the
     /// window's toolbar (`sceneBridgingOptions`), and the toolbar tracks the
     /// sidebar's divider, so the switcher centres over this page and not over
@@ -326,14 +330,11 @@ struct HomebrewSettingsPage: View {
             // was forgotten used to be a segment with no row at all, reachable
             // from nowhere and visible in no test. `Segment.label` is the
             // `switch` that cannot forget one.
-            let picker = Picker(HelmA11y.whatToShow, selection: $hb.segment) {
-                ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
-                    Text(segment.label).tag(segment)
-                }
-            }
-            .labelsHidden()
-            if Self.switcherIsSegmented(paneWidth: paneWidth) {
-                picker.pickerStyle(.segmented)
+            if Self.switcherFits(paneWidth: paneWidth, style: switcherStyle) {
+                HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $hb.segment,
+                                    segments: HomebrewViewModel.Segment.allCases.map {
+                                        HelmSwitcherSegment($0, $0.label, symbol: $0.symbol)
+                                    })
             } else {
                 // A pop-up button and not a SwiftUI menu: the toolbar strips
                 // a menu's words (`HelmToolbarPopUp` says what was tried).
@@ -380,14 +381,14 @@ struct HomebrewSettingsPage: View {
     /// module-name header, the wider of the two.
     static let switcherReserve: CGFloat = 250
 
-    /// Segmented where the labels fit beside the rest of the bar, a pull-down
-    /// menu where they do not. Unmeasured is segmented, so nothing flashes on
-    /// the first frame.
-    static func switcherIsSegmented(paneWidth: CGFloat?,
-                                    labels: [String] = HomebrewViewModel.Segment.allCases.map(\.label))
+    /// The switcher, in the style chosen for it, where it fits beside the rest
+    /// of the bar; a pop-up button where it does not. Unmeasured fits, so
+    /// nothing flashes on the first frame.
+    static func switcherFits(paneWidth: CGFloat?, style: ToolbarSwitcherStyle,
+                             labels: [String] = HomebrewViewModel.Segment.allCases.map(\.label))
         -> Bool {
         guard let paneWidth else { return true }
-        return paneWidth >= HelmPickerWidth.segmented(labels) + switcherReserve
+        return paneWidth >= HelmToolbarSwitcher<Int>.width(of: labels, in: style) + switcherReserve
     }
 
     @ViewBuilder

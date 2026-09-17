@@ -1194,3 +1194,7 @@
 "Page header" = "页面标题栏";
 "Window title" = "窗口标题";
 "Module icon and name" = "模块图标和名称";
+"Text Only" = "仅文本";
+"Icon Only" = "仅图标";
+"Icon and Text" = "图标和文本";
+"Icon Only, Text When Selected" = "仅图标，选中时显示文本";

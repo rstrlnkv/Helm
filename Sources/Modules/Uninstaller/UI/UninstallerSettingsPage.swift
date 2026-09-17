@@ -64,18 +64,18 @@ struct UninstallerSettingsPage: View {
     /// centred over this page, Refresh as a glass circle at the trailing edge.
     ///
     /// They were one row of the page with the search field between them. The
-    /// segmented control carries no width of its own, for the reason it never
-    /// did — it sizes itself from its labels, and a fixed number was slack in
-    /// some languages and a squeeze in others — and it is still disabled while
-    /// a removal is being reviewed, when switching tabs would abandon it.
+    /// switcher (`HelmToolbarSwitcher`) carries no width of its own, for the
+    /// reason it never did — it sizes itself from what it shows, and a fixed
+    /// number was slack in some languages and a squeeze in others — and it is
+    /// still disabled while a removal is being reviewed, when switching tabs
+    /// would abandon it.
     @ToolbarContentBuilder
     private var pageToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Picker(HelmA11y.whatToShow, selection: $tab) {
-                Text(UnStr.tabApps).tag(0)
-                Text(UnStr.tabOrphans).tag(1)
-            }
-            .pickerStyle(.segmented).labelsHidden()
+            HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $tab, segments: [
+                HelmSwitcherSegment(0, UnStr.tabApps, symbol: "square.grid.2x2"),
+                HelmSwitcherSegment(1, UnStr.tabOrphans, symbol: "doc.badge.ellipsis"),
+            ])
             .disabled(step == .review)
         }
         // Only on the Apps tab: Orphans has its own scan and its own Rescan

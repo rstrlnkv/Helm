@@ -133,6 +133,18 @@ import Module_Homebrew_Engine
             case .health: return HbStr.segHealth
             }
         }
+
+        /// The glyph the toolbar switcher draws for this segment when it is
+        /// set to show glyphs. Updates keeps the module's own «an update
+        /// exists» symbol, the one Upgrade-all already carries.
+        var symbol: String {
+            switch self {
+            case .installed: return "shippingbox"
+            case .updates: return "arrow.up.circle"
+            case .search: return "magnifyingglass"
+            case .health: return "stethoscope"
+            }
+        }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.

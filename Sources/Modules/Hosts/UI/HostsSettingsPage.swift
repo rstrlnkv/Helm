@@ -63,10 +63,6 @@ struct HostsSettingsPage: View {
         .toolbar { pageToolbar }
     }
 
-    /// The two files, as one segmented control on the pane. Above the per-file
-    /// header rather than beside it: which file you are looking at is a bigger
-    /// question than which of its two views you are in, and a page that asks
-    /// both in one row asks them as if they were the same size.
     /// **The page's two choices, in the window's toolbar — placed by what
     /// they are rather than side by side.**
     ///
@@ -75,8 +71,9 @@ struct HostsSettingsPage: View {
     /// file is navigation, table-or-text is a view of whichever file that is.
     /// So the file is the switcher at the centre of the bar, and the view is a
     /// pair of glyphs among the actions at the trailing edge, where a view
-    /// mode sits in every Mac app that has one. macOS 26 and later draw both as
-    /// Liquid Glass because they are standard controls in the functional layer.
+    /// mode sits in every Mac app that has one. The toolbar gives both their
+    /// Liquid Glass; the file switcher is `HelmToolbarSwitcher`, labelled the
+    /// way the person chose by right-clicking it.
     ///
     /// **One view picker for both files, not one each.** They ask the same
     /// question with the same two words, and the choice of table-or-text
@@ -86,12 +83,10 @@ struct HostsSettingsPage: View {
     @ToolbarContentBuilder
     private var pageToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Picker(HostsStr.moduleName, selection: $tab) {
-                Text(HostsStr.keysTab).tag(Tab.keys)
-                Text(HostsStr.sshHostsTab).tag(Tab.ssh)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            HelmToolbarSwitcher(HostsStr.moduleName, selection: $tab, segments: [
+                HelmSwitcherSegment(Tab.keys, HostsStr.keysTab, symbol: "key"),
+                HelmSwitcherSegment(Tab.ssh, HostsStr.sshHostsTab, symbol: "server.rack"),
+            ])
         }
         ToolbarItem(placement: .primaryAction) {
             Picker(HostsStr.tableView, selection: $showingText) {
