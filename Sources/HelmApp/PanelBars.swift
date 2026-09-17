@@ -3,8 +3,8 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-// The rows of the card that are not tiles: the tab strip, the gallery of
-// widgets no tab is holding, and the footer. Drawn by the card in
+// The rows of the card that are not tiles: the tab strip, the setup bar, the
+// gallery of widgets no tab is holding, and the footer. Drawn by the card in
 // `HelmPanel.swift`, which keeps the grid and everything the drag touches.
 //
 // Each takes what it needs and owns none of it. That is the rule the split was
@@ -199,6 +199,30 @@ struct PanelTabStrip: View {
     }
 }
 
+/// The bar above the grid while the panel is being arranged.
+/// The bar says one thing: you are editing, and here is the way out.
+///
+/// It carried the tab-label picker for a while — a full-width segmented
+/// control, the heaviest thing in the panel, for a decision somebody makes once,
+/// inside a mode that is about arranging widgets. It also appeared and vanished
+/// with the number of tabs, so it flickered on state it had nothing to do with,
+/// and it argued with «Готово» for the same row. It lives in Settings → Panel
+/// now, beside the other three switches about how this panel looks.
+struct PanelEditBar: View {
+    let done: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Button(AppStr.done, action: done)
+                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
+        }
+        .helmPanelCard()
+    }
+}
+
 /// Everything not on this tab, as ghosts to press.
 ///
 /// Which ids those are is the panel's question — two independent refusals decide
@@ -269,8 +293,7 @@ struct PanelGallery: View {
     }
 }
 
-/// The three ways out, at the foot of the panel — and, while the panel is
-/// being arranged, the one way back.
+/// The three ways out, at the foot of the panel.
 ///
 /// `showSettings` and `showQuit` both defaulted to false once, which is how a
 /// clean install ended up with no way into settings from the panel it was given
@@ -280,17 +303,13 @@ struct PanelGallery: View {
 /// **A row under a rule, not a card** (the Liquid Glass mockup, direction B).
 /// The panel is the glass; a card at its foot was one more box inside it, and
 /// the controls in it are the kind a menu ends with, which a menu separates
-/// with a line. In the mode the same row says what the mode is and carries
-/// «Готово»: the setup bar that used to stand above the footer made the way
-/// out the second row from the bottom, beside a footer still offering the
-/// buttons of the mode being left.
+/// with a line.
 struct PanelFooter: View {
     let editing: Bool
     let showSettings: Bool
     let showQuit: Bool
     let showEdit: Bool
     let configure: () -> Void
-    let done: () -> Void
 
     var body: some View {
         VStack(spacing: 6) {
@@ -298,51 +317,36 @@ struct PanelFooter: View {
                 .fill(HelmSurface.hairline)
                 .frame(height: 0.5)
                 .padding(.horizontal, 4)
-            Group {
-                if editing {
-                    HStack(spacing: 8) {
-                        Text(AppStr.panelSetup)
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Button(AppStr.done, action: done)
-                            .buttonStyle(.borderedProminent)
-                            .buttonBorderShape(.capsule)
+            HStack(spacing: 2) {
+                if showSettings {
+                    footerButton(AppStr.settingsPane, "gearshape") {
+                        NotificationCenter.default.post(name: .helmOpenSettings,
+                                                        object: SettingsWindow.settingsPage)
                     }
-                    .padding(.leading, 10)
-                    .padding(.trailing, 4)
-                } else {
-                    HStack(spacing: 2) {
-                        if showSettings {
-                            footerButton(AppStr.settingsPane, "gearshape") {
-                                NotificationCenter.default.post(name: .helmOpenSettings,
-                                                                object: SettingsWindow.settingsPage)
-                            }
-                        }
-                        Spacer(minLength: 8)
-                        // A glyph, not a word. «Настроить панель» is the longest
-                        // label in the footer and the least often pressed — it
-                        // is the door to a mode somebody enters once and then
-                        // leaves alone — and at 300 pt it was the label that ran
-                        // out of room and truncated to «Настроить па…». A pencil
-                        // is the one glyph macOS uses for exactly this, and the
-                        // name is still there for a pointer that rests on it and
-                        // for VoiceOver.
-                        // Both glyphs at the right edge, together. A lone icon
-                        // floating in the middle of a footer reads as something
-                        // that lost its label rather than as something that
-                        // never needed one.
-                        if showEdit {
-                            footerGlyph("pencil", AppStr.editPanel, action: configure)
-                        }
-                        if showQuit {
-                            footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
-                        }
-                    }
-                    .padding(.horizontal, 2)
+                }
+                Spacer(minLength: 8)
+                // Only on the way in. While the setup bar is on screen it
+                // carries «Готово», and two of them a hundred points apart is
+                // one of them asking whether the other did something else.
+                //
+                // A glyph, not a word. «Настроить панель» is the longest label
+                // in the footer and the least often pressed — it is the door to
+                // a mode somebody enters once and then leaves alone — and at
+                // 300 pt it was the label that ran out of room and truncated to
+                // «Настроить па…». A pencil is the one glyph macOS uses for
+                // exactly this, and the name is still there for a pointer that
+                // rests on it and for VoiceOver.
+                // Both glyphs at the right edge, together. A lone icon floating
+                // in the middle of a footer reads as something that lost its
+                // label rather than as something that never needed one.
+                if !editing && showEdit {
+                    footerGlyph("pencil", AppStr.editPanel, action: configure)
+                }
+                if showQuit {
+                    footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
                 }
             }
+            .padding(.horizontal, 2)
             .frame(height: 32)
         }
     }

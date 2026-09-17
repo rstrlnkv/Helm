@@ -56,7 +56,7 @@ final class PanelBarsCarryNoLifetimeTests: XCTestCase {
     func testTheFileBeingReadIsTheOneWithTheBarsInIt() throws {
         let lines = try source()
         XCTAssertGreaterThan(lines.count, 100, "only \(lines.count) lines were read")
-        for bar in ["struct PanelTabStrip",
+        for bar in ["struct PanelTabStrip", "struct PanelEditBar",
                     "struct PanelGallery", "struct PanelFooter"] {
             XCTAssertTrue(lines.contains { $0.contains(bar) },
                           "\(bar) is not in the file this test reads any more")
