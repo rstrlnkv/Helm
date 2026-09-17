@@ -68,12 +68,13 @@ private struct SwitcherStyleTracker: ViewModifier {
         content
             .environment(\.helmSwitcherStyle, style ?? current())
             .environment(\.helmSetSwitcherStyle, set)
-            // **A new identity, not a redraw.** A page's controls are bridged
-            // into the window's AppKit toolbar, and an environment change alone
-            // does not republish them: measured 2026-09-17, choosing another
-            // style left the bar exactly as it was until the page was left and
-            // opened again. The same is true of `PageBarStyle`.
-            .id(style ?? current())
+            // **No new identity here, unlike `PageBarStyle`'s tracker.** That one
+            // adds and removes a toolbar item, which the bridge republishes only
+            // for a subtree it has not seen. This style changes nothing about
+            // which items exist: the switcher is one `NSView` that lives across
+            // the change and rewrites its own segments, so a rebuild would only
+            // throw that view away — measured 2026-09-18, which is what made the
+            // bar's items jump as the style was chosen.
             .onReceive(NotificationCenter.default.publisher(for: .helmToolbarSwitcherStyleChanged)) { _ in
                 style = current()
             }
@@ -165,8 +166,17 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             selection = segments[index].value
         }
         context.coordinator.choose = setStyle
-        Self.fill(control, segments: segments, style: style,
-                  selected: segments.firstIndex { $0.value == selection })
+        // **The segments are rewritten inside an animation context.** AppKit
+        // animates a layer-backed control's own contents implicitly while one is
+        // open, so the word arriving on the selected segment comes in with the
+        // width rather than at full strength over a control still growing.
+        NSAnimationContext.runAnimationGroup { animation in
+            animation.duration = HelmMotion.reduceMotion ? 0 : 0.22
+            animation.allowsImplicitAnimation = true
+            Self.fill(control, segments: segments, style: style,
+                      selected: segments.firstIndex { $0.value == selection })
+            control.layoutSubtreeIfNeeded()
+        }
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
         let styleMenu = setStyle == nil ? nil
@@ -175,6 +185,15 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // Kept as the control's own menu as well: it costs nothing, and it is
         // what answers anywhere AppKit does consult the control.
         control.menu = styleMenu
+    }
+
+    /// **The size SwiftUI lays the item out at.** Asked for the control's own
+    /// fitting size on every pass, so a width that changes — `iconsNamingSelected`
+    /// grows a word on the segment that was chosen — is a size SwiftUI can move
+    /// between rather than a number it is handed once.
+    public func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSSegmentedControl,
+                             context: Context) -> CGSize? {
+        nsView.fittingSize
     }
 
     /// The segments as the chosen style shows them. Written every update

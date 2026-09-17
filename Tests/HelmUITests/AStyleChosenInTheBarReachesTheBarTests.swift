@@ -24,12 +24,17 @@ final class AStyleChosenInTheBarReachesTheBarTests: XCTestCase {
         return String(code[start.lowerBound..<end])
     }
 
-    func testTheSwitcherStyleTrackerKeysItsSubtreeOnTheStyle() throws {
+    /// **The switcher's own tracker must not.** Its control is one `NSView` that
+    /// lives across the change and rewrites its segments from the environment,
+    /// so a new identity only throws that view away: measured 2026-09-18, the
+    /// bar's items jumped as the style was chosen, and the style reaches them
+    /// without it.
+    func testTheSwitcherStyleTrackerKeepsItsSubtree() throws {
         let body = try trackerBody("SwitcherStyleTracker",
                                    in: "Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift")
-        XCTAssertTrue(body.contains(".id(style ?? current())"), """
-            the switcher-style tracker hands the subtree a value and not an identity, so a style \
-            chosen by right-clicking the bar does not reach the bar until the page is reopened
+        XCTAssertFalse(body.contains(".id(style"), """
+            the switcher-style tracker gives its subtree a new identity on every style, which \
+            throws away the control the toolbar is holding and makes the bar's items jump
             """)
     }
 
