@@ -103,6 +103,20 @@ struct HostsSettingsPage: View {
             .labelsHidden()
             .help(showingText ? HostsStr.textView : HostsStr.tableView)
         }
+        // **Making a key is the keys file's one act of creation**, so it is
+        // the `+` beside the view glyphs, as adding is in every Mac window
+        // whose toolbar holds a list — and it leaves the bar with the tab it
+        // belongs to, because the hosts file makes nothing new this way.
+        if tab == .keys {
+            ToolbarItem(placement: .primaryAction) {
+                Button { makingKey = true } label: {
+                    Label(HostsStr.newKey, systemImage: "plus")
+                }
+                .labelStyle(.iconOnly)
+                .help(HostsStr.newKey)
+                .disabled(!hvm.keysReadable)
+            }
+        }
     }
 
     private var hostsTab: some View {
@@ -218,8 +232,10 @@ struct HostsSettingsPage: View {
     /// not look.
     private var keysTab: some View {
         VStack(spacing: 0) {
-            keysHeader
-            Divider()
+            if let said = keyOutcomeSentence {
+                keysHeader(said)
+                Divider()
+            }
             if !hvm.keysReadable {
                 empty("folder.badge.questionmark", HostsStr.keysUnreadable)
             } else if hvm.keys.isEmpty {
@@ -245,17 +261,20 @@ struct HostsSettingsPage: View {
         .sheet(isPresented: $makingKey) { NewKeySheet(hvm: hvm) }
     }
 
-    private var keysHeader: some View {
+    /// What the last act on a key came to, when it needs saying. Only what
+    /// needs saying is kept: `.done` redraws the row — the verdict changes, or
+    /// the badge comes on — and that redraw is the sentence.
+    private var keyOutcomeSentence: String? {
+        hvm.keyOutcome.flatMap { HostsStr.sentence(for: $0) }
+    }
+
+    /// The strip over the keys, drawn only while it has a sentence: its button
+    /// moved to the window's toolbar, and an empty strip over the list would be
+    /// a band with a rule under it saying nothing.
+    private func keysHeader(_ said: String) -> some View {
         HStack {
-            Button(HostsStr.newKey) { makingKey = true }
-                .disabled(!hvm.keysReadable)
+            note(said)
             Spacer()
-            if let outcome = hvm.keyOutcome, let said = HostsStr.sentence(for: outcome) {
-                // Only what needs saying is kept: `.done` redraws the row —
-                // the verdict changes, or the badge comes on — and that redraw
-                // is the sentence.
-                note(said)
-            }
         }
         .padding(.horizontal, HelmLayout.formInset)
         .padding(.vertical, HelmSpace.s3)

@@ -659,8 +659,14 @@ extension ModulePageRender.Page {
     /// toolbar, which a page drawn on its own in this host does not have; the
     /// same renders then read 34 and 42 layers on consecutive tests. 30 sits
     /// under the lower reading, as the other floors sit under theirs.
+    ///
+    /// **Hosts' is 6 from 2026-09-17, down from the default 9, for the same
+    /// kind of reason.** «New key…» moved into the toolbar as a `+`, and the
+    /// strip over the key list that held it is drawn now only while there is
+    /// an outcome to say; the render has none, so the button, the strip and
+    /// the rule under it are gone and it reads 6 where it read at least 9.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 30, "homebrew": 61,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 30, "homebrew": 61, "hosts": 6,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }
