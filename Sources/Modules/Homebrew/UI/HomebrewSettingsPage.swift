@@ -23,6 +23,10 @@ struct HomebrewSettingsPage: View {
     /// Cancelling does not stop the tool, and nothing here pretends it does —
     /// the child is the engine's and runs to its end.
     @State private var searching: Task<Void, Never>?
+    /// The pane's width, for the one decision the toolbar cannot make well on
+    /// its own — `switcherIsSegmented`. Nil until measured: the first frame
+    /// draws the segmented control rather than flashing a menu into it.
+    @State private var paneWidth: CGFloat?
 
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
@@ -268,6 +272,11 @@ struct HomebrewSettingsPage: View {
         .animation(HelmMotion.interface, value: hb.segment)
         .animation(HelmMotion.interface, value: hb.selected == nil)
         .toolbar { pageToolbar }
+        // The page fills the pane, so its width is the pane's and does not
+        // follow anything the page draws.
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
+            if paneWidth != width { paneWidth = width }
+        }
         // On the page rather than on the picker: a toolbar item's view is
         // hosted by the window's toolbar and its lifetime is the toolbar's,
         // so a change handler hung on it is not something this page can
@@ -286,9 +295,11 @@ struct HomebrewSettingsPage: View {
     /// `ViewThatFits` with a menu fallback, a preference carrying the answer
     /// down to the columns so the page changed shape once and not twice, and
     /// a reserved slot for «Обновить всё» so the answer did not change with the
-    /// segment. All of that was this page redoing, less well, what a toolbar
-    /// does: an `NSToolbar` lays its items out against the whole title bar and
-    /// puts whatever does not fit into its own overflow menu.
+    /// segment. Most of that was this page redoing what a toolbar does: an
+    /// `NSToolbar` lays its items out against the whole title bar. What it does
+    /// not do is give way gracefully — out of room it moves the whole bar into
+    /// its overflow menu, Refresh included — so the one decision left to the page
+    /// is the switcher's shape (`switcherIsSegmented`).
     ///
     /// On macOS 26 and later the system draws these as Liquid Glass — the
     /// switcher as a glass capsule, the two glyph buttons as glass circles —
@@ -315,13 +326,21 @@ struct HomebrewSettingsPage: View {
             // was forgotten used to be a segment with no row at all, reachable
             // from nowhere and visible in no test. `Segment.label` is the
             // `switch` that cannot forget one.
-            Picker(HelmA11y.whatToShow, selection: $hb.segment) {
+            let picker = Picker(HelmA11y.whatToShow, selection: $hb.segment) {
                 ForEach(HomebrewViewModel.Segment.allCases, id: \.self) { segment in
                     Text(segment.label).tag(segment)
                 }
             }
-            .pickerStyle(.segmented)
             .labelsHidden()
+            if Self.switcherIsSegmented(paneWidth: paneWidth) {
+                picker.pickerStyle(.segmented)
+            } else {
+                // A pop-up button and not a SwiftUI menu: the toolbar strips
+                // a menu's words (`HelmToolbarPopUp` says what was tried).
+                HelmToolbarPopUp(HelmA11y.whatToShow, selection: $hb.segment,
+                                 options: HomebrewViewModel.Segment.allCases.map { ($0, $0.label) })
+                    .fixedSize()
+            }
         }
         ToolbarItemGroup(placement: .primaryAction) {
             if hb.segment == .updates && !hb.outdated.isEmpty {
@@ -344,6 +363,31 @@ struct HomebrewSettingsPage: View {
             .help(HbStr.refreshList)
             .accessibilityLabel(HbStr.refreshList)
         }
+    }
+
+    /// Room the toolbar needs beside the switcher: the page's name on the left,
+    /// Upgrade-all and Refresh on the right, and the gaps between them —
+    /// reserved whichever segment is showing, so the switcher does not change
+    /// shape when Upgrade-all comes and goes.
+    ///
+    /// **Why the page decides this and not the toolbar.** An `NSToolbar` that
+    /// runs out of room does not shrink the widest item: photographed
+    /// 2026-09-17 at the smallest window, a 646 pt pane, the whole bar went into
+    /// the «»» overflow menu — the switcher and Refresh with it, in both
+    /// languages and both header shapes, where the order was that Refresh never
+    /// leaves the bar and the switcher becomes a menu first. Calibrated on the
+    /// same photographs: ru's 488 pt switcher fitted a 753 pt pane beside the
+    /// module-name header, the wider of the two.
+    static let switcherReserve: CGFloat = 250
+
+    /// Segmented where the labels fit beside the rest of the bar, a pull-down
+    /// menu where they do not. Unmeasured is segmented, so nothing flashes on
+    /// the first frame.
+    static func switcherIsSegmented(paneWidth: CGFloat?,
+                                    labels: [String] = HomebrewViewModel.Segment.allCases.map(\.label))
+        -> Bool {
+        guard let paneWidth else { return true }
+        return paneWidth >= HelmPickerWidth.segmented(labels) + switcherReserve
     }
 
     @ViewBuilder

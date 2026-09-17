@@ -166,6 +166,12 @@ struct PageBarContent<Trailing: View>: ViewModifier {
                             // took the Refresh button's place.
                             trailing
                         }
+                        // The toolbar puts a navigation item 8,5 pt from the
+                        // sidebar's edge, where the window's own title starts at
+                        // 20 — photographed 2026-09-17, the plate sat hard against
+                        // the divider while the other shape's title had the page
+                        // gutter. 12 more puts the plate where that title starts.
+                        .padding(.leading, HelmSpace.s5)
                     }
                     // A title is not a control: no glass behind it.
                     .sharedBackgroundVisibility(.hidden)

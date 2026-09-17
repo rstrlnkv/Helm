@@ -1173,7 +1173,7 @@ Access by reading protected files — `~/Library/Safari/Bookmarks.plist`,
 and `TCC.db` is absent on recent macOS. A write probe would be wrong: creating a file
 under `~/Library/Containers` is refused even where access is granted.
 
-`Scripts/package-app.sh:331` signs ad-hoc (`--sign -`) unless the Mac building it
+`Scripts/package-app.sh:327` signs ad-hoc (`--sign -`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
 ad-hoc — `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse anything else. An ad-hoc
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A

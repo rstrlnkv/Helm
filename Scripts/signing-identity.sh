@@ -21,10 +21,53 @@ set -euo pipefail
 #   the repository, holding the certificate's name;
 #   otherwise "-".
 #
-# Run: bash Scripts/signing-identity.sh
+# With --resolve, a name is turned into the SHA-1 of the identity to sign with.
+# Xcode renews an Apple Development certificate by issuing a second one under
+# the same name, and codesign refuses a name that matches two identities as
+# ambiguous — measured 2026-09-17, the day Xcode added one. The newest to
+# expire wins; the keychain and TCC trust both alike, because what they
+# recorded is the certificate's name and its Apple chain, not the certificate.
+#
+# Run: bash Scripts/signing-identity.sh [--resolve]
+
+resolve() {
+  local name="$1"
+  if [ "$name" = "-" ] || [ "${RESOLVE:-}" != 1 ]; then
+    printf '%s\n' "$name"
+    return
+  fi
+  # Every certificate carrying the name, each as its SHA-1 and its PEM.
+  local best="" best_end=0 hash="" pem="" line end subject
+  while IFS= read -r line; do
+    case "$line" in
+      "SHA-1 hash: "*) hash="${line#SHA-1 hash: }"; pem="" ;;
+      *"BEGIN CERTIFICATE"*) pem="$line" ;;
+      *"END CERTIFICATE"*)
+        pem="$pem"$'\n'"$line"
+        subject="$(printf '%s\n' "$pem" | openssl x509 -noout -subject -nameopt multiline 2>/dev/null \
+          | sed -n 's/^ *commonName *= *//p')"
+        end="$(printf '%s\n' "$pem" | openssl x509 -noout -enddate 2>/dev/null | sed 's/^notAfter=//')"
+        end="$(date -j -f '%b %e %T %Y %Z' "$end" +%s 2>/dev/null || echo 0)"
+        if [ "$subject" = "$name" ] && [ "$end" -gt "$best_end" ]; then
+          best="$hash"; best_end="$end"
+        fi
+        pem="" ;;
+      *) [ -n "$pem" ] && pem="$pem"$'\n'"$line" ;;
+    esac
+  done < <(security find-certificate -a -c "$name" -Z -p 2>/dev/null || true)
+  if [ -z "$best" ]; then
+    echo "no certificate named \"$name\" in the keychain — fix" \
+         "~/.config/helm/signing-identity, or sign ad-hoc with HELM_SIGN_IDENTITY=-" >&2
+    exit 1
+  fi
+  printf '%s\n' "$best"
+}
+
+RESOLVE=0
+[ "${1:-}" = "--resolve" ] && RESOLVE=1
 
 if [ -n "${HELM_SIGN_IDENTITY+set}" ]; then
-  printf '%s\n' "${HELM_SIGN_IDENTITY:--}"
+  resolve "${HELM_SIGN_IDENTITY:--}"
   exit 0
 fi
 
@@ -33,9 +76,9 @@ if [ -f "$CONFIG" ]; then
   name=""
   IFS= read -r name < "$CONFIG" || true
   if [ -n "$name" ]; then
-    printf '%s\n' "$name"
+    resolve "$name"
     exit 0
   fi
 fi
 
-printf '%s\n' "-"
+resolve "-"

@@ -45,7 +45,7 @@ PLIST="$DEV/Contents/Info.plist"
 # plist is inside what was signed. Re-sign, do not repair.
 echo "==> Re-signing"
 codesign --force --deep --timestamp=none \
-  --sign "$(bash "$SCRIPT_DIR/signing-identity.sh")" "$DEV" 2>&1 | sed 's/^/    /'
+  --sign "$(bash "$SCRIPT_DIR/signing-identity.sh" --resolve)" "$DEV" 2>&1 | sed 's/^/    /'
 codesign --verify --deep --strict "$DEV"
 echo "==> Signature verified"
 
