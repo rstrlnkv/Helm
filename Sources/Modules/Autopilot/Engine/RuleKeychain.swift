@@ -61,6 +61,9 @@ public final class KeychainRuleSequence: RuleSequencePort {
     }
 
     public func highWater() -> RuleSequence {
+        // A test run never reaches the real item — `KeychainSealKey.key()`
+        // gives the reason, and it is this item's too.
+        guard !TestProcess.isRunning else { return .unavailable }
         var request = query
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -88,6 +91,7 @@ public final class KeychainRuleSequence: RuleSequencePort {
 
     @discardableResult
     public func raise(to seq: UInt64) -> Bool {
+        guard !TestProcess.isRunning else { return false }
         let value = Data(String(seq).utf8)
         let updated = SecItemUpdate(query as CFDictionary,
                                     [kSecValueData as String: value] as CFDictionary)

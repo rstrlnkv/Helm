@@ -63,6 +63,17 @@ public final class KeychainSealKey: SealKeyPort {
     }
 
     public func key() -> SealKey? {
+        // **A test run never reaches the login keychain through this port,
+        // named or not.** `ATestNamesTheKeychainPortsItBuildsOverTests` holds
+        // every construction a test spells, and `ModuleHost.bootstrap` is one no
+        // test spells: it builds engines through their descriptors, on their
+        // production ports. Measured 2026-09-17, the day this Mac's builds
+        // gained a stable signing identity: the item's access list no longer
+        // matched the test runner, the read waited on a dialog nobody had
+        // asked for, and the engine it held outlived `shutdown`. Unavailable is
+        // the answer a keychain that will not answer gives, and every reader
+        // already treats it as the safe direction.
+        guard !TestProcess.isRunning else { return nil }
         switch read() {
         case let .found(material): return SealKey(material: material, firstUse: false)
         case .absent: return create()
