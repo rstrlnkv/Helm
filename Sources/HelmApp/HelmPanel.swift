@@ -853,40 +853,34 @@ struct HelmPanelContent: View {
             // panel. It was pinned to the top, a hundred points from «Настройки»
             // and «Завершить» — three exits from the same card, two of them
             // together and one on its own at the other end.
-            //
-            // Only when there is something to pin, for the reason the strip
-            // gives above: an empty stack has no height but still takes the
-            // card's gap after the grid.
-            if showsFooterBlock {
-                VStack(alignment: .leading, spacing: PanelGrid.gap) {
-                    if editing {
-                        PanelEditBar {
-                            // The same curve as the way in. This was a bare
-                            // assignment, so entering the mode animated and leaving
-                            // it cut — every cell dropping its padding and its
-                            // corner controls in one frame.
-                            withAnimation(HelmMotion.disclosure) {
-                                editing = false
-                                choosingUtilities = false
-                            }
-                        }
-                    }
-                    if showsFooter {
-                        PanelFooter(editing: editing, showSettings: showSettingsButton,
-                                    showQuit: showQuitButton, showEdit: showEditButton) {
-                            // The same curve the card's measured height animates on.
-                            // Entering the mode grows every cell by 8 pt and adds
-                            // two controls to each, so the grid's height changes
-                            // with it — and on `interface` (0.22 snappy) against
-                            // the height's `disclosure` (0.30 smooth) the tiles and
-                            // the card they are in were running two different
-                            // animations of the same event. That is the judder.
-                            withAnimation(HelmMotion.disclosure) { editing = true }
+            VStack(alignment: .leading, spacing: PanelGrid.gap) {
+                if editing {
+                    PanelEditBar {
+                        // The same curve as the way in. This was a bare
+                        // assignment, so entering the mode animated and leaving
+                        // it cut — every cell dropping its padding and its
+                        // corner controls in one frame.
+                        withAnimation(HelmMotion.disclosure) {
+                            editing = false
+                            choosingUtilities = false
                         }
                     }
                 }
-                .helmMeasuredHeight($footerHeight)
+                if showsFooter {
+                    PanelFooter(editing: editing, showSettings: showSettingsButton,
+                                showQuit: showQuitButton, showEdit: showEditButton) {
+                        // The same curve the card's measured height animates on.
+                        // Entering the mode grows every cell by 8 pt and adds
+                        // two controls to each, so the grid's height changes
+                        // with it — and on `interface` (0.22 snappy) against
+                        // the height's `disclosure` (0.30 smooth) the tiles and
+                        // the card they are in were running two different
+                        // animations of the same event. That is the judder.
+                        withAnimation(HelmMotion.disclosure) { editing = true }
+                    }
+                }
             }
+            .helmMeasuredHeight($footerHeight)
         }
         .padding(PanelGrid.padding)
         .frame(width: helmPanelWidth)

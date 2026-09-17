@@ -127,11 +127,20 @@ final class PanelGridTests: XCTestCase {
         XCTAssertEqual(PanelGrid.roomForGrid(strip: 0, top: nil, foot: nil), ceiling)
     }
 
-    /// A tall display does not buy a taller panel: past `maximumHeight` the
-    /// grid scrolls.
-    func testTheCeilingHoldsOnATallDisplay() {
-        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 4000, top: nil, foot: nil), ceiling)
+    /// **A tall display buys a taller panel, down to the Dock.** The strip
+    /// already stops at the screen's visible frame, and `maximumHeight` used to
+    /// cap it as well: on a 1117 pt display the grid scrolled with some 300 pt
+    /// free between the panel and the Dock. Past 768, and far past it, the room
+    /// is the strip's.
+    func testATallDisplayGivesTheGridItsWholeStrip() {
+        let strip: CGFloat = 1100
+        XCTAssertGreaterThan(strip, PanelGrid.maximumHeight,
+                             "the strip here has to be taller than the old ceiling to say anything")
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: strip, top: nil, foot: nil),
+                       strip - PanelGrid.padding * 2 - PanelGrid.gap, """
+            a measured \(strip) pt strip left the grid less than the strip — the panel scrolls \
+            while the screen has room below it
+            """)
     }
 
     /// **A bar that is not drawn reserves nothing — either bar.**

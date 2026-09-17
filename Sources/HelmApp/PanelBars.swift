@@ -299,11 +299,6 @@ struct PanelGallery: View {
 /// clean install ended up with no way into settings from the panel it was given
 /// — and no way to find the switch that would have added one. They default to
 /// true now, which is what makes the three of them safe to offer at all.
-///
-/// **A row under a rule, not a card** (the Liquid Glass mockup, direction B).
-/// The panel is the glass; a card at its foot was one more box inside it, and
-/// the controls in it are the kind a menu ends with, which a menu separates
-/// with a line.
 struct PanelFooter: View {
     let editing: Bool
     let showSettings: Bool
@@ -312,57 +307,48 @@ struct PanelFooter: View {
     let configure: () -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
-            Rectangle()
-                .fill(HelmSurface.hairline)
-                .frame(height: 0.5)
-                .padding(.horizontal, 4)
-            HStack(spacing: 2) {
-                if showSettings {
-                    footerButton(AppStr.settingsPane, "gearshape") {
-                        NotificationCenter.default.post(name: .helmOpenSettings,
-                                                        object: SettingsWindow.settingsPage)
-                    }
-                }
-                Spacer(minLength: 8)
-                // Only on the way in. While the setup bar is on screen it
-                // carries «Готово», and two of them a hundred points apart is
-                // one of them asking whether the other did something else.
-                //
-                // A glyph, not a word. «Настроить панель» is the longest label
-                // in the footer and the least often pressed — it is the door to
-                // a mode somebody enters once and then leaves alone — and at
-                // 300 pt it was the label that ran out of room and truncated to
-                // «Настроить па…». A pencil is the one glyph macOS uses for
-                // exactly this, and the name is still there for a pointer that
-                // rests on it and for VoiceOver.
-                // Both glyphs at the right edge, together. A lone icon floating
-                // in the middle of a footer reads as something that lost its
-                // label rather than as something that never needed one.
-                if !editing && showEdit {
-                    footerGlyph("pencil", AppStr.editPanel, action: configure)
-                }
-                if showQuit {
-                    footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
+        HStack(spacing: 8) {
+            if showSettings {
+                footerButton(AppStr.settingsPane, "gearshape") {
+                    NotificationCenter.default.post(name: .helmOpenSettings,
+                                                    object: SettingsWindow.settingsPage)
                 }
             }
-            .padding(.horizontal, 2)
-            .frame(height: 32)
+            Spacer(minLength: 8)
+            // Only on the way in. While the setup bar is on screen it carries
+            // «Готово», and two of them a hundred points apart is one of them
+            // asking whether the other did something else.
+            //
+            // A glyph, not a word. «Настроить панель» is the longest label in
+            // the footer and the least often pressed — it is the door to a mode
+            // somebody enters once and then leaves alone — and at 300 pt it was
+            // the label that ran out of room and truncated to «Настроить па…».
+            // A pencil is the one glyph macOS uses for exactly this, and the
+            // name is still there for a pointer that rests on it and for
+            // VoiceOver.
+            // Both glyphs at the right edge, together. A lone icon floating in
+            // the middle of a footer reads as something that lost its label
+            // rather than as something that never needed one.
+            if !editing && showEdit {
+                footerGlyph("pencil", AppStr.editPanel, action: configure)
+            }
+            if showQuit {
+                footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
+            }
         }
+        .helmPanelCard()
     }
 
     /// A footer action with no room for its name: the name is the tooltip and
     /// the accessibility label, which is the whole of what the word was doing.
-    /// 28 pt square, where it was 22 × 18: with no card around it the glyph's
-    /// own frame is all a pointer has to land on.
     private func footerGlyph(_ symbol: String, _ name: String,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(HelmText.quiet)
-                .frame(width: 28, height: 28)
-                .contentShape(Circle())
+                .frame(width: 22, height: 18)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(name)
@@ -378,9 +364,7 @@ struct PanelFooter: View {
                 Text(title).font(.subheadline.weight(.medium))
             }
             .foregroundStyle(HelmText.quiet)
-            .padding(.horizontal, 8)
-            .frame(height: 28)
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

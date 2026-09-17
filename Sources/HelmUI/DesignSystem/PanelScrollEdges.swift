@@ -50,16 +50,16 @@ public struct PanelScrollEdges: Equatable, Sendable {
 
 public extension View {
     /// Marks the edges of a panel scroll view that have content past them: the
-    /// content fades out over the last `HelmSpace.s5` before the clip, and a
-    /// hairline stands under the bar above once something has gone beneath it.
+    /// content fades out over the last `HelmSpace.s5` before the clip.
     ///
     /// **A fade, not glass.** The panel is already Liquid Glass, and a second
     /// glass or material band over the list is the glass-on-glass the panel's
     /// tabs were redrawn to get rid of. A fade is what the system's own soft
     /// scroll edge does, with nothing drawn on top.
     ///
-    /// **The hairline only at the top.** The footer below already stands under
-    /// a rule of its own, and a second one 8 pt above it doubles the line.
+    /// **No rule at either edge.** A hairline under the tab strip and another
+    /// over the footer were drawn and taken out again (2026-09-17): two lines
+    /// across a panel of cards read as bands cutting it into thirds.
     func helmPanelScrollEdges() -> some View {
         modifier(PanelScrollEdgeMarks())
     }
@@ -88,14 +88,6 @@ private struct PanelScrollEdgeMarks: ViewModifier {
                                    startPoint: .top, endPoint: .bottom)
                         .frame(height: HelmSpace.s5)
                 }
-            }
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(HelmSurface.hairline)
-                    .frame(height: 0.5)
-                    .padding(.horizontal, 4)
-                    .opacity(edges.above ? 1 : 0)
-                    .allowsHitTesting(false)
             }
     }
 }

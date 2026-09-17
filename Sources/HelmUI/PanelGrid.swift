@@ -45,8 +45,14 @@ public enum PanelGrid {
     public static let padding: CGFloat = 12
     public static let gap: CGFloat = 8
 
-    /// The tallest the panel may be: an 800 pt display, less the menu bar and
-    /// a margin. Past it the grid scrolls and the footer stays.
+    /// The height the panel draws at before its strip has been measured: an
+    /// 800 pt display, less the menu bar and a margin.
+    ///
+    /// **Only then — not a ceiling on a measured strip.** It capped every
+    /// display at 768 pt until 2026-09-17, so on a taller screen the grid
+    /// scrolled with free room between the panel and the Dock. The strip runs
+    /// from the status item down to the screen's visible frame, which already
+    /// stops at the Dock; the grid scrolls only once that is used up.
     public static let maximumHeight: CGFloat = 768
 
     /// The narrowest panel two 144 pt tiles fit in: 2 × 144 + 8 + 2 × 12.
@@ -108,8 +114,9 @@ public enum PanelGrid {
     /// is why the reader has to say which bars exist.
     ///
     /// A strip of 0 is a strip nothing has measured yet, not a strip with no
-    /// room: it falls back to the ceiling, which is the only answer that draws
-    /// a panel at all before the first geometry callback lands.
+    /// room: it falls back to `maximumHeight`, which is the only answer that
+    /// draws a panel at all before the first geometry callback lands. A
+    /// measured strip is taken whole, however tall.
     ///
     /// **And a bar nobody draws takes its gap with it.** The card is three
     /// blocks with `gap` between them, of which only the tab strip is
@@ -123,7 +130,7 @@ public enum PanelGrid {
     /// is in it, and an empty `VStack` still costs its neighbour's spacing, so
     /// `foot` says how tall it is and never whether its gap exists.
     public static func roomForGrid(strip: CGFloat, top: CGFloat?, foot: CGFloat?) -> CGFloat {
-        let ceiling = min(strip > 0 ? strip : maximumHeight, maximumHeight)
+        let ceiling = strip > 0 ? strip : maximumHeight
         let gaps = gap * (top == nil ? 1 : 2)
         return max(minimumGrid, ceiling - (top ?? 0) - (foot ?? 0) - padding * 2 - gaps)
     }
