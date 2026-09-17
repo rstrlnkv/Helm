@@ -68,7 +68,34 @@ public struct HelmPageTitleKey: PreferenceKey {
     }
 }
 
+/// Whether the page's content has scrolled under the window's toolbar. The
+/// page's scroll view is the only thing that knows, and the window's strip is
+/// the thing that draws it, so the answer travels up as a preference.
+public struct HelmPageScrolledKey: PreferenceKey {
+    public static let defaultValue = false
+
+    public static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 public extension View {
+    /// **The toolbar's strip, drawn the way the page header drew itself before
+    /// it moved into the toolbar** (`HeaderEdgeLight`): the scroll edge's
+    /// material always, and the fill and the rule under it once the page's
+    /// content has gone beneath.
+    ///
+    /// The system's own scroll edge effect drew nothing under this window's
+    /// toolbar for a SwiftUI `Form` — photographed 2026-09-17, Keep Awake's hero
+    /// figure ran through the window title with nothing between them, and
+    /// `scrollEdgeEffectStyle(.hard)` changed no pixel. So the strip is Helm's,
+    /// over exactly the height the toolbar takes from the pane: read from the
+    /// safe area, because that height is AppKit's to decide. Items and the
+    /// title live in the titlebar's own view, above this one.
+    func helmToolbarBackdrop() -> some View {
+        modifier(ToolbarBackdrop())
+    }
+
     /// Follows `PageBarStyle` as it is changed, the way
     /// `helmTracksModuleIconStyle` follows the sidebar's icons.
     func helmTracksPageBarStyle(_ current: @escaping () -> PageBarStyle) -> some View {
@@ -119,10 +146,12 @@ struct PageBarContent<Trailing: View>: ViewModifier {
             content
         case .windowTitle:
             content
+                .modifier(ReportsScrolledUnderBar())
                 .preference(key: HelmPageTitleKey.self,
                             value: HelmPageTitle(title: title, subtitle: subtitle))
         case .moduleName:
             content
+                .modifier(ReportsScrolledUnderBar())
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
                         HStack(spacing: HelmSpace.s5) {
@@ -147,5 +176,47 @@ struct PageBarContent<Trailing: View>: ViewModifier {
                 .preference(key: HelmPageTitleKey.self,
                             value: HelmPageTitle(title: title, subtitle: nil))
         }
+    }
+}
+
+/// The page's half of the strip: asks its own scroll view whether content has
+/// gone under the top inset, for the reasons `PageHeaderOverContent` gives —
+/// a `Bool` projection so the action fires on the two crossings only, and
+/// `0.5` of slack so rounding at rest never lights the strip.
+private struct ReportsScrolledUnderBar: ViewModifier {
+    @State private var scrolled = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 0.5
+            } action: { _, now in
+                scrolled = now
+            }
+            .preference(key: HelmPageScrolledKey.self, value: scrolled)
+    }
+}
+
+private struct ToolbarBackdrop: ViewModifier {
+    @State private var scrolled = false
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(HelmPageScrolledKey.self) { now in
+                scrolled = now
+            }
+            .overlay(alignment: .top) {
+                GeometryReader { proxy in
+                    Color.clear
+                        .frame(height: proxy.safeAreaInsets.top)
+                        .modifier(HeaderEdgeLight(
+                            lit: HelmPageHeader<EmptyView>.isLit(hovering: false, active: .key,
+                                                                 scrolled: scrolled),
+                            overContent: true))
+                        .offset(y: -proxy.safeAreaInsets.top)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
     }
 }

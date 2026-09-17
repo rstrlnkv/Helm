@@ -247,6 +247,10 @@ final class SettingsSplitViewController: NSSplitViewController {
                 // item with no glass and no view of its own; a clear 1 pt view
                 // was tried first and drew a glass sliver.
                 .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }
+                // The strip under the toolbar, lit once the page's content
+                // has scrolled beneath it — `helmToolbarBackdrop` says why it is
+                // Helm's and not the system's.
+                .helmToolbarBackdrop()
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
