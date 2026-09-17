@@ -124,6 +124,10 @@ private struct HelmPageBarStyleTracker: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.helmPageBar, style ?? current())
+            // A new identity, for the reason `helmTracksSwitcherStyle` gives:
+            // the toolbar is AppKit's, and an environment change alone leaves
+            // the items it already published where they are.
+            .id(style ?? current())
             .onReceive(NotificationCenter.default.publisher(for: .helmPageBarStyleChanged)) { _ in
                 style = current()
             }

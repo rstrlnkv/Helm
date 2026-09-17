@@ -67,6 +67,12 @@ private struct SwitcherStyleTracker: ViewModifier {
         content
             .environment(\.helmSwitcherStyle, style ?? current())
             .environment(\.helmSetSwitcherStyle, set)
+            // **A new identity, not a redraw.** A page's controls are bridged
+            // into the window's AppKit toolbar, and an environment change alone
+            // does not republish them: measured 2026-09-17, choosing another
+            // style left the bar exactly as it was until the page was left and
+            // opened again. The same is true of `PageBarStyle`.
+            .id(style ?? current())
             .onReceive(NotificationCenter.default.publisher(for: .helmToolbarSwitcherStyleChanged)) { _ in
                 style = current()
             }
@@ -98,6 +104,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
 
     @Environment(\.helmSwitcherStyle) private var style
     @Environment(\.helmSetSwitcherStyle) private var setStyle
+    /// The selected pill is one shape that moves between segments rather than
+    /// one that ends here and starts there — the panel's tab strip is the same
+    /// arrangement, and without it switching drew a cut.
+    @Namespace private var pill
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>]) {
         self.name = name
@@ -157,14 +167,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
         .animation(HelmMotion.interface, value: selection)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(name)
-        .contextMenu {
+        // AppKit's own menu, on a view that answers a right-click and nothing
+        // else: SwiftUI's `.contextMenu` on a toolbar item opened nothing at
+        // all — measured 2026-09-17 on the shipped build.
+        .overlay {
             if let setStyle {
-                Picker(L("Tab labels"), selection: Binding(get: { style }, set: { setStyle($0) })) {
-                    ForEach(ToolbarSwitcherStyle.allCases, id: \.self) { choice in
-                        Text(choice.label).tag(choice)
-                    }
-                }
-                .pickerStyle(.inline)
+                RightClickMenu(title: L("Tab labels"), style: style, choose: setStyle)
             }
         }
     }
@@ -179,7 +187,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
                 .frame(height: 30)
                 .background {
                     if selected {
-                        Capsule().fill(HelmSurface.panelSelection)
+                        Capsule()
+                            .fill(HelmSurface.panelSelection)
+                            .matchedGeometryEffect(id: "switcher.selection", in: pill)
                     }
                 }
                 .contentShape(Capsule())
@@ -216,6 +226,62 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
             } else {
                 Image(systemName: segment.symbol)
                     .frame(width: Self.iconSegment)
+            }
+        }
+    }
+}
+
+
+/// The style menu, raised by a right-click (or a Control-click) anywhere on the
+/// switcher and by nothing else.
+///
+/// **`hitTest` reads the event rather than the point.** An overlay that took
+/// every click would swallow the presses the segments exist for; one that took
+/// none would never see the right-click either. The event being dispatched is
+/// what says which of the two this is.
+private struct RightClickMenu: NSViewRepresentable {
+    let title: String
+    let style: ToolbarSwitcherStyle
+    let choose: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView { RightClickView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.choose = choose
+        let menu = NSMenu(title: title)
+        for choice in ToolbarSwitcherStyle.allCases {
+            let item = NSMenuItem(title: choice.label,
+                                  action: #selector(Coordinator.picked(_:)), keyEquivalent: "")
+            item.target = context.coordinator
+            item.representedObject = choice.rawValue
+            item.state = choice == style ? .on : .off
+            menu.addItem(item)
+        }
+        view.menu = menu
+    }
+
+    @MainActor final class Coordinator: NSObject {
+        var choose: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void = { _ in }
+
+        @objc func picked(_ sender: NSMenuItem) {
+            guard let raw = sender.representedObject as? String else { return }
+            choose(ToolbarSwitcherStyle(stored: raw))
+        }
+    }
+
+    private final class RightClickView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let event = NSApp.currentEvent else { return nil }
+            switch event.type {
+            case .rightMouseDown, .rightMouseUp:
+                return super.hitTest(point)
+            case .leftMouseDown, .leftMouseUp:
+                // Control-click is the same gesture on a Mac with one button.
+                return event.modifierFlags.contains(.control) ? super.hitTest(point) : nil
+            default:
+                return nil
             }
         }
     }
