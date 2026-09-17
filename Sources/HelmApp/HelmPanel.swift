@@ -604,10 +604,10 @@ struct HelmPanelContent: View {
     /// that had exactly fitted began to scroll.
     private var showsTabStrip: Bool { layout.showsTabBar || editing }
     /// Nothing pinned means nothing to pin: three hidden buttons would
-    /// otherwise leave an empty card at the foot of the panel.
+    /// otherwise leave an empty row at the foot of the panel.
     private var showsFooter: Bool { showSettingsButton || showQuitButton || showEditButton }
-    /// The setup bar and the footer are measured together, and the setup bar is
-    /// there whenever the mode is.
+    /// The footer is there whenever the mode is, whatever the three switches
+    /// say: in the mode it is the row carrying «Готово», the only way out.
     private var showsFooterBlock: Bool { editing || showsFooter }
 
     /// Everything that could be a tile and is not one, in registry order so the
@@ -786,7 +786,7 @@ struct HelmPanelContent: View {
     private func card(_ parts: Candidates, _ items: [Widget]) -> some View {
         VStack(alignment: .leading, spacing: PanelGrid.gap) {
 
-            // Pinned: the strip, the setup bar and the footer. Only the grid
+            // Pinned: the strip and the footer. Only the grid
             // scrolls — the way out of a mode must not be something you have to
             // scroll to, and in edit mode every widget grows a frame and a pair
             // of corner controls, which is what pushed the footer off the
@@ -849,34 +849,38 @@ struct HelmPanelContent: View {
             // panel. It was pinned to the top, a hundred points from «Настройки»
             // and «Завершить» — three exits from the same card, two of them
             // together and one on its own at the other end.
-            VStack(alignment: .leading, spacing: PanelGrid.gap) {
-                if editing {
-                    PanelEditBar {
-                        // The same curve as the way in. This was a bare
-                        // assignment, so entering the mode animated and leaving
-                        // it cut — every cell dropping its padding and its
-                        // corner controls in one frame.
-                        withAnimation(HelmMotion.disclosure) {
-                            editing = false
-                            choosingUtilities = false
-                        }
-                    }
-                }
-                if showsFooter {
-                    PanelFooter(editing: editing, showSettings: showSettingsButton,
-                                showQuit: showQuitButton, showEdit: showEditButton) {
-                        // The same curve the card's measured height animates on.
-                        // Entering the mode grows every cell by 8 pt and adds
-                        // two controls to each, so the grid's height changes
-                        // with it — and on `interface` (0.22 snappy) against
-                        // the height's `disclosure` (0.30 smooth) the tiles and
-                        // the card they are in were running two different
-                        // animations of the same event. That is the judder.
-                        withAnimation(HelmMotion.disclosure) { editing = true }
-                    }
-                }
+            //
+            // One row for both modes: the way in (the pencil) and the way out
+            // («Готово») are the same place, so leaving the mode is where
+            // entering it was, and the mode no longer stacks a bar of its own
+            // on top of the footer.
+            if showsFooterBlock {
+                PanelFooter(editing: editing, showSettings: showSettingsButton,
+                            showQuit: showQuitButton, showEdit: showEditButton,
+                            configure: {
+                                // The same curve the card's measured height
+                                // animates on. Entering the mode grows every
+                                // cell by 8 pt and adds two controls to each,
+                                // so the grid's height changes with it — and on
+                                // `interface` (0.22 snappy) against the height's
+                                // `disclosure` (0.30 smooth) the tiles and the
+                                // card they are in were running two different
+                                // animations of the same event. That is the
+                                // judder.
+                                withAnimation(HelmMotion.disclosure) { editing = true }
+                            },
+                            done: {
+                                // The same curve as the way in. This was a bare
+                                // assignment, so entering the mode animated and
+                                // leaving it cut — every cell dropping its
+                                // padding and its corner controls in one frame.
+                                withAnimation(HelmMotion.disclosure) {
+                                    editing = false
+                                    choosingUtilities = false
+                                }
+                            })
+                    .helmMeasuredHeight($footerHeight)
             }
-            .helmMeasuredHeight($footerHeight)
         }
         .padding(PanelGrid.padding)
         .frame(width: helmPanelWidth)

@@ -52,8 +52,8 @@ final class TheTabStripChoosesNamesOrGlyphsTests: XCTestCase {
     /// The «+» is a tab's worth of strip, and it is only there in edit mode —
     /// so a strip that fits while reading can stop fitting while editing.
     func testTheAddButtonIsPartOfTheWidth() {
-        // 266 pt of tabs while reading — two tabs of 13 and 10 characters, 16 pt
-        // of padding each and one 4 pt gap — and 298 with the «+» and the second
+        // 272 pt of tabs while reading — two tabs of 13 and 10 characters, 20 pt
+        // of padding each and one 2 pt gap — and 300 with the «+» and the second
         // gap it brings. 280 is between them, which is what makes this about the
         // button rather than about the names.
         let titles = ["Main tab here", "Second tab"]

@@ -3,8 +3,8 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-// The rows of the card that are not tiles: the tab strip, the setup bar, the
-// gallery of widgets no tab is holding, and the footer. Drawn by the card in
+// The rows of the card that are not tiles: the tab strip, the gallery of
+// widgets no tab is holding, and the footer. Drawn by the card in
 // `HelmPanel.swift`, which keeps the grid and everything the drag touches.
 //
 // Each takes what it needs and owns none of it. That is the rule the split was
@@ -59,7 +59,9 @@ struct PanelTabStrip: View {
         let named = self.named
         let face = TabStripFit.face(for: labels, tabs: named, editing: editing,
                                     available: helmPanelWidth - PanelGrid.padding * 2)
-        return HStack(spacing: 4) {
+        // 2 pt between capsules: a selected capsule's fill is the only edge a
+        // tab has, so the gap is what keeps two neighbours from reading as one.
+        return HStack(spacing: 2) {
             ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
                 tabButton(index, tab, named[index].title, face)
             }
@@ -80,7 +82,8 @@ struct PanelTabStrip: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .frame(width: 26, height: 26)
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(AppStr.newTab)
@@ -116,14 +119,15 @@ struct PanelTabStrip: View {
             // two.
             withAnimation(HelmMotion.interface) { activeTab = index }
         } label: {
-            // The mockup's tab: 4 pt between glyph and text, 4×8 of padding, a
-            // 10 pt corner, and 11 pt type that does **not** change weight when
+            // The tab as the Liquid Glass mockup drew it (direction B): a
+            // capsule 26 pt tall, 10 pt of padding either side, 4 pt between
+            // glyph and text, and type that does **not** change weight when
             // selected.
             //
             // Weight was the first thing tried and it is the one thing a tab
             // cannot do: bold is wider than regular, so every tab in the strip
-            // moved whenever another was picked. Selection is a background and
-            // a colour.
+            // moved whenever another was picked. Selection is a fill and a
+            // colour.
             HStack(spacing: 4) {
                 if face.showsGlyph, let glyph = tab.glyph {
                     Image(systemName: glyph)
@@ -144,24 +148,25 @@ struct PanelTabStrip: View {
                 }
             }
             .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
-            .padding(.horizontal, 8).padding(.vertical, 4)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
             .background {
                 if index == tabIndex {
-                    // A material, not a 5% overlay. `wellFill` measured 1.23:1
-                    // over the panel's glass and 1.04:1 in light — and the
-                    // shadow under it was cast by a shape with 5% alpha, so it
-                    // was ~0.6% black, which is nothing. A material composites
-                    // against whatever is behind it, which is what a raised
-                    // segment is.
-                    RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
+                    // A fill, not a material. The panel is already Liquid
+                    // Glass, and a material under the tab was glass drawn on
+                    // glass with a shadow nothing could see. 12% rather than
+                    // `wellFill`'s 5%, which measured 1.23:1 over the panel's
+                    // glass and 1.04:1 in light. A capsule, because 13 pt is
+                    // half its height and the panel's 26 pt corner is twice
+                    // that: the selection sits concentric with the card.
+                    Capsule()
+                        .fill(HelmSurface.panelSelection)
                         // One shape that moves between tabs rather than one
                         // appearing while another goes.
                         .matchedGeometryEffect(id: "tab.selection", in: selection)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         // Glyph-only tabs have nowhere to put their name; the pointer is where
@@ -191,30 +196,6 @@ struct PanelTabStrip: View {
                 pickingGlyph = nil
             }
         }
-    }
-}
-
-/// The bar above the grid while the panel is being arranged.
-/// The bar says one thing: you are editing, and here is the way out.
-///
-/// It carried the tab-label picker for a while — a full-width segmented
-/// control, the heaviest thing in the panel, for a decision somebody makes once,
-/// inside a mode that is about arranging widgets. It also appeared and vanished
-/// with the number of tabs, so it flickered on state it had nothing to do with,
-/// and it argued with «Готово» for the same row. It lives in Settings → Panel
-/// now, beside the other three switches about how this panel looks.
-struct PanelEditBar: View {
-    let done: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
-            Spacer(minLength: 8)
-            Button(AppStr.done, action: done)
-                .controlSize(.small)
-                .buttonStyle(.borderedProminent)
-        }
-        .helmPanelCard()
     }
 }
 
@@ -288,62 +269,96 @@ struct PanelGallery: View {
     }
 }
 
-/// The three ways out, at the foot of the panel.
+/// The three ways out, at the foot of the panel — and, while the panel is
+/// being arranged, the one way back.
 ///
 /// `showSettings` and `showQuit` both defaulted to false once, which is how a
 /// clean install ended up with no way into settings from the panel it was given
 /// — and no way to find the switch that would have added one. They default to
 /// true now, which is what makes the three of them safe to offer at all.
+///
+/// **A row under a rule, not a card** (the Liquid Glass mockup, direction B).
+/// The panel is the glass; a card at its foot was one more box inside it, and
+/// the controls in it are the kind a menu ends with, which a menu separates
+/// with a line. In the mode the same row says what the mode is and carries
+/// «Готово»: the setup bar that used to stand above the footer made the way
+/// out the second row from the bottom, beside a footer still offering the
+/// buttons of the mode being left.
 struct PanelFooter: View {
     let editing: Bool
     let showSettings: Bool
     let showQuit: Bool
     let showEdit: Bool
     let configure: () -> Void
+    let done: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            if showSettings {
-                footerButton(AppStr.settingsPane, "gearshape") {
-                    NotificationCenter.default.post(name: .helmOpenSettings,
-                                                    object: SettingsWindow.settingsPage)
+        VStack(spacing: 6) {
+            Rectangle()
+                .fill(HelmSurface.hairline)
+                .frame(height: 0.5)
+                .padding(.horizontal, 4)
+            Group {
+                if editing {
+                    HStack(spacing: 8) {
+                        Text(AppStr.panelSetup)
+                            .font(HelmText.rowDetail)
+                            .foregroundStyle(HelmText.quiet)
+                            .lineLimit(1)
+                        Spacer(minLength: 8)
+                        Button(AppStr.done, action: done)
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
+                    }
+                    .padding(.leading, 10)
+                    .padding(.trailing, 4)
+                } else {
+                    HStack(spacing: 2) {
+                        if showSettings {
+                            footerButton(AppStr.settingsPane, "gearshape") {
+                                NotificationCenter.default.post(name: .helmOpenSettings,
+                                                                object: SettingsWindow.settingsPage)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        // A glyph, not a word. «Настроить панель» is the longest
+                        // label in the footer and the least often pressed — it
+                        // is the door to a mode somebody enters once and then
+                        // leaves alone — and at 300 pt it was the label that ran
+                        // out of room and truncated to «Настроить па…». A pencil
+                        // is the one glyph macOS uses for exactly this, and the
+                        // name is still there for a pointer that rests on it and
+                        // for VoiceOver.
+                        // Both glyphs at the right edge, together. A lone icon
+                        // floating in the middle of a footer reads as something
+                        // that lost its label rather than as something that
+                        // never needed one.
+                        if showEdit {
+                            footerGlyph("pencil", AppStr.editPanel, action: configure)
+                        }
+                        if showQuit {
+                            footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
+                        }
+                    }
+                    .padding(.horizontal, 2)
                 }
             }
-            Spacer(minLength: 8)
-            // Only on the way in. While the setup bar is on screen it carries
-            // «Готово», and two of them a hundred points apart is one of them
-            // asking whether the other did something else.
-            //
-            // A glyph, not a word. «Настроить панель» is the longest label in
-            // the footer and the least often pressed — it is the door to a mode
-            // somebody enters once and then leaves alone — and at 300 pt it was
-            // the label that ran out of room and truncated to «Настроить па…».
-            // A pencil is the one glyph macOS uses for exactly this, and the
-            // name is still there for a pointer that rests on it and for
-            // VoiceOver.
-            // Both glyphs at the right edge, together. A lone icon floating in
-            // the middle of a footer reads as something that lost its label
-            // rather than as something that never needed one.
-            if !editing && showEdit {
-                footerGlyph("pencil", AppStr.editPanel, action: configure)
-            }
-            if showQuit {
-                footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
-            }
+            .frame(height: 32)
         }
-        .helmPanelCard()
     }
 
     /// A footer action with no room for its name: the name is the tooltip and
     /// the accessibility label, which is the whole of what the word was doing.
+    /// 28 pt square, where it was 22 × 18: with no card around it the glyph's
+    /// own frame is all a pointer has to land on.
     private func footerGlyph(_ symbol: String, _ name: String,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(HelmText.quiet)
-                .frame(width: 22, height: 18)
-                .contentShape(Rectangle())
+                .frame(width: 28, height: 28)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(name)
@@ -359,7 +374,9 @@ struct PanelFooter: View {
                 Text(title).font(.subheadline.weight(.medium))
             }
             .foregroundStyle(HelmText.quiet)
-            .contentShape(Rectangle())
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

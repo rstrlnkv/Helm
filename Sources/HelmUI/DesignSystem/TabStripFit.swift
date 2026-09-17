@@ -15,15 +15,16 @@ import AppKit
 /// fit, or none of them is drawn.
 public enum TabStripFit {
 
-    /// 8 pt of padding either side of a tab's content — `PanelTabStrip`'s own
-    /// `.padding(.horizontal, 8)`.
-    static let padding: CGFloat = 16
-    /// The strip's `HStack(spacing: 4)`.
-    static let gap: CGFloat = 4
+    /// 10 pt of padding either side of a tab's content — `PanelTabStrip`'s own
+    /// `.padding(.horizontal, 10)`.
+    static let padding: CGFloat = 20
+    /// The strip's `HStack(spacing: 2)`.
+    static let gap: CGFloat = 2
     /// A 13 pt SF Symbol's square, which is what a glyph-only tab holds.
     static let glyph: CGFloat = 15
-    /// The «+» that makes a tab: a 12 pt symbol in the same 8 pt padding.
-    static let addButton: CGFloat = 28
+    /// The «+» that makes a tab: a 12 pt symbol in a 26 pt square, the tab's
+    /// own height.
+    static let addButton: CGFloat = 26
 
     /// The face the strip should draw.
     ///
