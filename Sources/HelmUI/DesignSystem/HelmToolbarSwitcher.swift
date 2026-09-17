@@ -233,12 +233,16 @@ public struct HelmToolbarSwitcher<Value: Hashable>: View {
 
 
 /// The style menu, raised by a right-click (or a Control-click) anywhere on the
-/// switcher and by nothing else.
+/// switcher.
 ///
-/// **`hitTest` reads the event rather than the point.** An overlay that took
-/// every click would swallow the presses the segments exist for; one that took
-/// none would never see the right-click either. The event being dispatched is
-/// what says which of the two this is.
+/// **The menu is hung on the item's own AppKit views, not on a SwiftUI
+/// overlay.** Measured on the dev build: SwiftUI's `.contextMenu` inside a
+/// bridged toolbar item opens nothing, and neither does a view of ours that
+/// answers `hitTest` for a right-click — the press never reaches the item's
+/// SwiftUI content at all. What does work is AppKit's own lookup: a
+/// right-click walks up the view tree asking each view for a menu, so the menu
+/// goes on every ancestor between this view and the toolbar's own container,
+/// which is where the item ends and the shared bar begins.
 private struct RightClickMenu: NSViewRepresentable {
     let title: String
     let style: ToolbarSwitcherStyle
@@ -246,7 +250,7 @@ private struct RightClickMenu: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> NSView { RightClickView() }
+    func makeNSView(context: Context) -> NSView { PassThroughView() }
 
     func updateNSView(_ view: NSView, context: Context) {
         context.coordinator.choose = choose
@@ -260,6 +264,23 @@ private struct RightClickMenu: NSViewRepresentable {
             menu.addItem(item)
         }
         view.menu = menu
+        // Every view this item is made of, and no further. Logged from the dev
+        // build 2026-09-17, an item's tree is
+        // `ToolbarItemHostingView < NSToolbarItemViewer < NSView <
+        // ContentHolderView < NSGlassEffectView < NSToolbarPlatterView < NSView`
+        // and then a plain `NSView` shared by every item, `NSGlassContainerView`
+        // and `NSToolbarView`, which carries the bar's own menu — the menu that
+        // was answering these right-clicks with nothing. The platter is the
+        // item's own glass and the last view that is only this switcher's: set
+        // one view further and a right-click over Refresh opened this menu too,
+        // which the same probe showed.
+        let shared = ["NSGlassContainerView", "NSToolbarView"]
+        var ancestor = view.superview
+        while let current = ancestor, !shared.contains(String(describing: type(of: current))) {
+            current.menu = menu
+            if String(describing: type(of: current)) == "NSToolbarPlatterView" { break }
+            ancestor = current.superview
+        }
     }
 
     @MainActor final class Coordinator: NSObject {
@@ -271,18 +292,9 @@ private struct RightClickMenu: NSViewRepresentable {
         }
     }
 
-    private final class RightClickView: NSView {
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let event = NSApp.currentEvent else { return nil }
-            switch event.type {
-            case .rightMouseDown, .rightMouseUp:
-                return super.hitTest(point)
-            case .leftMouseDown, .leftMouseUp:
-                // Control-click is the same gesture on a Mac with one button.
-                return event.modifierFlags.contains(.control) ? super.hitTest(point) : nil
-            default:
-                return nil
-            }
-        }
+    /// Takes no press of its own: the segments underneath are what a left-click
+    /// is for, and the menu is answered by the view tree rather than by a hit.
+    private final class PassThroughView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
