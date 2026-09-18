@@ -1197,3 +1197,23 @@
 "Text Only" = "Somente Texto";
 "Icon Only" = "Somente Ícones";
 "Icon and Text" = "Ícone e Texto";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "O Homebrew é uma lista de pacotes com o escolhido aberto ao lado, em vez de uma página que se substitui.";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Um pacote informa quanto ocupa neste Mac: o brew não diz, então o Helm mede a pasta por conta própria.";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "O Homebrew ganhou uma seção de estado: o que o brew doctor encontrou na sua instalação e a única correção que o Helm se oferece para executar.";
+"Homebrew’s search puts the packages most people install at the top of each group." = "A busca do Homebrew coloca no topo de cada grupo os pacotes que mais se instalam.";
+"Uninstalling a package first says which of your installed packages still need it." = "Antes de desinstalar um pacote, o Helm diz quais dos seus pacotes instalados ainda precisam dele.";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "A lista de pacotes instalados tem cabeçalho e uma coluna de versão, e todos os nomes começam na mesma margem esquerda.";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“Atualizar tudo” fica na barra da própria página, num lugar que cada seção mantém.";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "Numa janela estreita, o Homebrew são duas telas em vez de uma linha com um botão.";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "O Helm distingue uma consulta ao brew que voltou vazia de uma recusada e de uma que nunca chegou a rodar: uma lista de pacotes recusada girava para sempre.";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "O tamanho de um pacote avisa que está sendo medido, em vez de surgir do nada.";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "O nome de cada página de ajustes e o seu seletor passaram para a barra de ferramentas da janela.";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "Clique com o botão direito no seletor da barra de ferramentas para mostrar as seções em palavras, em ícones ou em ambos.";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "Na janela mais estreita, “Atualizar” mantém o seu lugar na barra de ferramentas, e o nome da página mantém a distância da borda.";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "As abas, a barra de edição e o rodapé do painel da barra de menus são desenhados planos sobre o vidro do próprio painel, em vez de vidro sobre vidro.";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "O painel cresce até o Dock antes de rolar, de modo que uma tela alta mostra a grade inteira.";
+"The panel’s list fades where it continues past the edge." = "A lista do painel se esvanece na borda onde continua adiante.";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "Crie uma nova chave SSH pelo + da barra de ferramentas, na seção de chaves.";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "Restos devolve os itens de início que desligou quando você desativa o módulo: desligar um sobrevivia até a exclusão do Helm.";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "O Helm recusa uma atualização cujo pacote se chama algo que não é o Helm.";

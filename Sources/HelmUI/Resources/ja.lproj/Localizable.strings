@@ -1197,3 +1197,23 @@
 "Text Only" = "テキストのみ";
 "Icon Only" = "アイコンのみ";
 "Icon and Text" = "アイコンとテキスト";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew はパッケージの一覧になり、選んだパッケージは隣に開きます。ページ自体が入れ替わることはなくなりました。";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "パッケージがこの Mac で占めている容量を表示します。brew は教えてくれないため、Helm が自分でフォルダを測ります。";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "Homebrew に“状態”のセグメントが加わりました。brew doctor が見つけた問題と、Helm が実行を申し出るひとつの修正を表示します。";
+"Homebrew’s search puts the packages most people install at the top of each group." = "Homebrew の検索は、よくインストールされているパッケージを各グループの先頭に並べます。";
+"Uninstalling a package first says which of your installed packages still need it." = "パッケージを削除する前に、インストール済みのどのパッケージがまだそれを必要としているかを表示します。";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "インストール済み一覧に見出しとバージョンの列が付き、名前はすべて同じ左端から始まります。";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“すべてを更新”はページ自身のバーにあり、どのセグメントでも同じ位置に置かれます。";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "幅の狭いウインドウでは、Homebrew はボタンの付いた 1 行ではなく 2 画面になります。";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "空の答えが返った brew の問い合わせと、拒否された問い合わせ、そして実行されなかった問い合わせを区別します。拒否されたパッケージ一覧は、以前は延々と回り続けていました。";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "パッケージの容量は、計測中であることを表示します。以前は何の前触れもなく現れていました。";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "各設定ページの名前と切り替えが、ウインドウのツールバーに移りました。";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "ツールバーの切り替えを右クリックすると、各セクションを文字、記号、またはその両方で表示できます。";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "ウインドウが最も狭いときも“更新”はツールバーの定位置に残り、ページ名はウインドウの端との間隔を保ちます。";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "メニューバーパネルのタブ、編集バー、フッターは、ガラスの上にガラスを重ねるのをやめ、パネル自身のガラスの上に平らに描かれます。";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "パネルはスクロールする前に Dock まで伸びるため、縦に長い画面ならグリッド全体が収まります。";
+"The panel’s list fades where it continues past the edge." = "パネルの一覧は、続きがある端でフェードします。";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "新しい SSH 鍵は、鍵のセクションでツールバーの + から作成できます。";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "モジュールをオフにすると、“残存物”がオフにしたログイン項目を元に戻します。以前は、オフのままの状態が Helm を削除しても残っていました。";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "バンドルが Helm 以外の名前を名乗る更新は拒否します。";

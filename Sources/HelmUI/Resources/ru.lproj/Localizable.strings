@@ -1197,3 +1197,23 @@
 "Text Only" = "Только текст";
 "Icon Only" = "Только значок";
 "Icon and Text" = "Значок и текст";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew — это список пакетов, а выбранный открыт рядом, вместо страницы, которая подменяет саму себя.";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Пакет показывает, сколько он занимает на этом Mac: brew этого не сообщает, поэтому Helm измеряет папку сам.";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "В Homebrew появился раздел «Состояние»: что brew doctor нашёл в вашей установке и то единственное исправление, которое Helm предлагает выполнить.";
+"Homebrew’s search puts the packages most people install at the top of each group." = "Поиск в Homebrew ставит наверх каждой группы пакеты, которые устанавливают чаще всего.";
+"Uninstalling a package first says which of your installed packages still need it." = "Перед удалением пакета Helm показывает, какие из установленных пакетов всё ещё зависят от него.";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "У списка установленных пакетов появились заголовок и колонка версии, а все названия начинаются от одного левого края.";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "«Обновить все» стоит в собственной полосе страницы, на месте, которое сохраняет каждый раздел.";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "В узком окне Homebrew превращается в два экрана вместо одной строки с кнопкой.";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "Helm различает запрос к brew, который вернулся пустым, тот, который был отклонён, и тот, который вообще не выполнялся: отклонённый список пакетов раньше крутился бесконечно.";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "Размер пакета показывает, что его сейчас измеряют, вместо того чтобы возникнуть из ниоткуда.";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "Название каждой страницы настроек и её переключатель переехали в панель инструментов окна.";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "Щёлкните переключатель в панели инструментов правой кнопкой, чтобы показать разделы словами, значками или и тем и другим.";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "В самом узком окне «Обновить» остаётся на своём месте в панели инструментов, а название страницы сохраняет отступ от края окна.";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "Вкладки, полоса редактирования и подвал панели в строке меню нарисованы плоскими на собственном стекле панели, а не стеклом поверх стекла.";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "Панель растягивается вниз до Dock и только потом начинает прокручиваться, так что на высоком экране помещается вся сетка.";
+"The panel’s list fades where it continues past the edge." = "Список в панели растворяется у края там, где он продолжается дальше.";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "Новый ключ SSH создаётся кнопкой + в панели инструментов, на вкладке ключей.";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "«Остатки» возвращают объекты входа, которые выключили, когда вы выключаете модуль: раньше выключение переживало даже удаление Helm.";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "Helm отклоняет обновление, если его пакет называет себя не Helm.";
