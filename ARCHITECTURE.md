@@ -476,9 +476,8 @@ actions as Liquid Glass, and keeps AppKit's safe area so content starts under th
 bar. The switcher is `HelmToolbarSwitcher`
 (`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`): the system's segmented
 control, told to size each segment to what it shows rather than to the longest word,
-and labelled by `ToolbarSwitcherStyle` — words, glyphs, both, or glyphs with the
-selected segment's word — which a right-click on any switcher changes for all of
-them. It is the system's control because everything Liquid Glass does under a press
+and labelled by `ToolbarSwitcherStyle` — words, glyphs or both — which a
+right-click on any switcher changes for all of them. It is the system's control because everything Liquid Glass does under a press
 — the glass swelling, and following the pointer from segment to segment — is the
 control's own and cannot be drawn from SwiftUI. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
 toolbar only while an item exists and a page without controls would otherwise have

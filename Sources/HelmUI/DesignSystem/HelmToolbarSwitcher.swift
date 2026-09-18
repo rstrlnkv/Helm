@@ -12,9 +12,13 @@ import SwiftUI
 ///   with «Поиск» sitting in a field three times its own width.
 /// - `icons` — a glyph per segment, 40 pt each, the word in the tooltip.
 /// - `iconsAndText` — a glyph beside each word.
-/// - `iconsNamingSelected` — glyphs, and the selected segment carries its word.
+///
+/// A fourth was drawn and lived in for a day — glyphs, with the selected
+/// segment carrying its word — and cut on 2026-09-18. Its stored value,
+/// `iconsNamingSelected`, is not a case any more and reads back as `text`,
+/// which `init(stored:)` already answers for anything it does not know.
 public enum ToolbarSwitcherStyle: String, CaseIterable, Sendable {
-    case text, icons, iconsAndText, iconsNamingSelected
+    case text, icons, iconsAndText
 
     public static let storageKey = "toolbarSwitcherStyle"
 
@@ -32,7 +36,6 @@ public enum ToolbarSwitcherStyle: String, CaseIterable, Sendable {
         case .text: return L("Text Only")
         case .icons: return L("Icon Only")
         case .iconsAndText: return L("Icon and Text")
-        case .iconsNamingSelected: return L("Icon Only, Text When Selected")
         }
     }
 }
@@ -188,9 +191,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     }
 
     /// **The size SwiftUI lays the item out at.** Asked for the control's own
-    /// fitting size on every pass, so a width that changes — `iconsNamingSelected`
-    /// grows a word on the segment that was chosen — is a size SwiftUI can move
-    /// between rather than a number it is handed once.
+    /// fitting size on every pass, so a width that changes — the style chosen
+    /// for the bar puts words on the segments or takes them off — is a size
+    /// SwiftUI can move between rather than a number it is handed once.
     public func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSSegmentedControl,
                              context: Context) -> CGSize? {
         nsView.fittingSize
@@ -205,7 +208,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         for (index, segment) in segments.enumerated() {
             let showsGlyph = style != .text
             let showsWord = style == .text || style == .iconsAndText
-                || (style == .iconsNamingSelected && index == selected)
             control.setLabel(showsWord ? segment.label : "", forSegment: index)
             control.setImage(showsGlyph
                 ? NSImage(systemSymbolName: segment.symbol, accessibilityDescription: segment.label)

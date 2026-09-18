@@ -27,15 +27,13 @@ final class TheToolbarSwitcherIsAsWideAsItsWordsTests: XCTestCase {
         }
     }
 
-    /// The four styles in the order the mockup measured them, so a constant
+    /// The three styles in the order the mockup measured them, so a constant
     /// changed in one style shows up against the others.
     func testTheStylesOrderByWidth() {
         let icons = HelmToolbarSwitcher<Int>.width(of: homebrew, in: .icons)
-        let naming = HelmToolbarSwitcher<Int>.width(of: homebrew, in: .iconsNamingSelected)
         let text = HelmToolbarSwitcher<Int>.width(of: homebrew, in: .text)
         let both = HelmToolbarSwitcher<Int>.width(of: homebrew, in: .iconsAndText)
-        XCTAssertLessThan(icons, naming, "glyphs alone are not narrower than glyphs with one name")
-        XCTAssertLessThan(naming, text, "one name is not narrower than every name")
+        XCTAssertLessThan(icons, text, "glyphs alone are not narrower than every word")
         XCTAssertLessThan(text, both, "words alone are not narrower than words with glyphs")
     }
 
