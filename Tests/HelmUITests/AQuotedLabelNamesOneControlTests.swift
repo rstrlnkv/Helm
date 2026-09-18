@@ -54,11 +54,18 @@ final class AQuotedLabelNamesOneControlTests: XCTestCase {
 
     /// A citation this check knows about and does not fail on, with the reason.
     ///
-    /// Every one of these was found by this check on the day it was written.
-    /// None is fixed here: the entries are what a person reads after an update,
-    /// and CLAUDE.md holds that composing that text is not the same act as
-    /// making a code change. They are listed so the check can be green today and
-    /// catch the next one, and so each is a line somebody can work off.
+    /// Twelve were found by this check on the day it was written. Seven are
+    /// fixed: in each, a translation had rendered a label its own way instead of
+    /// calling the string the control calls, so putting the app's own words back
+    /// is substitution and not composition — the fix CLAUDE.md asks for, made
+    /// without writing anybody a new sentence.
+    ///
+    /// The five left need an entry rewritten, which is a different act from
+    /// making a code change: what a person reads after an update is not
+    /// something to be repaired by a find-and-replace. Each says what is
+    /// actually wrong, read against the running app rather than guessed, so the
+    /// check is green today, catches the next one, and leaves five lines
+    /// somebody can work off.
     private struct Excused {
         /// Enough of the entry to name it; the entries themselves run to
         /// paragraphs, and two of these excuse two different labels in one.
@@ -86,35 +93,27 @@ final class AQuotedLabelNamesOneControlTests: XCTestCase {
                       + "control draws «Finderに表示» — the label was re-spelled "
                       + "rather than called"),
 
-        // Flagged by this check and not yet read against the running app. The
-        // languages are named so nobody re-derives them.
-        Excused(entryStartsWith: "A paused rule now says only that it is paused.",
-                cite: "Not applying right now",
-                reason: "not read against the app yet; missing in es, fr, ja, zh"),
-        Excused(entryStartsWith: "An app list the Uninstaller never received",
-                cite: "Open Extensions\u{2026}",
-                reason: "not read against the app yet; missing in ru"),
+        // Read against the running app, and the finding is that the entry cites
+        // a control this feature does not have. Both are in one entry, which
+        // names three controls and gets a third wrong that this check cannot
+        // see: it says «All extras to basket», and the button is
+        // `DuplicatesStrings.basketAllExtras`, which draws «Mark every extra
+        // copy». One entry to be rewritten by whoever writes that text, not
+        // three substitutions.
         Excused(entryStartsWith: "Duplicates can basket every extra at once",
                 cite: "Clear",
-                reason: "not read against the app yet; missing in de, es, fr, ja, zh"),
+                reason: "no Duplicates control draws «Clear» — its button is "
+                      + "`DuplicatesStrings.clearBasket`, «Clear the marks». The key "
+                      + "quoted here belongs to the log, the hotkey recorder, Homebrew "
+                      + "and Autopilot's history, so the five translations are not "
+                      + "wrong about a name this entry could substitute"),
         Excused(entryStartsWith: "Duplicates can basket every extra at once",
                 cite: "Select all",
-                reason: "not read against the app yet; missing in ja, ru"),
-        Excused(entryStartsWith: "Helm no longer asks for your administrator password",
-                cite: "Stay awake with the lid closed",
-                reason: "not read against the app yet; missing in fr, zh"),
-        Excused(entryStartsWith: "Keep Awake takes any duration you like",
-                cite: "Indefinite",
-                reason: "not read against the app yet; missing in fr"),
-        Excused(entryStartsWith: "The sidebar is yours to arrange.",
-                cite: "Restore defaults",
-                reason: "not read against the app yet; missing in de, es, fr, pt, zh"),
-        Excused(entryStartsWith: "\u{201C}Search again\u{201D} no longer starts",
-                cite: "Search again",
-                reason: "not read against the app yet; missing in ru"),
-        Excused(entryStartsWith: "\u{201C}Upgrade all\u{201D} sits in the page",
-                cite: "Upgrade all",
-                reason: "not read against the app yet; missing in ja, ru, zh"),
+                reason: "a name the button deliberately does *not* have — the sentence "
+                      + "is «which is why it is not called “Select all”» — and the key "
+                      + "belongs to the Uninstaller and Leftovers. Making the eight "
+                      + "agree here would be making a counterfactual cite another "
+                      + "module's control"),
     ]
 
     // MARK: - Reading

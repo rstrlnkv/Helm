@@ -806,7 +806,7 @@
 "Time remaining" = "残り時間";
 "Keep Awake takes any duration you like, in the panel and on the settings page, and every state offers “Indefinite” — so a rule can keep going after the app it watches has quit." = "Keep Awake はパネルでも設定ページでも好きな長さを受け付け、“無期限” もすべての状態から選べます。見張っているアプリが終了したあとも、ルールは Mac を起こしておけます。";
 "The line about something else keeping the Mac awake is gone. It appeared whenever the screen was on and never named anything you could act on." = "“Helm 以外の何かが Mac を起こしています”の行をなくしました。画面がついていれば必ず表示され、手を打てるものを挙げることは一度もありませんでした。";
-"A paused rule now says only that it is paused. Its row used to add “Not applying right now” underneath — two accounts of one rule on one screen." = "一時停止中のルールは、一時停止であることだけを表示します。以前はその下に “今は該当しません” が加わり、一つのルールについて一つの画面が二通りに語っていました。";
+"A paused rule now says only that it is paused. Its row used to add “Not applying right now” underneath — two accounts of one rule on one screen." = "一時停止中のルールは、一時停止であることだけを表示します。以前はその下に “いまは条件を満たしていません” が加わり、一つのルールについて一つの画面が二通りに語っていました。";
 "Helm no longer asks for your administrator password out of the blue. With “Stay awake with the lid closed” switched on, launching a watched app could raise a system prompt when you had touched nothing. It is asked for when you start a session yourself, or when you switch the setting on." = "Helm が突然管理者パスワードを求めることはなくなりました。“ふたを閉じても起きたまま” が入のとき、見張っているアプリの起動で、何も操作していない場面でシステムの入力画面が出ることがありました。今は自分でセッションを始めたとき、またはこの設定を入にしたときに尋ねます。";
 "The countdown no longer interrupts VoiceOver every second." = "カウントダウンが毎秒 VoiceOver を遮ることはなくなりました。";
 "A timer can end automation too. Set one while an app is holding the Mac awake and it releases that as well, until the app is launched again." = "タイマーで自動処理も終えられます。アプリが Mac を起こしている間にタイマーを設定すると、そのアプリの分もあわせて終了します。次にそのアプリを起動するまでです。";
@@ -1204,7 +1204,7 @@
 "Homebrew’s search puts the packages most people install at the top of each group." = "Homebrew の検索は、よくインストールされているパッケージを各グループの先頭に並べます。";
 "Uninstalling a package first says which of your installed packages still need it." = "パッケージを削除する前に、インストール済みのどのパッケージがまだそれを必要としているかを表示します。";
 "The installed list has a heading and a version column, and every name starts at one left edge." = "インストール済み一覧に見出しとバージョンの列が付き、名前はすべて同じ左端から始まります。";
-"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“すべてを更新”はページ自身のバーにあり、どのセグメントでも同じ位置に置かれます。";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“すべて更新”はページ自身のバーにあり、どのセグメントでも同じ位置に置かれます。";
 "At a narrow window Homebrew is two screens instead of one row with a button." = "幅の狭いウインドウでは、Homebrew はボタンの付いた 1 行ではなく 2 画面になります。";
 "Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "空の答えが返った brew の問い合わせと、拒否された問い合わせ、そして実行されなかった問い合わせを区別します。拒否されたパッケージ一覧は、以前は延々と回り続けていました。";
 "The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "パッケージの容量は、計測中であることを表示します。以前は何の前触れもなく現れていました。";
