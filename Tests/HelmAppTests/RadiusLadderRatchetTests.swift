@@ -161,9 +161,11 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// on Keep Awake's battery-floor row, `cornerRadius` 8, owned by
     /// `PlatformGroupContainer` — and SwiftUI draws that layer **in light only**.
     /// So the number is per appearance now, six in light and five in dark,
-    /// measured three consecutive runs each; `testTheOnlyRadiusLightAddsIsTheSliderKnob`
-    /// holds the difference by value, so light's extra slot cannot quietly absorb
-    /// a new radius the way a count on its own would.
+    /// measured three consecutive runs each; `testTheTwoScreensDrawTheSameRadii`
+    /// holds the difference by value, so a per-screen slot cannot quietly absorb
+    /// a new radius the way a count on its own would. **That asymmetry is gone
+    /// as of 2026-09-18 — the knob draws in both screens now; the paragraph at
+    /// the end of this comment carries the reading, and it is the one to read.**
     /// **Re-read 2026-08-12 by the tree-wide typography and space sweep, and it
     /// does not move — which is the answer, not a failure to try.** That sweep
     /// took every corner radius Helm types onto `HelmRadius`, including the two
@@ -241,27 +243,74 @@ final class RadiusLadderRatchetTests: XCTestCase {
         }
     }
 
-    /// **Light's extra slot is spent, and on what.** A ratchet of two counts would
-    /// let a genuinely new radius arrive in light for nothing, as long as it
-    /// arrived while the knob was still there — six is six. So the difference
-    /// between the two screens is pinned by value: light draws everything dark
-    /// draws, plus 8 pt and nothing else.
+    /// **A per-screen slot is a free slot, so there is none.** A ratchet of two
+    /// counts would let a genuinely new radius arrive in one screen for nothing,
+    /// as long as it arrived while that screen's accounted-for extra was still
+    /// there — six is six. So the difference between the two screens is pinned by
+    /// value rather than by count, in both directions.
     ///
-    /// The 8 is not Helm's and no commit here can lower it — it is SwiftUI's own
-    /// slider knob, and `isSystemDrawn` cannot see it because that layer has no
-    /// view of its own to be named after, only the `PlatformGroupContainer` it
-    /// hangs under. Teaching the filter that class name would hide `PanelBars`'
-    /// and `HelmChoiceCards`' layers with it, which is a real value hidden to make
-    /// a number move.
-    func testTheOnlyRadiusLightAddsIsTheSliderKnob() {
+    /// **The value that difference used to hold was SwiftUI's slider knob, and it
+    /// is not a difference any more — measured 2026-09-18 on macOS 27.2
+    /// (`26B5086k`).** The knob still draws: a 20 × 16 pt capsule of
+    /// `cornerRadius` 8 at (556.5, 445) on Keep Awake's battery-floor row, owned
+    /// by `PlatformGroupContainer`. What changed is that SwiftUI now draws that
+    /// layer in **dark as well** — identical frame, identical radius, three
+    /// consecutive runs agreeing to the byte, both screens reading the same six
+    /// values (1, 3, 5, 7.5, 8, 12).
+    ///
+    /// **Probed rather than reasoned, because "the knob stopped drawing" and "dark
+    /// started drawing it" fail this check identically.** Narrowing the slider's
+    /// own `.frame(width:)` from 160 to 100 moved that 8 pt layer from x = 556.5
+    /// to x = 596.5 **in both screens** — which is where the knob of a 5…50 slider
+    /// seeded at 20 % lands on each width. So the layer is the knob, the row still
+    /// draws it, and nothing on Keep Awake's page regressed.
+    ///
+    /// This is a tightening and not a lowering: the slot the 8 occupied was
+    /// spent, and now there is no slot at all in either direction. The 8 itself is
+    /// still not Helm's and still not lowerable here — `isSystemDrawn` cannot see
+    /// it, because that layer has no view of its own to be named after, only the
+    /// `PlatformGroupContainer` it hangs under, and teaching the filter that class
+    /// name would hide `PanelBars`' and `HelmChoiceCards`' layers with it. It is
+    /// simply counted on both screens now instead of one, which is what
+    /// `recorded` above carries.
+    ///
+    /// **And this file finally has a live probe again — measured 2026-09-18.**
+    /// Making `HelmBadge`'s background shape appearance-conditional at 2.75 pt in
+    /// light and 3.25 pt in dark turns this check red in both directions at once:
+    /// `light draws ["2.75"]` and `dark draws ["3.25"]`. So the assertion below is
+    /// a guard that has been seen to fail, on the defect it is for.
+    ///
+    /// **What the first two attempts at that probe cost is worth more than the
+    /// probe: a background shape's radius is clamped on the way to the layer.**
+    /// The same mutation at 17 and 18 pt read back as **7.50 on every badge, in
+    /// both screens** — unchanged from the capsule it replaced — because these
+    /// pills are 15 pt tall and the radius that reaches `CALayer.cornerRadius` is
+    /// capped at half the smaller side. That is why so many mutations recorded in
+    /// this comment were «absorbed»: a probe that reaches for a big obvious number
+    /// on a small view is invisible to a reading taken off the layer, and reads
+    /// exactly like a check that cannot see anything. Probe **below** half the
+    /// view's shorter side, or the green is about the clamp and not about the
+    /// check. (`HelmBadge.quiet` alone is also not enough — these pages draw both
+    /// variants, and the first attempt changed only one.)
+    ///
+    /// **What this costs, stated the way the rest of this file states it.** The
+    /// check now says the two screens draw the *same* set, so it goes red on any
+    /// radius that is appearance-conditional in either direction — including the
+    /// knob going back to light-only, which is what an older macOS would draw.
+    /// That is the reading being recorded, not a property of SwiftUI anybody
+    /// promised: whoever sees this red on a different macOS should re-take the
+    /// measurement above before changing the expectation, because a check that
+    /// accepts both shapes would have passed on the day this one caught the move.
+    func testTheTwoScreensDrawTheSameRadii() {
         let light = Set(offLadder(in: .aqua, checkingEachPageDrew: false).keys)
         let dark = Set(offLadder(in: .darkAqua, checkingEachPageDrew: false).keys)
 
         XCTAssertFalse(light.isEmpty, "nothing was measured in either screen")
-        XCTAssertEqual(light.subtracting(dark), ["8.00"], """
-            light draws \(light.subtracting(dark).sorted()) where dark does not, and the only \
-            one of those anybody has accounted for is 8.00 pt — SwiftUI's slider knob on Keep \
-            Awake's battery row.
+        XCTAssertEqual(light.subtracting(dark), [], """
+            light draws \(light.subtracting(dark).sorted()) where dark does not. The one value \
+            that was ever accounted for here is 8.00 pt — SwiftUI's slider knob on Keep Awake's \
+            battery row — and on 2026-09-18, macOS 27.2, it draws in both screens, so this \
+            difference is empty. Re-take the reading before recording anything else.
             """)
         XCTAssertEqual(dark.subtracting(light), [], """
             dark draws \(dark.subtracting(light).sorted()) where light does not, which is a \
