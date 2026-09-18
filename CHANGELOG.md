@@ -13,6 +13,25 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **UPD** Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself.
+- **NEW** A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself.
+- **NEW** Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run.
+- **NEW** Homebrew’s search puts the packages most people install at the top of each group.
+- **NEW** Uninstalling a package first says which of your installed packages still need it.
+- **UPD** The installed list has a heading and a version column, and every name starts at one left edge.
+- **UPD** “Upgrade all” sits in the page’s own bar, in a slot every segment keeps.
+- **UPD** At a narrow window Homebrew is two screens instead of one row with a button.
+- **FIX** Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever.
+- **FIX** The size of a package says it is being measured while the walk is out, instead of appearing out of nothing.
+- **UPD** Each settings page’s name and its switcher moved into the window’s toolbar.
+- **NEW** Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both.
+- **UPD** At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge.
+- **UPD** The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass.
+- **FIX** The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid.
+- **UPD** The panel’s list fades where it continues past the edge.
+- **NEW** Make a new SSH key from the + in the toolbar, on the Keys tab.
+- **FIX** Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm.
+- **FIX** Helm refuses an update whose bundle calls itself something other than Helm.
 - **FIX** Duplicates keeps the copy with no "Date Added" at all, instead of ticking it for the Trash, and the group says "kept: no date recorded".
 - **FIX** Duplicates keeps the same copy each time it runs — a group holding a copy with no "Date Added" could keep a different one from one scan to the next.
 - **FIX** Helm tells you again when an update has cost it a permission — the check went by version number, and two builds can carry the same one.

@@ -1197,3 +1197,23 @@
 "Text Only" = "Nur Text";
 "Icon Only" = "Nur Symbol";
 "Icon and Text" = "Symbol und Text";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew ist eine Liste von Paketen, und das ausgewählte steht daneben offen – statt einer Seite, die sich selbst ersetzt.";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Ein Paket zeigt, wie viel Platz es auf diesem Mac belegt – brew verrät das nicht, also misst Helm den Ordner selbst.";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "Homebrew hat einen Bereich „Zustand“: was brew doctor an Ihrer Installation gefunden hat, und die eine Korrektur, die Helm auszuführen anbietet.";
+"Homebrew’s search puts the packages most people install at the top of each group." = "Die Suche in Homebrew stellt die am häufigsten installierten Pakete an den Anfang jeder Gruppe.";
+"Uninstalling a package first says which of your installed packages still need it." = "Vor dem Entfernen eines Pakets nennt Helm die installierten Pakete, die es noch benötigen.";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "Die Liste der installierten Pakete hat eine Überschrift und eine Versionsspalte, und alle Namen beginnen an derselben linken Kante.";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "„Alle aktualisieren“ sitzt in der eigenen Leiste der Seite, an einem Platz, den jeder Bereich beibehält.";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "In einem schmalen Fenster ist Homebrew zwei Ansichten statt einer Zeile mit einer Taste.";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "Helm unterscheidet eine brew-Abfrage, die leer zurückkam, von einer abgelehnten und einer, die nie lief – eine abgelehnte Paketliste drehte sich vorher endlos.";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "Die Größe eines Pakets zeigt an, dass sie gerade gemessen wird, statt aus dem Nichts zu erscheinen.";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "Der Name jeder Einstellungsseite und ihr Umschalter sind in die Symbolleiste des Fensters gewandert.";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "Klicken Sie den Umschalter in der Symbolleiste mit der rechten Maustaste an, um seine Bereiche als Wörter, als Symbole oder als beides zu zeigen.";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "Im kleinsten Fenster behält „Aktualisieren“ seinen Platz in der Symbolleiste, und der Seitenname behält seinen Abstand zum Fensterrand.";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "Die Tabs, die Bearbeitungsleiste und die Fußzeile des Menüleisten-Panels sind flach auf dem Glas des Panels gezeichnet, statt Glas auf Glas.";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "Das Panel wächst bis zum Dock, bevor es scrollt, sodass ein hoher Bildschirm das ganze Raster fasst.";
+"The panel’s list fades where it continues past the edge." = "Die Liste im Panel blendet an der Kante aus, wo sie weitergeht.";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "Einen neuen SSH-Schlüssel erstellen Sie über das + in der Symbolleiste, im Bereich der Schlüssel.";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "Reste geben die Anmeldeobjekte zurück, die sie abgeschaltet haben, sobald Sie das Modul ausschalten – eine Abschaltung überlebte zuvor sogar das Löschen von Helm.";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "Helm lehnt eine Aktualisierung ab, deren Bundle sich anders als Helm nennt.";

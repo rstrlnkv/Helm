@@ -1197,3 +1197,23 @@
 "Text Only" = "仅文本";
 "Icon Only" = "仅图标";
 "Icon and Text" = "图标和文本";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew 现在是一份软件包列表，选中的包在旁边打开，而不再整页替换。";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "软件包会显示它在这台 Mac 上占用的空间：brew 不会告诉你，所以 Helm 自己测量。";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "Homebrew 新增了“状态”分段：brew doctor 在你的安装中发现了什么，以及 Helm 愿意代为执行的那一项修复。";
+"Homebrew’s search puts the packages most people install at the top of each group." = "Homebrew 的搜索会把安装量最高的软件包排在每组的最前面。";
+"Uninstalling a package first says which of your installed packages still need it." = "卸载软件包前，Helm 会先说明你已安装的哪些包仍然需要它。";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "已安装列表有了标题和版本列，所有名称都从同一条左边线开始。";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“全部更新”位于页面自己的操作栏中，每个分段都保留这个位置。";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "窗口较窄时，Homebrew 会变成两个页面，而不是一行加一个按钮。";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "Helm 能区分返回为空的 brew 查询、被拒绝的查询和从未执行的查询——被拒绝的软件包列表以前会一直转圈。";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "软件包的体积会显示正在测量，而不是凭空出现。";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "每个设置页面的名称和它的切换器已移入窗口的工具栏。";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "右键点击工具栏中的切换器，可以让分段显示为文字、图标或两者。";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "窗口最窄时，“刷新”仍留在工具栏的原位，页面名称也与窗口边缘保持间距。";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "菜单栏面板的标签、编辑栏和底栏直接平铺在面板自身的玻璃上，不再是玻璃叠玻璃。";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "面板会先向下延伸到程序坞再开始滚动，屏幕够高时整个网格都能放下。";
+"The panel’s list fades where it continues past the edge." = "面板中的列表在还有内容的边缘处淡出。";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "在密钥分段中，用工具栏里的 + 创建新的 SSH 密钥。";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "关闭该模块时，“残留项”会把它此前停用的登录项恢复回来——以前即使删除 Helm，停用状态仍然留着。";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "如果更新包自称不是 Helm，Helm 会拒绝它。";

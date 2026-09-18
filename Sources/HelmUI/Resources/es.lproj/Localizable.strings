@@ -1197,3 +1197,23 @@
 "Text Only" = "Solo texto";
 "Icon Only" = "Solo iconos";
 "Icon and Text" = "Iconos y texto";
+
+"Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew es una lista de paquetes con el elegido abierto al lado, en vez de una página que se reemplaza a sí misma.";
+"A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Un paquete indica cuánto ocupa en este Mac: brew no lo dice, así que Helm mide la carpeta por su cuenta.";
+"Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run." = "Homebrew tiene una sección de estado: lo que brew doctor encontró en tu instalación y la única corrección que Helm se ofrece a ejecutar.";
+"Homebrew’s search puts the packages most people install at the top of each group." = "La búsqueda de Homebrew coloca al principio de cada grupo los paquetes que más se instalan.";
+"Uninstalling a package first says which of your installed packages still need it." = "Antes de desinstalar un paquete, Helm dice cuáles de tus paquetes instalados todavía lo necesitan.";
+"The installed list has a heading and a version column, and every name starts at one left edge." = "La lista de paquetes instalados tiene encabezado y una columna de versión, y todos los nombres empiezan en el mismo borde izquierdo.";
+"“Upgrade all” sits in the page’s own bar, in a slot every segment keeps." = "“Actualizar todo” está en la barra propia de la página, en un lugar que cada sección conserva.";
+"At a narrow window Homebrew is two screens instead of one row with a button." = "En una ventana estrecha, Homebrew son dos pantallas en lugar de una fila con un botón.";
+"Helm tells a brew question that came back empty from one that was refused and one that never ran — a refused package list used to spin for ever." = "Helm distingue una consulta a brew que vino vacía de una rechazada y de una que nunca llegó a ejecutarse: una lista de paquetes rechazada giraba para siempre.";
+"The size of a package says it is being measured while the walk is out, instead of appearing out of nothing." = "El tamaño de un paquete indica que se está midiendo, en vez de aparecer de la nada.";
+"Each settings page’s name and its switcher moved into the window’s toolbar." = "El nombre de cada página de ajustes y su selector pasaron a la barra de herramientas de la ventana.";
+"Right-click the toolbar’s switcher to draw its segments as words, as glyphs, or as both." = "Haz clic derecho en el selector de la barra de herramientas para mostrar sus secciones con palabras, con iconos o con ambos.";
+"At the smallest window Refresh keeps its place in the toolbar, and a page’s name keeps its distance from the window’s edge." = "En la ventana más pequeña, “Actualizar” conserva su sitio en la barra de herramientas y el nombre de la página mantiene su distancia del borde.";
+"The menu-bar panel’s tabs, arranging bar and footer are drawn flat on the panel’s own glass, instead of glass over glass." = "Las pestañas, la barra de edición y el pie del panel de la barra de menús se dibujan planos sobre el cristal del propio panel, en vez de cristal sobre cristal.";
+"The panel grows down to the Dock before it scrolls, so a tall screen holds the whole grid." = "El panel crece hasta el Dock antes de desplazarse, así que una pantalla alta muestra toda la cuadrícula.";
+"The panel’s list fades where it continues past the edge." = "La lista del panel se desvanece en el borde donde continúa más allá.";
+"Make a new SSH key from the + in the toolbar, on the Keys tab." = "Crea una clave SSH nueva con el + de la barra de herramientas, en la sección de claves.";
+"Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "Restos devuelve los ítems de inicio que apagó cuando desactivas el módulo: apagar uno sobrevivía incluso a borrar Helm.";
+"Helm refuses an update whose bundle calls itself something other than Helm." = "Helm rechaza una actualización cuyo paquete se llama a sí mismo algo que no es Helm.";

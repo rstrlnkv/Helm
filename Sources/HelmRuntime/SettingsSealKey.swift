@@ -29,17 +29,18 @@ public enum SettingsSealKey {
     /// tampered with, and Helm calls their own configuration a forgery. Nothing
     /// is an error anywhere. `TheSettingsSealKeyIsAskedOnceTests` records them.
     ///
-    /// **Not `shared`, and the name is load-bearing.**
-    /// `ATestNamesTheKeychainPortsItBuildsOverTests` derives what reaches the
-    /// keychain by following `static let` declarations, and files them in a
-    /// dictionary keyed by the **bare** member name — so the eighth `shared` in
-    /// the tree overwrites the seventh. Called `shared`, this constant is
-    /// shadowed by whichever singleton that walk reads last; the chain from
-    /// `DuplicatesSettings.guardOfScanSettings` down to `KeychainSealKey` then
-    /// goes unrecognised, and every `settings:` default in the tree reads as
-    /// harmless to the one guard that stops a test writing into somebody's own
-    /// login keychain. Measured rather than feared: written as `shared`, this
-    /// constant took that scan green over it, which is a guard dying quietly.
+    /// **The name was load-bearing and is not any more.**
+    /// `ATestNamesTheKeychainPortsItBuildsOverTests` — the guard that stops a
+    /// test writing into the developer's own login keychain — used to file the
+    /// declarations it follows under the bare member name, and `Sources/` holds
+    /// eight `static let shared`. Written as `shared`, this constant was
+    /// shadowed by whichever singleton that walk read last; the chain from
+    /// `DuplicatesSettings.guardOfScanSettings` down to `KeychainSealKey` went
+    /// unrecognised and that guard went green over the very call sites it exists
+    /// for. That is measured, not feared — it is how the first draft of this
+    /// constant failed. The scan keys by the owning type now, so the collision
+    /// is closed at its own end; the name is kept because it says what the
+    /// constant is, not because anything depends on it.
     public static let overScanSettings: SealKeyPort =
         SealKeyCache(KeychainSealKey(service: "com.helm.app",
                                      account: "settings-seal",

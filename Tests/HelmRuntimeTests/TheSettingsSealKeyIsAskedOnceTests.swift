@@ -53,44 +53,6 @@ final class TheSettingsSealKeyIsAskedOnceTests: XCTestCase {
                        "the item is addressed in more than one place: \(naming)")
     }
 
-    /// And the constant's **bare name** is its own in the whole tree.
-    ///
-    /// `ATestNamesTheKeychainPortsItBuildsOverTests` is the guard that stops a
-    /// test writing into the login keychain of whoever runs the suite, and it
-    /// derives what reaches the keychain by following `static let` declarations
-    /// into a dictionary keyed by the bare member name. A second declaration
-    /// under the same name overwrites this one there, the chain from
-    /// `DuplicatesSettings.guardOfScanSettings` down to `KeychainSealKey` stops
-    /// being recognised, and that guard goes green over the very call sites it
-    /// exists for — silently, which is how this constant spent its first draft
-    /// named `shared`, beside seven other `shared`s.
-    ///
-    /// Asserted here rather than left to the doc comment beside it, because the
-    /// failure is invisible at both ends: nothing about a rename says the other
-    /// test has stopped working, and that test's own message blames the chain
-    /// rather than the name.
-    func testTheConstantsNameIsNotSharedWithAnotherDeclaration() throws {
-        let declaration = try XCTUnwrap(
-            NSRegularExpression(pattern: #"static\s+(?:let|var)\s+([A-Za-z_]\w*)"#))
-        var owners: [String: [String]] = [:]
-        for path in try RepoSource.swiftFiles(under: "Sources") {
-            for line in try RepoSource.lines(of: path) {
-                let code = RepoSource.code(line)
-                let range = NSRange(code.startIndex..., in: code)
-                guard let match = declaration.firstMatch(in: code, range: range),
-                      let name = Range(match.range(at: 1), in: code) else { continue }
-                owners[String(code[name]), default: []].append(path)
-            }
-        }
-
-        XCTAssertEqual(owners["overScanSettings"]?.count, 1, """
-            the seal key's name is declared in more than one place, so the keychain-port scan             files whichever it reads last: \(owners["overScanSettings"] ?? [])
-            """)
-        XCTAssertGreaterThan(owners["shared"]?.count ?? 0, 1, """
-            nothing else in the tree shares a static name any more, so the case above passes             for a reason that has nothing to do with the rule
-            """)
-    }
-
     /// One cache in the whole tree, for the same reason: the cost is per
     /// instance, not per item.
     func testThereIsOneCacheOverIt() throws {
