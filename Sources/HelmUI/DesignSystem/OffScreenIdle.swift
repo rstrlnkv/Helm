@@ -90,7 +90,12 @@ public extension View {
 
 /// Reports whether the window this view sits in is on screen. Zero-size,
 /// draws nothing.
-private struct WindowSeenReader: NSViewRepresentable {
+///
+/// Internal, not private: `Tests/HelmUITests/WindowSeenReaderRaceTests.swift`
+/// constructs `Reader` directly to drive the race `report()` guards against,
+/// and `@testable import` does not reach `private`. Nothing outside `HelmUI`
+/// uses either type.
+struct WindowSeenReader: NSViewRepresentable {
     @Binding var seen: Bool
 
     func makeNSView(context: Context) -> Reader {
@@ -127,17 +132,29 @@ private struct WindowSeenReader: NSViewRepresentable {
             report()
         }
 
-        private func report() {
-            // `isVisible`, not occlusion: a window fully covered by another app
-            // is still "on screen" here on purpose — unmounting it would throw
-            // away scroll positions and mid-edit fields every time the person
-            // glances at another window. What this idles is a window that is
-            // ordered out: the closed Settings window, a panel that was
-            // dismissed. No window at all is a bare harness view, which draws.
-            let value = window.map(\.isVisible) ?? true
+        func report() {
             // Out of the current layout/update transaction: this fires from
             // AppKit mid-update, and a state write there is a SwiftUI error.
-            DispatchQueue.main.async { [weak self] in self?.onChange?(value) }
+            // The window is read inside the hop, not before it — a stale report
+            // queued while the window was mid-construction must not overwrite a
+            // value that has since become current. Same shape as
+            // `RunningApps.refreshOnMain` (Sources/HelmRuntime/RunningApps.swift),
+            // which puts the AppKit read inside the block for the same reason.
+            // This makes `report()` a poll on delivery rather than an event: it
+            // tells `onChange` the window's level right now, never the edge that
+            // caused this call, but nothing downstream wants the edge —
+            // `updateNSView` above compares levels, not edges.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                // `isVisible`, not occlusion: a window fully covered by another
+                // app is still "on screen" here on purpose — unmounting it would
+                // throw away scroll positions and mid-edit fields every time the
+                // person glances at another window. What this idles is a window
+                // that is ordered out: the closed Settings window, a panel that
+                // was dismissed. No window at all is a bare harness view, which
+                // draws.
+                self.onChange?(self.window.map(\.isVisible) ?? true)
+            }
         }
 
         deinit {
