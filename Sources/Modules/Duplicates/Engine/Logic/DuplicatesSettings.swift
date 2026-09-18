@@ -13,22 +13,19 @@ import HelmRuntime
 /// **One guard over every scan setting this module stores, not one per
 /// setting.** It was `guardOfFolder` while the folder was the only sealed value
 /// here; the keep policy is the second, and a second `SettingGuard` beside it
-/// would be a second keychain item for one question — while the item itself,
-/// its account and its category are stored data on every Mac that has run a
-/// background scan and never move. `TheScanSettingsSealDoesNotMoveTests`
-/// records the three strings that address it.
+/// would be a second keychain item for one question.
 ///
-/// **Behind `SealKeyCache`, so the keychain is asked once for the process rather
-/// than once per verdict.** Every read here — the engine's on each background
-/// scan, the page's when it opens — called `SecItemCopyMatching`, and on an
-/// ad-hoc signed bundle that is a modal authorization dialog rather than data
-/// (ARCHITECTURE.md § Sealed settings). `AppSettings.scanGuard` is the
-/// shape this follows, and the cache's own documentation named this guard as one
-/// of the two still paying per verdict.
+/// **The item, and the cache in front of it, are `SettingsSealKey.overScanSettings`.**
+/// Every read here — the engine's on each background scan, the page's when it
+/// opens — is a `SecItemCopyMatching` without a cache, and on an ad-hoc signed
+/// bundle that is a modal authorization dialog rather than data
+/// (ARCHITECTURE.md § Sealed settings). The cache was built here *and* in
+/// `AppSettings.scanGuard`, over one item, which is two round trips and a
+/// second dialog for anyone who answers the first with "Allow"; one instance
+/// now serves both, and the three strings that address the item are recorded
+/// beside it.
 public enum DuplicatesSettings {
-    public static let guardOfScanSettings = SettingGuard(
-        keys: SealKeyCache(KeychainSealKey(service: "com.helm.app", account: "settings-seal",
-                                           category: "scan")))
+    public static let guardOfScanSettings = SettingGuard(keys: SettingsSealKey.overScanSettings)
 
     /// Where the keep policy is stored, in the module's own namespace.
     ///

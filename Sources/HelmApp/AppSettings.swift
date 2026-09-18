@@ -212,16 +212,18 @@ extension Notification.Name {
     /// not write to the person's login keychain, and this type is reached
     /// statically from every page in the app. Nothing in the app assigns it.
     ///
-    /// Behind `SealKeyCache`, so the keychain is asked once for the whole
-    /// process rather than once per verdict: the getter above is read on every
-    /// coordinator tick and, until 2026-08-15, inside the settings window's own
-    /// construction — where the round trip is a modal authorization dialog on
-    /// every ad-hoc build. `warmKey()` is how a screen pays for it off the main
-    /// thread before it needs the answer.
-    static var scanGuard = SettingGuard(
-        keys: SealKeyCache(KeychainSealKey(service: "com.helm.app",
-                                           account: "settings-seal",
-                                           category: "scan")))
+    /// Behind `SettingsSealKey.overScanSettings`, so the keychain is asked once for the
+    /// whole process rather than once per verdict: the getter above is read on
+    /// every coordinator tick and, until 2026-08-15, inside the settings
+    /// window's own construction — where the round trip is a modal
+    /// authorization dialog on every ad-hoc build. `warmKey()` is how a screen
+    /// pays for it off the main thread before it needs the answer.
+    ///
+    /// **Shared with the duplicate finder's guard, rather than a cache of its
+    /// own.** It is the same item, and a cache serialises only the callers that
+    /// share it — two caches over one item are two round trips, and the second
+    /// is a second dialog for anyone who answers the first with "Allow".
+    static var scanGuard = SettingGuard(keys: SettingsSealKey.overScanSettings)
 
     /// When each background scan last **completed** — came back with a report.
     ///
