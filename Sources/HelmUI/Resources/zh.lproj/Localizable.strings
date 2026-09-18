@@ -1217,3 +1217,4 @@
 "Make a new SSH key from the + in the toolbar, on the Keys tab." = "在密钥分段中，用工具栏里的 + 创建新的 SSH 密钥。";
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "关闭该模块时，“残留项”会把它此前停用的登录项恢复回来——以前即使删除 Helm，停用状态仍然留着。";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "如果更新包自称不是 Helm，Helm 会拒绝它。";
+"This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "这份 Helm 不是发布版本所替换的那一个。Helm 已改为打开下载页面。";

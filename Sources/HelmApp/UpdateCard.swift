@@ -23,6 +23,8 @@ enum UpdateCard: Equatable {
     case ready
     /// A release Helm will not swap in silently; the browser has the page.
     case manualInstall
+    /// A release this build cannot be replaced by; the browser has the page.
+    case cannotReplaceItself
     case checkFailed
     /// This build is a prerelease ahead of the channel it follows.
     case ahead
@@ -48,6 +50,7 @@ enum UpdateCard: Equatable {
         if hasRelease { return .ready }
         switch note {
         case .manualInstall: return .manualInstall
+        case .cannotReplaceItself: return .cannotReplaceItself
         case .checkFailed: return .checkFailed
         case .upToDate, nil: break
         }

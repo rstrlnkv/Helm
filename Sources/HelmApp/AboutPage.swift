@@ -462,6 +462,12 @@ struct AboutHelmView: View {
                 Text(AppStr.updateManualInstall).lineLimit(3)
                 Spacer()
             }
+        case .cannotReplaceItself:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
+                Text(AppStr.updateCannotReplaceItself).lineLimit(3)
+                Spacer()
+            }
         case .checkFailed:
             HStack(spacing: HelmSpace.s5) {
                 statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)

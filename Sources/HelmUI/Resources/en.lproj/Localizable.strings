@@ -1217,3 +1217,4 @@
 "Make a new SSH key from the + in the toolbar, on the Keys tab." = "Make a new SSH key from the + in the toolbar, on the Keys tab.";
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm.";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "Helm refuses an update whose bundle calls itself something other than Helm.";
+"This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "This copy of Helm is not the one a release replaces. Helm opened its download page instead.";

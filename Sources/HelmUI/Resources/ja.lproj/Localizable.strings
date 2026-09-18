@@ -1217,3 +1217,4 @@
 "Make a new SSH key from the + in the toolbar, on the Keys tab." = "新しい SSH 鍵は、鍵のセクションでツールバーの + から作成できます。";
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "モジュールをオフにすると、“残存物”がオフにしたログイン項目を元に戻します。以前は、オフのままの状態が Helm を削除しても残っていました。";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "バンドルが Helm 以外の名前を名乗る更新は拒否します。";
+"This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "この Helm は、リリースが置き換える対象ではありません。代わりにダウンロードページを開きました。";

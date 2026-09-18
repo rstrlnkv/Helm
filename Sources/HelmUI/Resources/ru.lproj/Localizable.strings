@@ -1217,3 +1217,4 @@
 "Make a new SSH key from the + in the toolbar, on the Keys tab." = "Новый ключ SSH создаётся кнопкой + в панели инструментов, на вкладке ключей.";
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "«Остатки» возвращают объекты входа, которые выключили, когда вы выключаете модуль: раньше выключение переживало даже удаление Helm.";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "Helm отклоняет обновление, если его пакет называет себя не Helm.";
+"This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "Эта копия Helm — не та, которую заменяет релиз. Helm открыл страницу загрузки.";

@@ -75,6 +75,39 @@ public enum AppBuild {
     /// bare script linking `HelmRuntime` is neither.
     public static var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
 
+    /// The identifier every published Helm bundle carries — the one
+    /// `Resources/HelmApp/Info.plist` declares, which is therefore the one
+    /// inside every zip a release publishes.
+    ///
+    /// A literal here and nowhere else. `Scripts/package-dev.sh` rewrites this
+    /// key to `com.helm.app.dev` **after signing**, so a dev build is a release
+    /// build that calls itself something else, and nothing else in the bundle
+    /// says so.
+    public static let releaseIdentifier = "com.helm.app"
+
+    /// Whether a published bundle can stand where this one stands.
+    ///
+    /// The updater swaps a downloaded bundle in at `Bundle.main.bundlePath`, so
+    /// the answer is false for `Helm Dev.app` and for anything else running
+    /// under a rewritten identifier: the swap would put one program at another's
+    /// address. `Installer.installZip` refuses the same swap at the last moment,
+    /// which is the guard that must stay; this is the same fact asked early
+    /// enough to spend nothing and to have somebody to tell.
+    ///
+    /// **False under a test runner too**, where the identifier is
+    /// `com.apple.dt.xctest.tool` — a process that has no bundle to replace.
+    public static var takesPublishedBuilds: Bool {
+        isReleaseIdentifier(Bundle.main.bundleIdentifier)
+    }
+
+    /// The same question asked of an identifier that is not this process's — the
+    /// half a test can reach, since a test runner cannot be given a bundle id.
+    /// Nil is not the release: a bundle that will not say what it is does not
+    /// get a published program written over it.
+    public static func isReleaseIdentifier(_ identifier: String?) -> Bool {
+        identifier == releaseIdentifier
+    }
+
     /// A prerelease off the dev channel.
     ///
     /// The **build**, never the update channel: the channel is a picker anybody

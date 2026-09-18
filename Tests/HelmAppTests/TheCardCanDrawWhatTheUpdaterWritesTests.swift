@@ -105,6 +105,25 @@ final class TheCardCanDrawWhatTheUpdaterWritesTests: XCTestCase {
                              + "is still on screen for a release Helm refused to install")
     }
 
+    /// The refusal a build that cannot be replaced writes has an arm of its
+    /// own, and takes the offer with it — the same two claims as the note above,
+    /// for the state that sends a dev build to the page.
+    func testABuildThatCannotBeReplacedDrawsItsOwnArm() {
+        let updater = UpdateService(available: release)
+        XCTAssertNotNil(updater.available, "precondition: there is an offer on the card")
+
+        updater.noteCannotReplaceItself()
+
+        XCTAssertNil(updater.available, "the offer outranks the note, so it has to go")
+        XCTAssertEqual(UpdateCard.drawn(installState: updater.installState,
+                                        checking: updater.checking,
+                                        hasRelease: updater.available != nil,
+                                        hasAhead: updater.aheadOfChannel != nil,
+                                        note: updater.note),
+                       .cannotReplaceItself,
+                       "the card says nothing about a swap this build cannot take")
+    }
+
     func testWithNothingToSayTheCardReportsWhenItLastLooked() {
         XCTAssertEqual(UpdateCard.drawn(installState: .idle, checking: false,
                                         hasRelease: false, hasAhead: false, note: nil),

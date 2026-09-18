@@ -401,6 +401,7 @@ enum AppStr {
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.
     static var updateManualInstall: String { L("This release published no checksum. Helm opened its download page instead.") }
+    static var updateCannotReplaceItself: String { L("This copy of Helm is not the one a release replaces. Helm opened its download page instead.") }
     static var updateCheckFailed: String { L("Couldn’t check for updates.") }
     static func lastChecked(_ when: String) -> String { L("Checked \(when)", [.ru: "Проверялось \(when)", .es: "Comprobado \(when)", .fr: "Vérifié \(when)", .de: "Geprüft \(when)", .ja: "確認: \(when)", .zh: "检查于\(when)", .pt: "Verificado \(when)"]) }
     static var neverChecked: String { L("Not checked yet") }

@@ -43,6 +43,12 @@ import HelmRuntime
         /// The release published no digest for its asset, or no installable
         /// asset at all: the browser was opened and nothing was swapped.
         case manualInstall
+        /// This build is not the one a release replaces — its identifier was
+        /// rewritten after signing, as `Scripts/package-dev.sh` does — so no
+        /// published bundle can stand at its address. Kept apart from
+        /// `manualInstall`: that sentence names a release that published no
+        /// checksum, which says nothing true about this copy of Helm.
+        case cannotReplaceItself
     }
 
     @Published private(set) var available: Release?
@@ -109,6 +115,18 @@ import HelmRuntime
     func noteManualInstall() {
         installState = .idle
         note = .manualInstall
+        available = nil
+    }
+
+    /// This build cannot be replaced by a published bundle, and the browser has
+    /// been sent to the page instead.
+    ///
+    /// **The offer goes with it**, for the reason `noteManualInstall` gives: the
+    /// card asks about `available` before it asks about the note, so a release
+    /// left standing keeps «Update & Relaunch» on screen over a refusal.
+    func noteCannotReplaceItself() {
+        installState = .idle
+        note = .cannotReplaceItself
         available = nil
     }
 
@@ -182,6 +200,17 @@ import HelmRuntime
     func downloadAndInstall() {
         // Retry after a failure must work: only an in-flight download/install blocks.
         guard let rel = available, installState != .downloading, installState != .installing else { return }
+        // `Installer.installZip` refuses this swap too, and must go on refusing
+        // — it is the guard that stands over the bundle actually downloaded.
+        // Asked here, it costs nothing and there is still somebody to tell: a
+        // dev build otherwise fetched the whole asset and hashed it before
+        // being told, at every press, and read the refusal as «install failed».
+        guard AppBuild.takesPublishedBuilds else {
+            HelmLog.shared.warn("update", "this build is not \(AppBuild.releaseIdentifier) — manual install")
+            noteCannotReplaceItself()
+            NSWorkspace.shared.open(rel.pageURL)
+            return
+        }
         guard let zip = rel.zipURL else {
             // The other silent path, and the same repair: a release with no
             // installable asset opened a browser and changed no state at all,

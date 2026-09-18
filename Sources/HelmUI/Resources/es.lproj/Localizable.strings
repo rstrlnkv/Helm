@@ -1217,3 +1217,4 @@
 "Make a new SSH key from the + in the toolbar, on the Keys tab." = "Crea una clave SSH nueva con el + de la barra de herramientas, en la sección de claves.";
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "Restos devuelve los ítems de inicio que apagó cuando desactivas el módulo: apagar uno sobrevivía incluso a borrar Helm.";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "Helm rechaza una actualización cuyo paquete se llama a sí mismo algo que no es Helm.";
+"This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "Esta copia de Helm no es la que reemplaza una versión publicada. Helm abrió su página de descarga.";
