@@ -82,9 +82,9 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
 
         add("ink", .primary)
 
-        add("signal-warning", HelmSignal.warning)
-        add("signal-success", HelmSignal.success)
-        add("signal-danger", HelmSignal.danger)
+        add("signal-warning", HelmSignal.warning(increased: false))
+        add("signal-success", HelmSignal.success(increased: false))
+        add("signal-danger", HelmSignal.danger(increased: false))
 
         add("surface-card", HelmSurface.cardFill)
         add("surface-well", HelmSurface.wellFill)
@@ -100,11 +100,36 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
         // Every case, not `offered`: a retired colour is still reachable from a
         // setting stored before the set narrowed, so it is still published — and
         // dropping one from the type has to move this file.
-        for tint in ModuleTint.allCases { add("tint-\(published(tint.rawValue))", tint.colour) }
+        for tint in ModuleTint.allCases {
+            add("tint-\(published(tint.rawValue))", tint.colour(increased: false))
+        }
         for colour in PaletteColor.allCases {
             add("palette-\(published(colour.rawValue))", colour.color)
         }
 
+        return out
+    }
+
+    /// The thirteen colours this tree defines itself, as they are under Increase
+    /// Contrast.
+    ///
+    /// A separate table rather than a fourth and fifth entry per token, because
+    /// the two sets answer to different floors — white clears 3:1 on a tint and
+    /// 4,5:1 on its increased form, and a signal ink clears 4,5:1 and 7:1 — so
+    /// reading them side by side would invite comparing numbers that are not
+    /// comparable. The system colours have no row here: macOS supplies their
+    /// increased variants, and this tree neither writes nor can read them.
+    private static func increasedContrastColours() -> [String: [String: String]] {
+        var out: [String: [String: String]] = [:]
+        func add(_ name: String, _ color: Color) {
+            out[name] = ["light": spelled(color, .aqua), "dark": spelled(color, .darkAqua)]
+        }
+        add("signal-warning", HelmSignal.warning(increased: true))
+        add("signal-success", HelmSignal.success(increased: true))
+        add("signal-danger", HelmSignal.danger(increased: true))
+        for tint in ModuleTint.allCases {
+            add("tint-\(published(tint.rawValue))", tint.colour(increased: true))
+        }
         return out
     }
 
@@ -209,7 +234,9 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
     private static func document() throws -> String {
         let (space, radius) = ladders()
         let body: [String: Any] = [
-            "colours": colours(), "inks": inks(),
+            "colours": colours(),
+            "coloursIncreasedContrast": increasedContrastColours(),
+            "inks": inks(),
             "space": space, "radius": radius, "layout": layout(),
         ]
         let data = try JSONSerialization.data(
@@ -318,6 +345,9 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
             XCTAssertNotNil(colours["palette-\(Self.published(colour.rawValue))"],
                             "no record of \(colour.rawValue)")
         }
+        let increased = try XCTUnwrap(top["coloursIncreasedContrast"] as? [String: [String: String]])
+        XCTAssertEqual(increased.count, ModuleTint.allCases.count + 3,
+                       "thirteen colours this tree defines itself")
         XCTAssertEqual((top["space"] as? [String: Double])?.count, 8)
         XCTAssertEqual((top["radius"] as? [String: Double])?.count, 5)
 

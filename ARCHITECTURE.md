@@ -1985,6 +1985,23 @@ contrast floor rather than chosen, and the blend is resolved *inside* the light 
 — `NSColor(Color)` returns a dynamic colour, so a blend one line outside the block resolves
 again against whatever appearance is current.
 
+Both types carry a third and fourth value as well. Apple asks a colour an app defines
+itself for an increased-contrast option beside its light and dark ones, and these are
+literals exactly because the system palette failed the light appearance — so the variants
+macOS would have supplied were given up along with it.
+`Sources/HelmUI/DesignSystem/HelmContrast.swift` is the switch, and it is a flag rather
+than an appearance for a measured reason: on macOS 26 `bestMatch(from:)` answers
+`NSAppearanceNameAqua` while the drawing appearance is `NSAppearanceNameAccessibilityAqua`,
+whichever order the names are given in, so a dynamic colour cannot see the setting at all.
+`ModuleTint.colour(increased:)` and `HelmSignal.warning(increased:)` take it as an argument
+the way `HelmMotion.spins(requested:reduceMotion:)` does, which is what lets the floors be
+measured without the machine's own switch. The second set is the same solve against a
+higher floor — white at 4.5:1 rather than 3:1 on a tint, 7:1 rather than 4.5:1 for an ink
+against the window — and twelve of the thirteen move; `ModuleTint`'s `hosts` reads 5.91:1
+already and owes no second value. The blend is solved against the *rounded* literal, because
+solved before it one value came out at 4.4988:1, short by a thousandth of a ratio and
+looking measured.
+
 **Motion.** `Sources/HelmUI/DesignSystem/HelmMotion.swift` holds the tokens, and they are
 computed properties rather than constants:
 

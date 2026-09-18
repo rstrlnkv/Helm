@@ -137,6 +137,60 @@
       "light" : "#6155f5"
     }
   },
+  "coloursIncreasedContrast" : {
+    "signal-danger" : {
+      "dark" : "#ff8385",
+      "light" : "#a92427"
+    },
+    "signal-success" : {
+      "dark" : "#30d158",
+      "light" : "#18662c"
+    },
+    "signal-warning" : {
+      "dark" : "#ff9230",
+      "light" : "#864913"
+    },
+    "tint-autopilot" : {
+      "dark" : "#0078d4",
+      "light" : "#0076de"
+    },
+    "tint-disk" : {
+      "dark" : "#c033d4",
+      "light" : "#c032d4"
+    },
+    "tint-duplicates" : {
+      "dark" : "#00848d",
+      "light" : "#00848c"
+    },
+    "tint-homebrew" : {
+      "dark" : "#1e8838",
+      "light" : "#22883c"
+    },
+    "tint-hosts" : {
+      "dark" : "#3676a3",
+      "light" : "#2e6992"
+    },
+    "tint-keep-awake" : {
+      "dark" : "#af6420",
+      "light" : "#b2621b"
+    },
+    "tint-keyboard" : {
+      "dark" : "#d626a3",
+      "light" : "#d626a3"
+    },
+    "tint-leftovers" : {
+      "dark" : "#946f52",
+      "light" : "#966e52"
+    },
+    "tint-uninstaller" : {
+      "dark" : "#db393b",
+      "light" : "#e03135"
+    },
+    "tint-vpn" : {
+      "dark" : "#5f6cde",
+      "light" : "#6155f5"
+    }
+  },
   "inks" : {
     "hairline" : 0.10000000000000001,
     "mark-separator" : 0.5,
