@@ -7,11 +7,10 @@ import XCTest
 /// folder under it, and a rename is exactly where stored data goes missing
 /// quietly.
 ///
-/// Three strings address the key every sealed value here is checked against, and
-/// they are on every Mac that has run a background scan: change one and the
-/// keychain item is *absent*, which `KeychainSealKey` answers by creating a new
-/// one — so every setting the person really did save reads as tampered with, and
-/// Helm calls their own configuration a forgery. Nothing is an error anywhere.
+/// What is left here is what is this module's own. The three strings that address
+/// the keychain item, and the single cache in front of it, moved to
+/// `SettingsSealKey` with the item itself — `TheSettingsSealKeyIsAskedOnceTests`
+/// records them, and records that nothing else addresses it.
 ///
 /// Read out of the source because there is nowhere else to read it: the guard
 /// keeps its port private, and a test that asked the real keychain would write
@@ -21,16 +20,6 @@ final class TheScanSettingsSealDoesNotMoveTests: XCTestCase {
 
     private func settingsSource() throws -> String {
         try RepoSource.text(of: "Sources/Modules/Duplicates/Engine/Logic/DuplicatesSettings.swift")
-    }
-
-    func testTheKeychainItemIsTheOneThatShipped() throws {
-        let source = try settingsSource()
-
-        XCTAssertTrue(source.contains(#"service: "com.helm.app""#),
-                      "the app's own namespace, deliberately not Autopilot's")
-        XCTAssertTrue(source.contains(#"account: "settings-seal""#))
-        XCTAssertTrue(source.contains(#"category: "scan""#),
-                      "the log category names the feature that lost its key")
     }
 
     /// One guard, not one per setting: a second `SettingGuard` here would be a
@@ -45,22 +34,23 @@ final class TheScanSettingsSealDoesNotMoveTests: XCTestCase {
         XCTAssertEqual(guards.count, 1, "found: \(guards)")
     }
 
-    /// And the keychain is asked once for the whole process, not once per
-    /// verdict.
+    /// And it takes the shared key rather than reaching for the keychain itself:
+    /// a cache built here would be a second one over an item that already has
+    /// one, which is a second `SecItemCopyMatching` and — on an ad-hoc build —
+    /// a second modal dialog.
     ///
-    /// **Read out of the source for the same reason the strings above are**: the
-    /// only behavioural way to ask whether this guard remembers its key is to
-    /// warm it, which reaches the login keychain of whoever runs the suite. What
-    /// the cache buys is measured through a port everywhere else
-    /// (`TheKeepPolicyIsReadWhenItIsFreeTests`); this records that the module's
-    /// own guard is the one that has it. Without it every read here is a
-    /// `SecItemCopyMatching`, and on an ad-hoc build that is a modal
-    /// authorization dialog — the engine pays one per background scan and the
-    /// page paid one inside `init`, on the thread that draws.
-    func testTheKeyIsFetchedOncePerProcess() throws {
-        XCTAssertTrue(try settingsSource().contains("SealKeyCache(KeychainSealKey("), """
-            the module's guard reaches the keychain directly, so every verdict is a round trip — \
-            `AppSettings.scanGuard` is the shape this one follows
+    /// **Read out of the source for the same reason the rest is**: the only
+    /// behavioural way to ask whether this guard remembers its key is to warm
+    /// it, which reaches the login keychain of whoever runs the suite. What the
+    /// cache buys is measured through a port elsewhere
+    /// (`TheKeepPolicyIsReadWhenItIsFreeTests`).
+    func testTheGuardTakesTheSharedKeyAndMakesNoneOfItsOwn() throws {
+        let source = try settingsSource()
+
+        XCTAssertTrue(source.contains("SettingsSealKey.overScanSettings"))
+        XCTAssertFalse(source.contains("KeychainSealKey("), """
+            the module reaches the keychain itself, so its reads are a round trip the app's \
+            own guard has already paid for
             """)
     }
 

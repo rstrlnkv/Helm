@@ -20,15 +20,30 @@ public enum PermissionCheck {
     /// Files only readable with Full Disk Access. Detection has to be a READ:
     /// writing into ~/Library/Containers is refused even when access has been
     /// granted, so a write probe reported "denied" to users who had granted it.
+    ///
+    /// **Files, and never a directory.** `FileHandle(forReadingFrom:)` throws on
+    /// every directory — `/tmp` refuses it as flatly as somebody's Messages
+    /// database does — so a directory here is an entry that answers "denied" on
+    /// a Mac that granted everything. `~/Library/Application Support/AddressBook`
+    /// was one for as long as this list had four entries, and being last it was
+    /// opened only on the runs where the answer was already going to be
+    /// "denied": every launch after an ad-hoc update, which is the one state
+    /// this probe most needs to read correctly.
+    ///
+    /// **The system-wide `TCC.db` goes first**, and it is why the list can be
+    /// short. It is a plain file, it is on every Mac — the per-user one beside
+    /// it is absent on macOS 26 — and it is gated by Full Disk Access and
+    /// nothing else. Reaching it first also means the ordinary granted case
+    /// never opens anybody's Safari bookmarks or their Messages database at all;
+    /// those two stay as the fallback for a Mac that has somehow mislaid the
+    /// first, which is what the fold below is for.
     static var probeURLs: [URL] {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        // Several, because none is guaranteed to exist: TCC.db is absent on
-        // macOS 26, Safari may be unused, Messages may never have run.
         return [
+            URL(fileURLWithPath: "/Library/Application Support/com.apple.TCC/TCC.db"),
+            home.appendingPathComponent("Library/Application Support/com.apple.TCC/TCC.db"),
             home.appendingPathComponent("Library/Safari/Bookmarks.plist"),
             home.appendingPathComponent("Library/Messages/chat.db"),
-            home.appendingPathComponent("Library/Application Support/com.apple.TCC/TCC.db"),
-            home.appendingPathComponent("Library/Application Support/AddressBook"),
         ]
     }
 
@@ -48,14 +63,23 @@ public enum PermissionCheck {
         return dict["teamid"] == nil
     }
 
+    /// Whether one probe path hands over a byte.
+    ///
+    /// Its own member rather than a closure inside the fold below, because the
+    /// shape is the thing that has to be checked: `FileHandle(forReadingFrom:)`
+    /// throws on **every** directory, protected or not, so a directory in
+    /// `probeURLs` is a probe that can only ever answer "denied" —
+    /// `TheProbeAsksPathsItCanAnswerFromTests` is that check, and it needs
+    /// somewhere to point.
+    static func canRead(_ url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        return (try? handle.read(upToCount: 1)) != nil
+    }
+
     public static func currentFullDiskAccess() -> PermissionState {
-        let readable = probeURLs.contains { url in
-            guard FileManager.default.fileExists(atPath: url.path) else { return false }
-            guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
-            defer { try? handle.close() }
-            return (try? handle.read(upToCount: 1)) != nil
-        }
-        return state(canReadProtectedPath: readable)
+        state(canReadProtectedPath: probeURLs.contains(where: canRead))
     }
 
     /// The same answer, off the thread that draws — for the settings pages that
@@ -63,13 +87,18 @@ public enum PermissionCheck {
     ///
     /// **Measured here, warm and cold**: 0.09 ms a call once the paths are in
     /// the cache, 1.85 ms for the first call of the process, with three of the
-    /// four probe files present and the grant withheld. So the warm case is not
-    /// what this is about, and saying it was would be a claim the numbers do not
-    /// support. What it is about is that those milliseconds have no ceiling:
-    /// each is a synchronous `open` and a `read` of somebody's `chat.db` or
-    /// Safari bookmarks, on whatever volume the home directory is on, and a
-    /// blocking syscall answers when it answers. Five pages made that call while
-    /// building themselves.
+    /// four probe files present and the grant withheld — taken against the list
+    /// `probeURLs` held before the system-wide `TCC.db` went to the front of it,
+    /// and left at those numbers rather than guessed forward. So the warm case
+    /// is not what this is about, and saying it was would be a claim the numbers
+    /// do not support. What it is about is that those milliseconds have no
+    /// ceiling: each is a synchronous `open` and a `read`, on whatever volume
+    /// the path is on, and a blocking syscall answers when it answers. Five
+    /// pages made that call while building themselves.
+    ///
+    /// The *granted* case is now one `open` rather than a walk down the list,
+    /// because the entry that is on every Mac is first; it is the withheld case
+    /// that still pays for all four, and that is the case this hop is for.
     ///
     /// Off the **cooperative** pool, not merely off the main actor. A plain
     /// `async` body would already leave the main thread, and would land on the
