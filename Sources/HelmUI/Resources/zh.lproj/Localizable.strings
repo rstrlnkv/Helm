@@ -16,7 +16,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A secure field is skipped before it is read, not after. And the day's count survives your Mac correcting its own time zone." = "安全输入框在被读取之前就跳过，而不是之后。并且当 Mac 自行校正时区时，当天的计数不再丢失。";
 "A shortcut you press after pasting no longer types the word you had before the paste into the pasted text. Only the shortcut you recorded is treated as maybe-the-gesture; every other chord ends the word for good." = "粘贴之后再按快捷键，不会再把粘贴前的那个词打进粘贴的文字里。只有你录制的快捷键才被当作“可能是手势”，其他组合键会彻底结束这个词。";
-"A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
+"A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：模块会打开上次测量的位置，而唯一的按钮是“重新扫描”，它测量的还是同一处——扫错了文件夹，每次启动都会回到那里，无从退出。旁边的“选择其他…”会清空界面并忘记已保存的扫描。";
 "Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone." = "仅当按原样不是单词、换到另一个布局才是单词时才会改。已经是单词的一律不动。";
 "A word to leave alone" = "不要改动的词";
 "A word you put on the never-list is left alone when you select it, too. That door skipped every refusal the typed-word door makes." = "加入“不再改动”名单的词，在你选中它时也不会被改。这条路径此前跳过了输入路径的所有拒绝规则。";
@@ -811,7 +811,7 @@
 "The countdown no longer interrupts VoiceOver every second." = "倒计时不会再每秒打断 VoiceOver。";
 "A timer can end automation too. Set one while an app is holding the Mac awake and it releases that as well, until the app is launched again." = "计时器也可以结束自动化。在某个 App 让 Mac 保持唤醒期间设置计时器，它会一并结束该 App——直到该 App 再次启动。";
 "then the rule is paused until it applies again" = "之后规则将暂停，直到再次适用";
-"Keep Awake says which app is holding the Mac, not just “App”." = "Keep Awake 会说出是哪个 App 让 Mac 保持唤醒，而不只是“App”。";
+"Keep Awake says which app is holding the Mac, not just “App”." = "Keep Awake 会说出是哪个 App 让 Mac 保持唤醒，而不只是“应用”。";
 "The countdown says what happens at zero when a timer is set to end automation as well." = "当计时器被设为同时结束自动化时，倒计时会说明归零后会发生什么。";
 "Filter" = "筛选";
 "Rule paused" = "规则已暂停";

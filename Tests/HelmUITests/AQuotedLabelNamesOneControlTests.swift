@@ -54,17 +54,20 @@ final class AQuotedLabelNamesOneControlTests: XCTestCase {
 
     /// A citation this check knows about and does not fail on, with the reason.
     ///
-    /// Twelve were found by this check on the day it was written, and nine are
-    /// fixed. Seven were a translation rendering a label its own way instead of
-    /// calling the string the control calls, so putting the app's own words back
-    /// was substitution rather than composition. The other two were one entry
-    /// naming controls Duplicates no longer has — the basket became marking for
-    /// removal after that release shipped — and it was rewritten in all eight,
-    /// which is the act CLAUDE.md separates from making a code change.
+    /// **Empty, and meant to stay that way.** Twelve citations were broken the
+    /// day this check was written and all twelve are closed: seven where a
+    /// translation had rendered a label its own way instead of calling the
+    /// string the control calls, one entry naming controls Duplicates no longer
+    /// had after the basket became marking for removal, and one where six
+    /// translations had dropped the clause that named the button — the clause
+    /// saying why the way out of a scan was needed at all.
     ///
-    /// The three left each say what is actually wrong, read against the running
-    /// app rather than guessed, so the check is green today, catches the next
-    /// one, and leaves three lines somebody can work off.
+    /// The list stays because the next one may not be fixable in the same
+    /// sitting: an entry is what a person reads after an update, and CLAUDE.md
+    /// separates writing that from making a code change. A line here must carry
+    /// what is actually wrong, read against the running app rather than guessed
+    /// — the first three written here each said «not read yet», and each turned
+    /// out to be something else when it was.
     private struct Excused {
         /// Enough of the entry to name it; the entries themselves run to
         /// paragraphs, and one entry can have more than one label wrong.
@@ -73,25 +76,7 @@ final class AQuotedLabelNamesOneControlTests: XCTestCase {
         let reason: String
     }
 
-    private static let excused: [Excused] = [
-        // Read against the translations by eye; the finding is specific.
-        Excused(entryStartsWith: "A way out of a scan in Disk.",
-                cite: "Scan again",
-                reason: "German and French quote a different control entirely — "
-                      + "„Anderes wählen…“ and « Choisir autre chose… » — so the "
-                      + "English and the seven name two different buttons; "
-                      + "also missing in es, ja, pt, zh"),
-        Excused(entryStartsWith: "Keep Awake says which app is holding the Mac",
-                cite: "App",
-                reason: "Chinese keeps the English word «App» where the control "
-                      + "draws 应用, so a reader looking for it in their own "
-                      + "interface finds nothing"),
-        Excused(entryStartsWith: "\u{201C}Show in Finder\u{201D} opens the folder",
-                cite: "Show in Finder",
-                reason: "Japanese spells the label «Finder に表示» where the "
-                      + "control draws «Finderに表示» — the label was re-spelled "
-                      + "rather than called"),
-    ]
+    private static let excused: [Excused] = []
 
     // MARK: - Reading
 
