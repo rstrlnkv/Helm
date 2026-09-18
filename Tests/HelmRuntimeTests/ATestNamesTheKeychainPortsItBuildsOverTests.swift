@@ -107,14 +107,98 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             """)
     }
 
+    /// The one constant in this tree a keychain port hides behind, spelled as a
+    /// use site outside its own type has to spell it.
+    ///
+    /// Written once because four cases name it: three fixtures and the tree
+    /// reading below, and a name that appears in a check four times is a rename
+    /// away from three of them going quiet.
+    static let constant = "DuplicatesSettings.guardOfScanSettings"
+
     /// The indirection is followed, or `settings:` would never be a subject at
     /// all: its default is `DuplicatesSettings.guardOfScanSettings`, and the word
     /// «Keychain» is one declaration further down.
+    ///
+    /// The owner is half of what is asserted, and deliberately: the member name
+    /// alone is what this scan used to key by, and
+    /// `testTwoStaticsSharingANameAreBothRead` is why it no longer does.
     func testAPortNamedThroughAConstantIsStillAPort() throws {
-        XCTAssertTrue(try Self.keychainNames().contains("guardOfScanSettings"), """
+        let names = try Self.keychainNames()
+        XCTAssertTrue(names.contains(Self.constant), """
             DuplicatesSettings.guardOfScanSettings is a SettingGuard over KeychainSealKey and the \
-            scan did not recognise it, so every settings: default reads as harmless.
+            scan did not recognise it, so every settings: default reads as harmless. It found \
+            \(names.sorted().prefix(40)).
             """)
+    }
+
+    /// **Two declarations of one name, and the scan reads both.**
+    ///
+    /// The key was the bare member name, so these two overwrote each other and
+    /// only the last one walked survived — `Reaching` is declared first here, so
+    /// the harmless one buried it, `reaching` never grew through it, and a
+    /// default naming it read as a plain value. The rule then passed over every
+    /// call site it exists for, which is the one failure a guard must not have.
+    ///
+    /// `command grep -rn 'static let shared' Sources/` says how many names this
+    /// tree already shares; the next keychain-reaching constant to take one would
+    /// have taken the whole rule green with it.
+    func testTwoStaticsSharingANameAreBothRead() {
+        let source = SwiftSource.code("""
+        public enum Reaching {
+            public static let shared = SettingGuard(keys: KeychainSealKey(service: "s"))
+        }
+        public enum Harmless {
+            public static let shared = SettingGuard(keys: InMemorySealKey())
+        }
+        """)
+        XCTAssertEqual(Self.declarations(in: source).keys.sorted(),
+                       ["Harmless.shared", "Reaching.shared"],
+                       "one declaration overwrote the other, so the scan can see only one of them")
+        XCTAssertEqual(Self.keychainNames(in: source), ["Reaching.shared"],
+                       "either the buried declaration never reached the keychain, or the bare "
+                       + "word «shared» carried its harmless namesake in with it")
+
+        // And the half that goes quiet: the port behind the buried constant is
+        // demanded of a call site again.
+        let site = SwiftSource.code("""
+        public final class Page {
+            public init(settings: SettingGuard = Reaching.shared) {}
+        }
+        """)
+        XCTAssertEqual(Self.ports(in: site, reaching: Self.keychainNames(in: source)),
+                       ["Page": ["settings"]])
+
+        // A namesake that does not reach is not a port, or the fix would be a
+        // rule that reports every call site and proves nothing.
+        let harmless = SwiftSource.code("""
+        public final class Page {
+            public init(settings: SettingGuard = Harmless.shared) {}
+        }
+        """)
+        XCTAssertEqual(Self.ports(in: harmless, reaching: Self.keychainNames(in: source)), [:])
+    }
+
+    /// A bare `member`, written inside the type that declares it, is that
+    /// declaration — and written anywhere else it is not.
+    func testABareNameResolvesOnlyInsideItsOwnType() {
+        let reaching: Set<String> = ["Reaching.shared"]
+        let inside = SwiftSource.code("""
+        public enum Reaching {
+            public static let shared = SettingGuard(keys: KeychainSealKey(service: "s"))
+            public init(settings: SettingGuard = shared) {}
+        }
+        """)
+        XCTAssertEqual(Self.ports(in: inside, reaching: reaching), ["Reaching": ["settings"]])
+
+        let elsewhere = SwiftSource.code("""
+        public enum Elsewhere {
+            public static let shared = SettingGuard(keys: InMemorySealKey())
+            public init(settings: SettingGuard = shared) {}
+        }
+        """)
+        XCTAssertEqual(Self.ports(in: elsewhere, reaching: reaching), [:],
+                       "a bare name matched across owners, so every «shared» in the tree is a "
+                       + "keychain port")
     }
 
     // MARK: - And it reads code, not prose
@@ -193,7 +277,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             init(store: NamespacedStore, keys: RuleKeyPort, sequence: RuleSequencePort) {}
         }
         """)
-        XCTAssertEqual(Self.ports(in: source, reaching: ["guardOfScanSettings"]), [:])
+        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]), [:])
     }
 
     /// And one that *is* defaulted to a port is, wherever the type is declared.
@@ -205,7 +289,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
                         home: String = NSHomeDirectory()) {}
         }
         """)
-        XCTAssertEqual(Self.ports(in: source, reaching: ["guardOfScanSettings"]),
+        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]),
                        ["Widget": ["guarded", "keys"]],
                        "home: is not a keychain port and must not be demanded of a call site")
     }
@@ -225,7 +309,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             public init(settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {}
         }
         """)
-        XCTAssertEqual(Self.ports(in: source, reaching: ["guardOfScanSettings"]),
+        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]),
                        ["Page": ["settings"]])
     }
 
@@ -298,17 +382,86 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         for file in try SwiftSource.code(under: "Sources") {
             merge(&bodies, from: file.text)
         }
+        return closure(of: bodies)
+    }
+
+    /// Every static declaration in `source`, by `Owner.member` — the seam the
+    /// fixtures read, so what they exercise is what the tree goes through.
+    static func declarations(in source: String) -> [String: String] {
+        var bodies: [String: String] = [:]
+        merge(&bodies, from: source)
+        return bodies
+    }
+
+    /// `keychainNames()` over one source rather than over `Sources/`.
+    static func keychainNames(in source: String) -> Set<String> {
+        closure(of: declarations(in: source))
+    }
+
+    /// The fixed point: a declaration reaches the keychain when its own value
+    /// spells `Keychain`, or names a declaration that does.
+    private static func closure(of bodies: [String: String]) -> Set<String> {
         var reaching = Set(bodies.filter { $0.value.contains("Keychain") }.keys)
         var grew = true
         while grew {
             grew = false
             for (name, body) in bodies where !reaching.contains(name) {
-                guard reaching.contains(where: body.contains) else { continue }
+                guard references(body, from: owner(of: name), reaching) else { continue }
                 reaching.insert(name)
                 grew = true
             }
         }
         return reaching
+    }
+
+    /// The type a key names, or nothing where the declaration had no type around
+    /// it — which `merge` writes as a bare key, and Swift does not allow.
+    private static func owner(of key: String) -> String? {
+        let parts = key.split(separator: ".")
+        return parts.count == 2 ? String(parts[0]) : nil
+    }
+
+    /// Whether `text`, written inside `owner`, names one of `reaching`.
+    ///
+    /// Two spellings and no more, because they are the two Swift itself resolves:
+    /// the qualified `Owner.member`, which is how every use site outside the
+    /// owning type writes it — `DuplicatesSettings.guardOfScanSettings` is the
+    /// one this tree turns on — and the bare `member`, which means that
+    /// declaration only inside the type that declares it.
+    ///
+    /// **A bare name is never matched across owners**, and that is the half that
+    /// keeps the qualified key honest. Match `shared` against every `X.shared`
+    /// and the fixed point swallows the tree: a body that merely says the word
+    /// joins the set it was being tested against, every `init` defaulted to
+    /// anything called `shared` becomes a keychain port, and the rule fails over
+    /// call sites that never went near a keychain. A dot counts as a name
+    /// character on either side, so `Elsewhere.shared` is not a bare `shared`.
+    private static func references(_ text: String, from owner: String?,
+                                   _ reaching: Set<String>) -> Bool {
+        reaching.contains { name in
+            if text.contains(name) { return true }
+            let parts = name.split(separator: ".")
+            guard parts.count == 2, let owner, String(parts[0]) == owner else { return false }
+            return word(String(parts[1]), isIn: text)
+        }
+    }
+
+    /// `needle` in `text` with a name character on neither side.
+    private static func word(_ needle: String, isIn text: String) -> Bool {
+        var rest = text[...]
+        while let found = rest.range(of: needle) {
+            let before = found.lowerBound == text.startIndex
+                ? nil : text[text.index(before: found.lowerBound)]
+            let after = found.upperBound == text.endIndex ? nil : text[found.upperBound]
+            if !isNameCharacter(before) && !isNameCharacter(after) { return true }
+            rest = text[found.upperBound...]
+        }
+        return false
+    }
+
+    private static func isNameCharacter(_ character: Character?) -> Bool {
+        guard let character else { return false }
+        return character.isLetter || character.isNumber || character == "_" || character == "."
     }
 
     /// Hoisted out of `merge`, which is called once per file: the pattern was
@@ -317,19 +470,37 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         pattern: #"static\s+(?:let|var)\s+([A-Za-z_]\w*)\s*(?::[^=]+)?=\s*(.*)$"#,
         options: .anchorsMatchLines)
 
-    /// `static let x = <value>` and what its value says, with three following
-    /// lines because these declarations spill. A longer one is simply not
-    /// recognised, which errs towards reporting a call site rather than excusing
-    /// it.
+    /// `Owner.member` → `static let member = <value>` and what its value says,
+    /// with three following lines because these declarations spill. A longer one
+    /// is simply not recognised, which errs towards reporting a call site rather
+    /// than excusing it.
+    ///
+    /// **The key carries the owner, and that is the whole of it.** It was the
+    /// bare member name, so two declarations sharing one overwrote each other
+    /// and whichever the walk reached last was the only one this scan could ever
+    /// see — `command grep -rn 'static let shared' Sources/` says how many names
+    /// are already shared. A keychain port hidden behind the loser never entered
+    /// `reaching`, no default naming it was ever a port, and the rule went green
+    /// over the call sites it exists for with nothing on screen to say so
+    /// (`testTwoStaticsSharingANameAreBothRead`). `SwiftSource.innermost` over
+    /// `SwiftSource.typeBodies` is the same owner reading `ports(in:reaching:)`
+    /// does, and it is right for the same reason: the owner is the type whose
+    /// braces are around the declaration, not the last one declared above it.
     private static func merge(_ bodies: inout [String: String], from source: String) {
         guard let declaration = Self.declaration else { return }
+        let types = SwiftSource.typeBodies(in: source)
         let lines = source.components(separatedBy: "\n")
+        var offset = 0
         for (index, line) in lines.enumerated() {
+            defer { offset += line.count + 1 }
             let range = NSRange(line.startIndex..., in: line)
             guard let match = declaration.firstMatch(in: line, range: range),
                   let name = Range(match.range(at: 1), in: line)
             else { continue }
-            bodies[String(line[name])] = lines[index...].prefix(4).joined(separator: " ")
+            let at = offset + line.distance(from: line.startIndex, to: name.lowerBound)
+            let owner = SwiftSource.innermost(types, around: at)?.name
+            let key = [owner, String(line[name])].compactMap { $0 }.joined(separator: ".")
+            bodies[key] = lines[index...].prefix(4).joined(separator: " ")
         }
     }
 
@@ -353,16 +524,19 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         let bodies = SwiftSource.typeBodies(in: source)
         var out: [String: [String]] = [:]
         for call in SwiftSource.callSites(of: "init", in: source, wholeWords: false) {
+            // The owner is read before the labels rather than after, because a
+            // default written bare — `= guardOfScanSettings`, inside the type
+            // that declares it — only resolves once we know which type that is.
+            guard let owner = SwiftSource.innermost(bodies, around: call.characterOffset)?.name
+            else { continue }
             let labels = call.arguments.compactMap { argument -> String? in
                 guard let equals = argument.range(of: "=") else { return nil }
                 let value = String(argument[equals.upperBound...])
-                guard value.contains("Keychain") || reaching.contains(where: value.contains)
+                guard value.contains("Keychain") || references(value, from: owner, reaching)
                 else { return nil }
                 return label(of: argument)
             }
-            guard !labels.isEmpty,
-                  let owner = SwiftSource.innermost(bodies, around: call.characterOffset)?.name
-            else { continue }
+            guard !labels.isEmpty else { continue }
             out[owner, default: []] += labels
         }
         return out.mapValues { Array(Set($0)).sorted() }
