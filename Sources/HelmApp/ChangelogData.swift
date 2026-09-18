@@ -71,6 +71,10 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .fix, text: L("Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read.")),
+                ChangeItem(kind: .upd, text: L("The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way.")),
+                ChangeItem(kind: .fix, text: L("One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share.")),
+                ChangeItem(kind: .upd, text: L("Helm’s own colours follow Increase Contrast, the way the system’s colours already did.")),
                 ChangeItem(kind: .upd, text: L("Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself.")),
                 ChangeItem(kind: .new, text: L("A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself.")),
                 ChangeItem(kind: .new, text: L("Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run.")),

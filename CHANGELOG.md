@@ -13,6 +13,10 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **FIX** Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read.
+- **UPD** The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way.
+- **FIX** One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share.
+- **UPD** Helm’s own colours follow Increase Contrast, the way the system’s colours already did.
 - **UPD** Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself.
 - **NEW** A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself.
 - **NEW** Homebrew has a Health segment: what brew doctor found about your installation, and the one fix Helm offers to run.

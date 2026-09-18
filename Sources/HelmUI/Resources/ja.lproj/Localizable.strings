@@ -1218,3 +1218,7 @@
 "Leftovers gives back the login items it switched off when you turn the module off — switching one off used to outlive deleting Helm." = "モジュールをオフにすると、“残存物”がオフにしたログイン項目を元に戻します。以前は、オフのままの状態が Helm を削除しても残っていました。";
 "Helm refuses an update whose bundle calls itself something other than Helm." = "バンドルが Helm 以外の名前を名乗る更新は拒否します。";
 "This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "この Helm は、リリースが置き換える対象ではありません。代わりにダウンロードページを開きました。";
+"Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read." = "macOS がフルディスクアクセスを許可していても、Helm がそれを“ない”と言うことはなくなりました。確認のために読んでいた 4 つのファイルのうち 1 つがフォルダで、フォルダは何をもってしても読めません。";
+"The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way." = "フルディスクアクセスの確認は、その権限が守っているファイルそのものを読むようになり、途中で Safari のブックマークやメッセージのデータベースを開くことはなくなりました。";
+"One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share." = "更新後のキーチェーンの確認が 1 回減りました。Helm の 2 か所が、同じ項目について別々に尋ねていました。";
+"Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm 独自の色が“コントラストを上げる”に従うようになりました。システムの色は以前からそうでした。";
