@@ -50,12 +50,19 @@ import XCTest
 /// process is whatever the person's Mac is set to that hour — and this Mac has
 /// `AppleInterfaceStyleSwitchesAutomatically` on. At 04:34:58 on 2026-08-12 it
 /// went from dark to light by itself and `RadiusLadderRatchetTests` went red with
-/// nothing committed in between: SwiftUI draws a `Slider`'s knob as a 20 × 16
-/// capsule layer of `cornerRadius` 8 in light and does not draw that layer at all
-/// in dark, so the count of distinct off-ladder radii is 6 on one screen and 5 on
-/// the other. Six of the nine pages are the same either way; the two that are not
-/// are named in that file. So there is no default here: a reading has a screen,
-/// and it says which.
+/// nothing committed in between: SwiftUI drew a `Slider`'s knob as a 20 × 16
+/// capsule layer of `cornerRadius` 8 in light and did not draw that layer at all
+/// in dark, so the count of distinct off-ladder radii was 6 on one screen and 5 on
+/// the other. So there is no default here: a reading has a screen, and it says
+/// which.
+///
+/// **That particular asymmetry is gone — re-measured 2026-09-18 on macOS 27.2
+/// (`26B5086k`), the knob draws in both screens, same frame, same radius.** The
+/// reason to name the appearance is not: it was never that one value, it was that
+/// a reading taken in whichever appearance the Mac happens to be showing is a
+/// reading of the hour. `RadiusLadderRatchetTests` carries what the two screens
+/// read today, and what was probed to tell "the knob stopped drawing" apart from
+/// "dark started drawing it".
 @MainActor
 enum ModulePageRender {
 

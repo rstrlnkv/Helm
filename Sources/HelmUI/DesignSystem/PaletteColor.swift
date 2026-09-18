@@ -8,9 +8,10 @@ import AppKit
 /// the ten swatches were the same colour, in the one control whose entire
 /// content is which colour you picked. That finding was about a set containing
 /// both a red and a pink. Calendar's set has neither problem: measured on this
-/// Mac, the closest pair of the seven is orange/yellow at **103** units in
-/// light and red/orange at **101** in dark, against 22 for the pair that
-/// caused the rewrite.
+/// Mac, the closest pair of the seven *tinted* colours — `offered` less
+/// `.white`, which stands for no tint and is measured against nothing — is
+/// orange/yellow at **103** units in light and red/orange at **101** in dark,
+/// against 22 for the pair that caused the rewrite.
 ///
 /// What the system's colours buy that a hex cannot: they change with the
 /// appearance. `systemRed` is `#FF383C` in light and `#FF4245` in dark, and the
@@ -64,9 +65,10 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         case .yellow: return L("Yellow")
         case .green: return L("Green")
         case .blue: return L("Blue")
-        // Apple's own word, out of `CalendarUI.framework`'s table: Russian says
-        // «Лиловый» where a translator reaching for the dictionary writes
-        // «Фиолетовый», and this app is meant to read like the system.
+        // Apple's own word, out of `CalendarFoundation.framework`'s table,
+        // which is where Calendar's colour names live: Russian says «Лиловый»
+        // where a translator reaching for the dictionary writes «Фиолетовый»,
+        // and this app is meant to read like the system.
         case .purple: return L("Purple")
         case .brown: return L("Brown")
         case .mint: return L("Mint")
@@ -80,8 +82,8 @@ public enum PaletteColor: String, CaseIterable, Sendable {
     /// **Not an SF Symbol with a `foregroundStyle` on it.** A `Picker` with the
     /// menu style is drawn by AppKit as an `NSMenu`, and an `NSMenuItem` takes
     /// an *image*: the tint SwiftUI is asked to apply to a symbol inside one is
-    /// dropped, which is why the ten colours arrived as ten identical grey dots
-    /// and then as no dots at all. Drawn here and handed over already coloured,
+    /// dropped, which is why the colours arrived as identical grey dots and
+    /// then as no dots at all. Drawn here and handed over already coloured,
     /// there is nothing left for the menu to strip.
     ///
     /// `isTemplate` stays false for the same reason — a template image is

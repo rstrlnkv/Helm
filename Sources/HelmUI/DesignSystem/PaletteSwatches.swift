@@ -4,32 +4,39 @@
 import SwiftUI
 import AppKit
 
-/// The ten palette colours as a grid of swatches. One of these, no local
-/// variants: it was a private method inside `KeepAwakeSettingsPage` until VPN
-/// needed the same control, and CLAUDE.md's list of things written twice
-/// before they moved exists to stop the second copy.
+/// `PaletteColor.offered` and a colour of your own, as one compact control.
+/// One of these, no local variants: it was a private method inside
+/// `KeepAwakeSettingsPage` until VPN needed the same control, and CLAUDE.md's
+/// list of things written twice before they moved exists to stop the second
+/// copy.
 ///
-/// **A menu, not a row of ten.** Two of these in one card — the active colour
-/// and the countdown colour — were two rainbows 270 pt wide, and a settings
-/// card is a list of rows with a control at the end of each. The control is a
-/// 14 pt dot now, and the ten live behind it, which is what Calendar and
-/// Reminders do with exactly this choice.
+/// **A menu, not a row of swatches.** Two of these in one card — the active
+/// colour and the countdown colour — were two rainbows 270 pt wide, and a
+/// settings card is a list of rows with a control at the end of each. The
+/// control is a 12 pt dot now — `PaletteColor.swatchImage` and `swatch(of:)`
+/// both draw that side, and nothing here draws any other — and the palette
+/// lives behind it, which is what Calendar and Reminders do with exactly this
+/// choice.
 ///
 /// It also settles an accessibility problem rather than working around one. The
-/// row had to be ten `Button`s specifically so Full Keyboard Access could reach
-/// them — as ten `onTapGesture`s none entered the key-view loop, Tab skipped
-/// every swatch, and the colour could not be chosen without a mouse while
-/// VoiceOver worked, which is what hid it. A `Menu` is one stop that opens a
-/// list the keyboard already knows how to walk.
+/// row had to be `Button`s specifically so Full Keyboard Access could reach
+/// them — as `onTapGesture`s none entered the key-view loop, Tab skipped every
+/// swatch, and the colour could not be chosen without a mouse while VoiceOver
+/// worked, which is what hid it. A `Menu` is one stop that opens a list the
+/// keyboard already knows how to walk.
+///
+/// No count in any of that, deliberately. Every sentence above said «ten» —
+/// true of the hand-picked palette they were written against, and not of
+/// `PaletteColor.offered` since, with nothing to make any of them go red. The
+/// list is the one place allowed to say how long it is.
 public struct HelmPaletteSwatches: View {
-    /// Ten swatches on one line, beside the label whose colour they set.
-    ///
-    /// There was a 5×2 grid as well, and it was the default. Two of them in one
-    /// column — the active colour and the countdown colour — came out different
-    /// widths, so their right edges did not line up and the card read as
-    /// crooked. A row cannot do that. The grid had no call site left once both
-    /// moved, and a layout nobody asks for is a branch that stops being true
-    /// without anybody finding out.
+    // The row this replaced put every swatch on one line, beside the label
+    // whose colour they set — and there was a 5×2 grid as well, which was the
+    // default. Two of those in one column — the active colour and the
+    // countdown colour — came out different widths, so their right edges did
+    // not line up and the card read as crooked. A row cannot do that. The grid
+    // had no call site left once both moved, and a layout nobody asks for is a
+    // branch that stops being true without anybody finding out.
     private let name: String
     private let selection: String
     private let pick: (String) -> Void
@@ -67,17 +74,18 @@ public struct HelmPaletteSwatches: View {
                     Text(palette.label)
                 } icon: {
                     // An image, not a tinted symbol: an `NSMenuItem` drops the
-                    // tint and the list came out as ten words. See
+                    // tint and the list came out as words. See
                     // `PaletteColor.swatchImage`.
                     Image(nsImage: palette.swatchImage)
                 }
                 .tag(Choice.palette(palette))
             }
             Divider()
-            // Calendar's own last item, and its own word for it — `Other…` in
-            // `CalendarUI.framework`'s table, «Другой…» in Russian. The swatch
-            // beside it is the colour in use when that is a custom one, so the
-            // menu shows what was chosen rather than only that something was.
+            // Calendar's own last item. Its seven translations are Calendar's
+            // words and its English is one word longer than Calendar's, for the
+            // reason set out on `HelmA11y.otherColour`. The swatch beside it is
+            // the colour in use when that is a custom one, so the menu shows
+            // what was chosen rather than only that something was.
             Label {
                 Text(HelmA11y.otherColour)
             } icon: {

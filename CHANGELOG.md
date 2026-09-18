@@ -148,7 +148,7 @@ only once it has no known problems left.
 - **NEW** A silenced rule says so in the panel, with a way to start it again.
 - **NEW** A module's name says whether it is running.
 - **NEW** The lid row says when sleep is off for the whole Mac right now, and how to bring it back.
-- **NEW** A colour of your own: the colour menu ends with "Other…", which opens the system colour panel.
+- **NEW** A colour of your own: the colour menu ends with "Other colour…", which opens the system colour panel.
 - **NEW** Keyboard speaks with VoiceOver — conversions, the pause at a password field, a revoked permission, and the shortcut recorder read back in words.
 - **NEW** Keyboard's menu-bar indicator offers "Emoji & Symbols": one press opens the system palette in the app you are typing in.
 - **UPD** A glyph that changes turns into the next one instead of blinking — and with Reduce Motion on, it simply changes.
@@ -250,7 +250,7 @@ only once it has no known problems left.
 - **NEW** Autopilot: point Helm at a folder and give it rules — sort by kind or month, move, rename, tag or bin, first match wins.
 - **NEW** Autopilot shows what it did: a report of the last 30 days — which file, where it went, and which rule decided.
 - **NEW** The duplicate finder is its own screen now, pointed at a folder it remembers, comparing content rather than names.
-- **NEW** Duplicates can basket every extra at once, and "Clear" beside "Move to Trash" undoes one press with one press.
+- **NEW** Duplicates can mark every extra copy at once, and "Clear the marks" beside "Move to Trash" undoes one press with one press.
 - **NEW** Drag an app to the Trash and Helm offers to clear up after it — once you switch it on under Uninstaller → Leftovers.
 - **NEW** Helm introduces itself: a short tour, one screen per module, that switches nothing on and asks for no permission.
 - **NEW** The welcome tour lets you pick what you want, with a switch on each module's screen.

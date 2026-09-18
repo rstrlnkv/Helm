@@ -4,9 +4,9 @@ import SwiftUI
 import HelmTestSupport
 @testable import HelmUI
 
-/// The colour picker's menu has to *show* the ten colours.
+/// The colour picker's menu has to *show* the colours.
 ///
-/// It arrived as ten words. A `Picker` with the menu style is drawn by AppKit
+/// It arrived as words. A `Picker` with the menu style is drawn by AppKit
 /// as an `NSMenu`, and an `NSMenuItem` takes an image — the tint SwiftUI is
 /// asked to apply to an SF Symbol inside one is dropped on the way, so
 /// `Image(systemName: "circle.fill").foregroundStyle(palette.color)` is a grey
@@ -46,7 +46,11 @@ final class TheColourMenuShowsColoursTests: XCTestCase {
 
     /// …and no two of them are the same, which is the whole reason a person
     /// looks at this menu rather than reading it.
-    func testTheTenAreTenDifferentColours() throws {
+    ///
+    /// Every case, not `offered`: a retired colour still resolves for somebody
+    /// whose stored setting names it, and two cases drawn the same would be the
+    /// defect this guards against wherever they are drawn.
+    func testNoTwoSwatchesAreDrawnTheSameColour() throws {
         var seen: [String] = []
         for palette in PaletteColor.allCases {
             let c = try centre(of: palette.swatchImage)
@@ -82,6 +86,6 @@ final class TheColourMenuShowsColoursTests: XCTestCase {
                       "the menu items are not built from the drawn swatch")
         XCTAssertFalse(source.contains("Image(systemName: \"circle.fill\")"),
                        "a tinted SF Symbol is back in the menu, where AppKit drops the tint "
-                       + "and the ten colours arrive as ten words")
+                       + "and the colours arrive as words")
     }
 }
