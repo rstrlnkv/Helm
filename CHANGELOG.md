@@ -148,7 +148,7 @@ only once it has no known problems left.
 - **NEW** A silenced rule says so in the panel, with a way to start it again.
 - **NEW** A module's name says whether it is running.
 - **NEW** The lid row says when sleep is off for the whole Mac right now, and how to bring it back.
-- **NEW** A colour of your own: the colour menu ends with "Other…", which opens the system colour panel.
+- **NEW** A colour of your own: the colour menu ends with "Other colour…", which opens the system colour panel.
 - **NEW** Keyboard speaks with VoiceOver — conversions, the pause at a password field, a revoked permission, and the shortcut recorder read back in words.
 - **NEW** Keyboard's menu-bar indicator offers "Emoji & Symbols": one press opens the system palette in the app you are typing in.
 - **UPD** A glyph that changes turns into the next one instead of blinking — and with Reduce Motion on, it simply changes.

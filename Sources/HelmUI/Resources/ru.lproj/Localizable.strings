@@ -817,7 +817,7 @@
 "Rule paused" = "Приостановлено";
 "Brown" = "Коричневый";
 "Other colour…" = "Другой…";
-"A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "Свой цвет: меню цвета заканчивается пунктом «Другой…», открывающим системную палитру — как это сделано в Календаре. Палитра тоже из Календаря и следует светлой и тёмной теме, как системные цвета.";
+"A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "Свой цвет: меню цвета заканчивается пунктом «Другой…», открывающим системную палитру — как это сделано в Календаре. Палитра тоже из Календаря и следует светлой и тёмной теме, как системные цвета.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "«Останавливать при низком заряде» — теперь ползунок с делениями, как лимит зарядки в разделе «Аккумулятор». А две строки выбора цвета стали точкой с названием вместо двух рядов по десять образцов.";
 "No VPNs are set up on this Mac" = "На этом Mac не настроен ни один VPN";
 "Open Network settings" = "Открыть «Сеть» в настройках";

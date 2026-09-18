@@ -817,7 +817,7 @@
 "Rule paused" = "Regra em pausa";
 "Brown" = "Marrom";
 "Other colour…" = "Outra…";
-"A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "Uma cor sua: o menu de cores termina com “Outra…”, que abre a paleta do sistema — como o Calendário oferece. A paleta é a do Calendário e acompanha claro e escuro como as cores do sistema.";
+"A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "Uma cor sua: o menu de cores termina com “Outra…”, que abre a paleta do sistema — como o Calendário oferece. A paleta é a do Calendário e acompanha claro e escuro como as cores do sistema.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Parar com bateria fraca” é um controle deslizante com paradas, como o limite de carga em “Bateria”. E as duas linhas de cor viraram um ponto com o nome, em vez de duas fileiras de dez amostras.";
 "No VPNs are set up on this Mac" = "Nenhuma VPN configurada neste Mac";
 "Open Network settings" = "Abrir os ajustes de Rede";

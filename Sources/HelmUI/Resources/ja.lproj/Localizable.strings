@@ -817,7 +817,7 @@
 "Rule paused" = "ルール一時停止";
 "Brown" = "ブラウン";
 "Other colour…" = "その他…";
-"A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "自分の色を。カラーメニューの最後に“その他…”があり、システムのカラーパネルが開きます。カレンダーと同じやり方です。パレットもカレンダーのもので、システムの色と同じくライトとダークに追随します。";
+"A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "自分の色を。カラーメニューの最後に“その他…”があり、システムのカラーパネルが開きます。カレンダーと同じやり方です。パレットもカレンダーのもので、システムの色と同じくライトとダークに追随します。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“バッテリー残量が少ないときは停止”はステップ付きのスライダになりました。“バッテリー”の充電上限と同じ操作です。色の 2 行も、10 個ずつ並ぶ見本ではなく、点と名前になりました。";
 "No VPNs are set up on this Mac" = "この Mac には VPN が設定されていません";
 "Open Network settings" = "“ネットワーク”設定を開く";
