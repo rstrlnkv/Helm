@@ -1173,11 +1173,18 @@ mid-walk costs the gap rather than nothing.
 
 ## Permissions
 
-`PermissionCheck` (`Sources/HelmRuntime/PermissionCheck.swift:28`) probes Full Disk
-Access by reading protected files — `~/Library/Safari/Bookmarks.plist`,
-`~/Library/Messages/chat.db` and further fallbacks, because none is guaranteed to exist
-and `TCC.db` is absent on recent macOS. A write probe would be wrong: creating a file
-under `~/Library/Containers` is refused even where access is granted.
+`PermissionCheck` (`Sources/HelmRuntime/PermissionCheck.swift:40`) probes Full Disk
+Access by reading protected files, one byte each (`canRead`, `:74`). The system-wide
+`/Library/Application Support/com.apple.TCC/TCC.db` is asked first: it is on every Mac,
+it is gated by this grant and nothing else, and reaching it first means the ordinary
+granted case never opens anybody's Safari bookmarks or Messages database at all. Those
+two are the fallback, along with the per-user `TCC.db`, which is absent on recent macOS.
+A write probe would be wrong: creating a file under `~/Library/Containers` is refused
+even where access is granted. Every entry is a **file**: `FileHandle(forReadingFrom:)`
+throws on any directory, protected or not, so a directory here would answer "denied" on a
+Mac that granted everything — `~/Library/Application Support/AddressBook` was one, and
+being last in the list it was opened only on the runs where the answer was already going
+to be "denied".
 
 `Scripts/package-app.sh:327` signs ad-hoc (`--sign -`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
@@ -1269,7 +1276,7 @@ rather than literal — `Sources/HelmRuntime/HelmTrash.swift:117` builds
 name of whichever module is deleting.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
-(`Sources/HelmRuntime/PermissionCheck.swift:129`) carries `outOfScope`,
+(`Sources/HelmRuntime/PermissionCheck.swift:153`) carries `outOfScope`,
 `changedSinceScan`, `unreadable`, `readOnlyVolume`, `diskFull`, `missing`,
 `needsFullDiskAccess`, `activeSystemExtension`, `noPermission`, `systemRefused` —
 `outOfScope` is Helm refusing before anything was attempted. `TrashFailure`
@@ -1334,8 +1341,9 @@ Helm's own, so it is switched back on too. The alternative — reading the
 system's own disabled list — would give back decisions that were never Helm's,
 which is worse in the same direction.
 
-Two keychain keys stay: `com.helm.app` / `settings-seal` and `com.helm.autopilot`
-/ `rule-seal`. `KeychainSealKey` can read and create and not delete, and a
+Two keychain keys stay: `com.helm.app` / `settings-seal`
+(`Sources/HelmRuntime/SettingsSealKey.swift`, one cache over it for every reader in
+every target) and `com.helm.autopilot` / `rule-seal`. `KeychainSealKey` can read and create and not delete, and a
 delete on an ad-hoc-signed bundle costs a modal dialog for each. By the time the
 reset reaches them the preferences domain is gone, so what they sealed no longer
 exists: what remains is 32 bytes the next launch reads as its own.

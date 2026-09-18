@@ -19,11 +19,11 @@ import XCTest
 /// about how many rows a list happens to draw, and that moves with content and
 /// with the machine — 12 pt appeared on 118 layers in one reading and 41 in
 /// another with nothing changed but a scroll view's realization. A *value* is a
-/// decision, it is what the audit counts on the mockup side, and it is nearly
-/// stable: three consecutive runs agree on the values below except for Disk's
-/// 1.25, which comes and goes with the scan the person last ran — `recorded`
-/// says what that turned out to be, and `ModulePageRender.floors` carries the
-/// measurement.
+/// decision, it is what the audit counts on the mockup side, and it is stable:
+/// three consecutive runs agree on the values below. It was *nearly* stable while
+/// Disk's 1.25 came and went with the scan the person last ran; that ended when
+/// `TheSuiteDoesNotReadTheUsersLastScanTests`' seam took the person's own file
+/// out of the render, and `ModulePageRender.floors` carries the measurement.
 ///
 /// The cost is stated plainly: a mutation that reuses a radius already in the
 /// set — a second 12 pt card — is invisible to this test. It catches a radius
@@ -76,9 +76,10 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// **6 goes to 5 in the commit that lands that seam, and not before.** With
     /// the seam in place the reading was 5 in six consecutive runs — and with it
     /// missing, recording 5 is a red CI for the day after every Disk scan,
-    /// wearing a message about corner radii. So the number here still carries one
-    /// slot of slack, deliberately, and the guard that removes it is red until
-    /// somebody does.
+    /// wearing a message about corner radii. So the number here carried one slot
+    /// of slack, deliberately, and the guard that removes it was red until
+    /// somebody landed it. Somebody did; the slot is spent, and the note above
+    /// `recorded` carries the reading it was spent on.
     ///
     /// **What that costs was measured, and both halves of the measurement have
     /// since expired. Read the next paragraph, not this one.** It said:
@@ -130,15 +131,15 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// last reading left with the notices section when it became a popover, and
     /// the slot it vacated is what the mutant was absorbed by.
     ///
-    /// So the pair below is a ceiling one above the floor, and a first new radius
-    /// anywhere is free. Lowering it to 7 and 6 is what would make this probe bite
-    /// — and it is deliberately **not** done here, because the paragraph on Disk's
-    /// 1.25 says in bold what that costs: the wobble that slot was reserved for
-    /// comes and goes with the person's own last scan, and recording the tight
-    /// number before `TheSuiteDoesNotReadTheUsersLastScanTests`' seam lands is a
+    /// So the pair below was a ceiling above the floor, and a first new radius
+    /// anywhere was free. Lowering it is what makes this probe bite, and it was
+    /// deliberately not done while the paragraph on Disk's 1.25 held: the wobble
+    /// that slot was reserved for came and went with the person's own last scan,
+    /// and recording the tight number before
+    /// `TheSuiteDoesNotReadTheUsersLastScanTests`' seam landed would have been a
     /// red CI on the day after every Disk scan, wearing a message about corners.
-    /// The measurement is written down so that decision is taken by whoever lands
-    /// the seam, with the reading in hand, rather than re-derived.
+    /// The seam landed, the measurement was taken with it in place, and the pair
+    /// below is that measurement.
     ///
     /// A claim about what a check cannot see is itself a measurement, and it goes
     /// stale in whichever direction the tree moves. Both of these were true when
@@ -179,10 +180,9 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// - **The 8 really is the slider knob.** Helm's own 8 pt corner left the
     ///   tree in this sweep and an 8 still draws, on keep-awake, in light only.
     ///   That is now a measurement rather than an attribution.
-    /// - **The 1.25 did not appear in any of the three runs.** The wobble this
-    ///   number carries a slot of slack for is quiet today, which is not the same
-    ///   as gone: it comes and goes with the person's own last scan, and the seam
-    ///   that ends it is still owed.
+    /// - **The 1.25 did not appear in any of the three runs.** It was quiet that
+    ///   day rather than gone, and the slot of slack was kept for it. The seam
+    ///   that ends it has since landed, so the slot is spent.
     ///
     /// So the floor here is unreachable by a vocabulary pass, and the reason is
     /// the one written above: every value left belongs to SwiftUI, not to Helm.
@@ -234,13 +234,20 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// pins the two sets equal, in both directions, which is the stronger claim
     /// and was watched going red on a planted radius that drew in dark alone.
     ///
-    /// The pair below is left where it is, and is now two above the light
-    /// reading and one above the dark. Spending that slack is the decision the
-    /// paragraphs above reserve for a commit with the reading in hand — the
-    /// seam those paragraphs were waiting on
-    /// (`TheSuiteDoesNotReadTheUsersLastScanTests`) has since landed, so it is a
-    /// decision somebody can now take — and it is not this commit's.
-    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 8, .darkAqua: 7]
+    /// **The pair below is that reading, and this is the commit the paragraphs
+    /// above reserved.** It stood two above the light reading and one above the
+    /// dark, which is a ratchet that catches nothing until something else has
+    /// drifted into the slack first. The seam those paragraphs were waiting on
+    /// (`TheSuiteDoesNotReadTheUsersLastScanTests`) has landed, so the wobble the
+    /// slack was held for is gone by construction rather than quiet: re-read on
+    /// 2026-09-18 on a Mac carrying a day-old 9.4 MB `last-scan.json` — the exact
+    /// condition that used to produce the 1.25 — three consecutive runs saw six
+    /// in both screens and none of them saw it.
+    ///
+    /// Watched biting, because a ratchet nobody has seen refuse is not one: with
+    /// 6 pt taken off the ladder by hand a seventh value falls off it, and the
+    /// test goes red naming the count and every value.
+    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 6, .darkAqua: 6]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 
