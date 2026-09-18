@@ -2101,6 +2101,21 @@ classic defect in a hand-rolled flow layout is avoided by construction, and chil
 proposed `.unspecified` rather than the remaining width — a button asked to fit a narrow
 remainder answers with its truncated width and stays on a line it does not fit.
 
+**The record.** The design system is published outside this repository, so nothing in a
+build can reach it, and what it publishes is a copy of values —
+`Resources/DesignSystem/design-tokens.json` is what this tree resolves to, kept beside the
+tree so that copy can be checked against something.
+`Tests/HelmUITests/PublishedTokensAreTheTreesTests.swift` compares the two and fails when
+they part. Every value in it is resolved from the live type in a named appearance rather
+than read out of the source: `Color.primary` is `labelColor` at alpha 0.847 rather than
+pure ink, so a literal `0.035` read off `HelmSurface` is not what lands on a window, and a
+value macOS supplies moves when macOS moves. The nine opacities sit in the record beside
+the colours they produce and are divided back out of them rather than written down again,
+which is what lets the failure say whose edit it was — a hand-written copy of those nine
+went red on the right token and blamed the operating system. Not covered: the type styles,
+whose sizes follow the interface text size and so describe the Mac running the suite; and
+contrast, which is `SignalColourContrastTests` and its neighbours.
+
 ## What else to read
 
 Three documents stand beside this one in the root of the tree:
