@@ -159,11 +159,18 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// at 04:34:58 on 2026-08-12 the ratchet went red with nothing committed since
     /// 03:05. The value is `Slider`'s knob — a 20 × 16 pt capsule at (556.5, 473)
     /// on Keep Awake's battery-floor row, `cornerRadius` 8, owned by
-    /// `PlatformGroupContainer` — and SwiftUI draws that layer **in light only**.
+    /// `PlatformGroupContainer` — and SwiftUI drew that layer **in light only**.
     /// So the number is per appearance now, six in light and five in dark,
-    /// measured three consecutive runs each; `testTheOnlyRadiusLightAddsIsTheSliderKnob`
-    /// holds the difference by value, so light's extra slot cannot quietly absorb
-    /// a new radius the way a count on its own would.
+    /// measured three consecutive runs each;
+    /// `testTheTwoScreensDrawTheSameOffLadderRadii` holds the two screens against
+    /// each other by value, so neither can quietly absorb a new radius the way a
+    /// count on its own would.
+    ///
+    /// **The knob is in both screens as of 2026-09-18**, which is what that test
+    /// now records — SwiftUI moved, nothing here did. The counts this constant
+    /// carries are not lowered by that reading: both screens measure six today,
+    /// and the slack between six and the numbers below is the 1.25 pt wobble
+    /// named further down, which is quiet rather than gone.
     /// **Re-read 2026-08-12 by the tree-wide typography and space sweep, and it
     /// does not move — which is the answer, not a failure to try.** That sweep
     /// took every corner radius Helm types onto `HelmRadius`, including the two
@@ -241,27 +248,44 @@ final class RadiusLadderRatchetTests: XCTestCase {
         }
     }
 
-    /// **Light's extra slot is spent, and on what.** A ratchet of two counts would
-    /// let a genuinely new radius arrive in light for nothing, as long as it
-    /// arrived while the knob was still there — six is six. So the difference
-    /// between the two screens is pinned by value: light draws everything dark
-    /// draws, plus 8 pt and nothing else.
+    /// **Neither screen has a slot the other has not**, so a radius drawn in one
+    /// of them alone is a finding whichever way round it is. A ratchet of two
+    /// counts would let a genuinely new radius arrive in light for nothing, as
+    /// long as it arrived while something else of light's was there to be
+    /// displaced — six is six. This holds the two screens against each other by
+    /// value instead, which a count cannot do.
     ///
-    /// The 8 is not Helm's and no commit here can lower it — it is SwiftUI's own
-    /// slider knob, and `isSystemDrawn` cannot see it because that layer has no
-    /// view of its own to be named after, only the `PlatformGroupContainer` it
-    /// hangs under. Teaching the filter that class name would hide `PanelBars`'
-    /// and `HelmChoiceCards`' layers with it, which is a real value hidden to make
-    /// a number move.
-    func testTheOnlyRadiusLightAddsIsTheSliderKnob() {
+    /// **It named 8.00 as light's own until 2026-09-18, and SwiftUI moved.** The
+    /// value is `Slider`'s knob — a 20 × 16 pt capsule owned by
+    /// `PlatformGroupContainer`, `cornerRadius` 8, on Keep Awake's battery-floor
+    /// row — and the reading of 2026-08-12 found it drawn in light and not in
+    /// dark. Re-read on 2026-09-18 it is drawn in **both**, twice in each, at
+    /// (556.5, 445, 20, 16); three consecutive runs, each reporting the same six
+    /// off-ladder values in both screens — 1.00, 3.00, 5.00, 7.50, 8.00, 12.00.
+    /// Nothing in this repository moved it: the appearance the harness draws in
+    /// was measured at the same time and still differs, white against 0.157 grey
+    /// on a flat `windowBackgroundColor` fill, so the two renders are two screens
+    /// and the knob genuinely arrived in the darker one.
+    ///
+    /// The 8 is still not Helm's and no commit here can lower it, and
+    /// `isSystemDrawn` still cannot see it: that layer has no view of its own to
+    /// be named after, only the `PlatformGroupContainer` it hangs under. Teaching
+    /// the filter that class name would hide `PanelBars`' and `HelmChoiceCards`'
+    /// layers with it, which is a real value hidden to make a number move.
+    ///
+    /// **The control is the emptiness check below**, and it is not a formality:
+    /// two sets that agree is exactly what a process with no window server
+    /// produces, where nothing is drawn in either screen and every difference is
+    /// empty for the worst reason there is.
+    func testTheTwoScreensDrawTheSameOffLadderRadii() {
         let light = Set(offLadder(in: .aqua, checkingEachPageDrew: false).keys)
         let dark = Set(offLadder(in: .darkAqua, checkingEachPageDrew: false).keys)
 
         XCTAssertFalse(light.isEmpty, "nothing was measured in either screen")
-        XCTAssertEqual(light.subtracting(dark), ["8.00"], """
-            light draws \(light.subtracting(dark).sorted()) where dark does not, and the only \
-            one of those anybody has accounted for is 8.00 pt — SwiftUI's slider knob on Keep \
-            Awake's battery row.
+        XCTAssertEqual(light.subtracting(dark), [], """
+            light draws \(light.subtracting(dark).sorted()) where dark does not. Until \
+            2026-09-18 that was 8.00 pt, SwiftUI's slider knob on Keep Awake's battery row, \
+            drawn in light alone; it is drawn in both screens now.
             """)
         XCTAssertEqual(dark.subtracting(light), [], """
             dark draws \(dark.subtracting(light).sorted()) where light does not, which is a \
