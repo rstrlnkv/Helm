@@ -83,9 +83,27 @@ public enum HelmA11y {
             : L("collapsed")
     }
 
-    /// Calendar's own last item in this menu, and its own word: `Other…` in
-    /// `CalendarUI.framework`'s table, «Другой…» in Russian — where a
-    /// translator reaching for the dictionary writes «Свой цвет…».
+    /// Calendar's own last item in this menu. The seven translations are its
+    /// words, read out of `Calendar.app`'s `Localizable.loctable` under the key
+    /// `Other…`: «Другой…» in Russian, where a translator reaching for the
+    /// dictionary writes «Свой цвет…».
+    ///
+    /// **The English is deliberately longer than Calendar's.** Calendar draws
+    /// «Other…» and this draws «Other colour…», because the English text is the
+    /// key and `Other…` is already spoken for — the fourth answer to «for how
+    /// long» in KeepAwake is the same macOS word for a *time*. Two of the eight
+    /// then disagree with this one: Russian says «Другое…» of a time and
+    /// «Другой…» of a colour, Portuguese «Outro…» against «Outra…», and
+    /// German's non-breaking space before the ellipsis is in both. One key
+    /// would have picked whichever of the two shipped first and been wrong in
+    /// the other menu, in the two languages that draw a distinction English
+    /// has lost.
+    ///
+    /// The wrong tables, both tried: `CalendarUI.framework` carries an `Other…`
+    /// of its own, and it is a third item again — its Spanish is «Otra…» and
+    /// its Portuguese «Outro…», neither of which agrees with *el color* or *a
+    /// cor*. The colour *names* are in `CalendarFoundation.framework`; see
+    /// `PaletteColor.label`.
     public static var otherColour: String { L("Other colour…") }
 
     /// Said once, out loud, for a change nobody pressed a button to cause.

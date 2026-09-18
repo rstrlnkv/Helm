@@ -19,11 +19,11 @@ import XCTest
 /// about how many rows a list happens to draw, and that moves with content and
 /// with the machine — 12 pt appeared on 118 layers in one reading and 41 in
 /// another with nothing changed but a scroll view's realization. A *value* is a
-/// decision, it is what the audit counts on the mockup side, and it is nearly
-/// stable: three consecutive runs agree on the values below except for Disk's
-/// 1.25, which comes and goes with the scan the person last ran — `recorded`
-/// says what that turned out to be, and `ModulePageRender.floors` carries the
-/// measurement.
+/// decision, it is what the audit counts on the mockup side, and it is stable:
+/// three consecutive runs agree on the values below. It was *nearly* stable while
+/// Disk's 1.25 came and went with the scan the person last ran; that ended when
+/// `TheSuiteDoesNotReadTheUsersLastScanTests`' seam took the person's own file
+/// out of the render, and `ModulePageRender.floors` carries the measurement.
 ///
 /// The cost is stated plainly: a mutation that reuses a radius already in the
 /// set — a second 12 pt card — is invisible to this test. It catches a radius
@@ -76,9 +76,10 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// **6 goes to 5 in the commit that lands that seam, and not before.** With
     /// the seam in place the reading was 5 in six consecutive runs — and with it
     /// missing, recording 5 is a red CI for the day after every Disk scan,
-    /// wearing a message about corner radii. So the number here still carries one
-    /// slot of slack, deliberately, and the guard that removes it is red until
-    /// somebody does.
+    /// wearing a message about corner radii. So the number here carried one slot
+    /// of slack, deliberately, and the guard that removes it was red until
+    /// somebody landed it. Somebody did; the slot is spent, and the note above
+    /// `recorded` carries the reading it was spent on.
     ///
     /// **What that costs was measured, and both halves of the measurement have
     /// since expired. Read the next paragraph, not this one.** It said:
@@ -130,15 +131,15 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// last reading left with the notices section when it became a popover, and
     /// the slot it vacated is what the mutant was absorbed by.
     ///
-    /// So the pair below is a ceiling one above the floor, and a first new radius
-    /// anywhere is free. Lowering it to 7 and 6 is what would make this probe bite
-    /// — and it is deliberately **not** done here, because the paragraph on Disk's
-    /// 1.25 says in bold what that costs: the wobble that slot was reserved for
-    /// comes and goes with the person's own last scan, and recording the tight
-    /// number before `TheSuiteDoesNotReadTheUsersLastScanTests`' seam lands is a
+    /// So the pair below was a ceiling above the floor, and a first new radius
+    /// anywhere was free. Lowering it is what makes this probe bite, and it was
+    /// deliberately not done while the paragraph on Disk's 1.25 held: the wobble
+    /// that slot was reserved for came and went with the person's own last scan,
+    /// and recording the tight number before
+    /// `TheSuiteDoesNotReadTheUsersLastScanTests`' seam landed would have been a
     /// red CI on the day after every Disk scan, wearing a message about corners.
-    /// The measurement is written down so that decision is taken by whoever lands
-    /// the seam, with the reading in hand, rather than re-derived.
+    /// The seam landed, the measurement was taken with it in place, and the pair
+    /// below is that measurement.
     ///
     /// A claim about what a check cannot see is itself a measurement, and it goes
     /// stale in whichever direction the tree moves. Both of these were true when
@@ -160,8 +161,10 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// 03:05. The value is `Slider`'s knob — a 20 × 16 pt capsule at (556.5, 473)
     /// on Keep Awake's battery-floor row, `cornerRadius` 8, owned by
     /// `PlatformGroupContainer` — and SwiftUI draws that layer **in light only**.
+    /// **That last clause expired on 2026-09-18; the paragraph just above
+    /// `recorded` carries the reading that replaces it.**
     /// So the number is per appearance now, six in light and five in dark,
-    /// measured three consecutive runs each; `testTheOnlyRadiusLightAddsIsTheSliderKnob`
+    /// measured three consecutive runs each; `testTheTwoScreensDrawTheSameRadii`
     /// holds the difference by value, so light's extra slot cannot quietly absorb
     /// a new radius the way a count on its own would.
     /// **Re-read 2026-08-12 by the tree-wide typography and space sweep, and it
@@ -177,10 +180,9 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// - **The 8 really is the slider knob.** Helm's own 8 pt corner left the
     ///   tree in this sweep and an 8 still draws, on keep-awake, in light only.
     ///   That is now a measurement rather than an attribution.
-    /// - **The 1.25 did not appear in any of the three runs.** The wobble this
-    ///   number carries a slot of slack for is quiet today, which is not the same
-    ///   as gone: it comes and goes with the person's own last scan, and the seam
-    ///   that ends it is still owed.
+    /// - **The 1.25 did not appear in any of the three runs.** It was quiet that
+    ///   day rather than gone, and the slot of slack was kept for it. The seam
+    ///   that ends it has since landed, so the slot is spent.
     ///
     /// So the floor here is unreachable by a vocabulary pass, and the reason is
     /// the one written above: every value left belongs to SwiftUI, not to Helm.
@@ -216,7 +218,36 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// 40 pt 10.4. Lowering it means changing what the shape *is*, and the
     /// decision named for the capsule — `Drawn` learning to name a derived
     /// radius — is the same decision that would take this slot back.
-    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 8, .darkAqua: 7]
+    /// **«In light only» expired on 2026-09-18, and what moved is dark.**
+    /// macOS 27.2 (26B5086k), with nothing in the tree changed: the knob is
+    /// still there and still 8 pt, still two layers at (556.5, 445, 20 × 16)
+    /// under `PlatformGroupContainer` — and it is in the *dark* reading now as
+    /// well as the light one, so neither did SwiftUI stop drawing it in light
+    /// nor did the battery row stop drawing a slider. Proved by mutation rather
+    /// than by reasoning: narrowing that `Slider`'s own `.frame(width: 160)` to
+    /// 100 moved both pairs of layers to x = 596.5, in both screens together.
+    ///
+    /// The reading is **1, 3, 5, 7.5, 8, 12 in both screens** — six and six,
+    /// three consecutive runs plus three passes inside one process, all six
+    /// agreeing. So the per-appearance difference the paragraph above named is
+    /// gone, and with it light's free slot: `testTheTwoScreensDrawTheSameRadii`
+    /// pins the two sets equal, in both directions, which is the stronger claim
+    /// and was watched going red on a planted radius that drew in dark alone.
+    ///
+    /// **The pair below is that reading, and this is the commit the paragraphs
+    /// above reserved.** It stood two above the light reading and one above the
+    /// dark, which is a ratchet that catches nothing until something else has
+    /// drifted into the slack first. The seam those paragraphs were waiting on
+    /// (`TheSuiteDoesNotReadTheUsersLastScanTests`) has landed, so the wobble the
+    /// slack was held for is gone by construction rather than quiet: re-read on
+    /// 2026-09-18 on a Mac carrying a day-old 9.4 MB `last-scan.json` — the exact
+    /// condition that used to produce the 1.25 — three consecutive runs saw six
+    /// in both screens and none of them saw it.
+    ///
+    /// Watched biting, because a ratchet nobody has seen refuse is not one: with
+    /// 6 pt taken off the ladder by hand a seventh value falls off it, and the
+    /// test goes red naming the count and every value.
+    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 6, .darkAqua: 6]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 
@@ -241,27 +272,39 @@ final class RadiusLadderRatchetTests: XCTestCase {
         }
     }
 
-    /// **Light's extra slot is spent, and on what.** A ratchet of two counts would
-    /// let a genuinely new radius arrive in light for nothing, as long as it
-    /// arrived while the knob was still there — six is six. So the difference
-    /// between the two screens is pinned by value: light draws everything dark
-    /// draws, plus 8 pt and nothing else.
+    /// **Neither screen has a slot the other does not, so neither has a free
+    /// one.** A ratchet of two counts would let a genuinely new radius arrive in
+    /// one appearance for nothing, as long as it arrived while a value that
+    /// screen alone drew was still there — six is six. So the difference is
+    /// pinned by value in both directions: the two screens draw the same
+    /// off-ladder set, and a value appearing in one of them alone fails here
+    /// before the count above has moved at all.
     ///
-    /// The 8 is not Helm's and no commit here can lower it — it is SwiftUI's own
-    /// slider knob, and `isSystemDrawn` cannot see it because that layer has no
-    /// view of its own to be named after, only the `PlatformGroupContainer` it
-    /// hangs under. Teaching the filter that class name would hide `PanelBars`'
-    /// and `HelmChoiceCards`' layers with it, which is a real value hidden to make
-    /// a number move.
-    func testTheOnlyRadiusLightAddsIsTheSliderKnob() {
+    /// **This used to pin an asymmetry, and the asymmetry is what expired.**
+    /// Light drew one value dark did not — SwiftUI's own slider knob on Keep
+    /// Awake's battery row, 8 pt, which `isSystemDrawn` cannot see because that
+    /// layer has no view of its own to be named after, only the
+    /// `PlatformGroupContainer` it hangs under. On 2026-09-18, macOS 27.2
+    /// (26B5086k), the knob draws in dark too — measured, and the class comment
+    /// above carries the reading and the mutation that proved the layer is the
+    /// slider's. So the expected difference is empty on both sides now, and the
+    /// knob is named in neither message: it is no longer what makes the two
+    /// screens differ, and a difference in either direction is a radius no
+    /// reading of this tree has seen before.
+    ///
+    /// What did **not** change is why the 8 cannot be lowered here. It is not
+    /// Helm's, and teaching `isSystemDrawn` that class name would hide
+    /// `PanelBars`' and `HelmChoiceCards`' layers with it, which is a real value
+    /// hidden to make a number move.
+    func testTheTwoScreensDrawTheSameRadii() {
         let light = Set(offLadder(in: .aqua, checkingEachPageDrew: false).keys)
         let dark = Set(offLadder(in: .darkAqua, checkingEachPageDrew: false).keys)
 
         XCTAssertFalse(light.isEmpty, "nothing was measured in either screen")
-        XCTAssertEqual(light.subtracting(dark), ["8.00"], """
-            light draws \(light.subtracting(dark).sorted()) where dark does not, and the only \
-            one of those anybody has accounted for is 8.00 pt — SwiftUI's slider knob on Keep \
-            Awake's battery row.
+        XCTAssertEqual(light.subtracting(dark), [], """
+            light draws \(light.subtracting(dark).sorted()) where dark does not, which is a \
+            radius no reading of this tree has seen in one screen alone since SwiftUI's slider \
+            knob arrived in both.
             """)
         XCTAssertEqual(dark.subtracting(light), [], """
             dark draws \(dark.subtracting(light).sorted()) where light does not, which is a \

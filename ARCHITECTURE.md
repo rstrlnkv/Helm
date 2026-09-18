@@ -1173,11 +1173,18 @@ mid-walk costs the gap rather than nothing.
 
 ## Permissions
 
-`PermissionCheck` (`Sources/HelmRuntime/PermissionCheck.swift:28`) probes Full Disk
-Access by reading protected files — `~/Library/Safari/Bookmarks.plist`,
-`~/Library/Messages/chat.db` and further fallbacks, because none is guaranteed to exist
-and `TCC.db` is absent on recent macOS. A write probe would be wrong: creating a file
-under `~/Library/Containers` is refused even where access is granted.
+`PermissionCheck` (`Sources/HelmRuntime/PermissionCheck.swift:40`) probes Full Disk
+Access by reading protected files, one byte each (`canRead`, `:74`). The system-wide
+`/Library/Application Support/com.apple.TCC/TCC.db` is asked first: it is on every Mac,
+it is gated by this grant and nothing else, and reaching it first means the ordinary
+granted case never opens anybody's Safari bookmarks or Messages database at all. Those
+two are the fallback, along with the per-user `TCC.db`, which is absent on recent macOS.
+A write probe would be wrong: creating a file under `~/Library/Containers` is refused
+even where access is granted. Every entry is a **file**: `FileHandle(forReadingFrom:)`
+throws on any directory, protected or not, so a directory here would answer "denied" on a
+Mac that granted everything — `~/Library/Application Support/AddressBook` was one, and
+being last in the list it was opened only on the runs where the answer was already going
+to be "denied".
 
 `Scripts/package-app.sh:327` signs ad-hoc (`--sign -`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
@@ -1269,7 +1276,7 @@ rather than literal — `Sources/HelmRuntime/HelmTrash.swift:117` builds
 name of whichever module is deleting.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
-(`Sources/HelmRuntime/PermissionCheck.swift:129`) carries `outOfScope`,
+(`Sources/HelmRuntime/PermissionCheck.swift:153`) carries `outOfScope`,
 `changedSinceScan`, `unreadable`, `readOnlyVolume`, `diskFull`, `missing`,
 `needsFullDiskAccess`, `activeSystemExtension`, `noPermission`, `systemRefused` —
 `outOfScope` is Helm refusing before anything was attempted. `TrashFailure`
@@ -1334,8 +1341,9 @@ Helm's own, so it is switched back on too. The alternative — reading the
 system's own disabled list — would give back decisions that were never Helm's,
 which is worse in the same direction.
 
-Two keychain keys stay: `com.helm.app` / `settings-seal` and `com.helm.autopilot`
-/ `rule-seal`. `KeychainSealKey` can read and create and not delete, and a
+Two keychain keys stay: `com.helm.app` / `settings-seal`
+(`Sources/HelmRuntime/SettingsSealKey.swift`, one cache over it for every reader in
+every target) and `com.helm.autopilot` / `rule-seal`. `KeychainSealKey` can read and create and not delete, and a
 delete on an ad-hoc-signed bundle costs a modal dialog for each. By the time the
 reset reaches them the preferences domain is gone, so what they sealed no longer
 exists: what remains is 32 bytes the next launch reads as its own.
@@ -1985,6 +1993,23 @@ contrast floor rather than chosen, and the blend is resolved *inside* the light 
 — `NSColor(Color)` returns a dynamic colour, so a blend one line outside the block resolves
 again against whatever appearance is current.
 
+Both types carry a third and fourth value as well. Apple asks a colour an app defines
+itself for an increased-contrast option beside its light and dark ones, and these are
+literals exactly because the system palette failed the light appearance — so the variants
+macOS would have supplied were given up along with it.
+`Sources/HelmUI/DesignSystem/HelmContrast.swift` is the switch, and it is a flag rather
+than an appearance for a measured reason: on macOS 26 `bestMatch(from:)` answers
+`NSAppearanceNameAqua` while the drawing appearance is `NSAppearanceNameAccessibilityAqua`,
+whichever order the names are given in, so a dynamic colour cannot see the setting at all.
+`ModuleTint.colour(increased:)` and `HelmSignal.warning(increased:)` take it as an argument
+the way `HelmMotion.spins(requested:reduceMotion:)` does, which is what lets the floors be
+measured without the machine's own switch. The second set is the same solve against a
+higher floor — white at 4.5:1 rather than 3:1 on a tint, 7:1 rather than 4.5:1 for an ink
+against the window — and twelve of the thirteen move; `ModuleTint`'s `hosts` reads 5.91:1
+already and owes no second value. The blend is solved against the *rounded* literal, because
+solved before it one value came out at 4.4988:1, short by a thousandth of a ratio and
+looking measured.
+
 **Motion.** `Sources/HelmUI/DesignSystem/HelmMotion.swift` holds the tokens, and they are
 computed properties rather than constants:
 
@@ -2100,6 +2125,21 @@ is short, so a long translation truncates a button rather than moving it down.
 classic defect in a hand-rolled flow layout is avoided by construction, and children are
 proposed `.unspecified` rather than the remaining width — a button asked to fit a narrow
 remainder answers with its truncated width and stays on a line it does not fit.
+
+**The record.** The design system is published outside this repository, so nothing in a
+build can reach it, and what it publishes is a copy of values —
+`Resources/DesignSystem/design-tokens.json` is what this tree resolves to, kept beside the
+tree so that copy can be checked against something.
+`Tests/HelmUITests/PublishedTokensAreTheTreesTests.swift` compares the two and fails when
+they part. Every value in it is resolved from the live type in a named appearance rather
+than read out of the source: `Color.primary` is `labelColor` at alpha 0.847 rather than
+pure ink, so a literal `0.035` read off `HelmSurface` is not what lands on a window, and a
+value macOS supplies moves when macOS moves. The nine opacities sit in the record beside
+the colours they produce and are divided back out of them rather than written down again,
+which is what lets the failure say whose edit it was — a hand-written copy of those nine
+went red on the right token and blamed the operating system. Not covered: the type styles,
+whose sizes follow the interface text size and so describe the Mac running the suite; and
+contrast, which is `SignalColourContrastTests` and its neighbours.
 
 ## What else to read
 
