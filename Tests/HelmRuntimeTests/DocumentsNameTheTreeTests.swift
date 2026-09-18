@@ -50,6 +50,12 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // the checkout, the accident ended, and the guard said what had always
         // been true — the tree does not own this name.
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
+        // The appearance a Mac draws in with Increase Contrast on. The
+        // documents name it to record a measurement, not a call: `bestMatch`
+        // answers `NSAppearanceNameAqua` while this is the drawing appearance,
+        // which is why `HelmContrast` reads a workspace flag instead. The tree
+        // cannot own the name because it never asks for it — that is the finding.
+        "NSAppearanceNameAccessibilityAqua": "macOS's high-contrast appearance, named where the documents record that it cannot be detected from a colour",
         "NSVisualEffectView": "AppKit's material view, named where the documents say the settings sidebar deliberately draws none — `NSSplitViewController` supplies the glass and one of these would block it",
         // Lowercase, and only visible to this check since it stopped skipping
         // that half of the namespace. Programs the documents name because a

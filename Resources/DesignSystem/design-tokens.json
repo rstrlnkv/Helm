@@ -1,0 +1,230 @@
+{
+  "colours" : {
+    "hairline" : {
+      "dark" : "rgba(255, 255, 255, 0.085)",
+      "light" : "rgba(0, 0, 0, 0.085)"
+    },
+    "ink" : {
+      "dark" : "rgba(255, 255, 255, 0.847)",
+      "light" : "rgba(0, 0, 0, 0.847)"
+    },
+    "mark-separator" : {
+      "dark" : "rgba(255, 255, 255, 0.424)",
+      "light" : "rgba(0, 0, 0, 0.424)"
+    },
+    "palette-blue" : {
+      "dark" : "#0091ff",
+      "light" : "#0088ff"
+    },
+    "palette-brown" : {
+      "dark" : "#b78a66",
+      "light" : "#ac7f5e"
+    },
+    "palette-cyan" : {
+      "dark" : "#3cd3fe",
+      "light" : "#00c0e8"
+    },
+    "palette-green" : {
+      "dark" : "#30d158",
+      "light" : "#34c759"
+    },
+    "palette-mint" : {
+      "dark" : "#00dac3",
+      "light" : "#00c8b3"
+    },
+    "palette-orange" : {
+      "dark" : "#ff9230",
+      "light" : "#ff8d28"
+    },
+    "palette-pink" : {
+      "dark" : "#ff375f",
+      "light" : "#ff2d55"
+    },
+    "palette-purple" : {
+      "dark" : "#db34f2",
+      "light" : "#cb30e0"
+    },
+    "palette-red" : {
+      "dark" : "#ff4245",
+      "light" : "#ff383c"
+    },
+    "palette-white" : {
+      "dark" : "#f1f1f7",
+      "light" : "#f1f1f7"
+    },
+    "palette-yellow" : {
+      "dark" : "#ffd600",
+      "light" : "#ffcc00"
+    },
+    "panel-selection" : {
+      "dark" : "rgba(255, 255, 255, 0.102)",
+      "light" : "rgba(0, 0, 0, 0.102)"
+    },
+    "signal-danger" : {
+      "dark" : "#ff4245",
+      "light" : "#e03034"
+    },
+    "signal-success" : {
+      "dark" : "#30d158",
+      "light" : "#20873a"
+    },
+    "signal-warning" : {
+      "dark" : "#ff9230",
+      "light" : "#b36119"
+    },
+    "surface-card" : {
+      "dark" : "rgba(255, 255, 255, 0.030)",
+      "light" : "rgba(0, 0, 0, 0.030)"
+    },
+    "surface-on-panel" : {
+      "dark" : "rgba(255, 255, 255, 0.068)",
+      "light" : "rgba(0, 0, 0, 0.068)"
+    },
+    "surface-panel-card" : {
+      "dark" : "rgba(255, 255, 255, 0.051)",
+      "light" : "rgba(0, 0, 0, 0.051)"
+    },
+    "surface-well" : {
+      "dark" : "rgba(255, 255, 255, 0.042)",
+      "light" : "rgba(0, 0, 0, 0.042)"
+    },
+    "text-faint" : {
+      "dark" : "rgba(255, 255, 255, 0.551)",
+      "light" : "rgba(0, 0, 0, 0.551)"
+    },
+    "text-quiet" : {
+      "dark" : "rgba(255, 255, 255, 0.559)",
+      "light" : "rgba(0, 0, 0, 0.559)"
+    },
+    "tint-autopilot" : {
+      "dark" : "#0091ff",
+      "light" : "#0088ff"
+    },
+    "tint-disk" : {
+      "dark" : "#db3af2",
+      "light" : "#cb35e0"
+    },
+    "tint-duplicates" : {
+      "dark" : "#00a5b0",
+      "light" : "#00a4af"
+    },
+    "tint-homebrew" : {
+      "dark" : "#25a946",
+      "light" : "#2baa4b"
+    },
+    "tint-hosts" : {
+      "dark" : "#3676a3",
+      "light" : "#2e6992"
+    },
+    "tint-keep-awake" : {
+      "dark" : "#da7c28",
+      "light" : "#de7a21"
+    },
+    "tint-keyboard" : {
+      "dark" : "#d926a6",
+      "light" : "#d926a6"
+    },
+    "tint-leftovers" : {
+      "dark" : "#b78a66",
+      "light" : "#ac7f5e"
+    },
+    "tint-uninstaller" : {
+      "dark" : "#ff4245",
+      "light" : "#ff383c"
+    },
+    "tint-vpn" : {
+      "dark" : "#6d7cff",
+      "light" : "#6155f5"
+    }
+  },
+  "coloursIncreasedContrast" : {
+    "signal-danger" : {
+      "dark" : "#ff8385",
+      "light" : "#a92427"
+    },
+    "signal-success" : {
+      "dark" : "#30d158",
+      "light" : "#18662c"
+    },
+    "signal-warning" : {
+      "dark" : "#ff9230",
+      "light" : "#864913"
+    },
+    "tint-autopilot" : {
+      "dark" : "#0078d4",
+      "light" : "#0076de"
+    },
+    "tint-disk" : {
+      "dark" : "#c033d4",
+      "light" : "#c032d4"
+    },
+    "tint-duplicates" : {
+      "dark" : "#00848d",
+      "light" : "#00848c"
+    },
+    "tint-homebrew" : {
+      "dark" : "#1e8838",
+      "light" : "#22883c"
+    },
+    "tint-hosts" : {
+      "dark" : "#3676a3",
+      "light" : "#2e6992"
+    },
+    "tint-keep-awake" : {
+      "dark" : "#af6420",
+      "light" : "#b2621b"
+    },
+    "tint-keyboard" : {
+      "dark" : "#d626a3",
+      "light" : "#d626a3"
+    },
+    "tint-leftovers" : {
+      "dark" : "#946f52",
+      "light" : "#966e52"
+    },
+    "tint-uninstaller" : {
+      "dark" : "#db393b",
+      "light" : "#e03135"
+    },
+    "tint-vpn" : {
+      "dark" : "#5f6cde",
+      "light" : "#6155f5"
+    }
+  },
+  "inks" : {
+    "hairline" : 0.10000000000000001,
+    "mark-separator" : 0.5,
+    "panel-selection" : 0.12,
+    "surface-card" : 0.035000000000000003,
+    "surface-on-panel" : 0.080000000000000002,
+    "surface-panel-card" : 0.059999999999999998,
+    "surface-well" : 0.050000000000000003,
+    "text-faint" : 0.65000000000000002,
+    "text-quiet" : 0.66000000000000003
+  },
+  "layout" : {
+    "cardWidth" : 704,
+    "formInset" : 20,
+    "groupedHeaderGap" : 10,
+    "groupedHeaderOutset" : 10,
+    "readingColumn" : 444,
+    "settingsColumn" : 744
+  },
+  "radius" : {
+    "card" : 10,
+    "ctl" : 6,
+    "frame" : 14,
+    "panel" : 26,
+    "tiny" : 4
+  },
+  "space" : {
+    "s1" : 2,
+    "s2" : 4,
+    "s3" : 6,
+    "s4" : 8,
+    "s5" : 12,
+    "s6" : 18,
+    "s7" : 28,
+    "s8" : 40
+  }
+}

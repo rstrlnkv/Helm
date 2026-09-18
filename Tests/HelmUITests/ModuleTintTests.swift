@@ -21,7 +21,7 @@ final class ModuleTintTests: XCTestCase {
     func testEveryTintCarriesAWhiteGlyph() {
         for appearance: NSAppearance.Name in [.aqua, .darkAqua] {
             for tint in ModuleTint.allCases {
-                let ratio = whiteRatio(tint.colour, in: appearance)
+                let ratio = whiteRatio(tint.colour(increased: false), in: appearance)
                 XCTAssertGreaterThanOrEqual(
                     ratio, 3.0,
                     "\(tint) in \(appearance.rawValue) is \(String(format: "%.2f", ratio)):1")
@@ -38,7 +38,8 @@ final class ModuleTintTests: XCTestCase {
             let all = ModuleTint.allCases
             for i in all.indices {
                 for j in all.indices where j > i {
-                    let d = distance(all[i].colour, all[j].colour, in: appearance)
+                    let d = distance(all[i].colour(increased: false),
+                                     all[j].colour(increased: false), in: appearance)
                     XCTAssertGreaterThan(
                         d, 0.15,
                         "\(all[i]) and \(all[j]) in \(appearance.rawValue) differ by "
@@ -51,6 +52,54 @@ final class ModuleTintTests: XCTestCase {
     /// One case per module, so a module added later cannot quietly share.
     func testThereIsOneTintPerModule() {
         XCTAssertEqual(ModuleTint.allCases.count, 10)
+    }
+
+    // MARK: - And the same two questions under Increase Contrast
+
+    /// Apple asks a custom colour for an increased-contrast option "that
+    /// provides a significantly higher amount of visual differentiation". The
+    /// higher floor is 4,5:1 for the white glyph rather than 3:1, and it is the
+    /// same solve — the smallest blend toward black that reaches it.
+    func testEveryIncreasedTintCarriesAWhiteGlyphAtTheHigherFloor() {
+        for appearance: NSAppearance.Name in [.aqua, .darkAqua] {
+            for tint in ModuleTint.allCases {
+                let ratio = whiteRatio(tint.colour(increased: true), in: appearance)
+                XCTAssertGreaterThanOrEqual(
+                    ratio, 4.5,
+                    "\(tint) in \(appearance.rawValue) is \(String(format: "%.2f", ratio)):1")
+            }
+        }
+    }
+
+    /// Re-measured rather than inherited: blending ten colours toward one point
+    /// moves them toward each other, so the set that clears the higher contrast
+    /// floor has to be shown to still be ten distinguishable colours.
+    func testEveryIncreasedPairIsStillDistinguishable() {
+        for appearance: NSAppearance.Name in [.aqua, .darkAqua] {
+            let all = ModuleTint.allCases
+            for i in all.indices {
+                for j in all.indices where j > i {
+                    let d = distance(all[i].colour(increased: true),
+                                     all[j].colour(increased: true), in: appearance)
+                    XCTAssertGreaterThan(
+                        d, 0.15,
+                        "\(all[i]) and \(all[j]) in \(appearance.rawValue) differ by "
+                        + String(format: "%.3f", d))
+                }
+            }
+        }
+    }
+
+    /// A tint already past the higher floor keeps its ordinary value, and one
+    /// that was not moves. Without this the two sets could be identical and
+    /// every assertion above would still pass.
+    func testTheIncreasedSetMovesTheTintsThatNeededIt() {
+        let moved = ModuleTint.allCases.filter {
+            distance($0.colour(increased: false), $0.colour(increased: true), in: .aqua) > 0.001
+        }
+        XCTAssertTrue(moved.contains(.duplicates), "duplicates read 3,03:1 and had to move")
+        XCTAssertFalse(moved.contains(.hosts), "hosts reads 5,91:1 and owes no second value")
+        XCTAssertGreaterThanOrEqual(moved.count, 7)
     }
 
     // MARK: - Measuring
