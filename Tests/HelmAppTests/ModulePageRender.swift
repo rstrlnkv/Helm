@@ -493,14 +493,13 @@ extension ModulePageRender.Page {
     /// that changed and not a Mac that differs, and this floor can afford to be
     /// tight: the empty state is 55, so losing the wire fails by 135.
     ///
-    /// **Homebrew's is 70 for the same reason and a smaller number.**
-    /// `HomebrewSettingsPage.body` branches on `hb.status.installed`, which is a
-    /// *reply*, so every reading before the fixture was of the «not installed»
-    /// screen: 12 layers in both appearances, on a Mac that has brew. Wired it is
-    /// **79 in light and 80 in dark, all eight languages, three consecutive
-    /// runs**, and the four fixture packages are about 12 layers a row — so 70
-    /// says «the manager screen, with at most one row missing» and 12 fails it by
-    /// a mile.
+    /// **Homebrew's own account is further down, where its number last
+    /// changed** — "Homebrew fell from 70 to 61…" below — rather than repeated
+    /// here: `HomebrewSettingsPage.body` branches on `hb.status.installed`,
+    /// which is a *reply*, so every reading before the fixture was of the
+    /// «not installed» screen at 12 layers, and that much is still true; the
+    /// wired reading it moved to since is not a number this paragraph should
+    /// carry a second, older copy of.
     ///
     /// **Layout's stays 230, and the reason it stays is no longer the reason it
     /// was set.** It was set loose because the page carried a permission note
@@ -605,8 +604,51 @@ extension ModulePageRender.Page {
     /// now draws, by the same arithmetic VPN's 124 uses — so the floor can
     /// still fail on a section disappearing rather than passing whatever is
     /// left. Lowered on the measurement, not to make a red test green.
+    ///
+    /// **Homebrew fell from 70 to 61 when the master list and inspector shell
+    /// landed.** The per-row Uninstall/Upgrade/Install button — several layers
+    /// apiece, on every row the fixture draws — moved out of the list and into
+    /// one inspector button for whichever row is selected, which is none by
+    /// default. Measured three consecutive runs of
+    /// `testTheWiredHomebrewPageIsTheManagerAndNotTheInstallScreen`, 61 every
+    /// time.
+    ///
+    /// **61 carried no slack, unlike its neighbours, and it stayed 61 when
+    /// `inspectorAction` was rewritten to draw nothing for every case** — no
+    /// Uninstall, no Upgrade, no Install anywhere on the page, at any width —
+    /// because this fixture selects nothing and `pageWidth` (744) is above
+    /// `HomebrewSplit`'s 560 pt threshold, so neither the branch this reading
+    /// renders nor the state it renders it in ever reaches that button.
+    /// `TheNarrowPaneCanStillActOnAPackageTests` and
+    /// `TheSplitThresholdFitsThePageItGatesTests` are what catch that mutation
+    /// now, each at a width or a selection this reading does not carry — this
+    /// floor cannot be tightened into seeing it.
+    ///
+    /// **A slack under 61 was tried once, measured against the wrong
+    /// direction, and taken back out.** Selecting a package *adds* the
+    /// inspector's one action button — 67 layers against 61 unselected,
+    /// re-measured 2026-09-14 — and a floor only ever fails on a *drop*, so
+    /// margin bought against that six-layer rise buys nothing against the
+    /// direction this guard exists to catch. Measured the same day, against
+    /// this reading with nothing selected: cutting the bottom status bar
+    /// (the `Divider` and the `HStack` that draws `statusLine`) leaves **59**,
+    /// and cutting the toolbar's Refresh button alone leaves **58** — both a
+    /// real, silent loss of a section, and both above a floor of 55, which
+    /// would have let either through. The floor stays **61**, unpadded, for
+    /// the same reason its neighbours keep theirs below the reading that
+    /// found them: it is the last number this render agreed to before either
+    /// cut, and anything looser is a hole the size of the cut.
+    ///
+    /// What 61 does not see: which of the two branches drew, whether the one
+    /// action button on the page is the right verb, and anything confined to
+    /// a selection or to the narrow branch this 744 pt reading never reaches
+    /// — a doubled badge on a pinned row, or an action offered on the wrong
+    /// package, both draw at the same layer count this floor already passed.
+    /// `TheNarrowPaneCanStillActOnAPackageTests` and
+    /// `TheSplitThresholdFitsThePageItGatesTests` are where those are caught,
+    /// not here.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 70,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 61,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

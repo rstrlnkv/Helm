@@ -72,7 +72,18 @@ public enum RenderedInk {
     /// Zero, on the other hand, is a real answer: it is a band holding nothing
     /// but its own background. Which is why every check built on this asserts
     /// first that the thing was drawn, and only then that it went away.
-    public static func read(_ view: NSView, points band: ClosedRange<Int>? = nil) -> Int? {
+    ///
+    /// **`columns` narrows the same reading sideways**, in points from the left,
+    /// and it is not a convenience: a page with two columns in it draws both
+    /// into every row, so a band alone cannot say which of the two a sentence
+    /// left. The claim that needed it — that a split page's inspector goes quiet
+    /// beside a list with nothing in it — is about one half of the pane, and
+    /// there is no NSView to read it off: SwiftUI draws a `HelmEmptyState` into
+    /// its host with no AppKit view of its own, so "find the column and read it"
+    /// finds nothing at all. Defaulted, so every caller that means the whole
+    /// width goes on meaning it.
+    public static func read(_ view: NSView, points band: ClosedRange<Int>? = nil,
+                            columns: ClosedRange<Int>? = nil) -> Int? {
         guard view.bounds.width > 0, view.bounds.height > 0,
               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
         view.cacheDisplay(in: view.bounds, to: rep)
@@ -89,17 +100,26 @@ public enum RenderedInk {
             rows = 0..<rep.pixelsHigh
         }
         guard !rows.isEmpty else { return nil }
+        let span: Range<Int>
+        if let columns {
+            guard columns.lowerBound >= 0, columns.upperBound * scale <= rep.pixelsWide
+            else { return nil }
+            span = (columns.lowerBound * scale)..<(columns.upperBound * scale)
+        } else {
+            span = 0..<rep.pixelsWide
+        }
+        guard !span.isEmpty else { return nil }
         // Unrolled, and the four channels are locals: the settle loop below reads
         // 1.2 million pixels a frame and a hundred frames a still, and the same
         // arithmetic written as a nested loop over `ground` took this file's tests
         // from 10 s to 69 s.
-        let ground = background(data, rep, rows)
+        let ground = background(data, rep, rows, span)
         let (g0, g1, g2, g3) = (ground[0], ground[1], ground[2], ground[3])
-        let stride = rep.bytesPerRow, width = rep.pixelsWide
+        let stride = rep.bytesPerRow
         var ink = 0
         for y in rows {
             let row = y * stride
-            for x in 0..<width {
+            for x in span {
                 let at = row + x * 4
                 var far = abs(Int(data[at]) - g0)
                 let g = abs(Int(data[at + 1]) - g1)
@@ -114,6 +134,47 @@ public enum RenderedInk {
         return ink
     }
 
+    /// **The pixels of a band, for the checks whose claim is that two drawings
+    /// are not the same drawing.**
+    ///
+    /// `read` above answers *how much* was drawn, and two different sentences
+    /// can weigh the same — which is no use to a check whose subject is a page
+    /// that draws one sentence where it should draw three. What that check needs
+    /// is equality, so what this hands back is the bytes.
+    ///
+    /// **The band is not an optimisation.** A whole-page comparison is dominated
+    /// by whatever else differs between two mounts: a status line reading
+    /// «Reading the package list…» in one and «Packages: 0» in the other makes
+    /// the two pages differ no matter what the pane below them says. Measured
+    /// 2026-09-16 with the defect deliberately back in — a page drawing the
+    /// refusal sentence over *both* an empty Cellar and a refused one — the
+    /// whole-page reading passed, and it was the status bar that saved it. Name
+    /// the band the claim is about.
+    ///
+    /// nil on the same terms `read` uses, and for the same reason: a band that
+    /// runs off the end must not read as a drawing with nothing in it.
+    public static func bytes(_ view: NSView, points band: ClosedRange<Int>? = nil) -> Data? {
+        guard view.bounds.width > 0, view.bounds.height > 0,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let data = rep.bitmapData, rep.pixelsWide > 0, rep.pixelsHigh > 0 else { return nil }
+        let scale = max(1, rep.pixelsHigh / max(1, Int(view.bounds.height)))
+        let rows: Range<Int>
+        if let band {
+            guard band.lowerBound >= 0, band.upperBound * scale <= rep.pixelsHigh else { return nil }
+            rows = (band.lowerBound * scale)..<(band.upperBound * scale)
+        } else {
+            rows = 0..<rep.pixelsHigh
+        }
+        guard !rows.isEmpty else { return nil }
+        var out = Data(capacity: rows.count * rep.bytesPerRow)
+        for y in rows {
+            out.append(contentsOf: UnsafeBufferPointer(start: data + y * rep.bytesPerRow,
+                                                       count: rep.bytesPerRow))
+        }
+        return out
+    }
+
     /// The band's own background: the pixel value that occurs most often in it.
     ///
     /// Sampled every fourth row and column rather than counted in full — a
@@ -124,10 +185,12 @@ public enum RenderedInk {
     /// equality checks in `BothNoticesShareOneSlotTests` compare.
     private static func background(_ data: UnsafeMutablePointer<UInt8>,
                                    _ rep: NSBitmapImageRep,
-                                   _ rows: Range<Int>) -> [Int] {
+                                   _ rows: Range<Int>,
+                                   _ span: Range<Int>? = nil) -> [Int] {
+        let columns = span ?? 0..<rep.pixelsWide
         var counts: [UInt32: Int] = [:]
         for y in stride(from: rows.lowerBound, to: rows.upperBound, by: 4) {
-            for x in stride(from: 0, to: rep.pixelsWide, by: 4) {
+            for x in stride(from: columns.lowerBound, to: columns.upperBound, by: 4) {
                 let at = y * rep.bytesPerRow + x * 4
                 var key: UInt32 = 0
                 for channel in 0..<4 { key = key << 8 | UInt32(data[at + channel]) }
@@ -192,6 +255,13 @@ public final class MountedRender {
 
     public func ink(_ band: ClosedRange<Int>? = nil) -> Int? {
         RenderedInk.read(host, points: band)
+    }
+
+    /// The pixels of a band, for a claim that two mounts are not one drawing.
+    /// `RenderedInk.bytes` carries the reason the band is named rather than
+    /// defaulted.
+    public func pixels(_ band: ClosedRange<Int>? = nil) -> Data? {
+        RenderedInk.bytes(host, points: band)
     }
 
     /// The first reading that has repeated `steady` turns running, or `nil` if

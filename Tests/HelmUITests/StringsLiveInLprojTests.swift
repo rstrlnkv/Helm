@@ -101,6 +101,13 @@ final class StringsLiveInLprojTests: XCTestCase {
         // lists «Passphrase» and the alternatives — «Kennwortsatz» — are
         // dictionary words nobody types. The other six all differ.
         "Passphrase": [.de],
+        // The severity badge over a `brew doctor` finding that is an `Error:`
+        // rather than a `Warning:`. German spells it exactly as English does —
+        // Duden lists «Problem» and the alternatives («Schwierigkeit»,
+        // «Missstand») are longer words for something else — and the other six
+        // all differ (Проблема, Problema, Problème, 問題, 问题), which is what
+        // makes this an identity rather than a row nobody filled in.
+        "Problem": [.de],
         "BETA": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "BUILD": [.fr, .de, .pt],
@@ -119,6 +126,16 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Control": [.ru, .es, .ja, .zh],
         "Option": [.ru, .fr, .ja, .zh],
         "Shift": [.ru, .pt, .zh],
+        // The two `brew config` group headings French spells exactly as
+        // English does. Larousse gives «configuration» and «machine» for both
+        // senses — the settings of an installation, and the computer itself —
+        // and neither has a shorter French word to prefer. The other six all
+        // differ (Конфигурация/Машина, Configuración/Equipo,
+        // Konfiguration/Rechner, 構成/マシン, 配置/本机, Configuração/Máquina),
+        // which is what makes these identities rather than rows nobody filled
+        // in.
+        "Configuration": [.fr],
+        "Machine": [.fr],
         "Cyan": [.fr, .de],
         "DEV": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Dev": [.ru, .es, .fr, .de, .ja, .zh, .pt],
@@ -139,6 +156,11 @@ final class StringsLiveInLprojTests: XCTestCase {
         // non-Latin scripts have a word of their own and use it.
         "Hosts": [.es, .de, .pt],
         "Image": [.fr],
+        // The package view's licence tile. The English key is the British
+        // spelling, which is the French word — «licence», capitalised as a
+        // label. The other six each have their own: «Лицензия», «Licencia»,
+        // «Lizenz», «ライセンス», «许可证», «Licença».
+        "Licence": [.fr],
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
         "MB": [.es, .de, .ja, .zh, .pt],
@@ -173,6 +195,12 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Timer": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],
+        // The same two languages as the dial above it, for the same reason
+        // and now at the package view's version tile: French and German
+        // both write the word the way English does. The four non-Latin
+        // scripts and the two Iberian languages do not — «Версия»,
+        // «Versión», «バージョン», «版本», «Versão».
+        "Version": [.fr, .de],
         "Video": [.de],
         "VPN": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],

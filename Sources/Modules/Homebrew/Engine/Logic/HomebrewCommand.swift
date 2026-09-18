@@ -12,6 +12,38 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     case outdated
     case descriptions
     case search
+    /// Which installed packages still need a given one — asked once, at the
+    /// moment the uninstall is put to the person, and never cached: the answer
+    /// is about a Cellar that changes under the app.
+    case dependents
+    /// What `brew info --json=v2` knows about one package — asked once, when
+    /// the person opens its detail, and never cached: the answer is about a
+    /// Cellar and a catalogue that both change under the app.
+    case info
+    /// How much disk one installed package occupies — a walk of its own Cellar
+    /// directory, because `brew info` carries no size in either direction
+    /// (`PackageWeight`). Asked after `info` has answered and only for a
+    /// package that is installed; cached in the engine per `name@version`,
+    /// since the walk is the expensive part and the answer cannot change while
+    /// that version is the one on disk.
+    case size
+    /// What `brew doctor` found, parsed from the diagnostics stream it prints
+    /// its whole answer on — see `HomebrewEngine.doctor()` and
+    /// `ProcessRunner.runCapturingDiagnostics`.
+    case doctor
+    /// What `brew config` says about this Homebrew and this Mac — read-only,
+    /// and printed on standard output rather than `doctor`'s diagnostics
+    /// stream, so it goes through the ordinary runner (`BrewConfigParser`).
+    case config
+    /// Run one of the commands `brew doctor`'s answer was read as proposing.
+    ///
+    /// The payload is the argv itself — `["uninstall", "periphery"]` — and the
+    /// engine **judges it again** before running it, against the installed list
+    /// it reads at that moment. The UI's own judgement decides what to draw and
+    /// nothing else: between the draw and the press a terminal can uninstall
+    /// the very package the button names, and the argv the page carries is a
+    /// reading of a Cellar that has moved (`HomebrewEngine.runDoctorFix`).
+    case doctorFix
     case install
     case uninstall
     case upgrade

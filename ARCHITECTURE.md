@@ -711,30 +711,67 @@ one query that retries halves its batch rather than its timeout.
 
 Quitting mid-operation is reported rather than prevented: every operation writes a
 marker through the `OpMarker` port
-(`Sources/Modules/Homebrew/Engine/Ports.swift:66`), whose real implementation
+(`Sources/Modules/Homebrew/Engine/Ports.swift`), whose real implementation
 `FileOpMarker` (`Sources/Modules/Homebrew/Engine/SystemPorts.swift:220`) is a file,
 so it survives the quit it exists to report and the next launch's first `status()`
 answers `interruptedOp` (`Sources/Modules/Homebrew/Engine/Model.swift:77`).
 
-One phase covers all five long operations —
-`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:275` is
+One phase covers all five long operations — `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`'s
 `operationPhase = "homebrew.operation"`, opened in `beginBusy` and closed in
 `endBusy`, which is the one `begin` in the app with no `defer` on the next line,
-because an operation ends in a callback. The queries hold scoped phases of their
-own. Package names travel as array elements after `--`, so a name starting with a
+because an operation ends in a callback. Four of the queries hold scoped phases
+of their own — `listInstalled`, `outdated`, `search` and `descriptions`, each of
+which sweeps the whole Cellar or the whole catalogue. `dependents` holds none,
+deliberately: it is one `brew uses` over one name, well under a second, and the
+registry is phase-level and must not be told that a single sub-second tool run is
+bulk work. Package names travel as array elements after `--`, so a name starting with a
 dash is a package rather than a flag, and they reach the log through `Redact.pkg`
 (`Sources/HelmRuntime/Redact.swift:143`). The engine executes a package reference
 straight off the wire with no gate of its own, which is sound only while the
 transport is in-process with one sender.
 
-The in-app installer (`installBrew`, `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:461`)
-runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL` (`:46`),
+The in-app installer (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`)
+runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL`,
 which names `HEAD` rather than a pinned revision or checksum — whatever the branch
 holds the day the button is pressed. Before the download, one administrator dialog
 authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
-/opt/homebrew` (`:481`), which is the only privileged step; the installer itself then
+/opt/homebrew`, which is the only privileged step; the installer itself then
 runs as the now-owning user. See «Giving everything back» for why that ownership
 change is the one reach this document does not describe as reversible.
+
+The module reaches one other place on the network, and unprompted rather than on
+a press. `FilePopularityStore`
+(`Sources/Modules/Homebrew/Engine/SystemPorts.swift`) fetches Homebrew's two
+published analytics documents from `formulae.brew.sh` — the thirty-day
+install-on-request counts for formulae and the install counts for casks — at
+most once a day. The fetch is started by the engine's `activate`, so a module
+the person has switched off never makes it, and a bare `Task` around it hops its
+blocking halves through `offTheCooperativePool` the way every `brew` call in
+this module already does; under a test runner the transfer refuses instead, so a
+suite run asks the endpoint nothing. Nothing the request puts on the wire names
+this Mac, this person, or what was searched: no query, no package name, nothing
+about what is installed here, and what it asks for is a catalogue-wide public
+figure rather than an answer about anybody. `User-Agent`, `Accept` and
+`Accept-Language` are pinned to fixed values on the session and cookies are off,
+because an unpinned session sends CFNetwork's own defaults — measured on
+2026-09-14 against a local listener, those included this Mac's configured
+language. Two files land in Helm's own Application Support folder —
+`homebrew-installs-formulae.json` and `homebrew-installs-casks.json`, about
+850 KB together (453,903 and 399,502 bytes on 2026-09-13), each with a tag file
+beside it — written 0600 through `PrivateFile`, and the cached file's own
+modification date is the daily clock, so the gate survives a quit.
+`PopularityRefresh` is where everything that can come back is judged: a refusal,
+a shape this build cannot read and anything over `PopularityRefresh.sizeCeiling`
+all leave the last reading standing and leave the clock alone, only a 304 spends
+the day without writing, and a document with nothing in it is an answer rather
+than a refusal. The reading itself is 2.84 MiB of dictionary (measured
+2026-09-14) and is read off the disk on the first ask rather than at
+construction, so a Mac whose owner never searches never parses it on a launch
+with nothing due — a day a fetch succeeds parses the half not just fetched, off
+the cooperative pool the way the fetch itself is, inside the activity phase
+`FilePopularityStore.phaseLabel` names. All it ever does is reorder search results
+(`SearchRanking`); a Mac that fetches nothing searches exactly as it did
+before any of this existed.
 
 ### Hosts
 
@@ -1262,8 +1299,8 @@ folders, each only if the person switches it on, and three of them are given bac
   (`Sources/HelmApp/LoginItem.swift:64`) — unregistered as a step of the plan,
   because the application registered it and no module owns it;
 - ownership of `/opt/homebrew`, changed by the in-app Homebrew installer
-  (`Sources/Modules/Homebrew/Engine/HomebrewEngine.swift:481`). **This one is not
-  given back.** Helm does not record who owned the tree before, and handing it
+  (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`). **This one is
+  not given back.** Helm does not record who owned the tree before, and handing it
   back to root would leave a `brew` that cannot install anything without `sudo`
   — the ownership is what Homebrew needs, and it is what Homebrew's own
   installer does on any Mac.
@@ -1908,7 +1945,7 @@ fixed `.system(size:)` gives a Mac whose owner raised the interface text size a 
 that did not follow. `.headline` is not the heading — on macOS it is bold rather than
 semibold, so mapping `sectionHeading` onto it would weight every heading a step heavier
 with the size unchanged, which no layout test can see. `HelmText.rowDetailNSFont`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:476`) is the same style as AppKit sees it,
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:505`) is the same style as AppKit sees it,
 for the two places that measure text rather than draw it. `HelmText.figureFont` is the one
 face for a figure — a byte size, a count, a version — because a monospaced face and a
 tabular proportional one at nominally similar sizes render the same number at visibly

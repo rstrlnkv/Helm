@@ -53,3 +53,66 @@ final class SearchRankingTests: XCTestCase {
         XCTAssertEqual(SearchRanking.rank(hits, query: "  ").map(\.name), ["b", "a"])
     }
 }
+
+extension SearchRankingTests {
+
+    private func hits(_ names: [String]) -> [SearchHit] {
+        names.map { SearchHit(name: $0, isCask: false) }
+    }
+
+    /// The groups are not negotiable: an exact name beats a popular prefix — and
+    /// inside the prefix group the popular one still comes first. Two claims,
+    /// one fixture, because with a single hit per group the sort is never asked
+    /// anything and the case passes with it deleted.
+    func testAnExactNameStillWinsOverAPopularPrefix() {
+        let ranked = SearchRanking.rank(hits(["node-build", "nodebrew", "node"]), query: "node",
+                                        formulae: InstallCounts(counts: ["node": 1,
+                                                                         "node-build": 5,
+                                                                         "nodebrew": 99_999]),
+                                        casks: .none)
+        XCTAssertEqual(ranked.map(\.name), ["node", "nodebrew", "node-build"])
+    }
+
+    func testInsideAGroupTheMoreInstalledComesFirst() {
+        let ranked = SearchRanking.rank(hits(["aws-shell", "hello-world", "helm"]),
+                                        query: "hel",
+                                        formulae: InstallCounts(counts: ["helm": 5_000,
+                                                                         "hello-world": 12]),
+                                        casks: .none)
+        XCTAssertEqual(Array(ranked.map(\.name).prefix(2)), ["helm", "hello-world"])
+    }
+
+    /// A package nobody has installed is not the same as a package installed
+    /// zero times by accident of a missing reading — either way it keeps brew's
+    /// order and goes after the ones with a number.
+    func testPackagesWithNoCountKeepTheirOrderAndComeLast() {
+        let ranked = SearchRanking.rank(hits(["alpha", "beta", "gamma"]), query: "z",
+                                        formulae: InstallCounts(counts: ["gamma": 3]),
+                                        casks: .none)
+        XCTAssertEqual(ranked.map(\.name), ["gamma", "alpha", "beta"])
+    }
+
+    /// A formula and a cask can share a name, and the two documents are
+    /// separate. Both hits here are prefix matches, so the sort really does
+    /// compare them — and the counts are planted so that reading a cask's rank
+    /// out of the *formula* map would reverse the answer.
+    func testACaskIsRankedByTheCaskDocument() {
+        let mixed = [SearchHit(name: "docker-compose", isCask: false),
+                     SearchHit(name: "docker-desktop", isCask: true)]
+        let ranked = SearchRanking.rank(mixed, query: "docker",
+                                        formulae: InstallCounts(counts: ["docker-compose": 50,
+                                                                         "docker-desktop": 9_999]),
+                                        casks: InstallCounts(counts: ["docker-desktop": 1]))
+        XCTAssertEqual(ranked.map(\.name), ["docker-compose", "docker-desktop"],
+                       "the cask was ranked by the formula document")
+    }
+
+    /// Guards that the default is `.none` and not something else: the
+    /// two-argument call must agree with an explicit `.none, .none` call.
+    func testWithNoReadingsNothingMoves() {
+        let names = ["aws-shell", "cmdshelf", "hello", "helix-db"]
+        XCTAssertEqual(SearchRanking.rank(hits(names), query: "hello").map(\.name),
+                       SearchRanking.rank(hits(names), query: "hello",
+                                          formulae: .none, casks: .none).map(\.name))
+    }
+}

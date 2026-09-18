@@ -81,6 +81,56 @@ public struct BrewStatus: Codable, Equatable, Sendable {
     }
 }
 
+/// What `brew info --json=v2` knows about one package.
+///
+/// A formula and a cask disagree about shape in three places — the install
+/// facts, the name, the licence — which is why `BrewInfoParser` reads the
+/// document by hand rather than through a synthesized decode: see that file's
+/// doc comment for why a struct here does not save the work it looks like it
+/// would.
+public struct PackageInfo: Codable, Equatable, Sendable {
+    public let name: String
+    public let isCask: Bool
+    public let desc: String?
+    public let homepage: String?
+    /// nil for every cask — the field does not exist in that document at all.
+    public let license: String?
+    public let tap: String?
+    /// What Homebrew would install right now — a formula's `versions.stable`,
+    /// a cask's `version`. nil when the document names neither.
+    ///
+    /// The only version a package that is **not** installed has: the lists the
+    /// page draws its first tier from carry a version for an installed package
+    /// and an outdated one, and `brew search` answers with names alone, so a
+    /// search hit has no version anywhere else in this module.
+    public let latestVersion: String?
+    public let installedVersion: String?
+    public let installedAt: Date?
+    /// nil when not installed, and also nil for a cask, which never records
+    /// who asked for it.
+    public let installedOnRequest: Bool?
+    /// nil unless the package is actually deprecated.
+    public let deprecationReason: String?
+    /// What to use instead, when Homebrew names one.
+    public let replacement: String?
+    public let siblings: [String]
+    public let dependencies: [String]
+    public let caveats: String?
+
+    public init(name: String, isCask: Bool, desc: String?, homepage: String?, license: String?,
+                tap: String?, latestVersion: String?, installedVersion: String?,
+                installedAt: Date?, installedOnRequest: Bool?, deprecationReason: String?,
+                replacement: String?, siblings: [String], dependencies: [String],
+                caveats: String?) {
+        self.name = name; self.isCask = isCask; self.desc = desc; self.homepage = homepage
+        self.license = license; self.tap = tap; self.latestVersion = latestVersion
+        self.installedVersion = installedVersion
+        self.installedAt = installedAt; self.installedOnRequest = installedOnRequest
+        self.deprecationReason = deprecationReason; self.replacement = replacement
+        self.siblings = siblings; self.dependencies = dependencies; self.caveats = caveats
+    }
+}
+
 public enum OpPhase: String, Codable, Sendable { case idle, running, done, failed }
 
 /// Why a failed operation failed, when the engine knows more than an exit code.
@@ -89,7 +139,7 @@ public enum OpPhase: String, Codable, Sendable { case idle, running, done, faile
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
 /// the eight languages live where `L()` can reach them.
-public enum OpFailureReason: String, Codable, Sendable {
+public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
@@ -98,6 +148,16 @@ public enum OpFailureReason: String, Codable, Sendable {
     /// the log names the outcome — an operation state about no operation
     /// would loop the view model's refresh-on-failure.)
     case stopped
+    /// A `brew doctor` fix the engine re-judged and would not run.
+    ///
+    /// The ordinary cause is the race this design exists for: the page drew a
+    /// button for `uninstall <name>` and the name left the Cellar before the
+    /// press — a terminal, or Helm's own uninstall of it. It also covers an
+    /// argv no entry on `DoctorFix.Allowed` admits, and a Cellar the engine
+    /// could not read at all, which is not a Cellar the name is in. A refusal
+    /// is an outcome and it is named: a press that answered nothing at all is
+    /// the defect `AVanishedBrewIsNotASilentPressTests` was written against.
+    case fixRefused
 }
 
 public struct OpState: Codable, Equatable, Sendable {
@@ -112,4 +172,112 @@ public struct OpState: Codable, Equatable, Sendable {
         self.reason = reason
     }
     public static let idle = OpState(phase: .idle, label: "")
+}
+
+/// How bad `brew doctor` thinks a finding is — the two prefixes it prints,
+/// `Warning:` and `Error:`, named rather than reused as raw strings past
+/// `DoctorParser`.
+public enum DoctorSeverity: String, Codable, Sendable {
+    case caution
+    case danger
+}
+
+/// One block from `brew doctor`'s answer, produced by `DoctorParser.parse`.
+///
+/// `fix` is left nil by the parser — a command parsed out of a tool's output
+/// is data, not an instruction, and judging one runnable is `DoctorFix.judge`'s
+/// job alone (the module's security surface for this feature), not something
+/// this struct or its parser may decide on construction.
+public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
+    public let severity: DoctorSeverity
+    public let title: String
+    public let body: String
+    public let fix: DoctorFix?
+    /// Built from content rather than position: two blocks with the same text
+    /// are the same issue, which is exactly the case `DoctorParser` collapses
+    /// before this is ever read.
+    public var id: String { severity.rawValue + "\u{0}" + title + "\u{0}" + body }
+    public init(severity: DoctorSeverity, title: String, body: String, fix: DoctorFix? = nil) {
+        self.severity = severity; self.title = title; self.body = body; self.fix = fix
+    }
+}
+
+/// Which heading one `brew config` line is drawn under.
+///
+/// **Ours, not Homebrew's.** `brew config` prints one flat list of eighteen
+/// `key: value` lines with no headings anywhere in it; the three groups are
+/// Helm's reading of that list, which is why their names are translated where
+/// the keys beside them never are. The mapping from key to group is
+/// `BrewConfigParser.sections` — hand-written, beside the parser, with a test
+/// naming every key this Mac produced.
+public enum ConfigSection: String, Codable, Sendable, CaseIterable {
+    /// Homebrew's own installation: its version, its prefix, its checkout, the
+    /// Ruby it vendors.
+    case brew
+    /// The Mac underneath it: macOS, the processor, Rosetta.
+    case machine
+    /// The other programs Homebrew builds and downloads with — the compiler,
+    /// git, curl, the Command Line Tools.
+    case tools
+}
+
+/// One `key: value` line of `brew config`, and the heading it belongs under.
+///
+/// The key keeps Homebrew's own spelling and is never translated: `CLT`,
+/// `HOMEBREW_PREFIX` and `Rosetta 2` are Homebrew's words for these things, and
+/// a translated key would name something a person could not then look up.
+public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
+    public let key: String
+    /// Everything after the **first** `: ` — values carry colons of their own
+    /// (`https://github.com/Homebrew/brew`, `4.0.6 => /opt/homebrew/…/ruby`),
+    /// so a split on every separator loses the end of five of the eighteen.
+    public let value: String
+    public let section: ConfigSection
+    /// The key, because `brew config` prints each key once. Nothing selects a
+    /// line — the *group* is what the health list holds a row for — but the
+    /// conformance is what lets a `ForEach` draw them without an index.
+    public var id: String { key }
+    public init(key: String, value: String, section: ConfigSection) {
+        self.key = key; self.value = value; self.section = section
+    }
+}
+
+/// What `brew config` answered: the reading, **and the document it was read
+/// from**.
+///
+/// Both, because two different things ask for them. The lines are a reading —
+/// regrouped under headings this app invented, and short of whatever the parser
+/// could not make a `key: value` of. `text` is the document, byte for byte as
+/// brew printed it, and it is what «Copy for a bug report» puts on the
+/// pasteboard: a bug report asks for what the tool said, not for Helm's reading
+/// of it. The same rule `HostsFile` carries — a parse is a reading and never
+/// the document.
+public struct BrewConfig: Codable, Equatable, Sendable {
+    public let lines: [ConfigLine]
+    public let text: String
+    public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
+}
+
+/// What the UI sends to ask how much disk one package occupies.
+///
+/// `PackageRef` and a version, rather than `PackageRef` alone, because **the
+/// answer is remembered against the version it was measured for**. The engine
+/// keeps one figure per `name@version` for its own life; the version is the
+/// half that makes a kept figure honest, since an upgrade replaces the keg the
+/// walk measured. The page already holds it — it is `PackageInfo`'s
+/// `installedVersion`, the very tile this figure is drawn beside — so nothing
+/// has to be read twice to name it.
+///
+/// Declared here for the reason `PackageRef`'s own comment gives: a payload
+/// declared once in the engine and read from the UI is a wire contract with a
+/// compiler between its halves.
+public struct PackageSizeRequest: Codable, Sendable {
+    public let name: String
+    public let isCask: Bool
+    /// The version the figure will be remembered against. Never empty: a
+    /// package with no installed version has no keg to walk.
+    public let version: String
+    public init(name: String, isCask: Bool, version: String) {
+        self.name = name; self.isCask = isCask; self.version = version
+    }
 }

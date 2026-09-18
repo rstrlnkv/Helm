@@ -77,6 +77,11 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
             return (0, names.map { "\($0): description of \($0)" }.joined(separator: "\n") + "\n")
         }
 
+        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
+        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
+            (0, "")
+        }
+
         func stream(_ launchPath: String, _ args: [String], env: [String: String],
                     onLine: @escaping @Sendable (String) -> Void,
                     onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {

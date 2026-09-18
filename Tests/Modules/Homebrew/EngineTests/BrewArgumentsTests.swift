@@ -15,7 +15,26 @@ import XCTest
 ///     aarch64-elf-binutils …                                  ← searched for "-n"
 ///
 /// `--` is accepted by every subcommand this module runs (`desc`, `search`,
-/// `install`, `uninstall`, `upgrade`, with and without `--cask`).
+/// `install`, `uninstall`, `upgrade`, `uses`, `info`, with and without
+/// `--cask`). `uses` was verified on 2026-09-13 against Homebrew 6.x:
+///
+///     $ brew uses --installed -- openssl@3
+///     aria2 libngtcp2 libssh2 llama.cpp nmap node python@3.14 yt-dlp
+///
+/// — exit 0 and eight dependents, so the terminator is read as a terminator
+/// there too and is not mistaken for the name of a formula.
+///
+/// `info` was verified on 2026-09-15 against Homebrew 7.0.1:
+///
+///     $ brew info --json=v2 --formula -n
+///     Usage: brew info, abv [options] [formula|cask ...]  ← the lookup never ran
+///     Error: invalid option: -n
+///     $ brew info --json=v2 --formula -- -n
+///     Error: No available formula with the name "-n".     ← looked up as a name
+///
+/// — both exit 1, but only the second reads `-n` as the name of a (missing)
+/// formula rather than an option `info` does not recognise; the terminator is
+/// doing its job even though neither call finds a package.
 private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []
@@ -25,6 +44,11 @@ private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
              env: [String: String]) -> (status: Int32, stdout: String) {
         lock.lock(); _calls.append(args); lock.unlock()
         return (0, "")
+    }
+
+    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
+    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
+        (0, "")
     }
 
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
@@ -94,6 +118,27 @@ final class BrewArgumentsTests: XCTestCase {
         for isCask in [false, true] {
             let runner = RecordingRunner()
             engine(runner).uninstall(name: "-n", isCask: isCask)
+            XCTAssertEqual(runner.calls.count, 1)
+            assertBehindTerminator(runner.calls[0], value: "-n")
+        }
+    }
+
+    /// A cask is answered without a tool run, so there is nothing to assert
+    /// about its arguments — `ACaskIsNeverAskedWhatUsesItTests` owns that half.
+    func testDependentsPutTheNameBehindATerminator() {
+        let runner = RecordingRunner()
+        _ = engine(runner).dependents(name: "-n", isCask: false)
+        XCTAssertEqual(runner.calls.count, 1)
+        assertBehindTerminator(runner.calls[0], value: "-n")
+    }
+
+    /// `info` runs through `runData`, not `run` — `AnInfoQueryIsAboutOnePackageTests`
+    /// owns that query's own behaviour; this asserts only the hazard this file
+    /// exists for.
+    func testInfoPutsTheNameBehindATerminator() {
+        for isCask in [false, true] {
+            let runner = RecordingRunner()
+            _ = engine(runner).info(name: "-n", isCask: isCask)
             XCTAssertEqual(runner.calls.count, 1)
             assertBehindTerminator(runner.calls[0], value: "-n")
         }

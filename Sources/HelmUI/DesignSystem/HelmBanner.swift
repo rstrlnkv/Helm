@@ -100,7 +100,14 @@ public struct HelmBanner<Action: View>: View {
             // far edge; hugging, there is nothing to push against and the two
             // would sit 8 pt apart, which reads as one run-on control.
             if fillsWidth { Spacer(minLength: 8) } else { Spacer().frame(width: 6) }
+            // **The verb keeps its words; the sentence is what wraps.** The
+            // priority above made the words win against the spacer, and nothing
+            // said the action must not lose to the words — so a sentence long
+            // enough to need two lines took its width out of the button, and
+            // Leftovers' note drew «Выдать…» 10 pt wide against the 69 it needs.
+            // `TheGrantButtonKeepsItsWordsTests` holds it in all eight languages.
             action
+                .fixedSize()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, compact ? HelmSpace.s3 : 8)
