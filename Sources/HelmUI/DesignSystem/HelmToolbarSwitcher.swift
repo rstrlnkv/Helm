@@ -44,11 +44,30 @@ public extension Notification.Name {
     static let helmToolbarSwitcherStyleChanged = Notification.Name("helmToolbarSwitcherStyleChanged")
 }
 
+/// Where a right-click on a switcher writes the choice.
+///
+/// A named type rather than a closure because the `@Entry` macro warns on a
+/// closure-typed entry — "Storing a closure in `@Entry var
+/// helmSetSwitcherStyle` may invalidate dependents on every update because
+/// closures may not be comparable" — and a nominal type silences it. That is
+/// the whole of what is measured here: the warning is gone from
+/// `swift build` after this change and was present before it.
+///
+/// It does **not** buy the comparison the warning is about. An existential of
+/// this protocol is not `Equatable` either, so whether a switcher below is
+/// invalidated any less often is unmeasured, and nothing here should be read
+/// as saying it is. The one conforming type lives beside `AppSettings`, which
+/// is what actually stores the choice.
+@MainActor
+public protocol SwitcherStyleSetter: Sendable {
+    func callAsFunction(_ style: ToolbarSwitcherStyle)
+}
+
 public extension EnvironmentValues {
     @Entry var helmSwitcherStyle: ToolbarSwitcherStyle = .text
-    /// Where a right-click on a switcher writes the choice. Nil where nothing
-    /// stores it — a page mounted on its own — and the menu is then not raised.
-    @Entry var helmSetSwitcherStyle: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)? = nil
+    /// Nil where nothing stores it — a page mounted on its own — and the menu
+    /// is then not raised.
+    @Entry var helmSetSwitcherStyle: SwitcherStyleSetter?
 }
 
 public extension View {
@@ -56,15 +75,14 @@ public extension View {
     /// below the way to change it — a right-click on the switcher, which is the
     /// gesture Finder's own display-mode menu teaches.
     func helmTracksSwitcherStyle(_ current: @escaping () -> ToolbarSwitcherStyle,
-                                 set: @escaping @MainActor @Sendable (ToolbarSwitcherStyle) -> Void)
-        -> some View {
+                                 set: SwitcherStyleSetter) -> some View {
         modifier(SwitcherStyleTracker(current: current, set: set))
     }
 }
 
 private struct SwitcherStyleTracker: ViewModifier {
     let current: () -> ToolbarSwitcherStyle
-    let set: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void
+    let set: SwitcherStyleSetter
     @State private var style: ToolbarSwitcherStyle?
 
     func body(content: Content) -> some View {
@@ -309,7 +327,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     @MainActor public final class Coordinator: NSObject {
         var pick: (Int) -> Void = { _ in }
-        var choose: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)?
+        var choose: SwitcherStyleSetter?
         var styleMenu: NSMenu?
         /// Whether the segments have been filled once already. `false` is
         /// this property's own default, not something `makeCoordinator()`

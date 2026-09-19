@@ -59,6 +59,14 @@ extension Notification.Name {
         }
     }
 
+    /// `helmTracksSwitcherStyle`'s `set:` argument. A type rather than a
+    /// closure, for the reason `SwitcherStyleSetter` gives.
+    struct ToolbarSwitcherStyleSetter: SwitcherStyleSetter {
+        func callAsFunction(_ style: ToolbarSwitcherStyle) {
+            AppSettings.toolbarSwitcherStyle = style
+        }
+    }
+
     static var pageBarStyle: PageBarStyle {
         get { PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: "")) }
         set {
@@ -157,7 +165,7 @@ extension Notification.Name {
             case .adopt:
                 // This installation has never sealed anything: the value predates
                 // sealing, so it is accepted once and sealed on the way out.
-                disabledScans = Set(stored)
+                Self.setDisabledScans(Set(stored))
                 return Set(stored)
             case .broken:
                 HelmLog.shared.warn("scan", "the list of disabled scans is not Helm's own; "
@@ -165,12 +173,14 @@ extension Notification.Name {
                 return Set(ScanRunner.scannableModules)
             }
         }
-        set {
-            let sorted = Array(newValue).sorted()
-            store.set(sorted, for: "disabledScans")
-            store.set(scanGuard.seal(Self.payload(of: sorted)) ?? "",
-                      for: SettingGuard.macKey(for: "disabledScans"))
-        }
+        set { Self.setDisabledScans(newValue) }
+    }
+
+    private static func setDisabledScans(_ newValue: Set<String>) {
+        let sorted = Array(newValue).sorted()
+        store.set(sorted, for: "disabledScans")
+        store.set(scanGuard.seal(Self.payload(of: sorted)) ?? "",
+                  for: SettingGuard.macKey(for: "disabledScans"))
     }
 
     /// The same off-list, but only if answering it is free.

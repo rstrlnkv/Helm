@@ -101,9 +101,12 @@ import Module_Uninstaller_UI
         watchTrashArrivals()
         // Switching the Uninstaller on is the other moment worth sweeping: the
         // module that answers this question did not exist a second ago.
+        // Read once here on the main actor: the observer closures are Sendable
+        // and may not touch the isolated descriptor themselves.
+        let uninstallerId = UninstallerDescriptor.id.rawValue
         moduleEnabledObserver = NotificationCenter.default.addObserver(
             forName: .helmModuleEnabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == UninstallerDescriptor.id.rawValue else { return }
+                guard note.object as? String == uninstallerId else { return }
                 MainActor.assumeIsolated {
                     self?.offerTrashLeftovers()
                     // A new engine means a new transport: the old subscription
@@ -113,7 +116,7 @@ import Module_Uninstaller_UI
             }
         moduleDisabledObserver = NotificationCenter.default.addObserver(
             forName: .helmModuleDisabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == UninstallerDescriptor.id.rawValue else { return }
+                guard note.object as? String == uninstallerId else { return }
                 MainActor.assumeIsolated {
                     self?.trashEventsTask?.cancel()
                     self?.trashEventsTask = nil

@@ -64,6 +64,7 @@ public struct HelmSearchField: NSViewRepresentable {
 
     public func makeCoordinator() -> Coordinator { Coordinator(text: $text, onSubmit: onSubmit) }
 
+    @MainActor
     public final class Coordinator: NSObject, NSSearchFieldDelegate {
         private let text: Binding<String>
         private let onSubmit: (() -> Void)?
