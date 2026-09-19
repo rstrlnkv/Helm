@@ -80,8 +80,13 @@ import XCTest
 ///
 /// 1. the decision, `fillDuration(firstFill:reduceMotion:)`, over all four
 ///    arguments;
-/// 2. that production really reaches the unanimated path on the first fill —
-///    read off a live control SwiftUI filled, not off the function;
+/// 2. that SwiftUI really drives `updateNSView` over a live control, and that
+///    the first update leaves the coordinator's flag set behind it — read off a
+///    mounted control rather than off the function. **Which of the two branches
+///    that first fill took is not visible from here**: the `Witness` comparison
+///    production makes with `segments.firstIndex` sits above both of them, so
+///    the context it reads is the ambient one whichever side ran. Only the
+///    source reading below pins where each `Self.fill` sits;
 /// 3. that a later fill still opens the animation context, so a repair that
 ///    deleted the animation outright is caught. This one is read off the source,
 ///    because the animation it asks for is not observable without a window; the

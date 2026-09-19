@@ -190,8 +190,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // whether `layoutSubtreeIfNeeded` inside a group still leaves a Core
         // Animation animation behind at zero duration is untested here, since
         // an `NSSegmentedControl` mounted in an `NSHostingView` reads
-        // `layer == nil`
-        // (`Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift:28`).
+        // `layer == nil` — the offscreen reading is written up under "What can
+        // be measured here and what cannot" in
+        // `Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift`.
         if firstFill {
             Self.fill(control, segments: segments, style: style, selected: selected)
             control.layoutSubtreeIfNeeded()
