@@ -4,11 +4,13 @@ import HelmTestSupport
 /// **Every settings page scrolls under a strip that lights up the way the page
 /// header used to.**
 ///
-/// A page's scroll view runs under the window's toolbar, and the system's
-/// scroll edge effect drew nothing there for a SwiftUI `Form` in this pane:
-/// photographed 2026-09-17, Keep Awake's hero figure ran through the window
-/// title with nothing between them, and `scrollEdgeEffectStyle(.hard)` changed
-/// no pixel. The strip is `helmToolbarBackdrop`, drawn by `HeaderEdgeLight` —
+/// A page's scroll view runs under the window's toolbar, and the system's own
+/// scroll edge effect is held there at opacity 0 by the window's
+/// `titlebarAppearsTransparent` — it attaches, and the pane's content type has
+/// nothing to do with it; `TheSystemsScrollEdgeEffectAttachesTests` is that
+/// measurement. Let through it would draw next to nothing anyway, because the
+/// pane keeps AppKit's safe area and a page's content never passes beneath the
+/// bar. The strip is `helmToolbarBackdrop`, drawn by `HeaderEdgeLight` —
 /// whose pixels `TheHeaderIsTheSystemsScrollEdgeTests` already reads — and lit
 /// by a preference each page's bar reports from its own scroll view.
 ///

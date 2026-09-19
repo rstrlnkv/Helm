@@ -85,13 +85,34 @@ public extension View {
     /// material always, and the fill and the rule under it once the page's
     /// content has gone beneath.
     ///
-    /// The system's own scroll edge effect drew nothing under this window's
-    /// toolbar for a SwiftUI `Form` — photographed 2026-09-17, Keep Awake's hero
-    /// figure ran through the window title with nothing between them, and
-    /// `scrollEdgeEffectStyle(.hard)` changed no pixel. So the strip is Helm's,
-    /// over exactly the height the toolbar takes from the pane: read from the
-    /// safe area, because that height is AppKit's to decide. Items and the
-    /// title live in the titlebar's own view, above this one.
+    /// **The system's own scroll edge effect attaches here; a window flag
+    /// withholds it.** `titlebarAppearsTransparent`, which `SettingsWindow`
+    /// sets, holds the detail pane's effect layer at opacity 0 — with the flag
+    /// off the same layer stands at opacity 1 over an 846 × 52 pocket, exactly
+    /// the pane's width, while the *same window's* sidebar pocket draws at 1
+    /// either way. The pane's content type has nothing to do with it: the
+    /// reading is a `Form` because the settings pages are, and a tester read a
+    /// `List` and a bare `ScrollView` the same way.
+    /// `TheSystemsScrollEdgeEffectAttachesTests` is that measurement, taken by
+    /// walking layers and not pixels — the effect *is* a layer and an offscreen
+    /// render never composites one, which is how the note that stood here came
+    /// to blame `Form`.
+    ///
+    /// **The strip exists because the effect has nothing to act on, not because
+    /// the platform gives us nothing.** This pane keeps AppKit's safe area, so a
+    /// page's content never passes beneath the bar; with the flag off the live
+    /// effect contributed +7.7/255 in Dark and 0/255 in Light (a reading from
+    /// that investigation, which no check in the tree re-takes).
+    /// `scrollEdgeEffectStyle(.hard)` is no way round it either, and it is not
+    /// ignored: the pocket takes `HardPocketContentBlur`,
+    /// `HardPocketBackgroundReplay` and `Separator`, and the transparent title
+    /// bar holds that same layer at opacity 0 — which is why it «changed no
+    /// pixel».
+    ///
+    /// So the strip is Helm's, over exactly the height the toolbar takes from
+    /// the pane: read from the safe area, because that height is AppKit's to
+    /// decide. Items and the title live in the titlebar's own view, above this
+    /// one.
     func helmToolbarBackdrop() -> some View {
         modifier(ToolbarBackdrop())
     }
