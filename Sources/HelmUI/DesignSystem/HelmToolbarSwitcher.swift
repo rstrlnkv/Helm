@@ -53,11 +53,12 @@ public extension Notification.Name {
 /// the whole of what is measured here: the warning is gone from
 /// `swift build` after this change and was present before it.
 ///
-/// It does **not** buy the comparison the warning is about. An existential of
-/// this protocol is not `Equatable` either, so whether a switcher below is
-/// invalidated any less often is unmeasured, and nothing here should be read
-/// as saying it is. The one conforming type lives beside `AppSettings`, which
-/// is what actually stores the choice.
+/// `AppSettings.ToolbarSwitcherStyleSetter`, the one conforming type and the
+/// place the choice is actually stored from, has no stored properties, so it
+/// is the same value on every evaluation, where a closure literal carries a
+/// fresh context each time. Whether a switcher below is invalidated any less
+/// often is unmeasured — nobody has counted, in either direction — and
+/// nothing here should be read as saying that it is or that it is not.
 @MainActor
 public protocol SwitcherStyleSetter: Sendable {
     func callAsFunction(_ style: ToolbarSwitcherStyle)
