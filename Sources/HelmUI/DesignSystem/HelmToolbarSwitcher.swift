@@ -163,22 +163,45 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
     }
 
+    /// How long filling the segments should take. `0` on the first fill, or
+    /// under Reduce Motion, and `0.22` otherwise — a decision from arguments,
+    /// assertable, rather than one that reads `NSWorkspace` the way
+    /// `HelmMotion.reduceMotion` itself does.
+    static func fillDuration(firstFill: Bool, reduceMotion: Bool) -> TimeInterval {
+        firstFill || reduceMotion ? 0 : 0.22
+    }
+
     public func updateNSView(_ control: NSSegmentedControl, context: Context) {
         context.coordinator.pick = { index in
             guard segments.indices.contains(index) else { return }
             selection = segments[index].value
         }
         context.coordinator.choose = setStyle
-        // **The segments are rewritten inside an animation context.** AppKit
-        // animates a layer-backed control's own contents implicitly while one is
-        // open, so the word arriving on the selected segment comes in with the
-        // width rather than at full strength over a control still growing.
-        NSAnimationContext.runAnimationGroup { animation in
-            animation.duration = HelmMotion.reduceMotion ? 0 : 0.22
-            animation.allowsImplicitAnimation = true
-            Self.fill(control, segments: segments, style: style,
-                      selected: segments.firstIndex { $0.value == selection })
+        let firstFill = !context.coordinator.hasFilled
+        context.coordinator.hasFilled = true
+        let selected = segments.firstIndex { $0.value == selection }
+        // The first fill is not a change: the control is still empty, and
+        // animating it means animating the first measurement — the jump the
+        // owner saw on a first open, where an implicit animation started from
+        // whatever the unmeasured layout happened to be. No animation context
+        // at all, rather than one with a duration of zero: inside a group,
+        // `layoutSubtreeIfNeeded` leaves a Core Animation animation behind
+        // even at zero duration.
+        if firstFill {
+            Self.fill(control, segments: segments, style: style, selected: selected)
             control.layoutSubtreeIfNeeded()
+        } else {
+            // **The segments are rewritten inside an animation context.** AppKit
+            // animates a layer-backed control's own contents implicitly while one is
+            // open, so the word arriving on the selected segment comes in with the
+            // width rather than at full strength over a control still growing.
+            NSAnimationContext.runAnimationGroup { animation in
+                animation.duration = Self.fillDuration(firstFill: false,
+                                                        reduceMotion: HelmMotion.reduceMotion)
+                animation.allowsImplicitAnimation = true
+                Self.fill(control, segments: segments, style: style, selected: selected)
+                control.layoutSubtreeIfNeeded()
+            }
         }
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
@@ -259,6 +282,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var pick: (Int) -> Void = { _ in }
         var choose: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)?
         var styleMenu: NSMenu?
+        /// Whether the segments have been filled once already. Starts `false`
+        /// for every mounted control — set in `makeCoordinator()`, paired with
+        /// `makeNSView`, and gone with the view on `dismantleNSView` — so a
+        /// rebuilt switcher (crossing `switcherFits`, a right-click style
+        /// change that replaces the view) fills unanimated exactly once more.
+        var hasFilled = false
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
 

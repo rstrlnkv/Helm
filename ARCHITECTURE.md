@@ -1660,8 +1660,15 @@ makes the guard a count that stays put rather than a memory figure:
 A mounted SwiftUI tree is billed whether or not anybody can see it.
 `Sources/HelmUI/DesignSystem/OffScreenIdle.swift` unmounts a subtree while its window is
 out of sight and rebuilds it from the view model's current state; the model keeps its
-subscription throughout, so nothing is missed. It rides `helmSettingsColumn()`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:259`), so every module page carries it.
+subscription throughout, so nothing is missed. It reaches a module page from the window
+and not from the page: both hosting controllers of the settings window end on
+`helmIdlesOffScreen()` — the sidebar at `Sources/HelmApp/SettingsWindow.swift:207`, and at
+`:288` the pane that holds whichever module page is open, so a page inherits the idling
+without asking for it. `helmSettingsColumn()`
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:263`) ends on the same modifier (`:266`),
+so a block that takes the column takes the idling with it; a page whose root is a `Form`
+takes no column and calls `helmIdlesOffScreen()` on its own
+(`Sources/HelmApp/GeneralSettingsPage.swift:469`).
 A harness that leaves its window unordered declares itself with `helmMeasuringBench()`
 (`Sources/HelmUI/DesignSystem/OffScreenIdle.swift:86`), setting `helmTreatsWindowAsSeen`
 (`:76`) — a declaration the app itself does not make. The panel window is deliberately
