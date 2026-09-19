@@ -194,6 +194,23 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // be measured here and what cannot" in
         // `Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift`.
         if firstFill {
+            // **The metric the bar will promote it to, before the first
+            // measurement is taken in the old one.** Probed on this type
+            // 2026-09-19, three runs singly: `makeNSView`, then this one
+            // update, and only then the first `sizeThatFits` — which reads
+            // `fittingSize` and, unpinned, reads it at `.regular` while every
+            // later call reads it at `.extraLarge`, because AppKit promotes
+            // the control as the toolbar inserts it and asks SwiftUI nothing.
+            // The frame was therefore set twice. Written here and not in
+            // `fill`, which `width(of:in:)` also calls against a detached
+            // control, and `HomebrewSettingsPage.switcherReserve` is
+            // calibrated photographically against that detached answer.
+            // Written in this branch and not on every pass: the bar decides
+            // its own metric, and a writer that ran every time would fight a
+            // promotion to any other size rather than anticipate this one
+            // (`Tests/HelmUITests/TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests.swift`
+            // holds the pin to whatever the bar does to a control of its own).
+            control.controlSize = .extraLarge
             Self.fill(control, segments: segments, style: style, selected: selected)
             control.layoutSubtreeIfNeeded()
         } else {
