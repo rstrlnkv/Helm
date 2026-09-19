@@ -17,8 +17,8 @@ import XCTest
 /// own words. Not asking for that any more is the whole of what this change
 /// does.
 ///
-/// **It is not the cause of the jump the owner reported, and that cause is not
-/// established.** Designer measured the built dev app before and after, at
+/// **It was not the cause of the jump the owner reported, and that cause has
+/// since been found.** Designer measured the built dev app before and after, at
 /// 60 fps, and the label band's displacement is unchanged either way. A first
 /// open in Dark, three fresh launches: displaced in 15/16/15 frames of 79/79/54
 /// for 242/267/258 ms after, against 15/16/16 of 67/67/65 for 242/250/250 ms
@@ -31,9 +31,19 @@ import XCTest
 /// "before" numbers, which this file used to quote, is withdrawn: the tool that
 /// produced them indexed its X axis wrongly.
 ///
-/// So no case here may be read as a guard on what the owner sees. What they
-/// guard is narrower and worth keeping on its own — the first fill asks AppKit
-/// for no animation, and every later fill still asks for one.
+/// What the jump was is the other half of the same question, found on
+/// 2026-09-19 by recording the layer's own animation keys: five `updateNSView`
+/// calls land within 52.2 ms of a module opening and the control has no layer
+/// in any of them, so `hasFilled` sent calls two to five into the animation
+/// group and the layer was born inside its 0.22 s transaction, carrying that
+/// duration on its first `bounds` animation from `{{0,0},{0,0}}`. The branch
+/// now asks `fillAnimates(firstFill:hasLayer:)` and not `hasFilled` alone.
+///
+/// So no case here may be read as a guard on what the owner saw — the numbers
+/// above were taken before the layer term existed, and none of them was taken
+/// again after it. What they guard is narrower and worth keeping on its own —
+/// the first fill asks AppKit for no animation, and every later fill of a
+/// control with a layer still asks for one.
 ///
 /// # What can be measured here and what cannot
 ///
@@ -42,7 +52,12 @@ import XCTest
 /// with `wantsLayer` set on the host, the bridged
 /// `_NSCoreHostingView<AppKitSegmentedControl>` under it carries no animation on
 /// any layer or sublayer, and `allowsImplicitAnimation` needs a layer to do
-/// anything at all. So no offscreen check can watch the segments move. The
+/// anything at all. **That is a fact about an `NSHostingView` and not about the
+/// control**, and it was read as one for a while: in the window's own toolbar
+/// the same control reads `layer != nil` with one sublayer once the bar has
+/// inserted it, which is why a right-click style change animates on screen and
+/// nothing here can see it. So no offscreen check can watch the segments move —
+/// including the fill this file's own subject is about. The
 /// frames designer counted were taken on a window and are the only evidence
 /// there is about the band — and they show it moving with this change and
 /// without it alike.

@@ -26,10 +26,16 @@ import XCTest
 /// an `NSToolbar` by hand instead of letting the bridge make one changes
 /// nothing, `.fullSizeContentView` changes nothing, passing the controller to
 /// `NSWindow(contentViewController:)` rather than afterwards changes nothing.
-/// One call does: `setContentSize(_:)`. A window resized at all after the
-/// toolbar has published its items lays the toolbar out again, SwiftUI is asked
-/// for a size again — and this time the control is promoted, so it answers
-/// `370.5 × 36` and the frame follows. `SettingsWindow` calls `setContentSize`,
+/// One call moves it: `setContentSize(_:)` — though not by being made, which is
+/// what this file used to say. Measured again on 2026-09-19, at content widths
+/// of 400 to 600 pt: the call happens, and the frame strands anyway. Two things
+/// have to be true, and a resize carries only the first — that a layout
+/// followed the insertion, and that the bar had room for the size the promoted
+/// control then asks for. At the 1060 pt this file mounts, both hold: the
+/// toolbar is laid out again, SwiftUI is asked for a size again, the control
+/// answers `370.5 × 36` and the frame follows. The negative control below still
+/// goes red, so the difference the two cases rest on is real; it was the
+/// account of it that was wrong. `SettingsWindow` calls `setContentSize`,
 /// `contentMinSize` and `center()` before the window is ever shown, and the
 /// person then resizes it at will. So the stranded state does not occur in
 /// Helm: designer measured the capsule on the running app at 370.0 pt wide,
