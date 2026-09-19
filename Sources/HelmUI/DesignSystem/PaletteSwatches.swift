@@ -175,5 +175,11 @@ public struct HelmPaletteSwatches: View {
 final class ColorPanelBridge: NSObject {
     var onPick: (NSColor) -> Void = { _ in }
 
+    /// `@MainActor` on the method and not on the class: AppKit sends an action
+    /// on the main thread, which is what makes the annotation true, while the
+    /// class's `init` has to stay nonisolated for the `@State` default above to
+    /// build. Neither annotation moves ownership — the panel still holds this
+    /// weakly and the view still holds it for as long as the view is there.
+    @MainActor
     @objc func colourChanged(_ sender: NSColorPanel) { onPick(sender.color) }
 }

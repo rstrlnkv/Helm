@@ -135,7 +135,11 @@ struct WindowSeenReader: NSViewRepresentable {
                 observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeOcclusionStateNotification,
                     object: window, queue: .main
-                ) { [weak self] _ in self?.report() }
+                    // `queue: .main` is what makes the assumption true; it is
+                    // the same pair as every other observer in the tree. The
+                    // assumption is about *this* line only — `report()` still
+                    // hops before it reads anything, for its own reason below.
+                ) { [weak self] _ in MainActor.assumeIsolated { self?.report() } }
             }
             report()
         }

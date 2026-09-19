@@ -152,7 +152,14 @@ final class DuplicateScanner: @unchecked Sendable {
         // full-hash volume, which single-threaded is the difference between
         // "a moment" and "go make tea". One group per iteration; the buckets
         // keep results ordered without the workers sharing an array.
-        var buckets = [[DuplicateGroup]](repeating: [], count: candidates.count)
+        // `nonisolated(unsafe)`, not a rewrite: the compiler cannot see
+        // `bucketLock`, and the shape it objects to is the one that is wanted —
+        // one write per index under the lock, and the read below runs after
+        // `concurrentPerform` has joined. Silencing it any other way means
+        // changing how this loop accumulates, and the footprint case
+        // (`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`)
+        // sits downstream of exactly that.
+        nonisolated(unsafe) var buckets = [[DuplicateGroup]](repeating: [], count: candidates.count)
         let bucketLock = NSLock()
         HelmActivity.phase("duplicates.hash") {
             DispatchQueue.concurrentPerform(iterations: candidates.count) { index in

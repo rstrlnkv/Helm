@@ -49,9 +49,15 @@ struct VPNConnectionCard: View {
     let setTiming: (String, VPNAppRule.Timing) -> Void
     let move: (String, String) -> Void
     let remove: (String) -> Void
-    let setNotice: (VPNNotice) -> Void
-    let setDropNotice: (VPNNotice) -> Void
-    let setSpin: (Bool) -> Void
+    // `@MainActor @Sendable` on these three and not on their neighbours: they
+    // are the ones handed straight to `Binding(get:set:)`, whose `set` is
+    // `@isolated(any) @Sendable`, and an ordinary function value converted to
+    // it warns. Both call sites already write these as closure literals in a
+    // main-actor context, so the literals simply adopt the stricter type and
+    // nothing at either end changes.
+    let setNotice: @MainActor @Sendable (VPNNotice) -> Void
+    let setDropNotice: @MainActor @Sendable (VPNNotice) -> Void
+    let setSpin: @MainActor @Sendable (Bool) -> Void
     let setTint: (VPNAutomation.Kind, String) -> Void
 
     @State private var showingRules = false
@@ -413,7 +419,8 @@ struct VPNConnectionCard: View {
 
     /// One question: the picture of the mode it is set to, its label, its pop-up.
     private func noticeChoice(_ title: String, selection: VPNNotice,
-                              set: @escaping (VPNNotice) -> Void) -> some View {
+                              set: @escaping @MainActor @Sendable (VPNNotice) -> Void)
+    -> some View {
         HStack(alignment: .center, spacing: HelmSpace.s5) {
             NoticePreview.of(selection)
                 .frame(width: Self.noticeThumbnail.width, height: Self.noticeThumbnail.height)

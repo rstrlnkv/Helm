@@ -37,6 +37,11 @@ import Module_VPN_Engine
 /// The clock is a shape, not digits. The mockups carry Apple's "9:41", and at
 /// 104 pt real digits are three grey smudges — this stands for a clock the way
 /// the two lines in the banner stand for a sentence.
+/// `@MainActor` because every one of these builds a view: both call sites —
+/// `VPNConnectionCard`'s body and an already-`@MainActor` test class — are on
+/// the main actor already, so this states what was true rather than moving
+/// anything.
+@MainActor
 enum NoticePreview {
     /// The picture for a mode, **derived from the mode** rather than described
     /// beside it.
