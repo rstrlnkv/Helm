@@ -243,7 +243,13 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // leaves alone.
             control.setWidth(0, forSegment: index)
         }
-        if let selected, control.selectedSegment != selected {
+        // An index naming no segment — out of range on either side, which an
+        // empty `segments` makes true of every index including `0` — is simply
+        // not applied: AppKit's own `forSegment:` traps on it rather than
+        // refusing, so the bound has to sit here, where both callers' indices
+        // are checked against the count that was just written above, and not
+        // repeated at each call site.
+        if let selected, segments.indices.contains(selected), control.selectedSegment != selected {
             control.setSelected(true, forSegment: selected)
         }
     }
