@@ -419,8 +419,8 @@ struct HelmPanelContent: View {
             removal: .opacity))
     }
 
-    static let gridSpace = "panel.grid"
-    static let stripSpace = "panel.strip"
+    nonisolated static let gridSpace = "panel.grid"
+    nonisolated static let stripSpace = "panel.strip"
     /// What `EditChrome` pads a tile by while the mode is on — the frames are
     /// measured outside it, and the drag needs the content rectangle.
     static let chromeInset: CGFloat = 4

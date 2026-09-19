@@ -242,14 +242,14 @@ public final class HelmLog: @unchecked Sendable {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
-            for url in Self.allFileURLs { try? fm.removeItem(at: url) }
+            for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
             // Discarded: the `createFile` below is what this block is for and it
             // has its own answer; a folder that could not be made is a marker
             // that cannot land, and an unlanded marker retries at the next
             // launch — which is a repeated deletion of a log that is already
             // empty. See `append` for why nothing here can be logged.
             _ = PrivateFile.directory(at: Self.directory)
-            fm.createFile(atPath: marker.path, contents: Data())
+            FileManager.default.createFile(atPath: marker.path, contents: Data())
         }
     }
 

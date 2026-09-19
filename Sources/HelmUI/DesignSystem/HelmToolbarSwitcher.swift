@@ -44,11 +44,21 @@ public extension Notification.Name {
     static let helmToolbarSwitcherStyleChanged = Notification.Name("helmToolbarSwitcherStyleChanged")
 }
 
+/// Where a right-click on a switcher writes the choice. A protocol rather
+/// than a closure: SwiftUI's environment can never compare two closures, so
+/// a closure-typed entry invalidates every switcher below on every unrelated
+/// environment write. The one conforming type lives beside `AppSettings`,
+/// which is what actually stores the choice.
+@MainActor
+public protocol SwitcherStyleSetter: Sendable {
+    func callAsFunction(_ style: ToolbarSwitcherStyle)
+}
+
 public extension EnvironmentValues {
     @Entry var helmSwitcherStyle: ToolbarSwitcherStyle = .text
-    /// Where a right-click on a switcher writes the choice. Nil where nothing
-    /// stores it — a page mounted on its own — and the menu is then not raised.
-    @Entry var helmSetSwitcherStyle: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)? = nil
+    /// Nil where nothing stores it — a page mounted on its own — and the menu
+    /// is then not raised.
+    @Entry var helmSetSwitcherStyle: SwitcherStyleSetter?
 }
 
 public extension View {
@@ -56,15 +66,14 @@ public extension View {
     /// below the way to change it — a right-click on the switcher, which is the
     /// gesture Finder's own display-mode menu teaches.
     func helmTracksSwitcherStyle(_ current: @escaping () -> ToolbarSwitcherStyle,
-                                 set: @escaping @MainActor @Sendable (ToolbarSwitcherStyle) -> Void)
-        -> some View {
+                                 set: SwitcherStyleSetter) -> some View {
         modifier(SwitcherStyleTracker(current: current, set: set))
     }
 }
 
 private struct SwitcherStyleTracker: ViewModifier {
     let current: () -> ToolbarSwitcherStyle
-    let set: @MainActor @Sendable (ToolbarSwitcherStyle) -> Void
+    let set: SwitcherStyleSetter
     @State private var style: ToolbarSwitcherStyle?
 
     func body(content: Content) -> some View {
@@ -145,6 +154,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         control.target = context.coordinator
         control.action = #selector(Coordinator.picked(_:))
         context.coordinator.watch(control)
+        Self.fill(control, segments: segments, style: style,
+                  selected: segments.firstIndex { $0.value == selection })
+        context.coordinator.lastStyle = style
         return control
     }
 
@@ -169,17 +181,50 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             selection = segments[index].value
         }
         context.coordinator.choose = setStyle
-        // **The segments are rewritten inside an animation context.** AppKit
-        // animates a layer-backed control's own contents implicitly while one is
-        // open, so the word arriving on the selected segment comes in with the
-        // width rather than at full strength over a control still growing.
-        NSAnimationContext.runAnimationGroup { animation in
-            animation.duration = HelmMotion.reduceMotion ? 0 : 0.22
-            animation.allowsImplicitAnimation = true
-            Self.fill(control, segments: segments, style: style,
-                      selected: segments.firstIndex { $0.value == selection })
-            control.layoutSubtreeIfNeeded()
+
+        let selectedIndex = segments.firstIndex { $0.value == selection }
+        let isInitial = control.segmentCount == 0
+        let styleChanged = context.coordinator.lastStyle != style
+        let countChanged = control.segmentCount != segments.count
+
+        if isInitial || countChanged || styleChanged {
+            // Animate only when changing style on an existing populated control, never on initial population
+            let shouldAnimate = !isInitial && !countChanged && !HelmMotion.reduceMotion
+            if shouldAnimate {
+                NSAnimationContext.runAnimationGroup { animation in
+                    animation.duration = 0.22
+                    animation.allowsImplicitAnimation = true
+                    Self.fill(control, segments: segments, style: style, selected: selectedIndex)
+                    control.layoutSubtreeIfNeeded()
+                }
+            } else {
+                NSAnimationContext.beginGrouping()
+                NSAnimationContext.current.allowsImplicitAnimation = false
+                Self.fill(control, segments: segments, style: style, selected: selectedIndex)
+                control.layoutSubtreeIfNeeded()
+                NSAnimationContext.endGrouping()
+            }
+            context.coordinator.lastStyle = style
+        } else {
+            var labelsMatch = true
+            let showsWord = style == .text || style == .iconsAndText
+            for (idx, seg) in segments.enumerated() {
+                if control.label(forSegment: idx) != (showsWord ? seg.label : "") {
+                    labelsMatch = false
+                    break
+                }
+            }
+            if !labelsMatch {
+                NSAnimationContext.beginGrouping()
+                NSAnimationContext.current.allowsImplicitAnimation = false
+                Self.fill(control, segments: segments, style: style, selected: selectedIndex)
+                control.layoutSubtreeIfNeeded()
+                NSAnimationContext.endGrouping()
+            } else if let selectedIndex, control.selectedSegment != selectedIndex {
+                control.setSelected(true, forSegment: selectedIndex)
+            }
         }
+
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
         let styleMenu = setStyle == nil ? nil
@@ -257,8 +302,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     @MainActor public final class Coordinator: NSObject {
         var pick: (Int) -> Void = { _ in }
-        var choose: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)?
+        var choose: SwitcherStyleSetter?
         var styleMenu: NSMenu?
+        var lastStyle: ToolbarSwitcherStyle?
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
 
