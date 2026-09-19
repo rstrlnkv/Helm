@@ -181,12 +181,17 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         context.coordinator.hasFilled = true
         let selected = segments.firstIndex { $0.value == selection }
         // The first fill is not a change: the control is still empty, and
-        // animating it means animating the first measurement — the jump the
-        // owner saw on a first open, where an implicit animation started from
-        // whatever the unmeasured layout happened to be. No animation context
-        // at all, rather than one with a duration of zero: inside a group,
-        // `layoutSubtreeIfNeeded` leaves a Core Animation animation behind
-        // even at zero duration.
+        // animating it means animating the first measurement, an implicit
+        // animation starting from whatever the unmeasured layout happened to
+        // be. Whether this explains what the owner saw on a first open is
+        // unresolved: measured on a built dev app before and after this
+        // change, the jump was unchanged, so its cause is still open. No
+        // animation context at all, rather than one with a duration of zero —
+        // whether `layoutSubtreeIfNeeded` inside a group still leaves a Core
+        // Animation animation behind at zero duration is untested here, since
+        // an `NSSegmentedControl` mounted in an `NSHostingView` reads
+        // `layer == nil`
+        // (`Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift:28`).
         if firstFill {
             Self.fill(control, segments: segments, style: style, selected: selected)
             control.layoutSubtreeIfNeeded()
@@ -288,11 +293,17 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var pick: (Int) -> Void = { _ in }
         var choose: (@MainActor @Sendable (ToolbarSwitcherStyle) -> Void)?
         var styleMenu: NSMenu?
-        /// Whether the segments have been filled once already. Starts `false`
-        /// for every mounted control — set in `makeCoordinator()`, paired with
-        /// `makeNSView`, and gone with the view on `dismantleNSView` — so a
-        /// rebuilt switcher (crossing `switcherFits`, a right-click style
-        /// change that replaces the view) fills unanimated exactly once more.
+        /// Whether the segments have been filled once already. `false` is
+        /// this property's own default, not something `makeCoordinator()`
+        /// sets — that call is a bare `Coordinator()` — and the only write is
+        /// the first `updateNSView`, above. It goes with the view on
+        /// `dismantleNSView`, paired with `makeNSView`, so a switcher whose
+        /// view is torn down and rebuilt — Homebrew's own `switcherFits`
+        /// choosing the pop-up button instead, a different `View` on each
+        /// side of the `if` — fills unanimated exactly once more. A
+        /// right-click style change is not that: it reaches this same control
+        /// through the environment and keeps it
+        /// (`Tests/HelmUITests/AStyleChosenInTheBarReachesTheBarTests.swift`).
         var hasFilled = false
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
