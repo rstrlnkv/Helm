@@ -164,6 +164,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         control.target = context.coordinator
         control.action = #selector(Coordinator.picked(_:))
         context.coordinator.watch(control)
+        Self.fill(control, segments: segments, style: style,
+                  selected: segments.firstIndex { $0.value == selection })
+        context.coordinator.lastStyle = style
         return control
     }
 
@@ -182,69 +185,104 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
     }
 
-    /// How long filling the segments should take. `0` on the first fill, or
-    /// under Reduce Motion, and `0.22` otherwise — a decision from arguments,
-    /// assertable, rather than one that reads `NSWorkspace` the way
-    /// `HelmMotion.reduceMotion` itself does.
-    static func fillDuration(firstFill: Bool, reduceMotion: Bool) -> TimeInterval {
-        firstFill || reduceMotion ? 0 : 0.22
-    }
-
     public func updateNSView(_ control: NSSegmentedControl, context: Context) {
         context.coordinator.pick = { index in
             guard segments.indices.contains(index) else { return }
             selection = segments[index].value
         }
         context.coordinator.choose = setStyle
-        let firstFill = !context.coordinator.hasFilled
-        context.coordinator.hasFilled = true
-        let selected = segments.firstIndex { $0.value == selection }
-        // The first fill is not a change: the control is still empty, and
-        // animating it means animating the first measurement, an implicit
-        // animation starting from whatever the unmeasured layout happened to
-        // be. Whether this explains what the owner saw on a first open is
-        // unresolved: measured on a built dev app before and after this
-        // change, the jump was unchanged, so its cause is still open. No
-        // animation context at all, rather than one with a duration of zero —
-        // whether `layoutSubtreeIfNeeded` inside a group still leaves a Core
-        // Animation animation behind at zero duration is untested here, since
-        // an `NSSegmentedControl` mounted in an `NSHostingView` reads
-        // `layer == nil` — the offscreen reading is written up under "What can
-        // be measured here and what cannot" in
-        // `Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift`.
-        if firstFill {
-            // **The metric the bar will promote it to, before the first
-            // measurement is taken in the old one.** Probed on this type
-            // 2026-09-19, three runs singly: `makeNSView`, then this one
-            // update, and only then the first `sizeThatFits` — which reads
-            // `fittingSize` and, unpinned, reads it at `.regular` while every
-            // later call reads it at `.extraLarge`, because AppKit promotes
-            // the control as the toolbar inserts it and asks SwiftUI nothing.
-            // The frame was therefore set twice. Written here and not in
-            // `fill`, which `width(of:in:)` also calls against a detached
-            // control, and `HomebrewSettingsPage.switcherReserve` is
-            // calibrated photographically against that detached answer.
-            // Written in this branch and not on every pass: the bar decides
-            // its own metric, and a writer that ran every time would fight a
-            // promotion to any other size rather than anticipate this one
-            // (`Tests/HelmUITests/TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests.swift`
-            // holds the pin to whatever the bar does to a control of its own).
+
+        // **The metric the bar will promote it to, taken before the first
+        // measurement is made in the old one.** AppKit promotes the control as
+        // the toolbar inserts it in its item viewer and asks SwiftUI nothing,
+        // so an unpinned control answers its first `sizeThatFits` at
+        // `.regular` and every later one at `.extraLarge`, and the frame is
+        // set twice.
+        //
+        // Filling the segments in `makeNSView` does not settle this — it
+        // decides *what* is measured, not in which metric. Measured
+        // 2026-09-20 against that pre-population, three placements, same
+        // harness: with no pin at all, and with the pin written in
+        // `makeNSView`, `TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests`
+        // read (252.0, 24.0) laid out against (272.0, 36.0) settled over two
+        // frames — the same numbers either way, so a metric written in
+        // `makeNSView` does not survive to the first measurement. Written
+        // here it does. What overwrites it in between was not established;
+        // that it is overwritten was.
+        //
+        // Written here and not in `fill`, which `width(of:in:)` also calls
+        // against a detached control that `HomebrewSettingsPage`'s own
+        // reserve is calibrated photographically against. Written once rather
+        // than on every pass, on a flag of its own and not on the fill
+        // gating below: the bar decides its own metric, and a writer that ran
+        // every time would fight a promotion to any other size rather than
+        // anticipate this one.
+        if !context.coordinator.hasPinnedMetric {
+            context.coordinator.hasPinnedMetric = true
             control.controlSize = .extraLarge
-            Self.fill(control, segments: segments, style: style, selected: selected)
-            control.layoutSubtreeIfNeeded()
-        } else {
-            // **The segments are rewritten inside an animation context.** AppKit
-            // animates a layer-backed control's own contents implicitly while one is
-            // open, so the word arriving on the selected segment comes in with the
-            // width rather than at full strength over a control still growing.
-            NSAnimationContext.runAnimationGroup { animation in
-                animation.duration = Self.fillDuration(firstFill: false,
-                                                        reduceMotion: HelmMotion.reduceMotion)
-                animation.allowsImplicitAnimation = true
-                Self.fill(control, segments: segments, style: style, selected: selected)
+        }
+
+        let selectedIndex = segments.firstIndex { $0.value == selection }
+        let isInitial = control.segmentCount == 0
+        let styleChanged = context.coordinator.lastStyle != style
+        let countChanged = control.segmentCount != segments.count
+
+        if isInitial || countChanged || styleChanged {
+            // Animate only when changing style on an existing populated control, never on initial population
+            let shouldAnimate = !isInitial && !countChanged && !HelmMotion.reduceMotion
+            if shouldAnimate {
+                NSAnimationContext.runAnimationGroup { animation in
+                    animation.duration = 0.22
+                    animation.allowsImplicitAnimation = true
+                    Self.fill(control, segments: segments, style: style, selected: selectedIndex)
+                    control.layoutSubtreeIfNeeded()
+                }
+            } else {
+                NSAnimationContext.beginGrouping()
+                NSAnimationContext.current.allowsImplicitAnimation = false
+                Self.fill(control, segments: segments, style: style, selected: selectedIndex)
                 control.layoutSubtreeIfNeeded()
+                NSAnimationContext.endGrouping()
+            }
+            context.coordinator.lastStyle = style
+        } else {
+            var labelsMatch = true
+            let showsWord = style == .text || style == .iconsAndText
+            for (idx, seg) in segments.enumerated() {
+                if control.label(forSegment: idx) != (showsWord ? seg.label : "") {
+                    labelsMatch = false
+                    break
+                }
+            }
+            let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? false
+            // Nothing structural changed, so this is the cheap path: when the
+            // words and the selection both already read right — the first
+            // update after `makeNSView` pre-populated the control, which is
+            // the case this whole gating exists for — no fill and no layout
+            // pass happen at all.
+            //
+            // A moved selection is applied *through* `fill` rather than by a
+            // `setSelected` of its own. `fill` is idempotent for everything
+            // else it writes — the style cannot have changed in this branch,
+            // so the labels, images and widths it rewrites are the values
+            // already there — and it carries the single bounded
+            // `setSelected(forSegment:)` in this file.
+            // `TheSwitcherRefusesASegmentThatIsNotThereTests` counts that call
+            // and requires the one occurrence to sit inside `fill`'s body,
+            // because AppKit raises `NSRangeException` on an index the control
+            // does not have; a second call site is a second way to abort the
+            // app for whichever caller passes an index of its own next.
+            // Measured 2026-09-20: with a second `setSelected` here that file
+            // read "calls setSelected( 2 time(s)" and went red.
+            if !labelsMatch || selectionMoved {
+                NSAnimationContext.beginGrouping()
+                NSAnimationContext.current.allowsImplicitAnimation = false
+                Self.fill(control, segments: segments, style: style, selected: selectedIndex)
+                control.layoutSubtreeIfNeeded()
+                NSAnimationContext.endGrouping()
             }
         }
+
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
         let styleMenu = setStyle == nil ? nil
@@ -330,18 +368,16 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var pick: (Int) -> Void = { _ in }
         var choose: SwitcherStyleSetter?
         var styleMenu: NSMenu?
-        /// Whether the segments have been filled once already. `false` is
-        /// this property's own default, not something `makeCoordinator()`
-        /// sets — that call is a bare `Coordinator()` — and the only write is
-        /// the first `updateNSView`, above. It goes with the view on
-        /// `dismantleNSView`, paired with `makeNSView`, so a switcher whose
-        /// view is torn down and rebuilt — Homebrew's own `switcherFits`
-        /// choosing the pop-up button instead, a different `View` on each
-        /// side of the `if` — fills unanimated exactly once more. A
-        /// right-click style change is not that: it reaches this same control
-        /// through the environment and keeps it
-        /// (`Tests/HelmUITests/AStyleChosenInTheBarReachesTheBarTests.swift`).
-        var hasFilled = false
+        var lastStyle: ToolbarSwitcherStyle?
+        /// Whether the bar's metric has been written onto the control yet.
+        /// Its own flag rather than a reading of the fill gating above,
+        /// because the two answer different questions: that one asks whether
+        /// the segments need rewriting, this one whether the control has ever
+        /// been given a size class. It goes with the view on
+        /// `dismantleNSView`, so a switcher torn down and rebuilt — Homebrew's
+        /// `switcherFits` choosing the pop-up button instead is a different
+        /// `View` on each side of the `if` — pins once more on the new one.
+        var hasPinnedMetric = false
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
 

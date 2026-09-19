@@ -334,20 +334,38 @@ final class SettingsSplitViewController: NSSplitViewController {
     /// own inset is 20, is never inside it.
     private static let dividerGrab: CGFloat = 5
 
-    /// The first run's width, set where the split view actually has one.
+    /// The first run's width, set where the split view actually has one,
+    /// before the window is presented on screen.
     ///
     /// Measured: doing this in `viewDidLoad` gives **180** — the minimum, not
     /// the 214 asked for. At that point the split has no width to divide, so
     /// the position clamps to the floor and the default silently becomes the
-    /// smallest allowed. Here the geometry exists.
+    /// smallest allowed. Doing this in `viewDidAppear` ran after the window was
+    /// drawn, causing the sidebar, detail pane, and bridged toolbar tabs to visibly
+    /// jump by 34 pt on the first launch.
     ///
-    /// Once, and only when nothing is stored: `autosaveName` restores what was
-    /// dragged, and re-applying the default on every appearance would overwrite
-    /// the person's own choice each time they opened the window.
+    /// Running as soon as `splitView.bounds.width >= Self.sidebarDefault` in
+    /// `viewWillAppear` or `viewDidLayout` sets the divider before the window is
+    /// displayed on screen.
     private var hasPlacedDivider = false
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        placeInitialDividerIfNeeded()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        placeInitialDividerIfNeeded()
+    }
+
     override func viewDidAppear() {
         super.viewDidAppear()
+        placeInitialDividerIfNeeded()
+    }
+
+    private func placeInitialDividerIfNeeded() {
         guard !hasPlacedDivider else { return }
+        guard splitView.bounds.width >= Self.sidebarDefault else { return }
         hasPlacedDivider = true
         guard !UserDefaults.standard.hasSavedSplitPosition(Self.dividerAutosave) else { return }
         splitView.setPosition(Self.sidebarDefault, ofDividerAt: 0)

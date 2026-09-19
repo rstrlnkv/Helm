@@ -17,16 +17,22 @@ import XCTest
 /// is this:
 ///
 /// - The order never varied across the three runs: `makeNSView`, then one
-///   `updateNSView` with `firstFill` true, then every `sizeThatFits`. The first
-///   fill therefore happens **before** SwiftUI ever asks the control for a
-///   size, which is what makes `updateNSView` a place a metric can be set from.
+///   `updateNSView`, then every `sizeThatFits`. The segments are therefore in
+///   the control **before** SwiftUI ever asks it for a size, which is what
+///   makes `makeNSView` a place a metric can be set from.
 /// - Unpinned, the first `sizeThatFits` is answered at `controlSize == .regular`
 ///   and every later one at `.extraLarge`: AppKit promotes the control as the
 ///   toolbar inserts it in its item viewer, and nothing in that promotion asks
 ///   SwiftUI again. The control's frame is then set twice — once at the loose
 ///   size SwiftUI committed, once at the promoted one a later layout carries.
-/// - With `controlSize` pinned in the first fill, all three runs logged one
+/// - With `controlSize` pinned in `makeNSView`, all three runs logged one
 ///   frame and one size: the first measurement is already the bar's.
+///
+/// Re-measured 2026-09-20, after the fill moved into `makeNSView`: with that
+/// pre-population in place and the pin removed, this file's second assertion
+/// goes red at (252.0, 24.0) laid out against (272.0, 36.0) settled, over two
+/// frames. Populating the segments earlier decides *what* is measured and not
+/// in which metric, so the pin is what this file is still guarding.
 ///
 /// # Why there is not a single size literal below
 ///
@@ -42,9 +48,12 @@ import XCTest
 /// # What this cannot answer
 ///
 /// Whether anything visibly redraws on a real first open. The control mounted
-/// here reads `layer == nil`, so no Core Animation animation can be observed on
-/// it at all — the same limit as the offscreen reading written up in
-/// `Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift`.
+/// here reads `layer == nil`, so no Core Animation animation can be observed
+/// on it at all: an `NSSegmentedControl` bridged into an `NSHostingView` has
+/// no layer even with `wantsLayer` set on the host, while the same control in
+/// a window's own toolbar does once the bar has inserted it. That is a fact
+/// about the hosting view and not about the control, and it is why a
+/// right-click style change animates on screen and nothing here can see it.
 /// A green run here says the frame is set once; it does not say the window
 /// looked right.
 @MainActor
@@ -104,7 +113,7 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
 
         XCTAssertEqual(switcherFrames.last!.height, canaryFrames.last!.height, accuracy: 0.01, """
             the switcher settles \(switcherFrames.last!.height) pt tall where a control the bar \
-            sized itself settles \(canaryFrames.last!.height): the metric pinned in updateNSView \
+            sized itself settles \(canaryFrames.last!.height): the metric pinned in makeNSView \
             is not the one the toolbar promotes to, so the switcher draws at its own height beside \
             every other control on the same glass.
             """)
@@ -116,8 +125,8 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
     /// chosen by right-click has to change the item's width.
     ///
     /// It is a live change on **one** control, not two mounts compared — the
-    /// pin runs in the first fill only, `hasFilled` is true here, and the same
-    /// `NSView` survives the change (`AStyleChosenInTheBarReachesTheBarTests`
+    /// pin runs in `makeNSView` only, which is already behind us here, and the
+    /// same `NSView` survives the change (`AStyleChosenInTheBarReachesTheBarTests`
     /// holds the tracker to that). So this reads the one path where
     /// `sizeThatFits` still has to answer live, and it goes red for a
     /// `sizeThatFits` that remembers what it said the first time.
