@@ -17,33 +17,47 @@ import XCTest
 /// own words. Not asking for that any more is the whole of what this change
 /// does.
 ///
-/// **It was not the cause of the jump the owner reported, and that cause has
-/// since been found.** Designer measured the built dev app before and after, at
-/// 60 fps, and the label band's displacement is unchanged either way. A first
-/// open in Dark, three fresh launches: displaced in 15/16/15 frames of 79/79/54
-/// for 242/267/258 ms after, against 15/16/16 of 67/67/65 for 242/250/250 ms
-/// before. A window closed and reopened, six readings: 15,16,16,16,15,15 frames
-/// for 258,275,267,258,267,250 ms after, against 17,16,16,16,17,16 for
-/// 283,258,267,258,275,258 ms before. A sidebar return, where the control
-/// already exists, stayed clean — 0 displaced of 631 frames in Dark and 0 of
-/// 804 in Light. Light is worse than Dark and designer measured it too, through
-/// the app's own appearance setting in the dev domain. An earlier round of
-/// "before" numbers, which this file used to quote, is withdrawn: the tool that
-/// produced them indexed its X axis wrongly.
+/// **It was not the cause of the jump the owner reported, and that cause is
+/// still not established.** Designer measured the built dev app before and
+/// after, at 60 fps, and the label band's displacement is unchanged either way.
+/// A first open in Dark, three fresh launches: displaced in 15/16/15 frames of
+/// 79/79/54 for 242/267/258 ms after, against 15/16/16 of 67/67/65 for
+/// 242/250/250 ms before. A window closed and reopened, six readings:
+/// 15,16,16,16,15,15 frames for 258,275,267,258,267,250 ms after, against
+/// 17,16,16,16,17,16 for 283,258,267,258,275,258 ms before. A sidebar return,
+/// where the control already exists, stayed clean — 0 displaced of 631 frames
+/// in Dark and 0 of 804 in Light. Light is worse than Dark and designer
+/// measured it too, through the app's own appearance setting in the dev domain.
+/// An earlier round of "before" numbers, which this file used to quote, is
+/// withdrawn: the tool that produced them indexed its X axis wrongly.
 ///
-/// What the jump was is the other half of the same question, found on
-/// 2026-09-19 by recording the layer's own animation keys: five `updateNSView`
-/// calls land within 52.2 ms of a module opening and the control has no layer
-/// in any of them, so `hasFilled` sent calls two to five into the animation
-/// group and the layer was born inside its 0.22 s transaction, carrying that
-/// duration on its first `bounds` animation from `{{0,0},{0,0}}`. The branch
-/// now asks `fillAnimates(firstFill:hasLayer:)` and not `hasFilled` alone.
+/// A *mechanism* was found on 2026-09-19, by recording the layer's own
+/// animation keys on the built dev app, and it is worth keeping written down
+/// because it is hard-won — but it is not the jump. Five `updateNSView` calls
+/// land within 52.2 ms of a module opening and the control has no layer in any
+/// of them, so `hasFilled`, true after the first, sent calls two to five into
+/// the animation group below and the layer was born *inside* that 0.22 s
+/// transaction, which put its duration on the layer's first `bounds`
+/// animation, `{{0,0},{0,0}}` to `370.5 × 36.0`. Designer confirmed that
+/// in-process with a probe carrying a switch: the animation key is there with
+/// the branch as it stands and gone with it silenced, reproducibly.
 ///
-/// So no case here may be read as a guard on what the owner saw — the numbers
-/// above were taken before the layer term existed, and none of them was taken
-/// again after it. What they guard is narrower and worth keeping on its own —
-/// the first fill asks AppKit for no animation, and every later fill of a
-/// control with a layer still asks for one.
+/// **And the screen does not show it.** Designer filmed the built dev app
+/// A/B/A on 2026-09-19 — build 1511, then build 1514 with that branch
+/// silenced, then 1511 rebuilt from a clone of commit 4c15aa1c and
+/// reinstalled, the build number read out of `Info.plist` on every run. The
+/// switcher's track measures 370.0 pt in the very first composited frame of
+/// 1511 *and* of 1514, so a capsule growing from zero is on film in neither.
+/// Silencing the branch also cost the sidebar return, clean in every reading
+/// before it, 14/16/15/14 displaced frames in Dark and 15/14/13/15 in Light
+/// against 0 throughout in 1511, and it was reverted. So: the mechanism is
+/// real and in-process, it is not what a person sees, and what the owner sees
+/// is still unexplained. Anything that claims to fix it has to be measured on
+/// film, on the gestures above, before it is believed.
+///
+/// So no case here may be read as a guard on what the owner saw. What they
+/// guard is narrower and worth keeping on its own — the first fill asks AppKit
+/// for no animation, and every later fill still asks for one.
 ///
 /// # What can be measured here and what cannot
 ///
