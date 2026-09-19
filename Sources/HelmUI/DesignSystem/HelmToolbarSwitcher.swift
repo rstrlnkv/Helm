@@ -171,18 +171,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         firstFill || reduceMotion ? 0 : 0.22
     }
 
-    /// Whether a fill may be animated at all: only one with a filled control to
-    /// animate *from* and a layer to animate *on*. Both terms are needed and
-    /// neither implies the other — a first fill has nothing to animate from
-    /// however long the control has had a layer, and a control the toolbar has
-    /// not taken yet has no layer whatever it already holds. A decision from
-    /// arguments, assertable, the way `fillDuration(firstFill:reduceMotion:)`
-    /// above is; `updateNSView` reads `control.layer` and hands over what it
-    /// read.
-    static func fillAnimates(firstFill: Bool, hasLayer: Bool) -> Bool {
-        !firstFill && hasLayer
-    }
-
     public func updateNSView(_ control: NSSegmentedControl, context: Context) {
         context.coordinator.pick = { index in
             guard segments.indices.contains(index) else { return }
@@ -192,31 +180,22 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         let firstFill = !context.coordinator.hasFilled
         context.coordinator.hasFilled = true
         let selected = segments.firstIndex { $0.value == selection }
-        // **A fill is animated only where there is something to animate, and
-        // something to animate it on.** The first fill is not a change: the
-        // control is still empty, and animating it means animating the first
-        // measurement, an implicit animation starting from whatever the
-        // unmeasured layout happened to be. The layer is the second term, and
-        // it is the one the owner sees. Designer measured the built dev app on
-        // 2026-09-19: five `updateNSView` calls land within 52.2 ms of a module
-        // opening, and the control has no layer in any of them. `hasFilled` is
-        // true after the first, so calls two to five opened the animation group
-        // below and the layer was *born inside* that transaction — which put
-        // its 0.22 s on the layer's first `bounds` animation, {{0,0},{0,0}} to
-        // 370.5 × 36.0, the capsule growing over the words on a first open.
-        // Silencing this branch takes that curve out of the recording;
-        // silencing the first fill leaves it exactly where it was.
-        //
-        // The layer, rather than the window that carries it: an implicit
-        // animation is a Core Animation animation on that layer and on nothing
-        // else. The premise this used to rest on — that an `NSSegmentedControl`
-        // reads `layer == nil` — is withdrawn. It holds in an `NSHostingView`,
-        // which is why no offscreen check can watch the segments move
-        // (`Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift`),
-        // and it is false once the toolbar has the control, where it reads a
-        // layer with one sublayer — so a style chosen by right-click still
-        // takes the animated branch.
-        if Self.fillAnimates(firstFill: firstFill, hasLayer: control.layer != nil) {
+        // The first fill is not a change: the control is still empty, and
+        // animating it means animating the first measurement, an implicit
+        // animation starting from whatever the unmeasured layout happened to
+        // be. Whether this explains what the owner saw on a first open is
+        // unresolved: measured on a built dev app before and after this
+        // change, the jump was unchanged, so its cause is still open. No
+        // animation context at all, rather than one with a duration of zero —
+        // whether `layoutSubtreeIfNeeded` inside a group still leaves a Core
+        // Animation animation behind at zero duration is untested here, since
+        // an `NSSegmentedControl` mounted in an `NSHostingView` reads
+        // `layer == nil`
+        // (`Tests/HelmUITests/TheSwitcherFillsItsFirstFrameWithoutAnimationTests.swift:28`).
+        if firstFill {
+            Self.fill(control, segments: segments, style: style, selected: selected)
+            control.layoutSubtreeIfNeeded()
+        } else {
             // **The segments are rewritten inside an animation context.** AppKit
             // animates a layer-backed control's own contents implicitly while one is
             // open, so the word arriving on the selected segment comes in with the
@@ -228,9 +207,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                 Self.fill(control, segments: segments, style: style, selected: selected)
                 control.layoutSubtreeIfNeeded()
             }
-        } else {
-            Self.fill(control, segments: segments, style: style, selected: selected)
-            control.layoutSubtreeIfNeeded()
         }
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
