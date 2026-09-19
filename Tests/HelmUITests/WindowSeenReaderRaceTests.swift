@@ -5,19 +5,26 @@ import AppKit
 import XCTest
 @testable import HelmUI
 
-/// **The first Settings open of a run dipped from a 52 pt toolbar strip to
-/// 32 pt and back, once per pane, only on the first open.**
+/// **On a run's first Settings open, both panes unmounted and remounted for
+/// nothing.**
 ///
 /// Measured trace: `viewDidMoveToWindow` fires while the window has not yet
 /// been ordered front (`isVisible == false`), and `report()` queues that
 /// reading onto the main queue. By the time the queued block ran — about
 /// 220 ms later — the window had already opened correctly. The stale `false`
 /// landed anyway, `seen` flipped `true → false`, both panes unmounted, and the
-/// genuine occlusion notification a few milliseconds later flipped `seen` back,
-/// rebuilding the toolbar from scratch. That rebuild is the dip.
+/// next report flipped `seen` back, rebuilding both subtrees and the toolbar
+/// they carry from scratch.
 ///
-/// **What this test drives is the race itself, not the toolbar it eventually
-/// moves**: `report()` reading `window.isVisible` before the hop to the main
+/// **What that cost a person was never photographed, and no sentence here may
+/// claim it was.** First-open recordings at 60 fps, of a build with this fix
+/// and a build without it, hold no frame where the toolbar's height differs:
+/// the menu bar item does not appear for seconds after launch, by which time
+/// this race has long resolved. The mechanism above is measured; the visible
+/// consequence is not.
+///
+/// **What this test drives is the race itself, not the toolbar rebuild
+/// downstream of it**: `report()` reading `window.isVisible` before the hop to the main
 /// queue rather than inside it. A `Reader` is built directly — internal, not
 /// private, for exactly this — and the race is reproduced by calling
 /// `report()` while the window is not yet visible and then making it visible
@@ -44,12 +51,14 @@ final class WindowSeenReaderRaceTests: XCTestCase {
     /// **The finding itself.** `viewDidMoveToWindow` calls `report()` while the
     /// window is not yet on screen — the window becomes visible before that
     /// call's queued delivery runs, which is the measured trace above. A
-    /// reader that samples at call time delivers the stale `false` this
-    /// dip was made of; one that samples at delivery time — the fix — delivers
-    /// the window's current `true`. The window's own occlusion notification
-    /// then queues a second, genuine report once it fires; asserting on the
-    /// *first* delivered value is what isolates the race from that second,
-    /// unrelated call, whose timing this test does not control.
+    /// reader that samples at call time delivers the stale `false` this race
+    /// was made of; one that samples at delivery time — the fix — delivers the
+    /// window's current `true`. Asserting on the *first* delivered value rather
+    /// than on the whole list is what keeps this case about the race and
+    /// nothing else: in the app the window's own occlusion notification queues
+    /// further reports of its own, and in a `swift test` process it never
+    /// fires at all (measured — `TheWindowReaderAnswersAtDeliveryTests` records
+    /// the probe), so how many reports land is not a fact this test controls.
     func testReportReadsTheWindowAtDeliveryNotAtCallTime() {
         let window = freshWindow()
         let reader = WindowSeenReader.Reader(frame: .zero)
@@ -76,9 +85,10 @@ final class WindowSeenReaderRaceTests: XCTestCase {
     }
 
     /// The ordinary case this fix must not disturb: nothing changes between the
-    /// call and the delivery, so the level read either way is the same, and no
-    /// occlusion state change fires because the window is already visible —
-    /// so exactly one report lands, unlike the race test above.
+    /// call and the delivery, so the level read either way is the same. Exactly
+    /// one report lands, because `viewDidMoveToWindow` is the only thing that
+    /// calls `report()` here: this process is never sent an occlusion
+    /// notification at all (measured — see the case above).
     func testReportOnAnAlreadyVisibleWindowDeliversTrue() {
         let window = freshWindow()
         window.makeKeyAndOrderFront(nil)
@@ -94,9 +104,11 @@ final class WindowSeenReaderRaceTests: XCTestCase {
         XCTAssertEqual(reported, [true])
     }
 
-    /// No window at all counts as seen — the bare harness case load-bearing
-    /// comment at `OffScreenIdle.swift:137` — and that must survive reading
-    /// inside the hop as much as it did reading before it.
+    /// No window at all counts as seen — the `?? true` in `report()` and the
+    /// load-bearing comment above it in `OffScreenIdle.swift`, named rather
+    /// than numbered because the line moved under the fix that made this file
+    /// necessary — and that must survive reading inside the hop as much as it
+    /// did reading before it.
     func testReportWithNoWindowDeliversTrue() {
         let reader = WindowSeenReader.Reader(frame: .zero)
         var reported: [Bool] = []

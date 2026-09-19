@@ -92,7 +92,8 @@ public extension View {
 /// draws nothing.
 ///
 /// Internal, not private: `Tests/HelmUITests/WindowSeenReaderRaceTests.swift`
-/// constructs `Reader` directly to drive the race `report()` guards against,
+/// and `Tests/HelmUITests/TheWindowReaderAnswersAtDeliveryTests.swift`
+/// construct `Reader` directly to drive the race `report()` guards against,
 /// and `@testable import` does not reach `private`. Nothing outside `HelmUI`
 /// uses either type.
 struct WindowSeenReader: NSViewRepresentable {
@@ -124,6 +125,13 @@ struct WindowSeenReader: NSViewRepresentable {
             if let window {
                 // Occlusion covers ordering: `orderOut` drops `.visible` and
                 // `orderFront` restores it, and both post this notification.
+                // That is the app, traced there. A plain `swift test` process
+                // is not the window server's client: it is sent this
+                // notification zero times and its windows report
+                // `occlusionState` `.visible` throughout, ordered out or not.
+                // So do not "correct" the two lines above from a test run —
+                // a test drives this reader through `viewDidMoveToWindow` and
+                // `report()` instead, which is what both test files do.
                 observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeOcclusionStateNotification,
                     object: window, queue: .main
@@ -137,9 +145,14 @@ struct WindowSeenReader: NSViewRepresentable {
             // AppKit mid-update, and a state write there is a SwiftUI error.
             // The window is read inside the hop, not before it — a stale report
             // queued while the window was mid-construction must not overwrite a
-            // value that has since become current. Same shape as
+            // value that has since become current. Same *shape* as
             // `RunningApps.refreshOnMain` (Sources/HelmRuntime/RunningApps.swift),
-            // which puts the AppKit read inside the block for the same reason.
+            // which also reads AppKit inside the block — but for its own,
+            // different reason: there the hop is what reaches the main thread
+            // at all, and reading the live list off it is a crash rather than
+            // stale data. Here the caller is already on main, the hop exists
+            // only to leave the transaction, and reading inside it buys
+            // currency and nothing else.
             // This makes `report()` a poll on delivery rather than an event: it
             // tells `onChange` the window's level right now, never the edge that
             // caused this call, but nothing downstream wants the edge —
