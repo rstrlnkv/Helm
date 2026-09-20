@@ -71,6 +71,8 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.11.1", date: "2026-08-26", items: [
+                ChangeItem(kind: .fix, text: L("Toolbar tabs no longer jump when Settings first opens.")),
+                ChangeItem(kind: .upd, text: L("Concurrency warnings cleared across the app.")),
                 ChangeItem(kind: .fix, text: L("Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read.")),
                 ChangeItem(kind: .upd, text: L("The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way.")),
                 ChangeItem(kind: .fix, text: L("One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share.")),

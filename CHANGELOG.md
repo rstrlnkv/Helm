@@ -13,6 +13,8 @@ only once it has no known problems left.
 
 *0.11.0 never shipped a build of any kind; everything written under it goes out here.*
 
+- **FIX** Toolbar tabs no longer jump when Settings first opens.
+- **UPD** Concurrency warnings cleared across the app.
 - **FIX** Helm no longer says Full Disk Access is missing when macOS has granted it — one of the four files it read to find out was a folder, which nothing can read.
 - **UPD** The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way.
 - **FIX** One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share.

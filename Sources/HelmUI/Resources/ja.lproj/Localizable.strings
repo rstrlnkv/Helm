@@ -1222,3 +1222,5 @@
 "The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way." = "フルディスクアクセスの確認は、その権限が守っているファイルそのものを読むようになり、途中で Safari のブックマークやメッセージのデータベースを開くことはなくなりました。";
 "One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share." = "更新後のキーチェーンの確認が 1 回減りました。Helm の 2 か所が、同じ項目について別々に尋ねていました。";
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm 独自の色が“コントラストを上げる”に従うようになりました。システムの色は以前からそうでした。";
+"Toolbar tabs no longer jump when Settings first opens." = "設定を初めて開いたとき、ツールバーのタブがずれなくなりました。";
+"Concurrency warnings cleared across the app." = "アプリ全体で並行処理の警告を解消しました。";

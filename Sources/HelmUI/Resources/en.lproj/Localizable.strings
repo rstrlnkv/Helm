@@ -1222,3 +1222,5 @@
 "The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way." = "The Full Disk Access check reads the file that grant is about, and no longer opens your Safari bookmarks or your Messages database on the way.";
 "One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share." = "One keychain prompt fewer after an update: two parts of Helm asked separately for the one item they share.";
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm’s own colours follow Increase Contrast, the way the system’s colours already did.";
+"Toolbar tabs no longer jump when Settings first opens." = "Toolbar tabs no longer jump when Settings first opens.";
+"Concurrency warnings cleared across the app." = "Concurrency warnings cleared across the app.";
