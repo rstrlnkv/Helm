@@ -37,8 +37,21 @@ public enum HelmMotion {
     /// Small state changes: reordering rows, toggling a filter, moving a
     /// selection. A touch of spring so it doesn't feel mechanical.
     public static var interface: Animation {
-        reduced ? instant : .snappy(duration: 0.22)
+        reduced ? instant : .snappy(duration: interfaceDuration)
     }
+
+    /// `interface`'s duration alone, in seconds, for a caller that animates
+    /// through AppKit — `NSAnimationContext` takes a number and has nowhere to
+    /// put an `Animation`, so `HelmToolbarSwitcher`'s fill group would
+    /// otherwise carry the number as a literal of its own, which is the
+    /// duplicate-constant shape nothing goes red on.
+    ///
+    /// **Not the same curve.** `interface` is a spring and an animation group
+    /// runs AppKit's own timing function; what is shared here is the length, so
+    /// the two move for the same time and not along the same path. A caller
+    /// using this is responsible for its own `reduceMotion` branch, because a
+    /// bare number cannot collapse the way a token does.
+    public static var interfaceDuration: TimeInterval { 0.22 }
 
     /// The header strip lighting under the pointer, and going out again.
     ///

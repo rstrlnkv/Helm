@@ -202,13 +202,21 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // Filling the segments in `makeNSView` does not settle this — it
         // decides *what* is measured, not in which metric. Measured
         // 2026-09-20 against that pre-population, three placements, same
-        // harness: with no pin at all, and with the pin written in
-        // `makeNSView`, `TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests`
-        // read (252.0, 24.0) laid out against (272.0, 36.0) settled over two
+        // harness, with a print of the frame log added to that file's `mount`
+        // and one placement per run of
+        //
+        //   bash Scripts/test.sh --filter TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests
+        //
+        // With no pin at all, and with the pin written in `makeNSView`,
+        // `TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests` read
+        // (252.0, 24.0) laid out against (272.0, 36.0) settled over two
         // frames — the same numbers either way, so a metric written in
         // `makeNSView` does not survive to the first measurement. Written
-        // here it does. What overwrites it in between was not established;
-        // that it is overwritten was.
+        // here, the same run reads one frame, (272.0, 36.0), and that file
+        // passes; the `makeNSView` half of this was re-run twice on
+        // 2026-09-20 and went red at those two sizes both times. What
+        // overwrites it in between was not established; that it is
+        // overwritten was.
         //
         // Written here and not in `fill`, which `width(of:in:)` also calls
         // against a detached control that `HomebrewSettingsPage`'s own
@@ -232,7 +240,11 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             let shouldAnimate = !isInitial && !countChanged && !HelmMotion.reduceMotion
             if shouldAnimate {
                 NSAnimationContext.runAnimationGroup { animation in
-                    animation.duration = 0.22
+                    // `interface`'s length, taken from the token rather than
+                    // written again here: AppKit wants seconds and has nowhere
+                    // to put an `Animation`, and the reduce-motion branch this
+                    // number cannot carry is the `shouldAnimate` guard above.
+                    animation.duration = HelmMotion.interfaceDuration
                     animation.allowsImplicitAnimation = true
                     Self.fill(control, segments: segments, style: style, selected: selectedIndex)
                     control.layoutSubtreeIfNeeded()

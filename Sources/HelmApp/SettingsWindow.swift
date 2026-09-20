@@ -334,19 +334,10 @@ final class SettingsSplitViewController: NSSplitViewController {
     /// own inset is 20, is never inside it.
     private static let dividerGrab: CGFloat = 5
 
-    /// The first run's width, set where the split view actually has one,
-    /// before the window is presented on screen.
-    ///
-    /// Measured: doing this in `viewDidLoad` gives **180** — the minimum, not
-    /// the 214 asked for. At that point the split has no width to divide, so
-    /// the position clamps to the floor and the default silently becomes the
-    /// smallest allowed. Doing this in `viewDidAppear` ran after the window was
-    /// drawn, causing the sidebar, detail pane, and bridged toolbar tabs to visibly
-    /// jump by 34 pt on the first launch.
-    ///
-    /// Running as soon as `splitView.bounds.width >= Self.sidebarDefault` in
-    /// `viewWillAppear` or `viewDidLayout` sets the divider before the window is
-    /// displayed on screen.
+    /// Whether the first-run placement below has already had its say. Three
+    /// callbacks invite it and only the earliest one that finds a width may
+    /// act; the rest have to be inert, or a layout pass mid-drag would put the
+    /// divider back.
     private var hasPlacedDivider = false
     override func viewWillAppear() {
         super.viewWillAppear()
@@ -363,10 +354,30 @@ final class SettingsSplitViewController: NSSplitViewController {
         placeInitialDividerIfNeeded()
     }
 
+    /// **The first run's width, set where the split view actually has one and
+    /// before the window is presented on screen.**
+    ///
+    /// Measured: doing this in `viewDidLoad` gives **180** — the minimum, not
+    /// the 214 asked for. At that point the split has no width to divide, so
+    /// the position clamps to the floor and the default silently becomes the
+    /// smallest allowed. Doing it in `viewDidAppear` ran after the window was
+    /// drawn, and the sidebar, the detail pane and the bridged toolbar tabs
+    /// visibly jumped by 34 pt on the first launch.
+    ///
+    /// Which is why all three callbacks above call this and the width is the
+    /// gate rather than the callback: whichever of them first finds
+    /// `splitView.bounds.width` at `sidebarDefault` or more is the one that
+    /// places the divider, and on this path that is still before the window is
+    /// displayed.
     private func placeInitialDividerIfNeeded() {
         guard !hasPlacedDivider else { return }
         guard splitView.bounds.width >= Self.sidebarDefault else { return }
+        // The flag marks the decision as taken, not a position as written — a
+        // launch that defers to a remembered width must stop asking too.
         hasPlacedDivider = true
+        // Only a first run gets the default. A stored position is the person's
+        // own drag, and writing 214 over it would undo that on every launch;
+        // this is the only thing that tells a first launch from a hundredth.
         guard !UserDefaults.standard.hasSavedSplitPosition(Self.dividerAutosave) else { return }
         splitView.setPosition(Self.sidebarDefault, ofDividerAt: 0)
     }

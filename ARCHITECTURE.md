@@ -456,16 +456,16 @@ resized per page would move under the cursor. The shared detail frame is pinned
 invisible until the one time a row asks for more than the pane has.
 
 `SettingsSelection` has four cases and two of them are not modules
-(`Sources/HelmApp/SettingsWindow.swift:83`): `.general`, `.about`, `.log` and
+(`Sources/HelmApp/SettingsWindow.swift`): `.general`, `.about`, `.log` and
 `.module(String)`. That distinction is what keeps the Log pane out of
 `ModuleRegistry.all` and so out of the store, the panel, the tour and every
 count. `ModuleOrder` reorders that same kind of id list too, but nothing in
 `Sources/` calls it — only its own tests do. The only registry count drawn is About's
 (`Sources/HelmApp/AboutPage.swift:101`); the sidebar summary counts the
 arrangement (`Sources/HelmApp/AppStrings.swift:529`). The Log row ships on every
-build, because the logging switch lives in it
-(`Sources/HelmApp/SettingsWindow.swift:87`). `show(selecting:)`
-(`Sources/HelmApp/SettingsWindow.swift:64`) opens directly on a module's page.
+build, because the logging switch lives in it — the reason is written on the
+`.log` case itself. `show(selecting:)`
+(`Sources/HelmApp/SettingsWindow.swift`) opens directly on a module's page.
 
 ### The page header
 

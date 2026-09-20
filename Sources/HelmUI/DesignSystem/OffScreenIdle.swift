@@ -135,10 +135,21 @@ struct WindowSeenReader: NSViewRepresentable {
                 observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeOcclusionStateNotification,
                     object: window, queue: .main
-                    // `queue: .main` is what makes the assumption true; it is
-                    // the same pair as every other observer in the tree. The
-                    // assumption is about *this* line only — `report()` still
-                    // hops before it reads anything, for its own reason below.
+                    // Delivering on the main queue is what makes the
+                    // assumption true. It is this tree's ordinary spelling but
+                    // not its only one, so do not read it as a house rule that
+                    // holds everywhere — count both sides before saying so:
+                    //
+                    //   command grep -rn 'queue: [.]main' --include='*.swift' Sources
+                    //   command grep -rn 'queue: [n]il'   --include='*.swift' Sources
+                    //
+                    // (the brackets keep these two comment lines out of their
+                    // own counts). The `nil` side is a live site, not a
+                    // leftover: `L10n.swift`'s language cache takes no queue
+                    // because it only drops a cached value under a lock. The
+                    // assumption here is about *this* line only — `report()`
+                    // still hops before it reads anything, for its own reason
+                    // below.
                 ) { [weak self] _ in MainActor.assumeIsolated { self?.report() } }
             }
             report()

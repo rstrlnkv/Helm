@@ -18,28 +18,42 @@ import XCTest
 ///
 /// - The order never varied across the three runs: `makeNSView`, then one
 ///   `updateNSView`, then every `sizeThatFits`. The segments are therefore in
-///   the control **before** SwiftUI ever asks it for a size, which is what
-///   makes `makeNSView` a place a metric can be set from.
+///   the control **before** SwiftUI ever asks it for a size, so where they are
+///   filled decides *what* is measured and not in which metric.
 /// - Unpinned, the first `sizeThatFits` is answered at `controlSize == .regular`
 ///   and every later one at `.extraLarge`: AppKit promotes the control as the
 ///   toolbar inserts it in its item viewer, and nothing in that promotion asks
 ///   SwiftUI again. The control's frame is then set twice — once at the loose
 ///   size SwiftUI committed, once at the promoted one a later layout carries.
-/// - With `controlSize` pinned in `makeNSView`, all three runs logged one
-///   frame and one size: the first measurement is already the bar's.
 ///
-/// Re-measured 2026-09-20, after the fill moved into `makeNSView`: with that
-/// pre-population in place and the pin removed, this file's second assertion
-/// goes red at (252.0, 24.0) laid out against (272.0, 36.0) settled, over two
-/// frames. Populating the segments earlier decides *what* is measured and not
-/// in which metric, so the pin is what this file is still guarding.
+/// # Where the pin is written, and how that was decided
+///
+/// By running it both ways, not by argument. Measured 2026-09-20 with a print
+/// of `log.frames(of: found)` added to `mount` below, one variant per run and
+/// nothing else changed between them:
+///
+///     bash Scripts/test.sh --filter TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests
+///
+/// - Pinned where `HelmToolbarSwitcher` writes it — in `updateNSView`, behind
+///   `Coordinator.hasPinnedMetric` — the switcher logged **one** frame,
+///   (272.0, 36.0), and this file passed.
+/// - Pinned in `makeNSView` instead, the switcher logged (252.0, 24.0) and then
+///   (272.0, 36.0) — the canary's own two readings — and the second assertion
+///   below went red at exactly those numbers. Twice, in two runs of that
+///   variant.
+///
+/// So a metric written in `makeNSView` does not survive to the first
+/// measurement, and `updateNSView` is where it has to be written. What
+/// overwrites it in between was not established; that it is overwritten was.
+/// Filling the segments in `makeNSView` does not settle it either, for the
+/// reason in the first bullet above, so the pin is what this file is guarding.
 ///
 /// # Why there is not a single size literal below
 ///
 /// The file this replaces carried four — a pre-insertion and a settled size —
 /// and none of the four reproduced on this machine in the probe above. Two of
 /// the reasons are ordinary (another Mac, another SDK, another language), and
-/// the third is decisive: `SettingsWindow.swift:47` sets
+/// the third is decisive: `SettingsWindow`'s initialiser calls
 /// `setFrameAutosaveName("HelmSettingsWindow.v4")`, so the production window's
 /// width is whatever the person last left it at, and a switcher's width is read
 /// from the words in it. Those numbers were one session's property. Every
@@ -47,15 +61,22 @@ import XCTest
 ///
 /// # What this cannot answer
 ///
-/// Whether anything visibly redraws on a real first open. The control mounted
-/// here reads `layer == nil`, so no Core Animation animation can be observed
-/// on it at all: an `NSSegmentedControl` bridged into an `NSHostingView` has
-/// no layer even with `wantsLayer` set on the host, while the same control in
-/// a window's own toolbar does once the bar has inserted it. That is a fact
-/// about the hosting view and not about the control, and it is why a
-/// right-click style change animates on screen and nothing here can see it.
-/// A green run here says the frame is set once; it does not say the window
-/// looked right.
+/// Whether anything visibly redraws on a real first open. Not for want of a
+/// layer: this harness mounts the switcher into a real window's toolbar — the
+/// hosting controller takes `sceneBridgingOptions = [.toolbars]` and the page
+/// declares it as `ToolbarItem(placement: .principal)` — and printing
+/// `found.layer` from `mount` on 2026-09-20, under
+///
+///     bash Scripts/test.sh --filter TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests
+///
+/// read an `NSViewBackingLayer` bounded 272 x 36, with `wantsLayer` still
+/// false: the bar promotes the control and backs it as it inserts it, the same
+/// pass that leaves `controlSize` at 4.
+///
+/// What is missing is the eye, not the layer. Nothing here reads a pixel or
+/// times a ramp, so a fill that animates and a fill that cuts are the same
+/// green run. A green run here says the frame is set once; it does not say the
+/// window looked right.
 @MainActor
 final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
 
@@ -113,9 +134,10 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
 
         XCTAssertEqual(switcherFrames.last!.height, canaryFrames.last!.height, accuracy: 0.01, """
             the switcher settles \(switcherFrames.last!.height) pt tall where a control the bar \
-            sized itself settles \(canaryFrames.last!.height): the metric pinned in makeNSView \
-            is not the one the toolbar promotes to, so the switcher draws at its own height beside \
-            every other control on the same glass.
+            sized itself settles \(canaryFrames.last!.height): the metric HelmToolbarSwitcher pins \
+            in updateNSView, behind Coordinator.hasPinnedMetric, is not the one the toolbar \
+            promotes to, so the switcher draws at its own height beside every other control on the \
+            same glass.
             """)
     }
 
@@ -125,7 +147,8 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
     /// chosen by right-click has to change the item's width.
     ///
     /// It is a live change on **one** control, not two mounts compared — the
-    /// pin runs in `makeNSView` only, which is already behind us here, and the
+    /// pin is written once, on `Coordinator.hasPinnedMetric`, which is already
+    /// behind us here, and the
     /// same `NSView` survives the change (`AStyleChosenInTheBarReachesTheBarTests`
     /// holds the tracker to that). So this reads the one path where
     /// `sizeThatFits` still has to answer live, and it goes red for a
