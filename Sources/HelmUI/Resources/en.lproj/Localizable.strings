@@ -1224,3 +1224,8 @@
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm’s own colours follow Increase Contrast, the way the system’s colours already did.";
 "Toolbar tabs no longer jump when Settings first opens." = "Toolbar tabs no longer jump when Settings first opens.";
 "Concurrency warnings cleared across the app." = "Concurrency warnings cleared across the app.";
+"The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it." = "The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it.";
+"Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew." = "Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew.";
+"At a narrow window the search becomes a magnifier button, and opens when you click it." = "At a narrow window the search becomes a magnifier button, and opens when you click it.";
+"The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.";
+"Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.";

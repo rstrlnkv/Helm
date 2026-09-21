@@ -16,7 +16,10 @@ import Module_Uninstaller_Engine
 ///
 /// The filtered state is not reachable from here: the search term is the page's
 /// own `@State` — deliberately, it is the one thing a person cannot retype — and
-/// a test cannot write to that outside a render. It is `AppsEmptyTests`' to hold.
+/// a test cannot write to that outside a render. It is `AppsEmptyTests`' to
+/// hold, and from 2026-09-20 the render exists too:
+/// `TheAppFilterIsTheWindowsFieldNowTests` types into the control the window's
+/// toolbar draws and counts the rows the list comes back with.
 @MainActor
 final class AnEmptyAppsTabSaysWhichEmptinessTests: XCTestCase {
 

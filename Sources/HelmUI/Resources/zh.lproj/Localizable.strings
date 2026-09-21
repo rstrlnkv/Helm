@@ -1224,3 +1224,8 @@
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm 自有的颜色现在会跟随“增强对比度”，系统颜色一直如此。";
 "Toolbar tabs no longer jump when Settings first opens." = "首次打开设置时，工具栏中的标签页不再跳动。";
 "Concurrency warnings cleared across the app." = "已清除应用各处的并发警告。";
+"The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it." = "在内容不会从下方滚过的页面上，设置工具栏从页面打开的那一刻起就显示其背景。";
+"Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew." = "搜索已从页面移入窗口的工具栏，见于卸载器和 Homebrew。";
+"At a narrow window the search becomes a magnifier button, and opens when you click it." = "窗口较窄时，搜索会变成一个放大镜按钮，点击后展开。";
+"The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "模块图标和名称位于工具栏左侧，在这两者与窗口标题之间的选择现在位于设置 → 外观，而不再藏在开发者版本里。";
+"Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "“刷新列表”和“全部升级”不再因旁边出现或消失的控件而在工具栏中跳动。";

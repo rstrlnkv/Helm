@@ -1191,9 +1191,9 @@
 "Machine" = "Машина";
 "Tools" = "Инструменты";
 "Copy for a bug report" = "Скопировать для отчёта об ошибке";
-"Page header" = "Шапка страниц";
+"Page header" = "Шапка страницы";
 "Window title" = "Заголовок окна";
-"Module icon and name" = "Иконка и имя модуля";
+"Module icon and name" = "Значок и название модуля";
 "Text Only" = "Только текст";
 "Icon Only" = "Только значок";
 "Icon and Text" = "Значок и текст";
@@ -1224,3 +1224,8 @@
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Собственные цвета Helm следуют настройке «Увеличить контраст», как это давно делают системные цвета.";
 "Toolbar tabs no longer jump when Settings first opens." = "Вкладки в панели инструментов больше не прыгают при первом открытии Настроек.";
 "Concurrency warnings cleared across the app." = "Предупреждения о конкурентности устранены во всём приложении.";
+"The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it." = "Панель инструментов настроек показывает свой фон с момента открытия страницы — на страницах, содержимое которых не прокручивается под ней.";
+"Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew." = "Поиск переехал со страницы в панель инструментов окна — в «Удаление приложений» и в Homebrew.";
+"At a narrow window the search becomes a magnifier button, and opens when you click it." = "В узком окне поиск превращается в кнопку-лупу, которая открывается по клику.";
+"The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "Значок и название модуля стоят слева в панели инструментов, а выбор между этим и заголовком окна теперь в Настройках → Оформлении, а не скрыт в сборке для разработчиков.";
+"Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "«Перечитать список» и «Обновить всё» больше не прыгают по панели инструментов, когда рядом появляется или исчезает элемент управления.";

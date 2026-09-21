@@ -1,10 +1,22 @@
 import AppKit
 import SwiftUI
 
-/// The system search field. SwiftUI's `.searchable` needs a toolbar this
-/// window doesn't have, and a hand-rolled TextField never matches the real
-/// control — the rounded well, the magnifier, the clear button, Escape to
-/// cancel and the focus ring all come from `NSSearchField` itself.
+/// The system search field, in a page. **Nothing mounts this any more** — both
+/// search bars became one toolbar control on 2026-09-20 (`helmSearchable`), and
+/// what happens to this type is not a decision taken on the way past.
+///
+/// The sentence that used to open this file said `.searchable` needs a toolbar
+/// this window doesn't have. The window has one: every settings page declares a
+/// toolbar and `SettingsSplitViewController` bridges it out of the pane
+/// (`sceneBridgingOptions`), and measured on macOS 27 the bridge carries the
+/// prompt whole. What is still true, and is the reason a reader might come back
+/// here, is the other half: **on macOS SwiftUI cannot ask for the collapsed
+/// magnifier at all** — `SearchToolbarBehavior.minimize` is
+/// `@available(macOS, unavailable)` — so the shape of the toolbar control is
+/// AppKit's alone, decided from the width the toolbar has left over. A
+/// hand-rolled `TextField` was never the alternative either: the rounded well,
+/// the magnifier, the clear button, Escape to cancel and the focus ring all
+/// come from `NSSearchField` itself.
 ///
 /// **What it does not come with is a name.** The control carried
 /// `placeholderString` and nothing else, and a placeholder is not a name: it
@@ -25,7 +37,8 @@ import SwiftUI
 /// prose quoting the shape it forbids is reported as an offence — which is what
 /// this paragraph did on its first draft.
 /// `ASearchFieldSaysWhatItIsTests` reads the label back off the mounted control
-/// instead.
+/// instead — off the **toolbar's** field now, which is the one a person meets,
+/// so nothing in this file is under guard while nothing mounts it.
 public struct HelmSearchField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String

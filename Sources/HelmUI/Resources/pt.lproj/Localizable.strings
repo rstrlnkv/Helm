@@ -1224,3 +1224,8 @@
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "As cores próprias do Helm seguem “Aumentar contraste”, como as cores do sistema já faziam.";
 "Toolbar tabs no longer jump when Settings first opens." = "As abas da barra de ferramentas não pulam mais ao abrir os Ajustes pela primeira vez.";
 "Concurrency warnings cleared across the app." = "Avisos de concorrência resolvidos em todo o app.";
+"The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it." = "A barra de ferramentas dos ajustes mostra o seu fundo desde o momento em que uma página abre, nas páginas cujo conteúdo não rola por baixo dela.";
+"Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew." = "A busca saiu da página e foi para a barra de ferramentas da janela, no Desinstalador e no Homebrew.";
+"At a narrow window the search becomes a magnifier button, and opens when you click it." = "Numa janela estreita, a busca vira um botão de lupa que abre ao clicar nele.";
+"The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "O ícone e o nome do módulo ficam à esquerda da barra de ferramentas, e a escolha entre isso e o título da janela agora está em Ajustes → Aparência, em vez de escondida numa compilação para desenvolvedores.";
+"Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "“Recarregar lista” e “Atualizar tudo” não pulam mais pela barra de ferramentas quando um controle aparece ou desaparece ao lado deles.";

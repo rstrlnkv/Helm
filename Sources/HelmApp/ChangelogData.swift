@@ -185,6 +185,11 @@ enum Changelog {
                 ChangeItem(kind: .upd, text: L("The switch that lets a timer pause your automation rules now says so plainly: it is the timer, it is the automation rules, and it happens when the timer finishes.")),
                 ChangeItem(kind: .upd, text: L("While the switch that lets a timer pause your automation rules is on, Stop takes two presses. The first ends the timer and leaves your rules running; the button then offers to switch the rules off as well. A timer runs out while you are away, and pressing Stop means you are here \u{2014} so it hands you the second step instead of taking it. With that switch off, Stop is the one press it has always been.")),
                 ChangeItem(kind: .fix, text: L("Settings pages now scroll wherever the pointer is. On a wide window the wheel worked only over the middle of the page; either side of it, nothing moved.")),
+                ChangeItem(kind: .upd, text: L("The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it.")),
+                ChangeItem(kind: .upd, text: L("Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew.")),
+                ChangeItem(kind: .new, text: L("At a narrow window the search becomes a magnifier button, and opens when you click it.")),
+                ChangeItem(kind: .upd, text: L("The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.")),
+                ChangeItem(kind: .fix, text: L("Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.")),
             ]),
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .upd, text: L("A glyph that changes now turns into the next one instead of blinking \u{2014} the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.")),

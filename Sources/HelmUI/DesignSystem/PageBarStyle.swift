@@ -6,29 +6,44 @@ import SwiftUI
 /// trailing edge — under a title bar that carried nothing. With the page's
 /// controls moved into the window's toolbar that stacked two 52 pt bars, one
 /// of them empty, over every page. The header now lives in the toolbar, and
-/// there are two ways it can: both are drawn side by side in the approved
-/// mockup, and this build carries both so the owner can live with each.
+/// there are two ways it can: both were drawn side by side in the approved
+/// mockup, and this build still carries both.
 ///
-/// - `windowTitle` — the page's name is the window's own title and its status
-///   the subtitle under it: text the system draws, with no glass behind it,
-///   which is where the guidelines put a title. Shown on every page,
-///   including the ones whose toolbar centres a segment switcher.
 /// - `moduleName` — the module's plate and name as a toolbar item at the
 ///   leading edge, with its shared glass background hidden, and the status
 ///   right after the name: the header as it looked, lifted into the bar.
-///
-/// **A developer option, not a preference.** It exists to choose between two
-/// drafts and is expected to be cut; the row that writes it is in the
-/// developer section of a dev build only.
+///   **The owner's choice for the shipping layout** (2026-09-21): the module's
+///   name on the left, the switcher centred, and the buttons and search
+///   packed to the trailing edge — a three-zone toolbar that needs a leading
+///   item to be a real zone at all. It is also load-bearing for the search
+///   field: `ToolbarSearchName` no longer pins a resting width, and it is
+///   this leading item taking room the bare toolbar did not use to take that
+///   makes the collapse to a magnifier reachable inside the window's own
+///   resizable range at all — measured on Uninstaller, whose search field
+///   stays open at every width a headless sweep reaches with no leading item
+///   mounted and reads collapsed at the same widths with one
+///   (`ToolbarSearchName`'s own doc, which also says why the exact widths in
+///   that sweep are not themselves evidence of where the rendered window
+///   collapses).
+/// - `windowTitle` — the page's name is the window's own title and its status
+///   the subtitle under it: text the system draws, with no glass behind it,
+///   which is where the guidelines put a title. Shown on every page,
+///   including the ones whose toolbar centres a segment switcher. Kept as the
+///   other drafted shape, reachable from `GeneralSettingsPage`'s Appearance
+///   section — not removed, because retiring a case a Mac may already have
+///   stored is `CLAUDE.md`'s rule and not a preference of this file's.
 public enum PageBarStyle: String, CaseIterable, Sendable {
     case windowTitle, moduleName
 
     public static let storageKey = "pageBarStyle"
 
-    /// Anything unknown, including nothing stored, is `windowTitle` — the
-    /// direction chosen as the default.
+    /// Anything unknown, including nothing stored, is `moduleName` — the
+    /// direction the owner chose for the shipping layout. A Mac that already
+    /// has `windowTitle` written keeps reading it: only an *empty or
+    /// unrecognised* value falls here, and a value this enum itself wrote is
+    /// never either.
     public init(stored: String) {
-        self = PageBarStyle(rawValue: stored) ?? .windowTitle
+        self = PageBarStyle(rawValue: stored) ?? .moduleName
     }
 }
 
@@ -79,6 +94,25 @@ public struct HelmPageScrolledKey: PreferenceKey {
     }
 }
 
+/// **Whether what sits directly under the band is a scroll view** — the page's
+/// own structural claim, travelling to whoever draws the band.
+///
+/// The same road `HelmPageScrolledKey` takes and for the same reason: the band
+/// is applied from outside the page, so the page cannot hand this over as an
+/// argument, and the only alternative would be a list of pages kept by hand
+/// somewhere neither the page nor the band can see.
+///
+/// The reduction is `||`, so an inner page that says nothing cannot take the
+/// claim back — which is what a declaration means, against `HelmPageScrolledKey`'s
+/// identical `||` meaning "some scroll view under here has moved".
+public struct HelmPageStandsOnStillContentKey: PreferenceKey {
+    public static let defaultValue = false
+
+    public static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 public extension View {
     /// **The toolbar's strip, drawn the way the page header drew itself before
     /// it moved into the toolbar** (`HeaderEdgeLight`): the scroll edge's
@@ -98,11 +132,19 @@ public extension View {
     /// render never composites one, which is how the note that stood here came
     /// to blame `Form`.
     ///
-    /// **The strip exists because the effect has nothing to act on, not because
-    /// the platform gives us nothing.** This pane keeps AppKit's safe area, so a
-    /// page's content never passes beneath the bar; with the flag off the live
+    /// **The strip exists because the effect has nothing to act on at rest, not
+    /// because the platform gives us nothing.** This pane keeps AppKit's safe
+    /// area, so at rest no content is under the bar; with the flag off the live
     /// effect contributed +7.7/255 in Dark and 0/255 in Light (a reading from
-    /// that investigation, which no check in the tree re-takes).
+    /// that investigation, which no check in the tree re-takes) — an effect
+    /// drawing over nothing. **Scrolled, content does pass beneath the bar**:
+    /// that is what `HelmPageScrolledKey` reports and what lights this band, and
+    /// Helm's own band was measured tracking a scroll at 38,43 / 39,97 / 38,70
+    /// luma over three offsets (2026-09-21, this Mac, dark). The sentence that
+    /// stood here said a page's content never passes beneath the bar at all;
+    /// only the narrower half of it is true, and it is the half the argument
+    /// needs.
+    ///
     /// `scrollEdgeEffectStyle(.hard)` is no way round it either, and it is not
     /// ignored: the pocket takes `HardPocketContentBlur`,
     /// `HardPocketBackgroundReplay` and `Separator`, and the transparent title
@@ -115,6 +157,23 @@ public extension View {
     /// one.
     func helmToolbarBackdrop() -> some View {
         modifier(ToolbarBackdrop())
+    }
+
+    /// **Says that nothing scrolls under this page's band**, which is what
+    /// keeps the band lit from the page's first frame instead of waiting for a
+    /// scroll that can never come.
+    ///
+    /// Applying it *is* the declaration — there is no `false` to pass, the way
+    /// there is no `overContent: false` for a page that hands itself to
+    /// `helmPageHeader`. A page whose top band is a stack of rows, a switcher
+    /// or a toolbar of its own says this; a page that opens a `Form`, a `List`
+    /// or a `ScrollView` directly under the band does not, and the scroll
+    /// trigger it already has is the right one for it.
+    ///
+    /// **Declared and not measured**: `HelmPageHeader.standsOnStillContent`
+    /// records what that costs and why it is still the cheaper error.
+    func helmPageStandsOnStillContent() -> some View {
+        preference(key: HelmPageStandsOnStillContentKey.self, value: true)
     }
 
     /// Follows `PageBarStyle` as it is changed, the way
@@ -230,19 +289,34 @@ private struct ReportsScrolledUnderBar: ViewModifier {
 
 private struct ToolbarBackdrop: ViewModifier {
     @State private var scrolled = false
+    @State private var standsOnStillContent = false
 
     func body(content: Content) -> some View {
         content
             .onPreferenceChange(HelmPageScrolledKey.self) { now in
                 scrolled = now
             }
+            // The page's structural claim, read the same way its live one is.
+            // Without this the eight pages that declare it are exactly the
+            // eight the window draws through a toolbar, so the declaration
+            // would reach nothing that ships.
+            .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { now in
+                standsOnStillContent = now
+            }
             .overlay(alignment: .top) {
                 GeometryReader { proxy in
                     Color.clear
                         .frame(height: proxy.safeAreaInsets.top)
                         .modifier(HeaderEdgeLight(
-                            lit: HelmPageHeader<EmptyView>.isLit(hovering: false, active: .key,
-                                                                 scrolled: scrolled),
+                            lit: HelmPageHeader<EmptyView>.isLit(
+                                hovering: false, active: .key, scrolled: scrolled,
+                                standsOnStillContent: standsOnStillContent),
+                            // Without the declaration in it, so the band is
+                            // there from the page's first frame instead of
+                            // fading in as the preference lands — see
+                            // `HeaderEdgeLight.live`.
+                            live: HelmPageHeader<EmptyView>.isLive(
+                                hovering: false, active: .key, scrolled: scrolled),
                             overContent: true))
                         .offset(y: -proxy.safeAreaInsets.top)
                 }

@@ -53,6 +53,10 @@ struct HomebrewSettingsPage: View {
         // `showsConsole` and not `hb.consoleLines.count`: the lines arriving
         // scroll, which `console` already animates, and re-running the page's
         // layout per line of `brew` output is a different thing entirely.
+        // The band stands on the manager's own bands or on the install screen,
+        // never on a scroll view, so it is lit from the first frame
+        // (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .animation(HelmMotion.interface, value: showsConsole)
         // The view model outlives this page, so a return visit shows what is
         // already loaded instead of paying for `brew list` and a `brew desc`
@@ -273,6 +277,29 @@ struct HomebrewSettingsPage: View {
         .animation(HelmMotion.interface, value: hb.segment)
         .animation(HelmMotion.interface, value: hb.selected == nil)
         .toolbar { pageToolbar }
+        // **Mounted here, on the page, and not inside `searchView` any
+        // more.** It used to come and go with the Поиск segment, which is
+        // what an in-page row had always done — but the field moved into the
+        // window's own `NSToolbar` (`helmSearchable`), and that toolbar lays
+        // its items out itself: adding or dropping one item shifts every
+        // other one sharing it, Refresh included. Measured on a real screen
+        // recording (2026-09-21, `hb-expand`/`hb-expand2`/`hb-collapse`):
+        // Refresh's glyph moved 175 pt inside a single frame — 41.7-50 ms at
+        // this clip's dropped-frame rate — every time this field's presence
+        // flipped, while the very same segment change already sits under
+        // `.animation(HelmMotion.interface, value: hb.segment)` above and
+        // still snapped, because that transaction is SwiftUI's and the
+        // toolbar's own relayout is AppKit's, which no curve in this file
+        // reaches (`ARCHITECTURE.md`'s "The page header": the switcher is
+        // "the system's control" for the identical reason). Keeping the
+        // field mounted keeps the toolbar's item count constant, which is
+        // the only thing that keeps its relayout from running at all — the
+        // query itself still only searches on Return, and `searchView`
+        // still only shows a result once one has been asked for.
+        .helmSearchable(text: $query, prompt: HbStr.searchPlaceholder) {
+            searching?.cancel()
+            searching = Task { await hb.search(query) }
+        }
         // The page fills the pane, so its width is the pane's and does not
         // follow anything the page draws.
         .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
@@ -317,12 +344,33 @@ struct HomebrewSettingsPage: View {
     /// **The page's shape is now a question of width alone** (`HomebrewSplit`):
     /// nothing in the pane depends on how wide a string is any more.
     ///
-    /// «Обновить всё» is drawn only where it can act — in Обновления, with
-    /// something outdated. It had to be *reserved* in every segment while it
-    /// lived in the page's bar, because that bar's width decided the page's
-    /// shape; a toolbar item decides nothing about the pane under it. It keeps
-    /// the module's own «an update exists» symbol and carries its word in help
-    /// and in its accessibility label, which is what a glyph-only control owes.
+    /// «Обновить всё» is *disabled* except where it can act — in Обновления,
+    /// with something outdated — rather than entering and leaving the bar
+    /// with that condition, which is what it did until 2026-09-21. Measured
+    /// on a real screen recording (`hb-expand`/`hb-expand2`/`hb-collapse`):
+    /// an item entering or leaving this `ToolbarItemGroup` makes AppKit relay
+    /// the whole bar, and it moved the segmented control the person had just
+    /// pressed — the unselected segment label «Состояние» jumped 37.00 pt
+    /// inside a single frame (f84 → f85, 16.7 ms), twice measured, while
+    /// `.animation(HelmMotion.interface, value: hb.segment)` already sat on
+    /// the segment change and still snapped, because that transaction is
+    /// SwiftUI's and the toolbar's own relayout is AppKit's, which no curve
+    /// in this file reaches — the identical mechanism, and the identical
+    /// remedy, already applied to the search field going into
+    /// `helmSearchable` below: keep the item mounted so the bar's item count
+    /// stops changing at all. It had to be *reserved* the same way in every
+    /// segment while it lived in the page's own bar, for the same reason:
+    /// there the bar's width decided the page's shape, and a toolbar item
+    /// decides nothing about the pane under it, so there is nothing left to
+    /// reserve room *for* — mounted-and-disabled is now what "reserved" means
+    /// here. On the segments it has nothing to do on, a person sees exactly
+    /// what they already see on Refresh while an operation is running: the
+    /// same glyph, greyed. It keeps the module's own «an update exists»
+    /// symbol and carries its word in help and in its accessibility label,
+    /// which is what a glyph-only control owes whether or not it is enabled.
+    /// `TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests` holds the
+    /// item count; the jump itself is AppKit's own relayout and nothing a
+    /// headless test can watch move — see that file's own header.
     @ToolbarContentBuilder
     private var pageToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
@@ -344,16 +392,14 @@ struct HomebrewSettingsPage: View {
             }
         }
         ToolbarItemGroup(placement: .primaryAction) {
-            if hb.segment == .updates && !hb.outdated.isEmpty {
-                Button {
-                    hb.upgradeAll()
-                } label: {
-                    Image(systemName: "arrow.up.circle")
-                }
-                .disabled(hb.running)
-                .help(HbStr.upgradeAll)
-                .accessibilityLabel(HbStr.upgradeAll)
+            Button {
+                hb.upgradeAll()
+            } label: {
+                Image(systemName: "arrow.up.circle")
             }
+            .disabled(hb.running || !(hb.segment == .updates && !hb.outdated.isEmpty))
+            .help(HbStr.upgradeAll)
+            .accessibilityLabel(HbStr.upgradeAll)
             Button {
                 Task { await refresh(hb.segment) }
             } label: {
@@ -692,18 +738,15 @@ struct HomebrewSettingsPage: View {
         }
     }
 
+    /// **The field is the window's toolbar's** (`helmSearchable`), which is why
+    /// nothing above the results is drawn here any more — the row that held it
+    /// and the rule under that row are both gone with it. The declaration is on
+    /// `managerBody` now and not on this segment's own view — it used to come
+    /// and go with Поиск, the way the row did, but a toolbar item entering and
+    /// leaving is a different act from a row doing the same: `managerBody`'s
+    /// own `.helmSearchable` says why.
     private func searchView(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
-            HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
-                            onSubmit: {
-                                searching?.cancel()
-                                searching = Task { await hb.search(query) }
-                            })
-                .frame(height: 22)
-                .padding(.horizontal, HelmLayout.formInset)
-                .padding(.top, HelmSpace.s5)
-                .padding(.bottom, HelmSpace.s5)
-            Divider()
             if SearchDisplay.state(query: query, reading: hb.searchReading) == .prompt {
                 HelmEmptyState(message: HbStr.typeToSearch)
             } else {

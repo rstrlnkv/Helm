@@ -60,6 +60,10 @@ struct HostsSettingsPage: View {
             case .keys: keysTab
             }
         }
+        // The band stands on whichever tab's own chrome is first, never on a
+        // scroll view, so it is lit from the first frame
+        // (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .toolbar { pageToolbar }
     }
 

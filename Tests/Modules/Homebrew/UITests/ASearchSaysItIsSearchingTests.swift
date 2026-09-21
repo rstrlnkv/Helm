@@ -21,6 +21,21 @@ import HelmUI
 /// The mount drives the real search field, because the results area is gated on
 /// the page's own `query` as well as on the reading, and a test that set only
 /// the view model would be measuring half the seam.
+///
+/// **That field is the window's now** (`helmSearchable`), so the typing goes
+/// through `MountedRender.type`, which reads the control off the window's
+/// toolbar. It is not in `mount.host` at all — measured 2026-09-20,
+/// `host.everyView(ofType:)` finds 0 search fields where the representable it
+/// replaced gave 1 — which is exactly how a test of this shape goes quiet
+/// rather than red, so the absence is a failure here and not a skipped step.
+///
+/// **The band moved up with the row that is gone.** It was 110…420, named as
+/// «below the search field and above the status line»; the field's 32 pt row
+/// and the rule under it have left the page, so the results area now starts at
+/// the top of the pane. 40…380 is the same claim about the same area, and it is
+/// still a band rather than the whole page for the reason `RenderedInk.bytes`
+/// gives: a whole-page comparison is dominated by the status line, which says
+/// three different things in these three runs.
 @MainActor
 final class ASearchSaysItIsSearchingTests: XCTestCase {
 
@@ -74,18 +89,19 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         }
         await turn(20)
         // The page's `query` is its own `@State`, so the word has to arrive the
-        // way a person types it: through the field the page drew.
-        let field = mount.host.everyView(ofType: NSSearchField.self).first
-        XCTAssertNotNil(field, "the search segment drew no field, so nothing below is measured")
-        field?.stringValue = "cad"
-        NotificationCenter.default.post(name: NSControl.textDidChangeNotification, object: field)
+        // way a person types it: through the field the page asked the window
+        // for.
+        XCTAssertTrue(mount.type("cad"), """
+            the search segment put no field in the window's toolbar, so nothing below is \
+            measured — every reading after this would be taken from a page nobody typed into
+            """)
         let searching = Task { @MainActor in await hb.search("cad") }
         await turn(60)
         let spinners = mount.host.everyView(ofType: NSProgressIndicator.self).count
-        // Below the search field and above the status line: the results area
-        // alone is what these three readings are a claim about
-        // (`RenderedInk.bytes`).
-        let picture = mount.pixels(110...420)
+        // The results area alone is what these three readings are a claim about
+        // (`RenderedInk.bytes`); the head of the file says why it starts where
+        // it does.
+        let picture = mount.pixels(40...380)
         mount.drop()
         _ = loading
         _ = searching

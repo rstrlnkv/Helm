@@ -90,6 +90,10 @@ struct AutopilotSettingsPage: View {
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
         }
+        // The band stands on the permission note or on the page's own toolbar
+        // above the rules, never on a scroll view, so it is lit from the first
+        // frame (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
         .animation(HelmMotion.interface, value: rvm.folders.count)
         // A sweep's report and a return's report grow into the banner without

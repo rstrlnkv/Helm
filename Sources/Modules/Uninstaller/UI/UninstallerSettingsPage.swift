@@ -52,6 +52,12 @@ struct UninstallerSettingsPage: View {
 
     var body: some View {
         pageBody
+            // The band stands on a stack of bands — the search row, the
+            // permission note, a step's own chrome — and never on a scroll
+            // view, so it is lit from the first frame. The Objects tab is the
+            // one place that over-reports, knowingly:
+            // `HelmPageHeader.standsOnStillContent` says why it is kept.
+            .helmPageStandsOnStillContent()
             .helmTracksFullDiskAccess($diskAccess)
             .task {
                 await uvm.refreshTrashWatch()
@@ -102,17 +108,10 @@ struct UninstallerSettingsPage: View {
         // in a single frame. One token on the three things that change, the
         // same one the other list screens use.
         VStack(spacing: 0) {
-            // The switcher and Refresh are in the window's toolbar
-            // (`pageToolbar`); what stays in the page is the one control that
-            // belongs to the list under it, and only while there is a list of
-            // apps to narrow.
-            if tab == 0 && step == .pick {
-                HelmSearchField(text: $search, placeholder: UnStr.searchApps)
-                    .frame(height: 22)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-                Divider()
-            }
-
+            // The switcher, Refresh and the search control are all the
+            // window's toolbar's (`pageToolbar`, `helmSearchable`) — nothing
+            // is drawn in the page for any of them.
+            //
             // Page level: the user used to tick apps, sit through a scan and
             // only then learn the removal would be refused.
             if let note = permissionNote {
@@ -135,6 +134,25 @@ struct UninstallerSettingsPage: View {
             }
         }
         .toolbar { pageToolbar }
+        // **Mounted here, unconditionally, and not under `tab == 0 && step ==
+        // .pick` any more.** It used to come and go with that condition, the
+        // way the in-page row it replaced always had — but this field lives
+        // in the window's own `NSToolbar` now, and that toolbar lays its
+        // items out itself: adding or dropping one shifts every other item
+        // sharing it, Refresh included. Measured on a real screen recording
+        // (2026-09-21, `un-leave`): Refresh's glyph moved 175 pt inside a
+        // single frame — 41.7-50 ms at this clip's dropped-frame rate — right
+        // when this condition flipped leaving Приложения, while the very same
+        // tab change already sits under `.animation(HelmMotion.interface,
+        // value: tab)` below and still snapped, because that transaction is
+        // SwiftUI's and the toolbar's own relayout is AppKit's, which no
+        // curve in this file reaches (`ARCHITECTURE.md`'s "The page header":
+        // the switcher is "the system's control" for the identical reason).
+        // Keeping the field mounted keeps the toolbar's item count constant,
+        // which is the only thing that keeps its relayout from running at
+        // all — `filtered` still only narrows the Apps tab's list at `step
+        // == .pick`, exactly as it did before.
+        .helmSearchable(text: $search, prompt: UnStr.searchApps)
         .animation(HelmMotion.interface, value: step)
         .animation(HelmMotion.interface, value: tab)
         .animation(HelmMotion.interface, value: apps.count)

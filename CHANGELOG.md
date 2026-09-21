@@ -129,6 +129,11 @@ only once it has no known problems left.
 - **FIX** An update does not start unless Helm can first write down that one is in flight — that note is what reports an update that fails.
 - **FIX** When Helm cannot save something it keeps for itself, it says so instead of carrying on as though it had.
 - **FIX** Settings pages scroll wherever the pointer is; on a wide window the wheel worked only over the middle.
+- **UPD** The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it.
+- **UPD** Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew.
+- **NEW** At a narrow window the search becomes a magnifier button, and opens when you click it.
+- **UPD** The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.
+- **FIX** Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.
 
 ## 0.10.0 — 2026-08-09
 

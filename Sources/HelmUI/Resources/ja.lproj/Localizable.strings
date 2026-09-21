@@ -1224,3 +1224,8 @@
 "Helm’s own colours follow Increase Contrast, the way the system’s colours already did." = "Helm 独自の色が“コントラストを上げる”に従うようになりました。システムの色は以前からそうでした。";
 "Toolbar tabs no longer jump when Settings first opens." = "設定を初めて開いたとき、ツールバーのタブがずれなくなりました。";
 "Concurrency warnings cleared across the app." = "アプリ全体で並行処理の警告を解消しました。";
+"The settings toolbar shows its background from the moment a page opens, on the pages whose content does not scroll beneath it." = "内容がその下をスクロールしないページでは、設定のツールバーはページが開いた瞬間から背景を表示します。";
+"Search moved out of the page and into the window’s toolbar, in Uninstaller and in Homebrew." = "検索は、アンインストーラと Homebrew で、ページからウインドウのツールバーに移りました。";
+"At a narrow window the search becomes a magnifier button, and opens when you click it." = "幅の狭いウインドウでは、検索は虫眼鏡ボタンになり、クリックすると開きます。";
+"The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "モジュールのアイコンと名前はツールバーの左に置かれ、それとウインドウのタイトルのどちらを使うかは、開発者向けビルドに隠されているのではなく、設定 → 外観で選べるようになりました。";
+"Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "隣にコントロールが現れたり消えたりしても、“リストを更新”と“すべて更新”はツールバー内で位置がずれなくなりました。";

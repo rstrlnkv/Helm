@@ -88,9 +88,9 @@ final class APageHeaderGoesWhereTheWindowSaysTests: XCTestCase {
                        "the page drew its own header row as well as the bar's plate and name")
     }
 
-    func testAnythingUnknownStoredIsTheWindowTitleShape() {
-        XCTAssertEqual(PageBarStyle(stored: ""), .windowTitle)
-        XCTAssertEqual(PageBarStyle(stored: "no such shape"), .windowTitle)
-        XCTAssertEqual(PageBarStyle(stored: "moduleName"), .moduleName)
+    func testAnythingUnknownStoredIsTheModuleNameShape() {
+        XCTAssertEqual(PageBarStyle(stored: ""), .moduleName)
+        XCTAssertEqual(PageBarStyle(stored: "no such shape"), .moduleName)
+        XCTAssertEqual(PageBarStyle(stored: "windowTitle"), .windowTitle)
     }
 }

@@ -43,10 +43,6 @@ extension Notification.Name {
         }
     }
 
-    /// Which of the two drafted shapes the page header takes in the window's
-    /// toolbar (`PageBarStyle`). Dev builds only, like `language`: it exists to
-    /// choose between two drafts, and the row that writes it is in the
-    /// developer section.
     /// How the switchers in the settings window's toolbar label their segments
     /// (`ToolbarSwitcherStyle`), chosen by right-clicking any of them. One
     /// answer for every page: a switcher that read as words on one page and as
@@ -67,6 +63,16 @@ extension Notification.Name {
         }
     }
 
+    /// Which of the two shapes the page header takes in the window's toolbar
+    /// (`PageBarStyle`) — a real setting now, and no longer gated to dev
+    /// builds: the owner has chosen `moduleName`'s shape (the plate and name
+    /// at the toolbar's leading edge) for the shipping layout, and
+    /// `PageBarStyle.init(stored:)` defaults an empty store to it, so this
+    /// answers `moduleName` on every Mac that has never touched the row. The
+    /// other shape stays reachable — a Mac that already has `windowTitle`
+    /// written keeps reading it, and the two drafts are still what
+    /// `GeneralSettingsPage`'s picker offers, in Appearance rather than in the
+    /// developer section it used to sit in.
     static var pageBarStyle: PageBarStyle {
         get { PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: "")) }
         set {

@@ -41,6 +41,10 @@ struct DiskSettingsPage: View {
                 basketBar
             }
         }
+        // The band stands on the permission note or on one of the three phase
+        // screens, never on a scroll view, so it is lit from the first frame
+        // (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
         .task {
             dvm.expireIfStale()

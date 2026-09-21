@@ -88,6 +88,10 @@ struct DuplicatesSettingsPage: View {
                 basketBar
             }
         }
+        // The band stands on the width probe and then on the permission note or
+        // the page's own toolbar, never on a scroll view, so it is lit from the
+        // first frame (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
         .animation(HelmMotion.interface, value: dvm.phase)
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)

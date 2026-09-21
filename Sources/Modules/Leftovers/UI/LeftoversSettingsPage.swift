@@ -95,6 +95,10 @@ struct LeftoversSettingsPage: View {
                 }
             }
         }
+        // The band stands on the page's own toolbar, its permission note or
+        // its review line, never on a scroll view, so it is lit from the first
+        // frame (`helmPageStandsOnStillContent`).
+        .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
         // The question names the reason it is being asked — «it is loaded now» for a
         // row the Mac has open, and «Helm could not read this file» for one it never

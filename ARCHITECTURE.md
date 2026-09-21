@@ -482,27 +482,56 @@ right-click on any switcher changes for all of them. It is the system's control 
 control's own and cannot be drawn from SwiftUI. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
 toolbar only while an item exists and a page without controls would otherwise have
 a shorter title bar. The header itself takes one of two shapes, chosen by
-`PageBarStyle` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), a developer
-option while both drafts are lived with: the page's name as the window title with
-its status as the subtitle — set on the `NSWindow` from `HelmPageTitleKey`, since
-the bridge carries a subtitle and drops a title — or the module's plate and name as
-a toolbar item with no glass behind it. The environment value `helmPageBar` is what
-the window sets; where it is nil — a sheet, a page mounted on its own — the header
-is the strip below.
+`PageBarStyle` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), a setting in
+Appearance rather than a dev-only toggle: the module's plate and name as a toolbar
+item at the leading edge with no glass behind it — the shipping default, and what
+`PageBarStyle.init(stored:)` answers for an empty or unrecognised store — or the
+page's name as the window title with its status as the subtitle, set on the
+`NSWindow` from `HelmPageTitleKey` since the bridge carries a subtitle and drops a
+title. The environment value `helmPageBar` is what the window sets; where it is
+nil — a sheet, a page mounted on its own — the header is the strip below.
+
+The three zones of the window's toolbar are, in order: the leading item
+`PageBarStyle.moduleName` publishes, the centred `.principal` item — the switcher,
+where a page has one — and the trailing `.primaryAction` items packed against the
+window's own edge, which is where `.searchable` bridges its field. Measured with a
+fixed-width `.principal` marker and a real leading item mounted
+(`ALeadingItemAndThePrincipalsCentringTests`), the leading item changes nothing
+about where AppKit centres the `.principal` item anywhere in the window's ordinary
+range, the 1060 pt shipping default included; only at the window's own 860 pt
+floor (`SettingsWindow.minSize`) does AppKit push the centred slot toward the
+trailing edge to keep clear of the leading item, by roughly the leading item's own
+width.
+
+`ToolbarSearchName` (`Sources/HelmApp/ToolbarSearchName.swift`) pins no width on
+the bridged search field's resting state; AppKit's own leftover-room layout
+decides it, and below 160 pt AppKit itself draws the collapsed magnifier
+regardless of how that width was reached. That makes the leading item load-bearing
+a second way: Uninstaller's search field never once collapses across the window's
+whole resizable range with the leading zone empty, and reads collapsed at the same
+widths with the module-name header mounted
+(`ASearchCollapsesOnlyWhereTheWindowIsSmallTests`) — the *exact* crossing this
+mounts is not itself evidence of where the rendered window collapses, since an
+offscreen, non-key window is not shown to composite the Liquid Glass toolbar this
+decision is made against; a designer's reading of the rendered window is what that
+file's own header points to instead. `preferredWidthForSearchField` still sets the
+width AppKit gives the field once a click asks for keyboard focus.
 
 That strip is the system's 52 pt and lies over the page
 rather than above it: `helmPageHeader`
 (`Sources/HelmUI/DesignSystem/HelmPageHeader.swift`) applies it as a modifier, so
 content scrolls behind its material. A page whose top band stays put draws
-`HelmPageHeader` as an ordinary view instead and gets no edge, which is why the
-guard that reads these pages hunts for both spellings.
+`HelmPageHeader` as an ordinary view instead and gets no scroll-edge material,
+because there is no scroll for it to be the edge of, which is why the guard that
+reads these pages hunts for both spellings.
 
-There is no rule at rest. What macOS lights instead is the whole strip, for two
-reasons — the pointer resting on it while the window is key, and the page having
-scrolled underneath. `HeaderEdgeLight`
-(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:81`) asks
-`isLit(hovering:active:scrolled:)`
-(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:182`) once and feeds both the
+Over a scroll view there is no rule at rest. What macOS lights instead is the
+whole strip, for three reasons — the pointer resting on it while the window is
+key, the page having scrolled underneath, and the page declaring that what sits
+directly beneath the band is not a scroll view at all. `HeaderEdgeLight`
+(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:89`) asks
+`isLit(hovering:active:scrolled:standsOnStillContent:)`
+(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:262`) once and feeds both the
 fill and the rule from that single answer, so the two cannot disagree. Lighting is
 a fill rather than a material, which is the only reason it is verifiable offscreen
 at all: `cacheDisplay(in:to:)` renders model values, glass excluded.

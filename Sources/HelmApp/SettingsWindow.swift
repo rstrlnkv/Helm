@@ -5,9 +5,19 @@ import HelmRuntime
 import HelmUI
 
 /// System Settings-style settings window built on AppKit `NSSplitViewController`
-/// so the sidebar is a full-height vibrant source list (traffic lights float
-/// over it, no title-bar strip). Each pane hosts a SwiftUI view; a shared
-/// `SettingsModel` carries the selection between them.
+/// so the sidebar is a full-height vibrant source list, with the traffic lights
+/// floating over it. Each pane hosts a SwiftUI view; a shared `SettingsModel`
+/// carries the selection between them.
+///
+/// **There is a title bar over the sidebar, and it is not in sections.** This
+/// sentence used to say «no title-bar strip», and the census measured against
+/// it: one `NSTitlebarView` spans the whole window over one full-width
+/// `NSToolbarView`, nothing under the bar is as wide as the sidebar, and the
+/// only view up there that knows about the split is a 5,5 pt
+/// `NSTitlebarContainerBlockingView` standing on the divider
+/// (`TheSystemsScrollEdgeEffectAttachesTests`, read through `TitlebarCensus`).
+/// So there is no per-section surface in the bar for Helm or for the system to
+/// light, which is why the band this window wears is drawn in the pane below.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
@@ -38,6 +48,12 @@ import HelmUI
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
+        // **Load-bearing on the pane, not in the bar.** It holds the detail
+        // pane's own scroll-edge pocket at opacity 0 — with the flag off that
+        // layer stands at opacity 1 over the pane's width — which is the whole
+        // reason `helmToolbarBackdrop` exists, and the bar's own backdrop layer
+        // does not move with it. `TheSystemsScrollEdgeEffectAttachesTests` is
+        // that measurement and holds the two halves of the decision together.
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
@@ -49,6 +65,11 @@ import HelmUI
         self.window = window
         super.init()
         window.delegate = self
+        // **The bridged search control's name**, which has to be restored on
+        // every one the toolbar takes rather than set once: `ToolbarSearchName`
+        // carries the measurements. Built here, before the first turn of the
+        // run loop, because the first item arrives on that turn.
+        searchName = ToolbarSearchName(namingIn: window)
         // **The window's title is the page's name**, set here on the
         // `NSWindow` rather than through SwiftUI: the bridge that carries a
         // detail pane's toolbar into the window carries its subtitle and drops
@@ -65,6 +86,7 @@ import HelmUI
     }
 
     private var titleWatch: AnyCancellable?
+    private var searchName: ToolbarSearchName?
 
     /// **The bar never changes its own display mode.**
     ///
@@ -79,6 +101,15 @@ import HelmUI
         guard let toolbar = window.toolbar else { return }
         toolbar.allowsDisplayModeCustomization = false
         toolbar.displayMode = .iconOnly
+        // Here for the reason this method is called on a hop at all: a page
+        // change rebuilds the bar. What a *whole* bar announces is nothing —
+        // measured on the first one, which is why `ToolbarSearchName` reads
+        // rather than waits — while a page change was measured to mutate the
+        // bar it has, which fires the notification that object listens to. So
+        // this is the belt and not the braces: it costs a walk of a handful of
+        // items, it is idempotent, and it is the one call that would still be
+        // right if a page change ever started replacing the bar instead.
+        searchName?.nameWhatIsThere()
     }
 
     /// Name and status in the title bar for the style that draws them there;

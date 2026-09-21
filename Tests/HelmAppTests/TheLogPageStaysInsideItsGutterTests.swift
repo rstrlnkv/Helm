@@ -260,9 +260,22 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// The picker is the row's leading control on its first line at every width
     /// and in all eight languages, and `HelmWrappingRow` starts every line at
     /// `bounds.minX` — so where the picker is, the row is.
+    ///
+    /// **`<= 0.5`, not `< 0.5`.** `HelmPickerWidth.segmented` rounds to the half
+    /// point — the grid AppKit itself lays a segment out on — so in en, de, ja
+    /// and ru the computed width is an exact `X.5`. This measuring bench draws
+    /// at `displayScale` 1 (`TheHeaderIsTheSystemsScrollEdgeTests` documents the
+    /// same split from the real, 2×, app), and a half-point frame snaps up to
+    /// the next whole point there: measured 266.0 for a computed 265.5 in en at
+    /// 645 pt, 281.0 for 280.5 in de, 185.0 for 184.5 in ja, 404.0 for 403.5 in
+    /// ru — always +0.5, never more, and 0 in every language whose computed
+    /// width already lands on a whole point (zh 150.0, es 204.0, fr 351.0, pt
+    /// 189.0). A strict `< 0.5` excludes exactly the drift this bench always
+    /// introduces, which is why the picker read as absent in precisely those
+    /// four languages and nowhere else.
     private func levelPickerEdge(inFilterRowOf shell: ModulePageRender.Shell) -> CGFloat? {
         inFilterRow(of: shell)
-            .filter { abs($0.frame.width - levelPickerWidth) < 0.5 }
+            .filter { abs($0.frame.width - levelPickerWidth) <= 0.5 }
             .map(\.frame.minX)
             .min()
     }
@@ -272,27 +285,40 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// disagree when somebody changes one of the three words.
     private var levelPickerWidth: CGFloat { HelmPickerWidth.segmented(LogView.levelLabels) }
 
-    /// The content of the filter band: everything drawn between the first and
-    /// second rules that is not itself a full-width container.
+    /// The content of the filter band: everything drawn between the second and
+    /// third rules that is not itself a full-width container. The first is the
+    /// band's own edge, which is not a band boundary.
     private func inFilterRow(of shell: ModulePageRender.Shell) -> [ModulePageRender.Drawn] {
         let rules = fullWidthRules(of: shell)
         guard rules.count == Self.ruleCount else { return [] }
         return shell.layers.filter {
             $0.frame.width < shell.width - 1
-                && $0.frame.minY >= rules[0] && $0.frame.maxY <= rules[1]
+                && $0.frame.minY >= rules[1] && $0.frame.maxY <= rules[2]
         }
     }
 
-    /// **Three, and it was four until 2026-08-20.** The page is header, the
-    /// writing switch, rule, **the filters**, rule, the lines, rule, footer —
-    /// the rule that used to fence the header off from the page went with the
-    /// one under every other page header (`ThePageHeaderCarriesNoRuleTests`),
-    /// and this measurement, which anchors on the rules, said so rather than
-    /// quietly measuring the writing switch instead. That is why the count is
-    /// asserted and not assumed.
-    private static let ruleCount = 3
+    /// **Four: the band's own edge and the page's three `Divider()`s.** The
+    /// page is header, **rule**, the writing switch, rule, **the filters**,
+    /// rule, the lines, rule, footer.
+    ///
+    /// It was four until 2026-08-20, then three, and it is four again for a
+    /// different reason each time. The first four counted a hairline that
+    /// fenced the header off from the page, and it went with the one under
+    /// every other page header (`ThePageHeaderCarriesNoRuleTests`). The line
+    /// back at the top now is the band's own scroll edge, drawn because the log
+    /// declares `helmPageStandsOnStillContent` — nothing scrolls under this
+    /// page, so the band is lit from the first frame and its rule with it
+    /// (`TheBandStandsOnWhatIsUnderItTests`). Same pixels, opposite meanings:
+    /// one was a fence this app measured away, the other is the edge System
+    /// Settings and Finder both draw.
+    ///
+    /// Which is why the count is asserted and not assumed, and why the filter
+    /// band is read from the *second* and third rules rather than the first
+    /// two — anchored on the first, this would have measured the writing
+    /// switch and gone on reporting a number.
+    private static let ruleCount = 4
 
-    /// The filter row is what lies between the first and second rules. Its
+    /// The filter row is what lies between the second and third rules. Its
     /// height is the only signal of the fold that does not depend on
     /// recognising a SwiftUI-drawn control by its class.
     private func filterRowHeight(_ shell: ModulePageRender.Shell) -> CGFloat {
@@ -303,11 +329,13 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
                     + "some other band of the page")
             return 0
         }
-        return rules[1] - rules[0]
+        return rules[2] - rules[1]
     }
 
-    /// The `Divider()`s, top down — the only band boundary on this page that
-    /// does not mean recognising a SwiftUI-drawn control by its class.
+    /// The band's own edge and the `Divider()`s, top down — the only
+    /// boundaries on this page that do not mean recognising a SwiftUI-drawn
+    /// control by its class. Both are one-point full-width fills and nothing
+    /// here can tell them apart; the order is what says which is which.
     private func fullWidthRules(of shell: ModulePageRender.Shell) -> [CGFloat] {
         shell.layers
             .filter { $0.frame.height <= 1.5 && $0.frame.width >= shell.width - 1 }

@@ -660,12 +660,41 @@ extension ModulePageRender.Page {
     /// `TheNarrowPaneCanStillActOnAPackageTests` and
     /// `TheSplitThresholdFitsThePageItGatesTests` are where those are caught,
     /// not here.
-    /// **Uninstaller's is 30 from 2026-09-16, down from 45, and the drop is a
+    /// **Uninstaller's was 30 from 2026-09-16, down from 45, and the drop was a
     /// control leaving the page rather than the page losing content.** Its
     /// Apps / Orphans switcher and its Refresh moved into the settings window's
     /// toolbar, which a page drawn on its own in this host does not have; the
-    /// same renders then read 34 and 42 layers on consecutive tests. 30 sits
-    /// under the lower reading, as the other floors sit under theirs.
+    /// same renders then read 34 and 42 layers on consecutive tests.
+    ///
+    /// **And 20 from 2026-09-20, for the third time and the same reason: the
+    /// search field followed them.** It is `.searchable` now
+    /// (`helmSearchable`), so it is the window's toolbar's too and this host
+    /// never sees it. The readings are **20 granted and 28 withheld**, the same
+    /// two in all eight languages and both appearances — 32 cells, no spread at
+    /// all.
+    ///
+    /// **Accounted for rather than assumed**, because the message above offers
+    /// «the page has lost its content» as the other reading of any drop and a
+    /// third of the page is a lot to lose for one control. The page was
+    /// rendered twice on one build, once with the old row put back verbatim and
+    /// once as it ships, and the two layer censuses were compared by shape
+    /// rather than by count: **14 gone, 0 new, in both the granted and the
+    /// withheld render.** The fourteen are the field and nothing else — its
+    /// `NSSearchField`, the three `AppKitSearchField` hosting views, the
+    /// representable's own host, the magnifier button with its image and its
+    /// accessory host, the clear button with its image and its accessory host,
+    /// the placeholder label, the editor label — plus the one `Divider` that
+    /// row drew under itself. Everything else is present at a higher y: the
+    /// empty state, its caption and its button, the bottom bar's two buttons
+    /// and their labels, and in the withheld render the permission banner, its
+    /// Grant button and the rule under it, which is what
+    /// `PagesAreToldAboutTheDiskGrantTests` reads and which still accounts for
+    /// the whole of the 8-layer gap between the two numbers.
+    ///
+    /// 20 is the reading itself, unpadded, for the reason Homebrew's 61 is: a
+    /// floor loosened below the last number the render agreed to is a hole the
+    /// size of whatever it was loosened for, and there is no spread here to pad
+    /// against.
     ///
     /// **Hosts' is 6 from 2026-09-17, down from the default 9, for the same
     /// kind of reason.** «New key…» moved into the toolbar as a `+`, and the
@@ -673,7 +702,7 @@ extension ModulePageRender.Page {
     /// an outcome to say; the render has none, so the button, the strip and
     /// the rule under it are gone and it reads 6 where it read at least 9.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 124, "uninstaller": 30, "homebrew": 61, "hosts": 6,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 20, "homebrew": 61, "hosts": 6,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 158,
     ]
 }

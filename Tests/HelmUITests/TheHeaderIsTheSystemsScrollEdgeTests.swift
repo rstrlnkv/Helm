@@ -4,7 +4,7 @@ import SwiftUI
 import XCTest
 @testable import HelmUI
 
-/// **The page header at the system's height, with one appearance and two
+/// **The page header at the system's height, with one appearance and three
 /// reasons to wear it.**
 ///
 /// The height is the system's. Measured on System Settings' Accessibility pane,
@@ -24,13 +24,16 @@ import XCTest
 /// px of scroll-up did not remove it, and scrolling moves only the strip, by
 /// 2,6 luma.
 ///
-/// **Helm does not do that, on purpose.** At rest its header draws nothing —
-/// no fill and no rule. Both appear together, for either of two reasons: the
-/// pointer is over the strip, or the content has scrolled up under it. One
-/// look, two triggers. `HelmPageHeader.isLit` is where that decision is written
+/// **Helm answers that by the species of what is under the band.** Over a
+/// scroll view its header draws nothing at rest — no fill and no rule — and
+/// both appear together once the content has scrolled up under it, or while
+/// the pointer rests on it in the key window. Where the thing directly beneath
+/// the band is *not* a scroll view there is no such moment to wait for, and the
+/// band is lit from the first frame. One look, three triggers, folded before
+/// anything is drawn. `HelmPageHeader.isLit` is where that decision is written
 /// down; this file is where it is checked, and the checks are written so that
-/// somebody restoring the system's always-on rule fails them rather than
-/// quietly improving the app.
+/// somebody collapsing the three back into one appearance-per-reason fails them
+/// rather than quietly improving the app.
 ///
 /// # What this file proves, and the half of it that cannot be proved here
 ///
@@ -67,20 +70,25 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
             """)
     }
 
-    // MARK: - The predicate: one appearance, two triggers
+    // MARK: - The predicate: one appearance, three triggers
 
     /// The question itself, before any pixels: nothing at rest, the same answer
     /// for the pointer and for the content.
     func testTheStripIsLitByThePointerOrByTheContentGoingUnderIt() {
         typealias Header = HelmPageHeader<EmptyView>
 
-        XCTAssertFalse(Header.isLit(hovering: false, active: .key, scrolled: false),
-                       "the strip is lit at rest — macOS lights nothing there and neither do we")
-        XCTAssertTrue(Header.isLit(hovering: true, active: .key, scrolled: false),
+        XCTAssertFalse(Header.isLit(hovering: false, active: .key, scrolled: false,
+                                    standsOnStillContent: false),
+                       "the strip is lit at rest over a scroll view — macOS lights nothing "
+                       + "there and neither do we")
+        XCTAssertTrue(Header.isLit(hovering: true, active: .key, scrolled: false,
+                                   standsOnStillContent: false),
                       "the pointer over the strip does not light it")
-        XCTAssertTrue(Header.isLit(hovering: false, active: .key, scrolled: true),
+        XCTAssertTrue(Header.isLit(hovering: false, active: .key, scrolled: true,
+                                   standsOnStillContent: false),
                       "content gone under the strip does not light it")
-        XCTAssertTrue(Header.isLit(hovering: true, active: .key, scrolled: true),
+        XCTAssertTrue(Header.isLit(hovering: true, active: .key, scrolled: true,
+                                   standsOnStillContent: false),
                       "both reasons at once put the strip out")
     }
 
@@ -97,16 +105,59 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
     func testThePointerNeedsTheKeyWindowAndTheContentDoesNot() {
         typealias Header = HelmPageHeader<EmptyView>
 
-        XCTAssertFalse(Header.isLit(hovering: true, active: .active, scrolled: false), """
+        XCTAssertFalse(Header.isLit(hovering: true, active: .active, scrolled: false,
+                                    standsOnStillContent: false), """
             the strip lights in a window that is merely frontmost. macOS lights it only in the \
             key window — with System Settings not key, three readings of the hovered strip were \
             identical to the unhovered one
             """)
-        XCTAssertFalse(Header.isLit(hovering: true, active: .inactive, scrolled: false))
-        XCTAssertTrue(Header.isLit(hovering: false, active: .inactive, scrolled: true), """
+        XCTAssertFalse(Header.isLit(hovering: true, active: .inactive, scrolled: false,
+                                    standsOnStillContent: false))
+        XCTAssertTrue(Header.isLit(hovering: false, active: .inactive, scrolled: true,
+                                   standsOnStillContent: false), """
             a background window whose content has gone under its header draws no strip — so the \
             page's text runs into its own title in every window that is not key, which is what \
             the strip exists to stop. The key gate belongs to the pointer, not to the content
+            """)
+    }
+
+    /// **The third reason, which is true before anything has happened.**
+    ///
+    /// The other two are events — a pointer arrives, content moves — and a
+    /// page whose band stands on a stack of rows gets neither. The log page is
+    /// the purest case in the app: no scroll view anywhere in it, so it never
+    /// reports a scroll, and its band was structurally incapable of lighting.
+    ///
+    /// Asserted against every combination of the other three, because this one
+    /// alone has to carry the answer: a predicate that only lit when
+    /// `standsOnStillContent` happened to arrive beside a hover would be the
+    /// coincidence, not the rule.
+    func testAPageStandingOnStillContentIsLitWithNoPointerAndNoScroll() {
+        typealias Header = HelmPageHeader<EmptyView>
+
+        for hovering in [false, true] {
+            for active in [ControlActiveState.key, .active, .inactive] {
+                XCTAssertTrue(Header.isLit(hovering: hovering, active: active, scrolled: false,
+                                           standsOnStillContent: true), """
+                    a page whose band stands on still content is unlit with hovering \
+                    \(hovering) and the window \(active) — and nothing will ever light it, \
+                    because there is no scroll view under the band to report one and the \
+                    pointer is not always there. That is the defect the log page had: zero \
+                    lines above its band against three of its own `Divider()`s below
+                    """)
+            }
+        }
+        XCTAssertFalse(Header.isLit(hovering: false, active: .inactive, scrolled: false,
+                                    standsOnStillContent: false), """
+            the predicate lights a page that declares nothing, so `standsOnStillContent` is \
+            not what is being read — the band is on everywhere and the five pages that open \
+            on a `Form` or a `ScrollView` have lost their scroll edge
+            """)
+        XCTAssertTrue(Header.isLit(hovering: false, active: .inactive, scrolled: false,
+                                   standsOnStillContent: true), """
+            the declaration is gated on the window being key. It is a fact about how the page \
+            is built, not about where the pointer is, and a page does not change shape when \
+            its window stops being key
             """)
     }
 
@@ -130,10 +181,14 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
                 """)
             XCTAssertEqual(edge, strip, accuracy: 1, """
                 there is a rule under the header at rest (strip \(strip), edge \(edge)) in \
-                \(appearance.rawValue). **System Settings does draw one there** — measured, at \
-                the scroll origin, and 2400 px of scroll-up did not remove it — and Helm \
-                deliberately does not. Restoring it is a decision to take with the owner, not a \
-                repair; see `HelmPageHeader.isLit`
+                \(appearance.rawValue), over a page whose content scrolls under it. **System \
+                Settings does draw one there** — measured, at the scroll origin, and 2400 px \
+                of scroll-up did not remove it. The owner took that decision in September \
+                2026 and took it **by the species of what is under the band**: a page standing \
+                on still content is lit from its first frame, and one standing on a scroll \
+                view waits for content to go under. This render is the second kind, so rest is \
+                still rest; `testAPageStandingOnStillContentIsLitBeforeAnythingHappens` is the \
+                first kind, and `HelmPageHeader.isLit` holds both
                 """)
         }
     }
@@ -176,6 +231,53 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
             the rule is invisible in light (strip \(strip), edge \(edge)) — a mark that shows in \
             one appearance and not the other is a mark drawn in a literal colour
             """)
+    }
+
+    /// **The one state of this strip a render can reach end to end.**
+    ///
+    /// Every reading above puts `HeaderEdgeLight` on from outside, because a
+    /// header's own copy reads a pointer no offscreen render can move and a
+    /// scroll view no offscreen render has. `standsOnStillContent` is neither:
+    /// it is a value the header is *built* with, so the fixture declares it,
+    /// the header's own predicate answers it and the header's own chrome
+    /// draws it — the whole path, with nothing applied by the test.
+    ///
+    /// Both appearances, and the direction is what is asserted in each:
+    /// `Color.primary` is white in dark and black in light, so the one token
+    /// lightens one pane and darkens the other. The unlit reading beside it is
+    /// the precondition — without it this passes on a header that draws its
+    /// fill and its rule unconditionally, which is the far side of the same
+    /// defect.
+    func testAPageStandingOnStillContentIsLitBeforeAnythingHappens() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let dark = appearance == .darkAqua
+            let plain = try ownChrome(standsOnStillContent: false,
+                                      appearance: appearance, atY: .strip)
+            let strip = try ownChrome(standsOnStillContent: true,
+                                      appearance: appearance, atY: .strip)
+            let edge = try ownChrome(standsOnStillContent: true,
+                                     appearance: appearance, atY: .edge)
+            let plainEdge = try ownChrome(standsOnStillContent: false,
+                                          appearance: appearance, atY: .edge)
+
+            XCTAssertEqual(plain, plainEdge, accuracy: 1, """
+                precondition: a header declaring nothing already draws a rule in \
+                \(appearance.rawValue) (strip \(plain), edge \(plainEdge)), so the readings \
+                below are not about the declaration at all
+                """)
+            XCTAssertTrue(dark ? strip > plain + 3 : strip < plain - 3, """
+                a header built with `standsOnStillContent: true` draws the same strip as one \
+                built without it in \(appearance.rawValue) (declared \(strip), plain \
+                \(plain)). The page has no scroll view to report one and no pointer on it, so \
+                nothing else will ever light this band. \(Self.compositeCaveat)
+                """)
+            XCTAssertTrue(dark ? edge > strip + 3 : edge < strip - 3, """
+                the strip lit from the declaration but no rule came with it in \
+                \(appearance.rawValue) (strip \(strip), edge \(edge)) — the always-on band \
+                Finder draws is that rule, measured at α 16/225 = 0,0711 against \
+                `HeaderEdgeLight.rule` 0,071, and half of one appearance is missing
+                """)
+        }
     }
 
     /// **One rule, not two.**
@@ -265,10 +367,29 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
     func testTheHeaderHandsItsFactsToTheStripAndThePageReportsTheScroll() throws {
         let source = try RepoSource.text(of: Self.headerFile)
 
-        XCTAssertTrue(source.contains("scrolled: scrolled),\n                                  "
+        // Read with every run of whitespace collapsed: what is asserted is
+        // that the values reach the modifier, not how the arguments happen to
+        // wrap today. Line-exact, these fail on a reformat, which is a guard
+        // failing for something that is not the defect.
+        let joined = Self.oneLine(source)
+
+        XCTAssertTrue(joined.contains("scrolled: scrolled, "
+                                      + "standsOnStillContent: standsOnStillContent), "
+                                      + "live: Self.isLive(hovering: hovering, "
+                                      + "active: activeState, scrolled: scrolled), "
                                       + "overContent: overContent))"), """
-            `HelmPageHeader` no longer hands both of its facts to `HeaderEdgeLight` — they are \
-            stored, the modifier is applied, and nothing connects them
+            `HelmPageHeader` no longer hands all three of its facts to `HeaderEdgeLight` — they \
+            are stored, the modifier is applied, and nothing connects them. `live` is read here \
+            too, and it is read for what it must *not* carry: the page's declaration. Keyed on \
+            the whole answer the band animates the preference's first delivery, which is the \
+            fade this app measured away — `HeaderEdgeLight.live` records the reading
+            """)
+        XCTAssertTrue(joined.contains(".onPreferenceChange(HelmPageStandsOnStillContentKey.self) "
+                                      + "{ now in standsOnStillContent = now }"), """
+            nothing reads the page's own declaration about what is under the band any more, so \
+            `standsOnStillContent` is whatever it was initialised to — false — and every page \
+            that stands on still content is back to a band nothing can light. The page is where \
+            the fact is; the header is applied from outside it, so the preference is the road
             """)
         XCTAssertTrue(source.contains("overContent: true, scrolled: scrolled"), """
             `helmPageHeader` no longer builds its header over the content. It is the only thing \
@@ -295,6 +416,12 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
     }
 
     private static let headerFile = "Sources/HelmUI/DesignSystem/HelmPageHeader.swift"
+
+    /// Source with every run of whitespace — newlines included — collapsed to
+    /// one space, so a construction scan reads the call and not its wrapping.
+    private static func oneLine(_ source: String) -> String {
+        source.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
 
     /// Said in every message that touches the strip's surface, so a green run
     /// here can never be read as proof of a blur nobody measured.
@@ -331,12 +458,35 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
     /// `testTheHeaderHandsItsFactsToTheStripAndThePageReportsTheScroll`.
     private func luma(lit: Bool, overContent: Bool, appearance: NSAppearance.Name,
                       atY row: Row) throws -> CGFloat {
+        try sample(appearance: appearance, atY: row) {
+            AnyView(HelmPageHeader(symbol: "gearshape", tint: .gray, title: "Settings",
+                                   bleeds: true)
+                // `live: lit` — this render is a settled state imposed from
+                // outside, so the two agree; what `live` changes is when the
+                // band moves, and nothing moves in a still render.
+                .modifier(HeaderEdgeLight(lit: lit, live: lit, overContent: overContent)))
+        }
+    }
+
+    /// The header drawn through **its own** chrome, with nothing applied from
+    /// outside — see `testAPageStandingOnStillContentIsLitBeforeAnythingHappens`
+    /// for why this one state, alone of the three, can be reached that way.
+    private func ownChrome(standsOnStillContent: Bool, appearance: NSAppearance.Name,
+                           atY row: Row) throws -> CGFloat {
+        try sample(appearance: appearance, atY: row) {
+            AnyView(HelmPageHeader(symbol: "gearshape", tint: .gray, title: "Settings",
+                                   bleeds: true,
+                                   standsOnStillContent: standsOnStillContent))
+        }
+    }
+
+    private func sample(appearance: NSAppearance.Name, atY row: Row,
+                        header: () -> AnyView) throws -> CGFloat {
         let height: CGFloat = 52
         let view = NSHostingView(rootView: AnyView(
             ZStack {
                 Color(nsColor: .windowBackgroundColor)
-                HelmPageHeader(symbol: "gearshape", tint: .gray, title: "Settings", bleeds: true)
-                    .modifier(HeaderEdgeLight(lit: lit, overContent: overContent))
+                header()
             }
             .frame(width: width, height: height)))
         view.appearance = NSAppearance(named: appearance)

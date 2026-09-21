@@ -20,7 +20,7 @@ enum AppStr {
     static var interfaceLanguageNote: String {
         L("Dev builds only, for reading the app in a language this Mac is not set to.")
     }
-    /// The developer row choosing how a page's header sits in the window's
+    /// The Appearance row choosing how a page's header sits in the window's
     /// toolbar, and its two answers (`PageBarStyle`).
     static var pageBar: String { L("Page header") }
     static var pageBarWindowTitle: String { L("Window title") }

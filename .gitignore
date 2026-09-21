@@ -37,3 +37,14 @@ DerivedData/
 # design conversation — the decisions that survive them land in `docs/`, and the
 # mockups themselves are worth keeping on disk and out of the history.
 /.superpowers/
+
+# The same reasoning as `/.superpowers/`, for the directory a design pass writes
+# into when it works in the tree instead of beside it: HTML mockups, the canvas
+# they were arranged on, and the screenshots taken to settle one question —
+# `flagoff/` and `safearea/` are each a photographed investigation whose answer
+# is now a sentence in `ARCHITECTURE.md` or a test, which is where an answer
+# belongs. Keeping the pictures is worth it; keeping them in the history is not,
+# and at several megabytes they would be paid for on every clone for ever. Out
+# of the tree rather than deleted, because a photograph is the only evidence for
+# some of what this app knows about how macOS draws.
+/design/

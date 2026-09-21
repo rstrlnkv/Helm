@@ -243,6 +243,74 @@ public final class MountedRender {
         self.window = window
     }
 
+    /// **The search control is in the window and never in `host`.**
+    ///
+    /// A page asks for it with `helmSearchable` and SwiftUI puts it in the
+    /// window's toolbar, which is a different tree from the one every other
+    /// reading here walks: measured 2026-09-20,
+    /// `host.everyView(ofType: NSSearchField.self)` finds **0** where the
+    /// `NSViewRepresentable` it replaced gave 1. That is the whole hazard for a
+    /// test of this kind, and it is silent — a walk of `host` finds nothing,
+    /// types nothing, and reads a page nobody touched.
+    ///
+    /// **No option turns this on**, which is worth saying because one was
+    /// written here first and measured to do nothing: an `NSHostingView` set as
+    /// a window's `contentView` publishes the toolbar whether or not
+    /// `sceneBridgingOptions` names `.toolbars` — same toolbar, same items,
+    /// same field, with the option and without. A parameter for it would have
+    /// read like the thing that makes these tests work.
+    ///
+    /// Nil is a real answer and not a harness failure: the declaration is under
+    /// a gate on both pages that carry one, so «no field» is what a page
+    /// showing something else is supposed to read. Every caller that means «a
+    /// field must be here» says so itself, loudly — see
+    /// `TheNarrowBandActsInEverySegmentTests`, whose predecessor said it with an
+    /// `if let` and went quiet instead.
+    public var searchField: NSSearchField? {
+        (window?.toolbar?.items ?? []).compactMap { $0 as? NSSearchToolbarItem }
+            .first?.searchField
+    }
+
+    /// Type `text` into the bridged search field the way AppKit delivers a
+    /// keystroke — the value on the control, then the notification SwiftUI's own
+    /// coordinator listens for. Assigning `stringValue` alone moves the control
+    /// and not the binding.
+    ///
+    /// Returns false when there is no field to type into, so a caller can fail
+    /// in its own words.
+    @discardableResult
+    public func type(_ text: String, turns: Int = 5) -> Bool {
+        guard let field = searchField else { return false }
+        field.stringValue = text
+        NotificationCenter.default.post(name: NSControl.textDidChangeNotification, object: field)
+        settle(turns)
+        return true
+    }
+
+    /// Press Return in the bridged search field, which is what
+    /// `.onSubmit(of: .search)` answers to.
+    ///
+    /// **A key event and not the control's action.** Measured 2026-09-20: the
+    /// bridged field's `target` and `action` are both nil — SwiftUI hangs the
+    /// submit off its own field editor — so `sendAction` fires nothing, and so
+    /// does `insertNewline` on the editor. A `keyDown` carrying Return on the
+    /// field editor fires it exactly once.
+    @discardableResult
+    public func pressReturn(turns: Int = 5) -> Bool {
+        guard let field = searchField, let window,
+              window.makeFirstResponder(field),
+              let editor = field.currentEditor() as? NSTextView,
+              let ret = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                                         timestamp: 0, windowNumber: window.windowNumber,
+                                         context: nil, characters: "\r",
+                                         charactersIgnoringModifiers: "\r",
+                                         isARepeat: false, keyCode: 36)
+        else { return false }
+        editor.keyDown(with: ret)
+        settle(turns)
+        return true
+    }
+
     /// Turns of the run loop. Both notices arrive by *growing*, over 300 ms and
     /// two round trips through `onGeometryChange`, so a reading taken on the
     /// first turn is of a frame nobody sees.

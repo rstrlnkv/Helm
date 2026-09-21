@@ -94,6 +94,23 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
     /// its split view controller sets. Never ordered on screen: the probe read
     /// the same three states for a window that was shown and one that was not.
     private func settingsShapedWindow(transparentTitleBar: Bool) -> NSWindow {
+        settingsShapedWindow(transparentTitleBar: transparentTitleBar,
+                             appearance: nil) { ScrollEdgeProbeForm() }
+    }
+
+    /// The same window, with the pane's root view and the appearance named by
+    /// the caller.
+    ///
+    /// The two probes below need a different detail root — one of them carries
+    /// `toolbarBackgroundVisibility` — and a *named* appearance: this Mac
+    /// switches by the sun, so a window that inherits the application's
+    /// appearance is read at whatever hour the suite ran. `nil` keeps exactly
+    /// the inheritance the cases above were measured under.
+    private func settingsShapedWindow<Detail: View>(
+        transparentTitleBar: Bool,
+        appearance: NSAppearance.Name?,
+        @ViewBuilder detail root: () -> Detail
+    ) -> NSWindow {
         _ = NSApplication.shared
         let split = NSSplitViewController()
 
@@ -104,7 +121,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
         sidebarItem.minimumThickness = 214
         sidebarItem.maximumThickness = 320
 
-        let detail = NSHostingController(rootView: ScrollEdgeProbeForm())
+        let detail = NSHostingController(rootView: root())
         detail.sceneBridgingOptions = [.toolbars]
         detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
@@ -115,6 +132,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
 
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        if let appearance { window.appearance = NSAppearance(named: appearance) }
         window.titlebarAppearsTransparent = transparentTitleBar
         window.titleVisibility = .hidden
         window.setContentSize(NSSize(width: 1060, height: 700))
@@ -304,6 +322,200 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
             belong to one decision: keep both, or drop both
             """)
     }
+
+    // MARK: - Probe A — the system's own per-page toolbar background
+
+    /// **`toolbarBackgroundVisibility(_:for: .windowToolbar)` does nothing in
+    /// this construction**, and this case is the measurement.
+    ///
+    /// It is the one knob in the toolbar and scroll-edge surface that carries a
+    /// «when» rather than a shape, and it is an ordinary `View` modifier, so it
+    /// would be per-page — the shape a page that wants its band always on would
+    /// need. Measured here: with it on the pane's root view, bridged out by
+    /// `sceneBridgingOptions = [.toolbars]`, the title bar's whole layer census
+    /// is line for line what it is without it, the pane's scroll-edge pocket
+    /// reads the same, and `titlebarAppearsTransparent` reads back as the
+    /// window set it — SwiftUI does not take that flag off the window.
+    ///
+    /// **Four things keep this negative from being vacuous.** Every arm has to
+    /// reach a title bar with a `CABackdropLayer` in it, so a window that was
+    /// never built fails first and says so. The census is shown seeing a layer
+    /// planted under the bar and losing it again. The modifier is asked for
+    /// `.hidden` as well as `.visible`, so «the state was already that» is out:
+    /// a knob that did anything would have to move one of the two. And it is
+    /// applied in both places a reader would try — outside the pane's root, and
+    /// inside the body beside the `.toolbar` it speaks about.
+    func testTheSystemsToolbarBackgroundKnobDoesNothingHere() {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let where_ = appearance.rawValue
+            let control = settingsShapedWindow(transparentTitleBar: true, appearance: appearance) {
+                ScrollEdgeProbeForm()
+            }
+            let outside = settingsShapedWindow(transparentTitleBar: true, appearance: appearance) {
+                ScrollEdgeProbeForm().toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+            }
+            let inside = settingsShapedWindow(transparentTitleBar: true, appearance: appearance) {
+                ScrollEdgeProbeForm(toolbarBackground: .visible)
+            }
+            let opposite = settingsShapedWindow(transparentTitleBar: true, appearance: appearance) {
+                ScrollEdgeProbeForm(toolbarBackground: .hidden)
+            }
+            let arms = [(name: "control", window: control),
+                        (name: "knob .visible outside", window: outside),
+                        (name: "knob .visible inside", window: inside),
+                        (name: "knob .hidden inside", window: opposite)]
+
+            for arm in arms {
+                let reading = TitlebarCensus.read(in: arm.window)
+                XCTAssertTrue(reading.readable, "\(where_) \(arm.name): \(reading.sentence)")
+                XCTAssertGreaterThan(reading.layersWalked, 15, """
+                    \(where_) \(arm.name): the title bar census is \(reading.layersWalked) layers \
+                    deep, too few to be the bar this measurement was taken on — \
+                    \(reading.sentence)
+                    """)
+                XCTAssertTrue(reading.census.contains { $0.contains("CABackdropLayer") }, """
+                    \(where_) \(arm.name): no CABackdropLayer under the title bar, so this census \
+                    is not reading the surface a background would be drawn on — \(reading.sentence)
+                    """)
+            }
+
+            XCTAssertNil(TitlebarCensus.seesAPlantedLayer(in: control), """
+                \(where_): the census cannot see a background arriving under the title bar, so \
+                nothing it says about the modifier means anything
+                """)
+
+            let settled = TitlebarCensus.settled(arms, forAtMost: 10)
+            XCTAssertTrue(settled.settled, """
+                \(where_): the four title bars never read the same twice in \(settled.passes) \
+                passes, so no comparison between them is a comparison about the modifier
+                """)
+            let reference = settled.censuses["control"] ?? []
+            XCTAssertFalse(reference.isEmpty, "\(where_): the control window's census is empty")
+
+            for arm in arms.dropFirst() {
+                let census = settled.censuses[arm.name] ?? []
+                XCTAssertEqual(census, reference, """
+                    \(where_) \(arm.name): the title bar's layers are no longer what they are \
+                    without the modifier. The system's per-page toolbar background knob has \
+                    started doing something in this construction, and Helm may not need to draw \
+                    the band itself after all — \(TitlebarCensus.difference(reference, census))
+                    """)
+                XCTAssertTrue(arm.window.titlebarAppearsTransparent, """
+                    \(where_) \(arm.name): SwiftUI's modifier took titlebarAppearsTransparent off \
+                    the window, away from the value SettingsWindow sets by hand in init — that is \
+                    a fight over one flag rather than a knob that composes with it
+                    """)
+                XCTAssertEqual(readPocket(in: arm.window).effectOpacity,
+                               readPocket(in: control).effectOpacity, """
+                    \(where_) \(arm.name): the pane's scroll-edge pocket answers differently with \
+                    the modifier on — \(readPocket(in: arm.window).sentence) against \
+                    \(readPocket(in: control).sentence)
+                    """)
+            }
+            arms.forEach { $0.window.close() }
+        }
+    }
+
+    // MARK: - Probe B — what the flag is load-bearing for
+
+    /// **The title bar is one section over the whole window, and
+    /// `titlebarAppearsTransparent` does not touch the surface a band would be
+    /// drawn on** — what the flag moves is the *pane*, which is where the
+    /// verdict above reads it.
+    ///
+    /// One `NSTitlebarView` spans the window over one full-width
+    /// `NSToolbarView`; nothing under the bar is as wide as the sidebar, and
+    /// the only view up there that knows about the split is a 5.5 pt
+    /// `NSTitlebarContainerBlockingView` standing on the divider. So there is
+    /// no per-section surface in the bar for either Helm or the system to
+    /// light.
+    ///
+    /// Flagged against unflagged, both settled and read in one pass, the bar's
+    /// census moves — but not at its `CABackdropLayer`, which is the bar's own
+    /// background — while the pane's pocket goes from drawing to withheld.
+    ///
+    /// The scan for a sidebar-wide section is exercised on a planted view
+    /// first, so «there is no such section» is never this scan matching nothing.
+    func testTheTitleBarIsOneSectionAndTheFlagDoesNotShowOnItsBackdrop() {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let where_ = appearance.rawValue
+            let opaque = settingsShapedWindow(transparentTitleBar: false, appearance: appearance) {
+                ScrollEdgeProbeForm()
+            }
+            let transparent = settingsShapedWindow(transparentTitleBar: true,
+                                                   appearance: appearance) {
+                ScrollEdgeProbeForm()
+            }
+            let arms = [(name: "opaque", window: opaque), (name: "transparent", window: transparent)]
+            _ = turnTheRunLoop(until: { self.readPocket(in: opaque).drawing }, forAtMost: 10)
+
+            let bar = TitlebarCensus.read(in: opaque)
+            XCTAssertTrue(bar.readable, "\(where_) opaque: \(bar.sentence)")
+            XCTAssertEqual(bar.titlebarViewFrame?.width ?? 0, opaque.frame.width, accuracy: 0.5, """
+                \(where_) opaque: the NSTitlebarView is \
+                \(bar.titlebarViewFrame.map { "\($0.width)" } ?? "nil") pt wide against a window \
+                \(opaque.frame.width) pt wide — the bar is in sections after all, which would be a \
+                surface a per-page background could be asked for — \(bar.sentence)
+                """)
+            XCTAssertEqual(bar.blockingFrames.count, 1, """
+                \(where_) opaque: \(bar.blockingFrames.count) NSTitlebarContainerBlockingView \
+                under the bar, not the one that stands on the divider — \(bar.sentence)
+                """)
+
+            let sidebarWidth = (opaque.contentViewController as? NSSplitViewController)?
+                .splitViewItems.first?.viewController.view.frame.width ?? 0
+            XCTAssertGreaterThan(sidebarWidth, 100, """
+                \(where_): the sidebar is \(sidebarWidth) pt wide, so «as wide as the sidebar» \
+                measures nothing
+                """)
+            if let divider = bar.blockingFrames.first {
+                XCTAssertEqual(divider.midX, sidebarWidth + divider.width / 2, accuracy: 4, """
+                    \(where_) opaque: the blocking view is centred at \(divider.midX) where the \
+                    sidebar ends at \(sidebarWidth) — it is not the divider it was read as
+                    """)
+            }
+            XCTAssertEqual(bar.sidebarWideViews, [String](), """
+                \(where_) opaque: the title bar carries a view exactly as wide as the sidebar — \
+                \(bar.sidebarWideViews). There is a sidebar section up there after all, and this \
+                measurement's answer changes
+                """)
+
+            let plant = NSView(frame: NSRect(x: 0, y: 0, width: sidebarWidth, height: 52))
+            opaque.contentView?.superview?.everyView
+                .first { $0.appKitClassName == "NSTitlebarView" }?.addSubview(plant)
+            XCTAssertEqual(TitlebarCensus.read(in: opaque).sidebarWideViews.count, 1, """
+                \(where_): a view planted at exactly the sidebar's width is not found by the scan \
+                that reported none, so that report was the scan matching nothing
+                """)
+            plant.removeFromSuperview()
+
+            let settled = TitlebarCensus.settled(arms, forAtMost: 10)
+            XCTAssertTrue(settled.settled, """
+                \(where_): the two title bars never read the same twice in \(settled.passes) \
+                passes, so a difference between them is a difference of when they were read
+                """)
+            let difference = TitlebarCensus.difference(settled.censuses["opaque"] ?? [],
+                                              settled.censuses["transparent"] ?? [])
+            XCTAssertFalse(difference.contains { $0.contains("CABackdropLayer") }, """
+                \(where_): titlebarAppearsTransparent now moves the bar's own backdrop layer — \
+                \(difference). It moved everything but that when this was measured, which is why \
+                the flag is read at the pane below and not here
+                """)
+
+            XCTAssertEqual(readPocket(in: opaque).effectOpacity, 1, """
+                \(where_): the opaque window's pane is not drawing its scroll edge effect — \
+                \(readPocket(in: opaque).sentence) — so the comparison below has no difference to \
+                be about
+                """)
+            XCTAssertEqual(readPocket(in: transparent).effectOpacity, 0, """
+                \(where_): the flag no longer withholds the pane's effect — \
+                \(readPocket(in: transparent).sentence)
+                """)
+
+            opaque.close()
+            transparent.close()
+        }
+    }
 }
 
 // MARK: - The subject
@@ -313,8 +525,14 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
 /// (`ToolbarSpacer(.fixed, placement: .navigation)`, in `SettingsWindow`) so
 /// the window has a toolbar at all.
 private struct ScrollEdgeProbeForm: View {
+    /// What to ask `toolbarBackgroundVisibility(_:for: .windowToolbar)` for
+    /// from *inside* the body, beside the `.toolbar` it speaks about — the
+    /// other of the two places a reader would put it. `nil` is the form the
+    /// cases above this were measured on, and leaves them untouched.
+    var toolbarBackground: Visibility?
+
     var body: some View {
-        Form {
+        let form = Form {
             ForEach(0..<12, id: \.self) { section in
                 Section("Section \(section)") {
                     ForEach(0..<3, id: \.self) { row in
@@ -325,6 +543,12 @@ private struct ScrollEdgeProbeForm: View {
         }
         .formStyle(.grouped)
         .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }
+
+        if let toolbarBackground {
+            form.toolbarBackgroundVisibility(toolbarBackground, for: .windowToolbar)
+        } else {
+            form
+        }
     }
 }
 

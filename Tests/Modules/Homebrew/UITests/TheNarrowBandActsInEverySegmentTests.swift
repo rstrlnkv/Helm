@@ -40,10 +40,27 @@ import HelmUI
 /// `HomebrewSettingsPage.query` is a `@State` no test can assign, and
 /// `SearchDisplay.state` draws the prompt until it is non-empty — so the mounted
 /// `NSSearchField` is typed into and its change notification posted, which is
-/// what `HelmSearchField.Coordinator.controlTextDidChange` listens for. A test
+/// what SwiftUI's own coordinator behind `.searchable` listens for. A test
 /// that only filled `searchHits` would sit on the prompt and read zero rows,
 /// which is an absence that passes for the wrong reason; the row count is
 /// asserted before any action is counted for exactly that reason.
+///
+/// **And the typing must be a failure when it cannot happen.** The field left
+/// the page for the window's toolbar (`helmSearchable`), so the typing goes
+/// through `MountedRender.type`, which reads the control off the window. This
+/// used to be an `if let ... .first` over `mount.host`, which is precisely the
+/// shape that goes quiet: with the field gone from the page the binding would
+/// stay empty,
+/// `SearchDisplay` would keep drawing the prompt, and three readings would be
+/// compared on a page nobody had typed into — all of it green. So «a field was
+/// expected and there is none» is an `XCTFail` naming the cell.
+///
+/// Which cells expect one is stated rather than discovered: the search view is
+/// mounted only where there is no selection, because under the split a
+/// selection replaces the whole list area with the package screen. A cell with
+/// a query *and* a selection is therefore not a missing field — it is a field
+/// that is correctly not there, and `expectsSearchField` is the one place that
+/// says so.
 @MainActor
 final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
@@ -163,26 +180,37 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     /// set to at this hour (`RenderedInk`'s reason).
     private func draw(_ hb: HomebrewViewModel, _ mvm: ModuleViewModel,
                       at width: CGFloat, segment: HomebrewViewModel.Segment,
-                      typing query: String? = nil, selecting id: String?) -> Reading {
+                      typing query: String? = nil, selecting id: String?,
+                      file: StaticString = #filePath, line: UInt = #line) -> Reading {
         hb.segment = segment
         hb.select(id)
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: width, height: 700, appearance: .aqua)
         mount.settle(25)
-        if let query, let field = mount.host.everyView(ofType: NSSearchField.self).first {
-            field.stringValue = query
-            // What the coordinator listens for. Assigning `stringValue` alone
-            // moves the control and not the binding, so `query` would stay
-            // empty and `SearchDisplay` would keep drawing the prompt.
-            NotificationCenter.default.post(name: NSControl.textDidChangeNotification,
-                                            object: field)
-            mount.settle(25)
+        if let query, expectsSearchField(typing: query, selecting: id) {
+            // `type` posts the change notification the way AppKit delivers a
+            // keystroke; assigning `stringValue` alone moves the control and
+            // not the binding, so `query` would stay empty and `SearchDisplay`
+            // would keep drawing the prompt.
+            XCTAssertTrue(mount.type(query, turns: 25), """
+                \(segment) at \(width) pt with nothing selected put no search field in the \
+                window's toolbar, so «\(query)» was never typed and every reading taken from \
+                this page below is of a page still showing the prompt
+                """, file: file, line: line)
         }
         let lists = mount.host.everyView
             .filter { $0.appKitClassName.contains("ListCoreScrollView") }.count
         let rings = mount.host.everyView(named: "_FocusRingView").count
         mount.drop()
         return Reading(rings: rings, lists: lists)
+    }
+
+    /// Whether this cell draws a search field at all: a query is asked for, and
+    /// nothing is selected. Under the split a selection replaces the list area
+    /// — `searchView` with it — so a cell with both is a page that is right to
+    /// have no field, and asserting one there would fail on the page working.
+    private func expectsSearchField(typing query: String?, selecting id: String?) -> Bool {
+        query != nil && id == nil
     }
 
     private func loaded() async -> (HomebrewViewModel, ModuleViewModel, Cellar) {

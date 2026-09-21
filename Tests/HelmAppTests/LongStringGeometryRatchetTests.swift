@@ -354,8 +354,17 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // left their pages for the settings window's toolbar — the page's tabs
         // and view modes are the window's controls now, drawn by the toolbar
         // bridge, which a page rendered on its own in this host never reaches.
-        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1,
-                               "AppKitSearchField": 1], """
+        // **And no search field either, from 2026-09-20, for exactly that
+        // reason.** The one counted here was the uninstaller's app filter — the
+        // Homebrew page draws its own only in the Поиск segment, which this
+        // render never selects — and it is `.searchable` now
+        // (`helmSearchable`), so the control is the window's and this host has
+        // no window's toolbar to find it in. A count falling is what the
+        // message below warns about, and this is the intended half of that:
+        // the same change moved `ModulePageRender.floors["uninstaller"]` from
+        // 30 to 20, where the fourteen missing layers are accounted for one by
+        // one.
+        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \
