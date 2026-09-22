@@ -1229,3 +1229,4 @@
 "At a narrow window the search becomes a magnifier button, and opens when you click it." = "幅の狭いウインドウでは、検索は虫眼鏡ボタンになり、クリックすると開きます。";
 "The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build." = "モジュールのアイコンと名前はツールバーの左に置かれ、それとウインドウのタイトルのどちらを使うかは、開発者向けビルドに隠されているのではなく、設定 → 外観で選べるようになりました。";
 "Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them." = "隣にコントロールが現れたり消えたりしても、“リストを更新”と“すべて更新”はツールバー内で位置がずれなくなりました。";
+"The gap between the toolbar’s buttons and its search no longer changes as you drag the window’s edge." = "ウインドウの端をドラッグしても、ツールバーのボタンと検索の間隔が変わらなくなりました。";

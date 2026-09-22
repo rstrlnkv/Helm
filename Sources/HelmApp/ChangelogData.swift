@@ -190,6 +190,7 @@ enum Changelog {
                 ChangeItem(kind: .new, text: L("At a narrow window the search becomes a magnifier button, and opens when you click it.")),
                 ChangeItem(kind: .upd, text: L("The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.")),
                 ChangeItem(kind: .fix, text: L("Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.")),
+                ChangeItem(kind: .fix, text: L("The gap between the toolbar’s buttons and its search no longer changes as you drag the window’s edge.")),
             ]),
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .upd, text: L("A glyph that changes now turns into the next one instead of blinking \u{2014} the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.")),

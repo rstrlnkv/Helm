@@ -134,6 +134,7 @@ only once it has no known problems left.
 - **NEW** At a narrow window the search becomes a magnifier button, and opens when you click it.
 - **UPD** The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.
 - **FIX** Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.
+- **FIX** The gap between the toolbar’s buttons and its search no longer changes as you drag the window’s edge.
 
 ## 0.10.0 — 2026-08-09
 
