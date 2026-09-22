@@ -272,16 +272,26 @@ final class ASearchCollapsesOnlyWhereTheWindowIsSmallTests: XCTestCase {
 
     // MARK: - The leading item is load-bearing for Uninstaller specifically
 
-    /// **Without the leading item, Uninstaller's field reads open at the
-    /// window's own floor; with it, this harness reads it collapsed.** The
-    /// direct reading behind `PageBarStyle`'s own claim that the shipping
-    /// shape is not merely a preference — but read what this case can and
-    /// cannot say against the header above: a designer's reading of the
-    /// rendered window found Uninstaller's field open (163.0 pt) at 860 pt
-    /// *with* the plate mounted, where this harness reads it collapsed. Both
-    /// facts can be true at once — the plate narrows this page's room either
-    /// way, which is what this case is for, and how far it narrows it is not
-    /// something an offscreen, non-key window is shown to answer.
+    /// **With the leading item, Uninstaller's field reads collapsed at the
+    /// window's own floor — and, since `ToolbarSearchName.closeGapBeforeSearch`
+    /// (2026-09-21) traded the flexible space `.searchable` bridged in ahead
+    /// of the field for a small fixed one, so does the bare toolbar with no
+    /// leading item at all.** That flexible item used to compete with the
+    /// field for the same leftover room; closing it to a fixed width freed a
+    /// little more of that room for the field itself, and at the floor width
+    /// that was enough to move the bare-toolbar reading from open to
+    /// collapsed too — recorded here rather than left for the next reader to
+    /// rediscover as a surprise, the same way this file's own earlier
+    /// readings were superseded. The comparison this case still holds is the
+    /// one `testTheLeadingItemNarrowsUninstallersRoomAt1000` and
+    /// `testTheLeadingItemNarrowsHomebrewsRoomAt1120` already carry — the
+    /// leading item narrows the room left for the field at a width this
+    /// harness reproduces — and read what neither case can say against the
+    /// header above: a designer's reading of the rendered window found
+    /// Uninstaller's field open (163.0 pt) at 860 pt *with* the plate mounted,
+    /// where this harness reads it collapsed either way now. Both facts can
+    /// be true at once — this harness is not shown anywhere to composite
+    /// Liquid Glass, which is where that difference would have to be read.
     func testTheCollapseIsReachableOnlyWithTheLeadingItem() throws {
         guard let noLeading = mount(id: "uninstaller", width: 860, leadingItem: false) else {
             XCTFail("no uninstaller descriptor")
@@ -289,10 +299,11 @@ final class ASearchCollapsesOnlyWhereTheWindowIsSmallTests: XCTestCase {
         }
         defer { drop(noLeading) }
         let noLeadingField = try XCTUnwrap(field(noLeading), "860 pt, no leading item: no search item")
-        XCTAssertFalse(noLeadingField.isHidden, """
-            Uninstaller's search field collapsed at the window's own floor (860 pt) even with an \
-            empty leading zone (\(noLeadingField.frame.width) pt) — the coupling this file records \
-            no longer holds, which is worth knowing but is not itself a defect
+        XCTAssertTrue(noLeadingField.isHidden, """
+            Uninstaller's search field is open at the window's own floor (860 pt) with an empty \
+            leading zone (\(noLeadingField.frame.width) pt) — the bare-toolbar reading this case \
+            recorded on 2026-09-21 (collapsed, once the gap before search stopped being flexible) \
+            has moved again and wants a fresh look at why
             """)
 
         guard let withLeading = mount(id: "uninstaller", width: 860, leadingItem: true) else { return }

@@ -104,6 +104,7 @@ import HelmUI
         guard let toolbar = note.object as? NSToolbar, toolbar === window?.toolbar else { return }
         item.searchField.setAccessibilityLabel(HelmA11y.searchField)
         Self.size(item)
+        Self.closeGapBeforeSearch(in: toolbar)
     }
 
     @objc private func languageChanged() { nameWhatIsThere() }
@@ -117,10 +118,43 @@ import HelmUI
     /// label off a notification, would be measuring the notification rather
     /// than the control.
     func nameWhatIsThere() {
-        for item in window?.toolbar?.items ?? [] {
+        guard let toolbar = window?.toolbar else { return }
+        for item in toolbar.items {
             guard let search = item as? NSSearchToolbarItem else { continue }
             search.searchField.setAccessibilityLabel(HelmA11y.searchField)
             Self.size(search)
+        }
+        Self.closeGapBeforeSearch(in: toolbar)
+    }
+
+    // MARK: - Gap before the search item
+
+    /// **The flexible space SwiftUI puts before a `.searchable` toolbar item,
+    /// closed to the system's own fixed gap.** Measured against this bridge
+    /// (`ZZGapDiagnosticTests`, 2026-09-21): `.searchable(placement: .toolbar)`
+    /// inserts an `NSToolbarFlexibleSpaceItem` of its own immediately ahead of
+    /// the search item, on top of anything a page declares — a `ToolbarSpacer`
+    /// added in `pageToolbar` does not replace it, it sits beside it, because
+    /// this one is not the page's to remove through `ToolbarContent` at all.
+    /// A flexible item claims whatever the bar has left over once every other
+    /// item has taken its own width, which is why the room between Refresh and
+    /// the search field grew and shrank with the window rather than holding
+    /// still — the field's own width floats on the same leftover pool
+    /// (`size(_:)` above), so the two were fighting over one pot.
+    ///
+    /// `.space` is AppKit's own standard fixed-width identifier — the gap
+    /// Finder's own trailing items keep from each other — and swapping it in
+    /// for the flexible item this bridge inserted is the same kind of
+    /// after-the-fact correction `size(_:)` already makes on the field's width
+    /// constraint: nothing here asks SwiftUI for a different layout, because
+    /// there is no `ToolbarContent` spelling that reaches this specific item.
+    private static func closeGapBeforeSearch(in toolbar: NSToolbar) {
+        let items = toolbar.items
+        for (index, item) in items.enumerated() {
+            guard item is NSSearchToolbarItem, index > 0 else { continue }
+            guard items[index - 1].itemIdentifier == .flexibleSpace else { continue }
+            toolbar.removeItem(at: index - 1)
+            toolbar.insertItem(withItemIdentifier: .space, at: index - 1)
         }
     }
 

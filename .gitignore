@@ -48,3 +48,13 @@ DerivedData/
 # of the tree rather than deleted, because a photograph is the only evidence for
 # some of what this app knows about how macOS draws.
 /design/
+
+# Xcode writes `.swiftpm/` the first time it opens this package, and what lands
+# there is two genres in one directory. `xcode/xcshareddata/xcschemes/Helm.xcscheme`
+# is shared by design — it says how the package builds and runs, it is the same
+# for whoever opens it, and it stays in the repository. The rest is one person's
+# window state: `UserInterfaceState.xcuserstate` and `xcschememanagement.plist`,
+# both under a folder named after the account, both rewritten whenever a window
+# moves. Ignoring only the per-user halves is the line `*.xcodeproj/xcuserdata/`
+# already draws above, rather than a second policy for the same question.
+.swiftpm/**/xcuserdata/
