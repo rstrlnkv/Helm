@@ -470,52 +470,110 @@ build, because the logging switch lives in it — the reason is written on the
 ### The page header
 
 In the settings window a page's header and its controls live in the window's own
-toolbar. The detail pane bridges SwiftUI's `.toolbar` into the window's AppKit toolbar
-(`sceneBridgingOptions`), where macOS 26 and later draw a page's switcher and
-actions as Liquid Glass, and keeps AppKit's safe area so content starts under the
-bar. The switcher is `HelmToolbarSwitcher`
-(`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`): the system's segmented
-control, told to size each segment to what it shows rather than to the longest word,
-and labelled by `ToolbarSwitcherStyle` — words, glyphs or both — which a
-right-click on any switcher changes for all of them. It is the system's control because everything Liquid Glass does under a press
-— the glass swelling, and following the pointer from segment to segment — is the
-control's own and cannot be drawn from SwiftUI. Every page carries a fixed `ToolbarSpacer`, because the bridge creates the
-toolbar only while an item exists and a page without controls would otherwise have
-a shorter title bar. The header itself takes one of two shapes, chosen by
-`PageBarStyle` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), a setting in
-Appearance rather than a dev-only toggle: the module's plate and name as a toolbar
-item at the leading edge with no glass behind it — the shipping default, and what
-`PageBarStyle.init(stored:)` answers for an empty or unrecognised store — or the
-page's name as the window title with its status as the subtitle, set on the
-`NSWindow` from `HelmPageTitleKey` since the bridge carries a subtitle and drops a
-title. The environment value `helmPageBar` is what the window sets; where it is
-nil — a sheet, a page mounted on its own — the header is the strip below.
+toolbar — one `NSToolbar` **per page**, built once and cached
+(`SettingsToolbar`, `Sources/HelmApp/SettingsToolbar.swift`), owned by
+`SettingsWindow`. A page switch assigns `window.toolbar` to whichever page's
+own toolbar belongs to the new selection; nothing in this window ever rewrites
+`itemIdentifiers` on the toolbar the window is currently showing, because
+`NSToolbar` diffs that assignment against whatever the toolbar already has and
+animates every insertion — which is what a single shared toolbar, rewritten on
+every page change, used to do on every visit. It used to be a SwiftUI-AppKit
+bridge (`sceneBridgingOptions`) before that, which rebuilt the bar's items and
+reset `allowsUserCustomization` on every SwiftUI update; that bridge is gone,
+and `allowsUserCustomization` and `autosavesConfiguration` are `false` on every
+toolbar this file builds — no page's toolbar in this window is
+user-customizable. A page whose toolbar has not been built yet, and a page
+whose module has just been switched off, both fall back to one shared
+name-only toolbar — the second only after a short grace period with nothing
+declared, so an ordinary page switch never dips to name-only while its own
+mount is still in the middle of redeclaring.
 
-The three zones of the window's toolbar are, in order: the leading item
-`PageBarStyle.moduleName` publishes, the centred `.principal` item — the switcher,
-where a page has one — and the trailing `.primaryAction` items packed against the
-window's own edge, which is where `.searchable` bridges its field. Measured with a
-fixed-width `.principal` marker and a real leading item mounted
-(`ALeadingItemAndThePrincipalsCentringTests`), the leading item changes nothing
-about where AppKit centres the `.principal` item anywhere in the window's ordinary
-range, the 1060 pt shipping default included; only at the window's own 860 pt
-floor (`SettingsWindow.minSize`) does AppKit push the centred slot toward the
-trailing edge to keep clear of the leading item, by roughly the leading item's own
-width.
+A page says what it wants — tabs, actions, search — through
+`HelmWindowToolbarChannel` and `.helmWindowToolbar(_:token:)`
+(`Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`), handed to the detail
+pane's environment so a page never needs to import `HelmApp` to publish into
+it. Content is kept per page token rather than in one shared slot, and a
+declaration is credited to the mount that made it by a generation number
+assigned when SwiftUI creates that mount's coordinator — the guard that keeps
+an outgoing page's late redeclare, or a language-triggered remount's old half,
+from overwriting the page now actually on screen. A page that never calls
+`helmWindowToolbar` — every module page not yet converted — leaves the bar
+showing the name and nothing else, which is not an error state: it is what
+"not converted yet" looks like on screen. Only `HomebrewSettingsPage` has moved
+onto this contract; `HostsSettingsPage`, `LeftoversSettingsPage` and
+`UninstallerSettingsPage` still declare a SwiftUI `.toolbar`, which is inert on
+this window (`SettingsSplitViewController` sets no `sceneBridgingOptions` on
+its detail controller, on purpose), and show the name only until each is
+converted in its own pass.
 
-`ToolbarSearchName` (`Sources/HelmApp/ToolbarSearchName.swift`) pins no width on
-the bridged search field's resting state; AppKit's own leftover-room layout
-decides it, and below 160 pt AppKit itself draws the collapsed magnifier
-regardless of how that width was reached. That makes the leading item load-bearing
-a second way: Uninstaller's search field never once collapses across the window's
-whole resizable range with the leading zone empty, and reads collapsed at the same
-widths with the module-name header mounted
-(`ASearchCollapsesOnlyWhereTheWindowIsSmallTests`) — the *exact* crossing this
-mounts is not itself evidence of where the rendered window collapses, since an
-offscreen, non-key window is not shown to composite the Liquid Glass toolbar this
-decision is made against; a designer's reading of the rendered window is what that
-file's own header points to instead. `preferredWidthForSearchField` still sets the
-width AppKit gives the field once a click asks for keyboard focus.
+The bar's zones, left to right: the sidebar's own tracking separator; the
+name — the module's plate and its name, with its own status word or badge
+beside it, drawn only under `PageBarStyle.moduleName`
+(`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), the shipping default; a
+flexible space; the tabs, centred; a flexible space; one custom-view item for
+the whole action capsule; and the search field. **The actions are one
+`NSToolbarItem`, not one per action.** It hosts
+`HelmToolbarActionsCapsule` (`Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`),
+a SwiftUI `GlassEffectContainer` whose visible buttons morph as which of them
+are shown changes — the shape adjacent plain image items used to share
+automatically (WWDC25-310) before an item's own width collapsing on
+`NSToolbarItem.isHidden` turned out to be a relayout AppKit itself animates,
+which is what moved Refresh and the search field by the hidden item's own
+width whenever «Обновить всё»'s visibility flipped. The capsule's back layer
+reserves the full width of every *declared* action regardless of which are
+shown, so the hosted item's own intrinsic size — and everything beside it —
+never moves at all; only the visible set morphs, inside `HelmMotion.interface`.
+An action inapplicable on the tab it belongs to is dimmed through the
+capsule's own `@Observable` model (`HelmToolbarActionsModel`) rather
+than through AppKit's own toolbar-item validation, which answered for the old
+one item per action and has no custom-view item to answer for now; an action that
+belongs to only some of a page's tabs is left out of the capsule's visible set
+(`HelmToolbarAction.isVisible`) rather than removed from what the page
+declares, so the capsule's own reserve — and the bar's identifier list, which
+carries the one `helm.actions` identifier regardless — never has to be
+rebuilt for it. `NSToolbarItem.menuFormRepresentation` is the floor for the
+rare case where even the capsule overflows: one action visible gives a plain
+menu item, more than one gives a submenu naming each. Homebrew's «Обновить
+всё» is the one example shipped: out of the capsule outside Обновления, dimmed
+there until something is outdated and nothing is running.
+
+**The tabs have one form: `HelmToolbarSwitcher`**
+(`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`) — the system's
+segmented control, told to size each segment to what it shows rather than to
+the longest word, and labelled by `ToolbarSwitcherStyle` — words, glyphs or
+both — which a right-click on any switcher changes for all of them. A
+dev-only toggle used to let the owner compare this against AppKit's own
+segmented-toolbar-item group on a real window; retired 2026-09-23 once that
+comparison was made. **The same control also folds** — a `compact` flag draws one
+segment, the current tab, with a menu naming every tab, so the tabs vacate the
+room a search field needs before AppKit would otherwise push the whole strip
+into its own «»» overflow menu; `Sources/HelmApp/SettingsToolbar.swift`'s own
+"Folding the tabs" section is the mechanism that decides when. The search
+field is an `NSSearchToolbarItem` carrying an `NSSearchField` this file builds
+and configures itself, rather than the one macOS hands the item by default —
+`sendsWholeSearchString` set to `true`, together with the field's own
+`sendsActionOnEndEditing` set to `false`, is what makes Return, and only
+Return, run a page's `onSubmit`; `endSearchInteraction`'s own fold to a
+magnifier ends the field's editing the same way losing focus does, and either
+one fires the action on a field left at AppKit's own default for
+`sendsActionOnEndEditing`.
+
+`PageBarStyle` is a setting in Appearance rather than a dev-only toggle: the
+module's plate, name and status as the toolbar's own leading item — the
+shipping default, and what `PageBarStyle.init(stored:)` answers for an empty
+or unrecognised store — or the page's name as the window title with its
+status as the subtitle, set on the `NSWindow` from `HelmPageTitleKey`. The
+environment value `helmPageBar` is what the window sets; where it is nil — a
+sheet, a page mounted on its own — the header is the strip below, drawn in the
+page rather than in a toolbar that does not exist for it.
+
+`ToolbarSearchName` (`Sources/HelmApp/ToolbarSearchName.swift`) named and sized
+the *bridged* field the old mechanism produced; with the bridge gone it has no
+caller left in this window, and stays only for its own tests
+(`ASearchFieldSaysWhatItIsTests` and its neighbours in `HelmAppTests`, which
+build a bridged controller of their own to keep exercising it) and for
+`UninstallerSettingsPage`'s still-inert `.helmSearchable` call, until that page
+converts.
 
 That strip is the system's 52 pt and lies over the page
 rather than above it: `helmPageHeader`

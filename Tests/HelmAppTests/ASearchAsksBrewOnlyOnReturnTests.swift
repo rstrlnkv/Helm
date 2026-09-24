@@ -1,9 +1,9 @@
 import XCTest
 import AppKit
-import SwiftUI
 import HelmContract
 import HelmTestSupport
 import HelmUI
+@testable import HelmApp
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
@@ -20,6 +20,12 @@ import HelmUI
 /// So this counts the commands that left for the engine. The fixture answers
 /// `.search` with nothing, which is enough: what is being counted is the
 /// asking.
+///
+/// **Moved here from `Tests/Modules/Homebrew/UITests`** — the page's search
+/// field is now the real `NSSearchField` `SettingsToolbar` builds
+/// (`SettingsToolbar.makeSearchItem`), which only `HelmAppTests` can attach
+/// (`LivePageToolbarFixture`'s own header says why a module's `UITests`
+/// cannot).
 @MainActor
 final class ASearchAsksBrewOnlyOnReturnTests: XCTestCase {
 
@@ -78,9 +84,11 @@ final class ASearchAsksBrewOnlyOnReturnTests: XCTestCase {
         defer { withExtendedLifetime(transport) {} }
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
-        let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
-                                  width: 984, height: 520, appearance: .aqua)
-        defer { mount.drop() }
+        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                             selection: .module(HomebrewDescriptor.id.rawValue),
+                                             width: 984, height: 520)
+        let mount = fixture.mount
+        defer { fixture.drop() }
         await hb.loadIfNeeded()
         hb.segment = .search
         await turn(mount, 25)

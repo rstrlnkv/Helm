@@ -223,16 +223,32 @@ public final class MountedRender {
 
     public let host: NSHostingView<AnyView>
     public let appearance: NSAppearance.Name
-    private var window: NSWindow?
+    /// **The window a page-layer caller may attach its own `NSToolbar` to.**
+    /// `HelmApp` owns `SettingsToolbar`, which this target may not depend on
+    /// (`HelmTestSupport` reaches only `HelmRuntime` and `HelmUI` —
+    /// `Package.swift`'s own "support may reach the shared plumbing, nothing
+    /// may reach support") — so a page test that needs a live toolbar builds
+    /// one itself, in `HelmAppTests`, against this window, once `channel`
+    /// below has given the page somewhere to declare into.
+    public private(set) var window: NSWindow?
 
     public init<V: View>(_ view: V, width: CGFloat, height: CGFloat,
-                         appearance: NSAppearance.Name) {
+                         appearance: NSAppearance.Name, channel: HelmWindowToolbarChannel? = nil) {
         self.appearance = appearance
         let named = NSAppearance(named: appearance)
         // The window below is never ordered in, and a page that idles off
         // screen (`helmIdlesOffScreen`) would hand every reading an empty pane.
-        host = NSHostingView(rootView: AnyView(VStack(spacing: 0) { view }.frame(width: width)
-            .helmMeasuringBench()))
+        var rootView = AnyView(VStack(spacing: 0) { view }.frame(width: width)
+            .helmMeasuringBench())
+        // `nil` is the ordinary case: most callers read `host` directly and
+        // never touch `window.toolbar` at all. Only a caller that also builds
+        // a `SettingsToolbar` against `window` needs a page's
+        // `.helmWindowToolbar(_:token:)` call to reach anywhere
+        // (`HelmWindowToolbar.swift`'s own doc: nil channel, no declaration).
+        if let channel {
+            rootView = AnyView(rootView.environment(\.helmWindowToolbarChannel, channel))
+        }
+        host = NSHostingView(rootView: rootView)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.appearance = named

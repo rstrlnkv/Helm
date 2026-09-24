@@ -10,12 +10,15 @@ import XCTest
 /// customization off is also what leaves the right-click to the switcher's own
 /// menu.
 ///
-/// Read off the construction: the toolbar is made by SwiftUI's bridge when a
-/// page publishes items, so there is none to ask in a test process.
+/// Read off the construction: every toolbar `SettingsToolbar` builds
+/// (`buildBar`) carries these two lines, so there is none to ask in a test
+/// process — the class moved out of `SettingsWindow.swift` when the window
+/// stopped owning one shared `NSToolbar` and `SettingsToolbar` started
+/// building one per page.
 final class TheBarKeepsItsHeightTests: XCTestCase {
 
     func testTheWindowRefusesDisplayModeCustomization() throws {
-        let code = SwiftSource.code(try RepoSource.text(of: "Sources/HelmApp/SettingsWindow.swift"))
+        let code = SwiftSource.code(try RepoSource.text(of: "Sources/HelmApp/SettingsToolbar.swift"))
         XCTAssertTrue(code.contains("toolbar.allowsDisplayModeCustomization = false"), """
             the settings window lets macOS change the toolbar's display mode, which grows the bar \
             and draws labels no custom item has

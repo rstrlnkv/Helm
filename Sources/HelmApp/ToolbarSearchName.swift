@@ -1,4 +1,5 @@
 import AppKit
+import HelmRuntime
 import HelmUI
 
 /// **The name on the search control macOS builds for us.**
@@ -243,6 +244,15 @@ import HelmUI
     /// the lifetime of is exactly the object-outliving-its-owner trap in the
     /// engineer's own notes under a different name.
     private static func size(_ item: NSSearchToolbarItem) {
+        // A dev build's customization palette used to snapshot this item and
+        // have AppKit re-derive the field's width constraints; with the ones
+        // deactivated below it raised inside `_updateWidthConstraints:` and
+        // took the app down on "Customize Toolbar…". That palette existed
+        // only through Homebrew's now-deleted `pageToolbarCustomizable`, and
+        // no `CustomizableToolbarContent` is declared anywhere in the app any
+        // more — the owner's "no user customization anywhere in this window"
+        // (`SettingsToolbar`'s own header) holds for every build now, not
+        // only the ones that are not dev.
         let field = item.searchField
         field.constraints
             .filter { $0.firstItem === field && $0.firstAttribute == .width }

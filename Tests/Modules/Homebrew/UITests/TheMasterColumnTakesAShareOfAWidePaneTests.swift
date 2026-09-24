@@ -30,14 +30,23 @@ final class TheMasterColumnTakesAShareOfAWidePaneTests: XCTestCase {
 
     // MARK: - The rule
 
-    /// **At the threshold it is what it was**, which is not a nicety:
-    /// `TheSplitThresholdFitsThePageItGatesTests` measured the split layout's
-    /// 521 pt floor against a 310 pt master, and that measurement only still
-    /// describes this page while the narrow end is unchanged.
-    func testTheNarrowEndIsUnchanged() {
-        XCTAssertEqual(HomebrewSplit(availableWidth: Self.threshold).masterWidth, 310, """
+    /// **At the threshold the divider is what it was**, which is not a
+    /// nicety: `TheSplitThresholdFitsThePageItGatesTests` measured the split
+    /// layout's 521 pt floor against a master whose stack left the divider at
+    /// 322 (310 pt wide plus the 12 pt of spacing the stack used to spend
+    /// after it), and that measurement only still describes this page while
+    /// the divider has not moved. It has not: `masterWidth` itself grew from
+    /// 310 to 322 the day the list stopped falling short of the divider
+    /// (`TheGapBesideTheListClosesOnlyThereTests`), because the 12 pt the
+    /// stack used to spend on that side is handed to the master now instead —
+    /// at the floor exactly as much as in between, which is what keeps the
+    /// divider from moving with it.
+    func testTheNarrowEndsDividerIsUnchanged() {
+        XCTAssertEqual(HomebrewSplit(availableWidth: Self.threshold).masterWidth, 322, """
             the master column is \(HomebrewSplit(availableWidth: Self.threshold).masterWidth) pt \
-            at the split's own threshold, where the floor of this layout was measured against 310
+            at the split's own threshold, where it should be 322 — 310, the floor this layout was \
+            measured against, plus the 12 pt the list-side gutter used to spend and now hands to \
+            the master instead
             """)
     }
 
@@ -51,16 +60,50 @@ final class TheMasterColumnTakesAShareOfAWidePaneTests: XCTestCase {
                 the master column narrowed from \(previous) to \(master) as the pane grew to \
                 \(width) — which is the defect this rule replaces, said the other way round
                 """)
-            XCTAssertLessThanOrEqual(master, HelmLayout.readingColumn, """
-                the master column reached \(master) pt at \(width), past the reading column — a \
-                list of package names is not prose and does not want the whole window
+            // The reading column's own ceiling, plus the 12 pt the list-side
+            // gutter hands the master at every width including this one — not
+            // slack the master is spending, the gap it used to fall short of
+            // (`TheGapBesideTheListClosesOnlyThereTests`).
+            XCTAssertLessThanOrEqual(master, HelmLayout.readingColumn + HelmSpace.s5, """
+                the master column reached \(master) pt at \(width), past the reading column and \
+                the list-side gutter it was handed — a list of package names is not prose and \
+                does not want the whole window
                 """)
             previous = master
         }
-        XCTAssertGreaterThan(HomebrewSplit(availableWidth: 984).masterWidth, 310, """
-            the column is still 310 pt at the pane the app actually draws, so nothing a person \
-            sees has changed
+        XCTAssertGreaterThan(HomebrewSplit(availableWidth: 984).masterWidth, 322, """
+            the column is still 322 pt — its own floor — at the pane the app actually draws, so \
+            nothing a person sees has changed
             """)
+    }
+
+    /// **`masterWidth` is exactly 12 pt above the formula it replaced, at
+    /// every width, not only between its floor and its ceiling.** The first
+    /// version of the gap fix added the list-side gutter's 12 pt to the
+    /// *unclamped* share alone, so the floor stayed 310 and the ceiling
+    /// stayed 444 — which moves the divider, and everything past it, by up to
+    /// 12 pt at every width outside that one band (caught by a reviewer's own
+    /// probe of the formula, not by a test in this tree, since the one guard
+    /// mounting the real page had picked a width inside the safe band). This
+    /// is the structural fact the case above and
+    /// `TheGapBesideTheListClosesOnlyThereTests.testTheDividerDoesNotMoveAcrossThePane`
+    /// both rest on: the pane-width figures this file and
+    /// `TheSplitThresholdFitsThePageItGatesTests` carry for the split
+    /// layout's own floor predate the gap fix and are not re-measured here —
+    /// this proves they do not need to be, because the total width spent
+    /// before the inspector's own column starts is identical to what the
+    /// pre-fix formula spent, for every width swept.
+    func testMasterWidthIsTwelveAboveThePreFixFormulaEverywhere() {
+        for width: CGFloat in stride(from: CGFloat(0), through: 1600, by: 1) {
+            let preFixGutter: CGFloat = HelmSpace.s5 * 2 + 1
+            let inspector = HelmLayout.readingColumn + HelmSpace.s5 * 2
+            let preFixMaster = min(max(310, width - preFixGutter - inspector), HelmLayout.readingColumn)
+            let master = HomebrewSplit(availableWidth: width).masterWidth
+            XCTAssertEqual(master, preFixMaster + HelmSpace.s5, accuracy: 0.001, """
+                at \(width) pt masterWidth answers \(master), not \(preFixMaster) + 12 — the \
+                divider has moved from where the pre-fix formula put it
+                """)
+        }
     }
 
     /// **And the inspector keeps its bounded column.** The slack the master
@@ -71,8 +114,15 @@ final class TheMasterColumnTakesAShareOfAWidePaneTests: XCTestCase {
         let needed = HelmLayout.readingColumn + HelmSpace.s5 * 2
         for width in stride(from: Self.threshold, through: 1600, by: 1) {
             let master = HomebrewSplit(availableWidth: width).masterWidth
-            guard master > 310 else { continue }
-            let left = width - master - (HelmSpace.s5 * 2 + 1)
+            // 322: the floor `masterWidth` now returns (310 plus the list-side
+            // gutter's 12 pt, handed to the master even at the floor) — below
+            // it the master is pinned and this reading is not about slack.
+            guard master > 322 else { continue }
+            // The divider and the inspector's own leading padding —
+            // `managerBody`'s `HStack(spacing: 0)` spends nothing on the
+            // list's side of the gutter any more
+            // (`TheGapBesideTheListClosesOnlyThereTests`).
+            let left = width - master - (HelmSpace.s5 + 1)
             XCTAssertGreaterThanOrEqual(left, needed, """
                 at \(width) pt the master takes \(master) and leaves the inspector \(left), \
                 where its bounded column and padding need \(needed) — the column the master \

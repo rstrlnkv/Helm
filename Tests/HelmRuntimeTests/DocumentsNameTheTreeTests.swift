@@ -89,6 +89,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "execve": "the syscall a written hosts line has to survive, named in the argument about how long one may be",
         "XCTestConfigurationFilePath": "Xcode's environment variable, named because `swift test` does not set it",
         "NEVPNManager": "NetworkExtension's manager — one of the four things a Developer ID is blocking, and named for exactly that",
+        "endSearchInteraction": "NSSearchToolbarItem's own method, named where the documents say it ends editing the same way losing focus does",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a

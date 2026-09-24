@@ -9,13 +9,28 @@ import XCTest
 /// **`.searchable(placement: .toolbar)` inserts a flexible space of its own
 /// ahead of the search item, on top of anything a page declares.**
 ///
+/// **Retargeted 2026-09-23, from `homebrew` to `uninstaller`.** Homebrew
+/// moved onto `.helmWindowToolbar` and calls neither `.searchable` nor
+/// `.helmSearchable` any more (`command grep -n 'helmSearchable\|\.searchable('
+/// Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift` finds nothing), so
+/// this file's own bridge — `sceneBridgingOptions = [.toolbars]`, set up by
+/// hand in `mount(id:width:)` below, independent of whether the real window
+/// still bridges anything — no longer finds a search item to read for that
+/// id at all. `UninstallerSettingsPage` still calls `.helmSearchable`
+/// (`UninstallerSettingsPage.swift:161`), through the identical
+/// `helmSearchable` -> `.searchable(placement: .toolbar)` path
+/// (`HelmSearchable.swift`), so the mechanism this file exists to guard —
+/// `ToolbarSearchName.closeGapBeforeSearch(in:)`, still live, still called on
+/// every `willAddItem` and every `nameWhatIsThere()` — is still exercised by
+/// mounting that page instead.
+///
 /// Measured against this bridge (2026-09-21): a `ToolbarSpacer(.fixed)` added
-/// at the end of `HomebrewSettingsPage.pageToolbar` does not replace that
-/// space, it sits beside it — the flexible item is not the page's to remove
-/// through `ToolbarContent` at all, because `.searchable` is a view modifier
-/// and never appears inside that `@ToolbarContentBuilder`. A flexible item
-/// claims whatever the bar has left over once every other item has taken its
-/// own width, so the room between Refresh and the search field grew and
+/// at the end of a page's own `ToolbarContent` does not replace the space
+/// `.searchable` inserts, it sits beside it — the flexible item is not the
+/// page's to remove through `ToolbarContent` at all, because `.searchable` is
+/// a view modifier and never appears inside that `@ToolbarContentBuilder`. A
+/// flexible item claims whatever the bar has left over once every other item
+/// has taken its own width, so the room ahead of the search field grew and
 /// shrank with the window rather than holding still, the way it would beside
 /// an ordinary neighbour in the same `ToolbarItemGroup` — Finder's own
 /// trailing items keep a small, fixed gap from each other, and this one held
@@ -159,8 +174,8 @@ final class TheGapBeforeSearchIsFixedNotFlexibleTests: XCTestCase {
     /// grows and shrinks with the window, and a fixed one cannot.
     func testTheItemAheadOfSearchIsNeverFlexible() throws {
         for width: CGFloat in [1100, 1300, 1500] {
-            guard let mounted = mount(id: "homebrew", width: width) else {
-                XCTFail("no homebrew descriptor")
+            guard let mounted = mount(id: "uninstaller", width: width) else {
+                XCTFail("no uninstaller descriptor")
                 return
             }
             defer { drop(mounted) }
@@ -182,8 +197,8 @@ final class TheGapBeforeSearchIsFixedNotFlexibleTests: XCTestCase {
     func testTheGapDoesNotGrowWithTheWindow() throws {
         var gaps: [CGFloat: CGFloat] = [:]
         for width: CGFloat in [1100, 1300, 1500] {
-            guard let mounted = mount(id: "homebrew", width: width) else {
-                XCTFail("no homebrew descriptor")
+            guard let mounted = mount(id: "uninstaller", width: width) else {
+                XCTFail("no uninstaller descriptor")
                 return
             }
             defer { drop(mounted) }

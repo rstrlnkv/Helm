@@ -49,12 +49,13 @@ import XCTest
 /// change the centring math anywhere in the window's ordinary range** — the
 /// shipping default included — **and only at the window's own floor does it
 /// stop being centred at all**, becoming asymmetric in the trailing group's
-/// favour rather than overlapping the module's name. `HomebrewSettingsPage`'s
-/// own `switcherReserve` (250 pt) already carries slack for exactly this —
-/// its own doc names "the page's name on the left" as part of what it
-/// reserves, calibrated against real photographs that already had the header
-/// mounted — so this file's finding is a confirmation of that calibration
-/// with a number, not a correction to it.
+/// favour rather than overlapping the module's name. `HomebrewSettingsPage`
+/// used to carry its own `switcherReserve` (250 pt) of slack for exactly
+/// this, calibrated against real photographs that already had the header
+/// mounted, before that whole SwiftUI-bridge-era mechanism was deleted
+/// (2026-09-23) — so this file's finding is a record of what that
+/// calibration was confirming, on the live `SettingsToolbar` bar rather than
+/// on the page's own dead `ToolbarContent`.
 @MainActor
 final class ALeadingItemAndThePrincipalsCentringTests: XCTestCase {
 

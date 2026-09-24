@@ -113,6 +113,11 @@ struct LeftoversSettingsPage: View {
             }
             Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
         }
+        // Inert until this page moves onto `helmWindowToolbar`
+        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
+        // dead weight without `sceneBridgingOptions`, which this window does
+        // not set) — kept as the shape a conversion pass will read from,
+        // rather than deleted along with the mechanism.
         .toolbar { pageToolbar }
         .animation(HelmMotion.interface, value: lvm.items.count)
         .animation(HelmMotion.interface, value: lvm.showAll)

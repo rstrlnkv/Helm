@@ -5,6 +5,7 @@ import Foundation
 import HelmContract
 import HelmTestSupport
 import HelmUI
+@testable import HelmApp
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
@@ -61,6 +62,11 @@ import HelmUI
 /// a query *and* a selection is therefore not a missing field — it is a field
 /// that is correctly not there, and `expectsSearchField` is the one place that
 /// says so.
+///
+/// **Moved here from `Tests/Modules/Homebrew/UITests`** — the search field
+/// `draw()` types into is now the real `NSSearchField` a live `SettingsToolbar`
+/// builds, and only `HelmAppTests` can attach one (`LivePageToolbarFixture`'s
+/// own header says why a module's `UITests` cannot).
 @MainActor
 final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
@@ -178,15 +184,23 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     ///
     /// Light, named: an unnamed appearance is a reading of whatever this Mac is
     /// set to at this hour (`RenderedInk`'s reason).
+    ///
+    /// **A live `SettingsToolbar` per call**, not a bare `MountedRender` — the
+    /// search field this reads is the real `NSSearchField`
+    /// `SettingsToolbar.makeSearchItem` builds, and only `HelmAppTests` can
+    /// attach one (`LivePageToolbarFixture`'s own header). Moved here from
+    /// `Tests/Modules/Homebrew/UITests` for exactly that reason.
     private func draw(_ hb: HomebrewViewModel, _ mvm: ModuleViewModel,
                       at width: CGFloat, segment: HomebrewViewModel.Segment,
                       typing query: String? = nil, selecting id: String?,
                       file: StaticString = #filePath, line: UInt = #line) -> Reading {
         hb.segment = segment
         hb.select(id)
-        let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
-                                  width: width, height: 700, appearance: .aqua)
-        mount.settle(25)
+        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                             selection: .module(HomebrewDescriptor.id.rawValue),
+                                             width: width, height: 700)
+        let mount = fixture.mount
+        fixture.settle(25)
         if let query, expectsSearchField(typing: query, selecting: id) {
             // `type` posts the change notification the way AppKit delivers a
             // keystroke; assigning `stringValue` alone moves the control and
@@ -201,7 +215,7 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         let lists = mount.host.everyView
             .filter { $0.appKitClassName.contains("ListCoreScrollView") }.count
         let rings = mount.host.everyView(named: "_FocusRingView").count
-        mount.drop()
+        fixture.drop()
         return Reading(rings: rings, lists: lists)
     }
 

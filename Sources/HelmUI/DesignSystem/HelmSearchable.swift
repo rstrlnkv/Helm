@@ -1,12 +1,22 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 
-/// **The one way a page asks for a search control.**
+/// **The one way a page asks for a search control — inert on `SettingsWindow`
+/// since `SettingsSplitViewController` stopped setting `sceneBridgingOptions`
+/// (`SettingsWindow.swift`'s own doc), and kept for the one page that still
+/// calls it, `UninstallerSettingsPage`, until it moves onto
+/// `helmWindowToolbar`.**
+///
+/// What is described below was measured against the bridge this window no
+/// longer wires up, and holds only where a controller still sets it —
+/// `ASearchFieldSaysWhatItIsTests` and its neighbours in `HelmAppTests` build
+/// their own such controller for exactly that reason.
 ///
 /// The control is the window's, not the page's: `.searchable` declares it here
-/// and `SettingsSplitViewController`'s `sceneBridgingOptions` carries it out of
-/// the pane into the window's toolbar, where macOS 26 and later draw it as
-/// Liquid Glass. Measured on macOS 27 (2026-09-20): the bridged item arrives as
+/// and a scene-bridged split controller carries it out of the pane into the
+/// window's toolbar, where macOS 26 and later draw it as Liquid Glass.
+/// Measured on macOS 27 (2026-09-20): the bridged item arrives as
 /// `com.apple.SwiftUI.search` / `AppKitSearchToolbarItem`, an
 /// `NSSearchToolbarItem` carrying a real `NSSearchField`, and **the prompt is
 /// carried whole** — `placeholderString` reads back exactly what was handed in.

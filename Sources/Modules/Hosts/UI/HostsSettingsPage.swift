@@ -64,6 +64,11 @@ struct HostsSettingsPage: View {
         // scroll view, so it is lit from the first frame
         // (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
+        // Inert until this page moves onto `helmWindowToolbar`
+        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
+        // dead weight without `sceneBridgingOptions`, which this window does
+        // not set) — kept as the shape a conversion pass will read from,
+        // rather than deleted along with the mechanism.
         .toolbar { pageToolbar }
     }
 
@@ -84,6 +89,7 @@ struct HostsSettingsPage: View {
     /// follows the person across the tabs, which is what somebody who prefers
     /// the raw file wants. Its words are kept as the glyphs' labels, so the
     /// control is named aloud and in its tooltip exactly as it was written.
+    ///
     @ToolbarContentBuilder
     private var pageToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {

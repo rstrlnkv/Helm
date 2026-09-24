@@ -36,13 +36,23 @@ import HelmUI
 ///
 /// **And the floor of the shipping page is 521, not 544.** Swept one point at a
 /// time with the threshold substituted low, the action first fits inside the
-/// pane at 521 pt (520 draws it to 520.5) — which is the arithmetic floor
-/// 240 + 12 + 1 + 12 + 260 = 525 rounded down by the button's own trailing
-/// padding, not the 544 the doc comment records. 544 was measured on the probe
-/// shape, whose master carried `idealWidth: 310, maxWidth: 310` with no content
-/// of its own; the real master is a `List` that compresses, and the column that
-/// gets squeezed first is the *inspector*, not the master. So 560 sits 39 pt
-/// above the floor rather than 16.
+/// pane at 521 pt (520 draws it to 520.5) — close to, but not the same claim
+/// as, the arithmetic floor `HomebrewSplit`'s own doc comment carries
+/// (240 + 1 + 12 + 260 = 513, master's minimum, the divider, the inspector's
+/// own padding, the inspector's minimum): this is a live measurement of a
+/// `List` that compresses under pressure, where the column squeezed first is
+/// the *inspector*, not the master, so nothing ties it to that sum in either
+/// direction. Not the 544 the doc comment used to record, either: 544 was
+/// measured on a probe shape, whose master carried `idealWidth: 310,
+/// maxWidth: 310` with no content of its own, and the real master's own
+/// compressibility is exactly what the probe could not show. So 560 sits
+/// 39 pt above the floor rather than 16. **This 521 pt reading predates the
+/// list-meets-divider fix** (`TheGapBesideTheListClosesOnlyThereTests`) and
+/// was not retaken this pass; `TheMasterColumnTakesAShareOfAWidePane-
+/// Tests.testMasterWidthIsTwelveAboveThePreFixFormulaEverywhere` is what
+/// stands behind not retaking it — the total width spent before the
+/// inspector's own column starts is unchanged by that fix at every width,
+/// this one included.
 @MainActor
 final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
 

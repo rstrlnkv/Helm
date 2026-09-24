@@ -185,6 +185,18 @@ public enum HelmMotion {
     public static func swaps(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
+
+    /// Whether a Liquid Glass capsule may morph — an item's glass sliding and
+    /// resizing into or out of a neighbour's, rather than the two simply
+    /// appearing and disappearing in place.
+    ///
+    /// The same shape as `spins` and `swaps`, and for the same reason: a
+    /// decision made of an argument can be asserted
+    /// (`TheActionsCapsuleMorphsOnlyWithMotionTests`), a decision that reads
+    /// `NSWorkspace` can only be asserted about the machine it ran on.
+    public static func morphs(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
 }
 
 public extension View {

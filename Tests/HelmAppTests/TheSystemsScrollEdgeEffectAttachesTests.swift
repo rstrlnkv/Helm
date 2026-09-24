@@ -297,6 +297,12 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
         let path = "Sources/HelmApp/SettingsWindow.swift"
         let source = SwiftSource.code(try RepoSource.text(of: path))
 
+        // The flag's own literal — unconditional again, 2026-09-23: a dev-only
+        // toggle once read this as a ternary on `SettingsToolbar.bandStyle`
+        // while the owner looked at the system's own scroll edge beside
+        // Helm's band; shown a screenshot of it, the owner kept Helm's band
+        // and retired the toggle, so this scan is back to the one form it
+        // read before that toggle existed.
         func transparentTitleBar(_ text: String) -> Bool {
             text.contains("titlebarAppearsTransparent = true")
         }

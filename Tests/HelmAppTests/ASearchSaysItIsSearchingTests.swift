@@ -1,9 +1,9 @@
 import XCTest
 import AppKit
-import SwiftUI
 import HelmContract
 import HelmTestSupport
 import HelmUI
+@testable import HelmApp
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
@@ -22,12 +22,12 @@ import HelmUI
 /// the page's own `query` as well as on the reading, and a test that set only
 /// the view model would be measuring half the seam.
 ///
-/// **That field is the window's now** (`helmSearchable`), so the typing goes
-/// through `MountedRender.type`, which reads the control off the window's
-/// toolbar. It is not in `mount.host` at all — measured 2026-09-20,
-/// `host.everyView(ofType:)` finds 0 search fields where the representable it
-/// replaced gave 1 — which is exactly how a test of this shape goes quiet
-/// rather than red, so the absence is a failure here and not a skipped step.
+/// **That field is the window's now** (`.helmWindowToolbar`, through
+/// `SettingsToolbar`), so the typing goes through `MountedRender.type`, which
+/// reads the control off the window's toolbar — attached here by
+/// `LivePageToolbarFixture`, since only `HelmAppTests` can build one
+/// (`SettingsToolbar` is `HelmApp`-only). Moved here from
+/// `Tests/Modules/Homebrew/UITests` for exactly that reason.
 ///
 /// **The band moved up with the row that is gone.** It was 110…420, named as
 /// «below the search field and above the status line»; the field's 32 pt row
@@ -77,8 +77,10 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         let transport = Catalogue(answer)
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
-        let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
-                                  width: 984, height: 520, appearance: .aqua)
+        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                             selection: .module(HomebrewDescriptor.id.rawValue),
+                                             width: 984, height: 520)
+        let mount = fixture.mount
         let loading = Task { @MainActor in await hb.loadIfNeeded() }
         hb.segment = .search
         func turn(_ times: Int) async {
@@ -102,7 +104,7 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         // (`RenderedInk.bytes`); the head of the file says why it starts where
         // it does.
         let picture = mount.pixels(40...380)
-        mount.drop()
+        fixture.drop()
         _ = loading
         _ = searching
         withExtendedLifetime(transport) {}

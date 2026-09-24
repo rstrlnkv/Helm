@@ -114,9 +114,11 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
     /// The reading is of the inspector's own half of the pane — right of the
     /// divider, and
     /// the vertical middle where `HelmEmptyState` centres its sentence. 480 pt
-    /// and not the divider's own 456: `masterWidth` gives the master 444 pt of a
-    /// 984 pt pane, and a reading that starts on the divider is a reading of the
-    /// divider. There is no view to read it off: the sentence is SwiftUI drawing straight into
+    /// and not the divider's own 456: `masterWidth` gives the master 456 pt of a
+    /// 984 pt pane (the list meets the divider now, so the two are the same
+    /// number — `TheGapBesideTheListClosesOnlyThereTests`), and a reading that
+    /// starts on the divider is a reading of the divider. There is no view to
+    /// read it off: the sentence is SwiftUI drawing straight into
     /// the host, with no AppKit view of its own, which is why `RenderedInk`
     /// takes a column range.
     func testTheInspectorsHalfOfThePaneIsEmptyWhenTheListIs() async {

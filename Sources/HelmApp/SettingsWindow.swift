@@ -21,6 +21,12 @@ import HelmUI
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
+    /// What a page's toolbar content crosses into this target by
+    /// (`HelmWindowToolbar.swift` in `HelmUI`) — handed to the detail pane's
+    /// environment so a page never needs to import `HelmApp` to publish into
+    /// it, and read by `settingsToolbar` on the other side.
+    private let toolbarChannel = HelmWindowToolbarChannel()
+    private let settingsToolbar: SettingsToolbar
 
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
@@ -44,7 +50,8 @@ import HelmUI
     init(host: ModuleHost) {
         let model = SettingsModel(host: host)
         self.model = model
-        let split = SettingsSplitViewController(model: model)
+        settingsToolbar = SettingsToolbar(model: model, channel: toolbarChannel)
+        let split = SettingsSplitViewController(model: model, toolbarChannel: toolbarChannel)
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
@@ -54,6 +61,11 @@ import HelmUI
         // reason `helmToolbarBackdrop` exists, and the bar's own backdrop layer
         // does not move with it. `TheSystemsScrollEdgeEffectAttachesTests` is
         // that measurement and holds the two halves of the decision together.
+        // A dev toggle once read the system's own scroll edge instead: shown
+        // a screenshot of it (the detail pane's empty state is no scroll view,
+        // so the system's own effect could only ever cover the list beside it,
+        // never the pane), the owner kept Helm's own band and this line is
+        // unconditional again.
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
@@ -65,17 +77,19 @@ import HelmUI
         self.window = window
         super.init()
         window.delegate = self
-        // **The bridged search control's name**, which has to be restored on
-        // every one the toolbar takes rather than set once: `ToolbarSearchName`
-        // carries the measurements. Built here, before the first turn of the
-        // run loop, because the first item arrives on that turn.
-        searchName = ToolbarSearchName(namingIn: window)
+        // Assigning this is what puts the first toolbar on the window —
+        // `SettingsToolbar` cannot do it itself at construction, since it is
+        // built before this window exists (`init` above needs the toolbar
+        // object to exist before there is anywhere to hang it).
+        settingsToolbar.window = window
         // **The window's title is the page's name**, set here on the
-        // `NSWindow` rather than through SwiftUI: the bridge that carries a
-        // detail pane's toolbar into the window carries its subtitle and drops
-        // its title (measured on macOS 27 — «Untitled» over a pane that had
-        // set one). The page says what it is called with `HelmPageTitleKey`;
-        // this is the one place that listens.
+        // `NSWindow` rather than through SwiftUI: the bridge that used to
+        // carry a detail pane's toolbar into the window carried its subtitle
+        // and dropped its title (measured on macOS 27 — «Untitled» over a
+        // pane that had set one), and that reason survives the bridge's own
+        // removal — the window's title is still this class's to set. The
+        // page says what it is called with `HelmPageTitleKey`; this is the
+        // one place that listens.
         titleWatch = model.$pageTitle.sink { [weak self] title in
             self?.applyTitle(title)
         }
@@ -86,39 +100,12 @@ import HelmUI
     }
 
     private var titleWatch: AnyCancellable?
-    private var searchName: ToolbarSearchName?
-
-    /// **The bar never changes its own display mode.**
-    ///
-    /// Right-clicking a toolbar raises AppKit's own menu — «Icon and Text /
-    /// Icon Only» — and choosing from it lays the items out with labels under
-    /// them, which grows the title bar: photographed 2026-09-17, the 52 pt bar
-    /// became 68. Every item here is a custom view whose label the system never
-    /// draws, so that menu changes nothing but the height. Turned off, AppKit
-    /// raises nothing over the bar and the switcher's own menu
-    /// (`HelmToolbarSwitcher`) is the only one.
-    private func settleDisplayMode() {
-        guard let toolbar = window.toolbar else { return }
-        toolbar.allowsDisplayModeCustomization = false
-        toolbar.displayMode = .iconOnly
-        // Here for the reason this method is called on a hop at all: a page
-        // change rebuilds the bar. What a *whole* bar announces is nothing —
-        // measured on the first one, which is why `ToolbarSearchName` reads
-        // rather than waits — while a page change was measured to mutate the
-        // bar it has, which fires the notification that object listens to. So
-        // this is the belt and not the braces: it costs a walk of a handful of
-        // items, it is idempotent, and it is the one call that would still be
-        // right if a page change ever started replacing the bar instead.
-        searchName?.nameWhatIsThere()
-    }
 
     /// Name and status in the title bar for the style that draws them there;
     /// for the style that draws the module's plate and name as a toolbar item
     /// the title stays the window's — the Window menu and Mission Control name
     /// the window by it — and is simply not drawn a second time.
     private func applyTitle(_ title: HelmPageTitle?) {
-        // A page change rebuilds the bar, and the setting goes with it.
-        DispatchQueue.main.async { [weak self] in self?.settleDisplayMode() }
         let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
         window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
@@ -144,15 +131,11 @@ import HelmUI
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
-        // After the bridge has published this page's items, which is when the
-        // toolbar exists at all.
-        DispatchQueue.main.async { [weak self] in self?.settleDisplayMode() }
     }
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
-
 }
 
 // MARK: - Shared model
@@ -217,9 +200,14 @@ enum SettingsSelection: Hashable {
 
 final class SettingsSplitViewController: NSSplitViewController {
     private let model: SettingsModel
+    /// Handed to the detail pane's environment so a page can publish its
+    /// toolbar content (`helmWindowToolbar`) without importing `HelmApp` —
+    /// `SettingsToolbar`, on the other side of it, is `SettingsWindow`'s.
+    private let toolbarChannel: HelmWindowToolbarChannel
 
-    init(model: SettingsModel) {
+    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel) {
         self.model = model
+        self.toolbarChannel = toolbarChannel
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("not supported") }
@@ -287,20 +275,17 @@ final class SettingsSplitViewController: NSSplitViewController {
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
-                // **Every page has a toolbar, including a page with nothing to
-                // put in it.** The bridge creates the window's toolbar only
-                // while some item exists, so a page without controls dropped
-                // it: photographed 2026-09-16, the traffic lights sat 18 pt
-                // higher on Settings than on Homebrew, and every page header
-                // jumped by that much on a click in the sidebar. A toolbar
-                // handed to the window ahead of time is no way round it — the
-                // bridge then publishes nothing. A fixed system spacer is an
-                // item with no glass and no view of its own; a clear 1 pt view
-                // was tried first and drew a glass sliver.
-                .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }
+                // A page publishes its tabs, actions and search through this
+                // channel (`HelmWindowToolbar.swift` in `HelmUI`); a page that
+                // never does leaves the window showing its name only
+                // (`SettingsToolbar.refresh`) — which is every page's own
+                // toolbar, including one with nothing to put in it, since the
+                // toolbar exists whether or not any page ever asks it for
+                // anything.
+                .environment(\.helmWindowToolbarChannel, toolbarChannel)
                 // The strip under the toolbar, lit once the page's content
-                // has scrolled beneath it — `helmToolbarBackdrop` says why it is
-                // Helm's and not the system's.
+                // has scrolled beneath it — `helmToolbarBackdrop` says why it
+                // is Helm's and not the system's.
                 .helmToolbarBackdrop()
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
@@ -317,19 +302,16 @@ final class SettingsSplitViewController: NSSplitViewController {
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.
                 .helmIdlesOffScreen())
-        // **A page's controls and its header go to the window's toolbar**,
-        // where macOS 26 and later draw controls as Liquid Glass: a page
-        // declares them with SwiftUI's `.toolbar` and this bridges them out of
-        // the pane into the window. The toolbar tracks the sidebar's divider,
-        // so an item a page centres stands over that page, not the window.
-        //
-        // **And the pane keeps AppKit's safe area, which it used to drop.** It
-        // was `safeAreaRegions = []`, because under a transparent title bar the
+        // **The pane keeps AppKit's safe area, which it used to drop.** It was
+        // `safeAreaRegions = []`, because under a transparent title bar the
         // inset was a dead strip above a header each page drew for itself.
-        // The inset is the toolbar now, and dropping it put content under the
-        // glass: photographed 2026-09-16, the Homebrew list's heading ran
-        // straight through the segment switcher.
-        detail.sceneBridgingOptions = [.toolbars]
+        // The inset is the toolbar now, `SettingsToolbar`'s, owned by
+        // `SettingsWindow` and never SwiftUI's — no
+        // `sceneBridgingOptions` is set on this controller, on purpose: a
+        // page's own `.toolbar` declarations, where one still carries any,
+        // are inert without it, which is what "temporarily show only the
+        // name" (this migration's own words for a page not yet converted)
+        // means in practice.
         detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420
@@ -794,3 +776,4 @@ private struct RebuiltOnLanguageChange: ViewModifier {
         content.id(model.languageRevision)
     }
 }
+

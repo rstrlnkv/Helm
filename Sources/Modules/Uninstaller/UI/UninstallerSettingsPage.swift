@@ -75,6 +75,7 @@ struct UninstallerSettingsPage: View {
     /// number was slack in some languages and a squeeze in others — and it is
     /// still disabled while a removal is being reviewed, when switching tabs
     /// would abandon it.
+    ///
     @ToolbarContentBuilder
     private var pageToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
@@ -133,6 +134,11 @@ struct UninstallerSettingsPage: View {
                 OrphansView(uvm: uvm)
             }
         }
+        // Inert until this page moves onto `helmWindowToolbar`
+        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
+        // dead weight without `sceneBridgingOptions`, which this window does
+        // not set) — kept as the shape a conversion pass will read from,
+        // rather than deleted along with the mechanism.
         .toolbar { pageToolbar }
         // **Mounted here, unconditionally, and not under `tab == 0 && step ==
         // .pick` any more.** It used to come and go with that condition, the

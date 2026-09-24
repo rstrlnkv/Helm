@@ -27,9 +27,10 @@ import XCTest
 /// view controller. `SettingsWindow` never does that: the real window is an
 /// `NSSplitViewController` with a 214 pt sidebar (`SettingsSplitViewController`,
 /// its own `sidebarDefault`) and the page sits in the *detail* item beside it.
-/// The toolbar is the window's, drawn full width — but two things a page reads
-/// about its own room are not: `HomebrewSettingsPage.paneWidth`, which decides
-/// `switcherFits` and comes from `.onGeometryChange` on the page's own view,
+/// The toolbar is the window's, drawn full width — but two things a page read
+/// about its own room were not: `HomebrewSettingsPage.paneWidth` (deleted
+/// 2026-09-23 with the SwiftUI-bridge-era bar it fed), which decided
+/// `switcherFits` and came from `.onGeometryChange` on the page's own view,
 /// and `HomebrewSplit`'s own threshold, both read the *detail pane's* width,
 /// 214 pt narrower than the window. Mounting the page as the whole window's
 /// content, as this file did, handed both of those readings 214 pt of room
@@ -50,8 +51,9 @@ import XCTest
 /// real window is an `NSSplitViewController` with a 214 pt sidebar
 /// (`SettingsSplitViewController`, its own `sidebarDefault`), and the page
 /// sits in the *detail* item beside it — narrower than the window by that
-/// much. `HomebrewSettingsPage.paneWidth`, which decides `switcherFits`, and
-/// `HomebrewSplit`'s own threshold both read that narrower pane's width
+/// much. `HomebrewSettingsPage.paneWidth`, which decided `switcherFits`
+/// before both were deleted, and `HomebrewSplit`'s own threshold both read
+/// that narrower pane's width
 /// through `.onGeometryChange`, so a fixture with no sidebar hands both of
 /// those readings 214 pt of room neither page has in the app.
 ///
@@ -216,31 +218,25 @@ final class ASearchCollapsesOnlyWhereTheWindowIsSmallTests: XCTestCase {
     // this Mac, 2026-09-21 — the widths quoted in each failure message are
     // that run's own readings).
 
-    /// Homebrew, 1120 pt: open with an empty leading zone, collapsed with the
-    /// module-name plate mounted — the same width, the same switcher, the
-    /// same two buttons, the only difference being the plate.
+    /// **Retired 2026-09-23: Homebrew's premise is gone.** This case bridged
+    /// its own `sceneBridgingOptions = [.toolbars]` around
+    /// `HomebrewSettingsPage` to read a `.searchable`-era `NSSearchToolbarItem`
+    /// off the mounted window. Homebrew has not called `.searchable` or
+    /// `.helmSearchable` since it moved onto `.helmWindowToolbar`
+    /// (`command grep -n 'helmSearchable\|\.searchable(' Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift`
+    /// finds nothing), so `mount(id: "homebrew", …)` no longer puts a search
+    /// item in this harness's bridged toolbar at all — measured: both calls
+    /// below failed `XCTUnwrap(field(…))` with "no search item" before this
+    /// pass retired the case. Homebrew's own search field is now read live,
+    /// through a real `SettingsToolbar`, by `ASearchAsksBrewOnlyOnReturnTests`
+    /// and `ASearchSaysItIsSearchingTests` in this same target. Uninstaller
+    /// still calls `.helmSearchable` (`UninstallerSettingsPage.swift:161`), so
+    /// the two cases below that read it stay.
     func testTheLeadingItemNarrowsHomebrewsRoomAt1120() throws {
-        guard let noLeading = mount(id: "homebrew", width: 1120, leadingItem: false) else {
-            XCTFail("no homebrew descriptor")
-            return
-        }
-        defer { drop(noLeading) }
-        let noLeadingField = try XCTUnwrap(field(noLeading), "1120 pt, no leading item: no search item")
-        XCTAssertFalse(noLeadingField.isHidden, """
-            Homebrew's search field is collapsed at 1120 pt even with an empty leading zone \
-            (\(noLeadingField.frame.width) pt) — this harness's own crossing for the bare toolbar \
-            has moved, and the comparison below may now be reading two states that agree
-            """)
-
-        guard let withLeading = mount(id: "homebrew", width: 1120, leadingItem: true) else { return }
-        defer { drop(withLeading) }
-        let withLeadingField = try XCTUnwrap(field(withLeading), "1120 pt, with leading item: no search item")
-        XCTAssertTrue(withLeadingField.isHidden, """
-            Homebrew's search field is still open at 1120 pt with the module-name plate mounted \
-            (\(withLeadingField.frame.width) pt) — the plate stopped costing this page room, which \
-            is worth knowing on its own: the rendered window's own threshold sits between 1112 and \
-            1120 pt with the plate mounted (a designer's reading, 2026-09-21), so a plate that no \
-            longer narrows the field's room here is a mechanism this file can no longer show working
+        throw XCTSkip("""
+            retired: Homebrew no longer bridges a `.searchable` toolbar for this harness to read — \
+            see this method's own doc for the command that found nothing and the live tests that \
+            replace it
             """)
     }
 

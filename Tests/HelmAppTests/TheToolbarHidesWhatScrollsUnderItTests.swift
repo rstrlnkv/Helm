@@ -21,17 +21,35 @@ import HelmTestSupport
 /// last row, against 30 flat at rest.
 final class TheToolbarHidesWhatScrollsUnderItTests: XCTestCase {
 
+    /// **Retargeted 2026-09-23: the detail pane's toolbar is `SettingsToolbar`'s
+    /// now, not a SwiftUI bridge.** `SettingsWindow.swift` says why on the
+    /// controller itself: "no `sceneBridgingOptions` is set on this
+    /// controller, on purpose" — so a scan for that property no longer finds
+    /// anything to bound the search by (measured:
+    /// `command grep -n sceneBridgingOptions Sources/HelmApp/SettingsWindow.swift`
+    /// finds only that comment). The claim this case exists to guard —
+    /// the detail pane actually carries the backdrop strip — still holds:
+    /// `.helmToolbarBackdrop()` sits on `SettingsDetail` unconditionally. A
+    /// dev-only toggle gated this call on a band style for a stretch
+    /// (`.modifier(ToolbarBackdropIfHelmBand())`) while the owner looked at
+    /// the system's own scroll edge beside it; shown a screenshot of that
+    /// alternative, the owner kept Helm's own band and the call is
+    /// unconditional again.
     func testTheDetailPaneCarriesTheBackdrop() throws {
         let window = "Sources/HelmApp/SettingsWindow.swift"
         let code = SwiftSource.code(try RepoSource.text(of: window))
         let detail = try XCTUnwrap(code.range(of: "rootView: SettingsDetail(model: model)"),
                                    "\(window) no longer builds the detail pane from SettingsDetail")
-        let bridged = try XCTUnwrap(code.range(of: "detail.sceneBridgingOptions",
-                                               range: detail.upperBound..<code.endIndex),
-                                    "the detail pane no longer bridges its toolbar")
-        XCTAssertTrue(code[detail.upperBound..<bridged.lowerBound].contains(".helmToolbarBackdrop()"), """
+        let sizing = try XCTUnwrap(code.range(of: "detail.sizingOptions",
+                                              range: detail.upperBound..<code.endIndex),
+                                   "could not bound the detail pane's own view-builder block")
+        XCTAssertTrue(code[detail.upperBound..<sizing.lowerBound].contains(".helmToolbarBackdrop()"), """
             the settings pane has no strip under the toolbar — content scrolls straight through \
             the window's title on every page without a glass control
+            """)
+        XCTAssertTrue(code[detail.upperBound..<sizing.lowerBound].contains("helmWindowToolbarChannel"), """
+            the detail pane no longer publishes into the channel `SettingsToolbar` reads — every \
+            page's `.helmWindowToolbar` call would have nowhere to declare into
             """)
     }
 

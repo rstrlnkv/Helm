@@ -23,11 +23,6 @@ struct HomebrewSettingsPage: View {
     /// Cancelling does not stop the tool, and nothing here pretends it does —
     /// the child is the engine's and runs to its end.
     @State private var searching: Task<Void, Never>?
-    /// The pane's width, for the one decision the toolbar cannot make well on
-    /// its own — `switcherFits`. Nil until measured: the first frame
-    /// draws the switcher rather than flashing a pop-up into it.
-    @State private var paneWidth: CGFloat?
-    @Environment(\.helmSwitcherStyle) private var switcherStyle
 
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
@@ -214,7 +209,20 @@ struct HomebrewSettingsPage: View {
             GeometryReader { proxy in
                 let split = HomebrewSplit(availableWidth: proxy.size.width)
                 if split.showsInspector {
-                    HStack(spacing: HelmSpace.s5) {
+                    // **No stack spacing — the list meets the divider.** The
+                    // owner's own choice, shown a screenshot of the list
+                    // falling short of its own block: an equal `HelmSpace.s5`
+                    // either side of `Divider()` left the master column 12 pt
+                    // short of the line it was supposed to run to, and only
+                    // the list's own side of that gap was to close. So the
+                    // stack itself carries none, `HomebrewSplit.masterWidth`
+                    // hands the master column the 12 pt the gap used to
+                    // spend, and the 12 pt on the inspector's side moves into
+                    // `detail`'s own leading padding below — the distance
+                    // from the divider to the inspector's content is
+                    // unchanged, only where it is spent has moved
+                    // (`TheGapBesideTheListClosesOnlyThereTests`).
+                    HStack(spacing: 0) {
                         listArea(singleColumn: split.singleColumn)
                             // `minWidth` and the compressibility it buys are
                             // kept exactly as they were: the split threshold
@@ -227,6 +235,11 @@ struct HomebrewSettingsPage: View {
                         detail
                             .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity,
                                   alignment: .topLeading)
+                            // The gap the stack's own spacing used to spend
+                            // between the divider and this column — kept here
+                            // rather than in the stack, so it stays on the
+                            // inspector's side alone.
+                            .padding(.leading, HelmSpace.s5)
                     }
                 } else if hb.selected != nil {
                     // Selection already lives in `HomebrewViewModel`, per
@@ -276,35 +289,58 @@ struct HomebrewSettingsPage: View {
         // packages beside the list would animate a pane that is not swapping.
         .animation(HelmMotion.interface, value: hb.segment)
         .animation(HelmMotion.interface, value: hb.selected == nil)
-        .toolbar { pageToolbar }
-        // **Mounted here, on the page, and not inside `searchView` any
-        // more.** It used to come and go with the Поиск segment, which is
-        // what an in-page row had always done — but the field moved into the
-        // window's own `NSToolbar` (`helmSearchable`), and that toolbar lays
-        // its items out itself: adding or dropping one item shifts every
-        // other one sharing it, Refresh included. Measured on a real screen
-        // recording (2026-09-21, `hb-expand`/`hb-expand2`/`hb-collapse`):
-        // Refresh's glyph moved 175 pt inside a single frame — 41.7-50 ms at
-        // this clip's dropped-frame rate — every time this field's presence
-        // flipped, while the very same segment change already sits under
-        // `.animation(HelmMotion.interface, value: hb.segment)` above and
-        // still snapped, because that transaction is SwiftUI's and the
-        // toolbar's own relayout is AppKit's, which no curve in this file
-        // reaches (`ARCHITECTURE.md`'s "The page header": the switcher is
-        // "the system's control" for the identical reason). Keeping the
-        // field mounted keeps the toolbar's item count constant, which is
-        // the only thing that keeps its relayout from running at all — the
-        // query itself still only searches on Return, and `searchView`
-        // still only shows a result once one has been asked for.
-        .helmSearchable(text: $query, prompt: HbStr.searchPlaceholder) {
-            searching?.cancel()
-            searching = Task { await hb.search(query) }
-        }
-        // The page fills the pane, so its width is the pane's and does not
-        // follow anything the page draws.
-        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
-            if paneWidth != width { paneWidth = width }
-        }
+        // **The page's controls, in the window's own `NSToolbar`
+        // (`SettingsToolbar`), through the contract every module page shares**
+        // (`HelmWindowToolbar.swift` in `HelmUI`). The SwiftUI-bridge-era
+        // `ToolbarContent` this replaced, and the `switcherFits`/`paneWidth`
+        // machinery it decided a narrower shape from, are gone — deleted
+        // 2026-09-23 together with `TheSwitcherGivesWayBeforeRefreshTests`,
+        // the test that was their only remaining reader. **Which zone gives
+        // way first when the bar is tight is no longer left to AppKit's own
+        // overflow order**: `SettingsToolbar`'s own fold mechanism collapses
+        // the tabs to a one-item capsule with a menu (`HelmToolbarSwitcher`'s
+        // `compact`) before a search field opening would otherwise squeeze
+        // the whole strip into the toolbar's «»» menu, and only the
+        // near-simultaneous-overflow floor still falls back to that menu at
+        // all.
+        //
+        // **Upgrade all leaves the actions capsule off Обновления rather than
+        // being dimmed on every segment** (`isVisible`) — the owner's revised
+        // order, 2026-09-22: it used to enter and leave the old bridged
+        // `ToolbarItemGroup` and move the segmented control the person had
+        // just pressed (measured at 37 pt in one frame), which mounting it
+        // disabled on every segment was written to avoid. The capsule
+        // (`HelmToolbarActionsCapsule`, `HelmUI/DesignSystem/HelmToolbarActions.swift`)
+        // replaced a per-action `NSToolbarItem` with one custom-view item
+        // reserving the full width of every declared action: Refresh, always
+        // visible, stays exactly still while Upgrade All's own glass morphs
+        // in and out of it, which is what closed the smaller jump a reviewer
+        // had measured — Refresh and the search field still shifting by the
+        // hidden item's own width — that hiding a *separate* item left open.
+        .helmWindowToolbar(HelmPageToolbarContent(
+            tabs: HomebrewViewModel.Segment.allCases.map {
+                HelmToolbarTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)
+            },
+            selectedTab: Binding(
+                get: { hb.segment.rawValue },
+                set: { hb.segment = HomebrewViewModel.Segment(rawValue: $0) ?? hb.segment }),
+            actions: [
+                HelmToolbarAction(id: "upgradeAll", title: HbStr.upgradeAll,
+                                  symbol: "arrow.up.circle",
+                                  isEnabled: !hb.running && !hb.outdated.isEmpty,
+                                  isVisible: hb.segment == .updates) {
+                    hb.upgradeAll()
+                },
+                HelmToolbarAction(id: "refresh", title: HbStr.refreshList,
+                                  symbol: "arrow.clockwise", isEnabled: !hb.running) {
+                    Task { await refresh(hb.segment) }
+                }
+            ],
+            search: HelmToolbarSearch(prompt: HbStr.searchPlaceholder, text: $query) {
+                searching?.cancel()
+                searching = Task { await hb.search(query) }
+            }
+        ), token: HomebrewDescriptor.id.rawValue)
         // On the page rather than on the picker: a toolbar item's view is
         // hosted by the window's toolbar and its lifetime is the toolbar's,
         // so a change handler hung on it is not something this page can
@@ -312,129 +348,6 @@ struct HomebrewSettingsPage: View {
         .onChange(of: hb.segment) { _, segment in
             Task { await refresh(segment) }
         }
-    }
-
-    /// **The page's controls, in the window's own toolbar.**
-    ///
-    /// They were a bar the page drew above its columns, and that bar spent most
-    /// of its life fighting for width it did not own: the switcher is as wide
-    /// as its language makes it — measured 2026-09-16, zh 252 · en 302 ·
-    /// de 320 · fr 388 · pt 404 · es 476 · ru 488 · ja 494 pt — so it needed a
-    /// `ViewThatFits` with a menu fallback, a preference carrying the answer
-    /// down to the columns so the page changed shape once and not twice, and
-    /// a reserved slot for «Обновить всё» so the answer did not change with the
-    /// segment. Most of that was this page redoing what a toolbar does: an
-    /// `NSToolbar` lays its items out against the whole title bar. What it does
-    /// not do is give way gracefully — out of room it moves the whole bar into
-    /// its overflow menu, Refresh included — so the one decision left to the page
-    /// is the switcher's shape (`switcherFits`).
-    ///
-    /// On macOS 26 and later the toolbar draws these as Liquid Glass — the
-    /// switcher in a glass capsule, the two glyph buttons as glass circles —
-    /// which is the functional layer, exactly where the guidelines put glass.
-    /// The switcher inside the capsule is Helm's (`HelmToolbarSwitcher`): the
-    /// system segmented control gave every segment the longest word's width
-    /// and drew no dividers, and its labels are words, glyphs or both as the
-    /// person chose by right-clicking it.
-    /// `SettingsSplitViewController` bridges them from this pane into the
-    /// window's toolbar (`sceneBridgingOptions`), and the toolbar tracks the
-    /// sidebar's divider, so the switcher centres over this page and not over
-    /// the window.
-    ///
-    /// **The page's shape is now a question of width alone** (`HomebrewSplit`):
-    /// nothing in the pane depends on how wide a string is any more.
-    ///
-    /// «Обновить всё» is *disabled* except where it can act — in Обновления,
-    /// with something outdated — rather than entering and leaving the bar
-    /// with that condition, which is what it did until 2026-09-21. Measured
-    /// on a real screen recording (`hb-expand`/`hb-expand2`/`hb-collapse`):
-    /// an item entering or leaving this `ToolbarItemGroup` makes AppKit relay
-    /// the whole bar, and it moved the segmented control the person had just
-    /// pressed — the unselected segment label «Состояние» jumped 37.00 pt
-    /// inside a single frame (f84 → f85, 16.7 ms), twice measured, while
-    /// `.animation(HelmMotion.interface, value: hb.segment)` already sat on
-    /// the segment change and still snapped, because that transaction is
-    /// SwiftUI's and the toolbar's own relayout is AppKit's, which no curve
-    /// in this file reaches — the identical mechanism, and the identical
-    /// remedy, already applied to the search field going into
-    /// `helmSearchable` below: keep the item mounted so the bar's item count
-    /// stops changing at all. It had to be *reserved* the same way in every
-    /// segment while it lived in the page's own bar, for the same reason:
-    /// there the bar's width decided the page's shape, and a toolbar item
-    /// decides nothing about the pane under it, so there is nothing left to
-    /// reserve room *for* — mounted-and-disabled is now what "reserved" means
-    /// here. On the segments it has nothing to do on, a person sees exactly
-    /// what they already see on Refresh while an operation is running: the
-    /// same glyph, greyed. It keeps the module's own «an update exists»
-    /// symbol and carries its word in help and in its accessibility label,
-    /// which is what a glyph-only control owes whether or not it is enabled.
-    /// `TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests` holds the
-    /// item count; the jump itself is AppKit's own relayout and nothing a
-    /// headless test can watch move — see that file's own header.
-    @ToolbarContentBuilder
-    private var pageToolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            // Over `allCases`, not rows spelled by hand: a segment whose label
-            // was forgotten used to be a segment with no row at all, reachable
-            // from nowhere and visible in no test. `Segment.label` is the
-            // `switch` that cannot forget one.
-            if Self.switcherFits(paneWidth: paneWidth, style: switcherStyle) {
-                HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $hb.segment,
-                                    segments: HomebrewViewModel.Segment.allCases.map {
-                                        HelmSwitcherSegment($0, $0.label, symbol: $0.symbol)
-                                    })
-            } else {
-                // A pop-up button and not a SwiftUI menu: the toolbar strips
-                // a menu's words (`HelmToolbarPopUp` says what was tried).
-                HelmToolbarPopUp(HelmA11y.whatToShow, selection: $hb.segment,
-                                 options: HomebrewViewModel.Segment.allCases.map { ($0, $0.label) })
-                    .fixedSize()
-            }
-        }
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                hb.upgradeAll()
-            } label: {
-                Image(systemName: "arrow.up.circle")
-            }
-            .disabled(hb.running || !(hb.segment == .updates && !hb.outdated.isEmpty))
-            .help(HbStr.upgradeAll)
-            .accessibilityLabel(HbStr.upgradeAll)
-            Button {
-                Task { await refresh(hb.segment) }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .helmSteadySpin(hb.running)
-            }
-            .disabled(hb.running)
-            .help(HbStr.refreshList)
-            .accessibilityLabel(HbStr.refreshList)
-        }
-    }
-
-    /// Room the toolbar needs beside the switcher: the page's name on the left,
-    /// Upgrade-all and Refresh on the right, and the gaps between them —
-    /// reserved whichever segment is showing, so the switcher does not change
-    /// shape when Upgrade-all comes and goes.
-    ///
-    /// **Why the page decides this and not the toolbar.** An `NSToolbar` that
-    /// runs out of room does not shrink the widest item: photographed
-    /// 2026-09-17 at the smallest window, a 646 pt pane, the whole bar went into
-    /// the «»» overflow menu — the switcher and Refresh with it, in both
-    /// languages and both header shapes, where the order was that Refresh never
-    /// leaves the bar and the switcher becomes a menu first. Calibrated on the
-    /// same photographs: ru's 488 pt switcher fitted a 753 pt pane beside the
-    /// module-name header, the wider of the two.
-    static let switcherReserve: CGFloat = 250
-
-    /// The switcher, in the style chosen for it, where it fits beside the rest
-    /// of the bar; a pop-up button where it does not. Unmeasured fits, so
-    /// nothing flashes on the first frame.
-    static func switcherFits(paneWidth: CGFloat?, style: ToolbarSwitcherStyle,
-                             labels: [String] = HomebrewViewModel.Segment.allCases.map(\.label))
-        -> Bool {
-        guard let paneWidth else { return true }
-        return paneWidth >= HelmToolbarSwitcher<Int>.width(of: labels, in: style) + switcherReserve
     }
 
     @ViewBuilder
@@ -719,7 +632,9 @@ struct HomebrewSettingsPage: View {
     private func updatesList(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
             // No bar of its own any more: «Обновить всё» is in the window's
-            // toolbar beside Refresh (`pageToolbar`).
+            // own toolbar beside Refresh, declared on `managerBody`'s
+            // `.helmWindowToolbar` — visible on this very segment, hidden
+            // everywhere else.
             listOrEmpty(hb.outdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates,
@@ -738,13 +653,14 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    /// **The field is the window's toolbar's** (`helmSearchable`), which is why
-    /// nothing above the results is drawn here any more — the row that held it
-    /// and the rule under that row are both gone with it. The declaration is on
-    /// `managerBody` now and not on this segment's own view — it used to come
-    /// and go with Поиск, the way the row did, but a toolbar item entering and
-    /// leaving is a different act from a row doing the same: `managerBody`'s
-    /// own `.helmSearchable` says why.
+    /// **The field is the window's toolbar's** (`.helmWindowToolbar`'s own
+    /// `search:` on `managerBody`), which is why nothing above the results is
+    /// drawn here any more — the row that held it and the rule under that row
+    /// are both gone with it. The declaration is on `managerBody` now and not
+    /// on this segment's own view — it used to come and go with Поиск, the
+    /// way the row did, but the whole toolbar re-declares as one value on
+    /// every segment change rather than a row entering and leaving on its
+    /// own, which is a different act.
     private func searchView(singleColumn: Bool) -> some View {
         VStack(spacing: 0) {
             if SearchDisplay.state(query: query, reading: hb.searchReading) == .prompt {
