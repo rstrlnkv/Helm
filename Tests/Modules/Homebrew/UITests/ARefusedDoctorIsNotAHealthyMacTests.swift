@@ -293,10 +293,10 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
 
     /// The picker is built from `Segment.allCases` and `Segment.label`, so a
     /// case with no word is a build error rather than a segment nothing can
-    /// reach. This names all four, so adding a fifth sends its author here.
+    /// reach. This names all three, so adding a fourth sends its author here.
     func testEverySegmentIsNamedAndNamedDistinctly() {
         XCTAssertEqual(HomebrewViewModel.Segment.allCases,
-                       [.installed, .updates, .search, .health])
+                       [.installed, .updates, .health])
         AppLanguage.each { language in
             let words = HomebrewViewModel.Segment.allCases.map(\.label)
             XCTAssertEqual(Set(words).count, words.count,

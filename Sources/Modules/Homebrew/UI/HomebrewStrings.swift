@@ -21,12 +21,17 @@ enum HbStr {
 
     static var segInstalled: String { L("Installed") }
     static var segUpdates: String { L("Updates") }
-    static var segSearch: String { L("Search") }
     /// What `brew doctor` found. Not "Doctor" — that is Homebrew's own name for
     /// the subcommand and names a tool rather than a question; the segment
     /// beside three lists of packages is about the state of the machine.
     static var segHealth: String { L("Health") }
 
+    /// One prompt for all three tabs, including Состояние, where the same
+    /// field also filters `brew doctor` findings and `brew config` groups
+    /// rather than packages alone — left as one key deliberately for now
+    /// rather than guessed at three ways: the owner has not been asked
+    /// whether the Health tab's own prompt should say so, and a wrong guess
+    /// here is faithfully translated into all seven other languages.
     static var searchPlaceholder: String { L("Search packages") }
     static var install: String { L("Install") }
     static func confirmUninstall(_ name: String) -> String { L("Uninstall \(name)?", [.ru: "Удалить \(name)?", .es: "¿Desinstalar \(name)?", .fr: "Désinstaller \(name) ?", .de: "\(name) deinstallieren?", .ja: "\(name) をアンインストールしますか？", .zh: "卸载 \(name)？", .pt: "Desinstalar \(name)?"]) }
@@ -61,7 +66,18 @@ enum HbStr {
     static var upToDate: String { L("Everything is up to date.") }
     static var noneInstalled: String { L("No packages installed.") }
     static var noResults: String { L("No results.") }
-    static var typeToSearch: String { L("Type a name and press Return.") }
+    /// **The header over what a filtered query and an automatic `brew
+    /// search` found that this Mac does not already have.** Drawn under
+    /// whichever list the tab already shows — Установленные, Обновления or
+    /// Состояние — never as a list of its own: the Search tab it used to sit
+    /// under was removed 2026-09-24, the owner's decision.
+    static var availableToInstall: String { L("Available to install") }
+    /// The list itself has rows, and the query hides every one of them —
+    /// distinct from `noResults`, which is `brew search` answering that
+    /// nothing exists at all. `HbStr.noneInstalled`/`upToDate`/`nothingToFix`
+    /// stay separate keys for the reason each already carries: this is a
+    /// fourth fact and not a fourth spelling of one of them.
+    static var noMatches: String { L("Nothing in this list matches.") }
 
     /// **The three refusals, one per list — and each is a separate key from the
     /// empty answer above it.**
@@ -202,10 +218,6 @@ enum HbStr {
     /// sentence is about this module's own two-screen shape, and the one other
     /// place in the app with that shape spells its own.
     static var opensItsOwnScreen: String { L("Opens its own screen") }
-    /// The row badge for a search hit already on this Mac. Not `segInstalled`
-    /// — that names the tab, and this names a fact about one row; the two
-    /// read differently even in English ("Installed" vs "already installed").
-    static var alreadyInstalled: String { L("already installed") }
     /// The accessibility label of the row's update marker, and the word the
     /// package screen spells beside the same symbol — the only carrier of "an
     /// update exists" for a colourblind reader or one using VoiceOver.

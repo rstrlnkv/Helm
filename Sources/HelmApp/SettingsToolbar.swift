@@ -436,9 +436,25 @@ import HelmUI
         return HelmPageToolbarContent(
             tabs: content.tabs,
             selectedTab: content.selectedTab.map { .constant($0.wrappedValue) },
-            actions: content.actions.map {
-                HelmToolbarAction(id: $0.id, title: $0.title, symbol: $0.symbol,
-                                  isEnabled: $0.isEnabled, isVisible: $0.isVisible) {}
+            tabsEnabled: content.tabsEnabled,
+            actions: content.actions.map { action in
+                switch action.kind {
+                case .button:
+                    return HelmToolbarAction(id: action.id, title: action.title, symbol: action.symbol,
+                                             isEnabled: action.isEnabled, isVisible: action.isVisible,
+                                             isBusy: action.isBusy) {}
+                case .toggle(let isOn, _):
+                    return HelmToolbarAction(id: action.id, title: action.title, symbol: action.symbol,
+                                             isEnabled: action.isEnabled, isVisible: action.isVisible,
+                                             isOn: isOn) {}
+                case .menu(let items):
+                    return HelmToolbarAction(id: action.id, title: action.title, symbol: action.symbol,
+                                             isEnabled: action.isEnabled, isVisible: action.isVisible,
+                                             menu: items.map {
+                                                 HelmToolbarMenuItem(id: $0.id, title: $0.title,
+                                                                     isOn: $0.isOn, isEnabled: $0.isEnabled) {}
+                                             })
+                }
             },
             search: content.search.map {
                 HelmToolbarSearch(prompt: $0.prompt, text: .constant($0.text.wrappedValue))
@@ -758,7 +774,9 @@ import HelmUI
         bar.tabsSwitcherHost = hosting
         bar.tabsItem = item
         bar.lastTabsSnapshot = HelmTabsSnapshot(tabs: tabs, style: AppSettings.toolbarSwitcherStyle,
-                                                isInteractive: bar.isInteractive, compact: bar.tabsFolded,
+                                                isInteractive: bar.isInteractive,
+                                                tabsEnabled: bar.content?.tabsEnabled ?? true,
+                                                compact: bar.tabsFolded,
                                                 selectedID: bar.content?.selectedTab?.wrappedValue)
         patchTabsMenu(bar)
         return item
@@ -786,13 +804,19 @@ import HelmUI
                 // own header for why the two must not be conflated — since
                 // this custom-view item carries none of
                 // `NSToolbarItem.autovalidates`' machinery to disable through.
-                .disabled(!bar.isInteractive)
+                // `tabsEnabled` dims the same way, for a page that has
+                // declared the whole switcher inapplicable right now
+                // (Uninstaller's review step) rather than merely frozen.
+                .disabled(!bar.isInteractive || !(bar.content?.tabsEnabled ?? true))
         )
     }
 
     private func tabsBinding(_ bar: PageBar) -> Binding<String> {
         Binding(get: { [weak bar] in bar?.content?.selectedTab?.wrappedValue ?? "" },
-               set: { [weak bar] newValue in bar?.content?.selectedTab?.wrappedValue = newValue })
+               set: { [weak bar] newValue in
+                   guard bar?.content?.tabsEnabled ?? true else { return }
+                   bar?.content?.selectedTab?.wrappedValue = newValue
+               })
     }
 
     /// The Helm switcher's own change-skip, on the same grounds as
@@ -840,13 +864,21 @@ import HelmUI
         let symbols: [String]
         let style: ToolbarSwitcherStyle
         let isInteractive: Bool
+        /// The fifth field, added beside `isInteractive` rather than folded
+        /// into it: a page can freeze (return visit, module switched off)
+        /// with its switcher still enabled, and can stay live while its own
+        /// switcher is inapplicable (Uninstaller's review step) — two
+        /// different reasons to dim, so a redeclare that moves only this one
+        /// still has to rebuild the hosted switcher's `.disabled(...)`.
+        let tabsEnabled: Bool
         let compact: Bool
         let selectedID: String?
-        init(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, isInteractive: Bool, compact: Bool,
-             selectedID: String?) {
+        init(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, isInteractive: Bool, tabsEnabled: Bool,
+             compact: Bool, selectedID: String?) {
             ids = tabs.map(\.id); titles = tabs.map(\.title); symbols = tabs.map(\.symbol)
             self.style = style
             self.isInteractive = isInteractive
+            self.tabsEnabled = tabsEnabled
             self.compact = compact
             self.selectedID = selectedID
         }
@@ -860,8 +892,8 @@ import HelmUI
         guard let content = bar.content, !content.tabs.isEmpty else { return }
         guard let tabsSwitcherHost = bar.tabsSwitcherHost else { return }
         let snapshot = HelmTabsSnapshot(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
-                                        isInteractive: bar.isInteractive, compact: bar.tabsFolded,
-                                        selectedID: content.selectedTab?.wrappedValue)
+                                        isInteractive: bar.isInteractive, tabsEnabled: content.tabsEnabled,
+                                        compact: bar.tabsFolded, selectedID: content.selectedTab?.wrappedValue)
         guard snapshot != bar.lastTabsSnapshot else { return }
         bar.lastTabsSnapshot = snapshot
         tabsSwitcherHost.rootView = helmSwitcherView(content.tabs, bar: bar)
@@ -883,7 +915,7 @@ import HelmUI
                                       keyEquivalent: "")
             menuItem.target = self
             menuItem.representedObject = tab.id
-            menuItem.isEnabled = bar.isLive
+            menuItem.isEnabled = bar.isLive && content.tabsEnabled
             menuItem.state = tab.id == selected ? .on : .off
             submenu.addItem(menuItem)
         }
@@ -893,7 +925,8 @@ import HelmUI
 
     @objc private func tabsMenuItemPressed(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String,
-              let key = attachedPageKey, let bar = pageBars[key], bar.isLive else { return }
+              let key = attachedPageKey, let bar = pageBars[key], bar.isLive,
+              bar.content?.tabsEnabled ?? true else { return }
         bar.content?.selectedTab?.wrappedValue = id
     }
 
@@ -1278,11 +1311,76 @@ import HelmUI
         return bar.collapsedFieldWidth ?? current
     }
 
+    /// **The window's own inline title, when the page-bar style draws one
+    /// instead of a name item** (`PageBarStyle.windowTitle`,
+    /// `SettingsWindow.applyTitle(_:)`) — `NSToolbarTitleView`, AppKit's own
+    /// container for the title and subtitle text it draws inside the
+    /// toolbar, found by class name rather than by type (it carries no
+    /// public header, the same necessity every AppKit-private view in this
+    /// tree is matched by).
+    ///
+    /// **The container's own `bounds.width` is not this title's width —
+    /// it is flexible, and grows into whatever room a fold frees, the same
+    /// way `NSSearchToolbarItem` grows an idle field (`searchRoomBudget(_:)`'s
+    /// own header).** Read at one pane, tabs full versus tabs folded, with
+    /// nothing else on the bar changed (`swift test --filter
+    /// AnUnfoldIsPredictedNeverTrialledTests` on this Mac,
+    /// `testTheWindowTitleStyleUnfoldsWithinMarginOfAppKitsOwnThreshold`):
+    /// `NSToolbarTitleView.frame.width` was 183.5 pt with the tabs full and
+    /// 270.5 pt with the tabs folded — the container absorbed the room the
+    /// fold freed, 87 pt of it, while `fittingSize.width` read 98 pt in
+    /// *both* states, unmoved. Anchoring on the grown edge (as this method
+    /// used to) made `currentToolbarSlack(_:)` read the width of whatever the
+    /// fold had just handed the title, not the width the title itself needs —
+    /// every fold made the next reading under-count the room by exactly its
+    /// own growth, which is a fold that never lets a later prediction see
+    /// enough slack to undo it: swept 609→603→609 pt (Homebrew, Russian,
+    /// this Mac, before this fix) the tabs folded at 609 and did not unfold
+    /// again on the way back up through the same width. `fittingSize.width`
+    /// is what stays put across that growth, so the maxX below is the
+    /// container's leading edge (also unmoved by the same growth — the
+    /// container grows on its trailing side) plus `fittingSize.width`, never
+    /// its current, possibly-inflated frame.
+    ///
+    /// `nil` when the toolbar has no window yet, or a future AppKit
+    /// restructures the title bar and the walk finds nothing —
+    /// `currentToolbarSlack(_:)` reads that exactly the way it already reads
+    /// a missing name item: as no anchor to predict from, never as a title
+    /// of zero width.
+    ///
+    /// **`rawMaxX` is the container's own *actual*, current trailing edge**
+    /// — `minX + bounds.width`, the reading this method used before this
+    /// header's own fix. Returned alongside `maxX` so `currentToolbarSlack(_:)`
+    /// can tell how much of the container's current frame is not yet given
+    /// back, against a *resting* reading of the same quantity it memoises
+    /// itself (`PageBar.restingRawTitleMaxX`) — `bounds.width` alone is not
+    /// that amount, since a title container can sit wider than its fitting
+    /// size while resting too (a wide, ordinary window with tabs already at
+    /// full width leaves it room it takes without anything having folded),
+    /// and crediting that ordinary, already-resting width as "not yet given
+    /// back" is exactly as wrong in the other direction.
+    private func windowTitleMaxX(_ window: NSWindow) -> (maxX: CGFloat, rawMaxX: CGFloat)? {
+        guard let content = window.contentView, let frame = content.superview else { return nil }
+        func find(_ view: NSView) -> NSView? {
+            if "\(type(of: view))" == "NSToolbarTitleView" { return view }
+            for sub in view.subviews {
+                if let hit = find(sub) { return hit }
+            }
+            return nil
+        }
+        guard let titleView = find(frame) else { return nil }
+        let minX = titleView.convert(.zero, to: nil).x
+        let maxX = minX + titleView.fittingSize.width
+        let rawMaxX = minX + titleView.bounds.width
+        guard maxX.isFinite, rawMaxX.isFinite else { return nil }
+        return (maxX, rawMaxX)
+    }
+
     /// **AppKit's own currently free room around the tabs — the combined
     /// width of the two flexible spaces either side of them, read from where
-    /// AppKit actually put the name and actions items, not derived by
-    /// subtracting item widths from `offeredRoom()`.** That subtraction
-    /// undercounts by 32–42 pt against a real, live window
+    /// AppKit actually put the leading edge, the tabs and the actions items,
+    /// not derived by subtracting item widths from `offeredRoom()`.** That
+    /// subtraction undercounts by 32–42 pt against a real, live window
     /// (`scratchpad/probes-unfold/review/p1.log`, this Mac): the detail
     /// pane's own width and the toolbar's own width for its items are not the
     /// same number, and the gap is AppKit's own inter-item spacing, which no
@@ -1294,26 +1392,80 @@ import HelmUI
     /// own width, not the toolbar's, producing slack readings off by hundreds
     /// of points. `NSView.convert(_:to:)` with `to: nil` converts through
     /// every private wrapper view up to the window's own coordinate space
-    /// regardless of what sits in between, which is what makes the name,
-    /// tabs and actions items' positions comparable at all without knowing
-    /// that hierarchy by name.
+    /// regardless of what sits in between, which is what makes the leading
+    /// edge, the tabs and the actions items' positions comparable at all
+    /// without knowing that hierarchy by name.
     ///
-    /// `nil` when there is no name item to anchor the first gap on (a
-    /// page-bar style other than `.moduleName`) or no actions item at all (a
-    /// shape with tabs and no actions, which none of Helm's own pages
-    /// currently declare) — `predictedSlack(bar:tabsWidth:)`'s own fallback
-    /// to the older, `offeredRoom()`-based arithmetic covers both; it is less
-    /// accurate but was never observed to *latch*, only to answer slightly
-    /// pessimistic.
+    /// **The leading edge is the name item's own trailing edge under
+    /// `.moduleName`, and the window's own drawn title under `.windowTitle`
+    /// (`windowTitleMaxX(_:)`).** Before this pass, a page-bar style with no
+    /// name item read `nil` unconditionally here and fell straight through to
+    /// the `offeredRoom()` arithmetic below, which has no notion of the title
+    /// AppKit was actually drawing in that same leading zone: against
+    /// Homebrew's own real shape swept in half-point steps across AppKit's
+    /// own eviction width under `.windowTitle` (Russian, this Mac), that
+    /// fallback predicted room that was not there and unfolded straight back
+    /// into an eviction at every step of the sweep
+    /// (`testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`,
+    /// run before this fix: red on both "no eviction" and "no refusal
+    /// recorded"). This header used to describe that fallback as "never
+    /// observed to latch, only to answer slightly pessimistic" — true of
+    /// every shape this file's tests had swept until then, and false of this
+    /// one, because nobody had swept a `.windowTitle` page with a search
+    /// field until then.
+    ///
+    /// **Two gates stand between this reading and an unfold, not one.** The
+    /// first is structural: `nil` when there is no name item and no drawn
+    /// title to anchor the first gap on, or no actions item at all (a shape
+    /// with tabs and no actions, which none of Helm's own pages currently
+    /// declare) — `predictedSlack(bar:tabsWidth:)`'s own fallback to the
+    /// older, `offeredRoom()`-based arithmetic covers both, and `settle(_:)`
+    /// never unfolds from that fallback any more: an unanchored reading may
+    /// still fold (the safe direction — `checkOverflow()`'s own reactive net
+    /// repairs a fold this method should have predicted and did not) but must
+    /// never invent the room to unfold into. The second is `PageBar
+    /// .titleGrowth`, set here whenever `windowTitleMaxX(_:)` finds a title:
+    /// a `.windowTitle` container that has not yet given back a fold's own
+    /// growth (that method's own header) makes this method's return value
+    /// alone still too optimistic right at AppKit's own threshold — measured
+    /// directly against this fixture, crediting that growth in full unfolded
+    /// straight into an eviction of the actions item, every time, across a
+    /// whole band of panes AppKit itself was already refusing to hold full
+    /// tabs at. `settle(_:)`'s own worst-case check is what reads
+    /// `titleGrowth` back out before trusting this reading that far.
     private func currentToolbarSlack(_ bar: PageBar) -> CGFloat? {
-        guard let nameView = bar.nameItem?.view, let tabsView = bar.tabsItem?.view,
-              let actionsView = bar.actionsItem?.view, tabsView.window != nil
+        guard let tabsView = bar.tabsItem?.view, let actionsView = bar.actionsItem?.view,
+              let window = tabsView.window
         else { return nil }
-        let nameMaxX = nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: nil).x
+        let leadingMaxX: CGFloat
+        if let nameView = bar.nameItem?.view {
+            leadingMaxX = nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: nil).x
+            bar.titleGrowth = 0
+        } else if let title = windowTitleMaxX(window) {
+            leadingMaxX = title.maxX
+            if bar.tabsFolded {
+                // **Growth against the *last resting* edge, never against
+                // `title.maxX` itself** — `title.maxX` is this bar's own
+                // fitting-based prediction of where the edge will settle, so
+                // measuring growth against it would count the very reclaim
+                // this gate exists to discount as already banked. `nil` only
+                // until the first resting reading this bar ever takes
+                // (`PageBar.restingRawTitleMaxX`'s own header) — the same
+                // "no signal yet" precedent `collapsedFieldWidth` sets, and
+                // the same reason growth reads zero rather than guessing.
+                let resting = bar.restingRawTitleMaxX ?? title.rawMaxX
+                bar.titleGrowth = max(0, title.rawMaxX - resting)
+            } else {
+                bar.restingRawTitleMaxX = title.rawMaxX
+                bar.titleGrowth = 0
+            }
+        } else {
+            return nil
+        }
         let tabsMinX = tabsView.convert(.zero, to: nil).x
         let tabsMaxX = tabsView.convert(NSPoint(x: tabsView.bounds.width, y: 0), to: nil).x
         let actionsMinX = actionsView.convert(.zero, to: nil).x
-        let gapBefore = tabsMinX - nameMaxX
+        let gapBefore = tabsMinX - leadingMaxX
         let gapAfter = actionsMinX - tabsMaxX
         guard gapBefore.isFinite, gapAfter.isFinite else { return nil }
         return gapBefore + gapAfter
@@ -1339,10 +1491,22 @@ import HelmUI
     ///
     private func predictedSlack(bar: PageBar, tabsWidth: CGFloat) -> CGFloat {
         let searchBudget = searchRoomBudget(bar)
-        if let slackNow = currentToolbarSlack(bar), let tabsView = bar.tabsItem?.view,
-           let searchItem = bar.searchItem {
+        if let slackNow = currentToolbarSlack(bar), let tabsView = bar.tabsItem?.view {
             let tabsLive = tabsView.frame.width
-            let searchLive = searchItem.searchField.frame.width
+            // **A missing search item is zero live width and zero budget, not
+            // a reason to leave the anchored reading altogether.** Requiring
+            // `bar.searchItem` here used to send every search-less page
+            // (Hosts, Leftovers) through the `offeredRoom()` fallback below,
+            // which does not know AppKit's own inter-item spacing and
+            // overcounts the real room by about 8 pt — that spacing itself,
+            // which no item's frame ever reports — enough to clear
+            // `unfoldMargin` where AppKit still evicts: predicting room
+            // that is not there, unfolding, and being evicted straight back —
+            // one unfold→evict→refold blink on the very shape that has no
+            // search field to anchor against. `searchBudget` is already 0
+            // with no search item (`searchRoomBudget(_:)`'s own guard), so
+            // `searchBudget - searchLive` is `0 - 0` here and drops out.
+            let searchLive = bar.searchItem?.searchField.frame.width ?? 0
             return slackNow - (tabsWidth - tabsLive) - (searchBudget - searchLive)
         }
         let nameWidth = bar.nameItem?.view?.frame.width ?? 0
@@ -1364,6 +1528,27 @@ import HelmUI
     /// trial-and-error with.
     static let foldMargin: CGFloat = 0
     static let unfoldMargin: CGFloat = 16
+
+    /// **The margin `settle(_:)` requires of the *worst case* — crediting
+    /// none of `PageBar.titleGrowth` back — before it will unfold a
+    /// `.windowTitle` bar.** `unfoldMargin` alone is not enough here: right
+    /// at AppKit's own fold threshold, `predictedSlack(bar:tabsWidth:)`
+    /// already counts the title container's currently-unreturned growth as
+    /// reclaimed, and that growth does not visibly reverse in the same pass
+    /// that hands the tabs item its full width back
+    /// (`currentToolbarSlack(_:)`'s "Two gates" paragraph). Measured directly
+    /// against this fixture (`swift test --filter
+    /// AnUnfoldIsPredictedNeverTrialledTests`, this Mac, Russian, Homebrew's
+    /// own three tabs): at the pane one AppKit fold-width below the real
+    /// threshold, `predictedSlack` minus `titleGrowth` came to 19.5 pt and
+    /// the tabs still could not actually hold full width there — an unfold
+    /// attempted anyway evicted the actions item every single time; at 646
+    /// pt, where an ordinary magnifier press/close cycle already worked, the
+    /// same worst-case reading came to 38.0 pt. This sits between the two,
+    /// a judgment call rather than a measurement the same way `unfoldMargin`
+    /// itself is — `testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`
+    /// is what a change to this number has to keep passing.
+    static let unfoldWorstCaseMargin: CGFloat = 24
 
     /// **How long `settle(_:)` keeps refusing an unfold after a search
     /// interaction ends empty, before trusting the field's own frame to have
@@ -1541,41 +1726,82 @@ import HelmUI
     /// either unfolds once, correctly, or does not unfold at all — never
     /// unfolds and watches AppKit refuse it.
     ///
-    /// **Two gates in front of the unfold itself, on top of that
-    /// prediction.** `PageBar.searchClosingDeadline`
-    /// (`controlTextDidEndEditing`'s own header) is the first: a search that
-    /// just ended empty starts an independent AppKit collapse animation this
-    /// prediction cannot see the end of, so an unfold decided before the
-    /// deadline passes is deferred rather than acted on — `scheduleSettle(_:)`
-    /// is re-armed by every one of the field's own frame changes (M2), so the
-    /// very next tick after the field actually catches up tries again.
-    /// `UnfoldRefusalKey` is the second, and the one that holds even if the
-    /// first judges wrong: a room this exact field width has evicted the tabs
-    /// from once already is not retried until the room, the field's width,
-    /// the language or the switcher style has actually moved — see
-    /// `checkOverflow()` for where that gets recorded. Together the two are
-    /// what keep a wrong decision to at most one visible blink rather than a
-    /// repeating flicker.
+    /// **Four gates in front of the unfold itself, on top of that
+    /// prediction.** Anchoring is the first, and structural rather than
+    /// timed: `currentToolbarSlack(_:)` returning `nil` means there is
+    /// nothing under either page-bar style to predict a real layout from,
+    /// and `slack` in that case is `predictedSlack(bar:tabsWidth:)`'s own
+    /// `offeredRoom()` fallback, which must never be read as room to unfold
+    /// into (`currentToolbarSlack(_:)`'s own header has the swept eviction
+    /// this refusal exists to stop) — it may still leave a fold below in
+    /// place, the safe direction, since `checkOverflow()`'s reactive net
+    /// repairs a fold this prediction should have made and did not.
+    /// `PageBar.searchClosingDeadline` (`controlTextDidEndEditing`'s own
+    /// header) is the second: a search that just ended empty starts an
+    /// independent AppKit collapse animation this prediction cannot see the
+    /// end of, so an unfold decided before the deadline passes is deferred
+    /// rather than acted on — `scheduleSettle(_:)` is re-armed by every one
+    /// of the field's own frame changes (M2), so the very next tick after the
+    /// field actually catches up tries again. `UnfoldRefusalKey` is the
+    /// third, and the one that holds even if the second judges wrong: a room
+    /// this exact field width has evicted the tabs from once already is not
+    /// retried until the room, the field's width, the language or the
+    /// switcher style has actually moved — see `checkOverflow()` for where
+    /// that gets recorded. `worstCaseOK` is the fourth, specific to
+    /// `.windowTitle`: `currentToolbarSlack(_:)`'s own "Two gates" paragraph
+    /// has why `slack` alone still over-credits a title container's
+    /// not-yet-reversed growth right at AppKit's own threshold, and
+    /// `SettingsToolbar.unfoldWorstCaseMargin`'s own header has what was
+    /// measured discounting it in full. Together the four are what keep a
+    /// wrong decision to at most one visible blink rather than a repeating
+    /// flicker.
     private func settle(_ bar: PageBar) {
         guard let key = attachedPageKey,
               key == Self.nameOnlyKey ? bar === nameOnlyBar : pageBars[key] === bar
         else { return }
-        guard let searchItem = bar.searchItem else {
-            bar.rest = (true, offeredRoom())
-            return
+        // **A search item is not a precondition for the tabs prediction
+        // below — only for the search-specific gates in front of it.**
+        // Before this pass, a page whose shape carried tabs but no search
+        // (Hosts, Leftovers) returned above before the tabs were ever
+        // judged, so `checkOverflow()`'s own fold-only KVO net was the one
+        // and only way this bar's tabs ever moved — reachable, once a
+        // longer tab title, a third tab or another action ever made this
+        // page's tabs overflow at all, the tabs would fold on the first
+        // eviction and never unfold again for the rest of the session,
+        // however wide the window then grew. `searchItem` is `nil` exactly
+        // when the page declares no search field at all (or before the
+        // toolbar has asked for the item on a page that does) — it is never
+        // cleared once assigned (`makeSearchItem`'s own single `bar
+        // .searchItem = item`), so the search-specific gates below simply do
+        // not apply to a bar that has no field to be mid-edit or mid-open.
+        let searchItem = bar.searchItem
+        if let searchItem {
+            guard searchItem.searchField.currentEditor() == nil else { return }
+            // **A search still opening is not yet settled**, even in the gap
+            // before AppKit's own field editor arrives — see `PageBar
+            // .searchOpening`'s own header for why the editor guard above is
+            // not enough by itself.
+            guard !bar.searchOpening else { return }
         }
-        guard searchItem.searchField.currentEditor() == nil else { return }
-        // **A search still opening is not yet settled**, even in the gap
-        // before AppKit's own field editor arrives — see `PageBar
-        // .searchOpening`'s own header for why the editor guard above is not
-        // enough by itself.
-        guard !bar.searchOpening else { return }
 
         if let content = bar.content, !content.tabs.isEmpty {
             let (_, full) = switcherWidths(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
                                            selectedID: content.selectedTab?.wrappedValue)
             let slack = predictedSlack(bar: bar, tabsWidth: full)
-            if bar.tabsFolded, slack >= Self.unfoldMargin {
+            // **Never unfold from an unanchored prediction** — see this
+            // method's own header, "Four gates," for why a `nil` here must
+            // still be free to fold on the branch below.
+            let anchored = currentToolbarSlack(bar) != nil
+            // **Never unfold on the strength of a `.windowTitle` container's
+            // own, not-yet-returned growth alone** — `bar.titleGrowth`, just
+            // populated by the `currentToolbarSlack(_:)` call above, is zero
+            // under `.moduleName` and whenever the container has already
+            // settled, so this is a no-op there; `SettingsToolbar
+            // .unfoldWorstCaseMargin`'s own header has the measured pane
+            // where crediting the growth in full unfolded straight into an
+            // eviction.
+            let worstCaseOK = bar.titleGrowth <= 0 || (slack - bar.titleGrowth) >= Self.unfoldWorstCaseMargin
+            if bar.tabsFolded, slack >= Self.unfoldMargin, worstCaseOK, anchored {
                 if let deadline = bar.searchClosingDeadline, Date() < deadline {
                     gateWaitedCount += 1
                     // Retried explicitly rather than left to the field's own
@@ -1588,12 +1814,18 @@ import HelmUI
                     scheduleSettle(bar)
                 } else {
                     bar.searchClosingDeadline = nil
-                    let fieldWidth = searchItem.searchField.frame.width
+                    // `nil` with no search item at all — `unfoldContext(_:
+                    // fieldWidth:)` and `recordGateUnfoldFieldWidth` both
+                    // already read that as "no field to have a width",
+                    // consistently across every call on this bar, since
+                    // there is nothing here for AppKit to ever grow or
+                    // shrink.
+                    let fieldWidth = searchItem?.searchField.frame.width
                     let context = unfoldContext(bar, fieldWidth: fieldWidth)
                     if bar.refusedUnfold == context {
                         gateRefusedCount += 1
                     } else {
-                        recordGateUnfoldFieldWidth(fieldWidth)
+                        if let fieldWidth { recordGateUnfoldFieldWidth(fieldWidth) }
                         setTabsFolded(false, bar: bar, layout: .window)
                         bar.lastOurUnfoldAt = Date()
                         // **What `checkOverflow()` promotes into a refusal if
@@ -1609,7 +1841,7 @@ import HelmUI
                 setTabsFolded(true, bar: bar, layout: .window, reseat: !(bar.tabsItem?.isVisible ?? true))
             }
         }
-        bar.rest = (searchItem.searchField.isHidden, offeredRoom())
+        bar.rest = (searchItem?.searchField.isHidden ?? true, offeredRoom())
     }
 
     /// **M2: the search field's own frame.** Set up in `makeSearchItem`,
@@ -1785,6 +2017,43 @@ import HelmUI
 
     // MARK: - The action capsule
 
+    /// **What pressing a `.button` or a `.toggle` action actually runs** —
+    /// the one place either kind's closure is unwrapped, shared between
+    /// `model.press` (a capsule press) and `actionMenuItemPressed` (the
+    /// overflow menu's own). A `.menu` action has no press of its own: each
+    /// item inside it presses through `pressItem` / `actionMenuSubitemPressed`
+    /// instead, so this silently does nothing for one — the caller already
+    /// has no route to reach here for a menu's own top-level press.
+    private static func perform(_ action: HelmToolbarAction) {
+        switch action.kind {
+        case .button(let perform): perform()
+        case .toggle(_, let perform): perform()
+        case .menu: break
+        }
+    }
+
+    /// **The two identical `Entry` mappings this file used to carry, become
+    /// one.** `HelmToolbarAction.Kind`'s closures never survive into
+    /// `HelmToolbarActionsModel.EntryKind` — see `Entry`'s own header for why.
+    private static func actionEntries(for content: HelmPageToolbarContent) -> [HelmToolbarActionsModel.Entry] {
+        content.actions.map { action in
+            let kind: HelmToolbarActionsModel.EntryKind
+            switch action.kind {
+            case .button:
+                kind = .button
+            case .toggle(let isOn, _):
+                kind = .toggle(isOn: isOn)
+            case .menu(let items):
+                kind = .menu(items.map {
+                    HelmToolbarActionsModel.MenuEntry(id: $0.id, title: $0.title,
+                                                      isOn: $0.isOn, isEnabled: $0.isEnabled)
+                })
+            }
+            return HelmToolbarActionsModel.Entry(id: action.id, title: action.title, symbol: action.symbol,
+                                                 isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind)
+        }
+    }
+
     /// **One custom-view item for every declared action, hosting
     /// `HelmToolbarActionsCapsule`** (`HelmUI/DesignSystem/HelmToolbarActions.swift`)
     /// — replaces one plain `NSToolbarItem` per action, adjacent so AppKit's
@@ -1799,8 +2068,16 @@ import HelmUI
         let item = NSToolbarItem(itemIdentifier: Self.actionsID)
         let model = HelmToolbarActionsModel()
         model.press = { [weak self, weak bar] id in
-            guard self != nil, let bar, bar.isLive else { return }
-            bar.content?.actions.first { $0.id == id }?.perform()
+            guard self != nil, let bar, bar.isLive,
+                  let action = bar.content?.actions.first(where: { $0.id == id }) else { return }
+            Self.perform(action)
+        }
+        model.pressItem = { [weak self, weak bar] actionID, itemID in
+            guard self != nil, let bar, bar.isLive,
+                  let action = bar.content?.actions.first(where: { $0.id == actionID }),
+                  case .menu(let items) = action.kind,
+                  let item = items.first(where: { $0.id == itemID }) else { return }
+            item.perform()
         }
         // **Seeded from whatever `bar.content` already carries.** `content`
         // is assigned before this delegate call ever runs (`buildBar` sets
@@ -1812,13 +2089,21 @@ import HelmUI
         // and animated the whole capsule in from nothing — exactly the
         // movement Refresh is meant never to make.
         if let content = bar.content {
-            model.setDeclared(content.actions.map {
-                HelmToolbarActionsModel.Entry(id: $0.id, title: $0.title, symbol: $0.symbol,
-                                              isEnabled: $0.isEnabled)
-            })
+            model.setDeclared(Self.actionEntries(for: content))
             model.setVisibleIDs(content.actions.filter(\.isVisible).map(\.id))
         }
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model))
+        // **`content.search == nil` is "the capsule is this bar's own last
+        // item"** — `identifiers(content:style:)` never puts anything after
+        // `helm.actions` but `helm.search`, and `ShapeSignature.hasSearch`
+        // rebuilds the whole bar, this item included, the moment that
+        // changes — so this reads once, at construction, rather than on every
+        // `patchActions`. See `HelmToolbarActionsCapsule.edgeMargin`'s own
+        // header for the measurement this closes: Hosts and Leftovers, which
+        // end their bar here, used to sit 4.0 pt from the window's trailing
+        // edge against Uninstaller's 8.0 pt for `helm.search` at the same
+        // width.
+        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
         // Not a plain image item any more, so no second AppKit glass behind
@@ -1848,10 +2133,7 @@ import HelmUI
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
-            model.setDeclared(content.actions.map {
-                HelmToolbarActionsModel.Entry(id: $0.id, title: $0.title, symbol: $0.symbol,
-                                              isEnabled: $0.isEnabled)
-            })
+            model.setDeclared(Self.actionEntries(for: content))
         }
         let visible = content.actions.filter(\.isVisible).map(\.id)
         if visible != model.visibleIDs {
@@ -1893,19 +2175,62 @@ import HelmUI
         }
     }
 
+    /// **A `.button` or a `.toggle` becomes one pressable item, as before; a
+    /// `.menu` becomes a submenu of its own, one item per
+    /// `HelmToolbarMenuItem`, checkmarked and routed to
+    /// `actionMenuSubitemPressed` instead** — there is no single press for a
+    /// menu action to route to `actionMenuItemPressed` at all.
     private func actionMenuItem(_ action: HelmToolbarAction, bar: PageBar) -> NSMenuItem {
-        let item = NSMenuItem(title: action.title, action: #selector(actionMenuItemPressed(_:)),
-                              keyEquivalent: "")
-        item.target = self
-        item.representedObject = action.id
-        item.isEnabled = action.isEnabled && bar.isLive
-        return item
+        switch action.kind {
+        case .button:
+            let item = NSMenuItem(title: action.title, action: #selector(actionMenuItemPressed(_:)),
+                                  keyEquivalent: "")
+            item.target = self
+            item.representedObject = action.id
+            item.isEnabled = action.isEnabled && bar.isLive
+            return item
+        case .toggle(let isOn, _):
+            let item = NSMenuItem(title: action.title, action: #selector(actionMenuItemPressed(_:)),
+                                  keyEquivalent: "")
+            item.target = self
+            item.representedObject = action.id
+            item.isEnabled = action.isEnabled && bar.isLive
+            item.state = isOn ? .on : .off
+            return item
+        case .menu(let items):
+            let top = NSMenuItem(title: action.title, action: nil, keyEquivalent: "")
+            let submenu = NSMenu(title: action.title)
+            submenu.autoenablesItems = false
+            for menuItem in items {
+                let subitem = NSMenuItem(title: menuItem.title,
+                                         action: #selector(actionMenuSubitemPressed(_:)), keyEquivalent: "")
+                subitem.target = self
+                subitem.representedObject = [action.id, menuItem.id]
+                subitem.isEnabled = menuItem.isEnabled && action.isEnabled && bar.isLive
+                subitem.state = menuItem.isOn ? .on : .off
+                submenu.addItem(subitem)
+            }
+            top.submenu = submenu
+            return top
+        }
     }
 
     @objc private func actionMenuItemPressed(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String,
-              let key = attachedPageKey, let bar = pageBars[key], bar.isLive else { return }
-        bar.content?.actions.first { $0.id == id }?.perform()
+              let key = attachedPageKey, let bar = pageBars[key], bar.isLive,
+              let action = bar.content?.actions.first(where: { $0.id == id }) else { return }
+        Self.perform(action)
+    }
+
+    /// The overflow menu's own route into a `.menu` action's items — the
+    /// capsule's own equivalent is `HelmToolbarActionsModel.pressItem`.
+    @objc private func actionMenuSubitemPressed(_ sender: NSMenuItem) {
+        guard let pair = sender.representedObject as? [String], pair.count == 2,
+              let key = attachedPageKey, let bar = pageBars[key], bar.isLive,
+              let action = bar.content?.actions.first(where: { $0.id == pair[0] }),
+              case .menu(let items) = action.kind,
+              let item = items.first(where: { $0.id == pair[1] }) else { return }
+        item.perform()
     }
 
     // MARK: - Search
@@ -1917,14 +2242,21 @@ import HelmUI
         // default field the item starts with.
         let field = NSSearchField()
         field.sendsWholeSearchString = true
-        // `sendsWholeSearchString` governs keystrokes only; the field still
-        // fires its action on losing first responder regardless
-        // (`NSCell.sendsActionOnEndEditing`, on by default), which
-        // `endSearchInteraction` calls into whenever the field folds back to
-        // a magnifier or focus simply moves elsewhere — measured against this
-        // exact field: `endEditing` fired the action with `sendsWholeSearchString`
-        // left at its default *and* set. Off, only the field editor's own
-        // `insertNewline(_:)` — a Return — reaches `searchSubmitted`.
+        // `sendsWholeSearchString` governs keystrokes only; ending editing can
+        // still fire the field's action regardless
+        // (`NSCell.sendsActionOnEndEditing`), which `endSearchInteraction`
+        // calls into whenever the field folds back to a magnifier or focus
+        // simply moves elsewhere. Measured directly, this Mac: a bare
+        // `NSSearchField()` — what is built above — already answers `false`
+        // here, but `NSSearchToolbarItem`'s own default field, before this
+        // one is assigned over it, answers `true`; assigning our own field is
+        // what makes the difference, not this line. Kept explicit rather than
+        // relied on by construction, so a future AppKit default, or a future
+        // change to configure the item's own default field instead of
+        // building a fresh one, cannot silently turn this back on. Off, only
+        // the field editor's own `insertNewline(_:)` — a Return — reaches
+        // `searchSubmitted`, which `testEndingEditingSubmitsNothing`
+        // (`ASearchRunsOnReturnNotOnAKeyTests.swift`) guards directly.
         field.cell?.sendsActionOnEndEditing = false
         field.recentsAutosaveName = nil
         field.delegate = self
@@ -1952,6 +2284,13 @@ import HelmUI
         item.label = HelmA11y.searchField
         item.paletteLabel = HelmA11y.searchField
         item.toolTip = HelmA11y.searchField
+        // **Defect found in this pass**: the field's own accessibility label
+        // was set once, in `makeSearchItem`, and never again — nothing in the
+        // toolbar's shape tracks the language, so after a language change the
+        // field kept naming itself in the old one
+        // (`TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests
+        // .testALanguageChangeReReadsTheSearchFieldsAccessibilityLabel`).
+        item.searchField.setAccessibilityLabel(HelmA11y.searchField)
         guard let search = bar.content?.search else { return }
         if item.searchField.placeholderString != search.prompt {
             item.searchField.placeholderString = search.prompt
@@ -2135,6 +2474,24 @@ private final class PageBar {
     /// first `settle()` this bar ever runs, which always finds the field
     /// collapsed (a fresh bar starts that way).
     var collapsedFieldWidth: CGFloat?
+    /// **The `.windowTitle` title container's own trailing edge, the last
+    /// time this bar's tabs were seen *not* folded** — `currentToolbarSlack(_:)`'s
+    /// own memory of where the container rests without anything having
+    /// folded, so `titleGrowth` can measure a fold's own growth against the
+    /// resting edge rather than against the fitting-based prediction of it
+    /// (`titleGrowth`'s own header has why those are not the same
+    /// comparison). `nil` only until the first `settle()` this bar ever runs
+    /// with the tabs not folded — the same precedent `collapsedFieldWidth`
+    /// already sets for the search field's own resting width.
+    var restingRawTitleMaxX: CGFloat?
+    /// **The `.windowTitle` title container's own growth beyond its last
+    /// resting edge, as `currentToolbarSlack(_:)` last read it** — zero under
+    /// `.moduleName`, and zero whenever the tabs are not currently folded.
+    /// `settle(_:)`'s own worst-case gate reads this right after calling
+    /// `predictedSlack(bar:tabsWidth:)`, which is what populates it, the same
+    /// "write in one call, read in the next" shape `pendingUnfoldFieldWidth`
+    /// already uses.
+    var titleGrowth: CGFloat = 0
     /// **Set by `controlTextDidEndEditing` when the field is left empty —
     /// `settle(_:)`'s own wait gate refuses to unfold before this passes.**
     /// A search ending empty leaves the field mid-shrink from its wide,

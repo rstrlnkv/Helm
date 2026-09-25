@@ -137,8 +137,8 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// **Asked in English, named rather than inherited** — a language is named
     /// because a bare mount reads whatever this Mac is set to. The page's shape
     /// is a question of width alone since its switcher moved into the window's
-    /// toolbar (`pageToolbar`): the language decided the boundary only while the
-    /// page's own bar had to fit the pane, and that bar is gone.
+    /// toolbar, drawn by `SettingsToolbar`: the language decided the boundary
+    /// only while the page's own bar had to fit the pane, and that bar is gone.
     func testTheInspectorsActionIsInsideThePaneAtTheThreshold() async {
         await AppLanguage.only(.en) { await theInspectorsActionIsInsideThePane() }
     }
@@ -205,8 +205,8 @@ final class TheSplitThresholdFitsThePageItGatesTests: XCTestCase {
     /// **Asked in English, named rather than inherited** — a language is named
     /// because a bare mount reads whatever this Mac is set to. The page's shape
     /// is a question of width alone since its switcher moved into the window's
-    /// toolbar (`pageToolbar`): the language decided the boundary only while the
-    /// page's own bar had to fit the pane, and that bar is gone.
+    /// toolbar, drawn by `SettingsToolbar`: the language decided the boundary
+    /// only while the page's own bar had to fit the pane, and that bar is gone.
     func testOnePointBelowTheThresholdOneColumnFillsThePane() async {
         await AppLanguage.only(.en) { await onePointBelowTheThresholdOneColumnFillsThePane() }
     }

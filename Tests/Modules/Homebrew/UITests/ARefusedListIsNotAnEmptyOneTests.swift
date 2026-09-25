@@ -51,6 +51,51 @@ final class ARefusedListIsNotAnEmptyOneTests: XCTestCase {
         }
     }
 
+    /// **The section forces the list shape, but never changes which sentence
+    /// a non-list state earns.** `packageList` reads its own reading's
+    /// sentence off `screen` regardless of whether a section sits under it —
+    /// before this, a section present at all made every one of these read as
+    /// `.noMatches` ("Nothing in this list matches."), which is the refused-
+    /// list-is-not-an-empty-one defect this file exists to catch, reached a
+    /// second time through the section rather than through a missing reading.
+    func testTheSectionForcesTheShapeButNeverTheSentence() {
+        for screen: ListScreen in [.nothing, .waiting, .unanswerable, .rows, .noMatches] {
+            XCTAssertTrue(ListScreen.forcesListShape(section: .found, screen: screen), """
+                \(screen) with a section present must draw as a list — the section sits \
+                inside it and there is nowhere else for it to go
+                """)
+        }
+        XCTAssertFalse(ListScreen.forcesListShape(section: nil, screen: .waiting))
+        XCTAssertFalse(ListScreen.forcesListShape(section: nil, screen: .unanswerable))
+        XCTAssertFalse(ListScreen.forcesListShape(section: nil, screen: .nothing))
+        XCTAssertTrue(ListScreen.forcesListShape(section: nil, screen: .rows))
+        XCTAssertTrue(ListScreen.forcesListShape(section: nil, screen: .noMatches))
+    }
+
+    /// **The note itself, one reading at a time.** `packageList`'s own `body`
+    /// is nowhere a test can reach, so the mapping it draws from is a
+    /// `static func` instead, the way `healthNote` already is — this is what
+    /// actually failed before `screen` reached `packageList` at all: every
+    /// non-row state answered `HbStr.noMatches` regardless of which one it
+    /// was, because the old code asked only `shown.isEmpty`.
+    func testOwnListNoteNamesTheRightSentenceForEachReading() {
+        let notes = (nothing: "empty", unanswerable: "refused", waiting: "loading")
+        XCTAssertNil(HomebrewSettingsPage.ownListNote(.rows, notes: notes),
+                     "rows must draw the rows, not a note")
+        XCTAssertEqual(HomebrewSettingsPage.ownListNote(.noMatches, notes: notes)?.text,
+                       HbStr.noMatches)
+        XCTAssertEqual(HomebrewSettingsPage.ownListNote(.nothing, notes: notes)?.text, "empty")
+        XCTAssertEqual(HomebrewSettingsPage.ownListNote(.unanswerable, notes: notes)?.text,
+                       "refused")
+        XCTAssertEqual(HomebrewSettingsPage.ownListNote(.waiting, notes: notes)?.text, "loading")
+        XCTAssertEqual(HomebrewSettingsPage.ownListNote(.waiting, notes: notes)?.busy, true,
+                       "waiting is the one reading with a spinner")
+        for screen: ListScreen in [.noMatches, .nothing, .unanswerable] {
+            XCTAssertEqual(HomebrewSettingsPage.ownListNote(screen, notes: notes)?.busy, false,
+                           "\(screen) is a still sentence, not the one that moves")
+        }
+    }
+
     // MARK: - The three sentences
 
     /// Three states need three sentences, in each of the eight languages — a

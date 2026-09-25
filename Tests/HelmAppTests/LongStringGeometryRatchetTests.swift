@@ -352,14 +352,19 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // count by definition.
         // **And no segmented control at all from 2026-09-16.** The five above
         // left their pages for the settings window's toolbar — the page's tabs
-        // and view modes are the window's controls now, drawn by the toolbar
-        // bridge, which a page rendered on its own in this host never reaches.
+        // and view modes are the window's controls now, drawn by
+        // `SettingsToolbar`, which a page rendered on its own in this host
+        // never reaches.
         // **And no search field either, from 2026-09-20, for exactly that
-        // reason.** The one counted here was the uninstaller's app filter — the
-        // Homebrew page draws its own only in the Поиск segment, which this
-        // render never selects — and it is `.searchable` now
-        // (`helmSearchable`), so the control is the window's and this host has
-        // no window's toolbar to find it in. A count falling is what the
+        // reason.** The one counted here was the uninstaller's app filter, and
+        // it went into the window's toolbar too — first through `.searchable`,
+        // later through `helmWindowToolbar` once `SettingsToolbar` replaced
+        // that bridge outright — so the control is the window's and this host
+        // has no window's toolbar to find it in.
+        // Homebrew's own field moved to the window toolbar too, 2026-09-24,
+        // once on every tab rather than one segment of its own — this render
+        // never mounts a toolbar either way, so neither page's field was ever
+        // among what this count could see. A count falling is what the
         // message below warns about, and this is the intended half of that:
         // the same change moved `ModulePageRender.floors["uninstaller"]` from
         // 30 to 20, where the fourteen missing layers are accounted for one by

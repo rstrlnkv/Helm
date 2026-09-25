@@ -114,7 +114,19 @@ import Module_Homebrew_Engine
     /// applies. Internal, not `public` — nothing outside this target reads
     /// it (`public` here means "another target uses this").
     enum Segment: String, Hashable, CaseIterable, Sendable {
-        case installed, updates, search, health
+        /// **Three cases, not four.** `.search` was removed 2026-09-24, the
+        /// owner's decision: search moved onto a field every tab carries
+        /// rather than staying a tab of its own. Deleted outright rather than
+        /// retired in place — the "keep a name in the standing documents only
+        /// while the tree has it" rule is about *documents*, and the parallel
+        /// rule for a stored `enum` case ("retire a stored case rather than
+        /// removing it") is about a value that might already be sitting in a
+        /// property list somewhere: nothing stores a `Segment` outside this
+        /// file — `AppStorage`, `UserDefaults`, `SceneStorage` and
+        /// `NamespacedStore` all came back empty against
+        /// `Sources/Modules/Homebrew` — so there is no encoded `"search"`
+        /// anywhere for a case to go on decoding.
+        case installed, updates, health
 
         /// The word on the picker, beside the case it names.
         ///
@@ -124,12 +136,11 @@ import Module_Homebrew_Engine
         /// `switch` in the page had an arm for it, and there was no way to
         /// reach it. A `switch` with no `default:` makes forgetting a label a
         /// build error instead, and
-        /// `ARefusedDoctorIsNotAHealthyMacTests` names all four.
+        /// `ARefusedDoctorIsNotAHealthyMacTests` names all three.
         var label: String {
             switch self {
             case .installed: return HbStr.segInstalled
             case .updates: return HbStr.segUpdates
-            case .search: return HbStr.segSearch
             case .health: return HbStr.segHealth
             }
         }
@@ -141,22 +152,46 @@ import Module_Homebrew_Engine
             switch self {
             case .installed: return "shippingbox"
             case .updates: return "arrow.up.circle"
-            case .search: return "magnifyingglass"
             case .health: return "stethoscope"
             }
         }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.
+    ///
+    /// **Re-evaluates the automatic search on the way in, not only the
+    /// selection.** A word already typed can go unmatched on one tab and
+    /// matched on another — `shownIssues` is empty where `shownInstalled` is
+    /// not — so switching tabs is a second place `scheduleAutomaticSearch`
+    /// has to run, on top of the pause that starts it after typing.
+    ///
+    /// **Through the pause, never a direct `ask(_:)`.** The tab just entered
+    /// has not necessarily loaded yet — `loadIfNeeded` never asks `brew
+    /// outdated`, and the page's own `refresh(segment)` for the tab this
+    /// `didSet` is about has not run a single `await` at the point this line
+    /// executes — so asking at once read an unloaded list's emptiness as "the
+    /// word matches nothing" and sent `brew search` for a package this Mac
+    /// had all along. Measured: switching to Обновления with «node» already
+    /// typed and `[node]` behind `brew outdated` asked brew before that query
+    /// had even been sent. Scheduling the same pause `queryMoved` uses gives
+    /// the tab's own refresh (and every later one — the pause is restarted
+    /// from `refreshInstalled`/`refreshOutdated`/`refreshConfig`/
+    /// `refreshDoctor` too) the chance to land before `searchAfterPause`
+    /// re-reads the list it is about.
     @Published var segment: Segment = .installed {
-        didSet { if segment != oldValue { subjectMoved() } }
+        didSet {
+            guard segment != oldValue else { return }
+            reconcileVisible()
+            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) } else { pause?.cancel() }
+            subjectMoved()
+        }
     }
 
     /// What is selected in each segment, as a `BrewKey` id.
     ///
     /// Per segment, because the three lists hold different things: the
-    /// package being read in Установленные is not the hit being read in
-    /// Поиск, and coming back to a segment should find what was left there.
+    /// package being read in Установленные is not the finding being read in
+    /// Состояние, and coming back to a segment should find what was left there.
     @Published private(set) var selection: [Segment: String] = [:] {
         didSet { if selection[segment] != oldValue[segment] { subjectMoved() } }
     }
@@ -168,6 +203,217 @@ import Module_Homebrew_Engine
     /// person clicks the empty space below the rows, and a setter that
     /// cannot take it turns a deselect into a selection that never goes away.
     func select(_ id: String?) { selection[segment] = id }
+
+    // MARK: - The search field, on every tab
+
+    /// **The window toolbar's own search field, on all three tabs.** Moved
+    /// here from the page's `@State` 2026-09-24, so the pause and the trigger
+    /// rule below live where a test can drive them without a window — and so
+    /// the query survives leaving and returning to the page: today, hiding or
+    /// occluding the window unmounts the page, its `@State` is lost, and
+    /// `SettingsToolbar.patchSearch` writes "" back into the field. Kept here
+    /// instead, that visible change is a cost the owner judges rather than an
+    /// engineering slip.
+    @Published var query = "" {
+        didSet { if query != oldValue { queryMoved() } }
+    }
+
+    /// The pause between the last keystroke and an automatic search for a
+    /// word the local filter found nothing for — the owner's decision,
+    /// 2026-09-22 ("сам, после паузы").
+    static let searchPause: Duration = .milliseconds(700)
+    /// Not `let`: a test shortens this rather than waiting out the owner's
+    /// real number.
+    var searchPause = HomebrewViewModel.searchPause
+
+    /// The shortest word that starts an automatic search on its own.
+    /// Measured on this Mac 2026-09-24 with
+    /// `HOMEBREW_NO_AUTO_UPDATE=1 brew search --formula|--cask -- <q>`: `a`
+    /// alone answers 3575 formula hits and 4750 cask hits — a `brew desc`
+    /// batch over thousands of names for one keystroke — where `py` answers
+    /// 128 and 36. Two characters is a batch a person can wait through; one
+    /// still reaches brew on a Return press, which carries no floor.
+    static let shortestAutomaticQuery = 2
+
+    /// The word `searchHits`/`searchReading` belong to, or nil before
+    /// anything has been asked. Read by `AvailableSection.of` to tell a
+    /// current answer from a stale one, and by `ownListShowsNothing(for:)` so
+    /// a word already asked is not asked again on every keystroke or tab
+    /// change.
+    @Published private(set) var searchedQuery: String?
+
+    /// The task counting down to an automatic search — cancelled by the next
+    /// keystroke, by Return, and by the query going empty.
+    private var pause: Task<Void, Never>?
+
+    /// At most one `brew search` chain out at a time: CLAUDE.md's "never an
+    /// unbounded launch behind a control a person can press repeatedly", and
+    /// typing is such a control. `queuedSearch` holds only the latest word
+    /// typed while a chain is out; an older one in between is never asked.
+    private var searchOut = false
+    private var queuedSearch: String?
+
+    /// Two things: reconcile the selection against what the new query still
+    /// shows, then either retire everything (an emptied field) or hand the
+    /// word to `scheduleAutomaticSearch`, which drops whatever pause was
+    /// running and starts a fresh one only when the local filter on the
+    /// current tab has nothing.
+    ///
+    /// **Never clears a held answer on its own.** A mismatch between `query`
+    /// and `searchedQuery` already hides the section (`AvailableSection.of`),
+    /// so going back to a word already searched shows it again without a
+    /// second `brew search` — only an emptied field retires the answer
+    /// outright, below.
+    private func queryMoved() {
+        reconcileVisible()
+        guard let q = ListFilter.needle(query) else {
+            pause?.cancel()
+            _ = searches.take()
+            searchReading = .notAsked
+            searchedQuery = nil
+            // **Retires a queued word too, not only the pause and the held
+            // answer.** `ask(_:)` re-reads the field before running a word it
+            // dequeues, so this line is not what keeps a stale ask from firing
+            // — it is what keeps the queue from naming a word the field no
+            // longer holds at all, which is the same "clear on the way out"
+            // this method already does for `searchedQuery`.
+            queuedSearch = nil
+            return
+        }
+        scheduleAutomaticSearch(for: q)
+    }
+
+    /// Starts the pause toward an automatic search for `q`, when the trigger
+    /// rule allows it — shared by `queryMoved()` and by `segment`'s own
+    /// `didSet`, and by every list refresh that can make a word newly
+    /// qualify once its own tab has actually loaded.
+    private func scheduleAutomaticSearch(for q: String) {
+        pause?.cancel()
+        guard ownListShowsNothing(for: q) else { return }
+        let delay = searchPause
+        pause = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self else { return }
+            self.searchAfterPause(q)
+        }
+    }
+
+    /// Fires when the pause elapses. `q` is the payload — the word that was
+    /// in the field when the pause started — and the reading is re-read here
+    /// rather than trusted from before the sleep (CLAUDE.md: a reading taken
+    /// before an `await` is not the reading to act on): the list may have
+    /// loaded, or a description may have arrived, during those 700 ms.
+    private func searchAfterPause(_ q: String) {
+        guard ListFilter.needle(query) == q, ownListShowsNothing(for: q) else { return }
+        ask(q)
+    }
+
+    /// **The trigger rule, stated once.** At least two characters, the
+    /// current tab's own filtered list empty, and not a word already asked —
+    /// asked both after the pause and again on a tab change, so a word that
+    /// matches nothing on Состояние but something on Установленные does not
+    /// spend a second `brew search` just because the tab moved.
+    ///
+    /// **An unread or still-loading tab is never "empty".** `shownInstalled`,
+    /// `shownOutdated`, `shownIssues` and `shownConfigGroups` all read `[]`
+    /// before their list has ever answered — the same `[]` a genuinely empty
+    /// answer leaves — so reading emptiness alone asked brew for a word this
+    /// Mac had all along, on the first visit to a tab whose own refresh
+    /// (`loadIfNeeded` never asks `brew outdated`, and the page's `refresh`
+    /// for the tab this `didSet`/pause is about has not landed yet) simply
+    /// has not finished. Measured: switching to Обновления with «node»
+    /// already typed and `[node]` behind `brew outdated` asked brew before
+    /// that query had even been sent, and a cold `brew outdated` runs 7.4 s
+    /// (`SystemPorts.swift` probe) — long enough that the 700 ms pause always
+    /// elapses first. Guarding here rather than skipping the call costs
+    /// nothing: every one of `refreshInstalled`/`refreshOutdated`/
+    /// `refreshConfig`/`refreshDoctor` calls `scheduleAutomaticSearch` again
+    /// on completion, so the tab's first real answer re-asks this same
+    /// question with a reading that is no longer `.notAsked`/`.waiting`.
+    private func ownListShowsNothing(for q: String) -> Bool {
+        guard q.count >= Self.shortestAutomaticQuery, q != searchedQuery else { return false }
+        switch segment {
+        case .installed:
+            guard installedReading != .notAsked, installedReading != .waiting else { return false }
+            return shownInstalled.isEmpty
+        case .updates:
+            guard outdatedReading != .notAsked, outdatedReading != .waiting else { return false }
+            return shownOutdated.isEmpty
+        case .health:
+            // `doctor` has no `.waiting` case of its own (`DoctorReading`'s
+            // doc comment) — it reads `.notAsked` for as long as the ask is
+            // out — so that one comparison covers both "never opened" and
+            // "still running". `configReading` is `installedReading`'s own
+            // shape, checked the same way for the same reason: "never asked"
+            // and "still waiting" both mean nothing has been read yet.
+            guard doctor != .notAsked,
+                  configReading != .notAsked, configReading != .waiting else { return false }
+            return shownIssues.isEmpty && shownConfigGroups.isEmpty
+        }
+    }
+
+    /// Return's own door — no minimum length, and asked even when the local
+    /// filter already has matches: somebody typing `python` for `python@3.13`
+    /// has to be able to ask past what is already on screen. A word already
+    /// answered or still waiting is not asked twice; a refused one is asked
+    /// again, since a refusal earns nothing kept.
+    func searchNow() {
+        pause?.cancel()
+        guard let q = ListFilter.needle(query) else { return }
+        if q == searchedQuery, searchReading == .waiting || searchReading == .answered { return }
+        ask(q)
+    }
+
+    /// The one door to `search(_:)` that both the pause and Return go
+    /// through, and the single-flight gate over it. A press while a chain is
+    /// already out queues the newest word only — an older one typed in
+    /// between is dropped along with its own `brew search` — and marks the
+    /// section `.waiting` immediately, so "Searching…" names the word that
+    /// will actually be asked next rather than the one still in flight.
+    private func ask(_ q: String) {
+        guard !searchOut else {
+            queuedSearch = q
+            _ = searches.take()
+            searchedQuery = q
+            searchHits = []
+            searchReading = .waiting
+            return
+        }
+        searchOut = true
+        Task { [weak self] in
+            guard let self else { return }
+            await self.search(q)
+            self.searchOut = false
+            // **The queue is a payload, and this is the hop it crosses.** The
+            // word queued in was what the field held when a chain was already
+            // out; the field is a reading, and asked again here rather than
+            // trusted from before `await self.search(q)` above — erasing it,
+            // or typing something that now matches locally, must not spend a
+            // `brew search` for a word nobody is looking at any more.
+            if let queued = self.queuedSearch {
+                self.queuedSearch = nil
+                if ListFilter.needle(self.query) == queued {
+                    self.ask(queued)
+                } else if self.searchedQuery == queued {
+                    // **Dropping the word has to undo what queuing claimed for
+                    // it.** The queue branch above sets `searchedQuery`/
+                    // `searchReading` to `.waiting` before an ask for it ever
+                    // exists, so a word dropped here without being asked left
+                    // both fields pointing at a question nobody will put —
+                    // `AvailableSection.of` then drew "Searching…" for as long
+                    // as the person kept that word in the field, and neither
+                    // `ownListShowsNothing` (blocked by `q != searchedQuery`)
+                    // nor `searchNow` (blocked by `.waiting`) had a door back
+                    // in. The guard on `searchedQuery == queued` is because a
+                    // second `ask` chain could have claimed the field in
+                    // between — nothing here may clear a claim it did not make.
+                    self.searchedQuery = nil
+                    self.searchReading = .notAsked
+                    if let q = ListFilter.needle(self.query) { self.scheduleAutomaticSearch(for: q) }
+                }
+            }
+        }
+    }
 
     /// The page has stopped describing the package an uninstall was asked
     /// about, so the ask is retired — including one still out over the wire.
@@ -237,19 +483,19 @@ import Module_Homebrew_Engine
         func ref(_ name: String, _ isCask: Bool) -> PackageRef {
             PackageRef(name: name, isCask: isCask)
         }
+        // Every segment now falls back to the "Available to install" section
+        // under it, since search is a field on every tab rather than a list
+        // of its own: a hit selected under Состояние still gets `brew info`,
+        // which is why `.health` no longer returns nil outright.
         switch segment {
         case .installed:
-            return installed.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+            if let p = installed.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
+            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
         case .updates:
-            return outdated.first { $0.id == id }.map { ref($0.name, $0.isCask) }
-        case .search:
-            return searchHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
-        // A finding is not a package: there is no `brew info` to ask about it,
-        // and `InspectorState.of` draws its second tier from nothing. Returning
-        // nil here is what keeps a click on an issue from spending a `brew
-        // info` run on a name that is not one.
+            if let p = outdated.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
+            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
         case .health:
-            return nil
+            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
         }
     }
 
@@ -313,6 +559,92 @@ import Module_Homebrew_Engine
     private func reconcile(_ segment: Segment, against ids: Set<String>) {
         guard let id = selection[segment], !ids.contains(id) else { return }
         selection[segment] = nil
+    }
+
+    /// Everything the current tab actually shows, filter and section
+    /// together — the ids `List(selection:)` can land on right now.
+    var visibleIDs: Set<String> {
+        let own: Set<String>
+        switch segment {
+        case .installed: own = Set(shownInstalled.map(\.id))
+        case .updates: own = Set(shownOutdated.map(\.id))
+        case .health: own = Set(shownIssues.map(\.id)).union(shownConfigGroups.map(\.id))
+        }
+        return own.union(shownHits.map(\.id))
+    }
+
+    /// **A row a query has just hidden is a row that has to stop being
+    /// selected.** `reconcile(_:against:)` runs when a list is *replaced*;
+    /// this runs when the *filter* moves instead, and it is the one that
+    /// keeps `askToUninstall` from raising its dialog — the app's only
+    /// irreversible deletion — over a row the list no longer shows. Dropping
+    /// the selection runs `subjectMoved()` through `selection`'s own
+    /// `didSet`, which is what retires an ask still out over the wire.
+    ///
+    /// Erasing the query does not bring a dropped selection back — a cost the
+    /// owner judges, not an oversight: the row it named is not guaranteed to
+    /// still be the same one once everything is showing again.
+    private func reconcileVisible() {
+        guard let id = selection[segment], !visibleIDs.contains(id) else { return }
+        selection[segment] = nil
+    }
+
+    // MARK: - What each tab actually shows
+
+    /// `installed`, filtered by `query` against the name and — once it has
+    /// loaded — the description. Derived rather than stored, for `issues`'s
+    /// own reason: two fields are two accounts of one answer.
+    var shownInstalled: [BrewPackage] {
+        PackageStanding.matching(ListFilter.needle(query), installed, descriptions: descriptions)
+    }
+    /// `outdated`'s twin.
+    var shownOutdated: [OutdatedPackage] {
+        PackageStanding.matching(ListFilter.needle(query), outdated, descriptions: descriptions)
+    }
+    /// `issues`, filtered by the same rule — a finding matches on its title
+    /// and its body.
+    var shownIssues: [DoctorIssue] {
+        HealthScreen.matchingIssues(ListFilter.needle(query), issues)
+    }
+    /// `configGroups`, filtered on a group's own heading or on any line's key
+    /// or value — a group matches or it does not, whole: there is no reading
+    /// in which the inspector shows a group with some of its lines missing.
+    var shownConfigGroups: [ConfigGroup] {
+        HealthScreen.matchingConfigGroups(ListFilter.needle(query), configGroups)
+    }
+
+    /// What `AvailableSection.of` says the "Available to install" section
+    /// should draw right now — nil when nothing belongs there, which is most
+    /// of the time: no query, nothing asked yet, or an answer that belongs to
+    /// a word the person has since typed over.
+    ///
+    /// **Fed the already-excluded hits, not the raw answer.** `available:`
+    /// used to be `searchHits` itself, so a word every hit for which was
+    /// already on this Mac (Return on an installed package's own name is the
+    /// ordinary way there) read `.found` — an "Available to install" heading
+    /// with nothing under it, once `shownHits` below had taken the installed
+    /// ones back out. `.answered` empties `available` and answers
+    /// `.nothingFound`, and only `.nothingFound` earns the heading its
+    /// sentence.
+    var section: AvailableSection? {
+        AvailableSection.of(query: query, searchedQuery: searchedQuery, reading: searchReading,
+                            available: PackageStanding.notInstalled(searchHits, installed: installed))
+    }
+
+    /// The hits the section actually draws — `searchHits` with what is
+    /// already on this Mac filtered out, **by id and never by name**: `docker`
+    /// is both a formula and a cask, and an installed formula must not hide an
+    /// offered cask of the same name. Computed rather than stored, so
+    /// installing a hit drops it from here the moment `refreshAfterOp` re-reads
+    /// the Cellar, while the hit keeps its id — on Установленные it then
+    /// appears in the list above, still selected.
+    ///
+    /// `section == .found` rather than `section != nil`: the section can be
+    /// `.searching`, `.nothingFound` or `.unanswerable` too, none of which has
+    /// a row to draw, and computing the same exclusion twice is cheaper than a
+    /// third state carrying it.
+    var shownHits: [SearchHit] {
+        section == .found ? PackageStanding.notInstalled(searchHits, installed: installed) : []
     }
 
     /// One instance per host view model, for the app's lifetime.
@@ -497,12 +829,28 @@ import Module_Homebrew_Engine
             // that is still true. With nothing behind it there is nothing to
             // keep, and the pane says so instead of waiting for ever.
             installedReading = installed.isEmpty ? .unanswerable : .answered
+            // **A refusal is a reading too, and `ownListShowsNothing` gates on
+            // this reading leaving `.waiting`.** A word typed while this list
+            // was still `.waiting` armed no pause at all (the guard reads
+            // "unread or still-loading" as "not empty" on purpose), and only a
+            // later, *successful* refresh used to open that door — so a Mac
+            // whose `brew list` had just failed never asked `brew search` for
+            // anything typed during the wait, not now and not on the next
+            // keystroke either, since nothing re-reads a reading that never
+            // changes.
+            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
             return
         }
         installed = answer
-        reconcile(.installed, against: Set(answer.map(\.id)))
+        // `shownHits` as well as the answer's own ids: a hit offered under
+        // the section is not in `installed` yet, and dropping its selection
+        // every time this list is re-read is the same defect `reconcileVisible`
+        // exists to leave alone — the section did not move.
+        reconcile(.installed, against: Set(answer.map(\.id)).union(shownHits.map(\.id)))
         installedReading = .answered
         listedBrew = status.brewPath
+        reconcileVisible()
+        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
@@ -528,6 +876,15 @@ import Module_Homebrew_Engine
     /// `loadIfNeeded` does not ask, the segment's own refresh does.
     @Published private(set) var config: BrewConfig?
 
+    /// **Whether `config` has ever been read, separately from whether the read
+    /// succeeded.** `ownListShowsNothing`'s `.health` case used to ask
+    /// `config != nil`, which a refusal never sets — a `brew config` that
+    /// failed left this gate reading "never asked" for ever, the same way
+    /// `installedReading`/`outdatedReading` exist so their own guard does not
+    /// have to ask a list "are you empty because nobody asked, or because
+    /// brew said so."
+    private var configReading: ListReading = .notAsked
+
     /// Those lines as the three groups the list draws a row each for. Computed
     /// rather than stored beside `config`, for the reason `issues` is: two
     /// fields are two accounts of one answer.
@@ -541,8 +898,15 @@ import Module_Homebrew_Engine
     /// person's selection every time the other half was re-read — and a refused
     /// `brew doctor` deselected the configuration group they were reading,
     /// which has nothing to do with `brew doctor` at all.
+    ///
+    /// **And the section's own hits, a third time over.** `shownHits` sits
+    /// under Состояние the same as under either other tab, and it is not
+    /// counted by either of the two lists above — without it, selecting a hit
+    /// there and then refreshing `brew config` or `brew doctor` (which the
+    /// page's own `.onChange(of: segment)` does on every arrival) reconciled
+    /// the selection away against a set that had never heard of it.
     private var healthSelectableIDs: Set<String> {
-        Set(issues.map(\.id)).union(configGroups.map(\.id))
+        Set(issues.map(\.id)).union(configGroups.map(\.id)).union(shownHits.map(\.id))
     }
 
     /// What `brew config` says about this Homebrew and this Mac.
@@ -555,9 +919,22 @@ import Module_Homebrew_Engine
     /// ("no `?? []` on any list reply"), where the last answer is still a true
     /// thing about a machine that has almost certainly not moved.
     func refreshConfig() async {
-        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else { return }
+        configReading = .waiting
+        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else {
+            // Unlike `installedReading`/`outdatedReading`, there is no "last
+            // answer" fact to weigh here — `config` itself never moves on a
+            // refusal, keeping whatever the pane last drew — this reading
+            // exists only so `ownListShowsNothing` can tell "never asked" from
+            // "asked and refused."
+            configReading = .unanswerable
+            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
+            return
+        }
         config = answer
+        configReading = .answered
         reconcile(.health, against: healthSelectableIDs)
+        reconcileVisible()
+        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
     }
 
     /// **A refusal replaces the issues rather than keeping them.** The other
@@ -587,6 +964,8 @@ import Module_Homebrew_Engine
             // doctor` says nothing about them, so sweeping them out here took
             // away the group the person was reading.
             reconcile(.health, against: healthSelectableIDs)
+            reconcileVisible()
+            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
             return
         }
         // The parser always answers `fix: nil` — a command read out of a tool's
@@ -597,6 +976,8 @@ import Module_Homebrew_Engine
         let installedNames = installed.map(\.name)
         doctor = .examined(answer.map { DoctorFixCandidate.judging($0, installed: installedNames) })
         reconcile(.health, against: healthSelectableIDs)
+        reconcileVisible()
+        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
     }
 
     /// The fix a person is being asked about, or nil because nothing is being
@@ -655,11 +1036,20 @@ import Module_Homebrew_Engine
         guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
         else {
             outdatedReading = outdated.isEmpty ? .unanswerable : .answered
+            // `refreshInstalled`'s own reason: a refusal is a reading, and
+            // nothing else re-opens the pause for a word typed while this
+            // list sat `.waiting`.
+            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
             return
         }
         outdated = answer
-        reconcile(.updates, against: Set(answer.map(\.id)))
+        // `shownHits` unioned in for `refreshInstalled`'s own reason: a hit
+        // selected under this segment is not in `outdated` and must not be
+        // reconciled away every time this list is re-read.
+        reconcile(.updates, against: Set(answer.map(\.id)).union(shownHits.map(\.id)))
         outdatedReading = .answered
+        reconcileVisible()
+        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
     }
     /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
     /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
@@ -688,11 +1078,12 @@ import Module_Homebrew_Engine
     public func search(_ q: String) async {
         let mine = searches.take()
         // **The old hits go before the new query is sent.** They belong to the
-        // word that was typed over, and holding them for the nine seconds this
-        // takes is the results of one search drawn under another — which is
-        // also what left the busy sentence with nothing to stand over.
+        // word that was typed over, and holding them for as long as this takes
+        // is the results of one search drawn under another — which is also
+        // what left the busy sentence with nothing to stand over.
+        searchedQuery = q
         searchHits = []
-        reconcile(.search, against: [])
+        reconcileVisible()
         searchReading = .waiting
         guard let hits: [SearchHit] = await client.request(HomebrewCommand.search,
                                                            payload: Data(q.utf8))
@@ -708,7 +1099,7 @@ import Module_Homebrew_Engine
         guard searches.isLatest(mine) else { return }
         searchHits = hits
         searchReading = .answered
-        reconcile(.search, against: Set(hits.map(\.id)))
+        reconcileVisible()
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name),
                                token: mine)

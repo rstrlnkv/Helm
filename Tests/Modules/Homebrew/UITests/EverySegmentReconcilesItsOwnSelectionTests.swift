@@ -93,43 +93,48 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
     }
 
     /// The second search is the ordinary case: the person typed something else,
-    /// and the hit they had open is not in the new answer.
-    func testTheSearchSegmentDropsASelectionTheNewHitsDoNotHold() async {
+    /// and the hit they had open is not in the new answer. Read on Состояние —
+    /// any tab does, since the "Available to install" section replaced the
+    /// Search segment 2026-09-24 and now sits under all three.
+    ///
+    /// `search(_:)` is called directly, the raw ask `AStaleSearchDoesNotLandOnANewerOneTests`
+    /// already covers — `query` is set to match it *afterwards*, so
+    /// `queryMoved()` finds `q == searchedQuery` and schedules no pause task
+    /// of its own, which would otherwise race this test on a real clock.
+    func testTheSectionDropsASelectionTheNewHitsDoNotHold() async {
         let (transport, vm) = pair()
         transport.hits = [helm, SearchHit(name: "helmfile", isCask: false)]
-        vm.segment = .search
+        vm.segment = .health
         await vm.search("helm")
+        vm.query = "helm"
         vm.select(helm.id)
         XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
 
         transport.hits = [SearchHit(name: "wget", isCask: false)]
         await vm.search("wget")
+        vm.query = "wget"
         XCTAssertNil(vm.selected, """
-            the search inspector is still describing \(helm.id) after a search for something \
+            the health inspector is still describing \(helm.id) after a search for something \
             else — with an Install button that would act on it
             """)
     }
 
-    /// **One segment per call.** The three ids here are deliberately disjoint,
-    /// so a reconcile that swept every segment against the installed list would
-    /// clear all three and this is the only test that could tell.
-    func testARefreshReconcilesItsOwnSegmentAndLeavesTheOthersAlone() async {
+    /// **One segment per call.** The two ids here are deliberately disjoint, so
+    /// a reconcile that swept every segment against the installed list would
+    /// clear both and this is the only test that could tell.
+    func testARefreshReconcilesItsOwnSegmentAndLeavesTheOtherAlone() async {
         let (transport, vm) = pair()
         transport.installed = [wget, openssl]
         transport.outdated = [node]
-        transport.hits = [helm]
 
         await vm.refreshInstalled()
         await vm.refreshOutdated()
-        vm.segment = .search
-        await vm.search("helm")
 
         vm.segment = .installed; vm.select(openssl.id)
         vm.segment = .updates; vm.select(node.id)
-        vm.segment = .search; vm.select(helm.id)
 
         // Somebody uninstalls openssl@3 in a terminal and the installed list
-        // comes back without it. Nothing happened to the other two lists.
+        // comes back without it. Nothing happened to the outdated list.
         transport.installed = [wget]
         vm.segment = .installed
         await vm.refreshInstalled()
@@ -140,10 +145,159 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
             refreshing the installed list threw away the Updates segment's selection, which \
             belongs to a list that did not move
             """)
-        vm.segment = .search
+    }
+
+    /// **The section's own selection is a third list by the same rule**, now
+    /// that it sits under every tab rather than being a segment of its own: a
+    /// hit selected under Состояние must survive a refresh of Установленные,
+    /// which shares nothing with it but the one query field.
+    func testARefreshLeavesTheSectionsOwnSelectionAlone() async {
+        let (transport, vm) = pair()
+        transport.installed = [wget]
+        transport.hits = [helm]
+
+        await vm.refreshInstalled()
+        vm.segment = .health
+        await vm.search("helm")
+        vm.query = "helm"
+        vm.select(helm.id)
+        XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
+
+        transport.installed = [wget, openssl]
+        vm.segment = .installed
+        await vm.refreshInstalled()
+
+        vm.segment = .health
         XCTAssertEqual(vm.selected, helm.id, """
-            refreshing the installed list threw away the search segment's selection, which \
-            belongs to a list that did not move
+            refreshing the installed list threw away the health segment's own hit selection, \
+            which belongs to a section that did not move
+            """)
+    }
+
+    /// **The section's own selection must also survive refreshing *its own*
+    /// segment.** `reconcile(_:against:)` used to check a hit's selection
+    /// against only that segment's own list — `Set(answer.map(\.id))`, with
+    /// no `shownHits` in it — so selecting a hit and then refreshing the very
+    /// tab it is sitting under (an ordinary Refresh press, or the page's own
+    /// `.onChange(of: segment)` on every arrival) reconciled the selection
+    /// away before `reconcileVisible()` a line later ever got a chance to
+    /// leave it alone.
+    func testARefreshOfTheSectionsOwnSegmentLeavesItsSelectionAlone() async {
+        let (transport, vm) = pair()
+        transport.installed = [wget]
+        transport.hits = [helm]
+
+        await vm.refreshInstalled()
+        vm.segment = .installed
+        await vm.search("helm")
+        vm.query = "helm"
+        vm.select(helm.id)
+        XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
+
+        // The same tab's own list refreshes — wget again, nothing new.
+        transport.installed = [wget]
+        await vm.refreshInstalled()
+
+        XCTAssertEqual(vm.selected, helm.id, """
+            refreshing Установленные's own list threw away the section's selection sitting \
+            under that very tab
+            """)
+    }
+
+    /// **A word every hit for which is already on this Mac reads "No
+    /// results.", not a heading with nothing under it.** `section` used to be
+    /// computed off the raw `searchHits` rather than the already-excluded
+    /// list `shownHits` draws — so `.answered` with `wget` the only hit, and
+    /// `wget` already installed, answered `.found` while `shownHits` (which
+    /// *does* exclude it) drew zero rows under the "Available to install"
+    /// heading. Return on an installed package's own name is the ordinary way
+    /// there — nothing stops brew from finding the very thing already on this
+    /// Mac.
+    func testAWordWhoseOnlyHitIsAlreadyInstalledReadsNothingFound() async {
+        let (transport, vm) = pair()
+        transport.installed = [wget]
+        transport.hits = [SearchHit(name: wget.name, isCask: wget.isCask)]
+
+        await vm.refreshInstalled()
+        await vm.search("wget")
+        vm.query = "wget"
+
+        XCTAssertEqual(vm.section, .nothingFound, """
+            \(String(describing: vm.section)) — the only hit for "wget" is the package \
+            already installed, so the section has nothing left to offer
+            """)
+        XCTAssertEqual(vm.shownHits, [], "the installed hit must not be drawn under the heading")
+    }
+
+    /// The same defect the other way: installing the section's own hit must
+    /// turn `.found` into `.nothingFound` the moment the Cellar is re-read,
+    /// rather than leaving a stale `.found` reading over an emptied row list.
+    func testInstallingTheSectionsOnlyHitTurnsFoundIntoNothingFound() async {
+        let (transport, vm) = pair()
+        transport.hits = [helm]
+
+        await vm.refreshInstalled()
+        await vm.search("helm")
+        vm.query = "helm"
+        XCTAssertEqual(vm.section, .found, "precondition: the hit is offered")
+
+        // `helm` "installs" — the next `refreshInstalled` (what
+        // `refreshAfterOp` runs after every operation) lists it.
+        transport.installed = [BrewPackage(name: helm.name, version: "1.0.0", isCask: helm.isCask)]
+        await vm.refreshInstalled()
+
+        XCTAssertEqual(vm.section, .nothingFound, """
+            \(String(describing: vm.section)) — the hit just installed is still read as \
+            offered, over a heading with nothing left under it
+            """)
+    }
+
+    /// The same defect, on Состояние — the one segment `healthSelectableIDs`
+    /// exists for rather than the plain per-list `reconcile(_:against:)` the
+    /// other two segments use. Exercised off `refreshDoctor`'s own *refusal*
+    /// branch (the fake answers no `brew doctor` document at all): that
+    /// branch calls `reconcile(.health, against: healthSelectableIDs)` on a
+    /// line of its own, separate from the answered branch's, and is the one
+    /// this file had never reached before this test — a review copy with
+    /// `.union(shownHits.map(\.id))` removed from `healthSelectableIDs`
+    /// stayed green across every other Module_Homebrew_UITests case.
+    func testARefreshOfHealthLeavesItsOwnSectionSelectionAlone() async {
+        let (transport, vm) = pair()
+        transport.hits = [helm]
+
+        vm.segment = .health
+        await vm.search("helm")
+        vm.query = "helm"
+        vm.select(helm.id)
+        XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
+
+        await vm.refreshDoctor()
+
+        XCTAssertEqual(vm.selected, helm.id, """
+            refreshing Состояние's own findings threw away the section's selection sitting \
+            under that very tab
+            """)
+    }
+
+    /// The same defect, on Обновления.
+    func testARefreshOfUpdatesLeavesItsOwnSectionSelectionAlone() async {
+        let (transport, vm) = pair()
+        transport.outdated = [node]
+        transport.hits = [helm]
+
+        vm.segment = .updates
+        await vm.refreshOutdated()
+        await vm.search("helm")
+        vm.query = "helm"
+        vm.select(helm.id)
+        XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
+
+        transport.outdated = [node]
+        await vm.refreshOutdated()
+
+        XCTAssertEqual(vm.selected, helm.id, """
+            refreshing Обновления's own list threw away the section's selection sitting under \
+            that very tab
             """)
     }
 }

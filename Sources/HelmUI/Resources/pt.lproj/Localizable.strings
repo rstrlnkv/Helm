@@ -367,6 +367,8 @@
 "No modules enabled" = "Nenhum módulo ativado";
 "No packages installed." = "Nenhum pacote instalado.";
 "No results." = "Sem resultados.";
+"Available to install" = "Disponível para instalar";
+"Nothing in this list matches." = "Nenhuma correspondência nesta lista.";
 "Homebrew did not answer." = "O Homebrew não respondeu.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "O Homebrew não respondeu, por isso nada se sabe sobre os pacotes instalados neste momento.";
 "Homebrew did not answer, so nothing is known about updates right now." = "O Homebrew não respondeu, por isso nada se sabe sobre as atualizações neste momento.";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "Desativar um item de início não apaga mais o resto da sua seleção.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Desativar “continuar acordado com a tampa fechada” agora remove também a permissão sem senha que precisou ser instalada. Antes ela ficava para sempre.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "Dois módulos ganharam nomes mais curtos: Espaço em disco agora é Disco, e o trocador de layout é Teclado.";
-"Type a name and press Return." = "Digite um nome e pressione Return.";
 "Type ghbdtn and press space" = "Digite ghbdtn e aperte espaço";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Digite ghbdtn no layout errado e vira привет, com a fonte de entrada acompanhando.";
 "Uninstall" = "Desinstalar";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "O Homebrew remove o instalador baixado quando uma instalação falha, não só quando dá certo.";
 "Other installed packages still need it:" = "Outros pacotes instalados ainda precisam dele:";
 "Select a package" = "Selecione um pacote";
-"already installed" = "já instalado";
 "Update available" = "Atualização disponível";
 "Installed version" = "Versão instalada";
 "Installed on" = "Instalado em";

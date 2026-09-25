@@ -367,6 +367,8 @@
 "No modules enabled" = "Aucun module activé";
 "No packages installed." = "Aucun paquet installé.";
 "No results." = "Aucun résultat.";
+"Available to install" = "Disponible à l’installation";
+"Nothing in this list matches." = "Aucune correspondance dans cette liste.";
 "Homebrew did not answer." = "Homebrew n’a pas répondu.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew n’a pas répondu, donc rien n’est connu des paquets installés pour l’instant.";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew n’a pas répondu, donc rien n’est connu des mises à jour pour l’instant.";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "Désactiver un élément d’ouverture n’efface plus le reste de votre sélection.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Désactiver « rester éveillé capot fermé » retire aussi l’autorisation sans mot de passe qu’il avait fallu installer. Elle restait auparavant à demeure.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "Deux modules portent un nom plus court : Espace disque devient Disque, et le changeur de disposition devient Clavier.";
-"Type a name and press Return." = "Saisissez un nom et appuyez sur Entrée.";
 "Type ghbdtn and press space" = "Tapez ghbdtn puis espace";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Tapez ghbdtn dans la mauvaise disposition : le mot devient привет, et la source de saisie suit.";
 "Uninstall" = "Désinstaller";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew supprime le programme d’installation téléchargé quand une installation échoue, et pas seulement quand elle réussit.";
 "Other installed packages still need it:" = "D’autres paquets installés en ont encore besoin\U00A0:";
 "Select a package" = "Sélectionnez un paquet";
-"already installed" = "déjà installé";
 "Update available" = "Mise à jour disponible";
 "Installed version" = "Version installée";
 "Installed on" = "Installé le";

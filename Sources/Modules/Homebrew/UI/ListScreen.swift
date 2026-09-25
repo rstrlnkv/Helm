@@ -16,9 +16,11 @@ import Foundation
 /// must never be one sentence on screen. Состояние honoured it; Установленные,
 /// Обновления and Поиск did not.
 enum ListReading: Equatable {
-    /// Nobody has asked yet. The search pane's ordinary state — a query is
-    /// typed and Return has not been pressed — and the frame or two the other
-    /// two lists spend between mounting and their first ask.
+    /// Nobody has asked yet. The "Available to install" section's ordinary
+    /// state — no query is out for brew, whether because the field is empty
+    /// or because the local filter still has something to show — and the
+    /// frame or two the other lists spend between mounting and their first
+    /// ask.
     case notAsked
     /// A query is out and nothing has come back.
     case waiting
@@ -39,10 +41,10 @@ enum ListReading: Equatable {
     case unanswerable
 }
 
-/// **What a list pane puts on screen — four drawings, and three of them are
-/// what this exists for.**
+/// **What a list pane puts on screen — five drawings now, and the first four
+/// are what this exists for.**
 ///
-/// `SearchDisplay` and `HealthScreen` are the shape this follows, for the
+/// `AvailableSection` and `HealthScreen` are the shape this follows, for the
 /// reason those files give: which sentence stands over which state is the whole
 /// of the decision, and a `body` is nowhere a test can reach.
 ///
@@ -50,7 +52,7 @@ enum ListReading: Equatable {
 /// Drawn as one — which is what a single `empty:` string and a `Bool` amounted
 /// to — «Нет установленных пакетов.» stands over a Mac with fifty-three
 /// packages on it whose `brew list` refused, and «Ничего не найдено.» stands
-/// over the nine seconds a `brew search` takes.
+/// over however long a `brew search` takes.
 enum ListScreen: Equatable {
     /// There are rows. What the reading says is beside the point: rows on
     /// screen are an answer somebody got.
@@ -62,14 +64,41 @@ enum ListScreen: Equatable {
     /// The query could not be put. Its own sentence, and nothing moving —
     /// there is nothing to wait for.
     case unanswerable
+    /// **There are rows, and a query hides every one of them.** Added
+    /// 2026-09-24 with the field that filters every tab: a list that answered
+    /// with rows and a filter that shows none of them is neither `.nothing`
+    /// (brew answered "no packages") nor `.rows` (there is nothing to draw) —
+    /// it is its own sentence, over the same list underneath.
+    case noMatches
 
+    /// The three-way reading alone, unchanged — every existing caller keeps
+    /// this and never sees `.noMatches`, because `shownIsEmpty` here is
+    /// exactly `isEmpty`.
     static func of(isEmpty: Bool, reading: ListReading) -> ListScreen {
-        guard isEmpty else { return .rows }
+        of(isEmpty: isEmpty, shownIsEmpty: isEmpty, reading: reading)
+    }
+
+    /// `isEmpty` is the underlying list `brew` answered with; `shownIsEmpty`
+    /// is what a filter leaves of it. The two differ only when there are rows
+    /// to filter, which is the one case `.noMatches` exists for.
+    static func of(isEmpty: Bool, shownIsEmpty: Bool, reading: ListReading) -> ListScreen {
+        guard isEmpty else { return shownIsEmpty ? .noMatches : .rows }
         switch reading {
         case .notAsked, .waiting: return .waiting
         case .answered: return .nothing
         case .unanswerable: return .unanswerable
         }
+    }
+
+    /// Whether a package list's own section is drawn as a `List` row rather
+    /// than as a single centred sentence — the section forces the shape even
+    /// over a state that would otherwise be centred, mirroring `healthScreen`'s
+    /// own `.sentence` → `.groups(checkup: [.note(note)], …)` rewrite one
+    /// file over. Extracted so a test holds the shape decision without a
+    /// `body`, the way `AvailableSection.of` already lets one hold the
+    /// section's own decision.
+    static func forcesListShape(section: AvailableSection?, screen: ListScreen) -> Bool {
+        section != nil || screen == .rows || screen == .noMatches
     }
 }
 

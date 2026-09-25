@@ -9,20 +9,6 @@ import Module_Homebrew_Engine
 
 struct HomebrewSettingsPage: View {
     @ObservedObject private var hb: HomebrewViewModel
-    @State private var query = ""
-    /// The search a press of Return started, held so the next press can drop it.
-    ///
-    /// **Every press used to be its own `Task` and nothing held any of them.**
-    /// One search is two `brew search` runs — measured at about nine seconds —
-    /// and a `brew desc` per kind after them, so ten presses were ten of those
-    /// chains at once. What stops the *work* is `HelmProcess.launchCeiling` and
-    /// the `LatestRequest` in the view model; this is the third of the three and
-    /// the smallest: it keeps the tasks themselves from piling up, one per
-    /// keystroke, each holding its own await for the life of a `brew` run.
-    ///
-    /// Cancelling does not stop the tool, and nothing here pretends it does —
-    /// the child is the engine's and runs to its end.
-    @State private var searching: Task<Void, Never>?
 
     init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
@@ -197,7 +183,7 @@ struct HomebrewSettingsPage: View {
         VStack(spacing: 0) {
             // The split is asked of the pane, not of the window: `HomebrewSplit`
             // carries the measured threshold, and a `private var` inside `body`
-            // would be out of a test's reach (`SearchDisplay.swift`'s own reason).
+            // would be out of a test's reach (`HomebrewSplit.swift`'s own reason).
             //
             // **The width decides the container, `detail` decides the
             // content.** Above the threshold the list and the subject sit side
@@ -336,9 +322,18 @@ struct HomebrewSettingsPage: View {
                     Task { await refresh(hb.segment) }
                 }
             ],
-            search: HelmToolbarSearch(prompt: HbStr.searchPlaceholder, text: $query) {
-                searching?.cancel()
-                searching = Task { await hb.search(query) }
+            // **On every tab, and the view model owns the query now** — moved
+            // out of this page's own `@State` 2026-09-24, the owner's
+            // decision: typing filters whichever list is on screen, and
+            // `HomebrewViewModel.queryMoved` starts the pause toward an
+            // automatic `brew search` when that filter finds nothing. Return
+            // is `searchNow()`, which asks at once, with no pause and no
+            // minimum length, unless that word is already answered or still
+            // out — a refusal earns nothing kept, so Return asks again then.
+            search: HelmToolbarSearch(
+                prompt: HbStr.searchPlaceholder,
+                text: Binding(get: { hb.query }, set: { hb.query = $0 })) {
+                hb.searchNow()
             }
         ), token: HomebrewDescriptor.id.rawValue)
         // On the page rather than on the picker: a toolbar item's view is
@@ -355,7 +350,6 @@ struct HomebrewSettingsPage: View {
         switch hb.segment {
         case .installed: installedList(singleColumn: singleColumn)
         case .updates: updatesList(singleColumn: singleColumn)
-        case .search: searchView(singleColumn: singleColumn)
         case .health: healthList(singleColumn: singleColumn)
         }
     }
@@ -376,9 +370,27 @@ struct HomebrewSettingsPage: View {
     /// No description line whatever the pane's width: a finding's body is prose, often
     /// several lines of it, and one clipped line of it in a row says less than
     /// nothing. The title is the row.
+    ///
+    /// **The section forces the list shape, even over a Состояние that has
+    /// never been opened.** `HealthScreen.of` alone still reads "nothing
+    /// asked yet, nothing configured" as one centred sentence whatever a
+    /// search is doing, and the section that would show the difference sits
+    /// inside the `List` below — a Mac that has never asked `brew doctor` and
+    /// is searching would otherwise draw «Checking this Mac…» over a section
+    /// that never appears, the way a genuinely empty Установленные once drew
+    /// «No packages installed.» over the same section (`listOrEmpty`'s own
+    /// comment on that). Plain rather than `@ViewBuilder`, since `healthList`
+    /// below needs the value rather than a view to switch on.
+    private var healthScreen: HealthScreen {
+        let screen = HealthScreen.of(hb.doctor, config: hb.configGroups,
+                                     needle: ListFilter.needle(hb.query))
+        guard hb.section != nil, case let .sentence(note) = screen else { return screen }
+        return .groups(checkup: [.note(note)], configuration: [])
+    }
+
     @ViewBuilder
     private func healthList(singleColumn: Bool) -> some View {
-        switch HealthScreen.of(hb.doctor, config: hb.configGroups) {
+        switch healthScreen {
         case let .sentence(note):
             // The whole segment is this one sentence, so it is centred rather
             // than sitting in a list with nothing else in it.
@@ -425,6 +437,16 @@ struct HomebrewSettingsPage: View {
                         }
                     }
                 }
+                // The third section on this list, shared with the other two
+                // tabs: the query that just filtered Checkup and Configuration
+                // above is the same one that may be asking brew about a
+                // package this Mac does not have.
+                if let section = hb.section {
+                    Section(header: sectionHeader(HbStr.availableToInstall)) {
+                        availableRows(section, hits: hb.shownHits, singleColumn: singleColumn,
+                                     marksUpdates: false)
+                    }
+                }
             }
             // No inset of its own. It carried `.padding(.horizontal,
             // HelmSpace.s5)`, which put this page's rows 12 pt further in than
@@ -453,27 +475,17 @@ struct HomebrewSettingsPage: View {
         case let .issue(issue):
             issueRow(issue, singleColumn: singleColumn)
         case let .note(note):
-            // **Not selectable, because there is nothing to select.** A note is
-            // the sentence standing in for findings there are none of, and a
-            // row that highlights and then describes nothing in the inspector
-            // is a row that looks broken.
-            HStack(spacing: HelmSpace.s3) {
-                // **Waiting moves.** `HealthScreen.of` puts this sentence in a
-                // row rather than in the centred `HelmBusyState` whenever
-                // `brew config` has anything to draw beside it — which it
-                // almost always does, because `refresh` asks it first on
-                // purpose, and it is fast where `brew doctor` is the slowest
-                // query in the module. So the ordinary Состояние wait was a
-                // plain 36 pt text row with **no progress indicator anywhere on
-                // the page**, while every other wait in this module and in the
-                // app spins. The refusal keeps the still row it had: there is
-                // nothing on its way to indicate.
-                if note == .busy { ProgressView().controlSize(.small) }
-                Text(Self.healthNote(note))
-                    .foregroundStyle(HelmText.quiet)
-            }
-            .helmListRow()
-            .selectionDisabled()
+            // **Waiting moves.** `HealthScreen.of` puts this sentence in a
+            // row rather than in the centred `HelmBusyState` whenever
+            // `brew config` has anything to draw beside it — which it
+            // almost always does, because `refresh` asks it first on
+            // purpose, and it is fast where `brew doctor` is the slowest
+            // query in the module. So the ordinary Состояние wait was a
+            // plain 36 pt text row with **no progress indicator anywhere on
+            // the page**, while every other wait in this module and in the
+            // app spins. The refusal keeps the still row it had: there is
+            // nothing on its way to indicate.
+            noteRow(Self.healthNote(note), busy: note == .busy)
         }
     }
 
@@ -485,6 +497,67 @@ struct HomebrewSettingsPage: View {
         case .busy: return HbStr.examiningThisMac
         case .clean: return HbStr.nothingToFix
         case .unexaminable: return HbStr.couldNotExamine
+        case .noMatches: return HbStr.noMatches
+        }
+    }
+
+    /// The sentence a package list's own section draws instead of its rows,
+    /// or nil when `screen` says to draw the rows themselves — apart from
+    /// `packageList`'s `body` for `healthNote`'s own reason: which reading
+    /// says which sentence is a decision a test can hold. `notes` are the
+    /// three sentences each call site already carries (`installedList`'s
+    /// "No packages installed.", `updatesList`'s "Everything is up to date.",
+    /// and the two refusals beside them); `.noMatches` earns the one sentence
+    /// every tab shares, since a query hiding every row says the same thing
+    /// on all three.
+    static func ownListNote(_ screen: ListScreen,
+                            notes: (nothing: String, unanswerable: String, waiting: String))
+        -> (text: String, busy: Bool)? {
+        switch screen {
+        case .rows: return nil
+        case .noMatches: return (HbStr.noMatches, false)
+        case .nothing: return (notes.nothing, false)
+        case .unanswerable: return (notes.unanswerable, false)
+        case .waiting: return (notes.waiting, true)
+        }
+    }
+
+    /// **Not selectable, because there is nothing to select.** A note is
+    /// the sentence standing in for rows there are none of, and a row that
+    /// highlights and then describes nothing in the inspector is a row that
+    /// looks broken. Shared by all three tabs' empty rows and by the
+    /// "Available to install" section's own three sentences — one builder,
+    /// so a note row cannot drift into three shapes across the page.
+    private func noteRow(_ text: String, busy: Bool = false) -> some View {
+        HStack(spacing: HelmSpace.s3) {
+            if busy { ProgressView().controlSize(.small) }
+            Text(text).foregroundStyle(HelmText.quiet)
+        }
+        .helmListRow()
+        .selectionDisabled()
+    }
+
+    /// **The "Available to install" section's own three sentences, and its
+    /// rows.** Shared by all three tabs' `listOrEmpty` and by `healthList`,
+    /// which builds its own `List` by hand rather than going through
+    /// `listOrEmpty`.
+    ///
+    /// `marksUpdates` reserves the update mark's slot on Установленные so a
+    /// hit's name lines up with the installed rows above it — `pkgRow`'s own
+    /// reason for taking `false` rather than nil there.
+    @ViewBuilder
+    private func availableRows(_ section: AvailableSection, hits: [SearchHit],
+                               singleColumn: Bool, marksUpdates: Bool) -> some View {
+        switch section {
+        case .searching: noteRow(HbStr.searching, busy: true)
+        case .nothingFound: noteRow(HbStr.noResults)
+        case .unanswerable: noteRow(HbStr.couldNotSearch)
+        case .found:
+            ForEach(hits) { hit in
+                pkgRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
+                      hasUpdate: marksUpdates ? false : nil,
+                      desc: singleColumn ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
+            }
         }
     }
 
@@ -616,13 +689,17 @@ struct HomebrewSettingsPage: View {
         }
     }
 
+    /// The window toolbar's own search field filters this list as it is
+    /// typed into (`HomebrewViewModel.shownInstalled`), and the "Available to
+    /// install" section appears under it when the filter finds nothing and
+    /// the pause has run its course, or after Return.
     private func installedList(singleColumn: Bool) -> some View {
-        listOrEmpty(hb.installed, reading: hb.installedReading,
+        listOrEmpty(hb.installed, shown: hb.shownInstalled, reading: hb.installedReading,
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
                     waiting: HbStr.packagesLoading,
                     columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
                                          marksUpdates: true),
-                    singleColumn: singleColumn) { pkg in
+                    singleColumn: singleColumn, section: hb.section, hits: hb.shownHits) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
                    hasUpdate: hasUpdate(pkg.id),
                    desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
@@ -635,12 +712,12 @@ struct HomebrewSettingsPage: View {
             // own toolbar beside Refresh, declared on `managerBody`'s
             // `.helmWindowToolbar` — visible on this very segment, hidden
             // everywhere else.
-            listOrEmpty(hb.outdated, reading: hb.outdatedReading,
+            listOrEmpty(hb.outdated, shown: hb.shownOutdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates,
                         columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
                                              marksUpdates: false),
-                        singleColumn: singleColumn) { pkg in
+                        singleColumn: singleColumn, section: hb.section, hits: hb.shownHits) { pkg in
                 // A pinned formula and a cask can both carry a badge here — the
                 // parser does not refuse a `pinned` flag on a cask entry, even
                 // though `brew pin` only ever sets one on a formula
@@ -649,37 +726,6 @@ struct HomebrewSettingsPage: View {
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask,
                        singleColumn: singleColumn, pinned: pkg.pinned,
                        desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
-            }
-        }
-    }
-
-    /// **The field is the window's toolbar's** (`.helmWindowToolbar`'s own
-    /// `search:` on `managerBody`), which is why nothing above the results is
-    /// drawn here any more — the row that held it and the rule under that row
-    /// are both gone with it. The declaration is on `managerBody` now and not
-    /// on this segment's own view — it used to come and go with Поиск, the
-    /// way the row did, but the whole toolbar re-declares as one value on
-    /// every segment change rather than a row entering and leaving on its
-    /// own, which is a different act.
-    private func searchView(singleColumn: Bool) -> some View {
-        VStack(spacing: 0) {
-            if SearchDisplay.state(query: query, reading: hb.searchReading) == .prompt {
-                HelmEmptyState(message: HbStr.typeToSearch)
-            } else {
-                listOrEmpty(hb.searchHits, reading: hb.searchReading,
-                            nothing: HbStr.noResults, unanswerable: HbStr.couldNotSearch,
-                            waiting: HbStr.searching,
-                            // No version column: `brew search` answers names
-                            // and nothing else, so a «Version» heading here
-                            // would stand over a column that is always empty.
-                            columns: ListColumns(leading: HbStr.columnPackage, trailing: nil,
-                                                 marksUpdates: false),
-                            singleColumn: singleColumn) { hit in
-                    pkgRow(name: hit.name, detail: nil, isCask: hit.isCask, singleColumn: singleColumn,
-                           alreadyInstalled: PackageStanding.installedVersion(of: hit.id,
-                                                                              installed: hb.installed) != nil,
-                           desc: singleColumn ? hb.description(name: hit.name, isCask: hit.isCask) ?? " " : nil)
-                }
             }
         }
     }
@@ -704,14 +750,33 @@ struct HomebrewSettingsPage: View {
     /// wrong over a list of findings, and one key means one thing — a finding
     /// is not a package, and the languages that inflect the two differently are
     /// the ones a shared key would have read worst in.
+    ///
+    /// **The current tab's own list, after the filter, not the raw answer.**
+    /// `InspectorState.of`'s own three-list emptiness check answers off
+    /// `hb.installed`/`hb.outdated`/`hb.issues`/`hb.configGroups`, which is the
+    /// *unfiltered* Cellar — so a query that hid every row still saw a
+    /// non-empty list and invited a choice beside a master saying «Nothing in
+    /// this list matches.», a sentence with nothing left to pick. Read once
+    /// here rather than inline in the `switch` below, because `detail` is
+    /// where the invitation is drawn and the emptiness it is about belongs one
+    /// property up from that, beside the other reader of `hb.segment`.
+    private var shownEmpty: Bool {
+        switch hb.segment {
+        case .installed: return hb.shownInstalled.isEmpty
+        case .updates: return hb.shownOutdated.isEmpty
+        case .health: return hb.shownIssues.isEmpty && hb.shownConfigGroups.isEmpty
+        }
+    }
+
     private var detail: some View {
         Group {
             switch InspectorState.of(segment: hb.segment, selected: hb.selected,
                                      installed: hb.installed, outdated: hb.outdated,
                                      loadedOutdated: hb.loadedOutdated,
-                                     hits: hb.searchHits, issues: hb.issues,
+                                     hits: hb.shownHits, issues: hb.issues,
                                      config: hb.configGroups,
-                                     descriptions: hb.descriptions) {
+                                     descriptions: hb.descriptions,
+                                     shownEmpty: shownEmpty) {
             case .nothingSelected:
                 HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFindingOrASection
                                                               : HbStr.nothingSelected)
@@ -1076,7 +1141,7 @@ struct HomebrewSettingsPage: View {
             upgradeAction(subject)
         case .install:
             Button(HbStr.install) {
-                guard let hit = hb.searchHits.first(where: { $0.id == subject.id }) else { return }
+                guard let hit = hb.shownHits.first(where: { $0.id == subject.id }) else { return }
                 hb.install(hit)
             }
             .disabled(hb.running)
@@ -1234,7 +1299,7 @@ struct HomebrewSettingsPage: View {
     /// empty one, since the split layout never re-flows a row that never draws
     /// a description at all.
     private func pkgRow(name: String, detail: String?, isCask: Bool, singleColumn: Bool,
-                        pinned: Bool = false, alreadyInstalled: Bool = false,
+                        pinned: Bool = false,
                         hasUpdate: Bool? = nil, desc: String? = nil) -> some View {
         HStack(spacing: HelmSpace.s3) {
             // **nil is «this list never marks updates», and draws no column at
@@ -1279,7 +1344,6 @@ struct HomebrewSettingsPage: View {
                     // representable even though `brew pin` never does it.
                     if isCask { HelmBadge(HbStr.cask, tint: .purple) }
                     if pinned { HelmBadge(HbStr.pinned) }
-                    if alreadyInstalled { HelmBadge(HbStr.alreadyInstalled) }
                 }
                 if let desc {
                     Text(desc).font(.caption2).foregroundStyle(HelmText.quiet).lineLimit(1)
@@ -1364,18 +1428,14 @@ struct HomebrewSettingsPage: View {
     }
 
     /// Which list a segment is showing, and therefore which one Refresh
-    /// reloads. There were two answers: switching to Search reloaded nothing,
-    /// while pressing Refresh on Search reloaded the installed list behind it.
-    /// The switcher's answer is the right one — Search has nothing cached to
-    /// refresh, and a button that quietly reloads a list you are not looking at
-    /// is a button that did nothing.
+    /// reloads. Search is not a case here any more — a `brew search` in
+    /// flight is not "cached" the way a package list is, and Refresh has
+    /// never reached it; `searchNow()` on the toolbar's own field is the
+    /// door to asking brew again.
     private func refresh(_ segment: HomebrewViewModel.Segment) async {
         switch segment {
         case .installed: await hb.refreshInstalled()
         case .updates: await hb.refreshOutdated()
-        // Nothing cached to reload: the hits belong to a query, and reloading
-        // the installed list behind a search is a button that did nothing.
-        case .search: break
         // Both halves of this segment, and `brew config` first on purpose: it
         // is one fast local run where `brew doctor` is the slowest query in the
         // module, so asking it first puts the Configuration heading on screen
@@ -1390,51 +1450,111 @@ struct HomebrewSettingsPage: View {
     /// also what `hb.selection` holds — no `String(describing:)` conversion
     /// needed at the boundary.
     ///
-    /// **Three sentences for three states, and the third one is new.** This
-    /// took one `empty:` that went nil while a query was out, which is two
-    /// states in one optional and no room at all for the third: a `brew` that
-    /// refused left the flag behind it down for ever, so the pane drew the
-    /// spinner and «Reading the package list…» over a question nothing was
-    /// going to answer, with no timeout anywhere in the UI. `ListScreen` is
-    /// where the three are told apart.
-    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], reading: ListReading,
-                                                         nothing: String, unanswerable: String,
-                                                         waiting: String,
-                                                         columns: ListColumns, singleColumn: Bool,
-                                                         @ViewBuilder row: @escaping (T) -> Row) -> some View
+    /// **Four sentences for four states, and the fourth is new.** This took
+    /// one `empty:` that went nil while a query was out, which is two states
+    /// in one optional and no room at all for a third: a `brew` that refused
+    /// left the flag behind it down for ever, so the pane drew the spinner and
+    /// «Reading the package list…» over a question nothing was going to
+    /// answer, with no timeout anywhere in the UI. `.noMatches` is the fourth,
+    /// added with the field that filters every tab: rows exist and a query
+    /// hides all of them, which is neither an empty answer nor a refusal.
+    ///
+    /// `shown` is `items` with the query applied — the two are equal when
+    /// there is no query, which is what keeps every existing reading of the
+    /// three original states unchanged. `section`/`hits` are the "Available
+    /// to install" block that may sit under the rows; nil/`[]` draws nothing.
+    private func listOrEmpty<T: Identifiable, Row: View>(
+        _ items: [T], shown: [T], reading: ListReading,
+        nothing: String, unanswerable: String, waiting: String,
+        columns: ListColumns, singleColumn: Bool,
+        section: AvailableSection?, hits: [SearchHit],
+        @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
-        Group {
-            switch ListScreen.of(isEmpty: items.isEmpty, reading: reading) {
-            case .nothing:
-                HelmEmptyState(message: nothing)
-            case .unanswerable:
+        // **The section forces the list shape, even over a list that is
+        // itself completely empty.** `ListScreen.of` alone would still read a
+        // genuinely empty `installed` as `.nothing` whatever the query says —
+        // this Mac's own zero-package fixture drew the same «No packages
+        // installed.» sentence whether a search was answering, waiting or
+        // refusing, before the section moved inside the `List` this branch
+        // draws now. A section is only ever non-nil once a needle has
+        // actually been asked about (`AvailableSection.of`), so this cannot
+        // force the list shape over an untyped field.
+        let screen = ListScreen.of(isEmpty: items.isEmpty, shownIsEmpty: shown.isEmpty,
+                                   reading: reading)
+        let listShape = ListScreen.forcesListShape(section: section, screen: screen)
+        // **One call to `packageList`, not two.** It used to sit once inside
+        // this `if` and once in its `else`, so SwiftUI read them as two
+        // different views at two different positions in the tree — moving
+        // between "no section" and "a section just appeared" tore the table
+        // down and rebuilt it, on every keystroke that flipped which branch
+        // was taken, which is exactly the identity CLAUDE.md says SwiftUI
+        // never interpolates across. `screen` now travels into the one call
+        // site instead, and `packageList` reads the sentence for its own
+        // reading out of it — the note this list draws for a waiting or
+        // refused query no longer disappears the moment the section takes
+        // over the shape.
+        return Group {
+            if listShape {
+                packageList(shown, screen: screen, notes: (nothing, unanswerable, waiting),
+                           columns: columns, singleColumn: singleColumn,
+                           section: section, hits: hits, row: row)
+            } else if screen == .waiting {
+                // `HelmBusyState()` is the bare spinner its own doc comment
+                // names as one of the three shapes it exists to end; the
+                // caller still has to say what is being waited on.
+                HelmBusyState(waiting)
+            } else if screen == .unanswerable {
                 // The same still drawing as `.nothing` and a different
                 // sentence: nothing is on its way, so nothing moves, and what
                 // separates the two is the only thing that can — the words.
                 HelmEmptyState(message: unanswerable)
-            case .waiting:
-                // `HelmBusyState()` is the bare spinner its own doc comment
-                // names as one of the three shapes it exists to end; the caller
-                // still has to say what is being waited on.
-                HelmBusyState(waiting)
-            case .rows:
-                // A `List` with no selection has no focusable rows at all —
-                // arrow keys did nothing. Selecting is also how the inspector
-                // is reached, so this is the row's only door into the app now.
-                // No `.onTapGesture`, no `.listRowBackground`: macOS draws the
-                // system selection itself.
-                List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
-                    Section(header: columnHeader(columns, singleColumn: singleColumn)) {
-                        ForEach(items) { item in row(item) }
-                    }
-                }
-                // No inset of its own, for the reason `healthList`'s own list
-                // gives: `.listStyle(.inset)` is where every other list in the
-                // app stops, and 12 pt more of it put this page's rows further
-                // in than theirs.
-                .listStyle(.inset)
+            } else {
+                HelmEmptyState(message: nothing)
             }
         }
+    }
+
+    /// The one `List` every package tab draws — its own rows or the sentence
+    /// its own reading earns, and the "Available to install" section under
+    /// them when there is one. The only call site `listOrEmpty` has, for the
+    /// reason stated there: two would be two views to SwiftUI.
+    ///
+    /// **`screen` decides the first section's row, not `shown.isEmpty`
+    /// alone.** A bare emptiness check read every non-row state — still
+    /// waiting on `brew`, a refused query, an honestly empty answer — as the
+    /// same «Nothing in this list matches.», which is the module's own
+    /// "refused list is not an empty one" rule broken a second time, this
+    /// time by the section rather than by a missing reading.
+    private func packageList<T: Identifiable, Row: View>(
+        _ shown: [T], screen: ListScreen, notes: (nothing: String, unanswerable: String, waiting: String),
+        columns: ListColumns, singleColumn: Bool,
+        section: AvailableSection?, hits: [SearchHit],
+        @ViewBuilder row: @escaping (T) -> Row) -> some View
+        where T.ID == String {
+        // A `List` with no selection has no focusable rows at all — arrow
+        // keys did nothing. Selecting is also how the inspector is reached,
+        // so this is the row's only door into the app now. No
+        // `.onTapGesture`, no `.listRowBackground`: macOS draws the system
+        // selection itself.
+        List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
+            Section(header: columnHeader(columns, singleColumn: singleColumn)) {
+                if let note = Self.ownListNote(screen, notes: notes) {
+                    noteRow(note.text, busy: note.busy)
+                } else {
+                    ForEach(shown) { item in row(item) }
+                }
+            }
+            if let section {
+                Section(header: sectionHeader(HbStr.availableToInstall)) {
+                    availableRows(section, hits: hits, singleColumn: singleColumn,
+                                 marksUpdates: columns.marksUpdates)
+                }
+            }
+        }
+        // No inset of its own, for the reason `healthList`'s own list gives:
+        // `.listStyle(.inset)` is where every other list in the app stops,
+        // and 12 pt more of it put this page's rows further in than theirs.
+        .listStyle(.inset)
     }
 
 }

@@ -367,6 +367,8 @@
 "No modules enabled" = "有効なモジュールがありません";
 "No packages installed." = "インストール済みパッケージはありません。";
 "No results." = "結果がありません。";
+"Available to install" = "インストール可能";
+"Nothing in this list matches." = "このリストに一致する項目はありません。";
 "Homebrew did not answer." = "Homebrew が応答しませんでした。";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew が応答しなかったため、インストール済みパッケージは今のところ分かりません。";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew が応答しなかったため、更新は今のところ分かりません。";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "ログイン項目をオフにしても、他のチェックが消えなくなりました。";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "“フタを閉じてもスリープしない”をオフにすると、そのために追加したパスワード不要の許可も削除します。従来は残り続けていました。";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "2 つのモジュールの名前を短くしました。“ディスク容量”は“ディスク”に、配列切り替えは“キーボード”に。";
-"Type a name and press Return." = "名前を入力して Return を押してください。";
 "Type ghbdtn and press space" = "ghbdtn と入力してスペースを押してください";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "配列を切り替え忘れて ghbdtn と入力すると、привет に直り、入力ソースも切り替わります。";
 "Uninstall" = "アンインストール";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew は、インストールが失敗したときにも、ダウンロードしたインストーラを削除します。成功したときだけではありません。";
 "Other installed packages still need it:" = "これを必要としているパッケージ：";
 "Select a package" = "パッケージを選んでください";
-"already installed" = "インストール済み";
 "Update available" = "アップデートあり";
 "Installed version" = "インストール済みのバージョン";
 "Installed on" = "インストール日";

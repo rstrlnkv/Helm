@@ -306,12 +306,16 @@ final class SettingsSplitViewController: NSSplitViewController {
         // `safeAreaRegions = []`, because under a transparent title bar the
         // inset was a dead strip above a header each page drew for itself.
         // The inset is the toolbar now, `SettingsToolbar`'s, owned by
-        // `SettingsWindow` and never SwiftUI's — no
-        // `sceneBridgingOptions` is set on this controller, on purpose: a
-        // page's own `.toolbar` declarations, where one still carries any,
-        // are inert without it, which is what "temporarily show only the
-        // name" (this migration's own words for a page not yet converted)
-        // means in practice.
+        // `SettingsWindow` and never SwiftUI's — no `sceneBridgingOptions` is
+        // set on this controller, on purpose: every page now says what it
+        // wants in its toolbar through `helmWindowToolbar`, which reaches
+        // `SettingsToolbar` through `HelmWindowToolbarChannel` and needs no
+        // bridge from this controller at all. A page that calls neither
+        // `helmWindowToolbar` nor anything else toolbar-shaped simply shows
+        // the window's name and nothing else, which is what "temporarily
+        // show only the name" (this migration's own words, while some pages
+        // were still on the retired `.toolbar`/`sceneBridgingOptions` route)
+        // means for a page with genuinely nothing to declare.
         detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420

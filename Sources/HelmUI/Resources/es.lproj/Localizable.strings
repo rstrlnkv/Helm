@@ -367,6 +367,8 @@
 "No modules enabled" = "No hay módulos activados";
 "No packages installed." = "No hay paquetes instalados.";
 "No results." = "Sin resultados.";
+"Available to install" = "Disponible para instalar";
+"Nothing in this list matches." = "No hay coincidencias en esta lista.";
 "Homebrew did not answer." = "Homebrew no respondió.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew no respondió, así que ahora mismo no se sabe nada sobre los paquetes instalados.";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew no respondió, así que ahora mismo no se sabe nada sobre las actualizaciones.";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "Desactivar un ítem de inicio ya no borra el resto de tu selección.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Desactivar “seguir activo con la tapa cerrada” ahora también elimina el permiso sin contraseña que hubo que instalar. Antes se quedaba para siempre.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "Dos módulos tienen nombres más cortos: Espacio en disco ahora es Disco, y el cambiador de distribución es Teclado.";
-"Type a name and press Return." = "Escribe un nombre y pulsa Retorno.";
 "Type ghbdtn and press space" = "Escribe ghbdtn y pulsa espacio";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Escribe ghbdtn en la distribución equivocada y se convierte en привет; la fuente de entrada cambia con él.";
 "Uninstall" = "Desinstalar";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew elimina el instalador descargado cuando una instalación falla, no solo cuando sale bien.";
 "Other installed packages still need it:" = "Otros paquetes instalados aún lo necesitan:";
 "Select a package" = "Seleccione un paquete";
-"already installed" = "ya instalado";
 "Update available" = "Actualización disponible";
 "Installed version" = "Versión instalada";
 "Installed on" = "Instalado el";

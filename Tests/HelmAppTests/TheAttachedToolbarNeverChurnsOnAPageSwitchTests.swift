@@ -222,6 +222,13 @@ final class TheAttachedToolbarNeverChurnsOnAPageSwitchTests: XCTestCase {
     /// `weakCaptured` surviving past that point can only mean something
     /// *else* still holds it, and after a withdraw the only remaining
     /// candidate is `SettingsToolbar` itself.
+    ///
+    /// **Extended for the `.menu` kind added on top of this class**: a menu
+    /// item's own `perform` is exactly as capable of holding a page's view
+    /// model as a plain action's, and `strippedOfClosures`'s `.menu` branch is
+    /// a second place that could leave the live one in — `weakMenuCaptured`
+    /// asks the same question of it that `weakCaptured` asks of the plain
+    /// action above.
     func testAFrozenBarDropsTheClosuresItsContentCaptured() {
         final class Captured {}
         let fixture = makeToolbar()
@@ -229,14 +236,23 @@ final class TheAttachedToolbarNeverChurnsOnAPageSwitchTests: XCTestCase {
 
         var captured: Captured? = Captured()
         weak var weakCaptured = captured
+        var menuCaptured: Captured? = Captured()
+        weak var weakMenuCaptured = menuCaptured
 
         model.selection = .module("test.pageE")
         let generation = channel.nextGeneration()
         channel.declare(HelmPageToolbarContent(actions: [
-            HelmToolbarAction(id: "x", title: "X", symbol: "x.circle") { [captured] in _ = captured }
+            HelmToolbarAction(id: "x", title: "X", symbol: "x.circle") { [captured] in _ = captured },
+            HelmToolbarAction(id: "y", title: "Y", symbol: "line.3.horizontal.decrease", menu: [
+                HelmToolbarMenuItem(id: "y1", title: "Y1", isOn: false) { [menuCaptured] in _ = menuCaptured }
+            ])
         ]), token: "test.pageE", generation: generation)
         captured = nil
+        menuCaptured = nil
         XCTAssertNotNil(weakCaptured, "precondition: the declared closure was not the object's own copy")
+        XCTAssertNotNil(weakMenuCaptured, """
+            precondition: the declared menu item's closure was not the object's own copy
+            """)
 
         channel.withdraw(token: "test.pageE", generation: generation)
 
@@ -245,6 +261,11 @@ final class TheAttachedToolbarNeverChurnsOnAPageSwitchTests: XCTestCase {
             frozen bar kept the live closure instead of a closure-free copy of its content, \
             which is how a switched-off module's view model outlives its own cache for the \
             rest of the session
+            """)
+        XCTAssertNil(weakMenuCaptured, """
+            the object a live menu item's closure captured is still alive after withdraw — \
+            strippedOfClosures kept the menu item's own live closure instead of a closure-free \
+            copy, the same leak the plain action above is guarded against
             """)
         _ = model
     }

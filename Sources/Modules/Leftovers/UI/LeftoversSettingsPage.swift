@@ -113,21 +113,27 @@ struct LeftoversSettingsPage: View {
             }
             Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
         }
-        // Inert until this page moves onto `helmWindowToolbar`
-        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
-        // dead weight without `sceneBridgingOptions`, which this window does
-        // not set) — kept as the shape a conversion pass will read from,
-        // rather than deleted along with the mechanism.
-        .toolbar { pageToolbar }
+        // The page's controls, in the window's own `NSToolbar`
+        // (`SettingsToolbar`), through the contract every module page shares
+        // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
+        // below for what each zone carries and why.
+        .helmWindowToolbar(toolbarContent, token: LeftoversDescriptor.id.rawValue)
         .animation(HelmMotion.interface, value: lvm.items.count)
         .animation(HelmMotion.interface, value: lvm.showAll)
+        // Narrowing the list drops the ticks it hides, the way the kind filter
+        // and a fresh scan already do. Without this the switcher was the one
+        // way a selection could outlive its row. Moved here from the switcher
+        // view itself once that view moved into the window's toolbar, which
+        // owns no state of the page's to hang a change handler on
+        // (`HomebrewSettingsPage` does the same for its own segment).
+        .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
     }
 
     /// **What is left of the page's bar once its controls are in the
     /// window's toolbar: what the scan found.** The filter, the kind menu and
-    /// Scan moved to `pageToolbar`; the captions stay in the page because they
-    /// describe the list under them rather than act on it, and a count is not
-    /// a control to put glass behind.
+    /// Scan moved to `toolbarContent`; the captions stay in the page because
+    /// they describe the list under them rather than act on it, and a count
+    /// is not a control to put glass behind.
     private var toolbar: some View {
         HStack(spacing: HelmSpace.s5) {
             captions
@@ -136,24 +142,73 @@ struct LeftoversSettingsPage: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
-    /// **The page's controls, in the window's toolbar**, where macOS 26 and
-    /// later draw them as Liquid Glass.
+    /// **The page's controls, in the window's toolbar.**
     ///
-    /// The filter is what a person comes back to, so it is the switcher at the
-    /// centre; the kind menu and Scan are actions at the trailing edge. The
-    /// rules for when each is offered did not change: the filters only over a
-    /// list, since there is nothing to filter before a scan, and Scan only when
-    /// the invitation on the page is not already offering it — one Scan, not
-    /// two, for the reason `invitationCarriesTheScan` gives.
-    @ToolbarContentBuilder
-    private var pageToolbar: some ToolbarContent {
-        if !lvm.items.isEmpty {
-            ToolbarItem(placement: .principal) { statusFilter }
-        }
-        ToolbarItemGroup(placement: .primaryAction) {
-            if !lvm.items.isEmpty { kindFilter }
-            if !invitationCarriesTheScan { scanButton }
-        }
+    /// Tabs are declared only while there is a list — an empty tab array
+    /// leaves the switcher out of the bar entirely, the same guard the old
+    /// `pageToolbar` used (`!lvm.items.isEmpty`), so the toolbar's shape
+    /// changes, and is swapped as a whole, on the first scan and again if a
+    /// removal empties the list. Owner's alternative, not taken here: always
+    /// declare the two tabs and gate the switcher with `tabsEnabled` instead
+    /// — no swap, but a filter shows before the first scan has anything to
+    /// filter.
+    ///
+    /// The kind menu is a `.menu` action, checkmarked one item per
+    /// `StaleKind`, in the capsule beside Scan — both visible only where the
+    /// old toolbar showed them: the menu over a list, Scan wherever the
+    /// page's own invitation is not already offering one
+    /// (`invitationCarriesTheScan`).
+    ///
+    /// **The first tab's id is `"onlyLeftovers"`, not the bare word
+    /// `"leftovers"`** — this module's own `ModuleTint` case is `.leftovers`
+    /// (`LeftoversDescriptor.swift`), real code rather than a literal, and
+    /// the bare word collided with it: `TheTreeIsReadOnceAProcessTests`
+    /// blanks a literal's insides and checks the result for the literal it
+    /// just blanked, and a second, unrelated spelling of the same word
+    /// elsewhere in this directory's actual code made that check read as if
+    /// the blanking itself had failed.
+    private var toolbarContent: HelmPageToolbarContent {
+        let hasList = !lvm.items.isEmpty
+        return HelmPageToolbarContent(
+            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: LfStr.filterLeftovers,
+                                            symbol: "doc.badge.ellipsis"),
+                            HelmToolbarTab(id: "all", title: LfStr.filterAll,
+                                          symbol: "list.bullet")] : [],
+            selectedTab: hasList ? Binding(get: { lvm.showAll ? "all" : "onlyLeftovers" },
+                                           set: { lvm.showAll = ($0 == "all") }) : nil,
+            actions: [
+                HelmToolbarAction(id: "kinds", title: LfStr.filter,
+                                  symbol: "line.3.horizontal.decrease", isVisible: hasList,
+                                  menu: StaleKind.allCases.map { kind in
+                    HelmToolbarMenuItem(id: kind.rawValue, title: LfStr.kindName(kind),
+                                        isOn: !lvm.hiddenKinds.contains(kind)) {
+                        if lvm.hiddenKinds.contains(kind) { lvm.hiddenKinds.remove(kind) }
+                        else { lvm.hiddenKinds.insert(kind) }
+                        lvm.dropHiddenSelections()
+                    }
+                }),
+                HelmToolbarAction(id: "scan", title: scanTitle, symbol: "arrow.clockwise",
+                                  isEnabled: !scanRefused, isVisible: !invitationCarriesTheScan,
+                                  isBusy: lvm.scanning) {
+                    Task { await lvm.scan() }
+                },
+            ])
+    }
+
+    /// **Whether a scan may run right now** — read by both the toolbar's own
+    /// action above and the invitation's `scanButton` below, so the two
+    /// never drift apart on what refuses a press. A rescan mid-removal would
+    /// land a fresh `items` on top of the list the removal is about to
+    /// report on; the model refuses it as well, and both, or neither, is
+    /// reliable.
+    private var scanRefused: Bool { lvm.scanning || lvm.busy }
+
+    /// **What the verb says right now** — read by both `toolbarContent` and
+    /// `scanButton`, for the same reason as `scanRefused` above: one
+    /// derivation, so the toolbar and the invitation cannot say two
+    /// different things about the same scan.
+    private var scanTitle: String {
+        lvm.scanning ? LfStr.scanning : (lvm.scanned ? LfStr.rescan : LfStr.scan)
     }
 
     /// What the scan found, and what it could not judge — one caption or two,
@@ -227,54 +282,15 @@ struct LeftoversSettingsPage: View {
         return LeftoversEmpty.invites(nothing)
     }
 
-    /// Leftovers, or everything the scan found.
-    ///
-    /// **`.fixedSize()`, not a written width.** A `.frame(width: 180)` held a
-    /// control that asks for 161 pt in English, 152 in Russian and 117 in German —
-    /// up to 63 pt of slack that AppKit spends by *centring* the control in it, so
-    /// the gap to the rail wandered 21.5…43.5 pt with the language while the number
-    /// looked deliberate. It was the last hand-written picker width in the tree;
-    /// `AnImposedPickerWidthFitsItsLabelsTests` is what keeps a seventh from
-    /// arriving unmeasured.
-    private var statusFilter: some View {
-        HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $lvm.showAll, segments: [
-            HelmSwitcherSegment(false, LfStr.filterLeftovers, symbol: "doc.badge.ellipsis"),
-            HelmSwitcherSegment(true, LfStr.filterAll, symbol: "list.bullet"),
-        ])
-        // Narrowing the list drops the ticks it hides, the way the kind
-        // filter and a fresh scan already do. Without this the switcher was
-        // the one way a selection could outlive its row.
-        .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
-        .fixedSize()
-    }
-
-    /// Which kinds are in the list at all.
-    private var kindFilter: some View {
-        Menu {
-            ForEach(StaleKind.allCases, id: \.self) { kind in
-                Toggle(LfStr.kindName(kind), isOn: Binding(
-                    get: { !lvm.hiddenKinds.contains(kind) },
-                    set: { on in
-                        if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
-                        lvm.dropHiddenSelections()
-                    }))
-            }
-        } label: {
-            Label(LfStr.filter, systemImage: "line.3.horizontal.decrease")
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-    }
-
-    /// The one Scan button, drawn in one place at a time: at the end of the
-    /// toolbar, or as the verb on the invitation, where the call site adds the
-    /// prominence. It used to be drawn in both at once — the same word, the same
-    /// key, 312 pt apart on the first screen a person meets.
-    ///
-    /// One member rather than two buttons, because everything about it moves —
-    /// «Scan» becomes «Scan again» once something has been scanned, and both become
-    /// a spinner while it runs. Two spellings of that would drift, and the copy on
-    /// the invitation is the one nobody would look at again.
+    /// **The invitation's own verb, now that Scan has moved into the
+    /// window's toolbar** (`toolbarContent` above) — drawn only on the
+    /// empty-state screens `LeftoversEmpty.invites` names, where the
+    /// invitation is the call to action and the toolbar's own Scan is
+    /// hidden by `invitationCarriesTheScan`. It used to also stand for the
+    /// toolbar's own button, at the end of a bar this page drew itself,
+    /// before that bar moved into `SettingsToolbar`; the two are drawn in one
+    /// place each now, never both, so `scanRefused` and `scanTitle` above
+    /// are shared rather than restated here.
     private var scanButton: some View {
         Button {
             Task { await lvm.scan() }
@@ -282,17 +298,13 @@ struct LeftoversSettingsPage: View {
             if lvm.scanning {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    Text(LfStr.scanning)
+                    Text(scanTitle)
                 }
             } else {
-                Text(lvm.scanned ? LfStr.rescan : LfStr.scan)
+                Text(scanTitle)
             }
         }
-        // `busy` beside `scanning`, for the reason written at the switch on a row:
-        // this button rescans, so a press during a removal lands a fresh `items` on
-        // top of the list that removal is about to report on. The model refuses it
-        // as well — both, or neither is reliable.
-        .disabled(lvm.scanning || lvm.busy)
+        .disabled(scanRefused)
     }
 
     @ViewBuilder private var content: some View {

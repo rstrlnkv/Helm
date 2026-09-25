@@ -497,14 +497,14 @@ declaration is credited to the mount that made it by a generation number
 assigned when SwiftUI creates that mount's coordinator — the guard that keeps
 an outgoing page's late redeclare, or a language-triggered remount's old half,
 from overwriting the page now actually on screen. A page that never calls
-`helmWindowToolbar` — every module page not yet converted — leaves the bar
-showing the name and nothing else, which is not an error state: it is what
-"not converted yet" looks like on screen. Only `HomebrewSettingsPage` has moved
-onto this contract; `HostsSettingsPage`, `LeftoversSettingsPage` and
-`UninstallerSettingsPage` still declare a SwiftUI `.toolbar`, which is inert on
-this window (`SettingsSplitViewController` sets no `sceneBridgingOptions` on
-its detail controller, on purpose), and show the name only until each is
-converted in its own pass.
+`helmWindowToolbar` leaves the bar showing the name and nothing else, which is
+not an error state: it is what a page with nothing to say there looks like on
+screen. All four module pages that carry any toolbar content —
+`HomebrewSettingsPage`, `HostsSettingsPage`, `LeftoversSettingsPage` and
+`UninstallerSettingsPage` — publish through this contract; none of them
+declares a SwiftUI `.toolbar` any more, and `SettingsSplitViewController` sets
+no `sceneBridgingOptions` on its detail controller at all, on purpose, since
+nothing in this window still needs that bridge to reach anywhere.
 
 The bar's zones, left to right: the sidebar's own tracking separator; the
 name — the module's plate and its name, with its own status word or badge
@@ -532,10 +532,33 @@ belongs to only some of a page's tabs is left out of the capsule's visible set
 declares, so the capsule's own reserve — and the bar's identifier list, which
 carries the one `helm.actions` identifier regardless — never has to be
 rebuilt for it. `NSToolbarItem.menuFormRepresentation` is the floor for the
-rare case where even the capsule overflows: one action visible gives a plain
-menu item, more than one gives a submenu naming each. Homebrew's «Обновить
-всё» is the one example shipped: out of the capsule outside Обновления, dimmed
-there until something is outdated and nothing is running.
+rare case where even the capsule overflows: a plain `.button` or `.toggle`
+gives a menu item, and a `.menu` action gives a submenu of its own
+checkmarked items whether it is the only visible action or one of several —
+there is no case where the overflow menu flattens a `.menu` action's own
+list into one item. Each of the four examples below both leaves the capsule
+on the tabs it does not belong to and dims on its own tab when it does not
+apply — not every shipped action does both: Leftovers' kind filter only
+leaves, hidden before the first scan and visible on every tab once there is
+a list, with no `isEnabled` of its own; Homebrew's Refresh only dims, from
+`hb.running`, with no `isVisible` of its own to ever take it out of the
+capsule. Homebrew's «Обновить всё» is out of the capsule outside Обновления and
+dimmed there until something is outdated and nothing is running; Hosts' New
+key is out of the capsule on the SSH tab and dimmed on Keys when `~/.ssh`
+cannot be read; Uninstaller's Refresh is out of the capsule on Orphans and
+dimmed on Apps while a request is already out; Leftovers' Scan is out of the
+capsule wherever the page's own invitation already offers one and dimmed
+while a removal is running.
+
+**An action is not only a button.** `HelmToolbarAction.Kind` also carries
+`.toggle(isOn:)` — Hosts' Table/Plain-text pair, drawn as a pair of glyphs
+whose accent-tinted state is `isOn` — and `.menu([HelmToolbarMenuItem])` —
+Leftovers' kind filter, a checkmarked list where each `HelmToolbarMenuItem`
+carries its own `perform` rather than the action's single one, since a menu
+has no one press to speak of. `HelmToolbarAction.isBusy` spins the action's
+glyph in place (`.helmSteadySpin`) while a long-running command is out,
+independent of `isEnabled` — Uninstaller's Refresh sets it from `loading`
+directly.
 
 **The tabs have one form: `HelmToolbarSwitcher`**
 (`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`) — the system's
@@ -544,7 +567,10 @@ the longest word, and labelled by `ToolbarSwitcherStyle` — words, glyphs or
 both — which a right-click on any switcher changes for all of them. A
 dev-only toggle used to let the owner compare this against AppKit's own
 segmented-toolbar-item group on a real window; retired 2026-09-23 once that
-comparison was made. **The same control also folds** — a `compact` flag draws one
+comparison was made. `HelmPageToolbarContent.tabsEnabled` dims the whole
+switcher at once — Uninstaller's during its review step is the one caller —
+rather than any single tab, since nothing has asked for a tab disabled on its
+own. **The same control also folds** — a `compact` flag draws one
 segment, the current tab, with a menu naming every tab, so the tabs vacate the
 room a search field needs before AppKit would otherwise push the whole strip
 into its own «»» overflow menu; `Sources/HelmApp/SettingsToolbar.swift`'s own
@@ -566,14 +592,6 @@ status as the subtitle, set on the `NSWindow` from `HelmPageTitleKey`. The
 environment value `helmPageBar` is what the window sets; where it is nil — a
 sheet, a page mounted on its own — the header is the strip below, drawn in the
 page rather than in a toolbar that does not exist for it.
-
-`ToolbarSearchName` (`Sources/HelmApp/ToolbarSearchName.swift`) named and sized
-the *bridged* field the old mechanism produced; with the bridge gone it has no
-caller left in this window, and stays only for its own tests
-(`ASearchFieldSaysWhatItIsTests` and its neighbours in `HelmAppTests`, which
-build a bridged controller of their own to keep exercising it) and for
-`UninstallerSettingsPage`'s still-inert `.helmSearchable` call, until that page
-converts.
 
 That strip is the system's 52 pt and lies over the page
 rather than above it: `helmPageHeader`
@@ -880,6 +898,23 @@ the cooperative pool the way the fetch itself is, inside the activity phase
 `FilePopularityStore.phaseLabel` names. All it ever does is reorder search results
 (`SearchRanking`); a Mac that fetches nothing searches exactly as it did
 before any of this existed.
+
+The window toolbar's own search field sits on all three tabs — 2026-09-24, the
+owner's decision, replacing a fourth tab of its own — and `HomebrewViewModel`
+owns the query rather than the page: typing filters whichever list `segment`
+is showing (`PackageStanding.matching`, `HealthScreen.matchingIssues`,
+`HealthScreen.matchingConfigGroups`, through the one substring rule in
+`ListFilter`), and only once that filter finds nothing does `queryMoved` start
+a pause (`HomebrewViewModel.searchPause`) toward asking brew about a package
+this Mac does not have — the same pause runs again on a tab switch and after
+every list refresh, since the tab just entered has not necessarily loaded yet.
+At most one such search is out at a time (`HomebrewViewModel.ask(_:)`); Return
+asks at once, with no pause and no minimum length, unless that word is already
+answered or still out (`HomebrewViewModel.searchNow()`). What comes back is
+filtered again, by id and never by name
+(`PackageStanding.notInstalled`), and drawn as an "Available to install"
+section under whichever list is on screen (`AvailableSection`) rather than as
+a segment of its own.
 
 ### Hosts
 

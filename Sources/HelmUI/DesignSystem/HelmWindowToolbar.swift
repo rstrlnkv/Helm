@@ -41,12 +41,46 @@ public struct HelmToolbarTab {
     }
 }
 
+/// One item in a `.menu`-kind `HelmToolbarAction`'s own submenu — a check
+/// beside a title, with a press of its own rather than the action's single
+/// `perform`: Leftovers' kind filter is the first caller, one checkmark per
+/// `StaleKind`.
+public struct HelmToolbarMenuItem {
+    public let id: String
+    public let title: String
+    public let isOn: Bool
+    public let isEnabled: Bool
+    public let perform: () -> Void
+
+    public init(id: String, title: String, isOn: Bool, isEnabled: Bool = true,
+                perform: @escaping () -> Void) {
+        self.id = id
+        self.title = title
+        self.isOn = isOn
+        self.isEnabled = isEnabled
+        self.perform = perform
+    }
+}
+
 /// One button in the toolbar's single Liquid Glass action capsule
 /// (`HelmToolbarActionsCapsule`, `HelmToolbarActions.swift`, this same
 /// directory) — every declared action shares that one capsule and one
 /// `NSToolbarItem` now, `helm.actions`; there is no longer an item per action
-/// for this struct's two flags to be mapped onto individually.
+/// for `isEnabled` and `isVisible` to be mapped onto individually.
 public struct HelmToolbarAction {
+    /// **What the action draws as and what pressing it does — one shape, not
+    /// three optionals a caller could set inconsistently.** A plain button
+    /// runs `perform` on a press; a toggle also carries its own current
+    /// state, read back into the glyph's tint; a menu has no single
+    /// `perform` at all, only the items inside it, each with its own — so a
+    /// menu that is also a toggle, or a toggle with a submenu, cannot be
+    /// written down.
+    public enum Kind {
+        case button(() -> Void)
+        case toggle(isOn: Bool, () -> Void)
+        case menu([HelmToolbarMenuItem])
+    }
+
     public let id: String
     /// Said in the tooltip and in the accessibility label — a glyph-only
     /// control has no other name (`Tests/HelmUITests/NamedControlsTests.swift`'s
@@ -69,23 +103,60 @@ public struct HelmToolbarAction {
     /// disappears (`HelmToolbarActionsCapsule`'s own header) rather than
     /// sliding the way an `NSToolbarItem` collapsing to `isHidden` used to.
     public let isVisible: Bool
-    public let perform: () -> Void
+    /// Spinning in the capsule while `true` — `.helmSteadySpin`, which
+    /// already honours Reduce Motion (`HelmMotion.swift`). Only the plain
+    /// `.button` initializer below takes this as a parameter: a toggle's own
+    /// state is what its glyph already reports, and a menu has no one glyph
+    /// whose state a spin would report on either, so both initializers below
+    /// leave it `false` and there is no way to write a spinning toggle or
+    /// menu down at all.
+    public let isBusy: Bool
+    public let kind: Kind
 
+    /// A plain button — the shape every action but Hosts' view toggle and
+    /// Leftovers' kind filter takes.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
-                isVisible: Bool = true, perform: @escaping () -> Void) {
+                isVisible: Bool = true, isBusy: Bool = false, perform: @escaping () -> Void) {
         self.id = id
         self.title = title
         self.symbol = symbol
         self.isEnabled = isEnabled
         self.isVisible = isVisible
-        self.perform = perform
+        self.isBusy = isBusy
+        self.kind = .button(perform)
+    }
+
+    /// A toggle: `isOn` decides the glyph's tint, and the same `perform`
+    /// convention as a plain button — the caller flips its own state, which
+    /// the next declare reads back into `isOn`.
+    public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
+                isVisible: Bool = true, isOn: Bool, perform: @escaping () -> Void) {
+        self.id = id
+        self.title = title
+        self.symbol = symbol
+        self.isEnabled = isEnabled
+        self.isVisible = isVisible
+        self.isBusy = false
+        self.kind = .toggle(isOn: isOn, perform)
+    }
+
+    /// A menu of checkmarked items — no `perform` of the action's own; each
+    /// item carries its own.
+    public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
+                isVisible: Bool = true, menu: [HelmToolbarMenuItem]) {
+        self.id = id
+        self.title = title
+        self.symbol = symbol
+        self.isEnabled = isEnabled
+        self.isVisible = isVisible
+        self.isBusy = false
+        self.kind = .menu(menu)
     }
 }
 
-/// The page's search, carried the way `helmSearchable` carried it before the
-/// bridge: a binding kept live on every keystroke, and a submit action that
-/// fires on Return and on Return only — `sendsWholeSearchString` is what
-/// makes that true on the AppKit side, so nothing here has to filter
+/// The page's search: a binding kept live on every keystroke, and a submit
+/// action that fires on Return and on Return only — `sendsWholeSearchString`
+/// is what makes that true on the AppKit side, so nothing here has to filter
 /// keystrokes itself.
 public struct HelmToolbarSearch {
     public let prompt: String
@@ -111,13 +182,18 @@ public struct HelmPageToolbarContent {
     /// rather than folded into one, for the reason a lone `Binding` never
     /// says whether there is anything to select from.
     public var selectedTab: Binding<String>?
+    /// **Dims the whole switcher** — Uninstaller's during its review step, so
+    /// far the one caller — rather than any one tab: per-tab disabling was
+    /// never asked for, so there is nothing here to disable a tab by.
+    public var tabsEnabled: Bool
     public var actions: [HelmToolbarAction]
     public var search: HelmToolbarSearch?
 
-    public init(tabs: [HelmToolbarTab] = [], selectedTab: Binding<String>? = nil,
+    public init(tabs: [HelmToolbarTab] = [], selectedTab: Binding<String>? = nil, tabsEnabled: Bool = true,
                 actions: [HelmToolbarAction] = [], search: HelmToolbarSearch? = nil) {
         self.tabs = tabs
         self.selectedTab = selectedTab
+        self.tabsEnabled = tabsEnabled
         self.actions = actions
         self.search = search
     }
@@ -209,9 +285,8 @@ public final class HelmWindowToolbarChannel {
 
 public extension EnvironmentValues {
     /// nil where nothing carries one — a sheet, a page mounted on its own in a
-    /// test — and `helmWindowToolbar` below then does nothing at all, the same
-    /// way `helmSearchable` already stands down where its own bridge is
-    /// absent. The settings window is the one place that sets it.
+    /// test — and `helmWindowToolbar` below then does nothing at all. The
+    /// settings window is the one place that sets it.
     @Entry var helmWindowToolbarChannel: HelmWindowToolbarChannel? = nil
 }
 

@@ -367,6 +367,8 @@
 "No modules enabled" = "No modules enabled";
 "No packages installed." = "No packages installed.";
 "No results." = "No results.";
+"Available to install" = "Available to install";
+"Nothing in this list matches." = "Nothing in this list matches.";
 "Homebrew did not answer." = "Homebrew did not answer.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew did not answer, so nothing is known about the installed packages right now.";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew did not answer, so nothing is known about updates right now.";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "Turning a login item off no longer clears everything else you had ticked.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard.";
-"Type a name and press Return." = "Type a name and press Return.";
 "Type ghbdtn and press space" = "Type ghbdtn and press space";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.";
 "Uninstall" = "Uninstall";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds.";
 "Other installed packages still need it:" = "Other installed packages still need it:";
 "Select a package" = "Select a package";
-"already installed" = "already installed";
 "Update available" = "Update available";
 "Installed version" = "Installed version";
 "Installed on" = "Installed on";

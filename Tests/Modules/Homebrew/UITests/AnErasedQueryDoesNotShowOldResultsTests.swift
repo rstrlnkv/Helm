@@ -1,52 +1,80 @@
 import XCTest
 import HelmTestSupport
 @testable import Module_Homebrew_UI
+@testable import Module_Homebrew_Engine
 
-/// Erasing the search field must bring back the "type a name" prompt, not the
-/// previous query's results. The page used to branch on
-/// `query.isEmpty && hb.searchHits.isEmpty`, so old hits pinned the results
-/// list on screen over an empty field — and the branch lived on a private
-/// `@State`, where no test could reach it. `SearchDisplay` is the seam: it owns
-/// the whole decision, and the body reads it.
+/// Erasing the search field must retire the section, not leave the previous
+/// query's answer sitting under whatever is on screen. `SearchDisplay` used
+/// to own this decision for a segment of its own; `AvailableSection` is the
+/// same seam for the section that now sits under every tab's own list —
+/// rewritten onto it 2026-09-24 rather than deleted, since the lessons below
+/// still hold.
 final class AnErasedQueryDoesNotShowOldResultsTests: XCTestCase {
+    private static let hit = SearchHit(name: "wget", isCask: false)
 
-    func testAnEmptyQueryShowsThePromptEvenWithOldHitsStillHeld() {
-        XCTAssertEqual(SearchDisplay.state(query: "", reading: .answered), .prompt,
-                       "the previous search's results outlived the query that asked for them")
+    /// An empty or whitespace-only query draws nothing, even with an old
+    /// answer still held — the previous search's hits must not outlive the
+    /// query that asked for them.
+    func testAnEmptyQueryDrawsNothingEvenWithOldHitsStillHeld() {
+        XCTAssertNil(AvailableSection.of(query: "", searchedQuery: "wget", reading: .answered,
+                                         available: [Self.hit]))
     }
 
     /// The engine refuses a whitespace-only query (`search` trims before it
-    /// runs), so the page showing results over one shows results no query owns.
+    /// runs), so a section over one would belong to no query.
     func testAWhitespaceQueryIsAnEmptyQuery() {
-        XCTAssertEqual(SearchDisplay.state(query: "   ", reading: .answered), .prompt)
+        XCTAssertNil(AvailableSection.of(query: "   ", searchedQuery: "wget", reading: .answered,
+                                         available: [Self.hit]))
     }
 
-    func testATypedQueryShowsTheResultsArea() {
-        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .waiting), .results)
-        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .answered), .results)
-        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .unanswerable), .results)
+    /// Nobody has asked brew about this word yet — the ordinary state between
+    /// mounting and the first ask, and while the pause is still counting down.
+    func testNothingAskedYetDrawsNothing() {
+        XCTAssertNil(AvailableSection.of(query: "wget", searchedQuery: nil, reading: .notAsked,
+                                         available: []))
     }
 
-    /// **A word typed with Return not yet pressed is still the prompt.**
-    ///
-    /// The results area now says which of three things is true — a search is
-    /// running, it answered nothing, it could not be put — and none of the
-    /// three is true of somebody who is still typing. Drawn from the query
-    /// alone, that person got the busy spinner and «Searching…» over a `brew`
-    /// nobody had started.
-    func testATypedQueryNobodyHasSubmittedIsStillThePrompt() {
-        XCTAssertEqual(SearchDisplay.state(query: "wget", reading: .notAsked), .prompt,
-                       "a word that has not been submitted drew an answer to a question nobody asked")
+    /// **A word typed over the one that was searched draws nothing, even
+    /// though the old answer is still held.** Refining `wget` down to `wg`
+    /// must not flash `wget`'s hits under the new, shorter word — the section
+    /// comes back only once `wg` itself has been asked.
+    func testAWordTypedOverTheSearchedOneDrawsNothing() {
+        XCTAssertNil(AvailableSection.of(query: "wg", searchedQuery: "wget", reading: .answered,
+                                         available: [Self.hit]))
     }
 
-    /// The seam only guards the page if the page reads it: the decision used to
-    /// be inline in `body`, which is where it was unpinnable. Structural, the
-    /// way `MemoryTrailCoverageTests` reads its labels.
+    func testAWaitingSearchIsSearching() {
+        XCTAssertEqual(AvailableSection.of(query: "wget", searchedQuery: "wget", reading: .waiting,
+                                           available: []),
+                       .searching)
+    }
+
+    func testAnAnsweredSearchWithNoHitsIsNothingFound() {
+        XCTAssertEqual(AvailableSection.of(query: "wget", searchedQuery: "wget", reading: .answered,
+                                           available: []),
+                       .nothingFound)
+    }
+
+    func testAnAnsweredSearchWithHitsIsFound() {
+        XCTAssertEqual(AvailableSection.of(query: "wget", searchedQuery: "wget", reading: .answered,
+                                           available: [Self.hit]),
+                       .found)
+    }
+
+    func testARefusedSearchIsUnanswerable() {
+        XCTAssertEqual(AvailableSection.of(query: "wget", searchedQuery: "wget", reading: .unanswerable,
+                                           available: []),
+                       .unanswerable)
+    }
+
+    /// The seam only guards the page if the page reads it: the decision used
+    /// to be inline in `body`, which is where it was unpinnable. Structural,
+    /// the way `MemoryTrailCoverageTests` reads its labels.
     func testThePageReadsTheSeam() throws {
         let page = RepoSource.root
             .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
         let source = try String(contentsOf: page, encoding: .utf8)
-        XCTAssertTrue(source.contains("SearchDisplay.state("),
-                      "HomebrewSettingsPage no longer decides the search area through SearchDisplay")
+        XCTAssertTrue(source.contains("hb.section"),
+                      "HomebrewSettingsPage no longer reads the view model's own AvailableSection")
     }
 }

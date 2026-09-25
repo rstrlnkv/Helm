@@ -367,6 +367,8 @@
 "No modules enabled" = "Нет включённых модулей";
 "No packages installed." = "Нет установленных пакетов.";
 "No results." = "Ничего не найдено.";
+"Available to install" = "Доступно для установки";
+"Nothing in this list matches." = "В этом списке совпадений нет.";
 "Homebrew did not answer." = "Homebrew не ответил.";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew не ответил, поэтому об установленных пакетах сейчас ничего не известно.";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew не ответил, поэтому об обновлениях сейчас ничего не известно.";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "Отключение одного объекта входа больше не снимает все остальные отметки.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Выключение «не спать с закрытой крышкой» теперь снимает и беспарольное разрешение, которое для этого пришлось установить. Раньше оно оставалось на Mac навсегда.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "Два модуля стали называться короче: «Место на диске» — теперь «Диск», а переключатель раскладки — «Клавиатура».";
-"Type a name and press Return." = "Введите имя и нажмите Return.";
 "Type ghbdtn and press space" = "Наберите ghbdtn и нажмите пробел";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Набрали ghbdtn, забыв переключить раскладку, — Helm заменит это на «привет» и переключит раскладку сам.";
 "Uninstall" = "Удалить";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "Homebrew удаляет скачанный установщик и когда установка не удалась, а не только когда она прошла успешно.";
 "Other installed packages still need it:" = "Он ещё нужен другим установленным пакетам:";
 "Select a package" = "Выберите пакет";
-"already installed" = "уже установлен";
 "Update available" = "Доступно обновление";
 "Installed version" = "Установленная версия";
 "Installed on" = "Установлен";

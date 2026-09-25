@@ -13,8 +13,9 @@ import HelmUI
 /// longer installed, with buttons that act on it.
 ///
 /// The other half is that the three segments do not share one selection: the
-/// package you were reading in Установленные is not the hit you were reading in
-/// Поиск, and coming back to a segment should find what you left there.
+/// package you were reading in Установленные is not the one you were reading
+/// in Обновления, and coming back to a segment should find what you left
+/// there.
 private final class QuietRunner: ProcessRunner, @unchecked Sendable {
     var installed = "wget 1.25.0\nopenssl@3 3.6.4\n"
 
@@ -86,8 +87,8 @@ final class ASelectionDoesNotOutliveItsPackageTests: XCTestCase {
         await vm.refreshInstalled()
         vm.select(BrewKey.of(name: "openssl@3", isCask: false))
 
-        vm.segment = .search
-        XCTAssertNil(vm.selected, "the search segment inherited the installed segment's selection")
+        vm.segment = .updates
+        XCTAssertNil(vm.selected, "the updates segment inherited the installed segment's selection")
         vm.select(BrewKey.of(name: "helm", isCask: false))
 
         vm.segment = .installed

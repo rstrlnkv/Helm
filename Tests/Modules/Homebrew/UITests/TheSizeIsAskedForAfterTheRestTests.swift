@@ -203,13 +203,15 @@ final class TheSizeIsAskedForAfterTheRestTests: XCTestCase {
 
     // MARK: - 2. Nothing is walked for a package that is not here
 
-    /// A search hit has no keg, so no walk is spent learning that.
+    /// A hit under the "Available to install" section has no keg, so no walk
+    /// is spent learning that — read on Установленные, since the section now
+    /// sits under every tab rather than a segment of its own.
     func testAPackageThatIsNotInstalledIsNeverWalked() async {
         let transport = fake()
         let model = await loaded(transport)
 
-        model.segment = .search
         await model.search("helm")
+        model.query = "helm"
         model.select(SearchHit(name: "helm", isCask: false).id)
         await model.infoAsk?.value
 

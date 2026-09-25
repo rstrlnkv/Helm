@@ -14,12 +14,14 @@ import HelmUI
 ///
 /// `TheNarrowPaneCanStillActOnAPackageTests` reads the installed segment in
 /// depth — the verb itself, the resize invariant, Back. What it does not do is
-/// walk every package in every segment: `.search` is the one place
-/// `InspectorState.of` *branches* on its own — a hit already on this Mac is
-/// offered `.uninstall` and a hit that is not is offered `.install`, decided
-/// inside the `.search` arm rather than handed down whole the way `.installed`
-/// hands down `.uninstall` — so it is the one segment where selecting one
-/// package can be right and the next one wrong, and nothing swept it.
+/// walk every package in every segment: a hit under the "Available to install"
+/// section is the one place `InspectorState.of` *branches* on its own — a hit
+/// already on this Mac never reaches `hits` at all (`PackageStanding.notInstalled`
+/// excludes it before the state function ever sees it) and a hit that is not
+/// installed is offered `.install`, decided inside the one `hit(_:)` helper
+/// every segment now shares rather than a segment of its own — so a package
+/// under the section is the one kind of row where selecting one can be right
+/// and the next one wrong, and nothing swept it.
 ///
 /// So this sweeps the cross product: every segment, every package in it, every
 /// width of the band. For each selection this reads whether the narrow screen
@@ -37,31 +39,32 @@ import HelmUI
 /// fails and says the file is about a state nobody can reach instead of passing
 /// over a page that no longer has the problem.
 ///
-/// **The search results are reached the way a person reaches them.**
-/// `HomebrewSettingsPage.query` is a `@State` no test can assign, and
-/// `SearchDisplay.state` draws the prompt until it is non-empty — so the mounted
+/// **The section is reached the way a person reaches it.**
+/// `HomebrewViewModel.query` is `@Published`, not a page-local `@State`, but it
+/// still has to arrive the way a person types it — so the mounted
 /// `NSSearchField` is typed into and its change notification posted, which is
-/// what SwiftUI's own coordinator behind `.searchable` listens for. A test
-/// that only filled `searchHits` would sit on the prompt and read zero rows,
-/// which is an absence that passes for the wrong reason; the row count is
-/// asserted before any action is counted for exactly that reason.
+/// what the bridge behind `.helmWindowToolbar` listens for. A test that only
+/// filled `searchHits` would sit on an unmatched `searchedQuery` and read no
+/// section at all (`AvailableSection.of`), which is an absence that passes for
+/// the wrong reason; the row count is asserted before any action is counted
+/// for exactly that reason.
 ///
-/// **And the typing must be a failure when it cannot happen.** The field left
-/// the page for the window's toolbar (`helmSearchable`), so the typing goes
-/// through `MountedRender.type`, which reads the control off the window. This
-/// used to be an `if let ... .first` over `mount.host`, which is precisely the
-/// shape that goes quiet: with the field gone from the page the binding would
-/// stay empty,
-/// `SearchDisplay` would keep drawing the prompt, and three readings would be
-/// compared on a page nobody had typed into — all of it green. So «a field was
-/// expected and there is none» is an `XCTFail` naming the cell.
+/// **And the typing must be a failure when it cannot happen.** The field is on
+/// the window's toolbar (`.helmWindowToolbar`), so the typing goes through
+/// `MountedRender.type`, which reads the control off the window. This used to
+/// be an `if let ... .first` over `mount.host`, which is precisely the shape
+/// that goes quiet: with the field gone from the toolbar the binding would
+/// stay empty, `AvailableSection.of` would keep answering nil, and three
+/// readings would be compared on a page nobody had typed into — all of it
+/// green. So «a field was expected and there is none» is an `XCTFail` naming
+/// the cell.
 ///
-/// Which cells expect one is stated rather than discovered: the search view is
-/// mounted only where there is no selection, because under the split a
-/// selection replaces the whole list area with the package screen. A cell with
-/// a query *and* a selection is therefore not a missing field — it is a field
-/// that is correctly not there, and `expectsSearchField` is the one place that
-/// says so.
+/// Which cells expect one is stated rather than discovered: a query is typed
+/// only where there is no selection, because under the split a selection
+/// replaces the whole list area with the package screen. A cell with a query
+/// *and* a selection is therefore not a missing field — it is a field that is
+/// correctly not there, and `expectsSearchField` is the one place that says
+/// so.
 ///
 /// **Moved here from `Tests/Modules/Homebrew/UITests`** — the search field
 /// `draw()` types into is now the real `NSSearchField` a live `SettingsToolbar`
@@ -88,8 +91,11 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
                                           isCask: false)
         static let git = OutdatedPackage(name: "git", installed: "2.54.0", latest: "2.55.0",
                                          isCask: false, pinned: true)
-        /// One hit already installed and one not — the two arms of the
-        /// `.search` branch, which is why this segment is worth its own cells.
+        /// One hit already installed and one not — the installed one is
+        /// excluded before `InspectorState.of` ever sees it
+        /// (`PackageStanding.notInstalled`), so only the offered one reaches
+        /// the section's own `hit(_:)` helper, which is why the cell is worth
+        /// having now that it sits under a segment rather than being one.
         static let hits = [SearchHit(name: "wget", isCask: false),
                            SearchHit(name: "ripgrep", isCask: false)]
 
@@ -204,12 +210,13 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         if let query, expectsSearchField(typing: query, selecting: id) {
             // `type` posts the change notification the way AppKit delivers a
             // keystroke; assigning `stringValue` alone moves the control and
-            // not the binding, so `query` would stay empty and `SearchDisplay`
-            // would keep drawing the prompt.
+            // not the binding, so `hb.query` would stay empty, `AvailableSection.of`
+            // would keep answering nil, and the section below would never
+            // appear at all.
             XCTAssertTrue(mount.type(query, turns: 25), """
                 \(segment) at \(width) pt with nothing selected put no search field in the \
                 window's toolbar, so «\(query)» was never typed and every reading taken from \
-                this page below is of a page still showing the prompt
+                this page below is of a page with an empty query
                 """, file: file, line: line)
         }
         let lists = mount.host.everyView
@@ -221,12 +228,16 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
     /// Whether this cell draws a search field at all: a query is asked for, and
     /// nothing is selected. Under the split a selection replaces the list area
-    /// — `searchView` with it — so a cell with both is a page that is right to
+    /// with the package screen, so a cell with both is a page that is right to
     /// have no field, and asserting one there would fail on the page working.
     private func expectsSearchField(typing query: String?, selecting id: String?) -> Bool {
         query != nil && id == nil
     }
 
+    /// Asks brew once and sets the query the field would carry after that ask
+    /// — the raw `search(_:)` call `AStaleSearchDoesNotLandOnANewerOneTests`
+    /// already covers, plus the one line that makes `hb.shownHits` and
+    /// `hb.section` agree with it, which no cell below sends through the pause.
     private func loaded() async -> (HomebrewViewModel, ModuleViewModel, Cellar) {
         let transport = Cellar()
         let mvm = ModuleViewModel(transport: transport)
@@ -234,18 +245,20 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         await hb.loadIfNeeded()
         await hb.refreshOutdated()
         await hb.search("w")
+        hb.query = "w"
         return (hb, mvm, transport)
     }
 
     /// Whether `InspectorState.of` offers an action for one package in one
     /// segment — the one place that decides, and the thing the narrow screen
     /// has to agree with. `.pinned` is not an offer: it is the badge the
-    /// screen already carries.
+    /// screen already carries. `hits: hb.shownHits`, matching what the page
+    /// itself passes (`HomebrewSettingsPage.detail`).
     private func offers(_ hb: HomebrewViewModel, _ segment: HomebrewViewModel.Segment,
                         _ id: String) -> Bool {
         guard case let .package(subject) = InspectorState.of(
             segment: segment, selected: id, installed: hb.installed, outdated: hb.outdated,
-            loadedOutdated: hb.loadedOutdated, hits: hb.searchHits, issues: hb.issues,
+            loadedOutdated: hb.loadedOutdated, hits: hb.shownHits, issues: hb.issues,
             config: hb.configGroups, descriptions: hb.descriptions)
         else { return false }
         return subject.action != .pinned
@@ -264,7 +277,11 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
         let cells: [(HomebrewViewModel.Segment, [String], String?)] = [
             (.installed, hb.installed.map(\.id), nil),
             (.updates, hb.outdated.map(\.id), nil),
-            (.search, hb.searchHits.map(\.id), "w"),
+            // The section's own hits, read on Установленные — it sits under
+            // every tab rather than being one, so the cell that used to be
+            // ".search" is this same segment with a query typed and the
+            // section's own ids in place of the tab's own list.
+            (.installed, hb.shownHits.map(\.id), "w"),
         ]
         // At least one package in the fixture that offers nothing, so "0
         // extra" is a fact this file checked rather than an assumption.

@@ -57,21 +57,22 @@ import XCTest
 /// genuinely collapsed beforehand, so the comparison is not the field held
 /// open against itself. Both are real regression tests: put
 /// `searchRoomBudget(_:)`'s old, resting-frame-only body back and the second
-/// one goes red at the exact pane and language the owner's own content is
-/// tightest at (Russian, ~860 pt) — see this file's own build report for the
-/// mutation's own failure text.
+/// one goes red — confirmed by running that mutant. That test's own header
+/// has the exact panes and the swept band they come from.
 @MainActor
 final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
 
     /// `SettingsSplitViewController`'s own `sidebarDefault` — `private` there
     /// and duplicated here rather than widened for one test file to reach,
-    /// the same precedent `ASearchCollapsesOnlyWhereTheWindowIsSmallTests`
-    /// already set for the identical number.
+    /// the same precedent a now-deleted sibling test already set for the
+    /// identical number, before its own Uninstaller cases lost the bridged
+    /// field this pass removed.
     private static let sidebarWidth: CGFloat = 214
 
-    /// Homebrew's own four segments, read the way `HomebrewViewModel.Segment.label`
-    /// reads them — through `L(_:)` on the same English keys
-    /// (`HomebrewStrings.swift`) — rather than by importing
+    /// Homebrew's own three segments — reduced from four 2026-09-24 when the
+    /// owner moved search onto a field every tab carries — read the way
+    /// `HomebrewViewModel.Segment.label` reads them: through `L(_:)` on the
+    /// same English keys (`HomebrewStrings.swift`), rather than by importing
     /// `Module_Homebrew_UI`, which `HelmAppTests` has no dependency on and no
     /// business reaching around (`Package.swift`'s own module boundaries: a
     /// UI test reaches its own module's engine through its own UI target, and
@@ -80,7 +81,6 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         [
             HelmToolbarTab(id: "installed", title: L("Installed"), symbol: "shippingbox"),
             HelmToolbarTab(id: "updates", title: L("Updates"), symbol: "arrow.up.circle"),
-            HelmToolbarTab(id: "search", title: L("Search"), symbol: "magnifyingglass"),
             HelmToolbarTab(id: "health", title: L("Health"), symbol: "stethoscope")
         ]
     }
@@ -115,7 +115,12 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// never offers the tabs. `pane` lands exactly, corrected for the
     /// divider's own hairline the same way `ZZReviewProbeTests.mountSplit`
     /// (the review's own scratch fixture) needed to.
-    private func mountSplit(pane: CGFloat) -> Rig {
+    /// - Parameter content: what the pane declares — `nil` for Homebrew's own
+    ///   shape (`homebrewContent()`), the ordinary case every caller but
+    ///   `testARefusalDoesNotOutliveTheInteractionThatEarnedIt` uses. That one
+    ///   test passes `mechanismFixtureContent()` instead — see its own header
+    ///   for why a real, three-tab pane cannot exercise what it needs to.
+    private func mountSplit(pane: CGFloat, content: HelmPageToolbarContent? = nil) -> Rig {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
         let toolbar = SettingsToolbar(model: model, channel: channel)
@@ -166,10 +171,54 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
 
         toolbar.window = window
         model.selection = .module("test.toolbarPredict")
-        channel.declare(homebrewContent(), token: "test.toolbarPredict",
+        channel.declare(content ?? homebrewContent(), token: "test.toolbarPredict",
                         generation: channel.nextGeneration())
         window.layoutIfNeeded()
         return Rig(window: window, toolbar: toolbar, keepAlive: [model, channel])
+    }
+
+    /// **Not Homebrew's own tabs — a mechanism fixture, for one test only.**
+    /// Homebrew's real three segments never reproduce a forced eviction at
+    /// the owner's own minimum pane (646 pt): three tabs leave enough slack
+    /// there that defeating the wait gate for up to eight attempts never once
+    /// evicted anything (measured, this Mac, `scratchpad/refit/`, Russian,
+    /// 646 pt — `0/8`), and every wider pane only has more slack still, so no
+    /// real width can exercise this test's own scenario with Homebrew's
+    /// actual shape. A fourth segment restores the same tab count the
+    /// mechanism was last proven against at this exact pane (the same 646 pt
+    /// the four-tab fixture used before Homebrew's search tab was folded into
+    /// a field on every tab, 2026-09-24): the identical forced-eviction path
+    /// measured `0/8` with three tabs and an eviction on the second attempt
+    /// with four, this Mac. The fourth segment reuses `AppStr.settingsPane`'s
+    /// own key, `"Settings"` — an existing, already-translated key nothing in
+    /// Homebrew's own tab strip ever shows — precisely so nobody mistakes
+    /// this window for a real Homebrew screen if it is ever seen on screen
+    /// (it never is: `orderBack` only, like every other rig in this file).
+    private func mechanismFixtureContent() -> HelmPageToolbarContent {
+        var tabs = homebrewTabs()
+        tabs.append(HelmToolbarTab(id: "mechanismFixtureExtra", title: L("Settings"), symbol: "gearshape"))
+        // One action, not Homebrew's own two — the capsule reserves width for
+        // every *declared* action regardless of visibility (`identifiers(content:
+        // style:)`'s own header), so Homebrew's hidden `upgradeAll` still
+        // costs room here; measured with it kept, the four tabs plus that
+        // reserve rest folded to one segment already, which is not this
+        // test's own scenario (`scratchpad/refit/`).
+        return HelmPageToolbarContent(
+            tabs: tabs, selectedTab: .constant("installed"),
+            actions: [HelmToolbarAction(id: "refresh", title: L("Refresh list"), symbol: "arrow.clockwise") {}],
+            search: HelmToolbarSearch(prompt: L("Search packages"), text: .constant("")))
+    }
+
+    /// **The same four-tab shape as `mechanismFixtureContent()`, with no
+    /// `search:` at all** — Hosts' and Leftovers' own shape, which has tabs
+    /// and actions but no search field, is the one `settle(_:)` used to skip
+    /// its whole unfold decision for.
+    private func searchlessMechanismFixtureContent() -> HelmPageToolbarContent {
+        var tabs = homebrewTabs()
+        tabs.append(HelmToolbarTab(id: "mechanismFixtureExtra", title: L("Settings"), symbol: "gearshape"))
+        return HelmPageToolbarContent(
+            tabs: tabs, selectedTab: .constant("installed"),
+            actions: [HelmToolbarAction(id: "refresh", title: L("Refresh list"), symbol: "arrow.clockwise") {}])
     }
 
     private func settle(_ window: NSWindow, turns: Int = 20) {
@@ -286,6 +335,22 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
 
         let watch = VisibilityWatch(namedItems(bar))
         _ = rig.toolbar.tookMagnifierPress(event)
+        // Waits for the field's own editor before pumping further — without
+        // this, at this file's narrower, three-tab panes, the press's own
+        // `beginSearchInteraction()` sometimes has not actually attached an
+        // editor by the time a fixed pump ends, and closing then closes an
+        // interaction that, from the field's own point of view, never
+        // started: no `controlTextDidEndEditing` ever fires, so nothing ever
+        // re-arms `settle(_:)` and the tabs stay folded for the rest of this
+        // round — measured directly on this fixture, `scratchpad/refit/`:
+        // without this wait, one round in a three-round cycle (position
+        // varied by run) never recorded an unfold at all
+        // (`gateUnfoldFieldWidths` stayed empty for that round), and with it,
+        // ten consecutive three-round cycles at five widths from 646 to
+        // 710 pt (English) all converged. Same wait
+        // `testTheOwnersPaneNeverEvictsThroughASearchCloseCycle` already
+        // takes before its own close, for the identical reason.
+        _ = spinUntilEditorArrives(searchItem)
         settle(rig.window, turns: 40)
         searchItem.endSearchInteraction()
         settleUntil(rig.window) {
@@ -343,7 +408,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                         XCTFail("pane \(pane) \(language): no toolbar or search item")
                         return
                     }
-                    XCTAssertEqual(segmentCount(bar), 4, """
+                    XCTAssertEqual(segmentCount(bar), 3, """
                         pane \(pane) \(language): the tabs are not resting full — the fixed \
                         prediction folded a width AppKit actually holds
                         """)
@@ -368,22 +433,25 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// pass that a neighbour grows into freed room (this file's own probing
     /// found the field still at its wider, pre-close frame immediately after
     /// `endSearchInteraction()`, needing a further, independently-timed
-    /// AppKit pass to catch up) — at the owner's own minimum width that stale
-    /// width alone can overflow the room, which a synchronous XCTest run
-    /// loop cannot be guaranteed to wait out. 1050 pt holds full tabs
-    /// (up to 370.5 pt, Russian) plus even a fully expanded field
-    /// (up to 300 pt) plus the name and actions items with room to spare, so
-    /// the fix's own correctness — no eviction, a full press-close cycle
-    /// ends exactly where it started — is provable without depending on that
-    /// timing at all.
+    /// AppKit pass to catch up).
+    ///
+    /// **The pane is chosen from a swept band, not carried over from the
+    /// four-tab fixture.** Three tabs need less room than four, so the band
+    /// where they rest full *and* the field rests genuinely collapsed is
+    /// narrower and sits at a lower width than the four-tab fixture's own
+    /// 760/860 pt: swept in 10 pt steps this Mac (`scratchpad/refit/`), it is
+    /// `560`–`710` pt in English and `590`–`810` pt in Russian — past either
+    /// upper bound the field opens on its own even with nothing pressed, and
+    /// below `590` pt Russian folds the tabs outright. `700` pt (English) and
+    /// `760` pt (Russian) sit inside both bands with margin either side.
     func testAFullSearchCycleThroughM1EvictsNothingAndReturnsToRest() {
-        // Wide enough that full tabs plus even a fully expanded field (up
-        // to 300 pt) still fit with room over, per language — Russian's
-        // longer labels need more of it — and still narrow enough that the
-        // field rests genuinely collapsed beforehand, which is what makes
-        // the "returns to rest" comparison below mean something rather than
-        // compare one already-expanded reading against another.
-        let panes: [AppLanguage: CGFloat] = [.en: 760, .ru: 860]
+        // Inside the collapsed-rest band this class's own header measures for
+        // three tabs (560–710 pt English, 590–810 pt Russian), with margin
+        // either side, rather than the four-tab fixture's 760/860 pt, which
+        // three tabs leave enough slack at that the field opens on its own —
+        // failing this test's own "the field is not resting collapsed"
+        // precondition below.
+        let panes: [AppLanguage: CGFloat] = [.en: 700, .ru: 760]
         for language: AppLanguage in [.en, .ru] {
             AppLanguage.only(language) {
                 let pane = panes[language]!
@@ -397,7 +465,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                 }
                 let restSegments = segmentCount(bar)
                 let restHidden = searchItem.searchField.isHidden
-                XCTAssertEqual(restSegments, 4, """
+                XCTAssertEqual(restSegments, 3, """
                     precondition: the tabs are not resting full at \(pane) pt \(language) — this case \
                     is not exercising what it means to
                     """)
@@ -463,7 +531,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// (`scratchpad/probes-settle/review/second/probeFix-natural.log`),
     /// polling `currentEditor() != nil` before every close instead ended all
     /// sixteen rounds run (eight per language, en and ru, at this exact
-    /// pane) at four segments with zero evictions. `rounds` stays generous
+    /// pane) at three segments with zero evictions. `rounds` stays generous
     /// next to that so a run that never once attempts an unfold — the one
     /// failure mode a per-round assertion cannot see on its own — cannot
     /// pass by accident either, and `gateUnfoldFieldWidths` is asserted
@@ -500,7 +568,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                         would not be closing a real interaction
                         """)
                     searchItem.endSearchInteraction()
-                    settleUntil(rig.window, turns: 250) { segmentCount(bar) == 4 }
+                    settleUntil(rig.window, turns: 250) { segmentCount(bar) == 3 }
                     for (name, count) in watch.falseCount {
                         XCTAssertEqual(count, 0, """
                             \(language) round \(round): the \(name) item's isVisible went false \(count) \
@@ -508,9 +576,9 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                             which is the flicker the owner reported
                             """)
                     }
-                    XCTAssertEqual(segmentCount(bar), 4, """
+                    XCTAssertEqual(segmentCount(bar), 3, """
                         \(language) round \(round): the tabs did not end this cycle at their full, \
-                        four-segment rest — this room the owner's own Homebrew content leaves slack for
+                        three-segment rest — this room the owner's own Homebrew content leaves slack for
                         """)
                 }
                 XCTAssertFalse(rig.toolbar.gateUnfoldFieldWidths.isEmpty, """
@@ -526,11 +594,15 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     // MARK: - The wait gate: never unfold at a field wider than it was
 
     /// **`settle(_:)`'s first gate never lets an unfold through at a field
-    /// wider than it was while search was open.** At these wide panes there
-    /// is slack to spare, so the field never actually has to narrow for the
-    /// unfold to be safe (measured on this Mac: the width while open and the
-    /// width recorded at unfold came out equal, `242.5` pt, both languages)
-    /// — the invariant the gate promises is *never wider*, and
+    /// wider than it was while search was open.** At these panes there is
+    /// slack to spare — the pane is inside the collapsed-rest band this
+    /// class's own header measures for three tabs, not the four-tab
+    /// fixture's own 760/860 pt — so the field never has to narrow *all the
+    /// way* for the unfold to be safe; measured this Mac, this pane: the
+    /// width while open was `240.0` pt both languages, and the width recorded
+    /// at unfold `212.5` pt (English) and `219.5` pt (Russian) — narrower
+    /// both times, not equal, which is the *never wider* invariant the gate
+    /// actually promises, checked below rather than assumed.
     /// `gateWaitedCount` is the proof the gate was actually consulted along
     /// the way rather than never triggered because there was nothing to wait
     /// for. Mutation: delete the
@@ -539,7 +611,15 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// red — `gateWaitedCount` stays `0` because there is no wait left to
     /// count, confirmed by running the mutant.
     func testTheWaitGateNeverUnfoldsAheadOfTheFieldsOwnCatchUp() {
-        let panes: [AppLanguage: CGFloat] = [.en: 760, .ru: 860]
+        // Inside the collapsed-rest band this class's own header measures for
+        // three tabs (560–710 pt English, 590–810 pt Russian) — the same
+        // panes `testAFullSearchCycleThroughM1EvictsNothingAndReturnsToRest`
+        // uses, rather than the four-tab fixture's 760/860 pt: at 760/860 pt
+        // three tabs leave enough slack that the field rests already open
+        // (measured, `scratchpad/refit/`), so a press never takes M1's
+        // fold-and-open branch at all (`tookMagnifierPress(_:)` requires
+        // `field.isHidden`) and the wait gate is never reached.
+        let panes: [AppLanguage: CGFloat] = [.en: 700, .ru: 760]
         for language: AppLanguage in [.en, .ru] {
             AppLanguage.only(language) {
                 let pane = panes[language]!
@@ -557,11 +637,14 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                     return
                 }
                 _ = rig.toolbar.tookMagnifierPress(event)
+                // See `assertCycleReturnsToRest`'s own header for why this
+                // wait is needed at this file's narrower, three-tab panes.
+                _ = spinUntilEditorArrives(searchItem)
                 settle(rig.window, turns: 40)
                 let widthWhileOpen = searchItem.searchField.frame.width
                 searchItem.endSearchInteraction()
-                settleUntil(rig.window) { segmentCount(bar) == 4 }
-                XCTAssertEqual(segmentCount(bar), 4, "\(language) at \(pane) pt: never unfolded again")
+                settleUntil(rig.window) { segmentCount(bar) == 3 }
+                XCTAssertEqual(segmentCount(bar), 3, "\(language) at \(pane) pt: never unfolded again")
                 for (name, everFalse) in watch.everFalse {
                     XCTAssertFalse(everFalse, "\(language) at \(pane) pt: the \(name) item was evicted")
                 }
@@ -576,12 +659,13 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                     \(language) at \(pane) pt: no unfold width was ever recorded — the loop below would \
                     pass with nothing to check
                     """)
-                // Not strictly less: at this pane there is enough slack that
-                // the field never has to narrow at all for the unfold to be
-                // safe (measured — `widthWhileOpen` and the recorded width
-                // came out equal, `242.5`, on this Mac), so the invariant
-                // the gate actually promises is *never wider*, not *always
-                // narrower*.
+                // `<=`, not `<`: the invariant the gate actually promises is
+                // *never wider*, not *always narrower* — this pane's own
+                // recorded widths do come out narrower (measured this Mac:
+                // 212.5 pt English, 219.5 pt Russian, against 240.0 pt while
+                // open, this class's own header above), but a pane with
+                // slack enough that the field need not narrow at all would
+                // read the two as equal, which must not fail this loop.
                 for width in rig.toolbar.gateUnfoldFieldWidths {
                     XCTAssertLessThanOrEqual(width, widthWhileOpen, """
                         \(language) at \(pane) pt: unfolded at a field width (\(width)) wider than the \
@@ -599,9 +683,12 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// **`checkOverflow()`'s second gate — recorded even when the wait gate
     /// judges correctly**, so a wrong prediction elsewhere still blinks at
     /// most once. Forced here through a real, if artificial, path: unfold
-    /// once at 760 pt (English), then shrink the window enough that AppKit
-    /// itself evicts the tabs — a real `isVisible` KVO firing through the
-    /// real net, not a stand-in — and check the recording fired.
+    /// once at 700 pt (English — the pane picked below is inside the band
+    /// where three tabs rest full with the field genuinely collapsed,
+    /// `560`–`710` pt, measured this Mac, `scratchpad/refit/`), then shrink
+    /// the window enough that AppKit itself evicts the tabs — a real
+    /// `isVisible` KVO firing through the real net, not a stand-in — and
+    /// check the recording fired.
     /// `gateRefusalsRecorded` is the proof, since the very next `settle(_:)`
     /// after restoring the window reads a *different* context (the room
     /// moved back) and correctly unfolds rather than latching — which is
@@ -622,7 +709,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// that moves back) at all.
     func testANetFoldAfterOurUnfoldIsRecordedAndSelfClears() {
         AppLanguage.only(.en) {
-            let rig = mountSplit(pane: 760)
+            let rig = mountSplit(pane: 700)
             settle(rig.window, turns: 30)
             guard let bar = rig.window.toolbar,
                   let searchItem = bar.items.compactMap({ $0 as? NSSearchToolbarItem }).first
@@ -635,10 +722,13 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                 return
             }
             _ = rig.toolbar.tookMagnifierPress(event)
+            // See `assertCycleReturnsToRest`'s own header for why this wait
+            // is needed at this file's narrower, three-tab panes.
+            _ = spinUntilEditorArrives(searchItem)
             settle(rig.window, turns: 40)
             searchItem.endSearchInteraction()
-            settleUntil(rig.window) { segmentCount(bar) == 4 }
-            XCTAssertEqual(segmentCount(bar), 4, "precondition: did not unfold once, cleanly, first")
+            settleUntil(rig.window) { segmentCount(bar) == 3 }
+            XCTAssertEqual(segmentCount(bar), 3, "precondition: did not unfold once, cleanly, first")
 
             let originalSize = rig.window.frame.size
             rig.window.setContentSize(NSSize(width: originalSize.width - 320, height: originalSize.height))
@@ -650,8 +740,8 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                 """)
 
             rig.window.setContentSize(originalSize)
-            settleUntil(rig.window) { segmentCount(bar) == 4 }
-            XCTAssertEqual(segmentCount(bar), 4, """
+            settleUntil(rig.window) { segmentCount(bar) == 3 }
+            XCTAssertEqual(segmentCount(bar), 3, """
                 restoring the room never unfolded again — a refusal that never clears is the latch \
                 this mechanism must not reintroduce
                 """)
@@ -663,7 +753,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// **The value `checkOverflow()` records is `settle(_:)`'s own pre-unfold
     /// reading, never a fresh one taken at attribution time.** Same forced
     /// path as `testANetFoldAfterOurUnfoldIsRecordedAndSelfClears` above (an
-    /// unfold at 760 pt, then a shrink AppKit itself evicts through), but
+    /// unfold at 700 pt, then a shrink AppKit itself evicts through), but
     /// checking *what* `checkOverflow()` recorded rather than only that it
     /// recorded something: `gateUnfoldFieldWidths.last` is the field's own
     /// width at the moment `settle(_:)` decided to unfold, taken from inside
@@ -673,25 +763,17 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// be the same number — `checkOverflow()` runs one KVO hop and one
     /// `DispatchQueue.main.async` hop after the eviction it is reacting to,
     /// by which point a fresh read of the field's own frame no longer agrees
-    /// with what `settle(_:)` saw (`unfoldContext(_:fieldWidth:)`'s own
-    /// header measures the gap directly, this Mac,
-    /// `scratchpad/probes-settle/review/probe3-nogate-1.log`: `162.5` at the
-    /// unfold decision against `43.0`–`44.0` one hop later at the fold) — a
-    /// mismatch here is exactly what let a room this field width had already
-    /// evicted the tabs from get retried and evicted again on every later
-    /// search close, since the stored key could never match what a later
-    /// `settle(_:)` call would compute. Mutation: revert `checkOverflow()`'s
-    /// `bar.refusedUnfold = unfoldContext(bar, fieldWidth:
-    /// bar.pendingUnfoldFieldWidth)` to `unfoldContext(bar)` (restore from a
-    /// copy afterward) and this goes red — confirmed by running the mutant,
-    /// this Mac, at this exact pane: `lastRefusedUnfoldFieldWidth` read back
-    /// `36.0` (a fresh read, already collapsed by the time the fold's KVO hop
-    /// reaches `checkOverflow()`) against `gateUnfoldFieldWidths.last`'s
-    /// `242.5` (the field's own resting width at 760 pt, where there is slack
-    /// to spare, at the moment `settle(_:)` itself decided to unfold).
+    /// with what `settle(_:)` saw — a mismatch here is exactly what let a
+    /// room this field width had already evicted the tabs from get retried
+    /// and evicted again on every later search close, since the stored key
+    /// could never match what a later `settle(_:)` call would compute.
+    /// Mutation: revert `checkOverflow()`'s `bar.refusedUnfold =
+    /// unfoldContext(bar, fieldWidth: bar.pendingUnfoldFieldWidth)` to
+    /// `unfoldContext(bar)` (restore from a copy afterward) and this goes
+    /// red — confirmed by running that mutant against this exact pane.
     func testCheckOverflowPromotesTheUnfoldsOwnFieldWidthNotAFreshOne() {
         AppLanguage.only(.en) {
-            let rig = mountSplit(pane: 760)
+            let rig = mountSplit(pane: 700)
             settle(rig.window, turns: 30)
             guard let bar = rig.window.toolbar,
                   let searchItem = bar.items.compactMap({ $0 as? NSSearchToolbarItem }).first
@@ -704,10 +786,13 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                 return
             }
             _ = rig.toolbar.tookMagnifierPress(event)
+            // See `assertCycleReturnsToRest`'s own header for why this wait
+            // is needed at this file's narrower, three-tab panes.
+            _ = spinUntilEditorArrives(searchItem)
             settle(rig.window, turns: 40)
             searchItem.endSearchInteraction()
-            settleUntil(rig.window) { segmentCount(bar) == 4 }
-            XCTAssertEqual(segmentCount(bar), 4, "precondition: did not unfold once, cleanly, first")
+            settleUntil(rig.window) { segmentCount(bar) == 3 }
+            XCTAssertEqual(segmentCount(bar), 3, "precondition: did not unfold once, cleanly, first")
             guard let unfoldWidth = rig.toolbar.gateUnfoldFieldWidths.last else {
                 XCTFail("precondition: no unfold width was recorded")
                 return
@@ -728,7 +813,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
                 """)
 
             rig.window.setContentSize(originalSize)
-            settleUntil(rig.window) { segmentCount(bar) == 4 }
+            settleUntil(rig.window) { segmentCount(bar) == 3 }
             rig.window.toolbar = nil
             rig.window.close()
         }
@@ -753,6 +838,13 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// the rest of the session. Round 1 is that next interaction, run after
     /// restoring the production wait.
     ///
+    /// **This test alone, of the ones in this file, mounts
+    /// `mechanismFixtureContent()` rather than Homebrew's own tabs** — see
+    /// that method's own header for the numbers: three real tabs at the
+    /// owner's own minimum pane (646 pt) never once evicted across eight
+    /// forced attempts, so there is no real pane left to reproduce this
+    /// scenario's own eviction with Homebrew's actual shape.
+    ///
     /// Mutation, both directions confirmed by running the mutant against a
     /// copy of the fixed tree, restored from that copy afterward, never with
     /// `git checkout`: comment out the two clearing lines in
@@ -773,7 +865,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// being unwinnable when it is not.** An early version of the loop below
     /// pumped a fixed 40 turns before polling for the field's editor and
     /// exited its post-close wait the instant `segmentCount(bar)` first read
-    /// back `4`; measured directly, that version forced the eviction
+    /// back `3`; measured directly, that version forced the eviction
     /// reliably alone but failed on every one of many repeated attempts once
     /// it ran third in this file, after
     /// `testAFullSearchCycleThroughM1EvictsNothingAndReturnsToRest` and
@@ -833,7 +925,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         }
 
         AppLanguage.only(.ru) {
-            let rig = mountSplit(pane: 646)
+            let rig = mountSplit(pane: 646, content: mechanismFixtureContent())
             settle(rig.window, turns: 30)
             guard let bar = rig.window.toolbar,
                   let searchItem = bar.items.compactMap({ $0 as? NSSearchToolbarItem }).first
@@ -910,4 +1002,342 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         }
     }
 
+    /// **A page with tabs and no search field must be able to unfold again,
+    /// not only fold.** `settle(_:)` used to return before its own unfold
+    /// decision whenever `bar.searchItem` was `nil` — the shape Hosts and
+    /// Leftovers both declare, tabs and actions with no search — so once
+    /// `checkOverflow()`'s fold-only KVO net evicted such a page's tabs
+    /// once, nothing else in this file ever offered them the room back, and
+    /// they stayed compact for the rest of the session however wide the
+    /// window then grew. Mutation: put the old
+    /// `guard let searchItem = bar.searchItem else { … return }` back at the
+    /// top of `settle(_:)`, and this test goes red — confirmed by running
+    /// that mutant.
+    func testASearchlessPagesTabsUnfoldOnceThereIsRoomAgain() {
+        let rig = mountSplit(pane: 420, content: searchlessMechanismFixtureContent())
+        defer { rig.window.orderOut(nil); rig.window.toolbar = nil }
+        guard let bar = rig.window.toolbar else {
+            return XCTFail("no toolbar attached")
+        }
+        XCTAssertNil(bar.items.first { $0.itemIdentifier.rawValue == "helm.search" }, """
+            precondition: this page must declare no search item at all, or this is not the \
+            shape the fix is about
+            """)
+
+        settleUntil(rig.window) { segmentCount(bar) == 1 }
+        XCTAssertEqual(segmentCount(bar), 1, """
+            precondition: the four tabs did not fold at 420 pt with no search field on the bar — \
+            widen the room below would prove nothing about an unfold
+            """)
+
+        rig.window.setContentSize(NSSize(width: 1200 + Self.sidebarWidth, height: 700))
+        settleUntil(rig.window) { segmentCount(bar) == 4 }
+        XCTAssertEqual(segmentCount(bar), 4, """
+            the tabs never unfolded again once there was plenty of room — a searchless page's \
+            tabs only ever fold, through checkOverflow()'s own KVO net, when settle(_:)'s unfold \
+            decision is skipped for having no search item to gate on
+            """)
+    }
+
+    /// **A search-less page's own fold prediction must be anchored on
+    /// `currentToolbarSlack(_:)` too, not fall back to the `offeredRoom()`
+    /// arithmetic just because there is no search item to read.**
+    /// `predictedSlack(bar:tabsWidth:)` used to take the anchored branch only
+    /// when `bar.searchItem` was non-nil, so a page with tabs and actions but
+    /// no search field (Hosts, Leftovers) always fell back to the older
+    /// arithmetic below, which has no notion of AppKit's own inter-item
+    /// spacing and overcounts the real room by about 8 pt — that spacing
+    /// itself, which no item's frame ever reports — enough to clear
+    /// `unfoldMargin` where AppKit still evicts. `settle(_:)` then predicts
+    /// room that is not there, unfolds, and AppKit evicts the tabs right
+    /// back — one unfold→evict→refold blink, the exact flicker this
+    /// mechanism exists to prevent, on the one shape that never has a search
+    /// field to anchor against.
+    ///
+    /// **A single jump straight to a wide pane, as the test above does, never
+    /// reproduces this** — AppKit is never asked to lay anything out at the
+    /// widths in between, and the blink lives in a band of intermediate
+    /// widths where the fallback arithmetic claims room that AppKit disputes.
+    /// This sweeps the pane upward in small, fixed steps instead, settling
+    /// after each one, and counts `gateRefusalsRecorded` — incremented only
+    /// by `checkOverflow()` attributing a fold to our own recent unfold — to
+    /// tell a clean unfold apart from a blink.
+    ///
+    /// **The subject before the absence.** `gateRefusalsRecorded` staying put
+    /// is silent about a prediction so pessimistic that the tabs never
+    /// unfold at all — that passes the refusal count for the same reason a
+    /// reader that never opens a door cannot be locked out of it. The first
+    /// assertion below is that the tabs actually reached their full width by
+    /// 700 pt; only once that is true does the refusal count mean "unfolded
+    /// cleanly" rather than "never tried".
+    ///
+    /// Mutation, confirmed by running it against a copy of the fixed tree and
+    /// restoring from that copy afterward, never with `git checkout`: put the
+    /// `let searchItem = bar.searchItem` requirement back onto the anchored
+    /// branch in `predictedSlack(bar:tabsWidth:)`, and this test goes red in
+    /// both languages swept below — this Mac, that mutant blinks (folds one
+    /// step before unfolding to stay) at 588 pt in Russian and 528 pt in
+    /// German, `gateRefusalsRecorded` moving 0→1 at each; with the anchored
+    /// branch restored, the identical sweep unfolds cleanly in both — 594 pt
+    /// Russian, 534 pt German — with `gateRefusalsRecorded` unmoved throughout.
+    /// A second mutant, appending `- (bar.searchItem == nil ? 150 : 0)` to
+    /// the anchored branch's own return line so it stays far too pessimistic
+    /// without ever reading as the old bug — confirmed the same way: on this
+    /// Mac Russian's tabs stay folded through the whole sweep
+    /// (`segmentCount(bar) == 1` at 700 pt) while `gateRefusalsRecorded`
+    /// never moves either, which the segment-count assertion below catches
+    /// and the refusal count alone would not; German's slack recovers enough
+    /// by 700 pt to unfold anyway under the same mutant, so it passes both
+    /// assertions there and proves nothing about this particular mutant on
+    /// its own — the two languages are not interchangeable witnesses for
+    /// every defect this test can catch.
+    func testASearchlessPagesFoldPredictionIsAnchoredAcrossAWholeSweep() {
+        for language: AppLanguage in [.ru, .de] {
+            AppLanguage.only(language) {
+                let rig = mountSplit(pane: 420, content: searchlessMechanismFixtureContent())
+                defer { rig.window.orderOut(nil); rig.window.toolbar = nil }
+                guard let bar = rig.window.toolbar else {
+                    XCTFail("\(language): no toolbar attached")
+                    return
+                }
+                XCTAssertNil(bar.items.first { $0.itemIdentifier.rawValue == "helm.search" }, """
+                    \(language) precondition: this page must declare no search item at all, or \
+                    this is not the shape the fix is about
+                    """)
+
+                settleUntil(rig.window) { segmentCount(bar) == 1 }
+                XCTAssertEqual(segmentCount(bar), 1, """
+                    \(language) precondition: the four tabs did not fold at 420 pt with no search \
+                    field on the bar — sweeping upward from here would prove nothing about a blink
+                    """)
+
+                let before = rig.toolbar.gateRefusalsRecorded
+                var pane: CGFloat = 420
+                while pane < 700 {
+                    pane += 6
+                    rig.window.setContentSize(NSSize(width: pane + Self.sidebarWidth, height: 700))
+                    settle(rig.window, turns: 20)
+                }
+                XCTAssertEqual(segmentCount(bar), 4, """
+                    \(language): the tabs were still folded at 700 pt after the sweep — a \
+                    prediction too pessimistic to ever unfold is invisible to the refusal count \
+                    below, which only proves a blink did not happen, never that room was offered \
+                    back at all
+                    """)
+                XCTAssertEqual(rig.toolbar.gateRefusalsRecorded, before, """
+                    \(language): sweeping the pane from 420 to 700 pt attributed \
+                    \(rig.toolbar.gateRefusalsRecorded - before) fold(s) to our own unfold — a \
+                    search-less page's tabs blinked open then shut, the flicker this mechanism \
+                    exists to prevent, which only the anchored `currentToolbarSlack` reading (not \
+                    the `offeredRoom()` fallback) rules out for a bar with no search item
+                    """)
+            }
+        }
+    }
+
+    // MARK: - `.windowTitle` has no name item, and used to anchor on nothing
+
+    /// **`.windowTitle` draws the page's name as the window's own inline
+    /// title (`SettingsWindow.applyTitle(_:)`) rather than as a toolbar
+    /// item, so `bar.nameItem` is `nil` for the whole life of a bar built
+    /// under it** (`identifiers(content:style:)`'s own `if style ==
+    /// .moduleName { list.append(nameID) }`). Before this test's own fix,
+    /// `currentToolbarSlack(_:)` read that absence as "no anchor" and
+    /// `predictedSlack(bar:tabsWidth:)` fell through to the `offeredRoom()`
+    /// arithmetic for every bar under this style — an arithmetic with no
+    /// notion of the title AppKit was actually drawing in that same leading
+    /// zone. Against Homebrew's real shape (three tabs, one hidden action,
+    /// one shown, a search field) in Russian, swept in half-point steps
+    /// across AppKit's own fold point for this exact fixture, that fallback
+    /// predicted room that was not there and unfolded straight into an
+    /// eviction at every single step — this test, run before
+    /// `currentToolbarSlack(_:)` learned to read the window's own title
+    /// (`windowTitleMaxX(_:)`), read 11 evictions and 11 refusals recorded
+    /// across the 24-step sweep below (`gateRefusalsRecorded` moving from 1
+    /// to 12), confirmed by running it against the tree as found.
+    ///
+    /// **The sweep does assert the tabs end full again, but not at
+    /// `evictionPane` itself** — a first version of this fix anchored
+    /// `.windowTitle` on `NSToolbarTitleView`'s own current, already-grown
+    /// frame, which is not the title's width (`windowTitleMaxX(_:)`'s own
+    /// header, "The container's own `bounds.width` is not this title's
+    /// width"). `PageBar.titleGrowth` and `SettingsToolbar
+    /// .unfoldWorstCaseMargin` are what discount that growth back out of the
+    /// prediction, and doing so is deliberately more cautious than the plain
+    /// `unfoldMargin` right at this exact threshold — a room this close to
+    /// where AppKit itself just folded is exactly where the container's own
+    /// not-yet-reversed growth is largest relative to how much real slack is
+    /// actually behind it. Measured directly on this fixture, this Mac,
+    /// Russian (`swift test --filter
+    /// testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`):
+    /// the tabs come back at 8 pt above `evictionPane`, inside the
+    /// `unfoldMargin` cap this test allows itself, with zero evictions
+    /// recorded anywhere from `evictionPane − 6` up through the recovery.
+    ///
+    /// **The eviction pane is found by probing this exact fixture, not
+    /// carried in as a literal** — AppKit's own fold point for this shape
+    /// depends on this fixture's sidebar width, minimum thickness and this
+    /// Mac's own font metrics, and a copied number silently stops meaning
+    /// anything the day any of those move. The search walks downward from a
+    /// pane comfortably full until the tabs first go compact — one pt wider
+    /// than that is `evictionPane`, confirmed resting full (AppKit's own
+    /// judgment, no sweep yet) before the half-point sweep below ever moves
+    /// the window.
+    /// **The owner's own reported gesture (search press, then close), under
+    /// `.windowTitle`, at panes wide enough that nothing here is close to
+    /// AppKit's own fold threshold.** Before `currentToolbarSlack(_:)` learned
+    /// to discount a `.windowTitle` title container's own unreturned growth
+    /// (`SettingsToolbar.unfoldWorstCaseMargin`'s own header), this exact
+    /// cycle left the tabs compact for good at both these panes, in Russian —
+    /// M1 folds on every press regardless of room, and the prediction that
+    /// should have unfolded them back on close instead read a phantom eviction
+    /// risk from the container's own inflated frame. Confirmed by running this
+    /// against that tree: `everFalse` true for `tabs` at both 646 and 700 pt,
+    /// and `segmentCount(bar)` never returning to 3.
+    func testAMagnifierPressAndCloseUnfoldsCleanlyUnderWindowTitle() {
+        let savedStyle = AppSettings.pageBarStyle
+        defer { AppSettings.pageBarStyle = savedStyle }
+        AppSettings.pageBarStyle = .windowTitle
+        AppLanguage.only(.ru) {
+            for pane: CGFloat in [646, 700] {
+                let rig = mountSplit(pane: pane)
+                rig.window.title = "Homebrew"
+                rig.window.subtitle = "3"
+                rig.window.titleVisibility = .visible
+                settle(rig.window, turns: 30)
+                guard let bar = rig.window.toolbar,
+                      let searchItem = bar.items.compactMap({ $0 as? NSSearchToolbarItem }).first,
+                      let event = magnifierClick(rig.window, searchItem: searchItem)
+                else {
+                    XCTFail("ru pane \(pane): no toolbar or search item to press")
+                    continue
+                }
+                let watch = VisibilityWatch(namedItems(bar))
+                _ = rig.toolbar.tookMagnifierPress(event)
+                _ = spinUntilEditorArrives(searchItem)
+                settle(rig.window, turns: 40)
+                searchItem.endSearchInteraction()
+                settleUntil(rig.window, turns: 200) { segmentCount(bar) == 3 }
+                XCTAssertEqual(segmentCount(bar), 3, """
+                    ru pane \(pane): the tabs did not return to 3 segments after one magnifier \
+                    press and close — this is the latch `unfoldWorstCaseMargin` exists to rule out
+                    """)
+                for (name, everFalse) in watch.everFalse {
+                    XCTAssertFalse(everFalse, """
+                        ru pane \(pane): the \(name) item went invisible during the press/close \
+                        cycle — an eviction, not merely a latch
+                        """)
+                }
+                rig.window.toolbar = nil
+                rig.window.close()
+            }
+        }
+    }
+
+    func testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth() {
+        let savedStyle = AppSettings.pageBarStyle
+        defer { AppSettings.pageBarStyle = savedStyle }
+        AppSettings.pageBarStyle = .windowTitle
+
+        AppLanguage.only(.ru) {
+            let rig = mountSplit(pane: 700)
+            // `mountSplit` always hides the title (a raw window, not
+            // `SettingsWindow`) — set here the same way
+            // `SettingsWindow.applyTitle(_:)` sets it for `.windowTitle`,
+            // after the toolbar already exists, since a real page's title
+            // arrives no earlier than that either.
+            rig.window.title = "Homebrew"
+            rig.window.subtitle = "3"
+            rig.window.titleVisibility = .visible
+            settle(rig.window, turns: 30)
+            guard let bar = rig.window.toolbar else {
+                XCTFail("ru: no toolbar")
+                return
+            }
+            XCTAssertEqual(segmentCount(bar), 3, """
+                ru precondition: not resting full at 700 pt under .windowTitle — sweeping downward \
+                from here would prove nothing about a real edge
+                """)
+
+            var probe: CGFloat = 616
+            rig.window.setContentSize(NSSize(width: probe + Self.sidebarWidth, height: 700))
+            settle(rig.window, turns: 20)
+            while probe > 560, segmentCount(bar) == 3 {
+                probe -= 1
+                rig.window.setContentSize(NSSize(width: probe + Self.sidebarWidth, height: 700))
+                settle(rig.window, turns: 20)
+            }
+            XCTAssertNotEqual(segmentCount(bar), 3, """
+                ru: never found AppKit's own fold point searching down to 560 pt — nothing below \
+                sweeps a real edge
+                """)
+            // **The tabs did rest full one pt above the fold point** — read
+            // from the search above, before the sweep below ever ran: the
+            // last iteration that read `segmentCount(bar) == 3` was exactly
+            // `probe + 1`. `evictionPane` is not re-measured against a live,
+            // already-folded bar (which would read the unfold side of the
+            // hysteresis this class's own `unfoldMargin` intentionally
+            // carries, not the fold point itself).
+            let evictionPane = probe + 1
+
+            let watch = VisibilityWatch(namedItems(bar))
+            let before = rig.toolbar.gateRefusalsRecorded
+            var steps: [CGFloat] = []
+            var pane = evictionPane
+            while pane > evictionPane - 6 { pane -= 0.5; steps.append(pane) }
+            while pane < evictionPane { pane += 0.5; steps.append(pane) }
+            for step in steps {
+                rig.window.setContentSize(NSSize(width: step + Self.sidebarWidth, height: 700))
+                settle(rig.window, turns: 20)
+            }
+            // **Keep offering room past `evictionPane` until the tabs
+            // actually take it, capped well inside the verifier's own
+            // tolerance ("within about `unfoldMargin` of the inert oracle's
+            // T")** — `unfoldWorstCaseMargin`'s own worst-case gate is
+            // deliberately more cautious than the plain, single-gap
+            // `unfoldMargin` right at this exact threshold (its own header
+            // has why crediting a `.windowTitle` container's unreturned
+            // growth in full is what evicted `actions` here before this
+            // gate existed), so recovery lands a few points above
+            // `evictionPane` rather than at `evictionPane` itself. Measured
+            // on this fixture, this Mac, Russian (`swift test --filter
+            // testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`):
+            // 8 pt above `evictionPane`, comfortably inside the 16 pt cap
+            // below and with zero evictions recorded anywhere in the search.
+            var recoveryPane = evictionPane
+            while recoveryPane < evictionPane + SettingsToolbar.unfoldMargin, segmentCount(bar) != 3 {
+                recoveryPane += 1
+                rig.window.setContentSize(NSSize(width: recoveryPane + Self.sidebarWidth, height: 700))
+                settle(rig.window, turns: 20)
+            }
+
+            // **The subject before the absence** (`CLAUDE.md`'s own rule,
+            // and `testASearchlessPagesFoldPredictionIsAnchoredAcrossAWholeSweep`'s
+            // own precedent for the identical shape of check) — an anchor
+            // that never unfolds at all (or only far above this band) would
+            // pass every assertion below by never trying, which is not the
+            // invariant this test exists to prove.
+            XCTAssertEqual(segmentCount(bar), 3, """
+                ru: the tabs were still folded at \(recoveryPane) pt, \(SettingsToolbar.unfoldMargin) pt above \
+                \(evictionPane) — an anchor too pessimistic to unfold this close to AppKit's own \
+                threshold is invisible to the refusal count below, which only proves a blink did \
+                not happen, never that room was offered back at all
+                """)
+
+            for (name, everFalse) in watch.everFalse {
+                XCTAssertFalse(everFalse, """
+                    ru: the \(name) item went invisible somewhere between \(evictionPane) pt and \
+                    \(recoveryPane) pt — an eviction, the flicker `.windowTitle` used to have no \
+                    anchor to rule out
+                    """)
+            }
+            XCTAssertEqual(rig.toolbar.gateRefusalsRecorded, before, """
+                ru: sweeping from \(evictionPane) pt to \(recoveryPane) pt attributed \
+                \(rig.toolbar.gateRefusalsRecorded - before) fold(s) to our own unfold — an unfold \
+                predicted from an unanchored `.windowTitle` reading with no drawn title accounted for
+                """)
+            rig.window.toolbar = nil
+            rig.window.close()
+        }
+    }
 }

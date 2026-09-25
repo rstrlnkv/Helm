@@ -24,8 +24,12 @@ struct UninstallerSettingsPage: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var search = ""
 
-    /// 0 = installed apps, 1 = leftovers from apps that are already gone.
-    @State private var tab = 0
+    /// Installed apps, or leftovers from apps that are already gone — a
+    /// string-backed id rather than an index, the way `HelmToolbarTab.id`
+    /// wants it: an index would silently mis-read if the two tabs ever
+    /// reordered.
+    private enum Tab: String { case apps, orphans }
+    @State private var tab: Tab = .apps
 
     init(vm: ModuleViewModel) {
         uvm = UninstallerViewModel.shared(vm: vm)
@@ -65,42 +69,44 @@ struct UninstallerSettingsPage: View {
             }
     }
 
-    /// **The page's switcher and Refresh, in the window's toolbar**, where
-    /// macOS 26 and later draw them as Liquid Glass: the switcher as a capsule
-    /// centred over this page, Refresh as a glass circle at the trailing edge.
+    /// **The page's switcher and Refresh, in the window's own `NSToolbar`**
+    /// (`SettingsToolbar`), through the contract every module page shares
+    /// (`HelmWindowToolbar.swift` in `HelmUI`) — the switcher as Helm's own
+    /// capsule centred over this page, Refresh in the toolbar's one action
+    /// capsule at the trailing edge.
     ///
-    /// They were one row of the page with the search field between them. The
-    /// switcher (`HelmToolbarSwitcher`) carries no width of its own, for the
-    /// reason it never did — it sizes itself from what it shows, and a fixed
-    /// number was slack in some languages and a squeeze in others — and it is
-    /// still disabled while a removal is being reviewed, when switching tabs
-    /// would abandon it.
+    /// They were one row of the page with the search field between them, and
+    /// before that a SwiftUI `ToolbarContent` bridged into the window's own
+    /// bar (`pageToolbar`, retired 2026-09-24 along with `.helmSearchable`
+    /// once this page moved onto the app-owned bar the way Homebrew already
+    /// had). The switcher still carries no width of its own — it sizes itself
+    /// from what it shows — and Refresh is still only on the Apps tab: Orphans
+    /// has its own scan and its own Rescan button, so a Refresh here spun an
+    /// icon and changed nothing the user could see.
     ///
-    @ToolbarContentBuilder
-    private var pageToolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            HelmToolbarSwitcher(HelmA11y.whatToShow, selection: $tab, segments: [
-                HelmSwitcherSegment(0, UnStr.tabApps, symbol: "square.grid.2x2"),
-                HelmSwitcherSegment(1, UnStr.tabOrphans, symbol: "doc.badge.ellipsis"),
-            ])
-            .disabled(step == .review)
-        }
-        // Only on the Apps tab: Orphans has its own scan and its own Rescan
-        // button, so here this spun an icon and changed nothing the user could
-        // see.
-        if tab == 0 {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
+    /// **Dims rather than disables per tab.** `tabsEnabled: step != .review`
+    /// dims the whole switcher, its folded menu and its overflow menu while a
+    /// removal is being reviewed, when switching tabs would abandon it —
+    /// per-tab disabling was never asked for, and `HelmPageToolbarContent`
+    /// has no way to disable one tab and not the other.
+    private var toolbarContent: HelmPageToolbarContent {
+        HelmPageToolbarContent(
+            tabs: [
+                HelmToolbarTab(id: Tab.apps.rawValue, title: UnStr.tabApps, symbol: "square.grid.2x2"),
+                HelmToolbarTab(id: Tab.orphans.rawValue, title: UnStr.tabOrphans,
+                              symbol: "doc.badge.ellipsis"),
+            ],
+            selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
+            tabsEnabled: step != .review,
+            actions: [
+                HelmToolbarAction(id: "refresh", title: UnStr.refreshList, symbol: "arrow.clockwise",
+                                  isEnabled: !loading, isVisible: tab == .apps, isBusy: loading) {
                     Task { await refreshApps() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .helmSteadySpin(loading)
-                }
-                .disabled(loading)
-                .help(UnStr.refreshList)
-                .accessibilityLabel(UnStr.refreshList)
-            }
-        }
+                },
+            ],
+            // No `onSubmit`: the term filters the Apps list live, on every
+            // keystroke, exactly as it did through `.helmSearchable` before.
+            search: HelmToolbarSearch(prompt: UnStr.searchApps, text: $search))
     }
 
     private var pageBody: some View {
@@ -110,8 +116,8 @@ struct UninstallerSettingsPage: View {
         // same one the other list screens use.
         VStack(spacing: 0) {
             // The switcher, Refresh and the search control are all the
-            // window's toolbar's (`pageToolbar`, `helmSearchable`) — nothing
-            // is drawn in the page for any of them.
+            // window's own toolbar's (`toolbarContent`, `.helmWindowToolbar`
+            // below) — nothing is drawn in the page for any of them.
             //
             // Page level: the user used to tick apps, sit through a scan and
             // only then learn the removal would be refused.
@@ -121,7 +127,7 @@ struct UninstallerSettingsPage: View {
                 Divider()
             }
 
-            if tab == 0 {
+            if tab == .apps {
                 if !failures.isEmpty {
                     failureReport
                 } else {
@@ -134,31 +140,26 @@ struct UninstallerSettingsPage: View {
                 OrphansView(uvm: uvm)
             }
         }
-        // Inert until this page moves onto `helmWindowToolbar`
-        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
-        // dead weight without `sceneBridgingOptions`, which this window does
-        // not set) — kept as the shape a conversion pass will read from,
-        // rather than deleted along with the mechanism.
-        .toolbar { pageToolbar }
-        // **Mounted here, unconditionally, and not under `tab == 0 && step ==
-        // .pick` any more.** It used to come and go with that condition, the
-        // way the in-page row it replaced always had — but this field lives
-        // in the window's own `NSToolbar` now, and that toolbar lays its
-        // items out itself: adding or dropping one shifts every other item
-        // sharing it, Refresh included. Measured on a real screen recording
-        // (2026-09-21, `un-leave`): Refresh's glyph moved 175 pt inside a
-        // single frame — 41.7-50 ms at this clip's dropped-frame rate — right
-        // when this condition flipped leaving Приложения, while the very same
-        // tab change already sits under `.animation(HelmMotion.interface,
-        // value: tab)` below and still snapped, because that transaction is
-        // SwiftUI's and the toolbar's own relayout is AppKit's, which no
-        // curve in this file reaches (`ARCHITECTURE.md`'s "The page header":
-        // the switcher is "the system's control" for the identical reason).
-        // Keeping the field mounted keeps the toolbar's item count constant,
-        // which is the only thing that keeps its relayout from running at
-        // all — `filtered` still only narrows the Apps tab's list at `step
-        // == .pick`, exactly as it did before.
-        .helmSearchable(text: $search, prompt: UnStr.searchApps)
+        // **Declared unconditionally, on every tab and every step, and not
+        // only under `tab == .apps && step == .pick`.** This field lives in
+        // the window's own `NSToolbar` now, and that toolbar lays its items
+        // out itself: adding or dropping one shifts every other item sharing
+        // it, Refresh included. Measured on a real screen recording
+        // (2026-09-21, `un-leave`, against the earlier SwiftUI-bridged bar):
+        // Refresh's glyph moved 175 pt inside a single frame — 41.7-50 ms at
+        // this clip's dropped-frame rate — right when this condition flipped
+        // leaving Приложения, while the very same tab change already sits
+        // under `.animation(HelmMotion.interface, value: tab)` below and
+        // still snapped, because that transaction is SwiftUI's and the
+        // toolbar's own relayout is AppKit's, which no curve in this file
+        // reaches (`ARCHITECTURE.md`'s "The page header" section: the tabs
+        // and the actions both live in `NSToolbar`'s own layout, not
+        // SwiftUI's, for the identical reason). Keeping the
+        // field declared keeps the toolbar's item count constant, which is
+        // the only thing that keeps its relayout from running at all —
+        // `filtered` still only narrows the Apps tab's list at `step ==
+        // .pick`, exactly as it did before.
+        .helmWindowToolbar(toolbarContent, token: UninstallerDescriptor.id.rawValue)
         .animation(HelmMotion.interface, value: step)
         .animation(HelmMotion.interface, value: tab)
         .animation(HelmMotion.interface, value: apps.count)

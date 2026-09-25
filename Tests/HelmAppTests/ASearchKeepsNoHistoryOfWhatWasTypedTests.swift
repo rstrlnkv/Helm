@@ -1,7 +1,8 @@
 import AppKit
-import HelmTestSupport
 import SwiftUI
+import HelmTestSupport
 import XCTest
+@testable import HelmApp
 @testable import HelmUI
 
 /// **What somebody typed into the search bar does not go into the settings
@@ -17,69 +18,52 @@ import XCTest
 /// value `Redact` and `PrivateFile` exist for in this tree, and neither would go
 /// through either: the history is written by AppKit, underneath us.
 ///
-/// Nothing in the app asks for one — `command grep -rnE 'recentsAutosaveName|
-/// recentSearches|searchCompletion|searchSuggestion' Sources` answers with two
-/// lines, both of them prose in `HelmSearchable.swift`, and no code at all — and
-/// `.searchable` exposes no API that could; but the control is not ours. (The
-/// `-E` is the point: without it `grep` reads the `|` as a literal and the
-/// command comes back empty whatever the tree holds, which is what stood here.)
-/// It is built by SwiftUI's toolbar bridge (`helmSearchable`), and what a
-/// framework sets on a control it builds is not readable from this repository at
-/// all. It is only readable off the mounted control, which is what this file
-/// does, and it is the kind of fact an SDK can change under us in a release
-/// note nobody reads.
+/// **Moved here from `Tests/HelmUITests`, and one reading changed by the move
+/// rather than merely relocated — measured 2026-09-25, not assumed.** This
+/// file used to watch the field SwiftUI's `.searchable` bridged into the
+/// toolbar, whose `target`/`action` were both nil — SwiftUI hung the submit
+/// off its own field editor, so no commit ever reached AppKit's own recording
+/// path and `recentSearches` stayed `[]` through everything this fixture could
+/// do to the field, Return included. `SettingsToolbar.makeSearchItem` wires a
+/// real `target`/`action` (`searchSubmitted(_:)`), so a Return now *is* a
+/// commit AppKit's own control recognises — and measured on this field,
+/// `recentSearches` reads `["wget"]` after one, in memory, whatever
+/// `recentsAutosaveName` is set to. `testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents`
+/// reads that in full: empty at mount, still empty after typing without a
+/// commit, and holding the committed word only after one — the in-memory
+/// list this control keeps regardless of persistence.
 ///
-/// **Measured on macOS 27 (2026-09-21) on the bridged field in this fixture:**
-/// `recentsAutosaveName` nil and `recentSearches` empty — at mount, after four
-/// keystrokes, and after a Return that fired `onSubmit` once.
-///
-/// **What the empty `recentSearches` reading is worth, which is less than it
-/// looks.** Driven from this fixture the list stays empty *whatever* is done to
-/// the field: with an autosave name planted and a recents menu template set, a
-/// word typed key by key through the field editor, a real Return, a resignation
-/// of first responder and a `sendAction` all left it `[]` (measured the same
-/// day). AppKit records a recent from a commit path this headless fixture never
-/// reaches — the bridged field's `target` and `action` are both nil, SwiftUI
-/// hangs the submit off its own field editor. So the emptiness of that list is
-/// **not** evidence that nothing would be recorded in the running app, and it is
-/// asserted below only because a non-empty read would be a real alarm.
-///
-/// The load-bearing reading is the other one: with no autosave name there is no
-/// key for AppKit to write under, and
-/// `testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile` is that
-/// half of the mechanism shown end to end on this very control, so the guard
-/// above it is standing in front of something measured rather than something
-/// quoted from documentation.
-///
-/// **Why this is in `HelmUITests` and `ASearchFieldSaysWhatItIsTests` is not.**
-/// The whole subject here is `helmSearchable`, which is this target's; nothing
-/// in this file touches the app layer. The name is the other way round — it is
-/// set by `ToolbarSearchName` in `HelmApp` — so that file moved there with the
-/// half it watches. The mechanism is shared either way and decides nothing:
-/// `MountedRender.pressReturn` lives in `Tests/Support`, spelled once, and is
-/// reachable from both targets.
+/// **`recentsAutosaveName` is the load-bearing reading, and the in-memory list
+/// is not.** `field.recentsAutosaveName = nil` (`makeSearchItem`) is what
+/// there is no key for AppKit to persist under — measured nil at mount, after
+/// typing and after the commit that populates `recentSearches` — and the
+/// defaults-domain sweep at the end of the same test is what actually answers
+/// the question this file exists to ask: did the word reach a file anything
+/// running as this user can read. `testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile`
+/// is the canary that shows the other half of the mechanism working end to
+/// end on this very control, so the guard above it is standing in front of
+/// something measured rather than something quoted from documentation.
 @MainActor
 final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
-    /// The page's side of the bridge: the binding that moves per keystroke and
-    /// the press that is the search, counted so that "the word landed" and "the
-    /// commit happened" are assertions and not assumptions.
-    private final class Page: ObservableObject {
-        @Published var text = ""
+    /// The page's side: the binding that moves per keystroke and the press
+    /// that is the search, counted so that "the word landed" and "the commit
+    /// happened" are assertions and not assumptions.
+    private final class Page {
+        var text = ""
         var submits = 0
     }
 
     private struct Pane: View {
-        @ObservedObject var page: Page
+        let page: Page
+        let token: String
         var body: some View {
             Text("the list")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .helmSearchable(text: Binding(get: { page.text }, set: { page.text = $0 }),
-                                prompt: "Search packages",
-                                onSubmit: { page.submits += 1 })
-                // A pane with no toolbar of its own publishes no toolbar at all,
-                // and then there is no field to read anything off.
-                .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }
+                .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
+                    prompt: "Search packages",
+                    text: Binding(get: { page.text }, set: { page.text = $0 }),
+                    onSubmit: { page.submits += 1 })), token: token)
         }
     }
 
@@ -89,24 +73,24 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// plausible source of.
     private static let word = "wget"
 
-    /// **The guard.** Nothing about the bridged control carries a history.
-    func testTheBridgedFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
+    /// **The guard.** Nothing about the field this toolbar builds carries a
+    /// history.
+    func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
         let page = Page()
-        let mount = MountedRender(Pane(page: page), width: 1060, height: 400, appearance: .aqua)
-        defer { mount.drop() }
-        mount.settle(20)
+        let fixture = LivePageToolbarFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
+                                             width: 1060, height: 400)
+        defer { fixture.drop() }
+        fixture.settle(20)
 
         // The subject, before any absence is read off it. A walk that found no
         // control would satisfy every assertion below by never running, and an
         // empty history is exactly what "there was no field" looks like.
-        let field = try XCTUnwrap(mount.searchField, """
+        let field = try XCTUnwrap(fixture.mount.searchField, """
             the window's toolbar holds no search field at all, so there is nothing here whose \
-            history could be read and every reading below would be of nothing. Either \
-            `helmSearchable` stopped reaching the toolbar or the bridge stopped publishing the \
-            item
+            history could be read and every reading below would be of nothing
             """)
         XCTAssertNil(field.recentsAutosaveName, """
-            the bridged search field arrived already carrying the autosave name \
+            the field arrived already carrying the autosave name \
             «\(field.recentsAutosaveName ?? "")» — before anything here touched it. AppKit \
             writes the searched-for words into the user defaults domain under that key, and \
             this app's two search bars are typed with the names of somebody's applications and \
@@ -115,7 +99,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
         // And the word has to actually land, or "no history" is a reading of a
         // field nobody typed into.
-        XCTAssertTrue(mount.type(Self.word),
+        XCTAssertTrue(fixture.mount.type(Self.word),
                       "the field went away before «\(Self.word)» was typed")
         XCTAssertEqual(field.stringValue, Self.word, """
             precondition: «\(Self.word)» never reached the control — it reads «\
@@ -123,7 +107,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             """)
         XCTAssertEqual(page.text, Self.word, """
             precondition: the keystrokes never reached the binding, so this is not the control \
-            the pages are wired to and its history is not the one at stake
+            the page is wired to and its history is not the one at stake
             """)
 
         XCTAssertNil(field.recentsAutosaveName, """
@@ -135,7 +119,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
         // A recent is recorded on commit and not per keystroke, so a check that
         // only typed would be reading before there was anything to read.
-        XCTAssertTrue(mount.pressReturn(), "Return never reached the field")
+        XCTAssertTrue(fixture.mount.pressReturn(), "Return never reached the field")
         XCTAssertEqual(page.submits, 1, """
             precondition: Return fired `onSubmit` \(page.submits) times, so the commit this \
             case exists to read the aftermath of did not happen
@@ -146,10 +130,20 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             «\(field.recentsAutosaveName ?? "")». From here AppKit persists every word searched \
             for into the settings file
             """)
-        XCTAssertEqual(field.recentSearches, [], """
-            committing a search put \(field.recentSearches) into the field's recent-search \
-            list. With no autosave name that list is in memory only, but it is the material \
-            that gets written the moment one appears
+        // **Measured, not the bridge's own reading.** The bridged field's
+        // `target`/`action` were both nil, so no commit ever reached AppKit's
+        // recording path and this stayed `[]` no matter what was done to the
+        // field. This field's action really fires on Return
+        // (`searchSubmitted(_:)`), and AppKit keeps its own in-memory list of
+        // what has been committed regardless of `recentsAutosaveName` — that
+        // flag governs persistence, not the in-memory list. The word landing
+        // here is not the leak this file guards against; the next assertion,
+        // against the defaults domain itself, is.
+        XCTAssertEqual(field.recentSearches, [Self.word], """
+            \(field.recentSearches) — committing "wget" no longer lands in the field's own \
+            in-memory recent-search list, which is a real change in how this control commits \
+            and worth noticing on its own even though it is not the leak this file exists to \
+            catch
             """)
 
         // And the domain itself, which is the file the whole question is about.
@@ -167,15 +161,16 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// Without this the guard above is a sentence about a framework rather than
     /// a measurement — it would read the same whether `recentsAutosaveName`
     /// were a live property of the mounted control or a name that does nothing
-    /// on macOS 27. So the defect is put back here, on the bridged field
-    /// itself, and the cost of it is measured: the typed word in the settings
+    /// on macOS 27. So the defect is put back here, on the field this toolbar
+    /// builds, and the cost of it is measured: the typed word in the settings
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
         let page = Page()
-        let mount = MountedRender(Pane(page: page), width: 1060, height: 400, appearance: .aqua)
-        defer { mount.drop() }
-        mount.settle(20)
-        let field = try XCTUnwrap(mount.searchField, """
+        let fixture = LivePageToolbarFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
+                                             width: 1060, height: 400)
+        defer { fixture.drop() }
+        fixture.settle(20)
+        let field = try XCTUnwrap(fixture.mount.searchField, """
             no search field in the toolbar, so the guard beside this one has no subject either
             """)
 
@@ -189,21 +184,23 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
         field.recentsAutosaveName = Self.plantedName
         XCTAssertEqual(field.recentsAutosaveName, Self.plantedName, """
-            the bridged field would not take an autosave name at all, which means the guard \
-            beside this one is reading a property that does nothing on this system and proves \
-            nothing
+            the field would not take an autosave name at all, which means the guard beside \
+            this one is reading a property that does nothing on this system and proves nothing
             """)
 
-        XCTAssertTrue(mount.type(Self.word), "the field went away before the word was typed")
+        XCTAssertTrue(fixture.mount.type(Self.word), "the field went away before the word was typed")
         XCTAssertEqual(page.text, Self.word, "precondition: the word never reached the binding")
-        XCTAssertTrue(mount.pressReturn(), "Return never reached the field")
+        XCTAssertTrue(fixture.mount.pressReturn(), "Return never reached the field")
 
-        // The commit path AppKit records from is not reachable from a headless
-        // fixture — see this file's note — so the recent is handed over rather
-        // than typed into being. What is being shown is the *persistence*: a
-        // name, a recent, and the word in the settings file.
+        // A Return here would exercise the same real commit path the guard
+        // above already measured, landing the same word in `recentSearches` —
+        // this canary is not about the commit at all, only about what a
+        // *named* field then does with a recent it already holds, so the
+        // recent is handed over directly, deterministically, rather than
+        // typed and committed a second time for a fact this file already
+        // established.
         field.recentSearches = [Self.word]
-        mount.settle(10)
+        fixture.settle(10)
 
         XCTAssertEqual(field.recentSearches, [Self.word], """
             the field did not keep the recent it was handed, so `recentSearches` is not a live \

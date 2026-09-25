@@ -36,7 +36,7 @@ struct HostsSettingsPage: View {
     /// privileged write and its forty tests are all still here and still
     /// checked, so putting the case back is one line. Deleting them would have
     /// been the other decision, and it was not the one taken.
-    private enum Tab: Hashable { case ssh, keys }
+    private enum Tab: String, Hashable { case ssh, keys }
 
     /// The bar's natural height, measured, and whether it is *drawn* — which is
     /// not the same as whether there is anything to say. See `unsavedBar`.
@@ -64,12 +64,11 @@ struct HostsSettingsPage: View {
         // scroll view, so it is lit from the first frame
         // (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
-        // Inert until this page moves onto `helmWindowToolbar`
-        // (`SettingsWindow`'s own doc: a page's `.toolbar` declarations are
-        // dead weight without `sceneBridgingOptions`, which this window does
-        // not set) — kept as the shape a conversion pass will read from,
-        // rather than deleted along with the mechanism.
-        .toolbar { pageToolbar }
+        // The page's controls, in the window's own `NSToolbar`
+        // (`SettingsToolbar`), through the contract every module page shares
+        // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
+        // below for what each zone carries and why.
+        .helmWindowToolbar(toolbarContent, token: HostsDescriptor.id.rawValue)
     }
 
     /// **The page's two choices, in the window's toolbar — placed by what
@@ -78,50 +77,41 @@ struct HostsSettingsPage: View {
     /// They were a row of two segmented pickers at one weight, one colour and
     /// an 8 pt gap, although they do not ask the same kind of question: which
     /// file is navigation, table-or-text is a view of whichever file that is.
-    /// So the file is the switcher at the centre of the bar, and the view is a
-    /// pair of glyphs among the actions at the trailing edge, where a view
-    /// mode sits in every Mac app that has one. The toolbar gives both their
-    /// Liquid Glass; the file switcher is `HelmToolbarSwitcher`, labelled the
-    /// way the person chose by right-clicking it.
+    /// So the file is the switcher (`tabs`), and the view is a pair of toggle
+    /// actions in the capsule, where a view mode sits in every Mac app that
+    /// has one.
     ///
-    /// **One view picker for both files, not one each.** They ask the same
-    /// question with the same two words, and the choice of table-or-text
-    /// follows the person across the tabs, which is what somebody who prefers
-    /// the raw file wants. Its words are kept as the glyphs' labels, so the
-    /// control is named aloud and in its tooltip exactly as it was written.
+    /// **One view picker, one file.** Table-or-text is a question about the
+    /// SSH hosts file alone — `keysTab` never reads `showingText`, so on
+    /// Keys the mode does nothing today. The pair is out of the capsule's
+    /// visible set on Keys rather than shown there and left inert
+    /// (`HelmToolbarAction.isVisible`'s own rule), and it is dimmed on SSH
+    /// itself when the config cannot be read. Owner's alternative, not taken
+    /// here: keep the pair visible but dimmed on Keys as well. The toggles'
+    /// titles are the same two words the old segmented picker showed, kept
+    /// so the control is named aloud and in its tooltip exactly as it was
+    /// written.
     ///
-    @ToolbarContentBuilder
-    private var pageToolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            HelmToolbarSwitcher(HostsStr.moduleName, selection: $tab, segments: [
-                HelmSwitcherSegment(Tab.keys, HostsStr.keysTab, symbol: "key"),
-                HelmSwitcherSegment(Tab.ssh, HostsStr.sshHostsTab, symbol: "server.rack"),
-            ])
-        }
-        ToolbarItem(placement: .primaryAction) {
-            Picker(HostsStr.tableView, selection: $showingText) {
-                Label(HostsStr.tableView, systemImage: "tablecells").tag(false)
-                Label(HostsStr.textView, systemImage: "text.alignleft").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .labelStyle(.iconOnly)
-            .labelsHidden()
-            .help(showingText ? HostsStr.textView : HostsStr.tableView)
-        }
-        // **Making a key is the keys file's one act of creation**, so it is
-        // the `+` beside the view glyphs, as adding is in every Mac window
-        // whose toolbar holds a list — and it leaves the bar with the tab it
-        // belongs to, because the hosts file makes nothing new this way.
-        if tab == .keys {
-            ToolbarItem(placement: .primaryAction) {
-                Button { makingKey = true } label: {
-                    Label(HostsStr.newKey, systemImage: "plus")
-                }
-                .labelStyle(.iconOnly)
-                .help(HostsStr.newKey)
-                .disabled(!hvm.keysReadable)
-            }
-        }
+    /// **Making a key is the keys file's one act of creation**, so it is the
+    /// only action on Keys, the `+` every Mac window whose toolbar holds a
+    /// list already carries for adding — and it leaves the bar entirely on
+    /// SSH, where the view toggles show instead, because the hosts file
+    /// makes nothing new this way. The two are never on screen together.
+    private var toolbarContent: HelmPageToolbarContent {
+        HelmPageToolbarContent(
+            tabs: [HelmToolbarTab(id: Tab.keys.rawValue, title: HostsStr.keysTab, symbol: "key"),
+                   HelmToolbarTab(id: Tab.ssh.rawValue, title: HostsStr.sshHostsTab, symbol: "server.rack")],
+            selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
+            actions: [
+                HelmToolbarAction(id: "tableView", title: HostsStr.tableView, symbol: "tablecells",
+                                  isEnabled: hvm.sshReadable, isVisible: tab == .ssh,
+                                  isOn: !showingText) { showingText = false },
+                HelmToolbarAction(id: "textView", title: HostsStr.textView, symbol: "text.alignleft",
+                                  isEnabled: hvm.sshReadable, isVisible: tab == .ssh,
+                                  isOn: showingText) { showingText = true },
+                HelmToolbarAction(id: "newKey", title: HostsStr.newKey, symbol: "plus",
+                                  isEnabled: hvm.keysReadable, isVisible: tab == .keys) { makingKey = true },
+            ])   // no search: the page has none
     }
 
     private var hostsTab: some View {

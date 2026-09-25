@@ -108,26 +108,31 @@ final class InspectorStateTests: XCTestCase {
         XCTAssertEqual(subject.action, .pinned)
     }
 
-    func testASearchHitThatIsNotInstalledOffersInstallation() {
-        guard case let .package(subject) = state(.search, helm.id) else {
+    /// **A hit under the "Available to install" section offers installation,
+    /// on whichever tab it is sitting under.** `hits` is what
+    /// `HomebrewViewModel.shownHits` actually is — already filtered to what is
+    /// not on this Mac by `PackageStanding.notInstalled` — so there is no
+    /// "already installed" reading left here for the inspector to make: a hit
+    /// that is on this Mac never reaches `hits` at all.
+    func testAHitUnderTheSectionOffersInstallation() {
+        guard case let .package(subject) = state(.installed, helm.id) else {
             return XCTFail("expected a package")
         }
         XCTAssertEqual(subject.action, .install)
         XCTAssertEqual(subject.version, "")
     }
 
-    /// The approved prototype marks an installed hit in the search list —
-    /// the row draws a badge for it (`design/Main.dc.html:400`) and the
-    /// inspector has to agree with the row: a hit already on this Mac offers
-    /// its removal, not a second install.
-    func testASearchHitThatIsAlreadyInstalledOffersRemoval() {
-        let hit = SearchHit(name: "openssl@3", isCask: false)
-        guard case let .package(subject) = state(.search, hit.id, installed: [openssl], hits: [hit])
-        else {
-            return XCTFail("expected a package")
+    /// The same fallback on Обновления and on Состояние — the section sits
+    /// under all three, and none of the three has its own reading for a hit.
+    func testAHitUnderTheSectionOffersInstallationOnEveryOtherSegmentToo() {
+        guard case let .package(onUpdates) = state(.updates, helm.id) else {
+            return XCTFail("expected a package on updates")
         }
-        XCTAssertEqual(subject.action, .uninstall)
-        XCTAssertEqual(subject.version, "3.6.4")
+        XCTAssertEqual(onUpdates.action, .install)
+        guard case let .package(onHealth) = state(.health, helm.id) else {
+            return XCTFail("expected a package on health")
+        }
+        XCTAssertEqual(onHealth.action, .install)
     }
 
     /// A selection into a list that no longer holds it is nothing selected —
@@ -176,11 +181,13 @@ final class InspectorStateTests: XCTestCase {
         // would answer nil by accident and this would pass over it.
         let other = DoctorIssue(severity: .danger, title: "Something else", body: "", fix: nil)
         XCTAssertEqual(state(.health, deprecated.id, issues: [other]), .nothingSelected)
-        // And with the list gone the answer is the *other* nothing:
-        // `.nothingToSelect`, which `AnInvitationNeedsSomethingToChooseTests`
-        // holds. The two are not one case — one means "choose a row", and over
-        // an empty list that is an instruction nobody can follow.
-        XCTAssertEqual(state(.health, deprecated.id, issues: []), .nothingToSelect)
+        // And with every one of the health segment's lists gone — findings,
+        // configuration, *and* the section's own hits — the answer is the
+        // *other* nothing: `.nothingToSelect`, which
+        // `AnInvitationNeedsSomethingToChooseTests` holds. The two are not one
+        // case — one means "choose a row", and over an empty list that is an
+        // instruction nobody can follow.
+        XCTAssertEqual(state(.health, deprecated.id, hits: [], issues: []), .nothingToSelect)
     }
 
     /// **A finding is never read as a package, and a package never as a

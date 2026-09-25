@@ -49,10 +49,11 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
                        outdated: [OutdatedPackage] = [],
                        hits: [SearchHit] = [],
                        issues: [DoctorIssue] = [],
-                       config: [ConfigGroup] = []) -> InspectorState {
+                       config: [ConfigGroup] = [],
+                       shownEmpty: Bool? = nil) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
                           outdated: outdated, loadedOutdated: true, hits: hits, issues: issues,
-                          config: config, descriptions: [:])
+                          config: config, descriptions: [:], shownEmpty: shownEmpty)
     }
 
     /// **The claim, one segment at a time.** An empty list answers
@@ -71,8 +72,11 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
         XCTAssertEqual(state(segment: .updates, selected: nil, outdated: [Self.outdated]),
                        .nothingSelected)
 
-        XCTAssertEqual(state(segment: .search, selected: nil), .nothingToSelect)
-        XCTAssertEqual(state(segment: .search, selected: nil, hits: [Self.hit]),
+        // A hit under the "Available to install" section is something to
+        // choose too, on whichever tab the section is sitting under — the
+        // section replaced the Search segment 2026-09-24, and the invitation
+        // must not disappear just because the tab's *own* list is empty.
+        XCTAssertEqual(state(segment: .installed, selected: nil, hits: [Self.hit]),
                        .nothingSelected)
 
         // Состояние counts both of its lists. `brew doctor` refusing still
@@ -88,13 +92,41 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
             """)
     }
 
+    /// **A query that hides every row is not the same fact as an empty
+    /// Cellar, but the invitation must not appear over either.** The page
+    /// passes `shownEmpty` off its own filtered lists precisely because
+    /// `installed`/`outdated`/`issues`/`config` here stay the *raw* answer —
+    /// a query hiding every row leaves the raw list non-empty, so without
+    /// `shownEmpty` this would read `.nothingSelected` and invite a choice
+    /// beside a master saying «Nothing in this list matches.», which has
+    /// nothing left in it to choose.
+    func testAFilteredListWithNothingVisibleIsNotAnInvitationEither() {
+        XCTAssertEqual(state(segment: .installed, selected: nil, installed: [Self.wget],
+                             shownEmpty: true), .nothingToSelect, """
+            a query that hides every row still invited a choice, reading the raw list's own \
+            emptiness rather than the filtered one the page actually shows
+            """)
+        // The precondition this rests on: with no filter reported (nil), the
+        // three-list reading is unchanged and the row is still an invitation.
+        XCTAssertEqual(state(segment: .installed, selected: nil, installed: [Self.wget]),
+                       .nothingSelected, "precondition: an unfiltered row is still an invitation")
+        // And a hit under the section still rescues the invitation even while
+        // the tab's own list reads empty after filtering.
+        XCTAssertEqual(state(segment: .installed, selected: nil, installed: [Self.wget],
+                             hits: [Self.hit], shownEmpty: true), .nothingSelected, """
+            a section hit is something to choose even while the tab's own filtered list has \
+            nothing left in it
+            """)
+    }
+
     /// **A selection that outlived its list is not a reason to go on
     /// inviting.** The id is one no list holds, which before this was read as
     /// "nothing is selected" and drew the instruction over an empty pane.
     func testASelectionLeftOverFromAnEmptiedListIsNotAnInvitationEither() {
         XCTAssertEqual(state(segment: .installed, selected: Self.wget.id), .nothingToSelect)
         XCTAssertEqual(state(segment: .updates, selected: Self.outdated.id), .nothingToSelect)
-        XCTAssertEqual(state(segment: .search, selected: Self.hit.id), .nothingToSelect)
+        // A stale hit id over an empty section is still nothing to choose.
+        XCTAssertEqual(state(segment: .installed, selected: Self.hit.id), .nothingToSelect)
         XCTAssertEqual(state(segment: .health, selected: Self.issue.id), .nothingToSelect)
 
         // And a selection no *populated* list holds is still the invitation:

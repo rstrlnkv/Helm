@@ -40,18 +40,53 @@ import SwiftUI
 public final class HelmToolbarActionsModel {
     /// Data only — no closures. A frozen `PageBar`'s retention guard
     /// (`testAFrozenBarDropsTheClosuresItsContentCaptured`) has to stay true
-    /// of this model as well: `HelmToolbarAction.perform` never reaches here,
-    /// only what a button draws itself from.
+    /// of this model as well: none of `HelmToolbarAction.Kind`'s closures, nor
+    /// a menu item's `perform`, ever reach here — only what a button or a
+    /// menu draws itself from.
     public struct Entry: Equatable, Sendable {
         public let id: String
         public let title: String
         public let symbol: String
         public let isEnabled: Bool
+        /// Spinning while `true` — `HelmToolbarAction.isBusy`'s own header,
+        /// in `HelmWindowToolbar.swift`, says why only a `.button` entry
+        /// ever carries `true` here.
+        public let isBusy: Bool
+        public let kind: EntryKind
 
-        public init(id: String, title: String, symbol: String, isEnabled: Bool) {
+        public init(id: String, title: String, symbol: String, isEnabled: Bool,
+                    isBusy: Bool = false, kind: EntryKind = .button) {
             self.id = id
             self.title = title
             self.symbol = symbol
+            self.isEnabled = isEnabled
+            self.isBusy = isBusy
+            self.kind = kind
+        }
+    }
+
+    /// What an entry draws as — the closure-free twin of
+    /// `HelmToolbarAction.Kind`, for the same reason `Entry` itself carries no
+    /// closure.
+    public enum EntryKind: Equatable, Sendable {
+        case button
+        case toggle(isOn: Bool)
+        case menu([MenuEntry])
+    }
+
+    /// One item in a `.menu` entry's own submenu — a check and a title, with
+    /// no `perform` of its own: a press reaches it by `id` through
+    /// `pressItem`, below, the way a plain entry's press reaches `press`.
+    public struct MenuEntry: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let title: String
+        public let isOn: Bool
+        public let isEnabled: Bool
+
+        public init(id: String, title: String, isOn: Bool, isEnabled: Bool) {
+            self.id = id
+            self.title = title
+            self.isOn = isOn
             self.isEnabled = isEnabled
         }
     }
@@ -78,6 +113,9 @@ public final class HelmToolbarActionsModel {
     /// other way: `id` in, nothing back. Set once, at construction, by
     /// `SettingsToolbar.makeActionsItem`.
     @ObservationIgnored public var press: (String) -> Void = { _ in }
+    /// The `.menu` twin of `press`: the entry's own `id`, then the pressed
+    /// item's — nothing back, on the same grounds.
+    @ObservationIgnored public var pressItem: (String, String) -> Void = { _, _ in }
 
     public init() {}
 
@@ -120,13 +158,38 @@ public struct HelmToolbarActionsCapsule: View {
     let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
 
+    /// **The margin an `isBordered = false` custom-view item is short of an
+    /// AppKit-drawn one, when it is the toolbar's own last item.** Measured
+    /// against a bare `NSToolbar`, one 36×36 custom view, nothing else
+    /// changed: at 1060 pt, `isBordered = false` left the view's own trailing
+    /// edge 4.0 pt from the window's, `isBordered = true` left it 8.0 pt
+    /// (`TheLastItemsGlassSitsAsFarFromTheEdgeTests`, `BareToolbarEdgeProbeDelegate`).
+    /// The same 4.0 pt shortfall showed on the real bar: Hosts' `helm.actions`
+    /// — the toolbar's last item on that page — sat 4.0 pt from the window's
+    /// trailing edge at 1060 pt, where Uninstaller's `helm.search` field,
+    /// AppKit's own control, rested 8.0 pt from it at the same width. The
+    /// capsule stays `isBordered = false` regardless — a bordered item wraps
+    /// it in a second glass, this type's own header — so the missing 4 pt is
+    /// made up here, in the content, and only where nothing draws after the
+    /// capsule to already carry it (`trailingInset`, driven by
+    /// `SettingsToolbar.makeActionsItem` from `content.search == nil`):
+    /// Homebrew and Uninstaller, where search follows the capsule, are
+    /// unaffected.
+    public static let edgeMargin: CGFloat = 4
+
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured
     /// against a live window, so the two zones draw level rather than each
     /// choosing a size of its own.
     static let side: CGFloat = 36
 
-    public init(_ model: HelmToolbarActionsModel) {
+    /// Non-zero exactly when this capsule is the bar's own last item (no
+    /// search follows it) — see `edgeMargin`'s own header for the measurement
+    /// this closes.
+    private let trailingInset: CGFloat
+
+    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0) {
         self.model = model
+        self.trailingInset = trailingInset
     }
 
     public var body: some View {
@@ -145,35 +208,25 @@ public struct HelmToolbarActionsCapsule: View {
             GlassEffectContainer(spacing: HelmSpace.s4) {
                 HStack(spacing: 0) {
                     ForEach(visible, id: \.id) { entry in
-                        Button {
-                            model.press(entry.id)
-                        } label: {
-                            // The frame and the hit shape sit on the *label*,
-                            // inside `.plain`'s own button — a `.plain`
-                            // button's tap target is its label's rendered
-                            // bounds, which for an icon-only `Label` is the
-                            // bare glyph. A frame applied outside the button
-                            // only changes layout size, not what AppKit's
-                            // hit test asks SwiftUI for, so most of this
-                            // glass ignored a press until both moved here.
-                            Label(entry.title, systemImage: entry.symbol)
-                                .labelStyle(.iconOnly)
-                                .frame(width: Self.side, height: Self.side)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help(entry.title)
-                        .disabled(!entry.isEnabled || !model.isInteractive)
-                        .glassEffect(.regular.interactive())
-                        .glassEffectID(entry.id, in: glassSpace)
-                        .glassEffectUnion(id: "actions", namespace: glassSpace)
-                        .glassEffectTransition(
-                            HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
-                                ? .matchedGeometry : .identity)
+                        entryControl(entry)
+                            .help(entry.title)
+                            .disabled(!entry.isEnabled || !model.isInteractive)
+                            .glassEffect(.regular.interactive())
+                            .glassEffectID(entry.id, in: glassSpace)
+                            .glassEffectUnion(id: "actions", namespace: glassSpace)
+                            .glassEffectTransition(
+                                HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
+                                    ? .matchedGeometry : .identity)
                     }
                 }
             }
         }
+        // Outside the `ZStack`, so it widens the hosted item's own intrinsic
+        // size rather than reserving room the buttons' trailing alignment
+        // would swallow — `patchActionsMenu`'s reserve is unaffected, since
+        // this is measured directly against `content.search`, never against
+        // `model.declared`.
+        .padding(.trailing, trailingInset)
     }
 
     /// `declared`, filtered to `visibleIDs` — declared order preserved, so a
@@ -181,5 +234,77 @@ public struct HelmToolbarActionsCapsule: View {
     /// order however many are visible.
     private var visible: [HelmToolbarActionsModel.Entry] {
         model.declared.filter { model.visibleIDs.contains($0.id) }
+    }
+
+    /// **The glyph every kind shares.** The frame and the hit shape sit on it
+    /// rather than on whatever wraps it, for the reason the button case's own
+    /// comment used to give here: a `.plain` button's tap target is its
+    /// label's rendered bounds, which for an icon-only `Label` is the bare
+    /// glyph, and a frame applied outside the control changes only layout,
+    /// not what AppKit's hit test asks SwiftUI for.
+    @ViewBuilder
+    private func glyph(_ entry: HelmToolbarActionsModel.Entry) -> some View {
+        Label(entry.title, systemImage: entry.symbol)
+            .labelStyle(.iconOnly)
+            .helmSteadySpin(entry.isBusy)
+            .frame(width: Self.side, height: Self.side)
+            .contentShape(Rectangle())
+    }
+
+    /// **One entry, drawn as its own kind.** A button and a toggle both press
+    /// through `model.press`, which reads `HelmToolbarAction.Kind` back apart
+    /// on the `SettingsToolbar` side (`SettingsToolbar.perform(_:)`); a menu
+    /// has no press of its own; each item presses through `model.pressItem`.
+    @ViewBuilder
+    private func entryControl(_ entry: HelmToolbarActionsModel.Entry) -> some View {
+        switch entry.kind {
+        case .button:
+            Button {
+                model.press(entry.id)
+            } label: {
+                glyph(entry)
+            }
+            .buttonStyle(.plain)
+        case .toggle(let isOn):
+            Button {
+                model.press(entry.id)
+            } label: {
+                // **How a selected toggle glyph looks is left to the owner to
+                // judge by eye** — accent-coloured while on is this pass's
+                // own choice, made on no more evidence than
+                // `HelmGlyphPicker` and `HelmSurfaces` already tinting a
+                // chosen state the same way.
+                if isOn {
+                    glyph(entry).foregroundStyle(Color.accentColor)
+                } else {
+                    glyph(entry)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isOn ? .isSelected : [])
+        case .menu(let items):
+            Menu {
+                ForEach(items) { item in
+                    Toggle(item.title, isOn: Binding(
+                        get: { item.isOn },
+                        set: { _ in model.pressItem(entry.id, item.id) }))
+                        .disabled(!item.isEnabled)
+                }
+            } label: {
+                glyph(entry)
+            }
+            .menuIndicator(.hidden)
+            // Without these two, AppKit draws a `Menu` as its own bordered
+            // pull-down button — measured at 60×44 against every other
+            // entry's 36×36 — so the capsule's reserve (every declared
+            // action laid out at `Self.side`) stopped matching what a menu
+            // entry actually occupies, and the capsule resized whenever one
+            // came in or out of `visibleIDs`, which is the relayout the
+            // reserve exists to prevent. `.buttonStyle(.plain)` alone is not
+            // enough: it is `.menuStyle(.button)` that drops the pull-down
+            // bezel.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+        }
     }
 }

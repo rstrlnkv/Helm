@@ -667,9 +667,10 @@ extension ModulePageRender.Page {
     /// same renders then read 34 and 42 layers on consecutive tests.
     ///
     /// **And 20 from 2026-09-20, for the third time and the same reason: the
-    /// search field followed them.** It is `.searchable` now
-    /// (`helmSearchable`), so it is the window's toolbar's too and this host
-    /// never sees it. The readings are **20 granted and 28 withheld**, the same
+    /// search field followed them.** It went into the window's toolbar too —
+    /// first through `.searchable`, later through `helmWindowToolbar` once
+    /// `SettingsToolbar` replaced that bridge outright — and this host never
+    /// sees either. The readings are **20 granted and 28 withheld**, the same
     /// two in all eight languages and both appearances — 32 cells, no spread at
     /// all.
     ///

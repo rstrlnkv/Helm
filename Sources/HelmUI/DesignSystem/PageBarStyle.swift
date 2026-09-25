@@ -16,15 +16,19 @@ import SwiftUI
 ///   name on the left, the switcher centred, and the buttons and search
 ///   packed to the trailing edge — a three-zone toolbar that needs a leading
 ///   item to be a real zone at all. It is also load-bearing for the search
-///   field: `ToolbarSearchName` no longer pins a resting width, and it is
+///   field: `SettingsToolbar` pins no resting width of its own, and it is
 ///   this leading item taking room the bare toolbar did not use to take that
 ///   makes the collapse to a magnifier reachable inside the window's own
 ///   resizable range at all — measured on Uninstaller, whose search field
 ///   stays open at every width a headless sweep reaches with no leading item
-///   mounted and reads collapsed at the same widths with one
-///   (`ToolbarSearchName`'s own doc, which also says why the exact widths in
-///   that sweep are not themselves evidence of where the rendered window
-///   collapses).
+///   mounted and reads collapsed at the same widths with one (the sweep that
+///   found this predates `SettingsToolbar` itself and was recorded in the
+///   doc comment of the now-deleted `ToolbarSearchName.swift`, against the
+///   SwiftUI-bridge-era field; that field's own mechanism is gone with the
+///   file, so the exact widths in that sweep are not themselves evidence of
+///   where the app-owned toolbar's field collapses today — only the
+///   direction the leading item pushed the reachable range in is carried
+///   forward here).
 /// - `windowTitle` — the page's name is the window's own title and its status
 ///   the subtitle under it: text the system draws, with no glass behind it,
 ///   which is where the guidelines put a title. Shown on every page,

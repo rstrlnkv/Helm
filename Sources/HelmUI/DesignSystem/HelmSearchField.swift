@@ -36,9 +36,11 @@ import SwiftUI
 /// written out here**: that scan reads source lines without blanking comments, so
 /// prose quoting the shape it forbids is reported as an offence — which is what
 /// this paragraph did on its first draft.
-/// `ASearchFieldSaysWhatItIsTests` reads the label back off the mounted control
-/// instead — off the **toolbar's** field now, which is the one a person meets,
-/// so nothing in this file is under guard while nothing mounts it.
+/// The toolbar's own field is read back off its mounted control instead
+/// (`TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests`,
+/// `TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests`) —
+/// the **toolbar's** field, which is the one a person actually meets, so
+/// nothing in this file is under guard while nothing mounts it.
 public struct HelmSearchField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String

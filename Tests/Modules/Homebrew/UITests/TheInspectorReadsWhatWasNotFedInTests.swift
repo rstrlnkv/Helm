@@ -63,13 +63,15 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - The collision, on the search branch
 
     /// `docker` is a formula and a cask. The installed formula must not make the
-    /// *cask* in the results read as already here — the inspector would offer
-    /// to uninstall an application this Mac has never had, and the row beside it
-    /// would carry the «already installed» badge saying the same thing.
+    /// *cask* under the section read as already here — the inspector would
+    /// offer to uninstall an application this Mac has never had. Read on
+    /// Установленные — any tab does, since a hit is `HomebrewViewModel.shownHits`
+    /// on every one of them and `PackageStanding.notInstalled` is the one place
+    /// that excludes by id.
     func testACaskHitIsNotAlreadyInstalledBecauseItsFormulaIs() {
         let formula = BrewPackage(name: "docker", version: "1.0.0", isCask: false)
         let hit = SearchHit(name: "docker", isCask: true)
-        guard let s = subject(state(.search, hit.id, installed: [formula], hits: [hit]),
+        guard let s = subject(state(.installed, hit.id, installed: [formula], hits: [hit]),
                               "a cask hit whose formula is installed") else { return }
         XCTAssertTrue(s.isCask, "precondition: the subject is the cask hit")
         XCTAssertEqual(s.action, .install, """
@@ -84,7 +86,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     func testAFormulaHitIsNotAlreadyInstalledBecauseItsCaskIs() {
         let cask = BrewPackage(name: "docker", version: "2.0.0", isCask: true)
         let hit = SearchHit(name: "docker", isCask: false)
-        guard let s = subject(state(.search, hit.id, installed: [cask], hits: [hit]),
+        guard let s = subject(state(.installed, hit.id, installed: [cask], hits: [hit]),
                               "a formula hit whose cask is installed") else { return }
         XCTAssertFalse(s.isCask, "precondition: the subject is the formula hit")
         XCTAssertEqual(s.action, .install, """
@@ -138,20 +140,25 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     func testASelectionIntoAnEmptiedListIsNothingSelectedInEverySegment() {
         XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
         XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
-        XCTAssertEqual(state(.search, "f:helm", hits: []), .nothingToSelect)
+        XCTAssertEqual(state(.health, "f:helm", hits: []), .nothingToSelect)
     }
 
-    /// The same three, asked for an id that a *different* segment's list holds —
-    /// the shape a selection standing across a segment switch would take if the
-    /// three lists shared one.
+    /// The same, asked for an id that a *different* list holds — the shape a
+    /// selection standing across a segment switch would take if `installed`
+    /// and `outdated` shared one. `hits` is deliberately not this test's
+    /// concern any more: it is the one list every segment now shares on
+    /// purpose (`testAHitUnderTheSectionOffersInstallationOnEveryOtherSegmentToo`,
+    /// `InspectorStateTests.swift`), so a hit resolving under a segment that is
+    /// not Установленные is the feature working rather than a collision.
     func testASelectionFromAnotherSegmentsListIsNothingSelected() {
-        let hit = SearchHit(name: "helm", isCask: false)
-        XCTAssertEqual(state(.installed, hit.id, installed: [node], hits: [hit]), .nothingSelected)
-        XCTAssertEqual(state(.updates, node.id, installed: [node], outdated: [nodeOutdated],
-                             hits: [hit]) == .nothingSelected, false,
+        // `node`'s id, asked of Установленные without `node` in its own
+        // `installed` list — only `outdated` names it here.
+        XCTAssertEqual(state(.installed, node.id, outdated: [nodeOutdated]), .nothingToSelect)
+        XCTAssertEqual(state(.updates, node.id, installed: [node], outdated: [nodeOutdated])
+                       == .nothingSelected, false,
                        "precondition: node really is in the outdated list")
-        XCTAssertEqual(state(.updates, hit.id, outdated: [nodeOutdated], hits: [hit]),
-                       .nothingSelected)
-        XCTAssertEqual(state(.search, node.id, installed: [node], hits: [hit]), .nothingSelected)
+        // `nodeOutdated`'s id, asked of Обновления with `outdated` empty —
+        // only `installed` names the package here.
+        XCTAssertEqual(state(.updates, nodeOutdated.id, installed: [node]), .nothingToSelect)
     }
 }

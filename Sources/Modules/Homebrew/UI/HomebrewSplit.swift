@@ -47,8 +47,8 @@ struct HomebrewSplit {
     /// stays true on its own.
     ///
     /// It was also folded into the page's own header bar, whose width had to
-    /// agree with it; the page's controls are in the window's toolbar now
-    /// (`pageToolbar`) and this is the one boundary there is.
+    /// agree with it; the page's controls are in the window's toolbar now,
+    /// through `helmWindowToolbar`, and this is the one boundary there is.
     static let masterAndInspector: CGFloat = 560
 
     /// Below this there is no inspector: one column at full width, and the

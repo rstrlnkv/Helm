@@ -4,7 +4,7 @@ import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
 ///
-/// `SearchDisplay.state` is the shape this follows: the page asks a value type
+/// `AvailableSection.of` is the shape this follows: the page asks a value type
 /// what it is looking at, and the decision is held by a test rather than by a
 /// screenshot. Everything here is a function of what the page already has — no
 /// query of its own, and nothing that can be waited on.
@@ -44,6 +44,25 @@ enum InspectorState: Equatable {
     /// the inspector describes whichever is selected.
     case configSection(ConfigGroup)
 
+    /// `hits` is what the "Available to install" section under whichever list
+    /// is on screen actually draws (`HomebrewViewModel.shownHits`) — already
+    /// filtered to what is not on this Mac, by id — so every segment falls
+    /// back to it the same way and none of the three needs its own "already
+    /// installed" reading any more (`PackageStanding.notInstalled` is where
+    /// that exclusion happens once).
+    ///
+    /// `shownEmpty` is nil for a caller with no filter of its own — every
+    /// existing test keeps the three-list reading below byte for byte. The
+    /// page passes its own segment's filtered emptiness once a query is in
+    /// the field: `installed`/`outdated`/`issues`/`config` stay the *full*
+    /// lists here regardless, because a lookup by id and the update fact a
+    /// selected package's row carries (`PackageStanding.updates`) are correct
+    /// off the full list whenever `selected` is reachable at all — dropping a
+    /// row from the shown lists always drops its selection first
+    /// (`reconcileVisible`) — and only the *emptiness* question needs the
+    /// filtered count: a list a query has emptied is not the same fact as a
+    /// Cellar with nothing in it, and "Select a package" over the first is
+    /// exactly the invitation `.nothingToSelect` exists to withhold.
     static func of(segment: HomebrewViewModel.Segment,
                    selected: String?,
                    installed: [BrewPackage],
@@ -52,70 +71,69 @@ enum InspectorState: Equatable {
                    hits: [SearchHit],
                    issues: [DoctorIssue],
                    config: [ConfigGroup],
-                   descriptions: [String: String]) -> InspectorState {
-        // **Asked before the selection is, and of the same list the master
+                   descriptions: [String: String],
+                   shownEmpty: Bool? = nil) -> InspectorState {
+        // **Asked before the selection is, and of the same lists the master
         // draws.** A pane with nothing in it cannot have something picked out
         // of it, so a stale `selected` left over from a list that has since
         // emptied is not a reason to go on offering the invitation either.
         // Состояние counts both of its lists: `brew doctor` refusing still
         // leaves `brew config`'s groups to choose from, and those rows are
-        // selectable.
+        // selectable. `hits` counts on every segment now, since the section
+        // it describes sits under all three.
         let empty: Bool
-        switch segment {
-        case .installed: empty = installed.isEmpty
-        case .updates: empty = outdated.isEmpty
-        case .search: empty = hits.isEmpty
-        case .health: empty = issues.isEmpty && config.isEmpty
+        if let shownEmpty {
+            empty = shownEmpty && hits.isEmpty
+        } else {
+            switch segment {
+            case .installed: empty = installed.isEmpty && hits.isEmpty
+            case .updates: empty = outdated.isEmpty && hits.isEmpty
+            case .health: empty = issues.isEmpty && config.isEmpty && hits.isEmpty
+            }
         }
         if empty { return .nothingToSelect }
         guard let selected else { return .nothingSelected }
         let desc = descriptions[selected]
+        /// The one hit lookup every segment falls back to — a package offered
+        /// under the section is never anything but an install, since `hits`
+        /// has already had what is on this Mac filtered out of it.
+        func hit(_ h: SearchHit) -> InspectorState {
+            .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
+                                      version: "", desc: desc, updates: .notApplicable,
+                                      action: .install))
+        }
         switch segment {
         case .installed:
-            guard let p = installed.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return .package(InspectorSubject(
-                id: p.id, name: p.name, isCask: p.isCask, version: p.version, desc: desc,
-                updates: PackageStanding.updates(for: p.id, outdated: outdated,
-                                                 loadedOutdated: loadedOutdated),
-                action: .uninstall))
-        case .updates:
-            guard let p = outdated.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return .package(InspectorSubject(
-                id: p.id, name: p.name, isCask: p.isCask,
-                version: "\(p.installed) → \(p.latest)", desc: desc, updates: .notApplicable,
-                // A pinned formula is listed and not offered: `brew upgrade`
-                // answers it with "…is pinned", so the button could only ever
-                // fail.
-                action: p.pinned ? .pinned : .upgrade))
-        case .search:
+            if let p = installed.first(where: { $0.id == selected }) {
+                return .package(InspectorSubject(
+                    id: p.id, name: p.name, isCask: p.isCask, version: p.version, desc: desc,
+                    updates: PackageStanding.updates(for: p.id, outdated: outdated,
+                                                     loadedOutdated: loadedOutdated),
+                    action: .uninstall))
+            }
             guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
-            // An installed cask or formula found again by search offers its
-            // removal, not a second install — the row draws the same fact as
-            // a badge (`design/Main.dc.html:400`).
-            if let already = PackageStanding.installedVersion(of: h.id, installed: installed) {
-                return .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
-                                                 version: already, desc: desc, updates: .notApplicable,
-                                                 action: .uninstall))
+            return hit(h)
+        case .updates:
+            if let p = outdated.first(where: { $0.id == selected }) {
+                return .package(InspectorSubject(
+                    id: p.id, name: p.name, isCask: p.isCask,
+                    version: "\(p.installed) → \(p.latest)", desc: desc, updates: .notApplicable,
+                    // A pinned formula is listed and not offered: `brew upgrade`
+                    // answers it with "…is pinned", so the button could only
+                    // ever fail.
+                    action: p.pinned ? .pinned : .upgrade))
             }
-            return .package(InspectorSubject(id: h.id, name: h.name, isCask: h.isCask,
-                                             version: "", desc: desc, updates: .notApplicable,
-                                             action: .install))
+            guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
+            return hit(h)
         case .health:
-            // **Two lists, not one.** This segment's list holds `brew doctor`'s
-            // findings under one heading and `brew config`'s groups under
-            // another, so the selection is looked for in both before it is
-            // read as nothing. The ids cannot collide: a `DoctorIssue`'s is
-            // built from its own text around NUL separators and a
-            // `ConfigGroup`'s is `cfg:` and a case name.
-            //
-            // The same shape as the three above otherwise: a selection neither
-            // list holds any more is nothing at all, not a stale finding kept
-            // on screen because it was there a moment ago.
+            // **Two lists of its own, not one, and now a third it shares with
+            // every segment.** The ids cannot collide: a `DoctorIssue`'s is
+            // built from its own text around NUL separators, a `ConfigGroup`'s
+            // is `cfg:` and a case name, and a hit's is a `BrewKey`.
             if let issue = issues.first(where: { $0.id == selected }) { return .issue(issue) }
-            guard let group = config.first(where: { $0.id == selected }) else {
-                return .nothingSelected
-            }
-            return .configSection(group)
+            if let group = config.first(where: { $0.id == selected }) { return .configSection(group) }
+            guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
+            return hit(h)
         }
     }
 }
@@ -150,7 +168,7 @@ enum DoctorReading: Equatable {
 /// What the health master list puts on screen — **four answers, and the middle
 /// two are the whole point.**
 ///
-/// `SearchDisplay.state` is the shape this follows, for the reason that file
+/// `AvailableSection.of` is the shape this follows, for the reason that file
 /// gives: which sentence stands over which state is the whole of the decision,
 /// and a `body` is nowhere a test can reach.
 ///
@@ -213,11 +231,14 @@ struct ConfigGroup: Equatable, Identifiable {
 /// The sentence the health list has instead of findings — named rather than
 /// spelled, so the value the tests read carries no language in it.
 ///
-/// Each of the three is `HealthListState`'s own reading of `brew doctor`, and
-/// the three stay three for the reason that type spells out: «Nothing to fix»
-/// and «Homebrew did not answer» are one empty list and must never be one
-/// sentence.
-enum HealthNote: String, Equatable { case busy, clean, unexaminable }
+/// Each of the first three is `HealthListState`'s own reading of `brew
+/// doctor`, and they stay three for the reason that type spells out: «Nothing
+/// to fix» and «Homebrew did not answer» are one empty list and must never be
+/// one sentence. `noMatches` is the fourth, added 2026-09-24 when the health
+/// list gained a filter of its own: a finding the query hides must never read
+/// as `.clean` — «Nothing to fix» is earned only when `brew doctor` genuinely
+/// found nothing, not when a word typed over the page hides what it found.
+enum HealthNote: String, Equatable { case busy, clean, unexaminable, noMatches }
 
 /// One row under the Checkup heading: a finding, or the one sentence that
 /// stands in for the findings when there are none to draw.
@@ -258,19 +279,59 @@ enum HealthScreen: Equatable {
     /// A list. `configuration` empty means that heading is not drawn at all.
     case groups(checkup: [HealthRow], configuration: [ConfigGroup])
 
-    static func of(_ reading: DoctorReading, config: [ConfigGroup]) -> HealthScreen {
+    /// The findings a needle keeps — its title and its body. Shared by
+    /// `of(_:config:needle:)` and by `HomebrewViewModel.shownIssues`, through
+    /// this one function, so the health list and its own account of "empty"
+    /// cannot disagree about what an unmatched finding is.
+    static func matchingIssues(_ needle: String?, _ issues: [DoctorIssue]) -> [DoctorIssue] {
+        guard let needle else { return issues }
+        return issues.filter { ListFilter.matches(needle, [$0.title, $0.body]) }
+    }
+
+    /// The groups a needle keeps — a group's own heading, or any line's key
+    /// or value. Whole groups rather than lines: there is no reading in which
+    /// the inspector shows a group with some of its own lines missing.
+    static func matchingConfigGroups(_ needle: String?, _ groups: [ConfigGroup]) -> [ConfigGroup] {
+        guard let needle else { return groups }
+        return groups.filter { group in
+            ListFilter.matches(needle, [HbStr.configSectionName(group.section)])
+                || group.lines.contains { ListFilter.matches(needle, [$0.key, $0.value]) }
+        }
+    }
+
+    /// `needle` is nil for the ordinary, unfiltered reading — every existing
+    /// caller keeps the old behaviour byte for byte.
+    ///
+    /// **`.clean` survives filtering; a filtered-out finding does not read as
+    /// it.** `brew doctor` really finding nothing and a query hiding what it
+    /// did find are two different facts about the machine, and collapsing
+    /// them would let a stray character in the search field tell somebody
+    /// their Mac has nothing wrong with it. So `.clean` is read off the
+    /// *unfiltered* reading — `HealthListState.of(reading)` — and only a
+    /// non-empty `.rows(issues)` that filtering then empties reaches
+    /// `.noMatches` instead.
+    static func of(_ reading: DoctorReading, config: [ConfigGroup],
+                   needle: String? = nil) -> HealthScreen {
+        let filteredConfig = matchingConfigGroups(needle, config)
         func checkup(_ note: HealthNote) -> HealthScreen {
-            config.isEmpty ? .sentence(note)
-                           : .groups(checkup: [.note(note)], configuration: config)
+            filteredConfig.isEmpty ? .sentence(note)
+                                   : .groups(checkup: [.note(note)], configuration: filteredConfig)
         }
         switch HealthListState.of(reading) {
         case .busy: return checkup(.busy)
         case .clean: return checkup(.clean)
         case .unexaminable: return checkup(.unexaminable)
-        // Findings are rows whether or not there is a configuration beside
-        // them: a list is already the shape, so there is nothing to collapse.
-        case let .rows(issues): return .groups(checkup: issues.map(HealthRow.issue),
-                                               configuration: config)
+        case let .rows(issues):
+            guard let needle else {
+                // Findings are rows whether or not there is a configuration
+                // beside them: a list is already the shape, so there is
+                // nothing to collapse.
+                return .groups(checkup: issues.map(HealthRow.issue), configuration: filteredConfig)
+            }
+            let filtered = matchingIssues(needle, issues)
+            return filtered.isEmpty
+                ? checkup(.noMatches)
+                : .groups(checkup: filtered.map(HealthRow.issue), configuration: filteredConfig)
         }
     }
 }
@@ -477,8 +538,27 @@ enum PackageStanding {
         return loadedOutdated ? .upToDate : .notAsked
     }
 
-    /// The installed version of a search hit, or nil if it is not here.
-    static func installedVersion(of id: String, installed: [BrewPackage]) -> String? {
-        installed.first(where: { $0.id == id })?.version
+    /// The search hits that are **not** already on this Mac, filtered by
+    /// `BrewKey` id and never by name — `docker` is both a formula and a
+    /// cask, so an installed formula must not hide an offered cask of the
+    /// same name, and the reverse.
+    static func notInstalled(_ hits: [SearchHit], installed: [BrewPackage]) -> [SearchHit] {
+        let ids = Set(installed.map(\.id))
+        return hits.filter { !ids.contains($0.id) }
+    }
+
+    /// `installed`, kept where `needle` matches the name or — once it has
+    /// loaded — the description. nil `needle` keeps everything.
+    static func matching(_ needle: String?, _ installed: [BrewPackage],
+                         descriptions: [String: String]) -> [BrewPackage] {
+        guard let needle else { return installed }
+        return installed.filter { ListFilter.matches(needle, [$0.name, descriptions[$0.id]]) }
+    }
+
+    /// `outdated`'s twin.
+    static func matching(_ needle: String?, _ outdated: [OutdatedPackage],
+                         descriptions: [String: String]) -> [OutdatedPackage] {
+        guard let needle else { return outdated }
+        return outdated.filter { ListFilter.matches(needle, [$0.name, descriptions[$0.id]]) }
     }
 }

@@ -7,20 +7,22 @@ import HelmUI
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **Поиск answered the question while it was still being asked.**
+/// **The section answered the question while it was still being asked.**
 ///
 /// The results area was `listOrEmpty(hb.searchHits, empty: HbStr.noResults,
 /// busy: HbStr.searching)` with `empty` non-optional, so the busy branch was
 /// unreachable by construction: `HbStr.searching` was translated into all eight
 /// languages and drawn nowhere — `command grep -rn "HbStr.searching" Sources/`
-/// found the parameter and nothing else. One search is two `brew search` runs,
-/// measured by this module's own comment at about nine seconds, and for those
-/// nine seconds the screen said «Ничего не найдено.» — the same drawing as a
-/// true zero and as a refusal.
+/// found the parameter and nothing else. That defect predates the Search
+/// segment's own removal 2026-09-24; the claim it holds still applies to the
+/// "Available to install" section that replaced it, under Установленные:
+/// while `brew search` is out, the section has to say so rather than draw the
+/// same "No results." a true zero and a refusal both draw.
 ///
-/// The mount drives the real search field, because the results area is gated on
-/// the page's own `query` as well as on the reading, and a test that set only
-/// the view model would be measuring half the seam.
+/// The mount drives the real search field and Return, because the section is
+/// gated on `HomebrewViewModel.searchedQuery` and the reading together, and a
+/// test that drove only the view model's `search(_:)` would be measuring half
+/// the seam — the page's own binding is the other half.
 ///
 /// **That field is the window's now** (`.helmWindowToolbar`, through
 /// `SettingsToolbar`), so the typing goes through `MountedRender.type`, which
@@ -81,8 +83,7 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
                                              selection: .module(HomebrewDescriptor.id.rawValue),
                                              width: 984, height: 520)
         let mount = fixture.mount
-        let loading = Task { @MainActor in await hb.loadIfNeeded() }
-        hb.segment = .search
+        await hb.loadIfNeeded()
         func turn(_ times: Int) async {
             for _ in 0..<times {
                 mount.host.layoutSubtreeIfNeeded()
@@ -90,14 +91,16 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
             }
         }
         await turn(20)
-        // The page's `query` is its own `@State`, so the word has to arrive the
-        // way a person types it: through the field the page asked the window
-        // for.
+        // The page's `query` is the view model's own `@Published` now, but it
+        // still has to arrive the way a person types it: through the field the
+        // page asked the window for. Return is the deterministic door — it
+        // asks unconditionally and does not wait on the pause, which a bare
+        // typed word would race on a real clock.
         XCTAssertTrue(mount.type("cad"), """
-            the search segment put no field in the window's toolbar, so nothing below is \
+            Установленные put no field in the window's toolbar, so nothing below is \
             measured — every reading after this would be taken from a page nobody typed into
             """)
-        let searching = Task { @MainActor in await hb.search("cad") }
+        XCTAssertTrue(mount.pressReturn(), "Return never reached the field")
         await turn(60)
         let spinners = mount.host.everyView(ofType: NSProgressIndicator.self).count
         // The results area alone is what these three readings are a claim about
@@ -105,8 +108,6 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         // it does.
         let picture = mount.pixels(40...380)
         fixture.drop()
-        _ = loading
-        _ = searching
         withExtendedLifetime(transport) {}
         return Reading(spinners: spinners, picture: picture)
     }

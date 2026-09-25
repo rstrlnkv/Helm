@@ -34,13 +34,14 @@ struct HostsUIWire {
     @MainActor
     static func make(file: String?, privileged: PrivilegedOutcome,
                      backups: [String: String] = [:],
-                     keys: WireKeys = WireKeys(), agent: WireAgent = WireAgent()) -> HostsUIWire {
+                     keys: WireKeys = WireKeys(), agent: WireAgent = WireAgent(),
+                     sshConfig: SSHConfigPort = WireSSHConfig()) -> HostsUIWire {
         let transport = LocalTransport()
         let root = FixedPrivileged(privileged)
         let engine = HostsEngine(file: FixedFile(file),
                                  privileged: root,
                                  backups: MemoryBackups(backups),
-                                 sshConfig: WireSSHConfig(),
+                                 sshConfig: sshConfig,
                                  knownHosts: WireKnownHosts(), keys: keys, agent: agent,
                                  generator: WireKeyGenerator(),
                                  // The gate's reference, and `/nowhere` is where
@@ -185,4 +186,12 @@ struct WireSSHConfig: SSHConfigPort {
     let url = URL(fileURLWithPath: "/nowhere/.ssh/config")
     func read() -> String? { "Host a\n    HostName a.example\n" }
     func write(_ text: String) -> Bool { true }
+}
+
+/// The refusal `WireSSHConfig` cannot stand for: missing or not UTF-8, which
+/// is what `sshReadable` turns false on (`HostsEngine.snapshot`, `ssh != nil`).
+struct UnreadableSSHConfig: SSHConfigPort {
+    let url = URL(fileURLWithPath: "/nowhere/.ssh/config")
+    func read() -> String? { nil }
+    func write(_ text: String) -> Bool { false }
 }

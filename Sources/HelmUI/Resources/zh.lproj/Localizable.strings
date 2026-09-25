@@ -367,6 +367,8 @@
 "No modules enabled" = "未启用任何模块";
 "No packages installed." = "未安装任何软件包。";
 "No results." = "无结果。";
+"Available to install" = "可安装";
+"Nothing in this list matches." = "此列表中没有匹配项。";
 "Homebrew did not answer." = "Homebrew 没有回应。";
 "Homebrew did not answer, so nothing is known about the installed packages right now." = "Homebrew 没有回应，因此目前无法得知已安装的软件包。";
 "Homebrew did not answer, so nothing is known about updates right now." = "Homebrew 没有回应，因此目前无法得知有哪些更新。";
@@ -572,7 +574,6 @@
 "Turning a login item off no longer clears everything else you had ticked." = "关闭某个登录项时，不再清空你已勾选的其他项。";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "关闭“合盖仍保持唤醒”时，会一并移除为此安装的免密码权限。此前它会永久留在你的 Mac 上。";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard." = "两个模块改用更短的名称：“磁盘空间”现为“磁盘”，布局切换器现为“键盘”。";
-"Type a name and press Return." = "输入名称并按回车。";
 "Type ghbdtn and press space" = "输入 ghbdtn 后按空格";
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "用错布局输入 ghbdtn，它会变成 привет，输入法也随之切换。";
 "Uninstall" = "卸载";
@@ -1141,7 +1142,6 @@
 "Homebrew removes the installer it downloaded when an install fails, not only when it succeeds." = "安装失败时，Homebrew 也会删除下载的安装脚本，而不是只在成功时删除。";
 "Other installed packages still need it:" = "其他已安装的软件包仍需要它：";
 "Select a package" = "请选择一个软件包";
-"already installed" = "已安装";
 "Update available" = "有可用更新";
 "Installed version" = "已安装版本";
 "Installed on" = "安装日期";

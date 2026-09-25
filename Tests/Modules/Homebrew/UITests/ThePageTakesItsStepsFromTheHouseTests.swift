@@ -125,7 +125,8 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
     // `HStack` and one inset — so two bars that end in different places are no
     // longer something this page can draw, and the case measured a control
     // that no longer exists. Both have since moved again, into the window's
-    // toolbar (`pageToolbar`), where the system lays them out.
+    // toolbar, declared through `helmWindowToolbar` and drawn by
+    // `SettingsToolbar`, where the system lays them out.
 
     // MARK: - The lists
 

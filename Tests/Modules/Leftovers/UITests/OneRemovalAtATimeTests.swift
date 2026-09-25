@@ -196,39 +196,52 @@ final class OneRemovalAtATimeTests: XCTestCase {
                        + "list still shows the rows that have just gone to the Trash")
     }
 
-    /// **And the page has to say so**, or the model's refusal is a press that does
-    /// nothing — «the model refuses; the page dims. Both, or neither is reliable.»
-    ///
-    /// This was read off the drawing, as ink in the page's own 48 pt strip:
-    /// measured before the fix, 1 272 404 idle and 1 272 404 busy. Scan has since
-    /// moved into the settings window's toolbar (2026-09-16), which a page drawn
-    /// on its own does not have, so the ink is out of reach and the claim is
-    /// read off the construction instead: the button is disabled by the very
-    /// flag `LeftoversViewModel.scan` refuses on. The model's half is the case
-    /// above. What this cannot prove is that macOS draws a disabled toolbar
-    /// item dimmed — which is the system's promise, not this page's.
-    func testTheToolbarsScanGoesDimWhileARemovalRuns() throws {
+    /// **And the invitation's own Scan has to say so too**, or the model's
+    /// refusal is a press that does nothing — «the model refuses; the page
+    /// dims. Both, or neither is reliable.» Scan itself moved into the
+    /// settings window's toolbar (2026-09-16); its own dimming while a
+    /// removal runs is proven at the declaration level by
+    /// `TheToolbarDeclarationMatchesWhatThePageOffersTests
+    /// .testScanIsDisabledWhileARemovalIsRunning`, in this same module's
+    /// `UITests`, which reads `HelmToolbarAction.isEnabled` off a mounted
+    /// page rather than off source text. What is left for this file, which
+    /// still builds only the page and not a window's `NSToolbar`
+    /// (`LivePageToolbarFixture`'s own header says why that needs
+    /// `HelmApp`), is the invitation's own button — drawn on the empty-state
+    /// screens instead of the toolbar's — and the one property both share,
+    /// so the two cannot drift apart on what refuses a press.
+    func testTheInvitationsScanGoesDimWhileARemovalRuns() throws {
         let page = "Sources/Modules/Leftovers/UI/LeftoversSettingsPage.swift"
         let code = SwiftSource.code(try RepoSource.text(of: page))
         // A computed property rather than a `func`, which `SwiftSource`'s body
         // reader does not cover: from the declaration to its matching brace.
-        let declaration = try XCTUnwrap(code.range(of: "var scanButton"),
-                                        "\(page) no longer declares scanButton")
-        var depth = 0, opened = false
-        var end = declaration.upperBound
-        for index in code[declaration.upperBound...].indices {
-            let character = code[index]
-            if character == "{" { depth += 1; opened = true }
-            if character == "}" { depth -= 1 }
-            if opened && depth == 0 { end = code.index(after: index); break }
+        func body(of property: String) throws -> String {
+            let declaration = try XCTUnwrap(code.range(of: "var \(property)"),
+                                            "\(page) no longer declares \(property)")
+            var depth = 0, opened = false
+            var end = declaration.upperBound
+            for index in code[declaration.upperBound...].indices {
+                let character = code[index]
+                if character == "{" { depth += 1; opened = true }
+                if character == "}" { depth -= 1 }
+                if opened && depth == 0 { end = code.index(after: index); break }
+            }
+            return String(code[declaration.lowerBound..<end])
         }
-        let button = String(code[declaration.lowerBound..<end])
+        let button = try body(of: "scanButton")
         XCTAssertTrue(button.contains("lvm.scan()"),
                       "scanButton no longer scans — the rule below would pass over a button "
                       + "that does something else")
-        XCTAssertTrue(button.contains(".disabled(") && button.contains("lvm.busy"), """
-            Scan is not disabled by `lvm.busy`, so it stays live under a press the model now \
-            refuses while a removal runs — a button that does nothing.
+        XCTAssertTrue(button.contains(".disabled(scanRefused)"), """
+            scanButton no longer reads the shared `scanRefused` property — the toolbar's own \
+            Scan action and this button can now dim on two different conditions, which is \
+            exactly the drift the shared property exists to end
+            """)
+        let refused = try body(of: "scanRefused")
+        XCTAssertTrue(refused.contains("lvm.busy") && refused.contains("lvm.scanning"), """
+            scanRefused no longer reads both `lvm.busy` and `lvm.scanning` — either button it \
+            gates would then stay live under a press the model refuses, a control that does \
+            nothing.
             """)
     }
 

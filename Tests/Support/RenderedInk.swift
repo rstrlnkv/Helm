@@ -261,36 +261,36 @@ public final class MountedRender {
 
     /// **The search control is in the window and never in `host`.**
     ///
-    /// A page asks for it with `helmSearchable` and SwiftUI puts it in the
-    /// window's toolbar, which is a different tree from the one every other
-    /// reading here walks: measured 2026-09-20,
-    /// `host.everyView(ofType: NSSearchField.self)` finds **0** where the
-    /// `NSViewRepresentable` it replaced gave 1. That is the whole hazard for a
-    /// test of this kind, and it is silent — a walk of `host` finds nothing,
-    /// types nothing, and reads a page nobody touched.
+    /// A page asks for one through `helmWindowToolbar`, and `SettingsToolbar`
+    /// — reached through the `channel` this mount was built with — is what
+    /// actually builds the `NSSearchToolbarItem` and puts it on the window,
+    /// which is a different tree from the one every other reading here walks:
+    /// `host.everyView(ofType: NSSearchField.self)` finds **0** whether or not
+    /// the window's toolbar carries one. That is the whole hazard for a test
+    /// of this kind, and it is silent — a walk of `host` finds nothing, types
+    /// nothing, and reads a page nobody touched.
     ///
-    /// **No option turns this on**, which is worth saying because one was
-    /// written here first and measured to do nothing: an `NSHostingView` set as
-    /// a window's `contentView` publishes the toolbar whether or not
-    /// `sceneBridgingOptions` names `.toolbars` — same toolbar, same items,
-    /// same field, with the option and without. A parameter for it would have
-    /// read like the thing that makes these tests work.
-    ///
-    /// Nil is a real answer and not a harness failure: the declaration is under
-    /// a gate on both pages that carry one, so «no field» is what a page
-    /// showing something else is supposed to read. Every caller that means «a
-    /// field must be here» says so itself, loudly — see
-    /// `TheNarrowBandActsInEverySegmentTests`, whose predecessor said it with an
-    /// `if let` and went quiet instead.
+    /// Nil is a real answer and not only a harness failure: a mount built with
+    /// no `channel` at all publishes nothing to any toolbar by construction
+    /// (`HelmWindowToolbarChannel`'s own doc — nil channel, no declaration),
+    /// which is the shape `ModulePageRender` deliberately mounts to count a
+    /// page's own layers with the window's controls out of the count
+    /// entirely; a mount built with a live `channel` and an attached
+    /// `SettingsToolbar` (`LivePageToolbarFixture`, `Tests/HelmAppTests`) is
+    /// the one where «no field» means the page genuinely declared none. Every
+    /// caller that means «a field must be here» says so itself, loudly — see
+    /// `TheNarrowBandActsInEverySegmentTests`, whose predecessor said it with
+    /// an `if let` and went quiet instead.
     public var searchField: NSSearchField? {
         (window?.toolbar?.items ?? []).compactMap { $0 as? NSSearchToolbarItem }
             .first?.searchField
     }
 
-    /// Type `text` into the bridged search field the way AppKit delivers a
-    /// keystroke — the value on the control, then the notification SwiftUI's own
-    /// coordinator listens for. Assigning `stringValue` alone moves the control
-    /// and not the binding.
+    /// Type `text` into the toolbar's search field the way AppKit delivers a
+    /// keystroke — the value on the control, then the notification
+    /// `SettingsToolbar.controlTextDidChange` listens for. Assigning
+    /// `stringValue` alone moves the control and not the binding
+    /// `HelmToolbarSearch.text` carries.
     ///
     /// Returns false when there is no field to type into, so a caller can fail
     /// in its own words.
@@ -303,14 +303,12 @@ public final class MountedRender {
         return true
     }
 
-    /// Press Return in the bridged search field, which is what
-    /// `.onSubmit(of: .search)` answers to.
-    ///
-    /// **A key event and not the control's action.** Measured 2026-09-20: the
-    /// bridged field's `target` and `action` are both nil — SwiftUI hangs the
-    /// submit off its own field editor — so `sendAction` fires nothing, and so
-    /// does `insertNewline` on the editor. A `keyDown` carrying Return on the
-    /// field editor fires it exactly once.
+    /// Press Return in the toolbar's search field, which is what
+    /// `HelmToolbarSearch.onSubmit` answers to — `SettingsToolbar` wires a real
+    /// `target`/`action` to the field it builds (`searchSubmitted(_:)`), and
+    /// turns `sendsActionOnEndEditing` off so only a genuine Return reaches
+    /// it. A `keyDown` carrying Return on the field editor is what delivers
+    /// that Return, the same event AppKit itself would post from a keystroke.
     @discardableResult
     public func pressReturn(turns: Int = 5) -> Bool {
         guard let field = searchField, let window,

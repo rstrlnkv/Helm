@@ -44,10 +44,12 @@ public enum HelmA11y {
     public static var whatToShow: String {
         L("What to show")
     }
-    /// The search field, which had no name at all. It is the bridged control in
-    /// the window's toolbar now (`helmSearchable`), named from the app layer by
-    /// `ToolbarSearchName`; `HelmSearchField` set the same word, and nothing
-    /// mounts that type any more.
+    /// The search field, which had no name at all. `SettingsToolbar` builds it
+    /// directly now, in the window's toolbar, and names it from the app layer
+    /// — `makeSearchItem` sets this word once and `patchSearch` re-reads it on
+    /// every refresh, including a language change; `HelmSearchField` set the
+    /// same word for the `NSViewRepresentable` that came before it, and
+    /// nothing mounts that type any more.
     ///
     /// **A placeholder is not a name**, and this one is the house rule read from
     /// the other end: «Search formulae and casks» disappears the moment there is
