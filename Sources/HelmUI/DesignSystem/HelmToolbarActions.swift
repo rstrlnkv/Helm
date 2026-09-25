@@ -72,6 +72,26 @@ public final class HelmToolbarActionsModel {
         case button
         case toggle(isOn: Bool)
         case menu([MenuEntry])
+        /// The closure-free twin of `.segmented` — the switcher only needs
+        /// its own options and which one is current; a picked option reaches
+        /// `SettingsToolbar` through `pressItem`, the same route a `.menu`
+        /// item's own press already takes.
+        case segmented([SegmentEntry], selectedID: String)
+    }
+
+    /// One option in a `.segmented` entry — `HelmToolbarTab`'s own triple
+    /// (id, word, glyph), carried across the same closure-free boundary
+    /// `MenuEntry` already crosses for `.menu`.
+    public struct SegmentEntry: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let title: String
+        public let symbol: String
+
+        public init(id: String, title: String, symbol: String) {
+            self.id = id
+            self.title = title
+            self.symbol = symbol
+        }
     }
 
     /// One item in a `.menu` entry's own submenu — a check and a title, with
@@ -185,11 +205,20 @@ public struct HelmToolbarActionsCapsule: View {
     /// Non-zero exactly when this capsule is the bar's own last item (no
     /// search follows it) — see `edgeMargin`'s own header for the measurement
     /// this closes.
-    private let trailingInset: CGFloat
+    public let trailingInset: CGFloat
 
-    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0) {
+    /// **The label style the page's own tabs are drawn in** — a `.segmented`
+    /// entry is a second set of tabs (the owner's words for Hosts' Table /
+    /// Plain-text pair, 2026-09-25), so it follows the same setting rather
+    /// than the environment's `.text` default, which the hosting view above
+    /// this capsule would otherwise hand it.
+    public let switcherStyle: ToolbarSwitcherStyle
+
+    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0,
+                switcherStyle: ToolbarSwitcherStyle = .text) {
         self.model = model
         self.trailingInset = trailingInset
+        self.switcherStyle = switcherStyle
     }
 
     public var body: some View {
@@ -197,9 +226,12 @@ public struct HelmToolbarActionsCapsule: View {
             // The fixed reserve: every declared action, laid out and never
             // drawn — its width is the capsule's own intrinsic width, which
             // is what stops the hosted item resizing as `visibleIDs` moves.
+            // `reserveWidth(_:)` is `Self.side` for every button-shaped kind
+            // and a `.segmented` entry's own measured word width for that one
+            // — see its own header.
             HStack(spacing: 0) {
-                ForEach(model.declared, id: \.id) { _ in
-                    Color.clear.frame(width: Self.side, height: Self.side)
+                ForEach(model.declared, id: \.id) { entry in
+                    Color.clear.frame(width: reserveWidth(entry), height: Self.side)
                 }
             }
             .hidden()
@@ -208,15 +240,30 @@ public struct HelmToolbarActionsCapsule: View {
             GlassEffectContainer(spacing: HelmSpace.s4) {
                 HStack(spacing: 0) {
                     ForEach(visible, id: \.id) { entry in
-                        entryControl(entry)
-                            .help(entry.title)
-                            .disabled(!entry.isEnabled || !model.isInteractive)
-                            .glassEffect(.regular.interactive())
-                            .glassEffectID(entry.id, in: glassSpace)
-                            .glassEffectUnion(id: "actions", namespace: glassSpace)
-                            .glassEffectTransition(
-                                HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
-                                    ? .matchedGeometry : .identity)
+                        if case .segmented(let options, let selectedID) = entry.kind {
+                            // AppKit's own glass, not SwiftUI's — `.glassEffect`
+                            // on top of a control that already draws Liquid
+                            // Glass through the system is a hairline on a
+                            // second silhouette (`CLAUDE.md`'s own words for
+                            // it), so the uniform wrap every other kind takes,
+                            // below, is deliberately skipped here.
+                            HelmToolbarSwitcher(entry.title,
+                                selection: Binding(get: { selectedID },
+                                                   set: { model.pressItem(entry.id, $0) }),
+                                segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
+                                .environment(\.helmSwitcherStyle, switcherStyle)
+                                .disabled(!entry.isEnabled || !model.isInteractive)
+                        } else {
+                            entryControl(entry)
+                                .help(entry.title)
+                                .disabled(!entry.isEnabled || !model.isInteractive)
+                                .glassEffect(.regular.interactive())
+                                .glassEffectID(entry.id, in: glassSpace)
+                                .glassEffectUnion(id: "actions", namespace: glassSpace)
+                                .glassEffectTransition(
+                                    HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
+                                        ? .matchedGeometry : .identity)
+                        }
                     }
                 }
             }
@@ -234,6 +281,30 @@ public struct HelmToolbarActionsCapsule: View {
     /// order however many are visible.
     private var visible: [HelmToolbarActionsModel.Entry] {
         model.declared.filter { model.visibleIDs.contains($0.id) }
+    }
+
+    /// **What one declared entry costs the reserve.** Every button-shaped
+    /// kind costs exactly `Self.side` — the invariant
+    /// `testAMenuEntryCostsTheSameReserveAsEveryOtherKindAcrossVisibility`
+    /// holds them to — but a `.segmented` entry draws at whatever width its
+    /// own words need, in whichever language is current, so its reserve is
+    /// measured off-screen against the same control
+    /// (`HelmToolbarSwitcher.width(of:in:)`, the same helper the tabs
+    /// switcher's own fold prediction already uses), in `switcherStyle` —
+    /// the style the switcher above is drawn in.
+    ///
+    /// Not `private`, on the same grounds as `model` above: it is what
+    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` reads, through
+    /// `@testable import HelmUI`, to tell the reserve's own width apart from
+    /// `HelmToolbarActionsCapsule`'s deliberate `trailingInset` — a test that
+    /// instead assumed every declared entry costs `Self.side` would read a
+    /// `.segmented` entry's own extra width as if it were the inset.
+    @MainActor
+    func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
+        if case .segmented(let options, _) = entry.kind {
+            return HelmToolbarSwitcher<String>.width(of: options.map(\.title), in: switcherStyle)
+        }
+        return Self.side
     }
 
     /// **The glyph every kind shares.** The frame and the hit shape sit on it
@@ -305,6 +376,13 @@ public struct HelmToolbarActionsCapsule: View {
             // bezel.
             .menuStyle(.button)
             .buttonStyle(.plain)
+        case .segmented:
+            // Never reached: `body`'s own `ForEach` above intercepts a
+            // `.segmented` entry before this switch is asked at all — kept
+            // here only because Swift requires this switch over `Kind` to
+            // stay exhaustive, per `CLAUDE.md`'s own rule against a `default`
+            // arm that would hide a case added here later.
+            EmptyView()
         }
     }
 }

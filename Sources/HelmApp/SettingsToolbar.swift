@@ -454,6 +454,10 @@ import HelmUI
                                                  HelmToolbarMenuItem(id: $0.id, title: $0.title,
                                                                      isOn: $0.isOn, isEnabled: $0.isEnabled) {}
                                              })
+                case .segmented(let options, let selection):
+                    return HelmToolbarAction(id: action.id, title: action.title,
+                                             isEnabled: action.isEnabled, isVisible: action.isVisible,
+                                             options: options, selection: .constant(selection.wrappedValue))
                 }
             },
             search: content.search.map {
@@ -1184,10 +1188,10 @@ import HelmUI
     /// comment claims to have isolated — so the fix is to measure inside the
     /// same kind of container the attached item actually is, not to guess at
     /// a correction. The window is real enough for AppKit to lay a toolbar
-    /// out in, but `orderBack(nil)` is as far as it ever goes — never
-    /// `makeKeyAndOrderFront`, never shown to anyone — and it is reused
-    /// across every call precisely so this measurement never touches the
-    /// live, attached bar.
+    /// out in and is never ordered in at all — `isOnScreen` is what
+    /// `AnUnfoldIsPredictedNeverTrialledTests.testTheMeasurementWindowNeverReachesTheScreen` reads — and it is
+    /// reused across every call precisely so this measurement never touches
+    /// the live, attached bar.
     @MainActor
     private final class SwitcherMeasurementRig: NSObject, NSToolbarDelegate {
         private static let itemID = NSToolbarItem.Identifier("helm.measure")
@@ -1199,9 +1203,24 @@ import HelmUI
                               styleMask: [.titled, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
+            // Never ordered in: `orderBack(nil)`, which stood here, *is* an
+            // ordering — it put this empty 2000 × 44 window on screen under
+            // every other one, where the owner found it (2026-09-25). The
+            // rest makes it inert in case anything ever orders it anyway.
+            window.alphaValue = 0
+            window.ignoresMouseEvents = true
+            window.isExcludedFromWindowsMenu = true
+            window.collectionBehavior = [.transient, .ignoresCycle]
             super.init()
-            window.orderBack(nil)
         }
+
+        /// Whether the rig's window is on screen — for the check that it
+        /// never is.
+        var isOnScreen: Bool { window.isVisible }
+        /// How many measurements this rig has taken — so that check can
+        /// first see a measurement happen before it asserts the window
+        /// stayed off screen through it.
+        private(set) var measurements = 0
 
         func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
                     willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -1233,6 +1252,7 @@ import HelmUI
             window.toolbar = toolbar
             window.layoutIfNeeded()
             let width = hosting.frame.width
+            measurements += 1
             window.toolbar = nil
             hostView = nil
             return width
@@ -1243,6 +1263,12 @@ import HelmUI
     /// only ever one settings window, but nothing here depends on that, and a
     /// second instance would just mean a second idle, never-shown window.
     private static let measurementRig = SwitcherMeasurementRig()
+
+    /// Whether the shared measurement window has reached the screen — read by
+    /// `AnUnfoldIsPredictedNeverTrialledTests.testTheMeasurementWindowNeverReachesTheScreen` after a real
+    /// measurement has run.
+    static var measurementWindowIsOnScreen: Bool { measurementRig.isOnScreen }
+    static var measurementsTaken: Int { measurementRig.measurements }
 
     /// **Widths for the same `HelmToolbarSwitcher` configuration the attached
     /// item hosts — measured in a real toolbar item, never the attached
@@ -2028,7 +2054,7 @@ import HelmUI
         switch action.kind {
         case .button(let perform): perform()
         case .toggle(_, let perform): perform()
-        case .menu: break
+        case .menu, .segmented: break
         }
     }
 
@@ -2048,6 +2074,10 @@ import HelmUI
                     HelmToolbarActionsModel.MenuEntry(id: $0.id, title: $0.title,
                                                       isOn: $0.isOn, isEnabled: $0.isEnabled)
                 })
+            case .segmented(let options, let selection):
+                kind = .segmented(options.map {
+                    HelmToolbarActionsModel.SegmentEntry(id: $0.id, title: $0.title, symbol: $0.symbol)
+                }, selectedID: selection.wrappedValue)
             }
             return HelmToolbarActionsModel.Entry(id: action.id, title: action.title, symbol: action.symbol,
                                                  isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind)
@@ -2074,10 +2104,17 @@ import HelmUI
         }
         model.pressItem = { [weak self, weak bar] actionID, itemID in
             guard self != nil, let bar, bar.isLive,
-                  let action = bar.content?.actions.first(where: { $0.id == actionID }),
-                  case .menu(let items) = action.kind,
-                  let item = items.first(where: { $0.id == itemID }) else { return }
-            item.perform()
+                  let action = bar.content?.actions.first(where: { $0.id == actionID }) else { return }
+            switch action.kind {
+            case .menu(let items):
+                guard let item = items.first(where: { $0.id == itemID }) else { return }
+                item.perform()
+            case .segmented(let options, let selection):
+                guard options.contains(where: { $0.id == itemID }) else { return }
+                selection.wrappedValue = itemID
+            case .button, .toggle:
+                break
+            }
         }
         // **Seeded from whatever `bar.content` already carries.** `content`
         // is assigned before this delegate call ever runs (`buildBar` sets
@@ -2103,7 +2140,8 @@ import HelmUI
         // edge against Uninstaller's 8.0 pt for `helm.search` at the same
         // width.
         let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(
+            model, trailingInset: trailingInset, switcherStyle: AppSettings.toolbarSwitcherStyle))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
         // Not a plain image item any more, so no second AppKit glass behind
@@ -2130,6 +2168,13 @@ import HelmUI
     /// or is not meant to look interactive, has nothing to morph *from*.
     private func patchActions(_ bar: PageBar, animated: Bool) {
         guard let content = bar.content, let model = bar.actionsModel else { return }
+        // A `.segmented` entry follows the tabs' label style: a right-click
+        // style change reaches here through `refreshAndResettle`.
+        let style = AppSettings.toolbarSwitcherStyle
+        if let host = bar.actionsHost, host.rootView.switcherStyle != style {
+            host.rootView = HelmToolbarActionsCapsule(model, trailingInset: host.rootView.trailingInset,
+                                                      switcherStyle: style)
+        }
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
@@ -2212,6 +2257,27 @@ import HelmUI
             }
             top.submenu = submenu
             return top
+        case .segmented(let options, let selection):
+            // The same submenu-of-checks shape a `.menu` action's own floor
+            // already takes — this is the "overflow (») menu form shows the
+            // two options with a checkmark on the current one" the owner
+            // asked for, reusing `actionMenuSubitemPressed` rather than a
+            // route of its own.
+            let top = NSMenuItem(title: action.title, action: nil, keyEquivalent: "")
+            let submenu = NSMenu(title: action.title)
+            submenu.autoenablesItems = false
+            let current = selection.wrappedValue
+            for option in options {
+                let subitem = NSMenuItem(title: option.title,
+                                         action: #selector(actionMenuSubitemPressed(_:)), keyEquivalent: "")
+                subitem.target = self
+                subitem.representedObject = [action.id, option.id]
+                subitem.isEnabled = action.isEnabled && bar.isLive
+                subitem.state = option.id == current ? .on : .off
+                submenu.addItem(subitem)
+            }
+            top.submenu = submenu
+            return top
         }
     }
 
@@ -2222,15 +2288,23 @@ import HelmUI
         Self.perform(action)
     }
 
-    /// The overflow menu's own route into a `.menu` action's items — the
-    /// capsule's own equivalent is `HelmToolbarActionsModel.pressItem`.
+    /// The overflow menu's own route into a `.menu` action's items, or into a
+    /// `.segmented` action's options — the capsule's own equivalent, for
+    /// either kind, is `HelmToolbarActionsModel.pressItem`.
     @objc private func actionMenuSubitemPressed(_ sender: NSMenuItem) {
         guard let pair = sender.representedObject as? [String], pair.count == 2,
               let key = attachedPageKey, let bar = pageBars[key], bar.isLive,
-              let action = bar.content?.actions.first(where: { $0.id == pair[0] }),
-              case .menu(let items) = action.kind,
-              let item = items.first(where: { $0.id == pair[1] }) else { return }
-        item.perform()
+              let action = bar.content?.actions.first(where: { $0.id == pair[0] }) else { return }
+        switch action.kind {
+        case .menu(let items):
+            guard let item = items.first(where: { $0.id == pair[1] }) else { return }
+            item.perform()
+        case .segmented(let options, let selection):
+            guard options.contains(where: { $0.id == pair[1] }) else { return }
+            selection.wrappedValue = pair[1]
+        case .button, .toggle:
+            break
+        }
     }
 
     // MARK: - Search

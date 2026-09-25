@@ -71,31 +71,38 @@ struct HostsSettingsPage: View {
         .helmWindowToolbar(toolbarContent, token: HostsDescriptor.id.rawValue)
     }
 
+    /// The two view-mode options, in the order the switcher shows them —
+    /// `viewMode`'s own `get`/`set` below reads and writes `showingText`
+    /// through these two ids rather than through a `Bool` a third place would
+    /// have to keep in step with them.
+    private enum ViewMode: String { case table, text }
+
     /// **The page's two choices, in the window's toolbar — placed by what
     /// they are rather than side by side.**
     ///
     /// They were a row of two segmented pickers at one weight, one colour and
     /// an 8 pt gap, although they do not ask the same kind of question: which
     /// file is navigation, table-or-text is a view of whichever file that is.
-    /// So the file is the switcher (`tabs`), and the view is a pair of toggle
-    /// actions in the capsule, where a view mode sits in every Mac app that
-    /// has one.
+    /// So the file is the switcher (`tabs`), and the view is a second
+    /// switcher of the same kind, in the capsule, styled the way the owner
+    /// asked once table/text stopped being two `.toggle` actions that drew as
+    /// a blue-highlighted pair rather than as tabs (2026-09-25).
     ///
     /// **One view picker, one file.** Table-or-text is a question about the
     /// SSH hosts file alone — `keysTab` never reads `showingText`, so on
-    /// Keys the mode does nothing today. The pair is out of the capsule's
+    /// Keys the mode does nothing today. The switcher is out of the capsule's
     /// visible set on Keys rather than shown there and left inert
     /// (`HelmToolbarAction.isVisible`'s own rule), and it is dimmed on SSH
     /// itself when the config cannot be read. Owner's alternative, not taken
-    /// here: keep the pair visible but dimmed on Keys as well. The toggles'
-    /// titles are the same two words the old segmented picker showed, kept
-    /// so the control is named aloud and in its tooltip exactly as it was
-    /// written.
+    /// here: keep it visible but dimmed on Keys as well. The two options'
+    /// titles are the same two words the old toggle pair showed, kept so the
+    /// control is named aloud and in each segment's own tooltip exactly as it
+    /// was written.
     ///
     /// **Making a key is the keys file's one act of creation**, so it is the
     /// only action on Keys, the `+` every Mac window whose toolbar holds a
     /// list already carries for adding — and it leaves the bar entirely on
-    /// SSH, where the view toggles show instead, because the hosts file
+    /// SSH, where the view switcher shows instead, because the hosts file
     /// makes nothing new this way. The two are never on screen together.
     private var toolbarContent: HelmPageToolbarContent {
         HelmPageToolbarContent(
@@ -103,12 +110,17 @@ struct HostsSettingsPage: View {
                    HelmToolbarTab(id: Tab.ssh.rawValue, title: HostsStr.sshHostsTab, symbol: "server.rack")],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             actions: [
-                HelmToolbarAction(id: "tableView", title: HostsStr.tableView, symbol: "tablecells",
+                HelmToolbarAction(id: "viewMode", title: HelmA11y.whatToShow,
                                   isEnabled: hvm.sshReadable, isVisible: tab == .ssh,
-                                  isOn: !showingText) { showingText = false },
-                HelmToolbarAction(id: "textView", title: HostsStr.textView, symbol: "text.alignleft",
-                                  isEnabled: hvm.sshReadable, isVisible: tab == .ssh,
-                                  isOn: showingText) { showingText = true },
+                                  options: [
+                                      HelmToolbarTab(id: ViewMode.table.rawValue, title: HostsStr.tableView,
+                                                    symbol: "tablecells"),
+                                      HelmToolbarTab(id: ViewMode.text.rawValue, title: HostsStr.textView,
+                                                    symbol: "text.alignleft"),
+                                  ],
+                                  selection: Binding(
+                                      get: { (showingText ? ViewMode.text : .table).rawValue },
+                                      set: { showingText = $0 == ViewMode.text.rawValue })),
                 HelmToolbarAction(id: "newKey", title: HostsStr.newKey, symbol: "plus",
                                   isEnabled: hvm.keysReadable, isVisible: tab == .keys) { makingKey = true },
             ])   // no search: the page has none

@@ -69,11 +69,19 @@ final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
     /// Reads the actions item's own hosted view and its live model — never a
     /// number this fix itself introduced — so a build that dropped the fix
     /// entirely (`insetApplied` staying `0`) is exactly what turns this red.
+    ///
+    /// **`declaredWidth` sums each entry's own reserve**
+    /// (`HelmToolbarActionsCapsule.reserveWidth(_:)`) rather than assuming
+    /// every declared entry costs `HelmToolbarActionsCapsule.side` — Hosts'
+    /// `viewMode` is `.segmented` and reserves its own measured word width,
+    /// not one button's worth, so a sum that assumed the uniform cost would
+    /// read that entry's own extra room as if it were `trailingInset`.
     private func measureActions(_ toolbar: NSToolbar) -> ActionsMeasurement? {
         guard let item = toolbar.items.first(where: { $0.itemIdentifier.rawValue == "helm.actions" }),
               let hosting = item.view as? NSHostingView<HelmToolbarActionsCapsule>
         else { return nil }
-        let declaredWidth = CGFloat(hosting.rootView.model.declared.count) * HelmToolbarActionsCapsule.side
+        let declaredWidth = hosting.rootView.model.declared
+            .reduce(CGFloat(0)) { $0 + hosting.rootView.reserveWidth($1) }
         let boxTrailingX = hosting.convert(NSPoint(x: hosting.bounds.width, y: 0), to: nil).x
         return ActionsMeasurement(boxTrailingX: boxTrailingX, insetApplied: hosting.bounds.width - declaredWidth)
     }

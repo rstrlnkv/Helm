@@ -47,17 +47,26 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
         return mounted
     }
 
-    private func isOn(_ action: HelmToolbarAction) -> Bool? {
-        guard case let .toggle(on, _) = action.kind else { return nil }
-        return on
+    /// The id of a `.segmented` action's own current option — `nil` for
+    /// anything else, the same shape `isOn(_:)` used to answer for the old
+    /// `.toggle` pair.
+    private func selected(_ action: HelmToolbarAction) -> String? {
+        guard case let .segmented(_, selection) = action.kind else { return nil }
+        return selection.wrappedValue
     }
 
-    private func press(_ action: HelmToolbarAction) {
-        guard case let .toggle(_, perform) = action.kind else {
-            XCTFail("\(action.id) is not a toggle")
+    /// Picks `optionID` the way the control's own action does — writing the
+    /// binding, not calling a per-option closure: `.segmented` carries none.
+    private func pick(_ optionID: String, in action: HelmToolbarAction) {
+        guard case let .segmented(options, selection) = action.kind else {
+            XCTFail("\(action.id) is not segmented")
             return
         }
-        perform()
+        guard options.contains(where: { $0.id == optionID }) else {
+            XCTFail("\(optionID) is not one of \(action.id)'s own options")
+            return
+        }
+        selection.wrappedValue = optionID
     }
 
     // MARK: - Tabs
@@ -107,50 +116,47 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
         XCTAssertTrue(newKey.isEnabled, "New key must be enabled once ~/.ssh reads back")
     }
 
-    // MARK: - The view pair
+    // MARK: - The view switcher
 
-    /// **The pair is a `Table`/`Plain text` toggle mapped onto two toggle
-    /// actions in the capsule** (`HostsSettingsPage.toolbarContent`'s own
-    /// doc names the alternative not taken: one glyph that flips between the
-    /// two modes).
-    func testTheViewPairShowsOnlyOnSSHAndPressingPlainTextTurnsItOnAndDrawsTheEditor() async throws {
+    /// **The pair is one `.segmented` action in the capsule, styled as a
+    /// switcher rather than as two blue-highlighted `.toggle` buttons**
+    /// (`HostsSettingsPage.toolbarContent`'s own doc names why: the owner
+    /// asked for it on 2026-09-25).
+    func testTheViewSwitcherShowsOnlyOnSSHAndPickingTextTurnsItOnAndDrawsTheEditor() async throws {
         let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
         let channel = HelmWindowToolbarChannel()
         let mounted = await mountPage(hosted, channel: channel)
 
         var declared = try XCTUnwrap(declaredContent(channel))
-        var table = try XCTUnwrap(declared.actions.first { $0.id == "tableView" })
-        var text = try XCTUnwrap(declared.actions.first { $0.id == "textView" })
-        XCTAssertFalse(table.isVisible, "the view pair must not show on the Keys tab")
-        XCTAssertFalse(text.isVisible, "the view pair must not show on the Keys tab")
+        var viewMode = try XCTUnwrap(declared.actions.first { $0.id == "viewMode" })
+        XCTAssertFalse(viewMode.isVisible, "the view switcher must not show on the Keys tab")
 
         let selectedTab = try XCTUnwrap(declared.selectedTab)
         selectedTab.wrappedValue = "ssh"
         mounted.settle(30)
 
         declared = try XCTUnwrap(declaredContent(channel))
-        table = try XCTUnwrap(declared.actions.first { $0.id == "tableView" })
-        text = try XCTUnwrap(declared.actions.first { $0.id == "textView" })
-        XCTAssertTrue(table.isVisible, "the view pair must show on the SSH tab")
-        XCTAssertTrue(text.isVisible, "the view pair must show on the SSH tab")
-        XCTAssertEqual(isOn(table), true, "Table starts on")
-        XCTAssertEqual(isOn(text), false, "Plain text starts off")
+        viewMode = try XCTUnwrap(declared.actions.first { $0.id == "viewMode" })
+        XCTAssertTrue(viewMode.isVisible, "the view switcher must show on the SSH tab")
+        guard case let .segmented(options, _) = viewMode.kind else {
+            return XCTFail("viewMode is not segmented")
+        }
+        XCTAssertEqual(options.map(\.id), ["table", "text"])
+        XCTAssertEqual(selected(viewMode), "table", "Table is selected first")
         XCTAssertNil(mounted.host.everyView(ofType: NSTextView.self).first { $0.string.contains("Host a") },
                     "the config's text editor must not be on screen while Table is showing")
 
-        press(text)
+        pick("text", in: viewMode)
         mounted.settle(30)
 
         declared = try XCTUnwrap(declaredContent(channel))
-        table = try XCTUnwrap(declared.actions.first { $0.id == "tableView" })
-        text = try XCTUnwrap(declared.actions.first { $0.id == "textView" })
-        XCTAssertEqual(isOn(table), false, "Table turns off once Plain text is pressed")
-        XCTAssertEqual(isOn(text), true, "Plain text turns on when pressed")
+        viewMode = try XCTUnwrap(declared.actions.first { $0.id == "viewMode" })
+        XCTAssertEqual(selected(viewMode), "text", "Plain text is selected once picked")
         XCTAssertNotNil(mounted.host.everyView(ofType: NSTextView.self).first { $0.string.contains("Host a") },
                         "the SSH config's text editor must be on screen once Plain text is on")
     }
 
-    func testTheViewPairIsDimmedWhenTheSSHConfigCannotBeRead() async throws {
+    func testTheViewSwitcherIsDimmedWhenTheSSHConfigCannotBeRead() async throws {
         let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined,
                                       sshConfig: UnreadableSSHConfig())
         let channel = HelmWindowToolbarChannel()
@@ -161,9 +167,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
         mounted.settle(30)
 
         let declared = try XCTUnwrap(declaredContent(channel))
-        let table = try XCTUnwrap(declared.actions.first { $0.id == "tableView" })
-        let text = try XCTUnwrap(declared.actions.first { $0.id == "textView" })
-        XCTAssertFalse(table.isEnabled, "the view pair must be dimmed once the SSH config cannot be read")
-        XCTAssertFalse(text.isEnabled, "the view pair must be dimmed once the SSH config cannot be read")
+        let viewMode = try XCTUnwrap(declared.actions.first { $0.id == "viewMode" })
+        XCTAssertFalse(viewMode.isEnabled, "the view switcher must be dimmed once the SSH config cannot be read")
     }
 }

@@ -396,6 +396,25 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// that AppKit opens the field even though nobody has touched it), and
     /// that choice is AppKit's own, not this class's decision to get right
     /// or wrong.
+    /// **The off-screen measurement never reaches the screen.** The rig that
+    /// sizes the switcher for the fold prediction used to call
+    /// `orderBack(nil)` on its window, which is an ordering: the owner found
+    /// an empty 2000 × 44 window at the bottom of the screen behind everything
+    /// else (2026-09-25). A measurement has to happen first — otherwise an
+    /// "off screen" reading proves nothing — and the window must still not be
+    /// visible after it.
+    func testTheMeasurementWindowNeverReachesTheScreen() {
+        let before = SettingsToolbar.measurementsTaken
+        let rig = mountSplit(pane: 646)
+        settle(rig.window, turns: 30)
+        XCTAssertGreaterThan(SettingsToolbar.measurementsTaken, before,
+                             "precondition: no switcher measurement ran — nothing below is checking the rig")
+        XCTAssertFalse(SettingsToolbar.measurementWindowIsOnScreen,
+                       "the measurement rig's window is on screen — an empty window the person can see")
+        rig.window.toolbar = nil
+        rig.window.close()
+    }
+
     func testTheRestingStateMatchesAppKitsOwnJudgment() {
         for pane in [CGFloat(646), 740, 840] {
             for language: AppLanguage in [.en, .ru] {
