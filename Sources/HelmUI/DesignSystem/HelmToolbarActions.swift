@@ -28,7 +28,7 @@ import SwiftUI
 /// not merely preferred: an `ObservableObject` changed synchronously from
 /// inside `SettingsToolbar`'s own `patchActions` — the same call site this
 /// model is written from — logged two SwiftUI observation faults per flip in
-/// a probe under `scratchpad/probes-mft/`; the `@Observable` model logged
+/// a probe (engineer, this Mac); the `@Observable` model logged
 /// none. A deferred, one-hop write was also tried and rejected: it adds a
 /// full run-loop turn of lag between "Upgrade should be visible" and the
 /// capsule actually showing it, and raises the same reading/payload question
@@ -75,8 +75,13 @@ public final class HelmToolbarActionsModel {
         /// The closure-free twin of `.segmented` — the switcher only needs
         /// its own options and which one is current; a picked option reaches
         /// `SettingsToolbar` through `pressItem`, the same route a `.menu`
-        /// item's own press already takes.
-        case segmented([SegmentEntry], selectedID: String)
+        /// item's own press already takes. `reserveWidth` is carried rather
+        /// than computed here: only `SettingsToolbar.actionEntries(for:)`,
+        /// in `HelmApp`, has a real toolbar and window to attach a measuring
+        /// switcher to (`reserveWidth(_:)`'s own header, below, says why a
+        /// detached one will not do), and this module may not reach across
+        /// that boundary to ask for one.
+        case segmented([SegmentEntry], selectedID: String, reserveWidth: CGFloat)
     }
 
     /// One option in a `.segmented` entry — `HelmToolbarTab`'s own triple
@@ -207,18 +212,9 @@ public struct HelmToolbarActionsCapsule: View {
     /// this closes.
     public let trailingInset: CGFloat
 
-    /// **The label style the page's own tabs are drawn in** — a `.segmented`
-    /// entry is a second set of tabs (the owner's words for Hosts' Table /
-    /// Plain-text pair, 2026-09-25), so it follows the same setting rather
-    /// than the environment's `.text` default, which the hosting view above
-    /// this capsule would otherwise hand it.
-    public let switcherStyle: ToolbarSwitcherStyle
-
-    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0,
-                switcherStyle: ToolbarSwitcherStyle = .text) {
+    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0) {
         self.model = model
         self.trailingInset = trailingInset
-        self.switcherStyle = switcherStyle
     }
 
     public var body: some View {
@@ -227,7 +223,7 @@ public struct HelmToolbarActionsCapsule: View {
             // drawn — its width is the capsule's own intrinsic width, which
             // is what stops the hosted item resizing as `visibleIDs` moves.
             // `reserveWidth(_:)` is `Self.side` for every button-shaped kind
-            // and a `.segmented` entry's own measured word width for that one
+            // and a `.segmented` entry's own measured glyph width for that one
             // — see its own header.
             HStack(spacing: 0) {
                 ForEach(model.declared, id: \.id) { entry in
@@ -240,30 +236,128 @@ public struct HelmToolbarActionsCapsule: View {
             GlassEffectContainer(spacing: HelmSpace.s4) {
                 HStack(spacing: 0) {
                     ForEach(visible, id: \.id) { entry in
-                        if case .segmented(let options, let selectedID) = entry.kind {
-                            // AppKit's own glass, not SwiftUI's — `.glassEffect`
-                            // on top of a control that already draws Liquid
-                            // Glass through the system is a hairline on a
-                            // second silhouette (`CLAUDE.md`'s own words for
-                            // it), so the uniform wrap every other kind takes,
-                            // below, is deliberately skipped here.
-                            HelmToolbarSwitcher(entry.title,
-                                selection: Binding(get: { selectedID },
-                                                   set: { model.pressItem(entry.id, $0) }),
-                                segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
-                                .environment(\.helmSwitcherStyle, switcherStyle)
-                                .disabled(!entry.isEnabled || !model.isInteractive)
-                        } else {
-                            entryControl(entry)
-                                .help(entry.title)
-                                .disabled(!entry.isEnabled || !model.isInteractive)
-                                .glassEffect(.regular.interactive())
-                                .glassEffectID(entry.id, in: glassSpace)
-                                .glassEffectUnion(id: "actions", namespace: glassSpace)
-                                .glassEffectTransition(
-                                    HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
-                                        ? .matchedGeometry : .identity)
-                        }
+                        // **Every kind takes the same glass shape, `.segmented`
+                        // included — but not the same `interactive()`.** It
+                        // used to skip the glass entirely on the assumption
+                        // that AppKit already drew Liquid Glass around a
+                        // segmented control wherever it sat — measured false
+                        // on the live item: `helm.actions` stays
+                        // `isBordered = false` (`SettingsToolbar.makeActionsItem`'s
+                        // own body, beside that assignment, and this type's own
+                        // header above — a bordered item would wrap a
+                        // button-shaped sibling's own glass a second time), and
+                        // AppKit's own bordered-item chrome is what the centre
+                        // tabs draw theirs with (`NSGlassEffectView` sits above
+                        // that item's hosted view; nothing does above this
+                        // one), so the switcher drew with neither AppKit's
+                        // glass nor this one — the owner's first report
+                        // (2026-09-25). `TheViewModeSwitcherSitsOnOneGlassTests
+                        // .testTheSwitcherSitsInsideExactlyOneGlassAndNoAppKitPlatter`
+                        // proves the glass *shape* — not only a marker layer,
+                        // which belongs to the whole `GlassEffectContainer`
+                        // and passes just as well with the switcher bare
+                        // beside a glassy button — actually covers the
+                        // switcher's own frame, on the real page.
+                        //
+                        // **`interactive()` is a second thing, and `glass(for:)`
+                        // below withholds it from `.segmented` alone.** Reading
+                        // what SwiftUI itself exports — `xcrun swift-demangle`
+                        // over the SDK's `SwiftUICore.tbd` — shows
+                        // `Glass.interactive(_:)` routed through
+                        // `_Glass.interactive(_:variant:sources:)`, which
+                        // carries a `FlexInteraction.Configuration` and a
+                        // `FlexInteraction.GestureFactory` that builds its own
+                        // SwiftUI gesture over the glass's shape: a second,
+                        // independent press recogniser laid over whatever the
+                        // glass wraps, on paper. **Not measured at runtime**:
+                        // tester's own harness (2026-09-26), comparing the live
+                        // item under `.regular` against `.regular.interactive()`
+                        // offscreen, found the two the same in the view tree,
+                        // every gesture recogniser, every tracking area, the
+                        // hit-test target and every glass layer's own
+                        // properties — so what follows about the recogniser is
+                        // read off the SDK's exported symbols, not seen to
+                        // happen on this control. Every other kind here is pure
+                        // SwiftUI (`Button`, `Toggle`, `Menu`), so whatever that
+                        // recogniser costs there is shared with the control's
+                        // own press, which is what Homebrew's Upgrade and
+                        // Refresh already rely on.
+                        // A `.segmented` entry's content is `HelmToolbarSwitcher`,
+                        // an `NSViewRepresentable` around `NSSegmentedControl`.
+                        // Designer's own before/after films (pass 2, 2026-09-26,
+                        // 60 fps, same session, differing only in this line's
+                        // `.regular` vs `.regular.interactive()`) measured, with
+                        // `.regular`: the glass flash gone (Dark: 58–90 before
+                        // this line, 41–42 after; Light: 255 before, 241–242
+                        // after), the capsule's outline swell on a press gone
+                        // (1.0–1.5 pt before, 0.0 pt after), the selection
+                        // indicator visible in every frame where before it was
+                        // missing from 5–7 (Light), and a press on the segment
+                        // already selected no longer lighting both segments
+                        // (Dark: 12 frames in both films before, 0 in all four
+                        // films after). Not changed by this line: a press that
+                        // *moves* the selection lights both segments for 8–10
+                        // frames of a 50 ms press in Dark and 5–10 in Light,
+                        // against 0–4 for the centre tabs' presses in the same
+                        // films — at that point this entry's item was not yet
+                        // in `NSToolbar.centeredItemIdentifiers`, which moves
+                        // this number, and so does hosting the capsule in
+                        // AppKit's own bordered platter (below). Withholding
+                        // `interactive()` touches neither
+                        // this entry's glass shape, its union or its
+                        // transition, nor any other kind's own interactive
+                        // press.
+                        //
+                        // **Why it did not slide, and now does.** Filmed in a
+                        // reference app (engineer, 2026-09-26, both
+                        // appearances): a copy of this capsule tracks a press
+                        // the classic way — the pressed segment highlighted
+                        // while the old one stays selected, then a jump on
+                        // release, no slide frame — with this glass, with
+                        // none, and inside an `NSGlassEffectView` alike.
+                        // **Not inside AppKit's own bordered platter**: the
+                        // same copy wrapped there got neither tracking
+                        // cleanly, and a hosting this capsule's own item
+                        // never takes anyway, since it stays
+                        // `isBordered = false` regardless (this type's own
+                        // header above); the same
+                        // copy, glass and all, lifts on the press and slides
+                        // like the centre tabs once its item is listed in
+                        // `NSToolbar.centeredItemIdentifiers`
+                        // (`SettingsToolbar.centredIdentifiers(_:)`), and the
+                        // centre tabs' own switcher stops sliding when its
+                        // item is left out of that list. Measured on the live
+                        // page in Helm Dev (engineer, 2026-09-26, window
+                        // 1060×828; L = frames of a 250 ms hold with the old
+                        // segment already dark, S = slide frames — the
+                        // indicator strictly between the two segments'
+                        // centres, 6 px clear of each — of a 50 ms press,
+                        // B = both-lit frames of a 50 ms press): before this
+                        // entry's item joined the set, L 0,0,0, S 0,0,0,
+                        // B 6,6,4, in both appearances — the classic jump this
+                        // paragraph opens with, no lift and no slide at all;
+                        // after, Dark L 7–9, S 5–8, B 0–1, Light L 7–8, S 3–7,
+                        // B 0
+                        // (`ASwitcherInTheCapsuleIsCentredWithTheTabsTests`'s
+                        // own header carries this reading in full). Against
+                        // the centre tabs' own S 7–14, L 6–9, B 0–4 in the
+                        // same films, L and B now match; S alone reads lower,
+                        // and that is the metric, not a weaker slide — S only
+                        // counts a frame with the indicator clear of both
+                        // segments' centres, and this switcher's own travel is
+                        // about 40 pt against the tabs' about 77 (designer's
+                        // own frame measurements, both appearances — the
+                        // segment centres are 76.8–77.2 pt apart), so the
+                        // same tracking lands fewer frames inside the
+                        // narrower gap it measures.
+                        entryContent(entry)
+                            .disabled(!entry.isEnabled || !model.isInteractive)
+                            .glassEffect(glass(for: entry.kind))
+                            .glassEffectID(entry.id, in: glassSpace)
+                            .glassEffectUnion(id: "actions", namespace: glassSpace)
+                            .glassEffectTransition(
+                                HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
+                                    ? .matchedGeometry : .identity)
                     }
                 }
             }
@@ -283,15 +377,72 @@ public struct HelmToolbarActionsCapsule: View {
         model.declared.filter { model.visibleIDs.contains($0.id) }
     }
 
+    /// **One entry's own content, before the uniform glass wrap in `body`
+    /// above is applied to it.** A `.segmented` entry is the switcher itself,
+    /// fixed to `.icons` — see that branch's own comment for why it is never
+    /// the environment's or the tabs' style — every other kind is
+    /// `entryControl(_:)`, with its own tooltip; a `.segmented` entry needs
+    /// none, since each of its own segments already carries one
+    /// (`HelmToolbarSwitcher.fill`'s own `setToolTip`).
+    @ViewBuilder
+    private func entryContent(_ entry: HelmToolbarActionsModel.Entry) -> some View {
+        if case .segmented(let options, let selectedID, _) = entry.kind {
+            HelmToolbarSwitcher(entry.title,
+                selection: Binding(get: { selectedID },
+                                   set: { model.pressItem(entry.id, $0) }),
+                segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
+                // **Always glyphs — never the environment's or the tabs'
+                // label style.** The owner's own rule for this action: unlike
+                // the centre tabs, a `.segmented` action in the capsule has no
+                // word of its own to fall back to
+                // (`HelmToolbarAction`'s own segmented initialiser fixes the
+                // action's `symbol` to `""`), and a `.text` or
+                // `.iconsAndText` reading meant for the centre tabs would draw
+                // this one as a second, worded set of tabs beside the first.
+                .environment(\.helmSwitcherStyle, .icons)
+        } else {
+            entryControl(entry).help(entry.title)
+        }
+    }
+
+    /// **The one thing withheld from a `.segmented` entry's glass — see
+    /// `body`'s own comment, above the call site, for the reading behind
+    /// this.** Every other kind keeps `.interactive()`; a `.segmented` entry
+    /// is the one whose content is a wrapped `NSSegmentedControl`, and the
+    /// SDK's own exported symbols read `.interactive()` as laying a second,
+    /// SwiftUI-only press recogniser over whatever the glass wraps — not
+    /// measured at runtime on this control, where withholding it removed the
+    /// glass flash and the outline swell (`body`'s own comment).
+    private func glass(for kind: HelmToolbarActionsModel.EntryKind) -> Glass {
+        if case .segmented = kind { return .regular }
+        return .regular.interactive()
+    }
+
     /// **What one declared entry costs the reserve.** Every button-shaped
     /// kind costs exactly `Self.side` — the invariant
     /// `testAMenuEntryCostsTheSameReserveAsEveryOtherKindAcrossVisibility`
     /// holds them to — but a `.segmented` entry draws at whatever width its
-    /// own words need, in whichever language is current, so its reserve is
-    /// measured off-screen against the same control
-    /// (`HelmToolbarSwitcher.width(of:in:)`, the same helper the tabs
-    /// switcher's own fold prediction already uses), in `switcherStyle` —
-    /// the style the switcher above is drawn in.
+    /// own glyphs need in `.icons` style, the one style `entryContent(_:)`
+    /// ever puts it in — no word ever reaches what is drawn, so the reserve
+    /// tracks the symbol set rather than the current language — so its
+    /// reserve is carried on the entry itself as `EntryKind.segmented`'s own
+    /// `reserveWidth`, measured by `SettingsToolbar.actionEntries(for:)`, in
+    /// `HelmApp`, rather than computed here.
+    ///
+    /// **Measured attached, per glyph set** — each pair's own reserve tracks
+    /// what it draws rather than one number standing in for all of them
+    /// (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`: 73.0–85.0 pt across
+    /// four pairs). `SettingsToolbar.actionEntries(for:)` measures through
+    /// `SwitcherMeasurementRig` — the same rig the centre tabs' own fold
+    /// prediction uses (`SettingsToolbar.switcherWidth(tabs:style:selectedID:)`),
+    /// whose own header has what a bare hosting view got wrong for the tabs —
+    /// mounting the same segments, non-compact and in `.icons`, the one style
+    /// `entryContent(_:)` ever draws a `.segmented` entry in. This module
+    /// cannot import `HelmApp` to reach that rig itself — `Package.swift`'s
+    /// own target graph has `HelmApp` depend on `HelmUI`
+    /// (`Package.swift:137-143`), and the reverse edge would be a cycle —
+    /// which is why the number crosses as plain data on the entry rather than
+    /// being asked for here.
     ///
     /// Not `private`, on the same grounds as `model` above: it is what
     /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` reads, through
@@ -301,8 +452,8 @@ public struct HelmToolbarActionsCapsule: View {
     /// `.segmented` entry's own extra width as if it were the inset.
     @MainActor
     func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
-        if case .segmented(let options, _) = entry.kind {
-            return HelmToolbarSwitcher<String>.width(of: options.map(\.title), in: switcherStyle)
+        if case .segmented(_, _, let reserveWidth) = entry.kind {
+            return reserveWidth
         }
         return Self.side
     }
@@ -340,11 +491,6 @@ public struct HelmToolbarActionsCapsule: View {
             Button {
                 model.press(entry.id)
             } label: {
-                // **How a selected toggle glyph looks is left to the owner to
-                // judge by eye** — accent-coloured while on is this pass's
-                // own choice, made on no more evidence than
-                // `HelmGlyphPicker` and `HelmSurfaces` already tinting a
-                // chosen state the same way.
                 if isOn {
                     glyph(entry).foregroundStyle(Color.accentColor)
                 } else {
@@ -377,11 +523,11 @@ public struct HelmToolbarActionsCapsule: View {
             .menuStyle(.button)
             .buttonStyle(.plain)
         case .segmented:
-            // Never reached: `body`'s own `ForEach` above intercepts a
-            // `.segmented` entry before this switch is asked at all — kept
-            // here only because Swift requires this switch over `Kind` to
-            // stay exhaustive, per `CLAUDE.md`'s own rule against a `default`
-            // arm that would hide a case added here later.
+            // Never reached: `entryContent(_:)` above intercepts a
+            // `.segmented` entry before this switch, over `EntryKind`, is
+            // ever asked — kept here only because Swift requires the switch
+            // to stay exhaustive, per `CLAUDE.md`'s own rule against a
+            // `default` arm that would hide a case added here later.
             EmptyView()
         }
     }

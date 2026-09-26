@@ -198,6 +198,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                   selected: displaySelectedIndex, compact: compact)
         context.coordinator.lastStyle = style
         context.coordinator.lastCompact = compact
+        context.coordinator.lastNames = displaySegments.map(\.label)
+        context.coordinator.lastSymbols = displaySegments.map(\.symbol)
         return control
     }
 
@@ -250,13 +252,18 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // overwrites it in between was not established; that it is
         // overwritten was.
         //
-        // Written here and not in `fill`, which `width(of:in:)` also calls
-        // against a detached control that `HomebrewSettingsPage`'s own
-        // reserve is calibrated photographically against. Written once rather
-        // than on every pass, on a flag of its own and not on the fill
-        // gating below: the bar decides its own metric, and a writer that ran
-        // every time would fight a promotion to any other size rather than
-        // anticipate this one.
+        // Written here and not in `fill`, which every attached-control path
+        // already shares (`makeNSView` and this method's own calls below —
+        // `command grep -n 'Self[.]fill(' Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`
+        // lists them) — a control-size decision is not what `fill` exists to
+        // make (what its body writes: each segment's label, image, tooltip,
+        // width and menu indicator, and the selection), and conflating the
+        // two would tie every future
+        // caller of `fill` to this one metric. Written once rather than on
+        // every pass, on a flag of its own and not on the fill gating below:
+        // the bar decides its own metric, and a writer that ran every time
+        // would fight a promotion to any other size rather than anticipate
+        // this one.
         if !context.coordinator.hasPinnedMetric {
             context.coordinator.hasPinnedMetric = true
             control.controlSize = .extraLarge
@@ -310,6 +317,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             control.invalidateIntrinsicContentSize()
             context.coordinator.lastStyle = style
             context.coordinator.lastCompact = compact
+            context.coordinator.lastNames = shown.map(\.label)
+            context.coordinator.lastSymbols = shown.map(\.symbol)
         } else {
             var labelsMatch = true
             let showsWord = style == .text || style == .iconsAndText
@@ -319,6 +328,33 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                     break
                 }
             }
+            // **A glyph-only segment draws no word, so `labelsMatch` above
+            // reads the same empty string before and after a name changes —
+            // it can only see the drawn word, and a glyph style draws none.**
+            // The name still has to reach the tooltip and the glyph's
+            // accessibility description (`fill`'s own `setToolTip` and
+            // `NSImage(... accessibilityDescription:)`), which is what a
+            // language change moves without moving `shown.count`, the style
+            // or the selection: `AGlyphSwitcherFollowsALanguageChangeTests`
+            // read the old English word back from both after switching to
+            // Russian, on this exact bug. `lastNames` tracks the segments'
+            // own names regardless of what style draws them, so a changed
+            // name forces a fill even while `labelsMatch` alone would not.
+            let namesChanged = context.coordinator.lastNames != shown.map(\.label)
+            // **A glyph is drawn, not read back — `control.image(forSegment:)`
+            // is the same `NSImage` whichever symbol produced it, so nothing
+            // here can compare the control's own state against a changed
+            // `symbol` the way `labelsMatch` compares the drawn word.** The
+            // capsule's `.segmented` entries are always `.icons`
+            // (`ASegmentedActionIsAlwaysGlyphsTests`), the one style where a
+            // glyph is *all* that is drawn, so a page that re-declares an
+            // option's glyph under the same name and the same selection has
+            // nothing else here to force a refill on:
+            // `AGlyphSwitcherRedrawsAChangedGlyphTests` read the old glyphs
+            // still drawn after such a re-declare, on this exact gap.
+            // `lastSymbols` tracks the segments' own glyphs the same way
+            // `lastNames` tracks their words.
+            let symbolsChanged = context.coordinator.lastSymbols != shown.map(\.symbol)
             let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? false
             // Nothing structural changed, so this is the cheap path: when the
             // words and the selection both already read right — the first
@@ -339,13 +375,15 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // app for whichever caller passes an index of its own next.
             // Measured 2026-09-20: with a second `setSelected` here that file
             // read "calls setSelected( 2 time(s)" and went red.
-            if !labelsMatch || selectionMoved {
+            if !labelsMatch || selectionMoved || namesChanged || symbolsChanged {
                 NSAnimationContext.beginGrouping()
                 NSAnimationContext.current.allowsImplicitAnimation = false
                 Self.fill(control, segments: shown, style: style, selected: selectedIndex, compact: compact)
                 control.layoutSubtreeIfNeeded()
                 NSAnimationContext.endGrouping()
                 control.invalidateIntrinsicContentSize()
+                context.coordinator.lastNames = shown.map(\.label)
+                context.coordinator.lastSymbols = shown.map(\.symbol)
             }
         }
 
@@ -379,8 +417,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
-    /// The segments as the chosen style shows them. Written every update
-    /// because the style, the words and the selection can each change under it.
+    /// The segments as the chosen style shows them — each segment's word,
+    /// glyph, tooltip, width and menu indicator, and the selection. Written
+    /// once by `makeNSView`, then by `updateNSView` only on an update that
+    /// moved something written here: the count, the style or the fold, or,
+    /// on that method's cheap path, a drawn word, a name, a glyph or the
+    /// selection that no longer matches the control.
     private static func fill(_ control: NSSegmentedControl,
                              segments: [HelmSwitcherSegment<Value>],
                              style: ToolbarSwitcherStyle, selected: Int?, compact: Bool) {
@@ -413,21 +455,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         if let selected, segments.indices.contains(selected), control.selectedSegment != selected {
             control.setSelected(true, forSegment: selected)
         }
-    }
-
-    /// How wide the switcher draws in `style` — asked of a control built the
-    /// same way, because the system decides its own metrics.
-    @MainActor
-    public static func width(of labels: [String], in style: ToolbarSwitcherStyle,
-                             symbol: String = "circle") -> CGFloat {
-        let control = NSSegmentedControl()
-        control.segmentStyle = .automatic
-        control.segmentDistribution = .fit
-        let segments = labels.enumerated().map { index, label in
-            HelmSwitcherSegment(index, label, symbol: symbol)
-        }
-        HelmToolbarSwitcher<Int>.fill(control, segments: segments, style: style, selected: 0, compact: false)
-        return control.fittingSize.width
     }
 
     /// Every style, the current one ticked, each item carrying the style it
@@ -485,6 +512,18 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var compact = false
         var lastStyle: ToolbarSwitcherStyle?
         var lastCompact: Bool?
+        /// The segments' own names as of the last fill — read regardless of
+        /// `lastStyle`, because a glyph-only style draws none of them: the
+        /// drawn word alone (what `updateNSView`'s cheap-path `labelsMatch`
+        /// reads) cannot tell a language change apart from no change at all
+        /// once the word on screen is always empty.
+        var lastNames: [String]?
+        /// The segments' own glyphs as of the last fill — `lastNames`'s twin
+        /// for the one style that draws nothing else: `.icons` shows a symbol
+        /// and no word, so a re-declare that swaps a glyph under an unchanged
+        /// name and selection moves nothing `labelsMatch` or `namesChanged`
+        /// can see (`AGlyphSwitcherRedrawsAChangedGlyphTests`).
+        var lastSymbols: [String]?
         /// Whether the bar's metric has been written onto the control yet.
         /// Its own flag rather than a reading of the fill gating above,
         /// because the two answer different questions: that one asks whether

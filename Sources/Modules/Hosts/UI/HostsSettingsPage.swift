@@ -110,7 +110,7 @@ struct HostsSettingsPage: View {
                    HelmToolbarTab(id: Tab.ssh.rawValue, title: HostsStr.sshHostsTab, symbol: "server.rack")],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             actions: [
-                HelmToolbarAction(id: "viewMode", title: HelmA11y.whatToShow,
+                HelmToolbarAction(id: "viewMode", title: HostsStr.viewGroup,
                                   isEnabled: hvm.sshReadable, isVisible: tab == .ssh,
                                   options: [
                                       HelmToolbarTab(id: ViewMode.table.rawValue, title: HostsStr.tableView,

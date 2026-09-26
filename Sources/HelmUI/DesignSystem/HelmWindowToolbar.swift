@@ -125,8 +125,8 @@ public struct HelmToolbarAction {
     public let isBusy: Bool
     public let kind: Kind
 
-    /// A plain button — the shape every action but Hosts' view toggle and
-    /// Leftovers' kind filter takes.
+    /// A plain button — the shape every action but Hosts' view-mode switcher
+    /// and Leftovers' kind filter takes.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
                 isVisible: Bool = true, isBusy: Bool = false, perform: @escaping () -> Void) {
         self.id = id
@@ -165,11 +165,13 @@ public struct HelmToolbarAction {
         self.kind = .menu(menu)
     }
 
-    /// A segmented control: `title` names the *group*, for the switcher's own
-    /// accessibility label (`HelmA11y.whatToShow` is the word every other
-    /// unlabelled segmented picker in this app already uses for the same
-    /// role) — each option carries its own word and glyph, so this action's
-    /// own `symbol` goes unused and is fixed to `""`.
+    /// A segmented control: `title` names the *group* — the switcher's own
+    /// accessibility label and the overflow menu's submenu title. It has to
+    /// differ from `HelmA11y.whatToShow`, the centre tabs' name on the same
+    /// bar, or VoiceOver reads two switchers under one name; Hosts' is
+    /// `HostsStr.viewGroup` (`TheViewModeSwitcherKeepsItsNamesTests`). Each
+    /// option carries its own word and glyph, so this action's own `symbol`
+    /// goes unused and is fixed to `""`.
     public init(id: String, title: String, isEnabled: Bool = true, isVisible: Bool = true,
                 options: [HelmToolbarTab], selection: Binding<String>) {
         self.id = id

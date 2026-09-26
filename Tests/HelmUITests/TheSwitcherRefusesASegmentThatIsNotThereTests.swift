@@ -9,15 +9,16 @@ import XCTest
 ///
 /// # The defect
 ///
-/// `HelmToolbarSwitcher.width(of:in:symbol:)` builds a control, fills it and
-/// reads its fitting size; it passes the literal `0` as the selected segment
-/// whatever it was handed. Given an empty list of labels it therefore reached
-/// `setSelected(true, forSegment: 0)` on a control with no segments, and AppKit
-/// traps on that rather than refusing. Closed by the commit
-/// "fix(HelmUI): refuse an out-of-range selected segment in fill", which bounds
-/// `selected` against `segments.indices` inside `fill`, where both callers pass
-/// through. Named by its subject and not by a hash: the hash this file first
-/// carried stopped being an ancestor of the branch when the chain was rebased.
+/// A now-removed `HelmToolbarSwitcher.width(of:in:symbol:)` built a control,
+/// filled it and read its fitting size; it passed the literal `0` as the
+/// selected segment whatever it was handed. Given an empty list of labels it
+/// therefore reached `setSelected(true, forSegment: 0)` on a control with no
+/// segments, and AppKit traps on that rather than refusing. Closed by the
+/// commit "fix(HelmUI): refuse an out-of-range selected segment in fill",
+/// which bounds `selected` against `segments.indices` inside `fill`, where
+/// every caller passes through. Named by its subject and not by a hash: the
+/// hash this file first carried stopped being an ancestor of the branch when
+/// the chain was rebased.
 ///
 /// # What AppKit actually does, measured
 ///
@@ -45,78 +46,38 @@ import XCTest
 ///
 /// # Which directions a test can reach, and how the rest are covered
 ///
-/// `fill` is `private`, so no test calls it directly, and both of its callers
-/// constrain their own index: `updateNSView` passes
-/// `segments.firstIndex { … }`, which is in range or nil, and `width` passes
-/// `0`. **The only out-of-range index reachable through the public API is `0`
-/// against an empty list** — which is why engineer's own repro exercised that
-/// and nothing else.
+/// `fill` is `private`, so no test calls it directly. Both of its callers,
+/// `makeNSView` and `updateNSView`, pass `displaySelectedIndex` —
+/// `segments.firstIndex { … }`, which is in range or nil, or `0` for a folded
+/// control that shows one segment and `nil` for one that shows none — so
+/// nothing left in the public API can reach `fill` with an out-of-range index
+/// at all; the
+/// direction that once reached it, through the now-removed `width(of:in:)`
+/// passing the literal `0` against an empty list, is covered below only by
+/// reading the guard.
 ///
-/// So the directions are covered in three ways, and each says which it is:
+/// So the directions are covered in two ways, and each says which it is:
 ///
-/// 1. the reachable one, behaviourally, through `width(of:in:)` — the case that
-///    aborted;
-/// 2. the in-range side, behaviourally, off a live control SwiftUI filled — a
-///    bound that refused *everything* would pass (1) and is caught here;
-/// 3. the two directions no caller can reach — a negative index, and an index
-///    past the end of a non-empty list — by reading the guard, because a bound
-///    written as a range containment covers them by construction while an
-///    emptiness special-case does not. That check is a source reading and says
-///    so where it fails.
+/// 1. the in-range side, behaviourally, off a live control SwiftUI filled — a
+///    bound that refused *everything* would silently break every switcher on
+///    the page and is caught here;
+/// 2. every out-of-range direction — an index past the end of an empty list,
+///    a negative index, and an index past the end of a non-empty list — by
+///    reading the guard, because a bound written as a range containment
+///    covers all three by construction while an emptiness special-case does
+///    not. That check is a source reading and says so where it fails.
 @MainActor
 final class TheSwitcherRefusesASegmentThatIsNotThereTests: XCTestCase {
 
     private static let file = "Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift"
 
-    // MARK: - 1. The reachable direction: an index past the end of an empty list
+    // MARK: - 1. The in-range side: the bound must not refuse a real segment
 
-    /// Every style, because `fill` writes labels, images, tooltips and widths
-    /// per segment before it selects, and only the selection traps — a style
-    /// that happened to leave the list empty for another reason would still
-    /// reach the same line.
-    ///
-    /// **What a total failure prints.** With the bound removed this does not
-    /// fail, it raises `NSRangeException` out of
-    /// `-[NSSegmentedCell _setSelected:forSegment:]`; inside XCTest that is
-    /// reported as a failed case naming the exception, and in the app it is the
-    /// process ending. Either way it cannot print what a pass prints, which is
-    /// nothing.
-    func testAnEmptySegmentListAnswersAWidthRatherThanRaising() {
-        for style in ToolbarSwitcherStyle.allCases {
-            let width = HelmToolbarSwitcher<Int>.width(of: [], in: style)
-            XCTAssertTrue(width.isFinite, """
-                the width of an empty switcher in \(style.rawValue) is \(width), which is not a \
-                number a layout can use.
-                """)
-            XCTAssertGreaterThanOrEqual(width, 0, """
-                the width of an empty switcher in \(style.rawValue) is \(width) pt.
-                """)
-        }
-    }
-
-    /// The answer is a measurement of the empty control and not a constant a
-    /// repair returned early — without this, a `width` that answered `0` for
-    /// everything would pass the case above and silently collapse every
-    /// switcher on the page.
-    func testAnEmptySwitcherIsNarrowerThanOneCarryingAWord() {
-        for style in ToolbarSwitcherStyle.allCases {
-            let empty = HelmToolbarSwitcher<Int>.width(of: [], in: style)
-            let one = HelmToolbarSwitcher<Int>.width(of: ["Installed"], in: style)
-            XCTAssertLessThan(empty, one, """
-                an empty switcher measures \(empty) pt in \(style.rawValue) and one carrying a word \
-                measures \(one) pt. The empty list is not being measured — width is answering a \
-                constant, so the other cases here are reading that constant and not the control.
-                """)
-        }
-    }
-
-    // MARK: - 2. The in-range side: the bound must not refuse a real segment
-
-    /// A bound proven from one side only is unproven from the other. Replacing
-    /// the guard with `false` — refuse every index — passes everything above,
-    /// because nothing above ever asks for a selection to be *applied*. This is
-    /// what sees it: a live control that SwiftUI filled, read for the segment it
-    /// actually carries.
+    /// A bound proven from one side only is unproven from the other. Section 2
+    /// reads the bound's shape and never asks for a selection to be *applied*,
+    /// so a guard that kept that shape and refused every index would pass it.
+    /// This is what sees it: a live control that SwiftUI filled, read for the
+    /// segment it actually carries.
     func testAnIndexNamingASegmentIsStillSelected() throws {
         for index in Mounted.words.indices {
             let host = NSHostingView(rootView: Mounted(index: index))
@@ -168,7 +129,7 @@ final class TheSwitcherRefusesASegmentThatIsNotThereTests: XCTestCase {
             """)
     }
 
-    // MARK: - 3. The directions no caller can reach
+    // MARK: - 2. The directions no caller can reach
 
     /// The refusal is a *range* containment, and it is the only thing between
     /// `fill` and AppKit's trap.
@@ -178,16 +139,16 @@ final class TheSwitcherRefusesASegmentThatIsNotThereTests: XCTestCase {
     /// one anywhere in this file would be a second unguarded way to the same
     /// abort — the brother of the defect that was closed. The second is about
     /// the generality engineer chose: a bound written against `segments.indices`
-    /// rejects a negative index and an index past the end of a *non-empty* list
-    /// as well, neither of which any caller can currently produce and neither of
-    /// which a test can therefore reach; an emptiness special-case —
-    /// `!segments.isEmpty` — passes every behavioural case in this file and
-    /// leaves both of those open for the next caller that passes an index of its
-    /// own.
+    /// rejects a negative index, an index past the end of an empty list and one
+    /// past the end of a non-empty list alike, none of which either caller can
+    /// currently produce and none of which a test can therefore
+    /// reach behaviourally; an emptiness special-case — `!segments.isEmpty` —
+    /// passes every behavioural case in this file and leaves the other two open
+    /// for the next caller that passes an index of its own.
     ///
     /// This is a source reading, and it is one because `fill` is `private` and
-    /// its two callers each constrain their index before it is passed. It says
-    /// so where it fails.
+    /// both its callers, `makeNSView` and `updateNSView`, pass the constrained
+    /// `displaySelectedIndex`. It says so where it fails.
     func testTheOnlySelectionCallIsBoundedAsARange() throws {
         let code = SwiftSource.code(try RepoSource.text(of: Self.file))
         let calls = Self.count(of: "setSelected(", in: code)

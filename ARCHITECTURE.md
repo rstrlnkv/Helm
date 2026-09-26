@@ -551,8 +551,23 @@ capsule wherever the page's own invitation already offers one and dimmed
 while a removal is running.
 
 **An action is not only a button.** `HelmToolbarAction.Kind` also carries
-`.toggle(isOn:)` — Hosts' Table/Plain-text pair, drawn as a pair of glyphs
-whose accent-tinted state is `isOn` — and `.menu([HelmToolbarMenuItem])` —
+`.toggle(isOn:)` — a single glyph whose accent-tinted state is `isOn`,
+re-declared by the page on its own press — `.segmented(options:selection:)` —
+Hosts' Table/Plain-text pair, the same `HelmToolbarSwitcher` the centre tabs
+draw, wrapped in the capsule's own glass and always glyphs regardless of the
+tabs' own label style, each segment keeping its word as a tooltip and for
+VoiceOver and the whole read aloud under a group name of its own
+(`HostsStr.viewGroup`) rather than the centre tabs' `HelmA11y.whatToShow`. It
+lifts on the press and slides to the new segment the way the centre tabs do:
+AppKit gives that tracking only to a segmented control whose item is listed
+in `NSToolbar.centeredItemIdentifiers` — this entry's item joins the tabs
+there whenever the capsule carries a `.segmented` entry
+(`SettingsToolbar.centredIdentifiers(_:)`, whose own header has what was
+measured across glass, label style and hosting) — the owner's decision,
+2026-09-26; left out of that list, the same control tracks a press the
+classic way instead, the pressed segment lit beside the old one and the
+selection jumping on release (`HelmToolbarActionsCapsule`'s own body comment
+has the films) — and `.menu([HelmToolbarMenuItem])` —
 Leftovers' kind filter, a checkmarked list where each `HelmToolbarMenuItem`
 carries its own `perform` rather than the action's single one, since a menu
 has no one press to speak of. `HelmToolbarAction.isBusy` spins the action's

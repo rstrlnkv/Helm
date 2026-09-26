@@ -28,6 +28,14 @@ enum HostsStr {
     /// the collision is now only the reason this property is spelled the way it
     /// is.
     static var textView: String { L("Plain text") }
+    /// **The name of the Table / Plain-text switcher as a group** — what
+    /// VoiceOver reads before either option. Not `HelmA11y.whatToShow`, which
+    /// is the centre tabs' own name on the same bar: two switchers under one
+    /// name read aloud as the same control twice. The word is macOS's own for
+    /// a choice of how content is shown — the View menu's title, read out of
+    /// AppKit's `MenuCommands.loctable` for all eight languages rather than
+    /// translated here.
+    static var viewGroup: String { L("View") }
     /// The two tabs. **`hostsFile` is not reused for the tab**: it is the
     /// file's name in a sentence («the hosts file could not be read»), and a
     /// tab is a title. One English key means one thing.

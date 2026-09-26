@@ -46,8 +46,13 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
     // MARK: - Toggle
 
     /// **The model entry is `.toggle(isOn:)`, and the overflow menu form's own
-    /// `state` follows it** — Hosts' Table/Plain-text pair is the first
-    /// caller, one glyph on when its own mode is showing.
+    /// `state` follows it** — no page declares one today (`command grep -rn
+    /// -A3 'HelmToolbarAction(' Sources/Modules | command grep -c 'isOn:'`;
+    /// Hosts' Table/Plain-text pair moved to `.segmented`, the owner's
+    /// report, 2026-09-25), so this proves the wiring itself:
+    /// `SettingsToolbar.actionEntries(for:)` still has to carry `isOn`
+    /// through and the overflow floor still has to read it, for whichever
+    /// page reaches for a toggle next.
     func testAToggleActionsEntryCarriesIsOnAndTheOverflowFormsStateFollowsIt() throws {
         let fixture = makeToolbar()
         fixture.model.selection = .module("test.toggle")
