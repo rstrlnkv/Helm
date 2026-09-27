@@ -134,7 +134,10 @@ only once it has no known problems left.
 - **NEW** At a narrow window the search becomes a magnifier button, and opens when you click it.
 - **UPD** The module’s icon and name sit at the left of the toolbar, and the choice between that and the window’s title is now in Settings → Appearance rather than hidden in a developer build.
 - **FIX** Refresh list and Upgrade all no longer jump across the toolbar when a control appears or disappears beside them.
-- **FIX** The gap between the toolbar’s buttons and its search no longer changes as you drag the window’s edge.
+- **FIX** The gap between the toolbar’s buttons and its search stays fixed as you drag the window’s edge.
+- **UPD** Homebrew’s Search tab is gone — the toolbar’s own search filters whichever tab is open instead.
+- **NEW** When nothing on the tab you’re viewing matches what you typed, Homebrew searches everywhere for it — right away on Return, or, once you’ve typed a little more, after a short pause — and offers to install what it finds, apart from what you already have.
+- **UPD** Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’.
 
 ## 0.10.0 — 2026-08-09
 
