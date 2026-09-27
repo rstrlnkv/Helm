@@ -134,6 +134,25 @@ public final class HelmToolbarActionsModel {
     /// module's own `body` reads it outside a test.
     private(set) var isInteractive = true
 
+    /// **Whether AppKit currently draws this window's own chrome active** —
+    /// the same fact its private `_hasActiveAppearance` answers, and
+    /// `window.isKeyWindow || window.isMainWindow` was measured to equal in
+    /// every state produced (`SettingsWindow`'s own header, above its four
+    /// `windowDid…` methods, has the reading and where it was taken).
+    /// **Not** SwiftUI's `controlActiveState`: that reads `.inactive` in two
+    /// of those states — a nonactivating panel taking key while this window
+    /// stays main, and a sheet — where AppKit's platter stays lit. Read only
+    /// by `HelmToolbarActionsCapsule.glyph(_:)`, to dim a plain `Label`'s ink
+    /// the same amount AppKit's own toolbar button glyph dims by — the
+    /// capsule's *glass* needs no such value: it follows AppKit's own active
+    /// appearance, which in a real app equals `isKeyWindow || isMainWindow`,
+    /// proven by pinning this environment key on a live capsule and reading
+    /// zero glass difference either way
+    /// (`HelmToolbarActionsCapsule`'s own header, above `struct
+    /// HelmToolbarActionsCapsule`, has that measurement). Not `public`, on
+    /// the same grounds as `isInteractive` above.
+    private(set) var appearsActive = true
+
     /// Never observed by SwiftUI, and never anything but data going the
     /// other way: `id` in, nothing back. Set once, at construction, by
     /// `SettingsToolbar.makeActionsItem`.
@@ -144,7 +163,7 @@ public final class HelmToolbarActionsModel {
 
     public init() {}
 
-    /// **Guarded on equality — every one of the three setters is.** The
+    /// **Guarded on equality — every setter is.** The
     /// `@Observable` macro's synthesised setter notifies observers whenever a
     /// tracked property is *written*, whether or not the new value differs
     /// from the old one, and Homebrew republishes its whole toolbar
@@ -168,12 +187,67 @@ public final class HelmToolbarActionsModel {
         guard isInteractive != value else { return }
         isInteractive = value
     }
+
+    /// Called by `SettingsToolbar.setWindowAppearsActive(_:)`, itself fed by
+    /// `SettingsWindow`'s own direct read of the window's `isKeyWindow` and
+    /// `isMainWindow` — see this type's own `appearsActive` header for why
+    /// the value crosses in from there rather than being read here.
+    public func setAppearsActive(_ value: Bool) {
+        guard appearsActive != value else { return }
+        appearsActive = value
+    }
 }
 
 /// The capsule itself — hosted by `SettingsToolbar.makeActionsItem` in an
 /// `NSHostingView` with no AppKit border of its own (`isBordered = false`):
 /// a bordered item wraps its view in a second glass, measured, so the
 /// capsule's own `.glassEffect` would sit inside another one.
+///
+/// **Why `body` does not read `\.controlActiveState`, and does not override
+/// it either.** A Helm Dev probe saw no movement in `\.controlActiveState`
+/// read from this capsule's own host, nor from `helm.tabs`' own switcher
+/// host, through a real deactivate/reactivate cycle — log not kept. So this
+/// view never asks its own hosting for the answer, for the glyph's own dim
+/// (`HelmToolbarActionsModel.appearsActive`, fed by `SettingsWindow`'s direct
+/// read of the window itself rather than by any SwiftUI content — that
+/// type's own header has the reading).
+///
+/// **The glass needs no such value at all, and used to carry one anyway.**
+/// This `body` once re-injected `model.appearsActive` as
+/// `.environment(\.controlActiveState, ...)` on the theory that it was the
+/// key AppKit's own glass reads — measured false: pinning that key to `.key`,
+/// to `.inactive`, and replacing it with `\.appearsActive` instead, all read
+/// zero glass differences against a live capsule's own baseline. What moves
+/// the glass instead, in every fixture built to check it, is AppKit's own
+/// active appearance, which in a real app equals `isKeyWindow || isMainWindow`
+/// — no SwiftUI environment read back out of it changed the reading either
+/// way; a fixture built line-for-line from this type's own shape (the
+/// `ZStack`, the hidden reserve,
+/// `glassEffectID`/`glassEffectUnion`/`glassEffectTransition`, all of it) read
+/// its glass moving with the window with no override and no rebuild, across a
+/// same-process deactivate and a genuine switch to a second, independently
+/// running app and back — appearance not recorded for the same-process run,
+/// and the two-process run logged only the moment of the notification. So the
+/// override was deleted; nothing here asks for `controlActiveState` any more.
+///
+/// **What is still unexplained.** Every fixture built to test this — a
+/// line-for-line copy of this type's own shape, a standalone toolbar built to
+/// the same exact shape, and a real two-process activation switch — reads the
+/// glass following AppKit's own active appearance on its own, with no
+/// rebuild. A probe on Helm Dev read the opposite: flipping
+/// `model.appearsActive` on an already-rendered capsule left its glass at the
+/// value it was built with, even with the override (since removed) in place
+/// and correctly returning `.inactive`. No fixture since has reproduced that
+/// reading, and nothing that differs between Helm Dev and every fixture above
+/// has been found. `SettingsToolbar.rebuildActionsHost(_:)` keeps two callers
+/// for two different reasons: `setWindowAppearsActive(_:)` calls it on every
+/// live transition for the unresolved reason above, and
+/// `correctActionsGlassOnFirstAttach(_:)` calls it at most once, and only for
+/// a bar built while the window reads inactive, for the
+/// separate, confirmed reason its own header gives — and
+/// `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests.testAChangeMovesNoItemAndLeavesNoReplacedCapsuleAlive`
+/// is the guard that keeps the live-transition call from being quietly
+/// dropped before the contradiction is settled.
 public struct HelmToolbarActionsCapsule: View {
     // Internal, not `private`: a test reaching this through `@testable import
     // HelmUI` (`TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests`) is
@@ -182,6 +256,9 @@ public struct HelmToolbarActionsCapsule: View {
     // never orders on screen, so a test asks the model directly instead.
     let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
+    /// Which of the two glyph-dim constants below applies — see
+    /// `inactiveGlyphOpacity`'s own header.
+    @Environment(\.colorScheme) private var colorScheme
 
     /// **The margin an `isBordered = false` custom-view item is short of an
     /// AppKit-drawn one, when it is the toolbar's own last item.** Measured
@@ -207,6 +284,21 @@ public struct HelmToolbarActionsCapsule: View {
     /// choosing a size of its own.
     static let side: CGFloat = 36
 
+    /// **The glyph's own dim, when the model reads inactive — a second gap
+    /// from the same measurement, separate from the glass.** A plain SwiftUI
+    /// `Label`'s ink does not move with `controlActiveState` on its own:
+    /// measured against a live window, a `Label` in a plain `Button` kept
+    /// full ink (Dark 255, Light 0) where AppKit's own bordered toolbar
+    /// button's glyph reads Dark 93, Light 169. Solved as the opacity a
+    /// full-ink glyph needs over that row's own flat, inactive chrome (Dark bg
+    /// 40, Light bg 244) to land on the target: `bg·(1−x) + ink·x = target`.
+    /// Two constants and not one, because the algebra does not agree between
+    /// appearances — a white glyph over one background, a black glyph over a
+    /// different one — which is the same reason `Clamped.swift` keeps a
+    /// not-a-number's two bounds apart rather than collapsing them.
+    static let inactiveGlyphOpacityDark: Double = 0.25   // (93−40)/(255−40) ≈ 0.2465
+    static let inactiveGlyphOpacityLight: Double = 0.31  // (244−169)/244 ≈ 0.3074
+
     /// Non-zero exactly when this capsule is the bar's own last item (no
     /// search follows it) — see `edgeMargin`'s own header for the measurement
     /// this closes.
@@ -215,6 +307,12 @@ public struct HelmToolbarActionsCapsule: View {
     public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0) {
         self.model = model
         self.trailingInset = trailingInset
+    }
+
+    /// `inactiveGlyphOpacityDark` or `inactiveGlyphOpacityLight`, picked by
+    /// `colorScheme`, read here where the value is drawn rather than cached.
+    private var inactiveGlyphOpacity: Double {
+        colorScheme == .dark ? Self.inactiveGlyphOpacityDark : Self.inactiveGlyphOpacityLight
     }
 
     public var body: some View {
@@ -471,6 +569,10 @@ public struct HelmToolbarActionsCapsule: View {
             .helmSteadySpin(entry.isBusy)
             .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
+            // AppKit's own dim does not reach a plain SwiftUI `Label`'s ink on
+            // its own — `inactiveGlyphOpacityDark`'s own header has the
+            // reading and the algebra behind these two numbers.
+            .opacity(model.appearsActive ? 1 : inactiveGlyphOpacity)
     }
 
     /// **One entry, drawn as its own kind.** A button and a toggle both press

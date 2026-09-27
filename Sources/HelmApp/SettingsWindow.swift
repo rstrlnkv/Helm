@@ -82,6 +82,13 @@ import HelmUI
         // built before this window exists (`init` above needs the toolbar
         // object to exist before there is anywhere to hang it).
         settingsToolbar.window = window
+        // Seeds the toolbar with this window's own, freshly-created state —
+        // neither key nor main yet — rather than leaving it at
+        // `SettingsToolbar`'s own default until the first notification below
+        // arrives. See the header above this class's four `windowDid…`
+        // methods for the signal and `HelmToolbarActionsModel.appearsActive`'s
+        // for why it is read here and not from SwiftUI content.
+        updateWindowAppearsActive()
         // **The window's title is the page's name**, set here on the
         // `NSWindow` rather than through SwiftUI: the bridge that used to
         // carry a detail pane's toolbar into the window carried its subtitle
@@ -135,6 +142,44 @@ import HelmUI
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    // MARK: - Whether AppKit draws this window's chrome active
+
+    /// **The signal AppKit's own toolbar platter follows, read directly off
+    /// this window rather than off any SwiftUI content** — not
+    /// `\.controlActiveState`, which reads `.inactive` in two states where
+    /// AppKit's platter stays lit: a nonactivating panel taking key while this
+    /// window stays main, and a sheet, where the private `_hasActiveAppearance`
+    /// this window answers for AppKit stays `true` (`isKeyWindow=false`,
+    /// `isMainWindow=true` in both).
+    ///
+    /// `isKeyWindow || isMainWindow` was read alongside `_hasActiveAppearance`
+    /// on every `STATE` line four real fixture runs logged, then a fifth set
+    /// that hands genuine activation between two processes to reach the same
+    /// states for real — S1 through S5, a nonactivating panel taking key, and
+    /// a sheet opened, cancelled, begun while the app was away, or ended
+    /// while it was away — and the two agreed on every line, sheet included.
+    ///
+    /// **What this reading cannot see.** `isKeyWindow` and `isMainWindow`
+    /// answer only for a *real* window-server transition — a genuine
+    /// `activate()`, a real key/main window change — and a test process can
+    /// never produce one of its own: calling AppKit's private
+    /// `acquireKeyAppearance`/`resignKeyAppearance`/`acquireMainAppearance`/
+    /// `resignMainAppearance` moves `_hasActiveAppearance` and AppKit's own
+    /// glass but leaves `isKeyWindow`, `isMainWindow`, `NSApp.keyWindow` and
+    /// `NSApp.mainWindow` all unchanged and posts none of the four
+    /// notifications below. `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`'s
+    /// own rig stands in for the window server for exactly that reason,
+    /// driving the private appearance calls and the notifications together
+    /// rather than trusting a second reading to cover the gap.
+    func windowDidBecomeKey(_ notification: Notification) { updateWindowAppearsActive() }
+    func windowDidResignKey(_ notification: Notification) { updateWindowAppearsActive() }
+    func windowDidBecomeMain(_ notification: Notification) { updateWindowAppearsActive() }
+    func windowDidResignMain(_ notification: Notification) { updateWindowAppearsActive() }
+
+    private func updateWindowAppearsActive() {
+        settingsToolbar.setWindowAppearsActive(window.isKeyWindow || window.isMainWindow)
     }
 }
 

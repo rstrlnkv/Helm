@@ -154,6 +154,18 @@ import HelmUI
     /// fire from inside that `willSet`.
     private var currentSelection: SettingsSelection?
 
+    /// **What `HelmToolbarActionsModel.appearsActive` is fed from —
+    /// `SettingsWindow.updateWindowAppearsActive()`'s direct read of
+    /// `isKeyWindow || isMainWindow` off the window itself.** Measured to
+    /// equal AppKit's private `_hasActiveAppearance` on every `STATE` line a
+    /// real window logged, sheet included (`SettingsWindow`'s own header,
+    /// above its four `windowDid…` methods, has the reading and where it was
+    /// taken). Starts `true`: the seed call `SettingsWindow.init` makes right
+    /// after handing this toolbar its window corrects it, synchronously,
+    /// before the window is ever shown — this default is never the value a
+    /// person sees.
+    private var windowAppearsActive = true
+
     // MARK: - Per-page cached toolbars
 
     private var pageBars: [String: PageBar] = [:]
@@ -226,6 +238,95 @@ import HelmUI
             forName: .helmToolbarSwitcherStyleChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAndResettle() }
         }
+    }
+
+    /// Called by `SettingsWindow`'s own `windowDid…` delegate methods with
+    /// `isKeyWindow || isMainWindow` — see `windowAppearsActive`'s own header
+    /// for why the value crosses in from there rather than being read inside
+    /// the capsule.
+    func setWindowAppearsActive(_ active: Bool) {
+        guard windowAppearsActive != active else { return }
+        windowAppearsActive = active
+        for bar in pageBars.values {
+            bar.actionsModel?.setAppearsActive(active)
+            rebuildActionsHost(bar)
+        }
+        // The name zone's own ink: a plain SwiftUI value, not glass, so the
+        // one bar actually on screen redrawing is enough — `patchName`'s own
+        // `pageIdentity()` answers correctly only for that one (`NameSnapshot`'s
+        // own header says why `appearsActive` has to ride in its equality).
+        patchAttachedName()
+    }
+
+    /// **A capsule built while the window reads inactive can draw lit glass
+    /// beside flat AppKit items until it is rebuilt a turn later.** Filmed on
+    /// Helm Dev: a capsule built while the window had never been key drew lit
+    /// glass beside flat AppKit items, where a reopened window drew flat.
+    ///
+    /// **The rebuild is deferred one run-loop turn.** Rebuilding in the same
+    /// turn read the glass still lit on one Helm Dev probe, log not kept;
+    /// deferring the one rebuild through a single `DispatchQueue.main.async`
+    /// — no explicit delay — read it flat on every filmed first open. Nothing
+    /// here explains *why* the extra turn is what closes the gap.
+    ///
+    /// `PageBar.actionsGlassNeedsFirstAttachCorrection`, set by
+    /// `makeActionsItem` exactly when it builds this bar's capsule while
+    /// `windowAppearsActive` already reads `false`, is spent here, once,
+    /// right after `show(_:key:)` actually attaches the bar it belongs to. A
+    /// bar built while the window already reads active never sets the flag,
+    /// so an ordinary S1 build costs nothing extra; a bar built while the
+    /// window is already inactive sets it regardless of whether it is that
+    /// window's first capsule, and pays for a deferred rebuild even where the
+    /// flat look it confirms needed no correction — cheaper than telling the
+    /// two cases apart, and `rebuildActionsHost(_:)` is already paid for on
+    /// every live signal change regardless.
+    private func correctActionsGlassOnFirstAttach(_ bar: PageBar) {
+        guard bar.actionsGlassNeedsFirstAttachCorrection else { return }
+        bar.actionsGlassNeedsFirstAttachCorrection = false
+        DispatchQueue.main.async { [weak self, weak bar] in
+            guard let self, let bar else { return }
+            self.rebuildActionsHost(bar)
+            // **A freshly assigned `item.view` has no measured frame until a
+            // layout pass runs, and nothing else is about to force one here**
+            // — `show(_:key:)`'s own `scheduleSettle(bar)` (armed when this
+            // bar was first attached, before this correction ever ran) reads
+            // item frames on its own timer rather than after laying the
+            // window out itself, so a reader that ran before this call would
+            // find this item's frame still unmeasured. `window?.layoutIfNeeded()`
+            // is the same call `settle(_:)`'s own `.window` layout case already
+            // makes for exactly this reason — asked for here, once, so no
+            // later reader of this item's frame is the one left finding it
+            // unmeasured.
+            self.window?.layoutIfNeeded()
+        }
+    }
+
+    /// **Mutating `HelmToolbarActionsModel.appearsActive` alone was not
+    /// enough on Helm Dev — a live transition had to rebuild the hosting
+    /// view, not only change the value it reads.** Measured there: flipping
+    /// the model on an *already-rendered* capsule left its glass at the value
+    /// it was built with, log not kept. So a live change rebuilds: a fresh
+    /// `NSHostingView` over the same model reads the glass correctly, where
+    /// mutating the model alone did not — unlike a bar's very first attach,
+    /// where the same kind of rebuild made in the same turn still read lit
+    /// on one Helm Dev probe, log not kept
+    /// (`correctActionsGlassOnFirstAttach(_:)`'s own header). **Not reproduced since, in any fixture built to check it**
+    /// — `HelmToolbarActionsCapsule`'s own header, above `struct
+    /// HelmToolbarActionsCapsule`, has what those fixtures read instead (the
+    /// glass following the window on its own, with no rebuild at all) and
+    /// says why the rebuild stays regardless: nothing explaining the
+    /// difference from Helm Dev has been found.
+    /// `bar.content?.search == nil` is the same reading `makeActionsItem`
+    /// seeds `trailingInset` from — kept in step here because a bar whose
+    /// shape has not changed keeps the same answer for the life of the bar
+    /// (`ShapeSignature.hasSearch` rebuilds the whole bar, this item
+    /// included, the moment that changes).
+    private func rebuildActionsHost(_ bar: PageBar) {
+        guard let model = bar.actionsModel, let item = bar.actionsItem else { return }
+        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        item.view = hosting
     }
 
     /// **A language, label-style or page-bar change** — every one of them can
@@ -539,6 +640,7 @@ import HelmUI
             // M3's own net watches whichever bar is now on screen — only that
             // one can overflow at all.
             watchOverflow(bar)
+            correctActionsGlassOnFirstAttach(bar)
         }
         // Every `show()`, whether or not the bar actually changed — a
         // republish on the same bar can still move the room the tabs need
@@ -750,6 +852,9 @@ import HelmUI
         let statusWord: String?
         let statusActive: Bool
         let iconStyle: SidebarStyle
+        /// Included so a signal-only change (no page switch, no republish)
+        /// still redraws — see `NameZoneView.appearsActive`'s own header.
+        let appearsActive: Bool
     }
 
     private func makeNameItem(_ bar: PageBar) -> NSToolbarItem {
@@ -757,7 +862,8 @@ import HelmUI
         let identity = pageIdentity()
         let hosting = NSHostingView(rootView: NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                                            title: identity.title, status: identity.status,
-                                                           iconStyle: AppSettings.sidebarStyle))
+                                                           iconStyle: AppSettings.sidebarStyle,
+                                                           appearsActive: windowAppearsActive))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
         // A title is not a control: no glass behind it — the same call
@@ -771,7 +877,8 @@ import HelmUI
         bar.lastNameSnapshot = NameSnapshot(symbol: identity.symbol, title: identity.title,
                                             statusWord: identity.status?.word,
                                             statusActive: identity.status?.active ?? false,
-                                            iconStyle: AppSettings.sidebarStyle)
+                                            iconStyle: AppSettings.sidebarStyle,
+                                            appearsActive: windowAppearsActive)
         return item
     }
 
@@ -781,13 +888,15 @@ import HelmUI
         let snapshot = NameSnapshot(symbol: identity.symbol, title: identity.title,
                                     statusWord: identity.status?.word,
                                     statusActive: identity.status?.active ?? false,
-                                    iconStyle: AppSettings.sidebarStyle)
+                                    iconStyle: AppSettings.sidebarStyle,
+                                    appearsActive: windowAppearsActive)
         bar.nameItem?.label = identity.title
         guard snapshot != bar.lastNameSnapshot else { return }
         bar.lastNameSnapshot = snapshot
         nameHost.rootView = NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                          title: identity.title, status: identity.status,
-                                         iconStyle: AppSettings.sidebarStyle)
+                                         iconStyle: AppSettings.sidebarStyle,
+                                         appearsActive: windowAppearsActive)
     }
 
     /// Whichever bar is on screen right now, patched with the page identity
@@ -2328,6 +2437,19 @@ import HelmUI
             model.setDeclared(Self.actionEntries(for: content))
             model.setVisibleIDs(content.actions.filter(\.isVisible).map(\.id))
         }
+        // Seeded the same way `isInteractive` is not (it defaults `true` on
+        // the model itself): `windowAppearsActive`'s own header says why this
+        // one crosses in from outside rather than starting from a model
+        // default that would never move for a page whose bar is built while
+        // the window is already inactive.
+        model.setAppearsActive(windowAppearsActive)
+        // The model answers correctly the instant it is read — the glyph's own
+        // dim above proves that — but the *glass* below is not seeded from it
+        // at all, and reads whatever this window happened to already carry
+        // before this capsule existed. See
+        // `correctActionsGlassOnFirstAttach(_:)`'s own header for the reading:
+        // flagged here, spent once this bar is actually attached.
+        if !windowAppearsActive { bar.actionsGlassNeedsFirstAttachCorrection = true }
         // **`content.search == nil` is "the capsule is this bar's own last
         // item"** — `identifiers(content:style:)` never puts anything after
         // `helm.actions` but `helm.search`, and `ShapeSignature.hasSearch`
@@ -2805,6 +2927,14 @@ private final class PageBar {
     var actionsModel: HelmToolbarActionsModel?
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
+    /// **Set by `SettingsToolbar.makeActionsItem` the moment it builds this
+    /// bar's capsule while the window already reads inactive, and consumed —
+    /// once — the moment `show(_:key:)` actually attaches this bar.** See
+    /// `SettingsToolbar.correctActionsGlassOnFirstAttach(_:)`'s own header for
+    /// the reading behind it: the capsule's glass, unlike its glyph, is not
+    /// seeded from `windowAppearsActive` at all, so a capsule built while the
+    /// window reads inactive can draw lit glass until the deferred rebuild.
+    var actionsGlassNeedsFirstAttachCorrection = false
 
     var lastNameSnapshot: SettingsToolbar.NameSnapshot?
     var lastTabsSnapshot: SettingsToolbar.HelmTabsSnapshot?
@@ -2834,6 +2964,39 @@ struct NameZoneView: View {
     let title: String
     let status: (word: String, active: Bool)?
     let iconStyle: SidebarStyle
+    /// **The same `isKeyWindow || isMainWindow` signal the actions capsule
+    /// reads** (`SettingsToolbar.windowAppearsActive`'s own header has the
+    /// reading), not `\.controlActiveState`: this view is hosted through an
+    /// `NSToolbarItem`'s custom view exactly like the capsule, and that
+    /// environment key is not trusted here, for the capsule's reason
+    /// (`HelmToolbarActionsCapsule`'s own header). `appearsActive` costs no
+    /// rebuild the capsule's own glass needs — every ink below is a plain
+    /// SwiftUI value read at draw time, not Liquid Glass, so reassigning this
+    /// view's `rootView` (`SettingsToolbar.patchName`) is enough to move it.
+    let appearsActive: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// **Dark 222→92, Light 37→177 — AppKit's own `.windowTitle` layout,
+    /// measured against this same toolbar row**: a window's title text over
+    /// this row's own flat, inactive chrome (bg 37 Dark, 247 Light) lands on
+    /// that target from the zone's own full ink (222 Dark, 38 Light) at the
+    /// opacity `bg·(1−x) + ink·x = target` solves for — the same algebra
+    /// `HelmToolbarActionsCapsule.inactiveGlyphOpacity…` uses for the
+    /// capsule's own glyph, kept as its own pair of constants for the same
+    /// reason that one is two and not one: the two appearances do not agree.
+    /// **Every other ink in this zone dims by the same amount, as one unit.**
+    /// AppKit draws a title as a single readable line and offers no separate
+    /// dimming for an icon or a word beside it — there is no distinct AppKit
+    /// reading to give the plate, the badge or the quiet status text of their
+    /// own, and picking one anyway would be a difference this zone's own
+    /// model (a module's name, standing in for the window's title) does not
+    /// have. One `.opacity()` on the whole row is that decision, not three.
+    static let inactiveOpacityDark: Double = 0.30    // (92−37)/(222−37) ≈ 0.2973
+    static let inactiveOpacityLight: Double = 0.33   // (247−177)/(247−38) ≈ 0.3349
+
+    private var inactiveOpacity: Double {
+        colorScheme == .dark ? Self.inactiveOpacityDark : Self.inactiveOpacityLight
+    }
 
     var body: some View {
         HStack(spacing: HelmSpace.s5) {
@@ -2856,5 +3019,14 @@ struct NameZoneView: View {
         // Hosted outside the pane's own view tree, so the style this reads
         // has to be handed in explicitly rather than inherited.
         .environment(\.helmModuleIconStyle, iconStyle)
+        // Flattens the row to one layer before dimming it — without this,
+        // `HelmIconPlate`'s own drop shadow keeps its *own* alpha under the
+        // opacity above rather than being scaled down with the plate, so the
+        // two partly-transparent layers can composite to a higher combined
+        // alpha right at the plate's edge than either dims to alone (measured:
+        // the row's peak alpha read 0.54/0.58 instead of the requested
+        // 0.30/0.33 without this line).
+        .compositingGroup()
+        .opacity(appearsActive ? 1 : inactiveOpacity)
     }
 }
