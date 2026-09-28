@@ -194,6 +194,13 @@ enum Changelog {
                 ChangeItem(kind: .upd, text: L("Homebrew’s Search tab is gone — the toolbar’s own search filters whichever tab is open instead.")),
                 ChangeItem(kind: .new, text: L("When nothing on the tab you’re viewing matches what you typed, Homebrew searches everywhere for it — right away on Return, or, once you’ve typed a little more, after a short pause — and offers to install what it finds, apart from what you already have.")),
                 ChangeItem(kind: .upd, text: L("Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’.")),
+                ChangeItem(kind: .new, text: L("Right-click the settings toolbar for one menu: the page header’s shape, the tab labels where the page has them, and Always Collapse Search where the page has a search field.")),
+                ChangeItem(kind: .upd, text: L("The page header choice reads “With Icon” and “Without Icon” now, instead of “Module icon and name” and “Window title”.")),
+                ChangeItem(kind: .new, text: L("Always Collapse Search rests the toolbar’s search as the system’s own magnifier at every width, until you click it.")),
+                ChangeItem(kind: .fix, text: L("A disabled toolbar action’s glyph dims the way macOS dims a disabled toolbar button.")),
+                ChangeItem(kind: .upd, text: L("Toolbar button glyphs — Refresh list and the rest — draw at the system’s own size for a bordered toolbar button.")),
+                ChangeItem(kind: .upd, text: L("On macOS 26, Settings no longer draws Helm’s own band under the toolbar, and leaves that edge to the system.")),
+                ChangeItem(kind: .upd, text: L("Upgrade all has a new icon, an arrow pointing down to a line.")),
             ]),
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .upd, text: L("A glyph that changes now turns into the next one instead of blinking \u{2014} the plus that becomes a tick when you mark a file for removal, the warning that becomes a tick when you grant a permission. With Reduce Motion on, it simply changes.")),

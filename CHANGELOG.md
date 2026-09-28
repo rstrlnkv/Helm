@@ -138,6 +138,13 @@ only once it has no known problems left.
 - **UPD** Homebrew’s Search tab is gone — the toolbar’s own search filters whichever tab is open instead.
 - **NEW** When nothing on the tab you’re viewing matches what you typed, Homebrew searches everywhere for it — right away on Return, or, once you’ve typed a little more, after a short pause — and offers to install what it finds, apart from what you already have.
 - **UPD** Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’.
+- **NEW** Right-click the settings toolbar for one menu: the page header’s shape, the tab labels where the page has them, and Always Collapse Search where the page has a search field.
+- **UPD** The page header choice reads “With Icon” and “Without Icon” now, instead of “Module icon and name” and “Window title”.
+- **NEW** Always Collapse Search rests the toolbar’s search as the system’s own magnifier at every width, until you click it.
+- **FIX** A disabled toolbar action’s glyph dims the way macOS dims a disabled toolbar button.
+- **UPD** Toolbar button glyphs — Refresh list and the rest — draw at the system’s own size for a bordered toolbar button.
+- **UPD** On macOS 26, Settings no longer draws Helm’s own band under the toolbar, and leaves that edge to the system.
+- **UPD** Upgrade all has a new icon, an arrow pointing down to a line.
 
 ## 0.10.0 — 2026-08-09
 

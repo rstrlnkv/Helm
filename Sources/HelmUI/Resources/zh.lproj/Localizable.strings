@@ -1235,3 +1235,10 @@
 "Homebrew’s Search tab is gone — the toolbar’s own search filters whichever tab is open instead." = "Homebrew 的搜索标签页已经取消——工具栏自带的搜索会筛选当前打开的标签页。";
 "When nothing on the tab you’re viewing matches what you typed, Homebrew searches everywhere for it — right away on Return, or, once you’ve typed a little more, after a short pause — and offers to install what it finds, apart from what you already have." = "如果当前标签页里没有和你输入的内容相符的软件包，Homebrew 就会全面搜索——按 Return 立即搜索，或者在你多输入一点后稍等片刻自动搜索——并提供安装找到的软件包，已安装的除外。";
 "Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’." = "“主机与密钥”的表格与纯文本切换开关显示为图标，其选中状态像标签页一样滑动。";
+"Right-click the settings toolbar for one menu: the page header’s shape, the tab labels where the page has them, and Always Collapse Search where the page has a search field." = "右键点击设置工具栏，即可在同一个菜单中调整：页面标题栏的样式、有标签页的页面上的标签页样式，以及有搜索框的页面上的“始终折叠搜索”。";
+"The page header choice reads “With Icon” and “Without Icon” now, instead of “Module icon and name” and “Window title”." = "页面标题栏的选项现在显示为“带图标”和“不带图标”，而不再是“模块图标和名称”和“窗口标题”。";
+"Always Collapse Search rests the toolbar’s search as the system’s own magnifier at every width, until you click it." = "“始终折叠搜索”会让工具栏的搜索在任何宽度下都保持为系统自带的放大镜，直到你点击它。";
+"A disabled toolbar action’s glyph dims the way macOS dims a disabled toolbar button." = "工具栏中停用的操作，其图标会像 macOS 中停用的工具栏按钮一样变暗。";
+"Toolbar button glyphs — Refresh list and the rest — draw at the system’s own size for a bordered toolbar button." = "工具栏按钮的图标 — “刷新列表”及其余按钮 — 现在以系统为带边框工具栏按钮设定的尺寸绘制。";
+"On macOS 26, Settings no longer draws Helm’s own band under the toolbar, and leaves that edge to the system." = "在 macOS 26 上，设置不再在工具栏下方绘制 Helm 自己的条带，而是把这条边缘交给系统。";
+"Upgrade all has a new icon, an arrow pointing down to a line." = "“全部升级”换了新图标：一个向下指向一条横线的箭头。";
