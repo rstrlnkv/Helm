@@ -10,6 +10,11 @@ extension Notification.Name {
     /// every read, so what needs telling is not the values but the views: a
     /// window already drawn keeps whatever it built.
     static let helmLanguageChanged = Notification.Name("helmLanguageChanged")
+    /// Posted when `AppSettings.alwaysCollapseSearch` changes, so
+    /// `SettingsToolbar` rests every bar's search field again. Declared here
+    /// rather than beside `helmPageBarStyleChanged` in `HelmUI`: nothing
+    /// outside the host listens for it.
+    static let helmAlwaysCollapseSearchChanged = Notification.Name("helmAlwaysCollapseSearchChanged")
 }
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
@@ -44,22 +49,15 @@ extension Notification.Name {
     }
 
     /// How the switchers in the settings window's toolbar label their segments
-    /// (`ToolbarSwitcherStyle`), chosen by right-clicking any of them. One
-    /// answer for every page: a switcher that read as words on one page and as
-    /// glyphs on the next would be two controls.
+    /// (`ToolbarSwitcherStyle`), chosen from the toolbar's own right-click
+    /// menu (`SettingsToolbar.barMenuItems`). One answer for every page: a
+    /// switcher that read as words on one page and as glyphs on the next
+    /// would be two controls.
     static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
         get { ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: "")) }
         set {
             store.set(newValue.rawValue, for: ToolbarSwitcherStyle.storageKey)
             NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
-        }
-    }
-
-    /// `helmTracksSwitcherStyle`'s `set:` argument. A type rather than a
-    /// closure, for the reason `SwitcherStyleSetter` gives.
-    struct ToolbarSwitcherStyleSetter: SwitcherStyleSetter {
-        func callAsFunction(_ style: ToolbarSwitcherStyle) {
-            AppSettings.toolbarSwitcherStyle = style
         }
     }
 
@@ -78,6 +76,22 @@ extension Notification.Name {
         set {
             store.set(newValue.rawValue, for: PageBarStyle.storageKey)
             NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
+        }
+    }
+
+    /// **Whether the settings window's search rests as AppKit's magnifier at
+    /// every width**, rather than as a field wherever the bar has room for
+    /// one — chosen from the toolbar's own right-click menu
+    /// (`SettingsToolbar.barMenuItems`). Off unless somebody turns it on, so
+    /// a Mac that never opens that menu keeps today's bar. A `Bool` is bounded
+    /// by its type, and nothing unattended reads it, so it is not sealed.
+    /// "Always" means "whenever the field is empty and nobody is editing it":
+    /// a query left in the field keeps it open (`SettingsToolbar.restSearch`).
+    static var alwaysCollapseSearch: Bool {
+        get { store.bool("alwaysCollapseSearch", default: false) }
+        set {
+            store.set(newValue, for: "alwaysCollapseSearch")
+            NotificationCenter.default.post(name: .helmAlwaysCollapseSearchChanged, object: nil)
         }
     }
 

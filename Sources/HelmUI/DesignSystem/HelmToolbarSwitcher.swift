@@ -4,7 +4,8 @@ import SwiftUI
 /// **How a switcher in the settings window's toolbar labels its segments.**
 ///
 /// All four were drawn side by side in the mockup (2026-09-17) and the owner
-/// took all four, as a choice made by right-clicking the switcher:
+/// took all four, as a choice made by right-clicking the toolbar (the bar's
+/// own menu, `SettingsToolbar.barMenuItems`, under "Tab labels"):
 ///
 /// - `text` — each segment as wide as its word, a hairline between two
 ///   unselected ones. The system segmented control split the capsule into
@@ -28,9 +29,9 @@ public enum ToolbarSwitcherStyle: String, CaseIterable, Sendable {
         self = ToolbarSwitcherStyle(rawValue: stored) ?? .text
     }
 
-    /// The words the choice is offered under. Three are AppKit's own, read out
-    /// of its `Toolbar.loctable` — the names every toolbar's context menu
-    /// already uses for the same choice; the fourth has no system spelling.
+    /// The words the choice is offered under — all three AppKit's own, read
+    /// out of its `Toolbar.loctable`: the names every toolbar's context menu
+    /// already uses for the same choice.
     public var label: String {
         switch self {
         case .text: return L("Text Only")
@@ -44,63 +45,8 @@ public extension Notification.Name {
     static let helmToolbarSwitcherStyleChanged = Notification.Name("helmToolbarSwitcherStyleChanged")
 }
 
-/// Where a right-click on a switcher writes the choice.
-///
-/// A named type rather than a closure because the `@Entry` macro warns on a
-/// closure-typed entry — "Storing a closure in `@Entry var
-/// helmSetSwitcherStyle` may invalidate dependents on every update because
-/// closures may not be comparable" — and a nominal type silences it. That is
-/// the whole of what is measured here: the warning is gone from
-/// `swift build` after this change and was present before it.
-///
-/// `AppSettings.ToolbarSwitcherStyleSetter`, the one conforming type and the
-/// place the choice is actually stored from, has no stored properties, so it
-/// is the same value on every evaluation, where a closure literal carries a
-/// fresh context each time. Whether a switcher below is invalidated any less
-/// often is unmeasured — nobody has counted, in either direction — and
-/// nothing here should be read as saying that it is or that it is not.
-@MainActor
-public protocol SwitcherStyleSetter: Sendable {
-    func callAsFunction(_ style: ToolbarSwitcherStyle)
-}
-
 public extension EnvironmentValues {
     @Entry var helmSwitcherStyle: ToolbarSwitcherStyle = .text
-    /// Nil where nothing stores it — a page mounted on its own — and the menu
-    /// is then not raised.
-    @Entry var helmSetSwitcherStyle: SwitcherStyleSetter?
-}
-
-public extension View {
-    /// Follows `ToolbarSwitcherStyle` as it is changed and hands every switcher
-    /// below the way to change it — a right-click on the switcher, which is the
-    /// gesture Finder's own display-mode menu teaches.
-    func helmTracksSwitcherStyle(_ current: @escaping () -> ToolbarSwitcherStyle,
-                                 set: SwitcherStyleSetter) -> some View {
-        modifier(SwitcherStyleTracker(current: current, set: set))
-    }
-}
-
-private struct SwitcherStyleTracker: ViewModifier {
-    let current: () -> ToolbarSwitcherStyle
-    let set: SwitcherStyleSetter
-    @State private var style: ToolbarSwitcherStyle?
-
-    func body(content: Content) -> some View {
-        content
-            .environment(\.helmSwitcherStyle, style ?? current())
-            .environment(\.helmSetSwitcherStyle, set)
-            // **No new identity here, unlike `PageBarStyle`'s tracker.** That one
-            // adds and removes a toolbar item, which the bridge republishes only
-            // for a subtree it has not seen. This style changes nothing about
-            // which items exist: the switcher is one `NSView` that lives across
-            // the change and rewrites its own segments, so a rebuild would only
-            // throw that view away — measured 2026-09-18, which is what made the
-            // bar's items jump as the style was chosen.
-            .onReceive(NotificationCenter.default.publisher(for: .helmToolbarSwitcherStyleChanged)) { _ in
-                style = current()
-            }
-    }
 }
 
 /// One segment: the value it selects, its word and its glyph.
@@ -130,15 +76,18 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
 /// Homebrew in Russian, «Поиск» in a field three times its size.
 ///
-/// **The right-click is caught before AppKit answers it.** Four arrangements
-/// were tried on the dev build and each was measured: SwiftUI's `.contextMenu`
-/// on a toolbar item opens nothing; a view of ours answering `hitTest` never
-/// sees the press; a menu hung on the item's own views loses to the toolbar's;
-/// and the control's own `menu` is never consulted either, because the bar
-/// answers first — with its display-mode menu, which `SettingsWindow` turns off
-/// because it only changed the bar's height. A local event monitor is ahead of
-/// all of it: a right-click inside this control opens this menu and goes no
-/// further, and every other press in the bar is left alone.
+/// **A right-click here is the bar's, not this control's.** Four arrangements
+/// were tried on the dev build for a menu of the switcher's own and each was
+/// measured: SwiftUI's `.contextMenu` on a toolbar item opens nothing; a view
+/// of ours answering `hitTest` never sees the press; a menu hung on the item's
+/// own views loses to the toolbar's; and the control's own `menu` is never
+/// consulted by a click either. So one local monitor, `SettingsToolbar`'s,
+/// takes the gesture (`isTheGesture`) anywhere on the bar, this control
+/// included, and opens the bar's one menu; this control's own monitor never
+/// takes it, so no two menus can answer one click whatever order AppKit calls
+/// the monitors in. What the control does keep is `menu`, set as its own
+/// `NSView.menu` — the menu VoiceOver's "show menu" opens on a focused
+/// control, where no click is involved.
 public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     private let name: String
     private let segments: [HelmSwitcherSegment<Value>]
@@ -153,17 +102,21 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// would re-pin its own toolbar metric (`hasPinnedMetric`'s own doc, one
     /// paragraph down) and lose the item AppKit had already inserted.
     private let compact: Bool
+    /// The control's own `NSView.menu` — see this type's own header: the
+    /// bar's menu for the centre tabs, nil for a switcher that belongs to
+    /// something else (the actions capsule's, the measuring rig's).
+    private let menu: NSMenu?
 
     @Environment(\.helmSwitcherStyle) private var style
-    @Environment(\.helmSetSwitcherStyle) private var setStyle
     @Environment(\.isEnabled) private var isEnabled
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>],
-                compact: Bool = false) {
+                compact: Bool = false, menu: NSMenu? = nil) {
         self.name = name
         self.segments = segments
         self._selection = selection
         self.compact = compact
+        self.menu = menu
     }
 
     public func makeCoordinator() -> Coordinator { Coordinator() }
@@ -209,8 +162,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     /// **The gesture that opens a menu on a Mac**: the right button, or the left
     /// one with Control held, which is how a trackpad without a right click
-    /// sends it.
-    static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
+    /// sends it. Public for `SettingsToolbar`'s own monitor, which is the one
+    /// place the gesture is answered on the bar, so the two can never
+    /// disagree about what it is.
+    public static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
         switch type {
         case .rightMouseDown: return true
         case .leftMouseDown: return modifiers.contains(.control)
@@ -223,7 +178,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             guard segments.indices.contains(index) else { return }
             selection = segments[index].value
         }
-        context.coordinator.choose = setStyle
         context.coordinator.compact = compact
 
         // **The metric the bar will promote it to, taken before the first
@@ -389,12 +343,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
-        let styleMenu = setStyle == nil ? nil
-            : Self.menu(title: L("Tab labels"), style: style, target: context.coordinator)
-        context.coordinator.styleMenu = styleMenu
-        // Kept as the control's own menu as well: it costs nothing, and it is
-        // what answers anywhere AppKit does consult the control.
-        control.menu = styleMenu
+        control.menu = menu
 
         // **The compact form's own menu** — built fresh on every update from
         // the *full* segment list, never `shown`, so a folded capsule always
@@ -457,27 +406,11 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
     }
 
-    /// Every style, the current one ticked, each item carrying the style it
-    /// stands for.
-    static func menu(title: String, style: ToolbarSwitcherStyle, target: AnyObject?) -> NSMenu {
-        let menu = NSMenu(title: title)
-        for choice in ToolbarSwitcherStyle.allCases {
-            let item = NSMenuItem(title: choice.label,
-                                  action: #selector(Coordinator.chose(_:)), keyEquivalent: "")
-            item.target = target
-            item.representedObject = choice.rawValue
-            item.state = choice == style ? .on : .off
-            menu.addItem(item)
-        }
-        return menu
-    }
-
     /// **The compact form's own menu**: every tab, full — never `displaySegments`
     /// — labelled and ticked, `representedObject` carrying the *full* index
     /// `pick(_:)` already expects. Built fresh in `updateNSView` rather than
-    /// kept across updates, on the same grounds `styleMenu` already is: a
-    /// language or selection change has nothing else that would invalidate a
-    /// cached one.
+    /// kept across updates: a language or selection change has nothing else
+    /// that would invalidate a cached one.
     static func tabsMenu(segments: [HelmSwitcherSegment<Value>], selected: Int?,
                          target: AnyObject?) -> NSMenu {
         let menu = NSMenu(title: HelmA11y.whatToShow)
@@ -501,8 +434,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     @MainActor public final class Coordinator: NSObject {
         var pick: (Int) -> Void = { _ in }
-        var choose: SwitcherStyleSetter?
-        var styleMenu: NSMenu?
         /// Non-nil exactly when the control is compact — the one thing
         /// `took(_:)` and `picked(_:)` both need to ask, since a plain click
         /// on a compact control is meant to raise this rather than fire
@@ -542,7 +473,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         func watch(_ control: NSSegmentedControl) {
             self.control = control
             stop()
-            monitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) {
                 [weak self] event in
                 // The handler is `@Sendable` and `NSEvent` is not, although this
                 // one arrives on the main thread — which is where it is read and
@@ -553,28 +484,25 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             }
         }
 
-        /// Whether this menu took the press — true for the style-menu gesture
-        /// inside this control, or for a plain press while compact, either of
-        /// which is then not passed on.
+        /// Whether the tabs menu took the press — true only for a plain press
+        /// while compact, which is then not passed on.
         private func took(_ press: Press) -> Bool {
             let event = press.event
             guard let control, let window = control.window, event.window === window
             else { return false }
             let point = control.convert(event.locationInWindow, from: nil)
             guard control.bounds.contains(point) else { return false }
-            if HelmToolbarSwitcher.isTheGesture(type: event.type, modifiers: event.modifierFlags),
-               let styleMenu {
-                styleMenu.popUp(positioning: nil, at: point, in: control)
-                return true
-            }
             // **A plain press on a compact control raises the tabs menu
             // instead of picking a segment** — there is only ever one segment
             // to pick while compact, the current tab, so the ordinary click
             // would do nothing at all; this is what lets a person choose a
-            // *different* tab from the folded capsule. `event.type` rules out
-            // the style-menu gesture, already handled above, reaching here a
-            // second time.
-            if compact, control.isEnabled, event.type == .leftMouseDown, let tabsMenu {
+            // *different* tab from the folded capsule. **Never a Control-click**:
+            // that is the menu gesture (`isTheGesture`), and it belongs to the
+            // bar's own menu (this type's own header), which a tabs menu
+            // raised here first would shadow.
+            if compact, control.isEnabled, event.type == .leftMouseDown,
+               !HelmToolbarSwitcher.isTheGesture(type: event.type, modifiers: event.modifierFlags),
+               let tabsMenu {
                 tabsMenu.popUp(positioning: tabsMenu.items.first { $0.state == .on }, at: point, in: control)
                 return true
             }
@@ -605,11 +533,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         @objc func pickedFromMenu(_ sender: NSMenuItem) {
             guard let index = sender.representedObject as? Int else { return }
             pick(index)
-        }
-
-        @objc func chose(_ sender: NSMenuItem) {
-            guard let raw = sender.representedObject as? String else { return }
-            choose?(ToolbarSwitcherStyle(stored: raw))
         }
     }
 }

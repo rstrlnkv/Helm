@@ -62,6 +62,41 @@ import XCTest
 @MainActor
 final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
 
+    /// **Every case here reads the search AppKit rests by itself, so "Always
+    /// Collapse Search" is held off** (`AppSettings.alwaysCollapseSearch`,
+    /// `AlwaysCollapseSearchRestsAsTheMagnifierTests` for the other side).
+    /// The test process reads the setting from its own defaults domain, which
+    /// outlives every run: found holding it on (2026-09-28), this file ran
+    /// two cases red — no forced eviction left to attribute, and the wait
+    /// gate never consulted — and ran them green with the value removed.
+    private static let collapseKey = "alwaysCollapseSearch"
+    private var savedCollapse: Any?
+    /// **The bar's two styles are held too**, at the defaults every pane
+    /// below was read under — `moduleName` and `text`; two cases switch to
+    /// `windowTitle` themselves. With `windowTitle` and `icons` left in the
+    /// same domain, nine of the twelve ran red on their own preconditions
+    /// (2026-09-28). Each is kept raw and put back here rather than by a
+    /// `defer` through the typed setter, which wrote the getter's default over
+    /// a key the domain did not hold: every run from a clean domain left
+    /// `pageBarStyle` behind in it.
+    private var savedPageBar: Any?
+    private var savedSwitcher: Any?
+
+    override func setUp() async throws {
+        savedCollapse = AppSettings.store.object(Self.collapseKey)
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedSwitcher = AppSettings.store.object(ToolbarSwitcherStyle.storageKey)
+        AppSettings.alwaysCollapseSearch = false
+        AppSettings.pageBarStyle = .moduleName
+        AppSettings.toolbarSwitcherStyle = .text
+    }
+
+    override func tearDown() async throws {
+        AppSettings.store.set(savedCollapse, for: Self.collapseKey)
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedSwitcher, for: ToolbarSwitcherStyle.storageKey)
+    }
+
     /// `SettingsSplitViewController`'s own `sidebarDefault` — `private` there
     /// and duplicated here rather than widened for one test file to reach,
     /// the same precedent a now-deleted sibling test already set for the
@@ -94,7 +129,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         HelmPageToolbarContent(
             tabs: homebrewTabs(), selectedTab: .constant("installed"),
             actions: [
-                HelmToolbarAction(id: "upgradeAll", title: L("Upgrade all"), symbol: "arrow.up.circle",
+                HelmToolbarAction(id: "upgradeAll", title: L("Upgrade all"), symbol: "arrow.down.to.line",
                                   isEnabled: false, isVisible: false) {},
                 HelmToolbarAction(id: "refresh", title: L("Refresh list"), symbol: "arrow.clockwise") {}
             ],
@@ -1214,8 +1249,6 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// against that tree: `everFalse` true for `tabs` at both 646 and 700 pt,
     /// and `segmentCount(bar)` never returning to 3.
     func testAMagnifierPressAndCloseUnfoldsCleanlyUnderWindowTitle() {
-        let savedStyle = AppSettings.pageBarStyle
-        defer { AppSettings.pageBarStyle = savedStyle }
         AppSettings.pageBarStyle = .windowTitle
         AppLanguage.only(.ru) {
             for pane: CGFloat in [646, 700] {
@@ -1254,8 +1287,6 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     }
 
     func testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth() {
-        let savedStyle = AppSettings.pageBarStyle
-        defer { AppSettings.pageBarStyle = savedStyle }
         AppSettings.pageBarStyle = .windowTitle
 
         AppLanguage.only(.ru) {

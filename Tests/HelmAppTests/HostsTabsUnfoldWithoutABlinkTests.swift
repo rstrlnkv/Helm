@@ -157,9 +157,22 @@ final class HostsTabsUnfoldWithoutABlinkTests: XCTestCase {
     }
 
     func testHostsTabsUnfoldAcrossTheirFoldPointWithoutABlink() {
-        let saved = AppSettings.toolbarSwitcherStyle
+        // Raw, so a key the domain did not hold is removed again rather than
+        // written back as the typed getter's default. The page-bar style is
+        // pinned as well: the fold point below is `moduleName`'s, and with
+        // `windowTitle` left in the test tool's own domain the precondition
+        // read two segments at 420 pt, not one (2026-09-28).
+        let store = AppSettings.store
+        let found = store.object(ToolbarSwitcherStyle.storageKey)
+        let foundBar = store.object(PageBarStyle.storageKey)
+        addTeardownBlock { @MainActor in
+            store.set(found, for: ToolbarSwitcherStyle.storageKey)
+            store.set(foundBar, for: PageBarStyle.storageKey)
+            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
+            NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
+        }
         AppSettings.toolbarSwitcherStyle = .text
-        defer { AppSettings.toolbarSwitcherStyle = saved }
+        AppSettings.pageBarStyle = .moduleName
         for language: AppLanguage in [.ru, .de] {
             AppLanguage.only(language) {
                 let rig = mountSplit(pane: 420)

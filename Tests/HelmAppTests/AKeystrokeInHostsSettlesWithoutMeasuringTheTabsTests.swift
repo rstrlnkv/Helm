@@ -68,8 +68,14 @@ final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
     }
 
     func testAPauseAfterTypingIntoTheSSHConfigMeasuresNoTabs() throws {
-        let savedStyle = AppSettings.toolbarSwitcherStyle
-        defer { AppSettings.toolbarSwitcherStyle = savedStyle }
+        // Raw, so a key the domain did not hold is removed again rather than
+        // written back as the typed getter's default.
+        let store = AppSettings.store
+        let found = store.object(ToolbarSwitcherStyle.storageKey)
+        addTeardownBlock { @MainActor in
+            store.set(found, for: ToolbarSwitcherStyle.storageKey)
+            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
+        }
         AppSettings.toolbarSwitcherStyle = .text
         let vm = ModuleViewModel(transport: Mute())
         let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: vm),

@@ -92,7 +92,7 @@ import HelmUI
     /// the first bar on screen.
     weak var window: NSWindow? {
         didSet {
-            watchMagnifierPress()
+            watchBarPresses()
             watchWindowResize()
             refresh()
         }
@@ -106,11 +106,13 @@ import HelmUI
     nonisolated(unsafe) private var languageWatch: NSObjectProtocol?
     nonisolated(unsafe) private var pageBarStyleWatch: NSObjectProtocol?
     nonisolated(unsafe) private var switcherStyleWatch: NSObjectProtocol?
-    /// **M1**: catches a press on the magnifier before AppKit's own
-    /// `searchButtonClicked:` does, so the tabs are already folded by the
-    /// time the field starts growing — see `watchMagnifierPress()`'s own
-    /// header for the whole mechanism.
-    nonisolated(unsafe) private var magnifierPressMonitor: Any?
+    nonisolated(unsafe) private var alwaysCollapseSearchWatch: NSObjectProtocol?
+    /// **M1**, and the bar's own right-click: catches a press on the
+    /// magnifier before AppKit's own `searchButtonClicked:` does, so a fold
+    /// the rest verdict calls for is done before the field starts growing, and the menu
+    /// gesture anywhere on the bar — see `watchBarPresses()`'s own header for
+    /// why one monitor carries both.
+    nonisolated(unsafe) private var barPressMonitor: Any?
     nonisolated(unsafe) private var windowResizeWatch: NSObjectProtocol?
     nonisolated(unsafe) private var windowEndLiveResizeWatch: NSObjectProtocol?
     nonisolated(unsafe) private var splitResizeWatch: NSObjectProtocol?
@@ -238,6 +240,27 @@ import HelmUI
             forName: .helmToolbarSwitcherStyleChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAndResettle() }
         }
+        alwaysCollapseSearchWatch = NotificationCenter.default.addObserver(
+            forName: .helmAlwaysCollapseSearchChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restEverySearch() }
+        }
+    }
+
+    /// **Every cached bar, not only the one on screen** — a page's bar is
+    /// kept while another page is shown, and one that missed the change would
+    /// come back with the old rest. Turning the setting on over a field an
+    /// earlier interaction left open, then cleared, does not just flip the
+    /// cap: AppKit's own minimum from that opening is still on the field
+    /// (`foldOpenedSearch`'s own header), so a bar the cap now rests still
+    /// folds it — reached here whether or not that bar is the one attached to
+    /// the window right now. Then the attached bar's own settle, since the
+    /// room the field claims has just moved without the window moving.
+    private func restEverySearch() {
+        for bar in pageBars.values {
+            restSearch(bar)
+            if bar.searchRestCap?.isActive == true { foldOpenedSearch(bar) }
+        }
+        scheduleSettleForAttachedBar()
     }
 
     /// Called by `SettingsWindow`'s own `windowDid…` delegate methods with
@@ -351,10 +374,11 @@ import HelmUI
         if let languageWatch { NotificationCenter.default.removeObserver(languageWatch) }
         if let pageBarStyleWatch { NotificationCenter.default.removeObserver(pageBarStyleWatch) }
         if let switcherStyleWatch { NotificationCenter.default.removeObserver(switcherStyleWatch) }
+        if let alwaysCollapseSearchWatch { NotificationCenter.default.removeObserver(alwaysCollapseSearchWatch) }
         if let windowResizeWatch { NotificationCenter.default.removeObserver(windowResizeWatch) }
         if let windowEndLiveResizeWatch { NotificationCenter.default.removeObserver(windowEndLiveResizeWatch) }
         if let splitResizeWatch { NotificationCenter.default.removeObserver(splitResizeWatch) }
-        if let magnifierPressMonitor { NSEvent.removeMonitor(magnifierPressMonitor) }
+        if let barPressMonitor { NSEvent.removeMonitor(barPressMonitor) }
         // `graceWorkItem` and `settleWorkItem` are not cancelled here —
         // `DispatchWorkItem` is not `Sendable`, so a nonisolated `deinit`
         // (Swift 6 treats every `deinit` this way even on a `@MainActor`
@@ -855,7 +879,13 @@ import HelmUI
         /// Included so a signal-only change (no page switch, no republish)
         /// still redraws — see `NameZoneView.appearsActive`'s own header.
         let appearsActive: Bool
+        let titlebarIsTransparent: Bool
     }
+
+    /// The title bar the name zone is drawn under, read off the window
+    /// itself — `SettingsWindow` sets it from the band decision, and a rig
+    /// sets it by hand; macOS 27's until there is a window.
+    private var titlebarIsTransparent: Bool { window?.titlebarAppearsTransparent ?? true }
 
     private func makeNameItem(_ bar: PageBar) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.nameID)
@@ -863,7 +893,8 @@ import HelmUI
         let hosting = NSHostingView(rootView: NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                                            title: identity.title, status: identity.status,
                                                            iconStyle: AppSettings.sidebarStyle,
-                                                           appearsActive: windowAppearsActive))
+                                                           appearsActive: windowAppearsActive,
+                                                           titlebarIsTransparent: titlebarIsTransparent))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
         // A title is not a control: no glass behind it — the same call
@@ -878,7 +909,8 @@ import HelmUI
                                             statusWord: identity.status?.word,
                                             statusActive: identity.status?.active ?? false,
                                             iconStyle: AppSettings.sidebarStyle,
-                                            appearsActive: windowAppearsActive)
+                                            appearsActive: windowAppearsActive,
+                                            titlebarIsTransparent: titlebarIsTransparent)
         return item
     }
 
@@ -889,14 +921,16 @@ import HelmUI
                                     statusWord: identity.status?.word,
                                     statusActive: identity.status?.active ?? false,
                                     iconStyle: AppSettings.sidebarStyle,
-                                    appearsActive: windowAppearsActive)
+                                    appearsActive: windowAppearsActive,
+                                    titlebarIsTransparent: titlebarIsTransparent)
         bar.nameItem?.label = identity.title
         guard snapshot != bar.lastNameSnapshot else { return }
         bar.lastNameSnapshot = snapshot
         nameHost.rootView = NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                          title: identity.title, status: identity.status,
                                          iconStyle: AppSettings.sidebarStyle,
-                                         appearsActive: windowAppearsActive)
+                                         appearsActive: windowAppearsActive,
+                                         titlebarIsTransparent: titlebarIsTransparent)
     }
 
     /// Whichever bar is on screen right now, patched with the page identity
@@ -951,9 +985,8 @@ import HelmUI
         AnyView(
             HelmToolbarSwitcher(HelmA11y.whatToShow, selection: tabsBinding(bar),
                                 segments: tabs.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
-                                compact: bar.tabsFolded)
+                                compact: bar.tabsFolded, menu: barMenu)
                 .environment(\.helmSwitcherStyle, AppSettings.toolbarSwitcherStyle)
-                .environment(\.helmSetSwitcherStyle, AppSettings.ToolbarSwitcherStyleSetter())
                 // A frozen bar's tabs are disabled through `bar.isInteractive`
                 // rather than through `bar.isLive` — see `HelmTabsSnapshot`'s
                 // own header for why the two must not be conflated — since
@@ -1222,20 +1255,61 @@ import HelmUI
     }
 
     /// **M1: catches a press on the magnifier before AppKit's own
-    /// `searchButtonClicked:` handles it**, so the tabs are already folded by
-    /// the time the field starts growing — AppKit's own path cannot be
+    /// `searchButtonClicked:` handles it**, so a fold the rest verdict calls
+    /// for is done before the field starts growing — AppKit's own path cannot be
     /// hooked (an override of `beginSearchInteraction` is never called), so a
     /// local monitor ahead of it is the only way in. Installed once, when the
     /// window is set (`window`'s own `didSet`, alongside
     /// `watchWindowResize()`), and removed in `deinit`.
-    private func watchMagnifierPress() {
-        if let magnifierPressMonitor { NSEvent.removeMonitor(magnifierPressMonitor) }
-        guard window != nil else { magnifierPressMonitor = nil; return }
-        magnifierPressMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) {
+    ///
+    /// **The bar's right-click rides the same monitor, and is asked first.**
+    /// A Control-click on the collapsed magnifier is a left-button press that
+    /// both would claim — the menu, or folding the tabs and opening search —
+    /// and with two monitors which one wins would rest on the order AppKit
+    /// calls them in, which it does not document. One handler, the menu
+    /// first, decides it here; `HelmToolbarSwitcher`'s own monitor never
+    /// takes the gesture, so no switcher can answer it either.
+    private func watchBarPresses() {
+        if let barPressMonitor { NSEvent.removeMonitor(barPressMonitor) }
+        guard window != nil else { barPressMonitor = nil; return }
+        barPressMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] event in
             let press = FoldPress(event: event)
-            return MainActor.assumeIsolated { self?.tookMagnifierPress(press.event) ?? false } ? nil : event
+            return MainActor.assumeIsolated {
+                guard let self else { return false }
+                if self.opensBarMenu(press.event) {
+                    self.popUpBarMenu(press.event)
+                    return true
+                }
+                return press.event.type == .leftMouseDown && self.tookMagnifierPress(press.event)
+            } ? nil : event
         }
+    }
+
+    /// **Whether an opening search field may keep the tabs full, per
+    /// `settle(_:)`'s own last verdict** — read by M1 and M2, and the only
+    /// thing either reads to make that call: neither measures anything of
+    /// its own any more. `settle(_:)` runs outside AppKit's own layout pass
+    /// and decides once, at rest, from the same `predictedSlack(bar:
+    /// tabsWidth:)` an unfold decision already uses, plus the width an open
+    /// field would add; a decision remade live inside M2 would read sibling
+    /// positions from *inside* that pass (`FoldLayout.hostOnly`'s own
+    /// header) — a frame that may still be the one before this layout — and
+    /// a decision remade live inside M1 would have to charge the hidden
+    /// field's own frame, which is a different reading before a press than
+    /// after one and has nothing to do with the room the field is about to
+    /// occupy once open.
+    ///
+    /// **`false` whenever there is nothing safe to read**: the cap is not
+    /// even active (the natural, AppKit-collapsed path, which this predicate
+    /// must never touch — that path keeps its own unconditional fold, below),
+    /// `settle(_:)` has never run for this bar (`bar.rest == nil`), or the
+    /// room has moved since its last pass. An unanchored or stale reading
+    /// folds — the safe direction, the same one `currentToolbarSlack(_:)`
+    /// returning `nil` already gives every other prediction in this file.
+    private func openingKeepsTheTabs(_ bar: PageBar) -> Bool {
+        bar.searchRestCap?.isActive == true && bar.rest?.openFits == true
+            && bar.rest?.room == offeredRoom()
     }
 
     /// True consumes the press (folds and opens search, or ends search
@@ -1259,11 +1333,18 @@ import HelmUI
         let field = searchItem.searchField
         let locationInWindow = event.locationInWindow
 
-        // **Fold on every magnifier press**, per the owner's own words — not
-        // only when the tabs would otherwise overflow. Unconditional rather
-        // than predicted: folding always precedes `beginSearchInteraction()`
-        // below, so the field never grows past a magnifier beside tabs still
-        // full — there is nothing for a prediction to decide on this path.
+        // **Fold on every magnifier press, per the owner's own words** — with
+        // one exception, added later than this comment's own claim of
+        // "every": a field the rest cap alone is holding collapsed
+        // (`PageBar.searchRestCap`) says nothing about room, so
+        // `openingKeepsTheTabs(_:)` is asked first, and the fold below runs
+        // only when it answers no. A field AppKit itself collapsed for lack
+        // of room keeps the original, unconditional fold — `isHidden` there
+        // already *is* the room reading, and `openingKeepsTheTabs(_:)`
+        // answers false whenever the cap is inactive, which is this path.
+        // Folding always precedes `beginSearchInteraction()` below, so a
+        // fold that does happen still finishes before the field starts
+        // growing.
         if field.isHidden, !bar.tabsFolded, let superview = field.superview {
             let point = superview.convert(locationInWindow, from: nil)
             if superview.bounds.contains(point) {
@@ -1273,7 +1354,9 @@ import HelmUI
                 // outlive the cycle it was recorded against.
                 bar.refusedUnfold = nil
                 bar.pendingUnfoldFieldWidth = nil
-                setTabsFolded(true, bar: bar, layout: .window)
+                if !openingKeepsTheTabs(bar) {
+                    setTabsFolded(true, bar: bar, layout: .window)
+                }
                 bar.searchOpening = true
                 searchItem.beginSearchInteraction()
                 return true
@@ -1298,7 +1381,7 @@ import HelmUI
     }
 
     /// Installs the observers `settle(_:)` needs to be re-armed by on a
-    /// resize — called once, alongside `watchMagnifierPress()`, and removed
+    /// resize — called once, alongside `watchBarPresses()`, and removed
     /// the same way, in `deinit`.
     private func watchWindowResize() {
         if let windowResizeWatch { NotificationCenter.default.removeObserver(windowResizeWatch) }
@@ -1491,7 +1574,6 @@ import HelmUI
                                        segments: tabs.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
                                        compact: false)
             .environment(\.helmSwitcherStyle, style)
-            .environment(\.helmSetSwitcherStyle, AppSettings.ToolbarSwitcherStyleSetter())
         return Self.measurementRig.measure(AnyView(view))
     }
 
@@ -1523,7 +1605,9 @@ import HelmUI
     /// back, not what the field happens to look like right now. A field left
     /// with real text after editing ends is a genuine demand and keeps its
     /// current width, per this method's own long-standing rule for that
-    /// case.
+    /// case. With Always Collapse Search on, the field at rest is always the
+    /// magnifier (`PageBar.searchRestCap`), so the collapsed width read here
+    /// is the one it charges at every room.
     private func searchRoomBudget(_ bar: PageBar) -> CGFloat {
         guard let searchItem = bar.searchItem else { return 0 }
         let field = searchItem.searchField
@@ -1584,7 +1668,12 @@ import HelmUI
     /// full width leaves it room it takes without anything having folded),
     /// and crediting that ordinary, already-resting width as "not yet given
     /// back" is exactly as wrong in the other direction.
-    private func windowTitleMaxX(_ window: NSWindow) -> (maxX: CGFloat, rawMaxX: CGFloat)? {
+    ///
+    /// **`fittingWidth` is `titleView.fittingSize.width` on its own** —
+    /// `maxX`'s own edge, minus `minX`, kept as a separate member because
+    /// `currentToolbarSlack(_:)`'s floor charge (`PageBar.titleOpenFloorCharge`)
+    /// needs exactly this number and nothing else out of this reading.
+    private func windowTitleMaxX(_ window: NSWindow) -> (maxX: CGFloat, rawMaxX: CGFloat, fittingWidth: CGFloat)? {
         guard let content = window.contentView, let frame = content.superview else { return nil }
         func find(_ view: NSView) -> NSView? {
             if "\(type(of: view))" == "NSToolbarTitleView" { return view }
@@ -1595,10 +1684,11 @@ import HelmUI
         }
         guard let titleView = find(frame) else { return nil }
         let minX = titleView.convert(.zero, to: nil).x
-        let maxX = minX + titleView.fittingSize.width
+        let fittingWidth = titleView.fittingSize.width
+        let maxX = minX + fittingWidth
         let rawMaxX = minX + titleView.bounds.width
         guard maxX.isFinite, rawMaxX.isFinite else { return nil }
-        return (maxX, rawMaxX)
+        return (maxX, rawMaxX, fittingWidth)
     }
 
     /// **AppKit's own currently free room around the tabs — the combined
@@ -1666,8 +1756,16 @@ import HelmUI
         if let nameView = bar.nameItem?.view {
             leadingMaxX = nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: nil).x
             bar.titleGrowth = 0
+            bar.titleOpenFloorCharge = 0
         } else if let title = windowTitleMaxX(window) {
             leadingMaxX = title.maxX
+            // **Charged every pass, independently of `tabsFolded`** — see
+            // `SettingsToolbar.windowTitleOpenFloor`'s own header for the
+            // reading behind it and `PageBar.titleOpenFloorCharge`'s for why
+            // it is a different quantity from
+            // `titleGrowth`, which only exists while a fold's own growth has
+            // not been given back.
+            bar.titleOpenFloorCharge = max(0, Self.windowTitleOpenFloor - title.fittingWidth)
             if bar.tabsFolded {
                 // **Growth against the *last resting* edge, never against
                 // `title.maxX` itself** — `title.maxX` is this bar's own
@@ -1775,6 +1873,52 @@ import HelmUI
     /// is what a change to this number has to keep passing.
     static let unfoldWorstCaseMargin: CGFloat = 24
 
+    /// **The narrowest width AppKit was ever seen to hold `NSToolbarTitleView`
+    /// at while an *opening* field left the full tabs their room, independent
+    /// of what the title's own text needs.** Measured on a 2-pt grid, a fresh
+    /// window per pane, first press (tester, this Mac, macOS 27.2): the
+    /// container's own floor is **160.0 pt** — the first pane that still kept
+    /// every item visible with the field open, one step wider than the last
+    /// pane where AppKit evicted `helm.actions` rather than shrinking the
+    /// container any further (Russian 812 -> 814, title 160.0; English
+    /// 712 -> 714, title 161.0 — the same edge across "Homebrew"/"3" and "H"/"1", with and
+    /// without a subtitle, light and dark, an opaque or a transparent title
+    /// bar). AppKit squeezes a title already wider than this floor down
+    /// toward it too, rather than evicting anything: a synthetic 272.5-pt
+    /// title's own container held at 167–277 pt across English 720–830, and
+    /// Russian's own Uninstaller title («Удаление приложений»/«Не активно»,
+    /// 172.5 pt fitting) held at 167 pt from pane 652 — at 560–580 pt the same
+    /// title's container sat at 160 pt while AppKit evicted the tabs and the
+    /// actions regardless, a pane with too little room for anything, not a
+    /// floor reading. The floor is a property of AppKit's own layout, not of
+    /// what the title says or how wide it already needs to be.
+    ///
+    /// **`openFitsPrediction(_:searchItem:slack:anchored:)`'s own charge is
+    /// `max(0, windowTitleOpenFloor - fittingWidth)`** — the gap between this
+    /// floor and what `windowTitleMaxX(_:)` would otherwise credit as
+    /// reclaimable, never more: a title whose own `fittingWidth` already sits
+    /// above the floor (the long-title readings above) is charged nothing and
+    /// stays uncredited for the difference, since `windowTitleMaxX(_:)`'s own
+    /// reading already accounts for it and charging both would double count.
+    ///
+    /// **Set to 167, not the measured 160** — about 7 pt of headroom in the
+    /// safe direction (folding a little more readily than the measured floor
+    /// strictly requires) until this reading is repeated on macOS 26, which
+    /// this Mac does not run. Nothing public exposes *why* AppKit holds the
+    /// container here — its own `NSLayoutConstraint`s record only the
+    /// resolved width already decided on, an `NSView-Encapsulated-Layout-Width`
+    /// lock rather than a stated minimum — so this is a reading of this
+    /// system rather than a value derived from a public API, and a different
+    /// macOS version or a larger system text size could move it. A system
+    /// whose true floor sits above roughly 166.5 pt would see this constant
+    /// keep the tabs full and then lose them to an eviction anyway — the
+    /// owner's own bug, in a band as wide as the excess — which is the
+    /// direction this headroom exists to guard against; a long title, never
+    /// credited past its own `fittingWidth`, gains nothing from this number
+    /// moving either way. Not measured: macOS 26, a 1x display, accessibility
+    /// display settings.
+    static let windowTitleOpenFloor: CGFloat = 167
+
     /// **How long `settle(_:)` keeps refusing an unfold after a search
     /// interaction ends empty, before trusting the field's own frame to have
     /// stopped moving.** Against a bare `NSSearchToolbarItem` with nothing
@@ -1863,6 +2007,19 @@ import HelmUI
         let style: ToolbarSwitcherStyle
     }
 
+    /// **What `settle(_:)` found the bar looking like the last time it
+    /// finished measuring it** — see `PageBar.rest`'s own header for what
+    /// each field means and who reads it. A named type, not a plain tuple,
+    /// once a third field (`openFits`) joined `collapsed` and `room`: past
+    /// two members a tuple reads as a positional pun rather than a record,
+    /// which is the same reasoning `TabsWidthKey` and `NameSnapshot` above
+    /// already give their own fields names for.
+    fileprivate struct RestSnapshot {
+        let collapsed: Bool
+        let room: CGFloat
+        let openFits: Bool
+    }
+
     /// The context a fold or an unfold decision is actually being made
     /// against right now — room, language and style read fresh by both
     /// `settle(_:)`'s own gate and `checkOverflow()`'s own recording, since
@@ -1934,6 +2091,14 @@ import HelmUI
     /// this is exactly the check that catches a regression back to a fresh
     /// read, which every other assertion here already passed).
     private(set) var lastRefusedUnfoldFieldWidth: CGFloat?
+    /// **`settle(_:)`'s own last computed "open slack"** — the predicted
+    /// slack if the tabs stayed full beside an *open* search field, for
+    /// whichever bar `settle(_:)` last examined with both a search item and
+    /// tabs; what `openFitsPrediction(_:searchItem:slack:anchored:)`'s own
+    /// `unfoldMargin` comparison reads, exposed here only for a test to record the same number rather
+    /// than re-deriving it. `nil` before the first such pass, and left at its
+    /// last value on a pass with no search item or no tabs to have one.
+    private(set) var lastOpenSlack: CGFloat?
 
     /// **The one place that decides whether the tabs should be full or
     /// compact, and the one place that records `PageBar.rest`.** Runs only on
@@ -1979,6 +2144,56 @@ import HelmUI
     /// measured discounting it in full. Together the four are what keep a
     /// wrong decision to at most one visible blink rather than a repeating
     /// flicker.
+    ///
+    /// **The verdict `openingKeepsTheTabs(_:)` later reads back, computed
+    /// once per `settle(_:)` pass from the same `slack` and `anchored` the
+    /// unfold decision above already has** — not a second, independent
+    /// measurement: it reuses the `slack` and `anchored` this pass already
+    /// computed rather than calling `predictedSlack(bar:tabsWidth:)` or
+    /// `currentToolbarSlack(_:)` again. Charges the same `slack` once more for the
+    /// difference between the field's current, resting occupancy and the
+    /// width it would claim open. `occupied` reads the field's own frame
+    /// rather than `searchRoomBudget(_:)`'s cached `collapsedFieldWidth`
+    /// because at rest, with the cap active, the two already agree
+    /// (`searchRoomBudget(_:)`'s own header) — so a direct read needs no
+    /// dependency on which branch that method took. **`bar.titleOpenFloorCharge`
+    /// is subtracted from `openSlack` itself, before either margin
+    /// compares against it** — under `.windowTitle`, a growing field does not
+    /// let the title container shrink all the way to its own `fittingWidth`
+    /// (`SettingsToolbar.windowTitleOpenFloor`'s own header has the reading);
+    /// `slack` alone credits that unreachable room as available the same way
+    /// it over-credited a fold's own not-yet-reversed growth before
+    /// `titleGrowth` existed, and this is the same fix for a different
+    /// trigger — a search opening rather than a fold. `false` whenever there
+    /// is nothing for this predicate to decide: no search item, the cap
+    /// inactive, or a field AppKit itself has already opened — the
+    /// unconditional fold in `tookMagnifierPress` and `searchFieldFrameChanged`
+    /// already covers both of those. `unfoldWorstCaseMargin`, not
+    /// `unfoldMargin` alone, for the same `.windowTitle` reason `worstCaseOK`
+    /// above needs it: keeping the tabs full is an unfold-grade bet either
+    /// way.
+    ///
+    /// **Carries no memory of a past wrong bet.** A verdict this predicate
+    /// gets wrong is not permanent: `checkOverflow()` (M3) reacts to the
+    /// eviction AppKit itself reports and folds the tabs back regardless of
+    /// what this predicate answered, and the next opening asks fresh rather
+    /// than reading anything remembered from the one before. The one case
+    /// this predicate used to get systematically wrong — a `.windowTitle`
+    /// container not yet giving back the room `windowTitleOpenFloor` claims
+    /// it can reach — is exactly what `bar.titleOpenFloorCharge`, subtracted
+    /// above, now corrects before either margin ever compares against it.
+    private func openFitsPrediction(_ bar: PageBar, searchItem: NSSearchToolbarItem?,
+                                    slack: CGFloat, anchored: Bool) -> Bool {
+        guard let field = searchItem?.searchField else { return false }
+        let occupied = min(field.frame.width, field.superview?.frame.width ?? field.frame.width)
+        let openSlack = slack - ((searchItem?.preferredWidthForSearchField ?? 0) - occupied)
+            - bar.titleOpenFloorCharge
+        lastOpenSlack = openSlack
+        return bar.searchRestCap?.isActive == true && field.isHidden && anchored
+            && openSlack >= Self.unfoldMargin
+            && (bar.titleGrowth <= 0 || openSlack - bar.titleGrowth >= Self.unfoldWorstCaseMargin)
+    }
+
     private func settle(_ bar: PageBar) {
         guard let key = attachedPageKey,
               key == Self.nameOnlyKey ? bar === nameOnlyBar : pageBars[key] === bar
@@ -2008,6 +2223,14 @@ import HelmUI
             guard !bar.searchOpening else { return }
         }
 
+        // **Whether the full tabs would still fit beside an *open* search
+        // field, for a field the rest cap alone is resting as a magnifier** —
+        // read back by M1 and M2 through `openingKeepsTheTabs(_:)`, which
+        // never measures anything itself; see that method's own header for
+        // why the decision belongs here rather than live inside either
+        // opener. `false` whenever this bar has no tabs or no search item —
+        // set below only inside the block that has both.
+        var openFits = false
         if let content = bar.content, !content.tabs.isEmpty {
             // Measured once per `TabsWidthKey` — see its header for why a
             // settle after every keystroke must not measure tabs a keystroke
@@ -2035,6 +2258,7 @@ import HelmUI
             // where crediting the growth in full unfolded straight into an
             // eviction.
             let worstCaseOK = bar.titleGrowth <= 0 || (slack - bar.titleGrowth) >= Self.unfoldWorstCaseMargin
+            openFits = openFitsPrediction(bar, searchItem: searchItem, slack: slack, anchored: anchored)
             if bar.tabsFolded, slack >= Self.unfoldMargin, worstCaseOK, anchored {
                 if let deadline = bar.searchClosingDeadline, Date() < deadline {
                     gateWaitedCount += 1
@@ -2069,13 +2293,44 @@ import HelmUI
                         // header). Set beside `lastOurUnfoldAt` since both are
                         // read together, on the attribution condition below.
                         bar.pendingUnfoldFieldWidth = fieldWidth
+                        // **`openFits`, just computed above, was measured
+                        // with the tabs still folded — a `.windowTitle`
+                        // container does not give a fold's own growth back in
+                        // the same pass that hands the tabs their room
+                        // (`currentToolbarSlack(_:)`'s "Two gates"
+                        // paragraph), so `bar.titleGrowth > 0` here means this
+                        // verdict is stale the instant this unfold runs, not
+                        // a fresh reading of the bar this unfold just made.**
+                        // `false`, the safe direction, until the settle this
+                        // re-arms reads the container actually resting at its
+                        // new, unfolded width — calling `currentToolbarSlack(_:)`
+                        // again in this same pass is deliberately not done
+                        // instead: the container has not moved yet, so
+                        // another call here would only rewrite
+                        // `restingRawTitleMaxX` from a still-inflated frame.
+                        // **Scoped to the cap being active** — `openFits` only
+                        // ever feeds `openingKeepsTheTabs(_:)`, which answers
+                        // false outright whenever the cap is inactive, so with
+                        // the option off this stale verdict is already inert;
+                        // re-arming `scheduleSettle(bar)` regardless would,
+                        // with the option off, spend a settle pass nobody
+                        // asked for wherever the unfold leaves the search
+                        // field where it was (en 1060 measured; where the
+                        // field moves, M2's own re-arm lands at the same
+                        // moment and the two merge) — not this gate's
+                        // business to spend.
+                        if bar.titleGrowth > 0, bar.searchRestCap?.isActive == true {
+                            openFits = false
+                            scheduleSettle(bar)
+                        }
                     }
                 }
             } else if !bar.tabsFolded, slack < Self.foldMargin {
                 setTabsFolded(true, bar: bar, layout: .window, reseat: !(bar.tabsItem?.isVisible ?? true))
             }
         }
-        bar.rest = (searchItem?.searchField.isHidden ?? true, offeredRoom())
+        bar.rest = RestSnapshot(collapsed: searchItem?.searchField.isHidden ?? true, room: offeredRoom(),
+                               openFits: openFits)
     }
 
     /// **M2: the search field's own frame.** Set up in `makeSearchItem`,
@@ -2139,16 +2394,69 @@ import HelmUI
         // re-opened at rest with more room already available"** — the same
         // growing frame either way, and the field's own first-responder
         // status arrives too late to serve (measured at ~200 ms after the
-        // click, well past the frame that matters here).
-        if width > bar.lastFieldWidth, !bar.tabsFolded, bar.rest?.collapsed == true,
-           bar.content?.tabs.isEmpty == false, offeredRoom() == bar.rest?.room {
+        // click, well past the frame that matters here). **With the cap
+        // active, a room that has moved is `openingKeepsTheTabs(_:)`'s own
+        // business, not a reason to skip this branch entirely** — that
+        // predicate already folds on a room mismatch (its own `bar.rest?
+        // .room == offeredRoom()` clause), the same "unanchored means fold"
+        // rule `currentToolbarSlack(_:)` returning `nil` gives every other
+        // prediction here; keeping the equality as a hard *gate* left a
+        // keyboard or VoiceOver opening that lands between a resize and the
+        // settle that follows it doing nothing at all — full tabs beside a
+        // growing field at a room that has no verdict yet — until AppKit
+        // itself evicted something and `checkOverflow()` cleaned up after
+        // the fact. `|| bar.searchRestCap?.isActive == true` is scoped to
+        // exactly that: with the cap off (this predicate's other caller,
+        // `tookMagnifierPress`, never gated on room equality either), the
+        // clause is unchanged, byte for byte — `roomKnown` below is the
+        // original condition on its own.
+        let roomKnown = offeredRoom() == bar.rest?.room
+        // **Not while a just-ended interaction is still finishing.**
+        // `controlTextDidEndEditing` clears `searchOpening` the moment editing
+        // ends, but AppKit's own layout can still deliver one more *growing*
+        // frame after that — measured for an empty close: 218.5 → 222.0 pt,
+        // one frame past the close (engineer, this Mac); the same one-tick gap
+        // exists for a close that leaves a query behind, since the field
+        // editor's resignation and the layout pass it triggers do not land in
+        // the same tick either way. With the tabs kept full that stray frame
+        // reads as a brand new opening, re-arms `searchOpening` with no editor
+        // behind it, and nothing but `controlTextDidEndEditing` ever clears it
+        // again — an empty field is then stuck open and idle instead of
+        // folding back to its magnifier, and a field left with a query, once
+        // that query is cleared, never rests as the magnifier again, since
+        // `restSearch(_:)` will not rest a field while `searchOpening` is
+        // set. `bar.searchEditEndedDeadline`
+        // is armed by that same method for exactly this window, whatever text
+        // the close leaves — not `bar.searchClosingDeadline`, which
+        // `settle(_:)`'s own wait gate reads for an unrelated reason (an empty
+        // close's own shrink animation) and must not newly wait on a query
+        // left wide.
+        let closing = bar.searchEditEndedDeadline.map { Date() < $0 } ?? false
+        //
+        // **`!bar.searchOpening` keeps M2 from re-deciding an opening M1 has
+        // kept the tabs full for.** Without it, M2 would re-ask
+        // `openingKeepsTheTabs(_:)` on each growth frame of that opening; an
+        // opening M1 folded is already kept out by `!bar.tabsFolded`. With
+        // the option off this changes nothing: `setTabsFolded(false, ...)` is
+        // called only from `settle(_:)`, which is blocked while
+        // `searchOpening` is set, so on that path `!bar.tabsFolded` is
+        // already false by the time this fires. The fold itself is the same
+        // conditional M1 uses — `openingKeepsTheTabs(_:)` — for the field the
+        // cap is holding at rest; a field AppKit itself collapsed keeps its
+        // unconditional fold, since `openingKeepsTheTabs(_:)` answers false
+        // whenever the cap is inactive.
+        if width > bar.lastFieldWidth, !bar.tabsFolded, !bar.searchOpening, !closing,
+           bar.rest?.collapsed == true, bar.content?.tabs.isEmpty == false,
+           roomKnown || bar.searchRestCap?.isActive == true {
             // Same reason as M1's own fold-and-open branch above: a fresh
             // interaction starting through this path (keyboard, VoiceOver)
             // must not inherit a stale refusal either.
             bar.refusedUnfold = nil
             bar.pendingUnfoldFieldWidth = nil
             bar.searchOpening = true
-            setTabsFolded(true, bar: bar, layout: .hostOnly)
+            if !openingKeepsTheTabs(bar) {
+                setTabsFolded(true, bar: bar, layout: .hostOnly)
+            }
         }
         // **The field narrowing is itself news for `settle(_:)`'s own
         // prediction** — `searchRoomBudget(_:)` reads the field's current
@@ -2619,6 +2927,129 @@ import HelmUI
         }
     }
 
+    // MARK: - The bar's own right-click menu
+
+    /// **Whether `event` is the menu gesture on this window's bar** —
+    /// anywhere in the titlebar and toolbar: the name zone or AppKit's own
+    /// title, empty bar space, the tabs full or folded, the actions capsule,
+    /// the collapsed magnifier. Not the page (the same "not content" measure
+    /// M1's fold-back uses), not the window's own buttons, and not the search
+    /// field while it is being edited, whose own text menu (Cut, Copy, Paste)
+    /// is the one a person is reaching for there. AppKit offers nothing of its
+    /// own on this bar to override: its toolbar view answers `menu(for:)`
+    /// with nil for a right-click on the bar, the title, the titlebar and
+    /// every item viewer while customisation and display-mode customisation
+    /// are both off (`buildBar(label:content:shape:)`), read on the fold
+    /// tests' split rig under both page-bar styles (engineer, 2026-09-27).
+    ///
+    /// `internal` and apart from `popUpBarMenu(_:)` for the reason
+    /// `tookMagnifierPress(_:)` is: a test can hand it a built event and read
+    /// the decision, where the pop-up itself is modal.
+    func opensBarMenu(_ event: NSEvent) -> Bool {
+        guard let window, event.window === window,
+              HelmToolbarSwitcher<String>.isTheGesture(type: event.type, modifiers: event.modifierFlags)
+        else { return false }
+        let point = event.locationInWindow
+        guard !window.contentLayoutRect.contains(point) else { return false }
+        for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            if let button = window.standardWindowButton(kind),
+               button.convert(button.bounds, to: nil).contains(point) { return false }
+        }
+        if let field = attachedBar?.searchItem?.searchField, field.currentEditor() != nil,
+           let superview = field.superview,
+           superview.bounds.contains(superview.convert(point, from: nil)) {
+            return false
+        }
+        return true
+    }
+
+    /// Whichever bar is `window.toolbar` right now — a page's own, or the
+    /// shared name-only one.
+    private var attachedBar: PageBar? {
+        guard let key = attachedPageKey else { return nil }
+        return key == Self.nameOnlyKey ? nameOnlyBar : pageBars[key]
+    }
+
+    private func popUpBarMenu(_ event: NSEvent) {
+        guard let view = window?.contentView?.superview ?? window?.contentView else { return }
+        NSMenu.popUpContextMenu(barMenu, with: event, for: view)
+    }
+
+    /// **One menu for the whole bar, rebuilt each time it opens**
+    /// (`menuNeedsUpdate(_:)`) from the settings and from what the bar on
+    /// screen holds. The same instance is every centre switcher's own
+    /// `NSView.menu` (`helmSwitcherView`), which is what VoiceOver's "show
+    /// menu" opens on a focused switcher — one menu whichever way it is
+    /// reached.
+    private lazy var barMenu: NSMenu = {
+        let menu = NSMenu(title: AppStr.pageBar)
+        menu.autoenablesItems = false
+        menu.delegate = self
+        return menu
+    }()
+
+    /// **What the bar's menu offers, left to right as the bar reads**: the
+    /// page header on every page; the tabs' label style only where the page
+    /// has tabs; Always Collapse Search only where it has a search field,
+    /// even one disabled right now. Absent rather than dimmed where it does
+    /// not apply — a context menu hides what cannot act (HIG, context menus),
+    /// the same answer the tabs' own row already gave on a page without tabs.
+    /// `tabLabels` and `alwaysCollapseSearch` are nil for a page without that
+    /// part. `static` so a test reads the items without raising a menu.
+    static func barMenuItems(pageBarStyle: PageBarStyle, tabLabels: ToolbarSwitcherStyle?,
+                             alwaysCollapseSearch: Bool?, target: AnyObject?) -> [NSMenuItem] {
+        var items: [NSMenuItem] = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]
+        for (choice, title) in [(PageBarStyle.moduleName, AppStr.pageBarWithIcon),
+                                (PageBarStyle.windowTitle, AppStr.pageBarWithoutIcon)] {
+            let item = NSMenuItem(title: title, action: #selector(barMenuChosePageBar(_:)), keyEquivalent: "")
+            item.target = target
+            item.representedObject = choice.rawValue
+            item.state = choice == pageBarStyle ? .on : .off
+            items.append(item)
+        }
+        if let tabLabels {
+            items.append(.separator())
+            items.append(NSMenuItem.sectionHeader(title: AppStr.tabLabels))
+            for choice in ToolbarSwitcherStyle.allCases {
+                let item = NSMenuItem(title: choice.label, action: #selector(barMenuChoseTabLabels(_:)),
+                                      keyEquivalent: "")
+                item.target = target
+                item.representedObject = choice.rawValue
+                item.state = choice == tabLabels ? .on : .off
+                items.append(item)
+            }
+        }
+        if let alwaysCollapseSearch {
+            items.append(.separator())
+            let item = NSMenuItem(title: AppStr.alwaysCollapseSearch,
+                                  action: #selector(barMenuToggledCollapseSearch(_:)), keyEquivalent: "")
+            item.target = target
+            item.state = alwaysCollapseSearch ? .on : .off
+            items.append(item)
+        }
+        for item in items where !item.isSeparatorItem { item.isEnabled = true }
+        return items
+    }
+
+    // Each only writes the setting; the setting's own notification is what
+    // reaches the bar, the same path General's Appearance row takes.
+    @objc private func barMenuChosePageBar(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let choice = PageBarStyle(rawValue: raw),
+              choice != AppSettings.pageBarStyle else { return }
+        AppSettings.pageBarStyle = choice
+    }
+
+    @objc private func barMenuChoseTabLabels(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String else { return }
+        let choice = ToolbarSwitcherStyle(stored: raw)
+        guard choice != AppSettings.toolbarSwitcherStyle else { return }
+        AppSettings.toolbarSwitcherStyle = choice
+    }
+
+    @objc private func barMenuToggledCollapseSearch(_ sender: NSMenuItem) {
+        AppSettings.alwaysCollapseSearch.toggle()
+    }
+
     // MARK: - Search
 
     private func makeSearchItem(_ bar: PageBar) -> NSSearchToolbarItem {
@@ -2653,6 +3084,13 @@ import HelmUI
         field.stringValue = bar.content?.search?.text.wrappedValue ?? ""
         // M2's own hook — see `watchSearchFieldFrame`'s header.
         field.postsFrameChangedNotifications = true
+        // Built inactive and switched by `restSearch(_:)` alone — see
+        // `PageBar.searchRestCap`'s own header for what it does to AppKit's
+        // own collapse and why its priority sits below 750.
+        let cap = field.widthAnchor.constraint(lessThanOrEqualToConstant: 0)
+        cap.priority = .defaultLow
+        cap.identifier = "helm.search.restCap"
+        bar.searchRestCap = cap
         item.searchField = field
         // AppKit's own default reads "Search" in its own language, never
         // this app's — said in this app's words, and kept current on a
@@ -2662,7 +3100,48 @@ import HelmUI
         item.toolTip = HelmA11y.searchField
         bar.searchItem = item
         watchSearchFieldFrame(bar, field: field)
+        // A bar built after the setting was turned on — a page not visited
+        // since — is born resting, rather than waiting for a change it
+        // missed.
+        restSearch(bar)
         return item
+    }
+
+    /// **The one rest predicate for "Always Collapse Search"
+    /// (`AppSettings.alwaysCollapseSearch`).** The search rests as AppKit's
+    /// own magnifier only while the setting is on, the field is empty, nobody
+    /// is editing it and no opening is under way; anything else releases it
+    /// to AppKit's ordinary layout — so a query left in the field is never
+    /// hidden behind a glyph. Called where one of those four can have just
+    /// moved: the bar's own search item being built, the setting changing
+    /// (`alwaysCollapseSearchWatch`, in `restEverySearch`), editing ending
+    /// (`controlTextDidEndEditing`), a page writing the field's text
+    /// itself (`patchSearch`) and the field's own clear button pressed with
+    /// nobody editing (`searchSubmitted`) — the setting changing and the last
+    /// two then fold a field an interaction had opened (`foldOpenedSearch`),
+    /// which the cap alone does not. **Not** on an opening: AppKit's own
+    /// `beginSearchInteraction()` opens a capped field to
+    /// `preferredWidthForSearchField` by itself, so the magnifier press
+    /// (M1), the keyboard and VoiceOver all open it the same way
+    /// (`PageBar.searchRestCap`'s own header has the reading).
+    ///
+    /// **A release clears `bar.rest` first.** M2 (`searchFieldFrameChanged`)
+    /// reads a field that grows at an unchanged room while `rest` says it
+    /// was collapsed as a magnifier press opening it — it decides whether to
+    /// fold the tabs (`openingKeepsTheTabs(_:)`, off `rest.openFits`) and
+    /// sets `searchOpening`, which only the end of an editing session ever
+    /// clears. A release grows the field in exactly that way with no editor
+    /// at all (the setting turned off, a query left behind), so without this
+    /// `searchOpening` would stay set and `settle(_:)` would never run for
+    /// this bar again.
+    /// `settle(_:)` writes `rest` afresh on its next pass.
+    private func restSearch(_ bar: PageBar) {
+        guard let cap = bar.searchRestCap, let field = bar.searchItem?.searchField else { return }
+        let rests = AppSettings.alwaysCollapseSearch && field.stringValue.isEmpty
+            && field.currentEditor() == nil && !bar.searchOpening
+        guard cap.isActive != rests else { return }
+        if !rests { bar.rest = nil }
+        cap.isActive = rests
     }
 
     private func patchSearch(_ bar: PageBar) {
@@ -2687,6 +3166,11 @@ import HelmUI
         let isEditing = item.searchField.currentEditor() != nil
         if !isEditing, item.searchField.stringValue != search.text.wrappedValue {
             item.searchField.stringValue = search.text.wrappedValue
+            // The page just filled or emptied the field itself: whether it
+            // may rest as the magnifier has moved with it — and emptied, a
+            // field an interaction had opened is folded as well.
+            restSearch(bar)
+            if bar.searchRestCap?.isActive == true { foldOpenedSearch(bar) }
         }
     }
 
@@ -2694,8 +3178,56 @@ import HelmUI
         guard let key = attachedPageKey, let bar = pageBars[key],
               bar.searchItem?.searchField === sender else { return }
         bar.content?.search?.text.wrappedValue = sender.stringValue
+        // The field's own clear button, pressed while nobody is editing —
+        // VoiceOver's press and Full Keyboard Access's Space reach it as a
+        // `performClick`, no focus — empties the field through this action
+        // alone: no editing ends, and `patchSearch` then finds the field
+        // already equal to the binding written above, so nothing else asks.
+        // Only with no editor: mid-edit (Return, or the button clicked while
+        // typing) the end of editing asks, a turn later, as it always did.
+        if sender.currentEditor() == nil {
+            restSearch(bar)
+            if bar.searchRestCap?.isActive == true { foldOpenedSearch(bar) }
+        }
         guard !sender.stringValue.isEmpty else { return }
         bar.content?.search?.onSubmit?()
+    }
+
+    /// **Folds a field an interaction once opened, now empty and idle, back
+    /// to the magnifier — without touching first responder.** The cap alone
+    /// does not: an opening leaves AppKit's own minimum on the field's item
+    /// view at `preferredWidthForSearchField`, priority 750, above the cap's
+    /// 250, and AppKit lifts it when an editing session on this field ends
+    /// empty — a query typed and left keeps it, so clearing that query
+    /// later with nobody editing (the clear button's `performClick`, a page
+    /// writing "") left the field standing open at 240 pt (read on the
+    /// collapse rig, engineer, 2026-09-27: `preferredWidthForSearchField`
+    /// written down and back, the item hidden and shown, the cap switched off
+    /// and on, the item handed another field and this one back, the item and
+    /// the field disabled and enabled, `endSearchInteraction()` and a posted
+    /// end-of-editing notification each left it at 240 pt).
+    ///
+    /// **What AppKit does at that end is asked for directly:** the field's
+    /// own `textDidEndEditing(_:)`, with a throwaway text view standing in for
+    /// the field editor, since the window's one editor may be somebody
+    /// else's. Read on the same rig: the field folds to the magnifier on
+    /// AppKit's own animation, the window's first responder is the same
+    /// object before and after, and a page field being typed in keeps its
+    /// editor, its caret, its undo, no end of editing and no action; on a
+    /// field already resting it changes nothing, width or frame. A whole
+    /// interaction begun and ended here — the fold this replaced — took the
+    /// window's first responder and gave a page field back with its text all
+    /// selected and its undo gone (tester, 2026-09-27). `controlTextDidEndEditing` hears it as it
+    /// hears an empty edit ending, and arms the settle the tabs come back by.
+    /// The field's action does not fire: `sendsActionOnEndEditing` is off
+    /// (`makeSearchItem`).
+    private func foldOpenedSearch(_ bar: PageBar) {
+        guard let field = bar.searchItem?.searchField, field.currentEditor() == nil,
+              field.stringValue.isEmpty else { return }
+        let standIn = NSTextView()
+        standIn.isFieldEditor = true
+        field.textDidEndEditing(Notification(name: NSText.didEndEditingNotification, object: standIn,
+                                             userInfo: [NSText.movementUserInfoKey: NSTextMovement.other.rawValue]))
     }
 
     /// Re-arms `activityWatch` for whichever module `currentSelection` names,
@@ -2711,6 +3243,25 @@ import HelmUI
         activityWatch = changes.sink { [weak self] _ in self?.patchAttachedName() }
     }
 
+}
+
+extension SettingsToolbar: NSMenuDelegate {
+    /// The bar's menu, filled for the bar on screen at the moment it opens —
+    /// a page switch, a setting changed in General or a language change
+    /// since the last time has nothing else to rebuild it by.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === barMenu else { return }
+        let content = attachedBar?.content
+        let hasTabs = !(content?.tabs.isEmpty ?? true)
+        let hasSearch = content?.search != nil
+        menu.removeAllItems()
+        for item in Self.barMenuItems(pageBarStyle: AppSettings.pageBarStyle,
+                                      tabLabels: hasTabs ? AppSettings.toolbarSwitcherStyle : nil,
+                                      alwaysCollapseSearch: hasSearch ? AppSettings.alwaysCollapseSearch : nil,
+                                      target: self) {
+            menu.addItem(item)
+        }
+    }
 }
 
 extension SettingsToolbar: NSSearchFieldDelegate {
@@ -2738,18 +3289,34 @@ extension SettingsToolbar: NSSearchFieldDelegate {
     /// beforehand. Together these keep a wrong decision to one blink per
     /// cycle rather than latching for the rest of the session.
     ///
-    /// **A field left empty is about to start its own collapse animation
-    /// this class cannot see the end of** — `bar.searchClosingDeadline`
-    /// (`PageBar`'s own header) is armed here, for `settle(_:)`'s own wait
-    /// gate to read; a field left with text stays wide and is a genuine
-    /// demand, not a collapse in progress, so nothing is armed for it.
+    /// **This interaction's tail is armed here, unconditionally** —
+    /// `bar.searchEditEndedDeadline` (`PageBar.searchEditEndedDeadline`'s own header) is what M2 reads
+    /// to tell one more growth frame from the interaction that just ended
+    /// apart from a brand new opening, whatever text this one leaves behind.
+    /// **A field left empty is, in addition, about to start its own collapse
+    /// animation this class cannot see the end of** — `bar
+    /// .searchClosingDeadline` is armed only for that case, for `settle(_:)`'s
+    /// own wait gate to read; a field left with text stays wide and is a
+    /// genuine demand, not a collapse in progress, so that second deadline is
+    /// not armed for it.
     func controlTextDidEndEditing(_ obj: Notification) {
         guard let field = obj.object as? NSSearchField,
               let key = attachedPageKey, let bar = pageBars[key],
               field === bar.searchItem?.searchField else { return }
         bar.searchOpening = false
+        bar.searchEditEndedDeadline = Date().addingTimeInterval(Self.searchCollapseWait)
         if field.stringValue.isEmpty {
             bar.searchClosingDeadline = Date().addingTimeInterval(Self.searchCollapseWait)
+        }
+        // Empty: the cap stays on and AppKit folds the field back to its
+        // magnifier; a query left behind releases it (`restSearch(_:)`).
+        // A turn later, and read then: this notification arrives while the
+        // field editor is still attached, and a predicate asked now reads
+        // "being edited" and releases a field that is about to be empty and
+        // idle — the rig read it resting open at 226 pt instead of folding.
+        DispatchQueue.main.async { [weak self, weak bar] in
+            guard let self, let bar else { return }
+            self.restSearch(bar)
         }
         scheduleSettle(bar)
     }
@@ -2849,14 +3416,18 @@ private final class PageBar {
     /// this flag, to budget the field's `preferredWidthForSearchField`
     /// instead of its stale, understated current frame while it is set.
     var searchOpening = false
-    /// **What the bar looked like the last time `settle(_:)` or `show(_:key:)`
-    /// finished measuring it** — whether the search field was
-    /// collapsed to its magnifier, and the room offered at that moment. M2
-    /// reads this to tell "the magnifier was pressed and the field is
-    /// opening" apart from "the window widened and the field re-opened at
-    /// rest with more room already available", which is the same growing
-    /// frame either way.
-    var rest: (collapsed: Bool, room: CGFloat)?
+    /// **What the bar looked like the last time `settle(_:)` finished
+    /// measuring it (`nil` once `restSearch(_:)` releases the cap)** — whether the search field was
+    /// collapsed to its magnifier, the room offered at that moment, and
+    /// whether the full tabs would still fit beside that field *open*
+    /// (`openFits`). M2 reads `collapsed`/`room` to tell "the magnifier was
+    /// pressed and the field is opening" apart from "the window widened and
+    /// the field re-opened at rest with more room already available", which
+    /// is the same growing frame either way; both M1 and M2 read `openFits`
+    /// through `openingKeepsTheTabs(_:)`, never geometry of their own — see
+    /// that method's own header for why the decision belongs here, at rest,
+    /// rather than live inside either opener.
+    var rest: SettingsToolbar.RestSnapshot?
     /// The search field's own last measured width — M2's own before/after
     /// reading, since `NSView.frameDidChangeNotification` carries no delta.
     var lastFieldWidth: CGFloat = 0
@@ -2886,6 +3457,16 @@ private final class PageBar {
     /// "write in one call, read in the next" shape `pendingUnfoldFieldWidth`
     /// already uses.
     var titleGrowth: CGFloat = 0
+    /// **How much of `SettingsToolbar.windowTitleOpenFloor` sits above this
+    /// bar's own title `fittingWidth`, read fresh every `currentToolbarSlack(_:)`
+    /// call that finds an anchor** — zero under `.moduleName`, and zero whenever the title's own
+    /// content already needs more than the floor. Unlike `titleGrowth`, set
+    /// regardless of `tabsFolded`: it charges a property of AppKit's own
+    /// layout under `.windowTitle`, not a fold's own not-yet-reversed growth
+    /// — see `SettingsToolbar.windowTitleOpenFloor`'s own header for the
+    /// reading behind the number and `openFitsPrediction(_:searchItem:slack:
+    /// anchored:)` for where it is charged.
+    var titleOpenFloorCharge: CGFloat = 0
     /// **Set by `controlTextDidEndEditing` when the field is left empty —
     /// `settle(_:)`'s own wait gate refuses to unfold before this passes.**
     /// A search ending empty leaves the field mid-shrink from its wide,
@@ -2900,6 +3481,20 @@ private final class PageBar {
     /// deadline — not on every tick — so a `settle(_:)` call that still
     /// finds it in the future keeps waiting without needing to know why.
     var searchClosingDeadline: Date?
+    /// **Set by `controlTextDidEndEditing` every time an edit ends, whatever
+    /// text is left in the field — unlike `searchClosingDeadline`, armed
+    /// unconditionally.** M2 (`searchFieldFrameChanged`) reads this, not
+    /// `searchClosingDeadline`, to tell a stray growth frame that follows the
+    /// close of the interaction that just ended apart from a brand new
+    /// opening: the field editor's resignation and AppKit's own layout do not
+    /// land in the same tick, so one more growing frame can arrive after
+    /// editing has already ended whether or not a query was left behind.
+    /// Reusing `searchClosingDeadline` for that read would also feed
+    /// `settle(_:)`'s own wait gate above, which exists only for an empty
+    /// close's shrink animation and must not newly wait on a query left
+    /// wide — this field is this one reader's own, so that gate's timing
+    /// stays exactly as it was.
+    var searchEditEndedDeadline: Date?
     /// **Set the moment `settle(_:)` itself calls `setTabsFolded(false, ...)`.**
     /// `checkOverflow()`'s own read of this, against
     /// `SettingsToolbar.overflowAttributionWindow`, is what tells "AppKit
@@ -2924,6 +3519,25 @@ private final class PageBar {
     /// and what makes it measure again.
     var tabsWidth: (key: SettingsToolbar.TabsWidthKey, full: CGFloat)?
     nonisolated(unsafe) var fieldFrameWatch: NSObjectProtocol?
+    /// **A `width <= 0` cap on the search field, below 750 — what makes
+    /// AppKit rest the search as its own magnifier while room is plenty.**
+    /// `NSSearchToolbarItem` has no public "collapse"; its field "layout
+    /// constraints are managed by the item" (`NSSearchToolbarItem.h`). Read
+    /// on a split-view rig at panes of 646, 846 and 1186 pt (engineer,
+    /// 2026-09-27): AppKit's own constraints on the field are its edges
+    /// pinned to `NSSearchToolbarItemView` at 1000 and that view's width at
+    /// 997 (226 pt at rest in an 846 pt pane, 236 while editing) — nothing at
+    /// or below 750. This cap, active at 250, 490 or 749 alike, rested the
+    /// field hidden at 36 pt at every pane; `beginSearchInteraction()` with
+    /// the cap still on opened it to `preferredWidthForSearchField`, 240 pt,
+    /// with an editor; `endSearchInteraction()` on an empty field folded it
+    /// back to hidden; and deactivating it at rest returned the field to
+    /// exactly its uncapped width (226 and 325 pt). At 751 the cap did
+    /// nothing at all, and at 999 it pinned the field at 0 pt through an
+    /// editing session — a search nobody could see. Hence `.defaultLow`, and
+    /// hence one rest predicate (`SettingsToolbar.restSearch(_:)`) as the only
+    /// writer of `isActive`.
+    var searchRestCap: NSLayoutConstraint?
     var actionsModel: HelmToolbarActionsModel?
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
@@ -2974,10 +3588,16 @@ struct NameZoneView: View {
     /// SwiftUI value read at draw time, not Liquid Glass, so reassigning this
     /// view's `rootView` (`SettingsToolbar.patchName`) is enough to move it.
     let appearsActive: Bool
+    /// Which title bar the zone sits in — `window.titlebarAppearsTransparent`,
+    /// which the band decision sets (`HelmBandChoice.titlebarAppearsTransparent`).
+    /// AppKit dims its own title by a different amount under each, so the
+    /// zone does too.
+    let titlebarIsTransparent: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     /// **Dark 222→92, Light 37→177 — AppKit's own `.windowTitle` layout,
-    /// measured against this same toolbar row**: a window's title text over
+    /// measured against this same toolbar row under macOS 27's transparent
+    /// title bar**: a window's title text over
     /// this row's own flat, inactive chrome (bg 37 Dark, 247 Light) lands on
     /// that target from the zone's own full ink (222 Dark, 38 Light) at the
     /// opacity `bg·(1−x) + ink·x = target` solves for — the same algebra
@@ -2993,9 +3613,27 @@ struct NameZoneView: View {
     /// have. One `.opacity()` on the whole row is that decision, not three.
     static let inactiveOpacityDark: Double = 0.30    // (92−37)/(222−37) ≈ 0.2973
     static let inactiveOpacityLight: Double = 0.33   // (247−177)/(247−38) ≈ 0.3349
+    /// **The same two under the opaque title bar — macOS 26's, by the band
+    /// decision — and AppKit 27.2's answer to that decision, not macOS 26's.**
+    /// Read on this Mac (27.2, engineer, 2026-09-27) off a real
+    /// `SettingsWindow` built with `HelmBandChoice.onMacOS(26)`, AppKit's own
+    /// title drawn beside the zone, as the share of its lit ink the title
+    /// keeps inactive (S3 and S5 alike, through its own `draw(_:)`): Light
+    /// 0.399, Dark 0.279 — against 0.329 and 0.296 under the transparent
+    /// title bar in the same run, which the pair above answers. Whether
+    /// macOS 26 itself dims its title by the same amount is for the owner's
+    /// 26 virtual machine to confirm; `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`
+    /// holds the zone to AppKit's title under both title bars.
+    static let inactiveOpacityOpaqueDark: Double = 0.28
+    static let inactiveOpacityOpaqueLight: Double = 0.40
 
     private var inactiveOpacity: Double {
-        colorScheme == .dark ? Self.inactiveOpacityDark : Self.inactiveOpacityLight
+        switch (colorScheme == .dark, titlebarIsTransparent) {
+        case (true, true): Self.inactiveOpacityDark
+        case (false, true): Self.inactiveOpacityLight
+        case (true, false): Self.inactiveOpacityOpaqueDark
+        case (false, false): Self.inactiveOpacityOpaqueLight
+        }
     }
 
     var body: some View {

@@ -1,19 +1,23 @@
 import XCTest
 import HelmTestSupport
 
-/// **A style chosen for the toolbar has to give the page a new identity, not
-/// just a new environment value.**
+/// **A page-bar style chosen for the toolbar has to give the page a new
+/// identity, not just a new environment value.**
 ///
-/// A page's controls are bridged into the window's own AppKit toolbar. An
-/// environment change alone does not republish them: measured on the dev build
-/// 2026-09-17, choosing another `ToolbarSwitcherStyle` — and, before it, another
-/// `PageBarStyle` — left the bar exactly as it was until the page was left and
-/// opened again. Both trackers key the subtree on the style, and photographs of
-/// the same flip afterwards show the bar following it.
+/// Measured on the dev build by 2026-09-17, while a page's controls were
+/// bridged into the window's own AppKit toolbar: an environment change alone
+/// did not republish them, and choosing another `PageBarStyle` left the bar
+/// exactly as it was until the page was left and opened again. The tracker
+/// keys the subtree on the style, and photographs of the same flip afterwards
+/// showed the bar following it.
 ///
-/// Read off the construction: the bridge needs a window with a toolbar, which a
-/// page mounted in a hosting view does not have, so nothing offscreen can see
-/// this. What a test can hold is that neither tracker loses the `id` again.
+/// Read off the construction: the bridge needed a window with a toolbar, which
+/// a page mounted in a hosting view does not have, so nothing offscreen can
+/// see this. What a test can hold is that the tracker does not lose the `id`
+/// again. The switcher style had a tracker of its own under the pane, held
+/// here to the opposite; it went on 2026-09-28, when nothing under the pane
+/// read the value any more — every switcher is built in the toolbar's own
+/// hosting views and handed its style there.
 final class AStyleChosenInTheBarReachesTheBarTests: XCTestCase {
 
     private func trackerBody(_ name: String, in file: String) throws -> String {
@@ -22,20 +26,6 @@ final class AStyleChosenInTheBarReachesTheBarTests: XCTestCase {
         let end = code.range(of: "\nstruct ", range: start.upperBound..<code.endIndex)?.lowerBound
             ?? code.endIndex
         return String(code[start.lowerBound..<end])
-    }
-
-    /// **The switcher's own tracker must not.** Its control is one `NSView` that
-    /// lives across the change and rewrites its segments from the environment,
-    /// so a new identity only throws that view away: measured 2026-09-18, the
-    /// bar's items jumped as the style was chosen, and the style reaches them
-    /// without it.
-    func testTheSwitcherStyleTrackerKeepsItsSubtree() throws {
-        let body = try trackerBody("SwitcherStyleTracker",
-                                   in: "Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift")
-        XCTAssertFalse(body.contains(".id(style"), """
-            the switcher-style tracker gives its subtree a new identity on every style, which \
-            throws away the control the toolbar is holding and makes the bar's items jump
-            """)
     }
 
     func testThePageBarStyleTrackerKeysItsSubtreeOnTheStyle() throws {

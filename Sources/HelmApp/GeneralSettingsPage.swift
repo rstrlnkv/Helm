@@ -354,8 +354,8 @@ struct MenuBarSettingsView: View {
                 // prefers the other drafted shape can still reach it
                 // (`PageBarStyle`).
                 Picker(AppStr.pageBar, selection: $pageBarStyle) {
-                    Text(AppStr.pageBarModuleName).tag(PageBarStyle.moduleName)
-                    Text(AppStr.pageBarWindowTitle).tag(PageBarStyle.windowTitle)
+                    Text(AppStr.pageBarWithIcon).tag(PageBarStyle.moduleName)
+                    Text(AppStr.pageBarWithoutIcon).tag(PageBarStyle.windowTitle)
                 }
                 .onChange(of: pageBarStyle) { _, choice in AppSettings.pageBarStyle = choice }
                 // No `LabeledContent`: the picker carries its own title now,

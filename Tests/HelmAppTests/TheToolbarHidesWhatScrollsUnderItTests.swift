@@ -1,18 +1,23 @@
 import XCTest
 import HelmTestSupport
 
-/// **Every settings page scrolls under a strip that lights up the way the page
-/// header used to.**
+/// **On macOS 27 every settings page scrolls under a strip that lights up the
+/// way the page header used to; on macOS 26 under the system's own scroll
+/// edge.**
 ///
 /// A page's scroll view runs under the window's toolbar, and the system's own
-/// scroll edge effect is held there at opacity 0 by the window's
-/// `titlebarAppearsTransparent` — it attaches, and the pane's content type has
-/// nothing to do with it; `TheSystemsScrollEdgeEffectAttachesTests` is that
-/// measurement. Let through it would draw next to nothing anyway, because the
-/// pane keeps AppKit's safe area and a page's content never passes beneath the
-/// bar. The strip is `helmToolbarBackdrop`, drawn by `HeaderEdgeLight` —
-/// whose pixels `TheHeaderIsTheSystemsScrollEdgeTests` already reads — and lit
-/// by a preference each page's bar reports from its own scroll view.
+/// scroll edge effect attaches to it whatever the pane's content type —
+/// `TheSystemsScrollEdgeEffectAttachesTests` is that measurement. Whether it
+/// draws is the band decision's, `HelmBandChoice`: on macOS 27 the window's
+/// `titlebarAppearsTransparent` is on, holds the effect at opacity 0, and the
+/// strip is Helm's; on macOS 26 the flag is off and Helm draws no strip, which
+/// leaves the pane to the system's effect (measured on 27, inferred for 26 —
+/// `HelmBandChoice`'s own header). The pane keeps AppKit's safe area, so at
+/// rest no content is under the bar; scrolled, content does pass beneath it,
+/// and that is what lights the strip. The strip is `helmToolbarBackdrop`,
+/// drawn by `HeaderEdgeLight` — whose pixels
+/// `TheHeaderIsTheSystemsScrollEdgeTests` already reads — and lit by a
+/// preference each page's bar reports from its own scroll view.
 ///
 /// Read off the construction, because the strip's height is the window
 /// toolbar's safe area and the lighting needs a real scroll, neither of which a
@@ -27,14 +32,17 @@ final class TheToolbarHidesWhatScrollsUnderItTests: XCTestCase {
     /// controller, on purpose" — so a scan for that property no longer finds
     /// anything to bound the search by (measured:
     /// `command grep -n sceneBridgingOptions Sources/HelmApp/SettingsWindow.swift`
-    /// finds only that comment). The claim this case exists to guard —
-    /// the detail pane actually carries the backdrop strip — still holds:
-    /// `.helmToolbarBackdrop()` sits on `SettingsDetail` unconditionally. A
-    /// dev-only toggle gated this call on a band style for a stretch
+    /// finds only that comment). The claim this case exists to guard — the
+    /// detail pane carries the backdrop modifier — still holds:
+    /// `.helmToolbarBackdrop()` sits on `SettingsDetail` unconditionally. The
+    /// band it draws is not unconditional: it draws Helm's band only where
+    /// `HelmBandChoice.toolbarBand` is on, which is macOS 27, and on macOS 26
+    /// draws none and leaves the pane to the system's own scroll-edge effect
+    /// (the owner, 2026-09-27; `HelmBandChoice` holds the decision). A
+    /// dev-only toggle once gated the call itself on a band style
     /// (`.modifier(ToolbarBackdropIfHelmBand())`) while the owner looked at
     /// the system's own scroll edge beside it; shown a screenshot of that
-    /// alternative, the owner kept Helm's own band and the call is
-    /// unconditional again.
+    /// alternative, the owner kept Helm's own band on 27.
     func testTheDetailPaneCarriesTheBackdrop() throws {
         let window = "Sources/HelmApp/SettingsWindow.swift"
         let code = SwiftSource.code(try RepoSource.text(of: window))

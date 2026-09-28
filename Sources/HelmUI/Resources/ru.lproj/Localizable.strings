@@ -270,8 +270,8 @@
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew удалит его сразу. В Корзину он не попадёт, и отменить это будет нельзя.";
 "Homebrew search tells apps and command-line tools apart again, so installing an app installs the app." = "Поиск в Homebrew снова отличает приложения от консольных утилит, поэтому установка приложения ставит именно приложение.";
 "How to compare" = "Как сравнивать";
-"Icon shape" = "Форма иконки";
-"Icon size" = "Размер иконки";
+"Icon shape" = "Форма значка";
+"Icon size" = "Размер значка";
 "If the folder Helm last measured has since been deleted, Disk no longer opens on an empty screen with no explanation — it takes you back to the volume list. An empty folder now says it is empty instead of showing nothing." = "Если папку, которую Helm мерил в прошлый раз, с тех пор удалили, «Диск» больше не открывается пустым экраном без объяснений — он возвращает к списку томов. А пустая папка теперь так и говорит, вместо того чтобы показывать пустоту.";
 "Image" = "Изображение";
 "In the light theme the icon shape and size previews were drawn white on a white card — a control the colour of its own background. They are drawn in the appearance they are shown in now, and so are the keyboard badge previews beside them." = "В светлой теме превью формы и размера иконки рисовались белым по белой карточке — элемент управления цвета собственного фона. Теперь они рисуются в той теме, в которой показаны, — и превью значков «Клавиатуры» рядом тоже.";
@@ -546,7 +546,7 @@
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "Поиск дубликатов теперь отдельный экран, сразу после «Диска». Раньше он искал в той папке, которую показывало кольцо, — то есть только там, где вы уже сканировали. Теперь вы сами указываете папку, и он её запоминает. Содержимое по-прежнему сравнивается вместо имён, одна копия в каждой группе остаётся, а жёсткие ссылки не предлагаются.";
 "Searching for duplicates uses far less memory — it no longer keeps everything it reads — and gives that memory back when a scan ends or a module is switched off." = "Поиск дубликатов расходует заметно меньше памяти — он больше не держит всё, что прочитал, — и возвращает её после поиска и при выключении модуля.";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "Файл защищён или принадлежит другому пользователю. Откройте «Свойства» в Finder: снимите защиту или измените права доступа.";
-"The icon is white when idle and takes on the colour of whichever module is active." = "В покое иконка белая, а пока модуль работает — принимает его цвет.";
+"The icon is white when idle and takes on the colour of whichever module is active." = "В покое значок белый, а пока модуль работает — принимает его цвет.";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "Форму и размер иконки и оба цвета теперь можно выбрать с клавиатуры, а из записи горячей клавиши выпускает Escape.";
 "The log Helm keeps for troubleshooting no longer writes down the names of your VPN connections, your apps, or the path to your home folder." = "Журнал, который Helm ведёт для диагностики, больше не записывает названия ваших VPN-подключений, имена приложений и путь к домашней папке.";
 "The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written." = "В журнал попадает то, что делает Helm, а не то, что у вас на диске: имена приложений, названия VPN и пути подменяются ещё до записи.";
@@ -679,7 +679,7 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"Module icons" = "Иконки модулей";
+"Module icons" = "Значки модулей";
 "Colour" = "Цветные";
 "Plain" = "Простые";
 "New section" = "Новый раздел";
@@ -1193,8 +1193,9 @@
 "Tools" = "Инструменты";
 "Copy for a bug report" = "Скопировать для отчёта об ошибке";
 "Page header" = "Шапка страницы";
-"Window title" = "Заголовок окна";
-"Module icon and name" = "Значок и название модуля";
+"With Icon" = "Со значком";
+"Without Icon" = "Без значка";
+"Always Collapse Search" = "Всегда сворачивать поиск";
 "Text Only" = "Только текст";
 "Icon Only" = "Только значок";
 "Icon and Text" = "Значок и текст";

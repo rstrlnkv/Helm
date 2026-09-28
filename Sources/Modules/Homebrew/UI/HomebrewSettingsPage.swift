@@ -312,7 +312,7 @@ struct HomebrewSettingsPage: View {
                 set: { hb.segment = HomebrewViewModel.Segment(rawValue: $0) ?? hb.segment }),
             actions: [
                 HelmToolbarAction(id: "upgradeAll", title: HbStr.upgradeAll,
-                                  symbol: "arrow.up.circle",
+                                  symbol: "arrow.down.to.line",
                                   isEnabled: !hb.running && !hb.outdated.isEmpty,
                                   isVisible: hb.segment == .updates) {
                     hb.upgradeAll()

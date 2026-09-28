@@ -1193,8 +1193,9 @@
 "Tools" = "Werkzeuge";
 "Copy for a bug report" = "Für einen Fehlerbericht kopieren";
 "Page header" = "Seitenkopf";
-"Window title" = "Fenstertitel";
-"Module icon and name" = "Modulsymbol und Name";
+"With Icon" = "Mit Symbol";
+"Without Icon" = "Ohne Symbol";
+"Always Collapse Search" = "Suche immer reduzieren";
 "Text Only" = "Nur Text";
 "Icon Only" = "Nur Symbol";
 "Icon and Text" = "Symbol und Text";

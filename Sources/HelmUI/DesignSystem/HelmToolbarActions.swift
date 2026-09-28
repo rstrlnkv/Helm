@@ -142,8 +142,9 @@ public final class HelmToolbarActionsModel {
     /// **Not** SwiftUI's `controlActiveState`: that reads `.inactive` in two
     /// of those states — a nonactivating panel taking key while this window
     /// stays main, and a sheet — where AppKit's platter stays lit. Read only
-    /// by `HelmToolbarActionsCapsule.glyph(_:)`, to dim a plain `Label`'s ink
-    /// the same amount AppKit's own toolbar button glyph dims by — the
+    /// by `HelmToolbarActionsCapsule.glyph(_:)` and the `disabledGlyphOpacity`
+    /// it calls, to dim a plain `Label`'s ink the same amount AppKit's own
+    /// toolbar button glyph dims by — the
     /// capsule's *glass* needs no such value: it follows AppKit's own active
     /// appearance, which in a real app equals `isKeyWindow || isMainWindow`,
     /// proven by pinning this environment key on a live capsule and reading
@@ -256,8 +257,8 @@ public struct HelmToolbarActionsCapsule: View {
     // never orders on screen, so a test asks the model directly instead.
     let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
-    /// Which of the two glyph-dim constants below applies — see
-    /// `inactiveGlyphOpacity`'s own header.
+    /// Which glyph-dim constant applies — see `inactiveGlyphOpacity`'s and
+    /// `disabledGlyphOpacity`'s own headers.
     @Environment(\.colorScheme) private var colorScheme
 
     /// **The margin an `isBordered = false` custom-view item is short of an
@@ -299,6 +300,41 @@ public struct HelmToolbarActionsCapsule: View {
     static let inactiveGlyphOpacityDark: Double = 0.25   // (93−40)/(255−40) ≈ 0.2465
     static let inactiveGlyphOpacityLight: Double = 0.31  // (244−169)/244 ≈ 0.3074
 
+    /// **The glyph's own dim, when the entry itself is disabled — the owner's
+    /// "as AppKit" for a disabled action.** Not `inactiveGlyphOpacityDark` /
+    /// `inactiveGlyphOpacityLight` above: those answer "the window reads
+    /// inactive" (`HelmToolbarActionsModel.appearsActive` false — neither key
+    /// nor main), these answer "the action refuses," and AppKit dims the two
+    /// differently.
+    ///
+    /// **`.disabled(...)` on `entryContent(entry)`, in `body` below, halves
+    /// whatever opacity this glyph draws, on top of it** — the automatic dim
+    /// a disabled `.plain` `Button`, and a `Menu` styled as one, applies to
+    /// its label (a bare `Label` under `.disabled(true)` keeps its ink, and
+    /// `.environment(\.isEnabled, true)` inside the label does not undo it),
+    /// found by drawing a fixed value and reading what a screen actually
+    /// shows (an out-of-tree probe, 2026-09-28, both appearances, key and not
+    /// key; `ADisabledActionDimsAsAppKitsOwnButtonTests` now photographs the
+    /// result beside a live disabled `NSToolbarButton` on every run): drawing
+    /// `1.0` / `inactiveGlyphOpacity` read back as 0.500 Dark / 0.520 Light
+    /// in a key window and 0.126 / 0.163 not key — against a live disabled
+    /// `NSToolbarButton`'s 0.240 / 0.313 key and 0.178 / 0.260 not key, ours
+    /// came out brighter than AppKit when key and dimmer when not, never
+    /// AppKit's own number, because that automatic halving sits between
+    /// whatever this file draws and what lands on screen. So these four are
+    /// not solved against AppKit's own reading directly the way
+    /// `inactiveGlyphOpacityDark` above is — the halving itself is one clean
+    /// x0.5 in-process (no display involved), but what a screen reads back
+    /// from the halved glyph varies across the four states and moves with
+    /// the display (0.479–0.552 across the four states, in the engineer's
+    /// own on-screen read-back) — each is fit as a line through two measured
+    /// (drawn, read-back) points and solved for AppKit's own number as the
+    /// target of the *read-back*, not of what this file sets.
+    static let disabledGlyphOpacityDark: Double = 0.49
+    static let disabledGlyphOpacityLight: Double = 0.60
+    static let disabledInactiveGlyphOpacityDark: Double = 0.35
+    static let disabledInactiveGlyphOpacityLight: Double = 0.50
+
     /// Non-zero exactly when this capsule is the bar's own last item (no
     /// search follows it) — see `edgeMargin`'s own header for the measurement
     /// this closes.
@@ -313,6 +349,18 @@ public struct HelmToolbarActionsCapsule: View {
     /// `colorScheme`, read here where the value is drawn rather than cached.
     private var inactiveGlyphOpacity: Double {
         colorScheme == .dark ? Self.inactiveGlyphOpacityDark : Self.inactiveGlyphOpacityLight
+    }
+
+    /// The disabled twin of `inactiveGlyphOpacity`, above — one of the four
+    /// `disabled…GlyphOpacity…` constants, picked by `colorScheme` and by
+    /// `model.appearsActive` the same way `inactiveGlyphOpacity` is picked by
+    /// `colorScheme` alone; see those constants' own header for why a
+    /// disabled entry needs both.
+    private var disabledGlyphOpacity: Double {
+        if colorScheme == .dark {
+            return model.appearsActive ? Self.disabledGlyphOpacityDark : Self.disabledInactiveGlyphOpacityDark
+        }
+        return model.appearsActive ? Self.disabledGlyphOpacityLight : Self.disabledInactiveGlyphOpacityLight
     }
 
     public var body: some View {
@@ -562,17 +610,52 @@ public struct HelmToolbarActionsCapsule: View {
     /// label's rendered bounds, which for an icon-only `Label` is the bare
     /// glyph, and a frame applied outside the control changes only layout,
     /// not what AppKit's hit test asks SwiftUI for.
+    ///
+    /// **13 pt, medium weight, large scale — the size AppKit draws a live
+    /// toolbar button's symbol at**, a bordered item with a target and an
+    /// action, as Refresh is. Read 2026-09-28 on macOS 27.2: a bare
+    /// `NSToolbar` at 1060 pt holding one such `NSToolbarItem`, which AppKit
+    /// draws as an `NSToolbarButton`; the bitmap in that button's own image
+    /// layer (2×) compared pixel for pixel against the same symbol under every
+    /// `NSImage.SymbolConfiguration` from 11 to 24 pt in half points, four
+    /// weights and three scales, among those that come out at the same pixel
+    /// size: 13 pt / medium / large matched with no difference at all for
+    /// `arrow.clockwise`, `text.alignleft`,
+    /// `line.3.horizontal.decrease.circle` and `magnifyingglass`, in Light and
+    /// Dark alike, and the nearest other was off by 5.2 to 8.7 alpha levels a
+    /// pixel — the configuration the same method read for a collapsed
+    /// `NSSearchToolbarItem`'s magnifier on 2026-09-27. The same item with no
+    /// action is a different drawing: AppKit puts it through
+    /// `NSToolbarImageView`, greyed as disabled, at 20 pt / regular / medium
+    /// (same method, 2026-09-27), which is what this glyph was set to until
+    /// 2026-09-28 and read 17.5 × 21.0 pt of ink for Refresh beside the live
+    /// button's 14.5 × 17.5. With no font of its own the `Label` takes
+    /// the hosting view's default body size, smaller again — the owner's "very
+    /// small" (`TheActionsGlyphIsAppKitsOwnSizeTests` holds ours beside the
+    /// live button, every kind, both appearances). The glyph sits inside the
+    /// same `Self.side` frame whatever its size, so no reserve, fold prediction
+    /// or edge margin reads it.
     @ViewBuilder
     private func glyph(_ entry: HelmToolbarActionsModel.Entry) -> some View {
+        let isDisabled = !entry.isEnabled || !model.isInteractive
         Label(entry.title, systemImage: entry.symbol)
+            .font(.system(size: 13, weight: .medium))
+            .imageScale(.large)
             .labelStyle(.iconOnly)
             .helmSteadySpin(entry.isBusy)
             .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
             // AppKit's own dim does not reach a plain SwiftUI `Label`'s ink on
             // its own — `inactiveGlyphOpacityDark`'s own header has the
-            // reading and the algebra behind these two numbers.
-            .opacity(model.appearsActive ? 1 : inactiveGlyphOpacity)
+            // reading and the algebra behind these two numbers. A disabled
+            // entry is a third case again, and it is not simply this
+            // opacity applied to a full-ink glyph: `.disabled(...)` on
+            // `entryContent(entry)`, in `body` above, halves whatever
+            // opacity lands here on top of it, which is why
+            // `disabledGlyphOpacityDark`'s own header, above, solves its
+            // four constants against the *read-back* rather than against
+            // AppKit's own number directly.
+            .opacity(isDisabled ? disabledGlyphOpacity : (model.appearsActive ? 1 : inactiveGlyphOpacity))
     }
 
     /// **One entry, drawn as its own kind.** A button and a toggle both press

@@ -147,7 +147,7 @@ import Module_Homebrew_Engine
 
         /// The glyph the toolbar switcher draws for this segment when it is
         /// set to show glyphs. Updates keeps the module's own «an update
-        /// exists» symbol, the one Upgrade-all already carries.
+        /// exists» symbol.
         var symbol: String {
             switch self {
             case .installed: return "shippingbox"

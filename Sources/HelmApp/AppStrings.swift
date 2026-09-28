@@ -21,10 +21,18 @@ enum AppStr {
         L("Dev builds only, for reading the app in a language this Mac is not set to.")
     }
     /// The Appearance row choosing how a page's header sits in the window's
-    /// toolbar, and its two answers (`PageBarStyle`).
+    /// toolbar, and its two answers (`PageBarStyle`) — the same three words
+    /// head the toolbar's own right-click menu (`SettingsToolbar.barMenuItems`).
+    /// The owner's own words for the two shapes: the module's plate and name,
+    /// or AppKit's plain window title — with its icon or without it. Title
+    /// case, like AppKit's own items beside them ("Icon Only").
     static var pageBar: String { L("Page header") }
-    static var pageBarWindowTitle: String { L("Window title") }
-    static var pageBarModuleName: String { L("Module icon and name") }
+    static var pageBarWithIcon: String { L("With Icon") }
+    static var pageBarWithoutIcon: String { L("Without Icon") }
+    /// The toolbar menu's switch for resting the search as its magnifier at
+    /// every width (`AppSettings.alwaysCollapseSearch`) — shaped like Music's
+    /// own "Always Show Artwork"; "Search" is AppKit's own word for the field.
+    static var alwaysCollapseSearch: String { L("Always Collapse Search") }
 
     /// The badge beside a module's name in its page header.
     ///

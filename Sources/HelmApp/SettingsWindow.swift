@@ -47,26 +47,32 @@ import HelmUI
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
-    init(host: ModuleHost) {
+    /// `band` is whose band lies under the toolbar — the running system's
+    /// decision unless a test builds another system's window on this one; the
+    /// same value sets the title bar below and reaches the pane's
+    /// `helmToolbarBackdrop` (`HelmBandChoice`).
+    init(host: ModuleHost, band: HelmBandChoice = .running) {
         let model = SettingsModel(host: host)
         self.model = model
         settingsToolbar = SettingsToolbar(model: model, channel: toolbarChannel)
-        let split = SettingsSplitViewController(model: model, toolbarChannel: toolbarChannel)
+        let split = SettingsSplitViewController(model: model, toolbarChannel: toolbarChannel,
+                                                band: band)
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
-        // **Load-bearing on the pane, not in the bar.** It holds the detail
-        // pane's own scroll-edge pocket at opacity 0 — with the flag off that
-        // layer stands at opacity 1 over the pane's width — which is the whole
-        // reason `helmToolbarBackdrop` exists, and the bar's own backdrop layer
-        // does not move with it. `TheSystemsScrollEdgeEffectAttachesTests` is
-        // that measurement and holds the two halves of the decision together.
-        // A dev toggle once read the system's own scroll edge instead: shown
-        // a screenshot of it (the detail pane's empty state is no scroll view,
-        // so the system's own effect could only ever cover the list beside it,
-        // never the pane), the owner kept Helm's own band and this line is
-        // unconditional again.
-        window.titlebarAppearsTransparent = true
+        // **Load-bearing on the pane, not in the bar.** Transparent, it holds
+        // the detail pane's own scroll-edge pocket at opacity 0 — with the
+        // flag off that layer stands at opacity 1 over the pane's width —
+        // which is the whole reason `helmToolbarBackdrop` exists, and the
+        // bar's own backdrop layer does not move with it.
+        // `TheSystemsScrollEdgeEffectAttachesTests` is that measurement and
+        // holds the two halves of the decision together. On macOS 27 a dev
+        // toggle once read the system's own scroll edge instead; shown a
+        // screenshot of it, the owner kept Helm's own band there. On macOS 26
+        // the owner asked for the system's back, so the flag is off there and
+        // the pane draws no band of Helm's — that the system's effect then
+        // draws on 26 is inferred from this Mac's 27.2, not measured on 26.
+        window.titlebarAppearsTransparent = band.titlebarAppearsTransparent
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
         window.contentMinSize = Self.minSize
@@ -249,10 +255,15 @@ final class SettingsSplitViewController: NSSplitViewController {
     /// toolbar content (`helmWindowToolbar`) without importing `HelmApp` —
     /// `SettingsToolbar`, on the other side of it, is `SettingsWindow`'s.
     private let toolbarChannel: HelmWindowToolbarChannel
+    /// The window's own band decision, handed down rather than read again —
+    /// no default, so the pane cannot be built on one system's decision
+    /// under a title bar set from another's.
+    private let band: HelmBandChoice
 
-    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel) {
+    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice) {
         self.model = model
         self.toolbarChannel = toolbarChannel
+        self.band = band
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("not supported") }
@@ -330,14 +341,16 @@ final class SettingsSplitViewController: NSSplitViewController {
                 .environment(\.helmWindowToolbarChannel, toolbarChannel)
                 // The strip under the toolbar, lit once the page's content
                 // has scrolled beneath it — `helmToolbarBackdrop` says why it
-                // is Helm's and not the system's.
+                // is Helm's and not the system's, and on which system it is
+                // the system's after all.
                 .helmToolbarBackdrop()
+                // Outside the backdrop, so the band it draws — or does not —
+                // is the decision the window's title bar was set from.
+                .environment(\.helmBandChoice, band)
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
                 .helmTracksPageBarStyle { AppSettings.pageBarStyle }
-                .helmTracksSwitcherStyle({ AppSettings.toolbarSwitcherStyle },
-                                         set: AppSettings.ToolbarSwitcherStyleSetter())
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // The pane as well as the sidebar: a module page's header plate
                 // and its empty state are module icons too, and «Module icons»

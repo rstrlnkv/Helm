@@ -34,8 +34,14 @@ import SwiftUI
 ///   which is where the guidelines put a title. Shown on every page,
 ///   including the ones whose toolbar centres a segment switcher. Kept as the
 ///   other drafted shape, reachable from `GeneralSettingsPage`'s Appearance
-///   section — not removed, because retiring a case a Mac may already have
-///   stored is `CLAUDE.md`'s rule and not a preference of this file's.
+///   section and from the toolbar's own right-click menu — not removed,
+///   because retiring a case a Mac may already have stored is `CLAUDE.md`'s
+///   rule and not a preference of this file's.
+///
+/// **Offered as "With Icon" and "Without Icon"** (the owner, 2026-09-27: this
+/// choice *is* "the module name with or without its icon"). Only the words
+/// moved; the stored values are the two case names above, unchanged, so a
+/// Mac that chose either before reads the same shape after.
 public enum PageBarStyle: String, CaseIterable, Sendable {
     case windowTitle, moduleName
 
@@ -159,6 +165,9 @@ public extension View {
     /// the pane: read from the safe area, because that height is AppKit's to
     /// decide. Items and the title live in the titlebar's own view, above this
     /// one.
+    ///
+    /// **On macOS 26 it draws nothing** — `HelmBandChoice`, read from the
+    /// environment, says whose band this is, and there it is the system's.
     func helmToolbarBackdrop() -> some View {
         modifier(ToolbarBackdrop())
     }
@@ -208,9 +217,9 @@ private struct HelmPageBarStyleTracker: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.helmPageBar, style ?? current())
-            // A new identity, for the reason `helmTracksSwitcherStyle` gives:
-            // the toolbar is AppKit's, and an environment change alone leaves
-            // the items it already published where they are.
+            // A new identity: the toolbar is AppKit's, and an environment
+            // change alone leaves the items it already published where they
+            // are (`AStyleChosenInTheBarReachesTheBarTests` holds the `id`).
             .id(style ?? current())
             .onReceive(NotificationCenter.default.publisher(for: .helmPageBarStyleChanged)) { _ in
                 style = current()
@@ -294,8 +303,20 @@ private struct ReportsScrolledUnderBar: ViewModifier {
 private struct ToolbarBackdrop: ViewModifier {
     @State private var scrolled = false
     @State private var standsOnStillContent = false
+    @Environment(\.helmBandChoice) private var band
 
+    @ViewBuilder
     func body(content: Content) -> some View {
+        if band.toolbarBand {
+            helmsBand(content)
+        } else {
+            // The system's: an opaque title bar lets its own scroll-edge
+            // effect attach to the pane (`HelmBandChoice`).
+            content
+        }
+    }
+
+    private func helmsBand(_ content: Content) -> some View {
         content
             .onPreferenceChange(HelmPageScrolledKey.self) { now in
                 scrolled = now

@@ -280,6 +280,9 @@ public struct HelmPageHeader<Trailing: View>: View {
 
     @State private var hovering = false
     @Environment(\.controlActiveState) private var activeState
+    /// Whether this header wears Helm's band at all — on macOS 26 it does
+    /// not, by the owner's answer (`HelmBandChoice.pageHeaderBandOn26`).
+    @Environment(\.helmBandChoice) private var band
 
     let symbol: String
     let tint: Color
@@ -358,6 +361,24 @@ public struct HelmPageHeader<Trailing: View>: View {
     }
 
     public var body: some View {
+        lit(row).onHover { hovering = $0 }
+    }
+
+    @ViewBuilder
+    private func lit(_ row: some View) -> some View {
+        if band.pageHeaderBand {
+            row.modifier(HeaderEdgeLight(lit: Self.isLit(hovering: hovering, active: activeState,
+                                                         scrolled: scrolled,
+                                                         standsOnStillContent: standsOnStillContent),
+                                         live: Self.isLive(hovering: hovering, active: activeState,
+                                                           scrolled: scrolled),
+                                         overContent: overContent))
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: 12) {
             // 28, asked of the mockup itself rather than counted off a picture:
             // `.pagehead` measures 46 tall and its plate 28. Ours was the 44 pt
@@ -408,13 +429,6 @@ public struct HelmPageHeader<Trailing: View>: View {
         // above is capped at the 744 pt column and centred, so a background
         // there would be a lit band floating in an unlit pane.
         .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
-        .modifier(HeaderEdgeLight(lit: Self.isLit(hovering: hovering, active: activeState,
-                                                  scrolled: scrolled,
-                                                  standsOnStillContent: standsOnStillContent),
-                                  live: Self.isLive(hovering: hovering, active: activeState,
-                                                    scrolled: scrolled),
-                                  overContent: overContent))
-        .onHover { hovering = $0 }
     }
 }
 

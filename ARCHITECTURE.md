@@ -579,7 +579,7 @@ directly.
 (`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`) — the system's
 segmented control, told to size each segment to what it shows rather than to
 the longest word, and labelled by `ToolbarSwitcherStyle` — words, glyphs or
-both — which a right-click on any switcher changes for all of them. A
+both — which the bar's own right-click menu changes for all of them. A
 dev-only toggle used to let the owner compare this against AppKit's own
 segmented-toolbar-item group on a real window; retired 2026-09-23 once that
 comparison was made. `HelmPageToolbarContent.tabsEnabled` dims the whole
@@ -597,7 +597,20 @@ and configures itself, rather than the one macOS hands the item by default —
 Return, run a page's `onSubmit`; `endSearchInteraction`'s own fold to a
 magnifier ends the field's editing the same way losing focus does, and either
 one fires the action on a field left at AppKit's own default for
-`sendsActionOnEndEditing`.
+`sendsActionOnEndEditing`. With `AppSettings.alwaysCollapseSearch` on, an
+empty, idle field rests as AppKit's own magnifier at every width: a width cap
+below 750 (`PageBar.searchRestCap`), switched by one rest predicate
+(`SettingsToolbar.restSearch(_:)`), is what AppKit's own layout reads as no
+room for a field, while its own `beginSearchInteraction()` still opens the
+field to `preferredWidthForSearchField`.
+
+**The bar has one right-click menu** (`SettingsToolbar.barMenuItems`),
+answered by the same local monitor as the magnifier press, so a Control-click
+on the collapsed magnifier has one owner: the page header's two shapes, the
+tabs' label style where the page has tabs, and Always Collapse Search where it
+has a search field. The same menu is each centre switcher's own `NSView.menu`,
+which is what VoiceOver opens; `HelmToolbarSwitcher` itself answers no menu
+gesture.
 
 `PageBarStyle` is a setting in Appearance rather than a dev-only toggle: the
 module's plate, name and status as the toolbar's own leading item — the
@@ -620,12 +633,24 @@ Over a scroll view there is no rule at rest. What macOS lights instead is the
 whole strip, for three reasons — the pointer resting on it while the window is
 key, the page having scrolled underneath, and the page declaring that what sits
 directly beneath the band is not a scroll view at all. `HeaderEdgeLight`
-(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:89`) asks
+(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:91`) asks
 `isLit(hovering:active:scrolled:standsOnStillContent:)`
-(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:262`) once and feeds both the
+(`Sources/HelmUI/DesignSystem/HelmPageHeader.swift:264`) once and feeds both the
 fill and the rule from that single answer, so the two cannot disagree. Lighting is
 a fill rather than a material, which is the only reason it is verifiable offscreen
 at all: `cacheDisplay(in:to:)` renders model values, glass excluded.
+
+Under the settings window's toolbar the same light is `helmToolbarBackdrop`'s,
+and whose band lies there depends on the system. `HelmBandChoice`
+(`Sources/HelmUI/DesignSystem/HelmBandChoice.swift`) is read once from the
+running macOS and handed down as one value: on 27, Helm's band under a
+transparent title bar, which holds the system's scroll-edge effect off the pane;
+on 26, no band of Helm's and an opaque title bar, so the system's own effect
+draws there. `SettingsWindow` takes the value as an argument and passes it to
+its pane through the environment, which is how a test builds either system's
+window on one Mac. The header drawn in the page gives up its band on 26 as well —
+the owner's answer is the system's edge everywhere there — and
+`pageHeaderBandOn26` is the whole of that answer.
 
 ### The sidebar is an arrangement
 
@@ -1798,10 +1823,10 @@ A mounted SwiftUI tree is billed whether or not anybody can see it.
 `Sources/HelmUI/DesignSystem/OffScreenIdle.swift` unmounts a subtree while its window is
 out of sight and rebuilds it from the view model's current state; the model keeps its
 subscription throughout, so nothing is missed. It reaches a module page from the window
-and not from the page: both hosting controllers of the settings window end on
-`helmIdlesOffScreen()` — the sidebar at `Sources/HelmApp/SettingsWindow.swift:207`, and at
-`:288` the pane that holds whichever module page is open, so a page inherits the idling
-without asking for it. `helmSettingsColumn()`
+and not from the page: both hosting controllers that `SettingsSplitViewController.viewDidLoad`
+builds end on `helmIdlesOffScreen()` — the one hosting `SettingsSidebar`, and the one
+hosting `SettingsDetail`, the pane that holds whichever module page is open, so a page
+inherits the idling without asking for it. `helmSettingsColumn()`
 (`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:263`) ends on the same modifier (`:266`),
 so a block that takes the column takes the idling with it; a page whose root is a `Form`
 takes no column and calls `helmIdlesOffScreen()` on its own

@@ -1193,8 +1193,9 @@
 "Tools" = "Ferramentas";
 "Copy for a bug report" = "Copiar para um relatório de erro";
 "Page header" = "Cabeçalho da página";
-"Window title" = "Título da janela";
-"Module icon and name" = "Ícone e nome do módulo";
+"With Icon" = "Com Ícone";
+"Without Icon" = "Sem Ícone";
+"Always Collapse Search" = "Sempre Recolher a Busca";
 "Text Only" = "Somente Texto";
 "Icon Only" = "Somente Ícones";
 "Icon and Text" = "Ícone e Texto";

@@ -75,6 +75,10 @@ final class TheWindowsBandReadsTheDeclarationTests: XCTestCase {
             // Applied here, outside the page and inside the window, exactly
             // where `SettingsSplitViewController` applies it.
             .helmToolbarBackdrop()
+            // macOS 27's band, named rather than read off this Mac: on 26 the
+            // band is the system's and there is nothing of Helm's to read
+            // (`HelmBandChoice`).
+            .environment(\.helmBandChoice, .onMacOS(27))
             // Every settings page carries one, and a page without it drops the
             // window's toolbar — and with it the safe area this band lives in.
             .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }

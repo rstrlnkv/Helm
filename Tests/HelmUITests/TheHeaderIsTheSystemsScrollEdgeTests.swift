@@ -280,6 +280,49 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
         }
     }
 
+    /// **The header drawn in the page wears its band per system as
+    /// `HelmBandChoice` says — on macOS 27, and not on macOS 26.**
+    ///
+    /// The in-page header gives up Helm's band on 26 the way the toolbar's
+    /// did — the owner's answer (2026-09-27), whose whole switch is
+    /// `HelmBandChoice.pageHeaderBandOn26`. The expectation is written here
+    /// rather than read from that switch, so a flip back is a red test and not
+    /// a test that follows it. The decision is handed in through
+    /// the environment, so both systems are read on this one. A header told to
+    /// wear no band at all is the control — without it this passes on a
+    /// header that ignores the decision and always draws, which is the defect
+    /// from the other side.
+    func testTheHeaderInThePageWearsItsBandAsTheDecisionSays() throws {
+        let none = HelmBandChoice(toolbarBand: false, pageHeaderBand: false)
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let dark = appearance == .darkAqua
+            for (name, band, drawn) in [("no band", none, false),
+                                        ("macOS 27", HelmBandChoice.onMacOS(27), true),
+                                        ("macOS 26", HelmBandChoice.onMacOS(26), false)] {
+                func read(_ row: Row) throws -> CGFloat {
+                    try sample(appearance: appearance, atY: row) {
+                        AnyView(HelmPageHeader(symbol: "gearshape", tint: .gray, title: "Settings",
+                                               bleeds: true, standsOnStillContent: true)
+                            .environment(\.helmBandChoice, band))
+                    }
+                }
+                let strip = try read(.strip)
+                let edge = try read(.edge)
+                if drawn {
+                    XCTAssertTrue(dark ? edge > strip + 3 : edge < strip - 3, """
+                        \(name), \(appearance.rawValue): the header in the page wears no band \
+                        where the decision gives it one (strip \(strip), edge \(edge))
+                        """)
+                } else {
+                    XCTAssertEqual(edge, strip, accuracy: 1, """
+                        \(name), \(appearance.rawValue): the header in the page wears a band the \
+                        decision took away (strip \(strip), edge \(edge))
+                        """)
+                }
+            }
+        }
+    }
+
     /// **One rule, not two.**
     ///
     /// The two triggers are folded before anything is drawn, so a header that is
@@ -471,12 +514,16 @@ final class TheHeaderIsTheSystemsScrollEdgeTests: XCTestCase {
     /// The header drawn through **its own** chrome, with nothing applied from
     /// outside — see `testAPageStandingOnStillContentIsLitBeforeAnythingHappens`
     /// for why this one state, alone of the three, can be reached that way.
+    /// Under macOS 27's band decision, named rather than this Mac's: on 26 the
+    /// header wears no band of its own at all
+    /// (`testTheHeaderInThePageWearsItsBandAsTheDecisionSays`).
     private func ownChrome(standsOnStillContent: Bool, appearance: NSAppearance.Name,
                            atY row: Row) throws -> CGFloat {
         try sample(appearance: appearance, atY: row) {
             AnyView(HelmPageHeader(symbol: "gearshape", tint: .gray, title: "Settings",
                                    bleeds: true,
-                                   standsOnStillContent: standsOnStillContent))
+                                   standsOnStillContent: standsOnStillContent)
+                .environment(\.helmBandChoice, .onMacOS(27)))
         }
     }
 

@@ -119,6 +119,18 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
         addTeardownBlock { TheCapsuleDrawsWhatAppKitsPlatterDrawsTests.answers = [:] }
     }
 
+    /// **The name zone is `moduleName`'s**, the default every reading here
+    /// was taken under; with `windowTitle` left in the test tool's own
+    /// domain the bar had no name zone and both name-zone cases ran red
+    /// (2026-09-28). Kept raw and put back by the test's own teardown, so a
+    /// key the domain did not hold is removed again.
+    private func holdThePageBarStyle() {
+        let store = AppSettings.store
+        let found = store.object(PageBarStyle.storageKey)
+        addTeardownBlock { @MainActor in store.set(found, for: PageBarStyle.storageKey) }
+        AppSettings.pageBarStyle = .moduleName
+    }
+
     // MARK: - Readings
 
     struct Glass: CustomStringConvertible {
@@ -219,8 +231,11 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
         let channel: HelmWindowToolbarChannel
         private var sheets: [NSWindow] = []
 
-        init(appearance: NSAppearance.Name) throws {
-            owner = SettingsWindow(host: ModuleHost.shared)
+        /// `band` is the system whose settings window this is — never this
+        /// Mac's own: the title bar it sets is what AppKit's title and the
+        /// name zone are both drawn under.
+        init(appearance: NSAppearance.Name, band: HelmBandChoice) throws {
+            owner = SettingsWindow(host: ModuleHost.shared, band: band)
             let fields = Mirror(reflecting: owner).children
             func field<T>(_ name: String, as type: T.Type) throws -> T {
                 try XCTUnwrap(fields.first { $0.label == name }?.value as? T,
@@ -352,19 +367,39 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     }
 
     private var rigs: [Rig] = []
+    /// The settings window's autosaved frame and sidebar divider as the test
+    /// tool's own domain held them before the first rig, put back after the
+    /// last one drops — `Rig.drop()` removes the frame whether or not it was
+    /// there, which took one another family had left out of the domain, and
+    /// the divider was left behind by every run (2026-09-28).
+    private var foundFrame: String?
+    private var foundSplit: [String]?
+    private var frameHeld = false
+    private static let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
+    private static let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
 
     override func tearDown() {
         rigs.forEach { $0.drop() }
         rigs = []
+        if frameHeld {
+            UserDefaults.standard.set(foundFrame, forKey: Self.frameKey)
+            UserDefaults.standard.set(foundSplit, forKey: Self.splitKey)
+        }
         super.tearDown()
     }
 
-    private func rig(_ appearance: NSAppearance.Name) throws -> Rig {
+    /// macOS 27's window unless a case names another system — the capsule's
+    /// readings were taken under its transparent title bar.
+    private func rig(_ appearance: NSAppearance.Name, band: HelmBandChoice = .onMacOS(27)) throws -> Rig {
         if !standingIn {
             try standInForTheWindowServer()
+            holdThePageBarStyle()
+            foundFrame = UserDefaults.standard.string(forKey: Self.frameKey)
+            foundSplit = UserDefaults.standard.stringArray(forKey: Self.splitKey)
+            frameHeld = true
             standingIn = true
         }
-        let rig = try Rig(appearance: appearance)
+        let rig = try Rig(appearance: appearance, band: band)
         rigs.append(rig)
         return rig
     }
@@ -460,6 +495,15 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     private static func views(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(views) }
 
     private static let appearances: [NSAppearance.Name] = [.aqua, .darkAqua]
+    /// Each system's settings window, by the title bar its band decision sets:
+    /// macOS 27's transparent one and macOS 26's opaque one.
+    private static let systems: [(name: String, band: HelmBandChoice)] = [
+        ("macOS 27", .onMacOS(27)), ("macOS 26", .onMacOS(26)),
+    ]
+    private static var systemsByAppearance: [(system: (name: String, band: HelmBandChoice),
+                                              appearance: NSAppearance.Name)] {
+        systems.flatMap { system in appearances.map { (system, $0) } }
+    }
     private static func named(_ appearance: NSAppearance.Name) -> String {
         appearance == .darkAqua ? "Dark" : "Light"
     }
@@ -783,6 +827,16 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// The zone against AppKit's title: each as a share of its own S1 reading.
     /// `lit` is what AppKit's own title must itself read — the proof that the
     /// state was produced before any equality is believed.
+    ///
+    /// **Within 0.01, because the two Dark constants sit 0.02 apart.** Read
+    /// at no tolerance on this Mac (27.2, 2026-09-28), in every state both
+    /// name-zone cases visit: the zone and AppKit's title part by at most
+    /// 0.0057 (27's title bar, Dark, the zone whole: 0.3020 against 0.2963),
+    /// about one step of an 8-bit alpha in the ratio. The Dark constant of
+    /// the wrong title bar sits 0.016 (0.28 under 27's) and 0.021 (0.30 under
+    /// 26's opaque one) from AppKit's reading, inside the 0.03 this held
+    /// before — so at 0.03 the Dark half of `NameZoneView.inactiveOpacity`
+    /// could read either bar's constant and pass.
     private func assertZoneFollowsTitle(_ reading: NameReading?, base: NameReading, lit: Bool, _ label: String,
                                         file: StaticString = #filePath, line: UInt = #line) {
         guard let reading else { return }
@@ -794,11 +848,11 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
             XCTAssertLessThan(titleShare, 0.5, "\(label): AppKit's own title reads \(titleShare) of its S1 ink — the inactive state was not produced",
                               file: file, line: line)
         }
-        XCTAssertEqual(reading.zoneName / base.zoneName, titleShare, accuracy: 0.03, """
+        XCTAssertEqual(reading.zoneName / base.zoneName, titleShare, accuracy: 0.01, """
             \(label): the zone's name draws at \(reading.zoneName / base.zoneName) of its S1 ink, \
             AppKit's title beside it at \(titleShare) of its own
             """, file: file, line: line)
-        XCTAssertEqual(reading.zoneRow / base.zoneRow, titleShare, accuracy: 0.03, """
+        XCTAssertEqual(reading.zoneRow / base.zoneRow, titleShare, accuracy: 0.01, """
             \(label): the zone as a whole — plate, shadow, name — draws at \(reading.zoneRow / base.zoneRow) \
             of its S1 ink, AppKit's title at \(titleShare) — the zone does not dim as one unit
             """, file: file, line: line)
@@ -806,8 +860,8 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
 
     /// A window with the zone and AppKit's own title side by side, opened while
     /// the app is away (S5) and never keyed yet.
-    private func nameRig(_ appearance: NSAppearance.Name, page: String) throws -> Rig {
-        let rig = try rig(appearance)
+    private func nameRig(_ appearance: NSAppearance.Name, page: String, band: HelmBandChoice) throws -> Rig {
+        let rig = try rig(appearance, band: band)
         rig.show(page: page, segmented: false)
         rig.window.title = Self.appKitTitleText
         rig.window.titleVisibility = .visible
@@ -837,11 +891,14 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// share of their S1 ink as AppKit's title does. Measured on this tree:
     /// title 0.278 / 0.847 Light, 0.251 / 0.847 Dark in S3 and S5; the zone's
     /// name 0.278 / 0.255, its row 0.329 / 0.302 of 1.000 — and 1.000 wherever
-    /// AppKit's title stays at full ink.
+    /// AppKit's title stays at full ink. Read under each system's title bar
+    /// (`systems`): under macOS 26's opaque one, as AppKit 27.2 draws it, the
+    /// title keeps 0.399 Light and 0.279 Dark of its S1 ink where it keeps
+    /// 0.329 and 0.296 under 27's transparent one (engineer, 2026-09-27).
     func testTheNameZoneDimsWhereAndAsFarAsAppKitsOwnTitleInTheSameWindow() throws {
-        for appearance in Self.appearances {
-            let name = Self.named(appearance)
-            let rig = try nameRig(appearance, page: "probe.nameZone")
+        for (system, appearance) in Self.systemsByAppearance {
+            let name = "\(system.name), \(Self.named(appearance))"
+            let rig = try nameRig(appearance, page: "probe.nameZone", band: system.band)
             XCTAssertEqual(rig.flag("_hasActiveAppearance"), false, "\(name): this process's window is not in S5")
             let fresh = nameReading(rig, "\(name) S5")
 
@@ -877,9 +934,9 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// zone's first reading must already match AppKit's, and its settled one
     /// must equal its first, which an animation or a deferred update cannot do.
     func testTheNameZoneMovesInTheSameTurnAsAppKitsOwnTitle() throws {
-        for appearance in Self.appearances {
-            let name = Self.named(appearance)
-            let rig = try nameRig(appearance, page: "probe.nameZoneSnap")
+        for (system, appearance) in Self.systemsByAppearance {
+            let name = "\(system.name), \(Self.named(appearance))"
+            let rig = try nameRig(appearance, page: "probe.nameZoneSnap", band: system.band)
             rig.toS1()
             rig.settle()
             let base = try nameBaseline(rig, "\(name) S1")
@@ -1009,8 +1066,14 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
 
             // While away: a page-bar style change rebuilds the attached bar, a language change does not.
             do {
+                // Raw, so a key the domain did not hold is removed again
+                // rather than written back as the typed getter's default.
+                let found = AppSettings.store.object(PageBarStyle.storageKey)
+                defer {
+                    AppSettings.store.set(found, for: PageBarStyle.storageKey)
+                    NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
+                }
                 let saved = AppSettings.pageBarStyle
-                defer { AppSettings.pageBarStyle = saved }
                 let rig = try rig(appearance)
                 rig.show(page: "probe.style")
                 rig.window.orderFront(nil)

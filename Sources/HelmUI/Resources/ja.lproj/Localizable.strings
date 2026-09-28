@@ -1193,8 +1193,9 @@
 "Tools" = "ツール";
 "Copy for a bug report" = "バグ報告用にコピー";
 "Page header" = "ページのヘッダ";
-"Window title" = "ウインドウのタイトル";
-"Module icon and name" = "モジュールのアイコンと名前";
+"With Icon" = "アイコンあり";
+"Without Icon" = "アイコンなし";
+"Always Collapse Search" = "検索を常に折りたたむ";
 "Text Only" = "テキストのみ";
 "Icon Only" = "アイコンのみ";
 "Icon and Text" = "アイコンとテキスト";

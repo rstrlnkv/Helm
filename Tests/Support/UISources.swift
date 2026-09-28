@@ -186,6 +186,9 @@ public enum UISources {
     /// Read from the hit's line and the two above it, because SwiftUI puts the
     /// `Image` and the `.font` on separate lines far more often than not, and a
     /// scan that only read its own line would call every one of them type.
+    /// A `Label(_:systemImage:)` is the same case: the toolbar capsule's glyph
+    /// is one, sized to the glyph AppKit draws on a live toolbar button, and
+    /// keeps its `Label` so the button stays named (`NamedControlsTests`).
     ///
     /// **Per file, not per hit.** `TypeScaleRatchetTests` had this privately and
     /// re-read the whole file for every hit in it; `EveryHeroIsSetInOneFontTests`
@@ -197,8 +200,10 @@ public enum UISources {
         for (file, found) in Dictionary(grouping: hits, by: \.file) {
             let lines = try RepoSource.lines(of: file)
             keep += found.filter { hit in
-                !lines[max(0, hit.line - 3)..<hit.line]
-                    .contains { RepoSource.code($0).contains("Image(systemName:") }
+                !lines[max(0, hit.line - 3)..<hit.line].contains {
+                    let code = RepoSource.code($0)
+                    return code.contains("Image(systemName:") || code.contains("systemImage:")
+                }
             }
         }
         return keep.sorted { ($0.file, $0.line) < ($1.file, $1.line) }

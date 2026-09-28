@@ -149,8 +149,9 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
     /// It is a live change on **one** control, not two mounts compared — the
     /// pin is written once, on `Coordinator.hasPinnedMetric`, which is already
     /// behind us here, and the
-    /// same `NSView` survives the change (`AStyleChosenInTheBarReachesTheBarTests`
-    /// holds the tracker to that). So this reads the one path where
+    /// same `NSView` survives the change, since the style reaches it here as
+    /// an environment value and not as a new identity. So this reads the one
+    /// path where
     /// `sizeThatFits` still has to answer live, and it goes red for a
     /// `sizeThatFits` that remembers what it said the first time.
     func testAStyleChosenLaterStillGivesSwiftUIANewWidth() throws {

@@ -1193,8 +1193,9 @@
 "Tools" = "工具";
 "Copy for a bug report" = "复制以用于问题报告";
 "Page header" = "页面标题栏";
-"Window title" = "窗口标题";
-"Module icon and name" = "模块图标和名称";
+"With Icon" = "带图标";
+"Without Icon" = "不带图标";
+"Always Collapse Search" = "始终折叠搜索";
 "Text Only" = "仅文本";
 "Icon Only" = "仅图标";
 "Icon and Text" = "图标和文本";

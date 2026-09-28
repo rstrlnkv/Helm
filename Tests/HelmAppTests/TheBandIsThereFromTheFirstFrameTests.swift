@@ -108,6 +108,10 @@ final class TheBandIsThereFromTheFirstFrameTests: XCTestCase {
                 }
             }
             .helmToolbarBackdrop()
+            // macOS 27's band, named rather than read off this Mac: on 26 the
+            // band is the system's and there is nothing of Helm's to read
+            // (`HelmBandChoice`).
+            .environment(\.helmBandChoice, .onMacOS(27))
             // A page without one drops the window's toolbar, and with it the
             // safe area the band is drawn in.
             .toolbar { ToolbarSpacer(.fixed, placement: .navigation) }

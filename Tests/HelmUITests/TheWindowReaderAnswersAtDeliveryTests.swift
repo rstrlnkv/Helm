@@ -23,8 +23,9 @@ import HelmTestSupport
 /// - the view moves to a **different** window during the hop, so "the window"
 ///   the delivery answers for is not the one the call was made in;
 /// - **two** readers in one window — the shape the app actually mounts
-///   (`SettingsWindow.swift:207` and `:288`, sidebar and detail), and the
-///   reason the measured trace showed the unmount landing twice per launch.
+///   (`SettingsSplitViewController.viewDidLoad` in `SettingsWindow.swift`, once for
+///   `SettingsSidebar` and once for `SettingsDetail`), and the reason the measured
+///   trace showed the unmount landing twice per launch.
 ///
 /// Every case above is red against the pre-fix `report()`, which sampled
 /// `window.isVisible` before `DispatchQueue.main.async`, as is the three-round
