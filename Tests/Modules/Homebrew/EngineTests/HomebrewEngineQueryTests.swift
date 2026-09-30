@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 // MARK: - Fakes
@@ -9,7 +10,7 @@ private struct FixedLocator: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 /// A runner that answers the way `brew` itself does, as observed on Homebrew

@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmContract
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// brew can vanish between `status()` and the press: the page loads its status
@@ -21,7 +22,7 @@ final class AVanishedBrewIsNotASilentPressTests: XCTestCase {
         func brewPath() -> String? { nil }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
     /// Must never be reached: with no brew there is nothing to launch. A call
     /// arriving here is its own failure.

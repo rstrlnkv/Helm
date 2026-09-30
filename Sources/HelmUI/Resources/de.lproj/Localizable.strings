@@ -252,7 +252,6 @@
 "Helm Settings" = "Helm-Einstellungen";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm lässt sich mit VoiceOver bedienen: Jedes Bedienelement sagt jetzt, was es ist. Der Regel-Editor kündigte nichts an und war ohne Sicht nicht bedienbar.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm konnte abstürzen, wenn ein Programm genau dann endete, während das VPN-Modul die Liste der laufenden Programme las.";
-"Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm lädt Homebrews eigenes Installationsprogramm und führt es aus. macOS fragt einmal nach einem Adminpasswort, um /opt/homebrew anzulegen.";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm stellt sich vor. Bei einer neuen Installation öffnet sich einmal ein kurzer Rundgang: was Helm ist, dann ein Bildschirm je Modul, mit Zurück, Weiter und Überspringen. Er erzählt nur — nichts wird eingeschaltet, nach keiner Berechtigung gefragt. War Helm schon installiert, siehst du ihn ebenfalls einmal: Autopilot und Duplikate kamen ohne ein Wort.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm besteht aus Modulen. Jedes erledigt eine Sache, und was du nicht brauchst, schaltest du ab.";
 "Helm is missing permissions it needs" = "Helm fehlen benötigte Berechtigungen";
@@ -265,6 +264,7 @@
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS zeigt eine eigene Anzeige. Schalte sie in den Tastatur-Einstellungen aus, sonst hast du zwei.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew ist nicht mehr installiert.";
+"Helm quit while Homebrew was still being installed. The installation may not have finished." = "Helm wurde beendet, während Homebrew installiert wurde. Die Installation ist womöglich nicht abgeschlossen.";
 "Homebrew isn’t installed" = "Homebrew ist nicht installiert";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew-Modul: installierte Pakete, Updates, Suche und Installation, mit Live-Konsole und Paketbeschreibungen.";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew entfernt es sofort. Es landet nicht im Papierkorb und lässt sich nicht zurückholen.";
@@ -510,6 +510,12 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Stopp stoppt den Festplatten-Scan, und die freigegebene Größe bei Duplikaten zählt die Kopien, die gehen.";
 "Stop watching" = "Nicht mehr beobachten";
 "Stopped" = "Gestoppt";
+"command line developer tools" = "Command Line Developer Tools";
+"Stop waiting" = "Nicht mehr warten";
+"Cancelled" = "Abgebrochen";
+"Installing Homebrew" = "Homebrew wird installiert";
+"Administrator authorization was cancelled, so Homebrew was not installed." = "Die Administratorautorisierung wurde abgebrochen, daher wurde Homebrew nicht installiert.";
+"macOS could not prepare /opt/homebrew, so Homebrew was not installed." = "macOS konnte /opt/homebrew nicht vorbereiten, daher wurde Homebrew nicht installiert.";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "Wird ein Festplatten-Scan gestoppt, bleibt erhalten, was er gemessen hat. Bisher verschwand der Ring und du landetest wieder bei der Volume-Auswahl — nach einer Minute Zusehen. Der Baum bleibt jetzt, als gestoppt gekennzeichnet — und wird nicht für das nächste Mal behalten, denn in einem unfertigen Scan kann ein Ordner mehr enthalten als angezeigt.";
 "Style" = "Stil";
 "Switched on, but macOS is withholding what it needs" = "Eingeschaltet, aber macOS hält zurück, was es braucht";
@@ -1174,12 +1180,12 @@
 "It no longer meets Homebrew’s conditions for a cask." = "Es erfüllt die Bedingungen von Homebrew für ein Cask nicht mehr.";
 "It does not pass the macOS Gatekeeper check." = "Es besteht die Gatekeeper-Prüfung von macOS nicht.";
 "Health" = "Zustand";
-"Caution" = "Achtung";
 "Problem" = "Problem";
 "Checking this Mac…" = "Dieser Mac wird geprüft…";
 "Nothing to fix." = "Es gibt nichts zu beheben.";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew hat nicht geantwortet, daher ist über diesen Mac derzeit nichts bekannt.";
-"Select a finding or a part of the configuration" = "Wählen Sie einen Befund oder einen Teil der Konfiguration";
+"Homebrew checked this Mac and found nothing to report." = "Homebrew hat diesen Mac geprüft und nichts Auffälliges gefunden.";
+"Homebrew itself says: if everything you use it for works, you can ignore these." = "Homebrew selbst schreibt: Wenn alles, wofür du es benutzt, funktioniert, kannst du das ignorieren.";
 "Helm reads this as" = "Helm liest das so";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew hat hier keinen Befehl genannt — es hat gesagt, was nicht stimmt, und es dabei belassen. Die Zeile darüber ist Helms eigene Lesart davon.";
 "Run" = "Ausführen";
@@ -1187,7 +1193,6 @@
 "Copy" = "Kopieren";
 "Helm does not run this one. It is here to read and to copy." = "Helm führt diesen Befehl nicht aus. Er steht hier zum Lesen und Kopieren.";
 "Helm checked the command again and would not run it." = "Helm hat den Befehl erneut geprüft und ihn nicht ausgeführt.";
-"Checkup" = "Prüfung";
 "Configuration" = "Konfiguration";
 "Machine" = "Rechner";
 "Tools" = "Werkzeuge";

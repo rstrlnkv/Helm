@@ -38,7 +38,7 @@ final class ANewBrewDoesNotInheritTheOldCellarTests: XCTestCase {
     }
 
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Answers a different Cellar per brew path, so "the list came from the

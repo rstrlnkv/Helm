@@ -22,7 +22,7 @@ import Module_Homebrew_Engine
         return HomebrewEngine(locator: ports.locator, runner: ports.runner,
                               privileged: ports.privileged, user: NSUserName(),
                               marker: ports.marker, popularity: ports.popularity,
-                              weight: ports.weight)
+                              weight: ports.weight, tools: ports.tools, ticker: ports.ticker)
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }

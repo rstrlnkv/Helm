@@ -217,7 +217,7 @@ final class AWordNotHereIsAskedAfterAPauseTests: XCTestCase {
         await waitForASearch(transport)
         XCTAssertEqual(transport.searches, ["zzqq"], "precondition: the first ask went out")
 
-        vm.segment = .health
+        vm.segment = .updates
         try? await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(transport.searches, ["zzqq"], """
             \(transport.searches) — switching tabs asked brew again for a word it had \
@@ -465,35 +465,42 @@ final class AWordNotHereIsAskedAfterAPauseTests: XCTestCase {
             """)
     }
 
-    /// **The same fix's third branch: `brew config`, which carried no
-    /// reading at all before this pass.** `ownListShowsNothing`'s `.health`
-    /// case used to
-    /// ask `config != nil`, which a refusal never sets — so a refused
-    /// `brew config` left this gate reading "never asked" forever and a word
-    /// typed under Состояние was never asked about, refusal or not. This
-    /// `Counter` answers no `.config` and no `.doctor` case at all, which
-    /// `client.request` reads as a refusal the same way an explicit throw
-    /// does. Mutation: read `config != nil` again in `ownListShowsNothing`
-    /// instead of `configReading`, and this test goes red.
-    func testARefusedConfigStillFiresThePauseOnceTheRefusalLands() async {
+    /// **Состояние asks nothing, and the word waits for a tab that can show
+    /// the answer.** The "Available to install" section is not drawn under
+    /// Состояние — a search for a package is not a question about this Mac's
+    /// health — so a `brew search` asked from there would be paid for and never
+    /// seen. Neither the pause nor Return asks; the word stays in the field,
+    /// and the first package tab it is carried to asks for it as it always did.
+    ///
+    /// The `Counter` answers no `.config` and no `.doctor` case at all, which
+    /// `client.request` reads as a refusal — the reading that used to be the
+    /// one an unseen ask was armed by. Mutation, run 2026-09-29: answering
+    /// `shownInstalled.isEmpty` from `ownListShowsNothing`'s `.health` arm
+    /// instead of `false` turned this case red.
+    func testAWordTypedUnderTheHealthTabIsNotAsked() async {
         let (transport, vm) = model()
         await vm.loadIfNeeded()
         vm.segment = .health
+        await vm.refreshConfig()
         await vm.refreshDoctor()
         XCTAssertNotEqual(vm.doctor, .notAsked, "precondition: doctor has been asked at least once")
 
-        // Typed before `config` has resolved at all — `configReading` is
-        // still `.notAsked`, so `ownListShowsNothing` arms nothing yet.
         vm.query = "zzqq"
-        await waitForASearch(transport, deadline: .milliseconds(200))
-        XCTAssertEqual(transport.searches, [], "precondition: config has not resolved yet")
+        await waitForASearch(transport, deadline: .milliseconds(300))
+        XCTAssertEqual(transport.searches, [], """
+            \(transport.searches) — a word typed under Состояние went to `brew search`, for an \
+            answer the tab has no place to draw
+            """)
 
-        await vm.refreshConfig()
+        vm.searchNow()
+        await waitForASearch(transport, deadline: .milliseconds(300))
+        XCTAssertEqual(transport.searches, [], "Return under Состояние asked brew about a package")
 
+        vm.segment = .installed
         await waitForASearch(transport)
         XCTAssertEqual(transport.searches, ["zzqq"], """
-            \(transport.searches) — "zzqq" was typed before `brew config` had resolved and \
-            never asked once the refusal landed
+            \(transport.searches) — the word did not survive the trip to a tab that draws the \
+            section, so nothing ever asked about it
             """)
     }
 }

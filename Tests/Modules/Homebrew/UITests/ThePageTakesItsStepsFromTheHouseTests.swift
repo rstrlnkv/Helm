@@ -25,7 +25,7 @@ import XCTest
 /// | Upgrade all, from its column's trailing edge | 8 pt | 20 pt |
 /// | the list's leading edge, in its pane | 12 pt | 0 pt |
 /// | a row's content, from the pane | 28 pt | 16 pt |
-/// | the console well | 160 pt tall | 148 pt, ten lines |
+/// | the console well | 160 pt tall | ten lines (`consoleLinesShown`) |
 /// | the fix command's well | radius 10 | radius 6 |
 ///
 /// The row figure is the one that says why the list inset mattered: 16 pt is
@@ -137,7 +137,7 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
     /// in than every other list screen's — which is half of what `helmListRow`
     /// exists to undo.
     func testTheListsAreInsetLikeEveryOtherListInTheApp() async throws {
-        for segment in [HomebrewViewModel.Segment.installed, .updates, .health] {
+        for segment in [HomebrewViewModel.Segment.installed, .updates] {
             let (_, mount) = await page(width: 984, segment: segment)
             let list = try XCTUnwrap(list(mount), "no list drew for \(segment)")
             XCTAssertEqual(list.minX, 0, accuracy: 0.5, """
@@ -158,14 +158,70 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
         }
     }
 
+    /// **Both of this page's package lists are striped, and the Health tab is
+    /// not a list at all.** Installed and Updates are one `packageList`, read
+    /// once per tab so a call site that lost `helmStripedList(rowPitch:)`
+    /// cannot hide behind the other. Состояние draws paragraphs, one to three of
+    /// them, with nothing for a stripe to keep the eye on
+    /// (`HomebrewHealthPage`): it mounts no table, so it has no stripe to
+    /// draw and no phantom ones under its last row.
+    func testTheListsAreStripedAndTheHealthTabIsNoList() async throws {
+        for segment in [HomebrewViewModel.Segment.installed, .updates] {
+            let (_, mount) = await page(width: 984, segment: segment)
+            let tables = mount.host.everyView(ofType: NSTableView.self)
+            XCTAssertFalse(tables.isEmpty, "\(segment): no NSTableView under the mount")
+            for table in tables {
+                XCTAssertTrue(table.usesAlternatingRowBackgroundColors,
+                              "\(segment): its list is not striped")
+            }
+        }
+        let (_, health) = await page(width: 984, segment: .health)
+        XCTAssertTrue(health.host.everyView(ofType: NSTableView.self).isEmpty, """
+            the Health tab mounts a table again — a striped list of one to three findings draws \
+            more stripes than rows
+            """)
+    }
+
+    /// **Below the last row, the stripe repeats at the pitch the page
+    /// declares, and the rows are laid out at that same step.** Both lists
+    /// pass `HelmSpace.s8` and neither row builder carries a minimum of its
+    /// own any more, so a row that is not the pitch is a second number
+    /// back in the page — measured 2026-09-29 the rows draw 40 pt at a
+    /// 40 pt pitch (36 before the pitch was declared). A short Updates or a
+    /// filtered Installed list ends inside the pane, so the empty area below it
+    /// is on screen; `StripedListPitch.realRowHeights` leaves the `Section`
+    /// headers out of the rows it reads.
+    func testTheEmptyAreaRepeatsAtTheDeclaredPitchAndTheRowsAreLaidOutAtIt() async throws {
+        for segment in [HomebrewViewModel.Segment.installed, .updates] {
+            let (_, mount) = await page(width: 984, segment: segment)
+            let tables = mount.host.everyView(ofType: NSTableView.self)
+            XCTAssertFalse(tables.isEmpty, "\(segment): no NSTableView under the mount")
+            for table in tables {
+                XCTAssertEqual(table.rowHeight, HelmSpace.s8, accuracy: 0.5, """
+                    \(segment): the empty area repeats at \(table.rowHeight) pt where the \
+                    page declared \(HelmSpace.s8)
+                    """)
+                let rows = StripedListPitch.realRowHeights(in: table)
+                XCTAssertFalse(rows.isEmpty, "\(segment): no non-header row to measure")
+                for height in rows {
+                    XCTAssertEqual(height, HelmSpace.s8, accuracy: 0.5, """
+                        \(segment): a row is \(height) pt where the page lays its rows out \
+                        at \(HelmSpace.s8)
+                        """)
+                }
+            }
+        }
+    }
+
     // MARK: - The console
 
     /// **Ten lines, and the number is derived rather than typed.**
     ///
     /// It was a bare `160`, which is on no ladder and carried no reason anywhere.
-    /// The arithmetic is recomputed here from `NSFont` rather than copied, so a
-    /// macOS release that lays SF Mono out differently moves both together
-    /// instead of leaving this test asserting yesterday's constant.
+    /// The height is measured here off ten lines SwiftUI itself lays out, and
+    /// not recomputed from a font's metrics: the two disagreed by a point a
+    /// line, and a test that repeats the page's formula agrees with it by
+    /// construction.
     func testTheConsoleIsTenLinesOfWhatBrewPrinted() async throws {
         let transport = Cellar()
         let mvm = ModuleViewModel(transport: transport)
@@ -187,11 +243,15 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
         renders.append(mount)
         mount.settle(60)
 
-        let face = NSFont.monospacedSystemFont(
-            ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .regular)
-        let line = (face.ascender - face.descender + face.leading).rounded(.up)
-        let lines = CGFloat(HomebrewSettingsPage.consoleLinesShown)
-        let expected = line * lines + HelmSpace.s1 * (lines - 1)
+        // What SwiftUI lays out for ten of these lines, taken from the stack
+        // itself rather than from a line height multiplied out: `NSFont`
+        // reports 13 pt for this face where SwiftUI draws 14, and a formula
+        // built on the first is green over a box that cuts the tenth line.
+        let lines = HomebrewSettingsPage.consoleLinesShown
+        let stack = NSHostingView(rootView: VStack(alignment: .leading, spacing: HelmSpace.s1) {
+            ForEach(0..<lines, id: \.self) { _ in Text("M").font(HomebrewSettingsPage.consoleFont) }
+        })
+        let expected = stack.fittingSize.height + HomebrewSettingsPage.consoleInset * 2
 
         // The one well on the page taller than a control: the console's.
         let blocks = wells(mount).filter { $0.frame.height > 100 }
@@ -202,7 +262,7 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
         let console = try XCTUnwrap(blocks.first)
         XCTAssertEqual(console.frame.height, expected, accuracy: 1, """
             the console is \(console.frame.height) pt where ten lines of the face it draws in \
-            is \(expected) — a height that is neither derived from what it shows nor on a step
+            is \(expected) with the text's inset above and below — a height that is neither derived from what it shows nor on a step
             """)
         XCTAssertEqual(console.radius, HelmRadius.card, accuracy: 0.01, """
             the console is drawn at radius \(console.radius); a block-sized well takes the \
@@ -214,11 +274,11 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
 
     /// **A one-line field well takes the control corner, not the card's.**
     ///
-    /// The fix command drew at `HelmRadius.card`, which made the smallest box in
-    /// the inspector as round as the cards around it and the 148 pt console.
+    /// The fix command drew at `HelmRadius.card`, which made the smallest box on
+    /// the page as round as the cards around it and the console.
     ///
-    /// **Only the one-line boxes are asked.** The inspector is now built of
-    /// cards — the finding's body and the card the command sits in are both
+    /// **Only the one-line boxes are asked.** The Health page is built of
+    /// cards — the findings card and the configuration card are both
     /// `helmCard`, at the card radius, and wider than 100 pt — so «every rounded
     /// layer in the pane» is no longer a set that should share one corner. A
     /// field well is one line of text and its padding; a card holding even one
@@ -237,26 +297,26 @@ final class ThePageTakesItsStepsFromTheHouseTests: XCTestCase {
             the finding carries no judged fix, so no command well is drawn and this case \
             measures nothing — `DoctorFix.judge` did not admit `uninstall openssl@3`
             """)
-        hb.select(issue.id)
+        // The only finding, so it is drawn open and nothing is pressed.
         mount.settle(40)
 
-        // The command sits in the inspector's scrolled pane, which is the one
-        // container on this page that is not the list.
+        // The command sits in the Health page's own scroll view, the one
+        // container on this page that is not a list.
         let pane = try XCTUnwrap(mount.host.everyView(named: "HostingScrollView")
             .map { $0.convert($0.bounds, to: mount.host) }
-            .max(by: { $0.width < $1.width }), "the inspector never mounted")
+            .max(by: { $0.width < $1.width }), "the Health page never mounted")
         let inside = wells(mount).filter {
             $0.frame.midX >= pane.minX && $0.frame.midX <= pane.maxX
                 && $0.frame.midY >= pane.minY && $0.frame.midY <= pane.maxY
                 && $0.frame.width > 100 && $0.frame.height < Self.oneLineWell
         }
         XCTAssertFalse(inside.isEmpty, """
-            no one-line well wider than 100 pt drew inside the inspector, so the fix block is \
+            no one-line well wider than 100 pt drew inside the Health page, so the fix block is \
             not on screen and there is no radius here to judge
             """)
         for well in inside {
             XCTAssertEqual(well.radius, HelmRadius.ctl, accuracy: 0.01, """
-                a \(Int(well.frame.width))×\(Int(well.frame.height)) pt well in the inspector \
+                a \(Int(well.frame.width))×\(Int(well.frame.height)) pt well on the Health page \
                 is drawn at radius \(well.radius) where this page's field wells are \
                 \(HelmRadius.ctl)
                 """)

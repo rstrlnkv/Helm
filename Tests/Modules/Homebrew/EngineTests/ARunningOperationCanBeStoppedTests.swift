@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmContract
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A long operation used to have exactly one exit: the child's own EOF. A brew
@@ -17,7 +18,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// A handle the way the real one is: terminating it does not finish the

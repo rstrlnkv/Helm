@@ -184,8 +184,7 @@ final class TheInspectorDoesNotWaitForInfoTests: XCTestCase {
         guard case let .package(subject) = InspectorState.of(
             segment: model.segment, selected: model.selected, installed: model.installed,
             outdated: model.outdated, loadedOutdated: model.loadedOutdated,
-            hits: model.searchHits, issues: model.issues,
-            config: model.configGroups, descriptions: model.descriptions)
+            hits: model.searchHits, descriptions: model.descriptions)
         else { return nil }
         return subject
     }

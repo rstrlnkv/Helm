@@ -73,15 +73,28 @@ public enum HelmA11y {
     /// rotor gets `.isButton` and nothing else — so the state has to be said,
     /// and a control whose whole purpose is to open and close must say it.
     ///
-    /// Read out of the system's own tables rather than translated: searching
-    /// every `.loctable` macOS ships for the strings whose English is
-    /// "expanded" / "collapsed" gives seven of the eight. Four of the first
-    /// attempt's eight guesses were wrong — French says *condensé*, not
-    /// *réduit*; Japanese says 折りたたまれています, not 閉じています; Russian
-    /// spells it without the ё it is normally written with.
+    /// **One pair for the whole app** — the panel, the settings row's ⓘ, the
+    /// Keep Awake tile and the Homebrew health page all say it through this,
+    /// because a second pair with its own words would have a person hearing one
+    /// state under two names.
     ///
-    /// Portuguese is the exception: no system table carries it, so it is a
-    /// translation, and it is the only one here that is.
+    /// Read out of the system's own tables rather than translated: the words
+    /// are the stand-alone `expanded` and `collapsed` entries of
+    /// `/System/Library/PrivateFrameworks/ScreenReader.framework/Versions/A/Resources/SCRGeneral.loctable`,
+    /// which VoiceOver itself draws from; zh is `zh_CN` and pt is `pt_BR`. The
+    /// table's spellings are kept as they stand: French says *condensé* for
+    /// collapsed, Japanese 下位項目が折りたたまれました, and Russian spells it
+    /// without the ё it is normally written with.
+    ///
+    /// **Lower case in every language.** The value is read inside a sentence
+    /// (`PanelChrome` joins it to a count with a comma) as often as alone, and
+    /// speech does not hear case. The table is lower case itself except French,
+    /// whose stand-alone entries are capitalised while its `expanded. %@` is not.
+    ///
+    /// Japanese `expanded` is the exception to «the stand-alone entry»: there it
+    /// reads 字間広く, wide letter spacing, paired with `condensed`, a typography
+    /// term. The table's own phrases for an opened row — `row %lu expanded` and
+    /// `expanded. %@` — say 表示されました, so that is what Japanese keeps.
     public static func expanded(_ isExpanded: Bool) -> String {
         isExpanded
             ? L("expanded")

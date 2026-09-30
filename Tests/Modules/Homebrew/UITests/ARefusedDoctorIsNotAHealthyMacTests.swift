@@ -187,19 +187,21 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
         XCTAssertEqual(HealthListState.of(hb.doctor), .unexaminable)
     }
 
-    /// And a selection does not outlive the finding it stands for — the rule
-    /// every other segment already carries, since a stale finding on screen has
-    /// a live button under it.
-    func testARefusalDropsTheSelection() async {
+    /// And the verdict follows the reading down: a refusal after an answer is
+    /// «nothing is known», and never the last verdict with the findings taken
+    /// off — the page draws `HealthScreen.of`, so this is where a stale
+    /// «Findings: 1» over a Mac that has just failed to be examined would show.
+    func testARefusalMovesTheVerdictToUnexaminable() async {
         let (hb, _, clinic) = model([Self.deprecated])
-        hb.segment = .health
         await hb.refreshDoctor()
-        hb.select(Self.deprecated.id)
-        XCTAssertEqual(hb.selected, Self.deprecated.id, "precondition: the selection was made")
+        XCTAssertEqual(HealthScreen.of(hb.doctor, config: []).verdict, .findings(1),
+                       "precondition: the finding was read")
 
         clinic.issues = nil
         await hb.refreshDoctor()
-        XCTAssertNil(hb.selected, "the inspector still describes a finding nothing answered for")
+        let screen = HealthScreen.of(hb.doctor, config: [])
+        XCTAssertEqual(screen.verdict, .unexaminable)
+        XCTAssertEqual(screen.findings, [], "the page still names a finding nothing answered for")
     }
 
     // MARK: - The verdict the page draws
@@ -315,19 +317,27 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     /// an empty fact. `.stopped` is the only nil, and it is nil because the arm
     /// above draws its own pill for it: the person asked for that end.
     func testEveryFailureReasonHasSomethingToSay() {
+        // The whole state, because `.installerFailed` names its exit code and
+        // the code is on the state: a note built from a state with none would
+        // be a note about a case the engine never sends.
+        func failed(_ reason: OpFailureReason) -> OpState {
+            OpState(phase: .failed, label: "install Homebrew", exitCode: 3, reason: reason)
+        }
         AppLanguage.each { language in
             for reason in OpFailureReason.allCases where reason != .stopped {
-                let note = HomebrewSettingsPage.failureNote(reason)
+                let note = HomebrewSettingsPage.failureNote(failed(reason))
                 XCTAssertNotNil(note, """
                     \(language.rawValue): \(reason.rawValue) draws «Failed» and no reason, so \
                     the person is told the operation failed and nothing about why
                     """)
                 XCTAssertFalse(note?.isEmpty ?? true, "\(language.rawValue): \(reason.rawValue)")
             }
-            let notes = OpFailureReason.allCases.compactMap(HomebrewSettingsPage.failureNote)
+            XCTAssertNil(HomebrewSettingsPage.failureNote(failed(.stopped)),
+                         "\(language.rawValue): a Stop the person pressed is not a failure to explain")
+            let notes = OpFailureReason.allCases.compactMap { HomebrewSettingsPage.failureNote(failed($0)) }
             XCTAssertEqual(Set(notes).count, notes.count, """
                 \(language.rawValue): two reasons share a sentence, so the page says the same \
-                thing about brew vanishing and about a command it judged again and refused
+                thing about two different endings
                 """)
         }
     }
@@ -365,7 +375,7 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
 
     // MARK: - The fix, read off a mounted page
 
-    /// Every focus ring on the health screen with `issue` selected — which is
+    /// Every focus ring on the health screen — which is
     /// what a bordered control is in this tree, and the reading
     /// `TheNarrowBandActsInEverySegmentTests` already takes for the same
     /// question. A SwiftUI `Button` is not an `NSButton` here: it hosts as
@@ -373,17 +383,15 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     /// is to measure and the counts below are read against each other.
     ///
     /// The appearance is named, for `RenderedInk`'s reason — an unnamed one is
-    /// a reading of whatever this Mac is set to at this hour. The width is well
-    /// above `HomebrewSplit`'s threshold, so the list and the finding are side
-    /// by side and both are mounted.
-    private func rings(_ issues: [DoctorIssue], selecting issue: DoctorIssue?,
-                       cellar: [String] = []) async -> Int {
+    /// a reading of whatever this Mac is set to at this hour. Each fixture is
+    /// the only finding, which the page draws open (`HealthScreen.isOpen`), so
+    /// nothing has to be pressed for its body and its fix to be mounted.
+    private func rings(_ issues: [DoctorIssue], cellar: [String] = []) async -> Int {
         let (hb, mvm, clinic) = model(issues)
         clinic.installed = cellar.map { BrewPackage(name: $0, version: "1.0.0", isCask: false) }
         await hb.loadIfNeeded()
         hb.segment = .health
         await hb.refreshDoctor()
-        hb.select(issue?.id)
         let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                   width: 900, height: 700, appearance: .aqua)
         mount.settle(25)
@@ -408,10 +416,9 @@ final class ARefusedDoctorIsNotAHealthyMacTests: XCTestCase {
     func testWhatEachKindOfFixOffers() async {
         // One body, arriving unjudged the way the engine sends it, and three
         // Cellars: the page's own verdict is what differs between the last two.
-        let noFix = await rings([Self.postflight], selecting: Self.postflight)
-        let copyOnly = await rings([Self.unjudged], selecting: Self.unjudged, cellar: ["wget"])
-        let runnable = await rings([Self.unjudged], selecting: Self.unjudged,
-                                   cellar: ["periphery"])
+        let noFix = await rings([Self.postflight])
+        let copyOnly = await rings([Self.unjudged], cellar: ["wget"])
+        let runnable = await rings([Self.unjudged], cellar: ["periphery"])
 
         XCTAssertEqual(copyOnly, noFix + 1, """
             a copy-only fix drew \(copyOnly - noFix) control(s) where it must draw exactly one, \

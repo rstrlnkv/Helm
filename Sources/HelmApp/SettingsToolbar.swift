@@ -54,7 +54,9 @@ import HelmUI
 ///
 /// A page says what it wants through `HelmWindowToolbarChannel`
 /// (`HelmWindowToolbar.swift` in `HelmUI`) — `nil` when a page has never
-/// declared, which draws the name and nothing else. `SettingsWindow` owns
+/// declared, which draws the name — plus a status-bearing page's own
+/// `helm.status`, under `PageBarStyle.moduleName` — and nothing else.
+/// `SettingsWindow` owns
 /// both this object and the channel, and hands the channel to the detail
 /// pane's environment so a page never needs `HelmApp` in scope to publish
 /// into it.
@@ -107,6 +109,22 @@ import HelmUI
     nonisolated(unsafe) private var pageBarStyleWatch: NSObjectProtocol?
     nonisolated(unsafe) private var switcherStyleWatch: NSObjectProtocol?
     nonisolated(unsafe) private var alwaysCollapseSearchWatch: NSObjectProtocol?
+    /// **The status this class copies into `helm.status`/the name zone is a
+    /// stored reading (`pageIdentity()`), not a live one** — `refresh()` is
+    /// the only thing that re-reads it, and until this pair nothing called
+    /// `refresh()` when a module's own enabled flag moved: the "Turn On"
+    /// button on the module's own empty page (`SettingsWindow`'s own `page`)
+    /// and the sidebar's arrangement toggle (`SidebarComposerList`) both reach
+    /// `ModuleHost.setEnabled` with no selection change and no redeclare, so
+    /// `watchActivity()` stayed armed for a module that had just stopped
+    /// existing, or never got armed for one that had just started. Not
+    /// filtered to the module named in the notification: every other trigger
+    /// here (language, page-bar style, switcher style) already calls
+    /// `refreshAndResettle()` unconditionally, and `pageIdentity()` only ever
+    /// reads `currentSelection`'s own module, so a toggle on some other page
+    /// is a harmless extra refresh.
+    nonisolated(unsafe) private var moduleEnabledWatch: NSObjectProtocol?
+    nonisolated(unsafe) private var moduleDisabledWatch: NSObjectProtocol?
     /// **M1**, and the bar's own right-click: catches a press on the
     /// magnifier before AppKit's own `searchButtonClicked:` does, so a fold
     /// the rest verdict calls for is done before the field starts growing, and the menu
@@ -137,10 +155,11 @@ import HelmUI
     /// such frames, and still far under anything a person reads as a wait.
     static var settleInterval: TimeInterval = 0.1
     /// The current module's own "my state moved" signal, the same one
-    /// `ModuleDetailView`'s trailing badge subscribes to — re-armed on every
-    /// page change so the name zone's status word does not go stale for the
-    /// rest of the visit the way the badge did before it had one
-    /// (`ModuleDetailView.activityRevision`'s own history).
+    /// `ModuleDetailView`'s own `activityRevision` subscribes to — re-armed on
+    /// every page change so the status zone's word does not go stale for the
+    /// rest of the visit the way `ModuleDetailView`'s own status word did
+    /// before it had a signal like this one (`ModuleDetailView
+    /// .activityRevision`'s own history).
     private var activityWatch: AnyCancellable?
 
     /// **The selection `refresh()` is answering for, resolved once per call
@@ -207,6 +226,16 @@ import HelmUI
     private var fellBackToNameOnly: Set<String> = []
 
     private static let nameID = NSToolbarItem.Identifier("helm.name")
+    /// **The module's status, at the bar's trailing edge — the owner,
+    /// 2026-09-28: «Давай вернем его в правую часть».** Only ever appended
+    /// on the shared name-only bar, under `.moduleName` (`identifiers()`):
+    /// the one shape every status-bearing page (Keep Awake, VPN, Keyboard)
+    /// actually uses, since none of them also declares tabs, actions or
+    /// search (`ModuleDescriptor.activity` and `.helmWindowToolbar` are
+    /// never both true for one module today) — see `makeStatusItem`'s own
+    /// header for why an always-present, empty-when-nil item is what keeps
+    /// this bar's identifier list from ever churning.
+    private static let statusID = NSToolbarItem.Identifier("helm.status")
     private static let tabsID = NSToolbarItem.Identifier("helm.tabs")
     private static let searchID = NSToolbarItem.Identifier("helm.search")
     /// **One item for the whole capsule**, not one per action — see
@@ -243,6 +272,18 @@ import HelmUI
         alwaysCollapseSearchWatch = NotificationCenter.default.addObserver(
             forName: .helmAlwaysCollapseSearchChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.restEverySearch() }
+        }
+        // See `moduleEnabledWatch`'s own header: the module a person is
+        // looking at can be switched on or off with no selection change at
+        // all, and `refresh()` is the only thing that re-arms `watchActivity`
+        // and re-reads `pageIdentity()`.
+        moduleEnabledWatch = NotificationCenter.default.addObserver(
+            forName: .helmModuleEnabled, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshAndResettle() }
+        }
+        moduleDisabledWatch = NotificationCenter.default.addObserver(
+            forName: .helmModuleDisabled, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshAndResettle() }
         }
     }
 
@@ -375,6 +416,8 @@ import HelmUI
         if let pageBarStyleWatch { NotificationCenter.default.removeObserver(pageBarStyleWatch) }
         if let switcherStyleWatch { NotificationCenter.default.removeObserver(switcherStyleWatch) }
         if let alwaysCollapseSearchWatch { NotificationCenter.default.removeObserver(alwaysCollapseSearchWatch) }
+        if let moduleEnabledWatch { NotificationCenter.default.removeObserver(moduleEnabledWatch) }
+        if let moduleDisabledWatch { NotificationCenter.default.removeObserver(moduleDisabledWatch) }
         if let windowResizeWatch { NotificationCenter.default.removeObserver(windowResizeWatch) }
         if let windowEndLiveResizeWatch { NotificationCenter.default.removeObserver(windowEndLiveResizeWatch) }
         if let splitResizeWatch { NotificationCenter.default.removeObserver(splitResizeWatch) }
@@ -394,9 +437,10 @@ import HelmUI
         let symbol: String
         let tint: Color
         let title: String
-        /// What `ModuleDetailView`'s own trailing view drew beside the name —
-        /// nil for every page that has no notion of running, exactly as that
-        /// view answers nil for the same modules. See `NameZoneView`.
+        /// The module's own status word and whether it counts as active —
+        /// nil for every page that has no notion of running (`moduleStatus`
+        /// below). Drawn by `StatusZoneView`, at the trailing edge of the
+        /// shared name-only bar, not by `NameZoneView` (the owner, 2026-09-28).
         let status: (word: String, active: Bool)?
     }
 
@@ -426,9 +470,9 @@ import HelmUI
         }
     }
 
-    /// The same reading `ModuleDetailView.statusWord` and its trailing badge
-    /// take, kept in step here rather than redrawn a third way — nil where
-    /// the module answers nil, which is most of them.
+    /// The same reading `ModuleDetailView.statusWord` takes, kept in step
+    /// here rather than redrawn a second way — nil where the module answers
+    /// nil, which is most of them.
     private func moduleStatus(_ id: String, _ descriptor: any ModuleDescriptor) -> (word: String, active: Bool)? {
         guard let live = model.host.liveModule(id), let activity = descriptor.activity(live.vm) else {
             return nil
@@ -758,7 +802,9 @@ import HelmUI
     /// own header names ("automatically configures it to track the divider
     /// of the sidebar if one is discovered … windows with
     /// `NSWindowStyleMaskFullSizeContentView`"), so it is never conditional
-    /// here — only the name item is, on the page-bar style. A hidden action
+    /// here — only the name item, and the name-only bar's own trailing status
+    /// zone, are, on the page-bar style (`style == .moduleName` gates both,
+    /// below). A hidden action
     /// never removes this list's one `helm.actions` entry — which declared
     /// actions actually draw is the capsule's own model
     /// (`HelmToolbarAction.isVisible`), not `NSToolbarItem.isHidden`, which
@@ -770,6 +816,22 @@ import HelmUI
         if style == .moduleName { list.append(nameID) }
         guard let content, !content.tabs.isEmpty || !content.actions.isEmpty || content.search != nil
         else {
+            // **The shared name-only bar's own trailing zone** — `helm.status`
+            // is always present here, whether or not the page currently on
+            // screen has anything to say (drawing nothing when it does not,
+            // `makeStatusItem`'s own header): the identifier list this bar
+            // carries must never depend on which of General, About, Log, Keep
+            // Awake, VPN or Keyboard happens to be selected, since all of them
+            // share this one cached `PageBar` (`obtainNameOnlyBar`) and a
+            // list that changed shape between them would be exactly the
+            // per-visit churn this class exists to rule out. Never on a page
+            // that also declares tabs, actions or search — no page does both
+            // today — and never under `.windowTitle`, where the status stays
+            // the window's own subtitle (`PageBarStyle`'s own header).
+            if style == .moduleName {
+                list.append(.flexibleSpace)
+                list.append(statusID)
+            }
             return list
         }
         list.append(.flexibleSpace)
@@ -833,6 +895,7 @@ import HelmUI
         guard let bar = barsByToolbarID[ObjectIdentifier(toolbar)] else { return nil }
         switch identifier {
         case Self.nameID: return makeNameItem(bar)
+        case Self.statusID: return makeStatusItem(bar)
         case Self.tabsID: return makeTabsItem(bar)
         case Self.searchID: return makeSearchItem(bar)
         case Self.actionsID: return makeActionsItem(bar)
@@ -862,10 +925,15 @@ import HelmUI
 
     // MARK: - The name zone
 
-    /// A cheap snapshot of what the last `patchName()` actually drew — so a
-    /// page republishing on every keystroke (Homebrew's console, `hb`'s own
-    /// `@Published`) does not hand `NameZoneView` a fresh root view, and the
-    /// hosting view underneath it, on every one of them.
+    /// A cheap snapshot of what the last `patchName()` actually drew, into
+    /// **both** the name host and the status host — so a page republishing on
+    /// every keystroke (Homebrew's console, `hb`'s own `@Published`) does not
+    /// hand either view a fresh root view, and the hosting view underneath
+    /// it, on every one of them. One snapshot for both, not two: the two
+    /// hosts dim by the same numbers and key off the same `appearsActive`
+    /// (`NameZoneView` and `StatusZoneView`, each its own `.opacity()`), so
+    /// there is nothing meaningful about being stale for one and not the
+    /// other.
     ///
     /// `fileprivate`, not `private`: `PageBar` below is a sibling top-level
     /// type in this same file rather than an extension of this class, and it
@@ -880,6 +948,21 @@ import HelmUI
         /// still redraws — see `NameZoneView.appearsActive`'s own header.
         let appearsActive: Bool
         let titlebarIsTransparent: Bool
+        /// The bar's own height — the status's trailing inset follows it
+        /// (`StatusZoneView.trailingInset(for:barHeight:)`), so a bar that
+        /// grows or shrinks redraws the item — `watchWindowResize`
+        /// patches the attached bar on every resize, which is what reads it.
+        let barHeight: CGFloat?
+    }
+
+    /// **The title bar and toolbar's own height** — the window's frame less
+    /// its content layout rect, which is what AppKit centres every toolbar
+    /// item in and therefore what sets the gap between the window's top edge
+    /// and a shorter item's top (52 pt in a 700 pt window on macOS 27.2, read
+    /// in `TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests`).
+    /// `nil` before there is a window.
+    private var barHeight: CGFloat? {
+        window.map { $0.frame.height - $0.contentLayoutRect.height }
     }
 
     /// The title bar the name zone is drawn under, read off the window
@@ -891,7 +974,7 @@ import HelmUI
         let item = NSToolbarItem(itemIdentifier: Self.nameID)
         let identity = pageIdentity()
         let hosting = NSHostingView(rootView: NameZoneView(symbol: identity.symbol, tint: identity.tint,
-                                                           title: identity.title, status: identity.status,
+                                                           title: identity.title,
                                                            iconStyle: AppSettings.sidebarStyle,
                                                            appearsActive: windowAppearsActive,
                                                            titlebarIsTransparent: titlebarIsTransparent))
@@ -910,27 +993,75 @@ import HelmUI
                                             statusActive: identity.status?.active ?? false,
                                             iconStyle: AppSettings.sidebarStyle,
                                             appearsActive: windowAppearsActive,
-                                            titlebarIsTransparent: titlebarIsTransparent)
+                                            titlebarIsTransparent: titlebarIsTransparent,
+                                            barHeight: barHeight)
         return item
     }
 
+    /// **The trailing status item on the shared name-only bar** — the owner,
+    /// 2026-09-28: «Давай вернем его в правую часть». Always present in that
+    /// bar's own identifier list (`identifiers()`'s own header), whether or
+    /// not the page on screen right now has a status at all, so a page
+    /// switch among General, About, Log, Keep Awake, VPN and Keyboard —
+    /// which all share this one cached bar — never rewrites `itemIdentifiers`
+    /// (this class's own header on why that churns). **Empty and out of
+    /// VoiceOver when there is nothing to say** — `StatusZoneView`'s own
+    /// `accessibilityHidden(status == nil)` — rather than `NSToolbarItem
+    /// .isHidden`: an item this bar's own `identifiers()` always lists but
+    /// sometimes hides would need `watchedItems`/`checkOverflow`'s fold
+    /// machinery to know to ignore it, and that machinery already skips the
+    /// name-only bar entirely (`checkOverflow`'s own `key != Self.nameOnlyKey`
+    /// guard) — an item that occasionally reported `isHidden` would be the
+    /// one case nothing here is built to read.
+    private func makeStatusItem(_ bar: PageBar) -> NSToolbarItem {
+        let item = NSToolbarItem(itemIdentifier: Self.statusID)
+        let identity = pageIdentity()
+        let hosting = NSHostingView(rootView: StatusZoneView(
+            status: identity.status, appearsActive: windowAppearsActive,
+            titlebarIsTransparent: titlebarIsTransparent,
+            trailingInset: StatusZoneView.trailingInset(for: identity.status, barHeight: barHeight)))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        item.view = hosting
+        item.isBordered = false
+        item.label = identity.status?.word ?? ""
+        bar.statusItem = item
+        bar.statusHost = hosting
+        return item
+    }
+
+    /// **Patches the name host and, where this bar carries one, the status
+    /// host — one snapshot gates both** (`NameSnapshot`'s own header).
+    /// `bar.statusHost` is `nil` on every bar except the shared name-only one
+    /// (`makeStatusItem` is only ever reached through that bar's own
+    /// identifier list), so a page with tabs, actions or search simply has
+    /// nothing here to patch.
     private func patchName(_ bar: PageBar) {
-        guard let nameHost = bar.nameHost else { return }
+        guard bar.nameHost != nil || bar.statusHost != nil else { return }
         let identity = pageIdentity()
         let snapshot = NameSnapshot(symbol: identity.symbol, title: identity.title,
                                     statusWord: identity.status?.word,
                                     statusActive: identity.status?.active ?? false,
                                     iconStyle: AppSettings.sidebarStyle,
                                     appearsActive: windowAppearsActive,
-                                    titlebarIsTransparent: titlebarIsTransparent)
+                                    titlebarIsTransparent: titlebarIsTransparent,
+                                    barHeight: barHeight)
         bar.nameItem?.label = identity.title
+        bar.statusItem?.label = identity.status?.word ?? ""
         guard snapshot != bar.lastNameSnapshot else { return }
         bar.lastNameSnapshot = snapshot
-        nameHost.rootView = NameZoneView(symbol: identity.symbol, tint: identity.tint,
-                                         title: identity.title, status: identity.status,
-                                         iconStyle: AppSettings.sidebarStyle,
-                                         appearsActive: windowAppearsActive,
-                                         titlebarIsTransparent: titlebarIsTransparent)
+        if let nameHost = bar.nameHost {
+            nameHost.rootView = NameZoneView(symbol: identity.symbol, tint: identity.tint,
+                                             title: identity.title,
+                                             iconStyle: AppSettings.sidebarStyle,
+                                             appearsActive: windowAppearsActive,
+                                             titlebarIsTransparent: titlebarIsTransparent)
+        }
+        if let statusHost = bar.statusHost {
+            statusHost.rootView = StatusZoneView(
+                status: identity.status, appearsActive: windowAppearsActive,
+                titlebarIsTransparent: titlebarIsTransparent,
+                trailingInset: StatusZoneView.trailingInset(for: identity.status, barHeight: barHeight))
+        }
     }
 
     /// Whichever bar is on screen right now, patched with the page identity
@@ -1397,11 +1528,11 @@ import HelmUI
         }
         windowResizeWatch = NotificationCenter.default.addObserver(
             forName: NSWindow.didResizeNotification, object: window, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduleSettleForAttachedBar() }
+            MainActor.assumeIsolated { self?.windowDidResize() }
         }
         windowEndLiveResizeWatch = NotificationCenter.default.addObserver(
             forName: NSWindow.didEndLiveResizeNotification, object: window, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduleSettleForAttachedBar() }
+            MainActor.assumeIsolated { self?.windowDidResize() }
         }
         // Not scoped to `object: window` — an `NSSplitView`'s own
         // notification names only itself, so this filters on the split
@@ -1418,6 +1549,16 @@ import HelmUI
                 self.scheduleSettleForAttachedBar()
             }
         }
+    }
+
+    /// A resize can come with a new bar height (full screen, expected to
+    /// change it; not measured) and no page switch, and the status's trailing inset follows that
+    /// height (`NameSnapshot.barHeight`): re-read it before settling. The
+    /// snapshot gate keeps the offscreen ink measurement to the resizes that
+    /// moved something it reads.
+    private func windowDidResize() {
+        patchAttachedName()
+        scheduleSettleForAttachedBar()
     }
 
     private func scheduleSettleForAttachedBar() {
@@ -3393,6 +3534,12 @@ private final class PageBar {
 
     var nameItem: NSToolbarItem?
     var nameHost: NSHostingView<NameZoneView>?
+    /// **Only on the shared name-only bar** — `nil` on every bar built for a
+    /// page that declares tabs, actions or search, since `identifiers()`
+    /// never lists `helm.status` there. See `SettingsToolbar.makeStatusItem`'s
+    /// own header.
+    var statusItem: NSToolbarItem?
+    var statusHost: NSHostingView<StatusZoneView>?
     var tabsItem: NSToolbarItem?
     // `AnyView`: the Helm-style switcher is wrapped with `.environment(...)`
     // before it is hosted (`helmSwitcherView`), which changes the concrete
@@ -3566,17 +3713,33 @@ private final class PageBar {
     }
 }
 
-/// The name zone's own view: the module's plate, its name and its status, the
-/// way `PageBarStyle`'s `.moduleName` arm and `ModuleDetailView`'s trailing
-/// view drew them before the bridge — reused here rather than redrawn, to the
-/// letter of size, spacing and which shape each state gets: a badge for
-/// active, quiet text for idle, nothing for a module with no notion of
-/// running at all.
+/// **The dim shared by every piece of the name zone's own row, and by the
+/// trailing status item beside it** — dimming together, as one unit,
+/// applies across both `NSToolbarItem`s that carry the name's ink now that
+/// the status has moved to the bar's trailing edge (2026-09-28), even though
+/// the two are separate hosted views with nothing to composite together:
+/// each reads the same four numbers, from `SettingsToolbar.patchName`'s one
+/// snapshot, so they move on exactly the same call.
+@MainActor func helmNameZoneInactiveOpacity(dark: Bool, titlebarIsTransparent: Bool) -> Double {
+    switch (dark, titlebarIsTransparent) {
+    case (true, true): NameZoneView.inactiveOpacityDark
+    case (false, true): NameZoneView.inactiveOpacityLight
+    case (true, false): NameZoneView.inactiveOpacityOpaqueDark
+    case (false, false): NameZoneView.inactiveOpacityOpaqueLight
+    }
+}
+
+/// The name zone's own view: the module's plate and its name, the way
+/// `PageBarStyle`'s `.moduleName` arm drew them before the bridge — reused
+/// here rather than redrawn, to the letter of size and spacing. **The status
+/// word or badge that used to sit
+/// beside the name here draws in `StatusZoneView` instead**, at the bar's
+/// trailing edge (the owner, 2026-09-28: «Давай вернем его в правую часть») —
+/// this view no longer knows a module has one.
 struct NameZoneView: View {
     let symbol: String
     let tint: Color
     let title: String
-    let status: (word: String, active: Bool)?
     let iconStyle: SidebarStyle
     /// **The same `isKeyWindow || isMainWindow` signal the actions capsule
     /// reads** (`SettingsToolbar.windowAppearsActive`'s own header has the
@@ -3604,13 +3767,15 @@ struct NameZoneView: View {
     /// `HelmToolbarActionsCapsule.inactiveGlyphOpacity…` uses for the
     /// capsule's own glyph, kept as its own pair of constants for the same
     /// reason that one is two and not one: the two appearances do not agree.
-    /// **Every other ink in this zone dims by the same amount, as one unit.**
+    /// **The plate dims by the same amount as the title, as one unit.**
     /// AppKit draws a title as a single readable line and offers no separate
-    /// dimming for an icon or a word beside it — there is no distinct AppKit
-    /// reading to give the plate, the badge or the quiet status text of their
-    /// own, and picking one anyway would be a difference this zone's own
-    /// model (a module's name, standing in for the window's title) does not
-    /// have. One `.opacity()` on the whole row is that decision, not three.
+    /// dimming for an icon beside it — there is no distinct AppKit reading to
+    /// give the plate and the title of their own, and picking one anyway
+    /// would be a difference this zone's own model (a module's name, standing
+    /// in for the window's title) does not have. One `.opacity()` on the
+    /// whole row is that decision. `StatusZoneView` dims by the same two
+    /// numbers, in its own `.opacity()`, so the two read as one row even
+    /// though nothing composites them together — its own header.
     static let inactiveOpacityDark: Double = 0.30    // (92−37)/(222−37) ≈ 0.2973
     static let inactiveOpacityLight: Double = 0.33   // (247−177)/(247−38) ≈ 0.3349
     /// **The same two under the opaque title bar — macOS 26's, by the band
@@ -3628,12 +3793,7 @@ struct NameZoneView: View {
     static let inactiveOpacityOpaqueLight: Double = 0.40
 
     private var inactiveOpacity: Double {
-        switch (colorScheme == .dark, titlebarIsTransparent) {
-        case (true, true): Self.inactiveOpacityDark
-        case (false, true): Self.inactiveOpacityLight
-        case (true, false): Self.inactiveOpacityOpaqueDark
-        case (false, false): Self.inactiveOpacityOpaqueLight
-        }
+        helmNameZoneInactiveOpacity(dark: colorScheme == .dark, titlebarIsTransparent: titlebarIsTransparent)
     }
 
     var body: some View {
@@ -3643,15 +3803,6 @@ struct NameZoneView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .tracking(-0.2)
                 .lineLimit(1)
-            if let status {
-                if status.active {
-                    HelmBadge(status.word, tint: HelmSignal.success)
-                } else {
-                    Text(status.word)
-                        .font(.system(size: 11))
-                        .foregroundStyle(HelmText.quiet)
-                }
-            }
         }
         .padding(.leading, HelmSpace.s5)
         // Hosted outside the pane's own view tree, so the style this reads
@@ -3666,5 +3817,139 @@ struct NameZoneView: View {
         // 0.30/0.33 without this line).
         .compositingGroup()
         .opacity(appearsActive ? 1 : inactiveOpacity)
+    }
+}
+
+/// **The status word or badge, at the shared name-only bar's trailing
+/// edge** — the owner, 2026-09-28: «Давай вернем его в правую часть». A
+/// sibling of `NameZoneView` rather than a branch inside it, because the two
+/// now live in separate `NSToolbarItem`s (`SettingsToolbar.makeStatusItem`),
+/// drawing the two shapes a status has always had — a badge for active,
+/// quiet text for idle, nothing for a module with no notion of running — and
+/// dimming by the same four numbers (`helmNameZoneInactiveOpacity`) so the
+/// two read as one row even though nothing composites them together.
+///
+/// **The trailing inset is the top gap, not the capsule's 8 pt** — the owner,
+/// 2026-09-29: «Бейдж "Активно" / "Не активно" слишком близко находится к
+/// правому краю экрана. Отступ сверху и справа должны быть одинаковые».
+/// `trailingInset(for:barHeight:)` answers it: the gap from the
+/// window's top edge to the drawn top of the badge's fill (or of the quiet
+/// word's ink) is what AppKit's vertical centring leaves in a bar
+/// `barHeight` tall, and the same distance is put between the drawn right
+/// edge and the window's. The actions capsule keeps AppKit's own 8 pt
+/// (`HelmToolbarActionsCapsule.edgeMargin`): it is 36 pt tall in a 52 pt
+/// bar, so its top gap is that 8 already, and only this item is shorter
+/// than the bar by enough to matter.
+struct StatusZoneView: View {
+    let status: (word: String, active: Bool)?
+    let appearsActive: Bool
+    let titlebarIsTransparent: Bool
+    /// Between the hosted view's own trailing edge and what it draws — see
+    /// `trailingInset(for:barHeight:)`.
+    let trailingInset: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var inactiveOpacity: Double {
+        helmNameZoneInactiveOpacity(dark: colorScheme == .dark, titlebarIsTransparent: titlebarIsTransparent)
+    }
+
+    var body: some View {
+        Group {
+            if let status {
+                if status.active {
+                    HelmBadge(status.word, tint: HelmSignal.success)
+                } else {
+                    Text(status.word)
+                        .font(.system(size: 11))
+                        .foregroundStyle(HelmText.quiet)
+                }
+            }
+        }
+        .padding(.trailing, trailingInset)
+        .compositingGroup()
+        .opacity(appearsActive ? 1 : inactiveOpacity)
+        // **Out of VoiceOver on every page with nothing to say** — General,
+        // About, Log and every module with no notion of running — since this
+        // item is always in the bar's own identifier list, empty or not
+        // (`makeStatusItem`'s own header): a placeholder is not a name, and
+        // an unnamed control is worse than one that is simply not there.
+        .accessibilityHidden(status == nil)
+    }
+}
+
+extension StatusZoneView {
+
+    /// **The distance AppKit leaves between an `isBordered = false` last
+    /// item's own box and the window's trailing edge** — measured, and pinned
+    /// by `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests` (box margin 4 pt
+    /// at 1060 pt): the 8 pt of a bordered item less the
+    /// `HelmToolbarActionsCapsule.edgeMargin` an unbordered one is short.
+    private static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
+
+    /// Where the drawing lies inside its own box, in points from the box's
+    /// top and from its trailing edge — read off one offscreen render of the
+    /// content with no inset, since a word's ink is not its box (the badge's
+    /// fill is the whole box; a quiet word's cap line sits some way under the
+    /// box's top and its last letter a fraction short of its right edge, and
+    /// both move with the language).
+    private struct Ink { let boxHeight: CGFloat, top: CGFloat, trailing: CGFloat }
+
+    /// `nil` where the render draws nothing (an empty status, or a view AppKit
+    /// would not photograph): the caller then keeps the capsule's own inset.
+    ///
+    /// **Measured the way the placed item is laid out and drawn** — inside a
+    /// window of its own that is never shown, so `fittingSize` keeps the
+    /// backing scale's half points (a window-less hosting view was read, by an
+    /// earlier tester, rounding a 56.5 pt word up to 57, and the inset came
+    /// out half a point short).
+    private static func ink(of status: (word: String, active: Bool)) -> Ink? {
+        let host = NSHostingView(rootView: StatusZoneView(status: status, appearsActive: true,
+                                                          titlebarIsTransparent: true, trailingInset: 0))
+        host.sizingOptions = [.intrinsicContentSize]
+        let probe = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 100),
+                             styleMask: .borderless, backing: .buffered, defer: true)
+        probe.isReleasedWhenClosed = false
+        probe.contentView = host
+        let size = host.fittingSize
+        probe.setContentSize(size)
+        host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        guard size.width > 0, size.height > 0,
+              let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
+        host.cacheDisplay(in: host.bounds, to: rep)
+        guard let data = rep.bitmapData, rep.samplesPerPixel == 4, rep.bitsPerSample == 8 else { return nil }
+        let alphaOffset = rep.bitmapFormat.contains(.alphaFirst) ? 0 : 3
+        let scale = CGFloat(rep.pixelsWide) / size.width
+        var top = Int.max, right = -1
+        for y in 0..<rep.pixelsHigh {
+            for x in 0..<rep.pixelsWide where Int(data[y * rep.bytesPerRow + x * 4 + alphaOffset]) > 12 {
+                top = min(top, y)
+                right = max(right, x)
+            }
+        }
+        guard right >= 0 else { return nil }
+        return Ink(boxHeight: size.height, top: CGFloat(top) / scale,
+                   trailing: size.width - CGFloat(right + 1) / scale)
+    }
+
+    /// **The inset that puts the drawn right edge as far from the window's
+    /// right edge as the drawn top is from its top.** The top gap is what
+    /// AppKit's centring leaves: `(barHeight - box) / 2` above the box, plus
+    /// the ink's own offset inside it (`Ink.top`); `barHeight` is the window
+    /// frame less its content layout rect (`SettingsToolbar.barHeight`). The
+    /// right gap is `boxMargin` (AppKit's own margin), this inset and the
+    /// ink's own trailing bearing, so the inset is the top gap less the other
+    /// two.
+    ///
+    /// A not-a-number bar height (no window yet reads as none at all) and an
+    /// unreadable render both keep `HelmToolbarActionsCapsule.edgeMargin`,
+    /// the inset this item had before it followed the top; a result outside
+    /// `0…barHeight` is clamped, a not-a-number to 0 — no inset is the
+    /// nearer of the two wrong answers, an inset that eats the bar is not.
+    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?) -> CGFloat {
+        guard let status, let barHeight, barHeight.isFinite, barHeight > 0,
+              let ink = ink(of: status) else { return HelmToolbarActionsCapsule.edgeMargin }
+        let topGap = (barHeight - ink.boxHeight) / 2 + ink.top
+        return (topGap - boxMargin - ink.trailing).clamped(to: 0...barHeight, whenNotANumber: 0)
     }
 }

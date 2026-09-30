@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmContract
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **The reading that drew the button is older than the press.**
@@ -30,7 +31,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// A brew whose Cellar can change between two calls, because that is the

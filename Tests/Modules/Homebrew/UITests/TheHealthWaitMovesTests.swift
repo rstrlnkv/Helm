@@ -10,16 +10,17 @@ import HelmUI
 /// **Состояние waited without moving.**
 ///
 /// `brew doctor` is the slowest query in the module, and `refresh` asks
-/// `brew config` first on purpose so the Configuration heading is on screen
-/// while the Checkup one is still saying what it is waiting for. That is exactly
-/// the case `HealthScreen.of` turns into a *row*: a note under the Checkup
-/// heading rather than the centred `HelmBusyState`. Measured 2026-09-16 at the
-/// pane the app draws: «Проверка этого Mac…» was a plain 36 pt text row with
-/// **no progress indicator anywhere on the page**, while every other wait in
-/// this module and in the app spins — and the refusal row beside it was the same
-/// grey row in the same place, differing only in its sentence.
+/// `brew config` first on purpose so the configuration is on screen while the
+/// verdict is still saying what it is waiting for. Measured 2026-09-16 at the
+/// pane the app draws, on the list this tab used to be: «Проверка этого Mac…»
+/// was a plain 36 pt text row with **no progress indicator anywhere on the
+/// page**, while every other wait in this module and in the app spins — and the
+/// refusal row beside it was the same grey row in the same place, differing only
+/// in its sentence.
 ///
-/// So: the wait moves and the refusal does not, and the two are not one drawing.
+/// The verdict is the page's first line now (`HomebrewHealthPage`), and it holds
+/// the same rule: the wait moves and the refusal does not, and the two are not
+/// one drawing.
 @MainActor
 final class TheHealthWaitMovesTests: XCTestCase {
 
@@ -75,9 +76,9 @@ final class TheHealthWaitMovesTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 4_000_000)
         }
         let spinners = mount.host.everyView(ofType: NSProgressIndicator.self).count
-        // The list's own band, not the page: the status line below it is not
-        // part of this claim and differs for reasons of its own, which would
-        // make two pages differ whatever the Checkup row said
+        // The page's own band, not the whole pane: the status line below it is
+        // not part of this claim and differs for reasons of its own, which would
+        // make two pages differ whatever the verdict said
         // (`RenderedInk.bytes`).
         let picture = mount.pixels(60...420)
         mount.drop()
@@ -87,7 +88,7 @@ final class TheHealthWaitMovesTests: XCTestCase {
         return Reading(spinners: spinners, picture: picture)
     }
 
-    func testTheCheckupWaitMovesAndItsRefusalDoesNot() async {
+    func testTheVerdictsWaitMovesAndItsRefusalDoesNot() async {
         let waiting = await health(.hanging)
         let refused = await health(.refusing)
 

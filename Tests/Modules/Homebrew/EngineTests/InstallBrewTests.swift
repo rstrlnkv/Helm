@@ -36,10 +36,10 @@ final class InstallBrewTests: XCTestCase {
     private final class RecordingPrivileged: PrivilegedRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var _scripts: [String] = []
-        let answer: Bool
-        init(answer: Bool) { self.answer = answer }
+        let answer: PrivilegedOutcome
+        init(answer: PrivilegedOutcome) { self.answer = answer }
         var scripts: [String] { lock.lock(); defer { lock.unlock() }; return _scripts }
-        func runAdmin(_ script: String) -> Bool {
+        func runAdmin(_ script: String) -> PrivilegedOutcome {
             lock.lock(); _scripts.append(script); lock.unlock()
             return answer
         }
@@ -125,7 +125,7 @@ final class InstallBrewTests: XCTestCase {
     /// a password prompt for a command that would then be refused teaches the
     /// person to type their password into prompts they cannot judge.
     func testAnImplausibleAccountNameNeverReachesTheRootShell() async {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, transport) = makeEngine(user: "$(whoami)", privileged: privileged, runner: runner)
 
@@ -168,7 +168,7 @@ final class InstallBrewTests: XCTestCase {
     /// The person pressed Cancel at the password dialog. Nothing may download,
     /// the page must say so, and the next attempt must be admitted.
     func testADeclinedDialogDownloadsNothingAndReleasesTheGate() async {
-        let privileged = RecordingPrivileged(answer: false)
+        let privileged = RecordingPrivileged(answer: .declined)
         let runner = HangingRunner()
         let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -178,9 +178,12 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(runner.streamCalls.isEmpty,
                       "the installer ran although the person declined the admin dialog")
 
-        let (state, log) = await replayed(transport)
+        let (state, _) = await replayed(transport)
         XCTAssertEqual(state?.phase, .failed, "a declined dialog must land as a failed state")
-        XCTAssertNotNil(log, "and the console must carry a line saying why")
+        XCTAssertEqual(state?.reason, .authorizationDeclined,
+                       "the page cannot say «cancelled» without the reason — the English console "
+                       + "line that used to say so is gone, the words are the page's")
+        XCTAssertNil(state?.exitCode, "a cancelled dialog has no exit code to show")
 
         engine.installBrew()
         XCTAssertEqual(privileged.scripts.count, 2,
@@ -192,7 +195,7 @@ final class InstallBrewTests: XCTestCase {
     /// `launchctl setenv`, so a bare `mkdir` is whichever `mkdir` was planted —
     /// and the account name inside single quotes, where expansion stops.
     func testTheRootStringNamesToolsAbsolutelyAndQuotesTheAccount() {
-        let privileged = RecordingPrivileged(answer: false)
+        let privileged = RecordingPrivileged(answer: .declined)
         let (engine, _) = makeEngine(user: "helm.tester", privileged: privileged)
 
         engine.installBrew()
@@ -219,9 +222,11 @@ final class InstallBrewTests: XCTestCase {
     /// reports a successful install of nothing. And `NONINTERACTIVE=1`, because
     /// there is no terminal for the installer to ask its questions in: without
     /// it the child waits for a keypress that can never come, forever, holding
-    /// the busy gate (the module has no timeout and no cancel).
+    /// the busy gate (the operation has no deadline of its own; a Stop ends
+    /// it, and so does switching the module off, which terminates the wrapper
+    /// through `deactivate()`).
     func testTheInstallerIsDownloadedToAFileNeverEvaledFromTheNet() {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -239,6 +244,11 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(script.contains("curl"), "nothing downloads the installer: \(script)")
         XCTAssertEqual(call.env["NONINTERACTIVE"], "1",
                        "the installer will stop at its own prompt with no terminal to answer it")
+        XCTAssertEqual(call.env["HOMEBREW_NO_SUDO"], "1",
+                       "the installer probes for sudo and, on a Mac with a NOPASSWD rule, calls one "
+                       + "that has nothing to ask on")
+        XCTAssertEqual(call.env, HomebrewEngine.installerEnvironment,
+                       "the stream got an environment the engine does not declare")
     }
 
     /// The installer stage is not run as root: the admin dialog covers only the
@@ -246,7 +256,7 @@ final class InstallBrewTests: XCTestCase {
     /// `curl | bash` of a network script would be the single worst line in the
     /// app.
     func testTheDownloadedInstallerRunsAsTheUserNotThroughTheDialog() {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -270,7 +280,7 @@ final class InstallBrewTests: XCTestCase {
     /// the dialog, or a person watching one install sees a second password
     /// prompt appear over it.
     func testInstallBrewHoldsTheGateAndIsRefusedBeforeASecondDialog() async {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -298,7 +308,7 @@ final class InstallBrewTests: XCTestCase {
     /// `brew install` streams, pressing Install Homebrew must not put a
     /// password dialog on the screen.
     func testARunningOperationRefusesInstallBrewBeforeTheDialog() {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, _) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -315,7 +325,7 @@ final class InstallBrewTests: XCTestCase {
     /// A failed installer reports the exit code it failed with, and the gate
     /// opens again — the retry is the whole recovery story here.
     func testAFailedInstallerReportsItsExitCodeAndReleasesTheGate() async {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
@@ -325,6 +335,8 @@ final class InstallBrewTests: XCTestCase {
         let (state, _) = await replayed(transport)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.exitCode, 7, "the page cannot say what happened without the code")
+        XCTAssertEqual(state?.reason, .installerFailed,
+                       "a failed installer is named, so the page does not draw a bare code")
 
         engine.installBrew()
         XCTAssertEqual(privileged.scripts.count, 2, "a failed install left the gate shut")
@@ -338,7 +350,7 @@ final class InstallBrewTests: XCTestCase {
     /// press would tell a page reopened mid-operation that the running install
     /// had failed.
     func testABusyRefusalSaysSoWithoutForgingAFailedState() async {
-        let privileged = RecordingPrivileged(answer: true)
+        let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
         let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 

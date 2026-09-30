@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// `HomebrewEngine.config()` — the query, not the parser.
@@ -65,7 +66,7 @@ private struct NoBrew: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class AConfigReadingComesOffStandardOutputTests: XCTestCase {

@@ -16,7 +16,7 @@ final class ATimedOutQueryKeepsTheLastAnswerTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Answers like brew until told to hang the way the bounded runner reports

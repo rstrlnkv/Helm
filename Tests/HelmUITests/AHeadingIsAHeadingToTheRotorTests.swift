@@ -77,10 +77,6 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
                  why: "the inspector's own selected package, beside the badges and version that "
                      + "describe it — the same judgement as `KeysTable.row.name`, a card's title "
                      + "and not a heading over rows"),
-        RowTitle(file: "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift", subject: "issue.title",
-                 why: "the selected `brew doctor` finding's own title, beside the severity badge "
-                     + "that describes it — the same judgement as `subject.name` above, since "
-                     + "what follows is that one finding's prose and not a group of rows"),
     ]
 
     // MARK: - The finding
@@ -204,6 +200,67 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
                          "Sources/Modules/Hosts/UI/KeysTable.swift"] {
             XCTAssertTrue(files.contains(expected), "\(expected) sets no heading this scan can see")
         }
+    }
+
+    // MARK: - The shared title
+
+    /// **`HelmSectionTitle` sets its own 11 pt, not `HelmText.sectionHeading`,
+    /// so the scan above never sees its call sites** — count them with
+    /// `command grep -rn 'HelmSectionTitle(' Sources | command grep -v '//' |
+    /// command grep -vc 'struct HelmSectionTitle'`. The judgement for all of
+    /// them is made once, in the component: it is «the heading over a group of
+    /// rows» by its own doc comment, which is the definition of a header here.
+    /// This holds that the component carries the trait on the `Text` it draws.
+    func testTheSectionTitleComponentCarriesTheTraitItself() throws {
+        let lines = try RepoSource.lines(of: "Sources/HelmUI/DesignSystem/HelmSurfaces.swift")
+
+        XCTAssertEqual(Self.sectionTitleTraitState(in: lines), .marked, """
+            `HelmSectionTitle` draws its `Text` without `.accessibilityAddTraits(.isHeader)`. \
+            Its call sites are not read by the scan above, so none of them is a heading to \
+            the rotor unless each says so by hand.
+            """)
+    }
+
+    private enum TitleState: Equatable { case marked, bare, notFound }
+
+    /// The `Text(title)` inside `struct HelmSectionTitle`, and whether its own
+    /// modifier chain carries the trait. `.notFound` is its own answer so a
+    /// renamed struct fails the test above instead of passing it.
+    private static func sectionTitleTraitState(in lines: [String]) -> TitleState {
+        guard let start = lines.firstIndex(where: {
+            RepoSource.code($0).contains("struct HelmSectionTitle")
+        }), let text = lines.indices.first(where: {
+            $0 > start && RepoSource.code(lines[$0]).contains("Text(title)")
+        }) else { return .notFound }
+        return SwiftSource.modifierChain(from: text, in: lines)
+            .contains(".accessibilityAddTraits(.isHeader)") ? .marked : .bare
+    }
+
+    func testTheTitleReaderTellsTheTraitFromItsAbsence() {
+        let marked = """
+            struct HelmSectionTitle: View {
+                var body: some View {
+                    // .accessibilityAddTraits(.isHeader) said in a comment does not count
+                    Text(title)
+                        .font(.system(size: 11))
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
+            """
+        let bare = """
+            struct HelmSectionTitle: View {
+                var body: some View {
+                    // .accessibilityAddTraits(.isHeader) said in a comment does not count
+                    Text(title)
+                        .font(.system(size: 11))
+                }
+                func other() -> some View { Text("x").accessibilityAddTraits(.isHeader) }
+            }
+            """
+
+        XCTAssertEqual(Self.sectionTitleTraitState(in: marked.components(separatedBy: "\n")), .marked)
+        XCTAssertEqual(Self.sectionTitleTraitState(in: bare.components(separatedBy: "\n")), .bare)
+        XCTAssertEqual(Self.sectionTitleTraitState(in: ["struct Other {}"]), .notFound)
     }
 
     // MARK: - The rule can still fail

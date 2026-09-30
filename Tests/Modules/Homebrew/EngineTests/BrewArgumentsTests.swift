@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// Where a value stops being a value.
@@ -64,7 +65,7 @@ private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class BrewArgumentsTests: XCTestCase {

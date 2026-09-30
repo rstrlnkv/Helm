@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// One long operation at a time — the engine's own first sentence, and nothing
@@ -25,7 +26,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     }
 
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Records what it was asked to run and never finishes it, until a test

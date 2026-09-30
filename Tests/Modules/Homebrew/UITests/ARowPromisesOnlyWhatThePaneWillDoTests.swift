@@ -59,11 +59,10 @@ final class ARowPromisesOnlyWhatThePaneWillDoTests: XCTestCase {
     /// The builders whose rows lead to their own screen, and what each one
     /// draws so the scan can assert the subject before the promise — a row
     /// that stopped being drawn at all would otherwise satisfy a rule about
-    /// how it marks itself. The configuration sections are the third kind of
-    /// pushing row and are built inline; the case below them names those.
+    /// how it marks itself. The Health tab has none: its findings open in
+    /// place and no row there replaces the pane (`HomebrewHealthPage`).
     private static let pushingRows = [
-        (builder: "pkgRow", draws: "Text(name)"),
-        (builder: "issueRow", draws: "Text(issue.title)")
+        (builder: "pkgRow", draws: "Text(name)")
     ]
 
     func testEveryRowThatOpensAScreenAsksForTheMarkAndTheHint() throws {
@@ -86,28 +85,6 @@ final class ARowPromisesOnlyWhatThePaneWillDoTests: XCTestCase {
                           "\(row.builder) carries no hint, so VoiceOver reads its rows exactly as "
                           + "it reads the two-column page's — the press is announced nowhere")
         }
-    }
-
-    /// The configuration rows are built inline in `healthList` rather than in a
-    /// builder of their own, and they push the same way. Named here so adding
-    /// the mark to the findings and forgetting the sections cannot pass.
-    func testTheConfigurationSectionsCarryTheMarkToo() throws {
-        let source = try RepoSource.text(of: Self.page)
-        let code = SwiftSource.uncommented(source)
-        guard let body = SwiftSource.body(of: "healthList", in: code) else {
-            XCTFail("\(Self.page) no longer declares healthList")
-            return
-        }
-        XCTAssertTrue(body.contains("HbStr.configSectionName("),
-                      "healthList no longer draws the configuration sections")
-        // Two rows in this list push — a finding and a section — and the
-        // finding's mark lives in `issueRow`, so a single occurrence here is
-        // the section's own.
-        XCTAssertTrue(body.contains("goesToItsOwnScreen("),
-                      "the configuration sections draw no chevron, so half the rows of Состояние "
-                      + "promise a screen and the other half do not")
-        XCTAssertTrue(body.contains("helmOpensAScreen("),
-                      "the configuration sections carry no hint")
     }
 
     // MARK: - The mark is gated, and so is the hint

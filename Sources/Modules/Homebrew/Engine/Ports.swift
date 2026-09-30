@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 public protocol BrewLocator: Sendable {
     func brewPath() -> String?
@@ -9,6 +10,29 @@ public protocol BrewLocator: Sendable {
 /// exactly as when it exits on its own.
 public protocol RunningProcess: Sendable {
     func terminate()
+}
+
+/// How far a Stop reaches from the process a stream launched.
+///
+/// **`.process` is `Process.terminate()`, and that is not "one TERM to the
+/// child".** On this Mac (Darwin 27.2, measured with a child that started a
+/// member of its own group) it signals the child's whole process group: the
+/// member died, where `kill(pid, SIGTERM)` left it alive. It is what a `brew`
+/// operation gets, and it is wanted: a `curl` or `git` brew started in that
+/// group goes with it (expected from the measurement, not run against a real
+/// brew). A member that moved into a group of its own is not reached. It is
+/// signalled once, and never again.
+///
+/// **`.wholeGroup` is the same reach, checked and repeated**: `killpg` on the
+/// child's group, only while the child leads it, and again 0.1 s and 0.4 s
+/// later while the child is still there. It is for a child that is a shell
+/// running other programs in the foreground — a shell holding a trap does not
+/// run it until its foreground command has ended, and a TERM that lands
+/// between the shell's last check and the `fork` of a program never sees the
+/// program, which the repeat finds.
+public enum StopReach: Sendable {
+    case process
+    case wholeGroup
 }
 
 /// A handle with nothing behind it: a stream that failed to spawn, or a fake
@@ -38,6 +62,16 @@ public protocol ProcessRunner: Sendable {
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
                 onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess
+    /// The same stream with the Stop's reach named. Not required of a fake: the
+    /// default below forwards to the form above and ignores `reach`, which is
+    /// right for a fake with no process. The real runner's form above is
+    /// `.wholeGroup` — a caller that names no reach gets the one that leaves
+    /// nothing behind — and the engine names `.process` for brew's own
+    /// operations, so their Stop is what it was.
+    @discardableResult
+    func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
+                onLine: @escaping @Sendable (String) -> Void,
+                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess
 
     /// Standard output and standard error together, in the order the child
     /// wrote them — for the one query whose whole answer is on the wrong
@@ -58,6 +92,13 @@ public protocol ProcessRunner: Sendable {
 }
 
 public extension ProcessRunner {
+    @discardableResult
+    func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
+                onLine: @escaping @Sendable (String) -> Void,
+                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
+        stream(launchPath, args, env: env, onLine: onLine, onExit: onExit)
+    }
+
     /// Correct for any fake that only speaks String — it pays the copy the
     /// real runner exists to avoid, which a test does not feel.
     func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data) {
@@ -68,8 +109,77 @@ public extension ProcessRunner {
 
 public protocol PrivilegedRunner: Sendable {
     /// Run a shell script with administrator privileges via the native macOS
-    /// password dialog (the user types the password). Returns success.
-    func runAdmin(_ script: String) -> Bool
+    /// password dialog (the user types the password).
+    ///
+    /// **Three answers, not two**, because a person pressing Cancel is the
+    /// ordinary way this ends and a `Bool` folded it into a failed `mkdir`:
+    /// `.done`, `.declined` (the dialog was answered no — nothing ran), and
+    /// `.failed(status)` (root was asked and the script itself failed). Blocking
+    /// for as long as the dialog is up, so the caller is off the cooperative pool.
+    func runAdmin(_ script: String) -> PrivilegedOutcome
+}
+
+/// What filing Apple's request for the Command Line Tools came to.
+///
+/// Three cases, because the three are acted on alike but *said* differently in
+/// the log: a request that was filed and whose window is Apple's from here on,
+/// one the tool refused with a status, and one that did not answer in time.
+public enum ToolsRequest: Equatable, Sendable {
+    case filed
+    case refused(Int32)
+    case timedOut
+}
+
+/// Apple's Command Line Tools as Homebrew's `install.sh` looks for them, and
+/// Apple's own installer for them.
+///
+/// **Four questions, one per thing the engine must never guess.** None of them
+/// is called under the engine's lock: `installerIsRunning` hops to the main
+/// thread on the real port, and the main thread may be waiting for that lock.
+public protocol CommandLineToolsPort: Sendable {
+    /// Whether an executable file is at `path` — the fixed `git` test.
+    func isExecutable(_ path: String) -> Bool
+    /// `xcode-select -p`, or nil: no developer directory selected (exit 2), the
+    /// deadline, a failed launch. All three mean "not by this route" and are
+    /// not told apart, because the answer that follows is the same: the fixed
+    /// path is asked first and this only widens the search.
+    func selectedDeveloperDirectory() -> String?
+    /// `/usr/bin/xcode-select --install`, under a deadline. It files the
+    /// request; the window that follows is Apple's and opens later, on its own.
+    func requestInstall() -> ToolsRequest
+    /// Whether Apple's installer is running now. nil-free on purpose: a reading
+    /// that cannot be taken says false, and the wait rules treat "never seen"
+    /// as no evidence (`CommandLineTools.next`).
+    func installerIsRunning() -> Bool
+}
+
+/// The safe default for an engine built without naming the tools port: the
+/// tools are there, so nothing is asked of Apple and no process is started —
+/// the path every construction older than this port took. A forgetful test
+/// construction must not become `xcode-select` on the owner's Mac.
+public struct ToolsAlreadyInstalled: CommandLineToolsPort {
+    public init() {}
+    public func isExecutable(_ path: String) -> Bool { true }
+    public func selectedDeveloperDirectory() -> String? { nil }
+    public func requestInstall() -> ToolsRequest { .filed }
+    public func installerIsRunning() -> Bool { false }
+}
+
+/// One tick of the wait for Apple's installer, off the main thread; releasing
+/// the token cancels it. The shape of Keep Awake's clock, with a queue that is
+/// not main: what a tick continues into is a blocking password dialog.
+public protocol WaitTicker: Sendable {
+    func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject
+}
+
+/// The safe default: nothing is ever scheduled, so a wait that starts under it
+/// never ticks. Only reachable from a construction that also left
+/// `CommandLineToolsPort` at its default, which never starts a wait.
+public struct NoWaitTicker: WaitTicker {
+    public init() {}
+    public func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
+        NSObject()
+    }
 }
 
 /// Both halves of a reading, as one value.

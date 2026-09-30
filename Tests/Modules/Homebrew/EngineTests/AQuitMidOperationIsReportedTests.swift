@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmTestSupport
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A child brew survives Helm: quit the app mid-`upgrade all` and the install
@@ -16,7 +17,7 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Never finishes unless told to — a quit happens *during* an operation.

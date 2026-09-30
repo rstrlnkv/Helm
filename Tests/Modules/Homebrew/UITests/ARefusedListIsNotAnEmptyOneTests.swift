@@ -74,7 +74,7 @@ final class ARefusedListIsNotAnEmptyOneTests: XCTestCase {
 
     /// **The note itself, one reading at a time.** `packageList`'s own `body`
     /// is nowhere a test can reach, so the mapping it draws from is a
-    /// `static func` instead, the way `healthNote` already is — this is what
+    /// `static func` instead, the way `severityWord` already is — this is what
     /// actually failed before `screen` reached `packageList` at all: every
     /// non-row state answered `HbStr.noMatches` regardless of which one it
     /// was, because the old code asked only `shown.isEmpty`.

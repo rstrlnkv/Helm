@@ -252,7 +252,6 @@
 "Helm Settings" = "Helm 设置";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "现在可以用旁白操作 Helm：每个控件都会说明自己是什么。此前规则编辑器不做任何朗读，看不见就无法使用。";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "当某个程序恰好在 VPN 模块查看运行中程序列表时退出，Helm 可能直接崩溃。";
-"Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm 会下载 Homebrew 官方安装脚本并运行。为创建 /opt/homebrew，macOS 会要求输入一次管理员密码。";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm 会自我介绍了。全新安装时会打开一次简短导览：先说明 Helm 是什么，然后每个模块一屏，可以上一步、下一步或跳过。它只做介绍——不会开启任何功能，也不索取权限。如果你已经在用 Helm，同样会看到一次：自动整理和重复文件当初是悄悄出现的。";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm 由若干模块组成。每个模块只做一件事，不需要的可以关掉。";
 "Helm is missing permissions it needs" = "Helm 缺少所需权限";
@@ -265,6 +264,7 @@
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS 也会显示自己的指示器。请在键盘设置中关闭，否则会有两个。";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew 已被卸载。";
+"Helm quit while Homebrew was still being installed. The installation may not have finished." = "Helm 在安装 Homebrew 期间退出。安装可能未完成。";
 "Homebrew isn’t installed" = "未安装 Homebrew";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew 模块：已安装包、更新、搜索与安装，带实时控制台和包描述。";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew 会立即删除。它不会进入废纸篓，也无法撤销。";
@@ -510,6 +510,12 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止能真正停止磁盘扫描；重复文件的“可释放”数字按实际会删除的副本计算。";
 "Stop watching" = "停止监视";
 "Stopped" = "已停止";
+"command line developer tools" = "命令行开发者工具";
+"Stop waiting" = "停止等待";
+"Cancelled" = "已取消";
+"Installing Homebrew" = "正在安装 Homebrew";
+"Administrator authorization was cancelled, so Homebrew was not installed." = "已取消管理员授权，因此未安装 Homebrew。";
+"macOS could not prepare /opt/homebrew, so Homebrew was not installed." = "macOS 无法准备 /opt/homebrew，因此未安装 Homebrew。";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为“已停止”；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
 "Style" = "样式";
 "Switched on, but macOS is withholding what it needs" = "已开启，但 macOS 未授予它所需的权限";
@@ -1174,12 +1180,12 @@
 "It no longer meets Homebrew’s conditions for a cask." = "它已不再符合 Homebrew 对 cask 的要求。";
 "It does not pass the macOS Gatekeeper check." = "它通不过 macOS 的 Gatekeeper 检查。";
 "Health" = "状态";
-"Caution" = "注意";
 "Problem" = "问题";
 "Checking this Mac…" = "正在检查这台 Mac…";
 "Nothing to fix." = "没有需要修复的地方。";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew 没有回应，因此目前无法得知这台 Mac 的状况。";
-"Select a finding or a part of the configuration" = "请选择一项或配置的一部分";
+"Homebrew checked this Mac and found nothing to report." = "Homebrew 已检查这台 Mac，没有需要报告的内容。";
+"Homebrew itself says: if everything you use it for works, you can ignore these." = "Homebrew 自己说明：如果你用它做的事一切正常，可以忽略这些提示。";
 "Helm reads this as" = "Helm 将其理解为";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew 在这里没有给出任何命令，它只说明了问题所在。上面那行是 Helm 自己的解读。";
 "Run" = "运行";
@@ -1187,7 +1193,6 @@
 "Copy" = "复制";
 "Helm does not run this one. It is here to read and to copy." = "这一条 Helm 不会执行。它放在这里是供你阅读和复制的。";
 "Helm checked the command again and would not run it." = "Helm 重新检查了该命令，没有执行它。";
-"Checkup" = "检查";
 "Configuration" = "配置";
 "Machine" = "本机";
 "Tools" = "工具";

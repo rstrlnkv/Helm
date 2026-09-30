@@ -261,9 +261,10 @@ struct UninstallerSettingsPage: View {
                 List {
                     ForEach(filtered) { app in
                         appRow(app)
+                            .listRowSeparator(.hidden)
                     }
                 }
-                .listStyle(.inset)
+                .helmStripedList(rowPitch: HelmSpace.s8)
             }
             Divider()
             // The same line the review step draws, and for the same reason: it was
@@ -379,7 +380,6 @@ struct UninstallerSettingsPage: View {
             Text(Bytes(app.sizeBytes))
                 .helmFigure().foregroundStyle(HelmText.quiet)
         }
-        .frame(minHeight: 34)
         .contentShape(Rectangle())
         .onTapGesture { uvm.toggleChecked(app.bundleID) }
     }
@@ -399,16 +399,18 @@ struct UninstallerSettingsPage: View {
                             case .leftover(let leftover): leftoverRow(leftover)
                             }
                         }
+                        .listRowSeparator(.hidden)
                         if group.leftovers.isEmpty {
                             Text(UnStr.noLeftoversForApp)
                                 .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                                .listRowSeparator(.hidden)
                         }
                     } header: {
                         groupHeader(group)
                     }
                 }
             }
-            .listStyle(.inset)
+            .helmStripedList(rowPitch: HelmSpace.s8)
 
             Divider()
 
@@ -515,7 +517,6 @@ struct UninstallerSettingsPage: View {
             Text(Bytes(app.sizeBytes))
                 .helmFigure().foregroundStyle(HelmText.quiet)
         }
-        .frame(minHeight: 32)
     }
 
     /// What stayed behind, why, and what to do about it.
@@ -556,12 +557,13 @@ struct UninstallerSettingsPage: View {
                                 .controlSize(.small)
                         }
                         .padding(.vertical, HelmSpace.s1)
+                        .listRowSeparator(.hidden)
                     }
                 } header: {
                     Text(UnStr.couldNotRemove(failures.count))
                 }
             }
-            .listStyle(.inset)
+            .helmStripedList(rowPitch: HelmSpace.s8)
 
             Divider()
             HStack(spacing: HelmSpace.s5) {
@@ -626,7 +628,6 @@ struct UninstallerSettingsPage: View {
             Text(Bytes(leftover.sizeBytes))
                 .helmFigure().foregroundStyle(HelmText.quiet)
         }
-        .frame(minHeight: 32)
     }
 
 }

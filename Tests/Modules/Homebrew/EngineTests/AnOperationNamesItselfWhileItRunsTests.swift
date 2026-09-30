@@ -17,7 +17,7 @@ final class AnOperationNamesItselfWhileItRunsTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
     private final class HangingRunner: ProcessRunner, @unchecked Sendable {
         private let lock = NSLock()

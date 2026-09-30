@@ -252,7 +252,6 @@
 "Helm Settings" = "Helm Settings";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs.";
-"Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew.";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want.";
 "Helm is missing permissions it needs" = "Helm is missing permissions it needs";
@@ -265,6 +264,7 @@
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew is no longer installed.";
+"Helm quit while Homebrew was still being installed. The installation may not have finished." = "Helm quit while Homebrew was still being installed. The installation may not have finished.";
 "Homebrew isn’t installed" = "Homebrew isn’t installed";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions.";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone.";
@@ -510,6 +510,12 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave.";
 "Stop watching" = "Stop watching";
 "Stopped" = "Stopped";
+"command line developer tools" = "command line developer tools";
+"Stop waiting" = "Stop waiting";
+"Cancelled" = "Cancelled";
+"Installing Homebrew" = "Installing Homebrew";
+"Administrator authorization was cancelled, so Homebrew was not installed." = "Administrator authorization was cancelled, so Homebrew was not installed.";
+"macOS could not prepare /opt/homebrew, so Homebrew was not installed." = "macOS could not prepare /opt/homebrew, so Homebrew was not installed.";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time.";
 "Style" = "Style";
 "Switched on, but macOS is withholding what it needs" = "Switched on, but macOS is withholding what it needs";
@@ -1174,12 +1180,12 @@
 "It no longer meets Homebrew’s conditions for a cask." = "It no longer meets Homebrew’s conditions for a cask.";
 "It does not pass the macOS Gatekeeper check." = "It does not pass the macOS Gatekeeper check.";
 "Health" = "Health";
-"Caution" = "Caution";
 "Problem" = "Problem";
 "Checking this Mac…" = "Checking this Mac…";
 "Nothing to fix." = "Nothing to fix.";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew did not answer, so nothing is known about this Mac right now.";
-"Select a finding or a part of the configuration" = "Select a finding or a part of the configuration";
+"Homebrew checked this Mac and found nothing to report." = "Homebrew checked this Mac and found nothing to report.";
+"Homebrew itself says: if everything you use it for works, you can ignore these." = "Homebrew itself says: if everything you use it for works, you can ignore these.";
 "Helm reads this as" = "Helm reads this as";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that.";
 "Run" = "Run";
@@ -1187,7 +1193,6 @@
 "Copy" = "Copy";
 "Helm does not run this one. It is here to read and to copy." = "Helm does not run this one. It is here to read and to copy.";
 "Helm checked the command again and would not run it." = "Helm checked the command again and would not run it.";
-"Checkup" = "Checkup";
 "Configuration" = "Configuration";
 "Machine" = "Machine";
 "Tools" = "Tools";

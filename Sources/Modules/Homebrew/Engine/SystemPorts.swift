@@ -209,6 +209,13 @@ public struct ShellProcessRunner: ProcessRunner {
     public func stream(_ launchPath: String, _ args: [String], env: [String: String],
                        onLine: @escaping @Sendable (String) -> Void,
                        onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
+        stream(launchPath, args, env: env, reach: .wholeGroup, onLine: onLine, onExit: onExit)
+    }
+
+    @discardableResult
+    public func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
+                       onLine: @escaping @Sendable (String) -> Void,
+                       onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: launchPath)
         p.arguments = args
@@ -250,19 +257,66 @@ public struct ShellProcessRunner: ProcessRunner {
         }
         // The handle retains the `Process`: it used to be a local nobody kept,
         // leaving the running child with no way to be addressed again.
-        return LiveProcess(p)
+        return LiveProcess(p, reach: reach)
     }
 }
 
 /// The real handle: SIGTERM, so a brew mid-operation gets to clean up after
 /// itself — never KILL, which is how half-written Cellar state is made. The
 /// exit still arrives through the pipe's EOF, the same way an honest exit does.
+///
+/// **`.wholeGroup` signals the group, and only a group this child leads.**
+/// `Process` makes the child its own group leader (measured on this Mac: group
+/// id equal to pid), so `killpg(pid)` reaches the child and everything it
+/// started that has not left the group; the leader's id is checked first,
+/// because a group id that is not the child's own is somebody else's, and then
+/// this falls back to `Process.terminate()`.
+///
+/// **`.process` is `Process.terminate()` and nothing more — which on this Mac
+/// already reaches the child's group** (`StopReach` has the measurement). The
+/// two reaches differ in the leader check and in the repeats, not in whom the
+/// first signal reaches; a `kill(pid)` for `.process` would leave a member of
+/// the group alive after the Stop (measured), which for a brew operation is the
+/// `curl` or `git` it started (expected, not run against a real brew).
+///
+/// **The group is signalled again while the leader is still there.** A shell
+/// that forks a program at the instant the group is signalled can create it
+/// just after the signal was delivered, and the signal never sees it: measured
+/// on this Mac with the installer's wrapper and a single `killpg`, 2 of 100 Stops at random moments
+/// across its first 18 ms left the download or the installer running. The
+/// shell notices its own TERM at the next command boundary, so it forks
+/// nothing further, and a second signal a moment later finds that one program.
+/// It stops as soon as the leader is gone, and asks nothing of a leader that
+/// answers the first.
 private struct LiveProcess: RunningProcess, @unchecked Sendable {
     let process: Process
-    init(_ process: Process) { self.process = process }
+    let reach: StopReach
+    /// Seconds after the first signal at which the group is signalled again.
+    private static let repeats: [TimeInterval] = [0.1, 0.4]
+
+    init(_ process: Process, reach: StopReach) {
+        self.process = process
+        self.reach = reach
+    }
+
     func terminate() {
         guard process.isRunning else { return }
-        process.terminate()
+        let pid = process.processIdentifier
+        guard reach == .wholeGroup, signalGroup(pid) else {
+            process.terminate()
+            return
+        }
+        let handle = self
+        for delay in Self.repeats {
+            DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [handle] in
+                guard handle.process.isRunning else { return }
+                _ = handle.signalGroup(pid)
+            }
+        }
+    }
+
+    private func signalGroup(_ pid: pid_t) -> Bool {
+        pid > 1 && getpgid(pid) == pid && killpg(pid, SIGTERM) == 0
     }
 }
 
@@ -270,11 +324,86 @@ private struct LiveProcess: RunningProcess, @unchecked Sendable {
 
 public struct OSAPrivilegedRunner: PrivilegedRunner {
     public init() {}
-    public func runAdmin(_ script: String) -> Bool {
-        // `AppleScript` in HelmRuntime — the escaping was written out here and
-        // in `SudoersRule`, and Keep Awake's copy carried the comment saying so.
-        let osa = AppleScript.administratorShellScript(script)
-        return HelmProcess.run("/usr/bin/osascript", ["-e", osa]).status == 0
+    /// Through `PrivilegedRun`, which is what makes a cancelled dialog
+    /// readable: this used to run `osascript` bare, so the `(-128)` that says
+    /// «the person pressed Cancel» went to the standard error `HelmProcess`
+    /// discards, and every cancel read as a failed `mkdir`. The escaping stays
+    /// in `AppleScript`, reached through it.
+    public func runAdmin(_ script: String) -> PrivilegedOutcome {
+        PrivilegedRun.run(script)
+    }
+}
+
+// MARK: - Command Line Tools
+
+/// Apple's Command Line Tools, read and asked for on the real machine.
+///
+/// Both short launches go through `HelmProcess`, and so through the launch
+/// guard: `xcode-select` is a system tool and still a launch, and a launch that
+/// raises must not take the app with it.
+public struct SystemCommandLineTools: CommandLineToolsPort {
+    /// The bundle id of Apple's installer, read out of the `Info.plist` of
+    /// `/System/Library/CoreServices/Install Command Line Developer Tools.app`
+    /// on macOS 27.2 — **not read on 26**, which is where the owner's virtual
+    /// machine runs. That app is `LSUIElement`: no Dock icon, but it is in the
+    /// running list. A wrong identity here degrades to a wait that ends at Stop
+    /// waiting (`CommandLineTools.next`, rule 4), and the log says so once.
+    private static let installerBundleID = "com.apple.dt.CommandLineTools.installondemand"
+
+    /// The request is only filed; whether it asks for a password on 26 was not
+    /// measured, so the deadline leaves room for one.
+    private static let requestDeadline: TimeInterval = 30
+    private static let selectDeadline: TimeInterval = 10
+
+    public init() {}
+
+    public func isExecutable(_ path: String) -> Bool {
+        FileManager.default.isExecutableFile(atPath: path)
+    }
+
+    public func selectedDeveloperDirectory() -> String? {
+        let result = HelmProcess.run("/usr/bin/xcode-select", ["-p"], timeout: Self.selectDeadline)
+        // Exit 2 is «no developer directory»; the deadline and a failed launch
+        // are other statuses. All three are nil, for the reason the protocol gives.
+        return result.status == 0 ? result.output : nil
+    }
+
+    public func requestInstall() -> ToolsRequest {
+        let result = HelmProcess.run("/usr/bin/xcode-select", ["--install"], timeout: Self.requestDeadline)
+        if result.status == HelmProcess.timedOutStatus { return .timedOut }
+        return result.status == 0 ? .filed : .refused(result.status)
+    }
+
+    /// The snapshot `RunningApps` keeps is refreshed on the main thread and
+    /// nowhere else, and nothing in this module refreshes it — so the reading
+    /// hops there, which is the door CLAUDE.md names for the running-application
+    /// list. AppKit itself does not come into this module.
+    public func installerIsRunning() -> Bool {
+        let ids = Thread.isMainThread
+            ? RunningApps.shared.bundleIDs()
+            : DispatchQueue.main.sync { RunningApps.shared.bundleIDs() }
+        return ids.contains(Self.installerBundleID)
+    }
+}
+
+/// Keeps a scheduled tick alive exactly as long as it is held: releasing the
+/// token cancels it, so an engine that drops its token in `stop()`,
+/// `deactivate()` or `deinit` cannot have a tick land afterwards.
+private final class WaitToken {
+    private let item: DispatchWorkItem
+    init(_ item: DispatchWorkItem) { self.item = item }
+    deinit { item.cancel() }
+}
+
+/// The real ticker. **Not the main queue**, unlike Keep Awake's clock: what a
+/// tick continues into is a blocking password dialog, and that must not be
+/// raised on the thread that draws the page.
+public struct DispatchWaitTicker: WaitTicker {
+    public init() {}
+    public func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
+        let item = DispatchWorkItem(block: block)
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + interval, execute: item)
+        return WaitToken(item)
     }
 }
 
@@ -817,6 +946,8 @@ public struct HomebrewSystemPorts {
     public let locator = FSBrewLocator()
     public let runner = ShellProcessRunner()
     public let privileged = OSAPrivilegedRunner()
+    public let tools = SystemCommandLineTools()
+    public let ticker = DispatchWaitTicker()
     public let marker = FileOpMarker()
     public let popularity = FilePopularityStore()
     /// Built over the same locator the engine uses, so «which brew» has one

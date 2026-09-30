@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import HelmTestSupport
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **A package's size is a walk of its own directory, or it is nothing.**
@@ -77,7 +78,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
     /// Nothing here runs a `brew`: every question in this file is about a
     /// directory. A runner that launches anything at all would be an

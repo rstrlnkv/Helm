@@ -11,7 +11,8 @@ import Foundation
 /// it would merge a tap's deprecation warning into the document and this parser
 /// would read the warning's own colon as a configuration key.
 ///
-/// The document is eighteen lines of `key: value` on this Mac and has no
+/// The document is a list of `key: value` lines — Homebrew adds keys between
+/// releases, and one more appears in the environment Helm runs it in — and has no
 /// headings in it at all. `sections` below is where the three headings come
 /// from, and they are Helm's reading rather than Homebrew's words.
 enum BrewConfigParser {

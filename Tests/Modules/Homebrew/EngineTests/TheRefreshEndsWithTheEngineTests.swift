@@ -1,5 +1,6 @@
 import XCTest
 import HelmTestSupport
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A store whose refresh takes long enough to still be running when the engine
@@ -56,7 +57,7 @@ private struct IdleRunner: ProcessRunner, @unchecked Sendable {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 /// **The other half of the refresh's lifecycle, which nothing held.**

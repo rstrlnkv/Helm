@@ -49,6 +49,18 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Cellar.
     static let queryEnvironment = ["HOMEBREW_NO_AUTO_UPDATE": "1"]
 
+    /// What `brew doctor` runs with: the query environment and
+    /// **`HOMEBREW_NO_COLOR`**, because doctor is the one query whose answer is
+    /// read by finding a line that starts `Warning:`. brew colours a non-terminal
+    /// stream when `HOMEBREW_COLOR` is set — in the environment or in a
+    /// `brew.env` file it loads itself, which beats the environment — and a
+    /// coloured line starts with an escape, so no finding is found. The variable
+    /// is measured to override the colour (byte-for-byte the plain output).
+    /// It is this query's alone: `list`, `search` and `desc` print the same bytes
+    /// coloured or not, and `config` echoes the variables it sees, so it would
+    /// put one of Helm's own into the text a person copies into a bug report.
+    static let doctorEnvironment = queryEnvironment.merging(["HOMEBREW_NO_COLOR": "1"]) { _, new in new }
+
     /// What a long operation runs with. The console is a place a person reads
     /// what brew is doing to their machine; brew's environment hints are advice
     /// about shell profiles, several lines of it, printed beside the install
@@ -59,6 +71,34 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// `brew`, so there is no brew yet to read the variable.
     static let operationEnvironment = ["HOMEBREW_NO_ENV_HINTS": "1"]
 
+    /// What Homebrew's own `install.sh` runs with.
+    ///
+    /// `NONINTERACTIVE` because there is no terminal for its questions.
+    /// **`HOMEBREW_NO_SUDO`** because the script probes for `sudo` and, with the
+    /// probe passing, calls a `sudo` that has no terminal and no askpass to ask
+    /// on: docs.brew.sh/Installation documents the variable as the way to turn
+    /// its `sudo` calls off. The probe passes on any Mac with a `NOPASSWD` rule
+    /// in `/etc/sudoers.d` — Keep Awake writes one — which the round that
+    /// designed this measured; what the script does after that was not.
+    /// Everything the script needs root for, Helm did in the one dialog before it.
+    static let installerEnvironment = ["NONINTERACTIVE": "1", "HOMEBREW_NO_SUDO": "1"]
+
+    /// The label every way `installBrew` can end carries, and the marker
+    /// compares against nothing but itself. It is English because it is a log
+    /// line and a state's name, not a sentence: the page words this operation in
+    /// the person's language by comparing against this constant
+    /// (`HbStr.operationName`, `HbStr.interruptedAtQuit`). Every other label is
+    /// shown as written where it is made — a phrase naming the brew run, without
+    /// the word `brew`: usually its arguments (`upgrade wget`, `uninstall
+    /// periphery`), and for the run that upgrades everything `upgrade all`,
+    /// which is not its arguments (`brew upgrade`, `upgradeAll`) — and is
+    /// English in every language: it is not a command line, and it is not
+    /// translated.
+    public static let installBrewLabel = "install Homebrew"
+
+    /// Seconds between two looks at whether Apple's tools have arrived.
+    static let toolsTick: TimeInterval = 2
+
     private let locator: BrewLocator
     private let runner: ProcessRunner
     private let privileged: PrivilegedRunner
@@ -67,6 +107,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let marker: OpMarker
     private let popularity: PopularityReading
     private let weight: PackageWeight
+    private let tools: CommandLineToolsPort
+    private let ticker: WaitTicker
     public let transport: EngineTransport
 
     private let lock = NSLock()
@@ -86,6 +128,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// they requested is reported as `.stopped` and one they did not stays an
     /// honest failure. Cleared when the next operation starts.
     private var stopRequested = false
+    /// Whether the running operation is the install of Homebrew itself, the one
+    /// long operation `deactivate()` ends: it is the one that can raise a
+    /// password dialog and start `install.sh` on its own, later, for a module
+    /// the person has switched off. Set with the gate, cleared with it.
+    private var installing = false
     /// What each package was last measured to occupy, keyed `f:name@version`.
     ///
     /// Under the same `lock` as every other field here, read and written in
@@ -93,6 +140,17 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// across the walk itself, which happens outside the lock because it is the
     /// part that takes time.
     private var sizes: [String: Int] = [:]
+    /// The wait for Apple's Command Line Tools, as its token: the tick that is
+    /// armed, cancelled by releasing it. Under `lock`, and **whoever sets it to
+    /// nil owns the ending of the operation** — a tick that reached a verdict,
+    /// `stop()`, `deactivate()` — so no two of them can both end it.
+    private var toolsWait: AnyObject?
+    /// Which wait a tick belongs to, so a tick already in flight when Stop was
+    /// pressed and Install pressed again cannot act for the new wait. Under `lock`.
+    private var waitGeneration = 0
+    /// What the wait has read so far. Under `lock`; written by the ticks, which
+    /// are serial because each one arms the next.
+    private var waitReading = CommandLineTools.Wait()
 
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
@@ -100,7 +158,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 user: String, transport: LocalTransport = LocalTransport(),
                 marker: OpMarker = InMemoryOpMarker(),
                 popularity: PopularityReading = NoPopularity(),
-                weight: PackageWeight = NoPackageWeight()) {
+                weight: PackageWeight = NoPackageWeight(),
+                tools: CommandLineToolsPort = ToolsAlreadyInstalled(),
+                ticker: WaitTicker = NoWaitTicker()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
@@ -110,6 +170,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.marker = marker
         self.popularity = popularity
         self.weight = weight
+        self.tools = tools
+        self.ticker = ticker
         wireTransport()
     }
 
@@ -148,12 +210,47 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func deactivate() {
         cancelTheRefresh()
+        endTheInstall()
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
-    /// ARCHITECTURE.md § "An observer outlives the thing it points at".
+    /// ARCHITECTURE.md § "An observer outlives the thing it points at". The wait
+    /// token is dropped here and no event is sent: the block holds `self` weakly,
+    /// so the engine is what the token was never keeping alive, and an engine
+    /// that is going has nobody to tell.
     deinit {
         cancelTheRefresh()
+        lock.lock()
+        let wait = toolsWait
+        toolsWait = nil
+        lock.unlock()
+        _ = wait
+    }
+
+    /// A module switched off while Homebrew is being installed ends the
+    /// operation as stopped, wherever it is — **whether or not there is a wait
+    /// to take**. The flag is set under the lock for any busy install, and every
+    /// step that would ask Apple, raise the administrator dialog or launch
+    /// `install.sh` reads it first (`stoppedBeforeLaunch`), so a switch-off that
+    /// lands in the request, between a tick's verdict and the dialog, or in a
+    /// reading finds a check waiting for it. The wait, when there is one, is
+    /// released here, so no later tick can raise a password dialog from a module
+    /// that is off; a child that already runs is terminated, as Stop does.
+    private func endTheInstall() {
+        lock.lock()
+        guard busy, installing else { lock.unlock(); return }
+        stopRequested = true
+        let wait = toolsWait
+        toolsWait = nil
+        let handle = current
+        lock.unlock()
+        if wait != nil {
+            HelmLog.shared.info(Self.moduleID,
+                                "\(Self.installBrewLabel) stopped waiting: module switched off")
+            concludeOp(code: nil, label: Self.installBrewLabel, reason: nil)
+            return
+        }
+        handle?.terminate()
     }
 
     /// Taken under the lock like every other reading of the field, and
@@ -530,7 +627,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// The gate that actually matters is `DoctorParser.parse`: nil for empty
     /// input (the tool said nothing, which this module must not read as a
-    /// clean machine), an empty array for real output naming no issue.
+    /// clean machine), an empty array for real output naming no issue — **and
+    /// only with exit 0.** `cmd/doctor.rb` exits 1 when a check returned a
+    /// finding, and also when it fails on its own account (`ofail` sets the
+    /// same status with no check having found anything). So exit 1 with no
+    /// finding parsed is either brew saying it found something that this build
+    /// could not read or brew refusing the question; that is nil (the page's
+    /// «Homebrew did not answer» reading), never a clean Mac.
     ///
     /// **No fix is filled in here, and this query reads nothing but `brew
     /// doctor`.** `DoctorFixCandidate.judging` is what turns a body into a
@@ -548,9 +651,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot run doctor")
             return nil
         }
-        let result = runner.runCapturingDiagnostics(brew, ["doctor"], env: Self.queryEnvironment)
+        let result = runner.runCapturingDiagnostics(brew, ["doctor"], env: Self.doctorEnvironment)
         guard let out = completed((result.status, result.output), query: "doctor") else { return nil }
-        return DoctorParser.parse(out)
+        let issues = DoctorParser.parse(out)
+        if issues?.isEmpty == true, result.status != 0 {
+            HelmLog.shared.warn(Self.moduleID,
+                                "doctor exited \(result.status) but no finding could be read "
+                                + "from its answer — not read as a clean Mac")
+            return nil
+        }
+        return issues
     }
 
     /// What `brew config` says about this Homebrew and this Mac — the version,
@@ -601,16 +711,17 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// label carries no package name, because the trail is the log's.
     private static let operationPhase = "homebrew.operation"
 
-    private func beginBusy() -> Bool {
+    private func beginBusy(installingBrew: Bool = false) -> Bool {
         lock.lock(); defer { lock.unlock() }
         if busy { return false }
         busy = true
         stopRequested = false
+        installing = installingBrew
         HelmActivity.begin(Self.operationPhase)
         return true
     }
     private func endBusy() {
-        lock.lock(); busy = false; current = nil; lock.unlock()
+        lock.lock(); busy = false; installing = false; current = nil; lock.unlock()
         HelmActivity.end(Self.operationPhase)
         HelmLog.shared.memory("homebrew.operation")
     }
@@ -632,8 +743,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// launch. There is no exit code for a process that was never started, and
     /// inventing one would put a number on the page's failure that names
     /// nothing.
+    ///
+    /// `reason` names a failure the engine knows more about than an exit code;
+    /// it is dropped for a success, and **a Stop the person pressed wins over
+    /// it** — a dialog answered no after Stop was pressed is the person's Stop.
     @discardableResult
-    private func concludeOp(code: Int32?, label: String) -> Bool {
+    private func concludeOp(code: Int32?, label: String, reason: OpFailureReason? = nil) -> Bool {
         let stopped = wasStopped
         marker.clear()
         endBusy()
@@ -643,13 +758,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // nil is "no child ever ran", which is not a success.
         let phase: OpPhase = code == 0 ? .done : .failed
         emitState(OpState(phase: phase, label: label, exitCode: code.map(Int.init),
-                          reason: phase == .failed && stopped ? .stopped : nil))
+                          reason: phase == .failed ? (stopped ? .stopped : reason) : nil))
         return stopped
     }
 
-    /// Ends the running long operation. SIGTERM through the handle; the exit
-    /// arrives the way every exit does — EOF, then `onExit` — so the busy gate
-    /// and the state event follow the one path they already have.
+    /// Ends the running long operation. With a child, SIGTERM through its
+    /// handle (`StopReach` says how far it goes); the exit arrives the way every
+    /// exit does — EOF, then `onExit` — so the busy gate and the state event
+    /// follow the one path they already have. **While the install is only
+    /// waiting for Apple's tools there is no child and no exit**: Stop takes the
+    /// wait's token and concludes the operation itself, below.
     ///
     /// **The press is recorded even when there is nothing to terminate yet.**
     /// This used to `guard busy, let handle = current`, and `current` is set
@@ -663,19 +781,31 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard busy else { lock.unlock(); return }
         stopRequested = true
         let handle = current
+        // While the operation is waiting for Apple's tools there is no child
+        // and no exit coming: taking the token is what ends the wait, and the
+        // one who takes it ends the operation.
+        let wait = toolsWait
+        toolsWait = nil
         lock.unlock()
         HelmLog.shared.info(Self.moduleID, "stop requested")
+        if wait != nil {
+            HelmLog.shared.info(Self.moduleID, "\(Self.installBrewLabel) stopped waiting")
+            concludeOp(code: nil, label: Self.installBrewLabel, reason: nil)
+            return
+        }
         handle?.terminate()
     }
 
-    /// Whether the person pressed Stop before this operation had a child, in
-    /// which case the operation ends here and the launch must not happen.
+    /// Whether a Stop — or the module's switch-off, which sets the same flag
+    /// (`endTheInstall`) — arrived before this operation had a child, in which
+    /// case the operation ends here and the launch must not happen.
     ///
     /// For a package operation that window is a spawn, measured in
-    /// milliseconds. For `installBrew` it is **the administrator password
-    /// dialog**: `runAdmin` blocks this thread for as long as a person takes to
-    /// find their password, and the module used to go on to download and run
-    /// the Homebrew installer after a Stop pressed while it was up.
+    /// milliseconds. For `installBrew` there are several: the request for
+    /// Apple's tools, each reading of them, and above all **the administrator
+    /// password dialog**: `runAdmin` blocks this thread for as long as a person
+    /// takes to find their password, and the module used to go on to download
+    /// and run the Homebrew installer after a Stop pressed while it was up.
     ///
     /// Nothing was launched, so no `onExit` is coming to conclude the operation
     /// — it is concluded here, or the gate stays shut for the life of the app.
@@ -712,16 +842,22 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
         HelmLog.shared.info(Self.moduleID, "\(what) started")
         emitState(OpState(phase: .running, label: label))
-        startChild(label: label, launch: launch, args: args, env: env) { [weak self] code in
+        startChild(label: label, launch: launch, args: args, env: env, reach: .process) { [weak self] code in
             guard let self else { return }
             let stopped = self.concludeOp(code: code, label: label)
-            if code == 0 {
-                HelmLog.shared.info(Self.moduleID, "\(what) done")
-            } else if stopped {
-                HelmLog.shared.info(Self.moduleID, "\(what) stopped on request, exit \(code)")
-            } else {
-                HelmLog.shared.warn(Self.moduleID, "\(what) failed, exit \(code)")
-            }
+            self.logEnd(what, code: code, stopped: stopped)
+        }
+    }
+
+    /// The three words a child's end is logged in, for every operation that
+    /// runs one: `runOp` and `installBrew` say the same thing the same way.
+    private func logEnd(_ what: String, code: Int32, stopped: Bool) {
+        if code == 0 {
+            HelmLog.shared.info(Self.moduleID, "\(what) done")
+        } else if stopped {
+            HelmLog.shared.info(Self.moduleID, "\(what) stopped on request, exit \(code)")
+        } else {
+            HelmLog.shared.warn(Self.moduleID, "\(what) failed, exit \(code)")
         }
     }
 
@@ -729,15 +865,17 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// belong to every launch cannot be remembered at one site and forgotten at
     /// the next: the Stop that arrived before the child existed, the marker
     /// that reports a quit mid-operation, and the handle joining the operation
-    /// it belongs to. The two callers differ only in what they say at the exit.
+    /// it belongs to. The two callers differ in what they say at the exit and
+    /// in how far a Stop reaches: `runOp` names `.process`, the installer's
+    /// wrapper names `.wholeGroup`.
     private func startChild(label: String, launch: String, args: [String],
-                            env: [String: String],
+                            env: [String: String], reach: StopReach,
                             onExit: @escaping @Sendable (Int32) -> Void) {
         guard !stoppedBeforeLaunch(label: label) else { return }
         // The child survives a quit; whatever is still written at the next
         // launch is the report (`AQuitMidOperationIsReportedTests`).
         marker.write(label)
-        adopt(runner.stream(launch, args, env: env,
+        adopt(runner.stream(launch, args, env: env, reach: reach,
                             onLine: { [weak self] line in self?.emitLog(line) },
                             onExit: onExit))
     }
@@ -833,22 +971,174 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
               args: operands.isEmpty ? argv : [argv[0], "--"] + operands)
     }
 
-    /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
-    /// native admin prompt, then run the official installer non-interactively.
+    /// Install Homebrew itself, in three parts that only ever run in this order:
+    /// Apple's Command Line Tools (asked for and waited on, when they are not
+    /// there), then the one root step (`/opt/homebrew`, one native password
+    /// dialog), then Homebrew's own `install.sh` non-interactively.
+    ///
+    /// **Why the tools come first.** `install.sh` installs them itself only when
+    /// `sudo` can ask for a ticket on a terminal, and Helm runs it with neither,
+    /// so without this the script stops at its `git` check on a Mac that has
+    /// never had them. And the password is asked *after* the tools rather than
+    /// before: someone who cancels Apple's download has spent no password, and
+    /// someone who waited a quarter of an hour has not had `/opt/homebrew` made
+    /// for nothing.
+    ///
+    /// Arrives through `offTheCooperativePool` — the dialog blocks this thread
+    /// for as long as a person takes to find their password.
     public func installBrew() {
         // One label, read by every way this operation can end — including the
         // marker, which is compared against nothing but itself.
-        let label = "install Homebrew"
-        guard beginBusy() else { emitLog("⚠︎ Another operation is already running."); return }
+        let label = Self.installBrewLabel
+        guard beginBusy(installingBrew: true) else {
+            HelmLog.shared.warn(Self.moduleID, "\(label) refused: another operation is running")
+            emitLog("⚠︎ Another operation is already running.")
+            return
+        }
+        HelmLog.shared.info(Self.moduleID, "\(label) started")
         emitState(OpState(phase: .running, label: label))
         // `user` is NSUserName(), which on a managed Mac is whatever the
         // directory says; this string is evaluated by a root shell. Single
         // quotes stop expansion, and the name is checked before it gets there.
         guard AccountName.isPlausible(user) else {
+            HelmLog.shared.warn(Self.moduleID, "\(label) failed: unsupported account name")
             concludeOp(code: 1, label: label)
             emitLog("Unsupported account name.")
             return
         }
+        if toolsPresent() { prepareAndRun(label); return }
+        // Read after each look that can take a while, and again right before the
+        // request: a Stop or a switch-off that landed in `xcode-select -p` or in
+        // the hop to the main thread must not be answered with Apple's window.
+        guard !stoppedBeforeLaunch(label: label) else { return }
+        // Apple's window may already be open — the person pressed Install
+        // Homebrew, closed Settings, came back, and pressed it again. A second
+        // request would ask for a second window.
+        if !tools.installerIsRunning() {
+            guard !stoppedBeforeLaunch(label: label) else { return }
+            switch tools.requestInstall() {
+            case .filed:
+                break
+            case .refused(let status):
+                HelmLog.shared.warn(Self.moduleID, "xcode-select --install refused, exit \(status)")
+                proceedOrRefuseTools(label)
+                return
+            case .timedOut:
+                HelmLog.shared.warn(Self.moduleID, "xcode-select --install timed out")
+                proceedOrRefuseTools(label)
+                return
+            }
+        }
+        HelmLog.shared.info(Self.moduleID, "\(label) waiting for the Command Line Tools")
+        emitState(OpState(phase: .running, label: label, waiting: .commandLineTools))
+        lock.lock()
+        // A Stop that landed while the request was being filed had no wait to
+        // take and no child to terminate; the flag is what it left.
+        guard busy, !stopRequested else { lock.unlock(); _ = stoppedBeforeLaunch(label: label); return }
+        waitGeneration += 1
+        let generation = waitGeneration
+        waitReading = CommandLineTools.Wait()
+        toolsWait = ticker.schedule(after: Self.toolsTick) { [weak self] in
+            self?.tick(label, generation: generation)
+        }
+        lock.unlock()
+    }
+
+    /// A refused or unanswered request is not yet a refusal to install: the
+    /// tools may have arrived by another road in the meantime — a second
+    /// window, a terminal.
+    private func proceedOrRefuseTools(_ label: String) {
+        if toolsPresent() { prepareAndRun(label); return }
+        HelmLog.shared.warn(Self.moduleID,
+                            "\(label) failed: the Command Line Tools were not installed")
+        concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
+    }
+
+    private func toolsPresent() -> Bool {
+        CommandLineTools.present(isExecutable: { tools.isExecutable($0) },
+                                 selected: { tools.selectedDeveloperDirectory() })
+    }
+
+    /// One look at whether Apple's tools are here, on the ticker's queue.
+    ///
+    /// **The tools port is not called under `lock`**: `installerIsRunning` hops
+    /// to the main thread, and the main thread may be waiting for that lock. (The
+    /// ticker's `schedule` is called under it, below: it only queues the next
+    /// tick, and the token it returns is stored in the same hold.) And the
+    /// installer is read *before* `git`: read the other way round, Apple's
+    /// window could finish installing between the two looks and read as closed
+    /// with no tools — a failure named over a success. Read this way, "not
+    /// running" cannot precede a `git` that is not yet there.
+    private func tick(_ label: String, generation: Int) {
+        let running = tools.installerIsRunning()
+        let present = tools.isExecutable(CommandLineTools.git)
+        lock.lock()
+        let reading = waitReading
+        lock.unlock()
+        let step = CommandLineTools.next(reading, toolsPresent: present, installerRunning: running)
+        lock.lock()
+        // Stop, `deactivate()` or `deinit` got here first — or this tick belongs
+        // to a wait that has been replaced.
+        guard toolsWait != nil, waitGeneration == generation else { lock.unlock(); return }
+        waitReading = step.wait
+        if step.verdict == .keepWaiting {
+            toolsWait = ticker.schedule(after: Self.toolsTick) { [weak self] in
+                self?.tick(label, generation: generation)
+            }
+            lock.unlock()
+            if step.sayNeverSeen {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "Apple's installer was never seen running — waiting on the tools alone")
+            }
+            return
+        }
+        toolsWait = nil
+        lock.unlock()
+        switch step.verdict {
+        case .keepWaiting:
+            return
+        case .toolsArrived:
+            toolsArrived(label)
+        case .closedWithoutTools:
+            // The tick looks only at the fixed `git`, to spend no process per
+            // tick; a verdict that names the tools missing is given on the
+            // reading the press uses — `xcode-select -p` too — or the page says
+            // «not installed» over a Mac the press itself would go on from.
+            if toolsPresent() {
+                toolsArrived(label)
+            } else {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "\(label) failed: the Command Line Tools were not installed")
+                concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
+            }
+        }
+    }
+
+    private func toolsArrived(_ label: String) {
+        HelmLog.shared.info(Self.moduleID, "\(label) the Command Line Tools arrived")
+        emitState(OpState(phase: .running, label: label))
+        prepareAndRun(label)
+    }
+
+    /// The root step and the installer, once the tools are on the Mac.
+    private func prepareAndRun(_ label: String) {
+        // A Stop that landed between the wait's end and here has nothing left to
+        // take, and the dialog is not a thing to raise after it.
+        guard !stoppedBeforeLaunch(label: label) else { return }
+        // The reading one line before the dialog, not the one that ended the
+        // wait: the person may have removed them since, and a password is not
+        // spent on a `mkdir` for an installer that will stop at its `git` check.
+        guard toolsPresent() else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "\(label) failed: the Command Line Tools were not installed")
+            concludeOp(code: nil, label: label, reason: .toolsNotInstalled)
+            return
+        }
+        // The other read of the flag, after the reading and not before it: on a
+        // Mac whose tools are Xcode's that reading is a process with a deadline
+        // of ten seconds, and a Stop or a switch-off landing inside it is read
+        // by nothing else before the dialog.
+        guard !stoppedBeforeLaunch(label: label) else { return }
         // Absolute paths, because this string is resolved by a root shell that
         // inherits our `PATH` — and Helm's environment comes from the launchd
         // GUI session, which any process running as the user can rewrite
@@ -856,9 +1146,17 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // that process planted. Every other privileged string in the app
         // already names its tools in full; see `SudoersRule.installCommand`.
         let prep = "/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '\(user)':admin /opt/homebrew"
-        guard privileged.runAdmin(prep) else {
-            concludeOp(code: 1, label: label)
-            emitLog("Administrator authorization was cancelled.")
+        switch privileged.runAdmin(prep) {
+        case .done:
+            break
+        case .declined:
+            // The person's answer, not a defect: info, not warn.
+            HelmLog.shared.info(Self.moduleID, "\(label) administrator authorization declined")
+            concludeOp(code: nil, label: label, reason: .authorizationDeclined)
+            return
+        case .failed(let status):
+            HelmLog.shared.warn(Self.moduleID, "\(label) failed: /opt/homebrew was not prepared, exit \(status)")
+            concludeOp(code: status, label: label, reason: .prefixNotPrepared)
             return
         }
         // Download, then run — not `eval "$(curl …)"`, where a failed download
@@ -867,25 +1165,69 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         //
         // **`|| rc=$?`, not `; rc=$?`.** `set -e` ends the shell at the first
         // command that fails, and an installer that exits non-zero is a command
-        // that failed: the `rm` after it never ran, and the downloaded script
-        // stayed in the temporary folder — a program anybody running as this
-        // user can read, and rewrite before the retry runs it again. Measured:
-        // with `; rc=$?` a failing installer leaves the file behind and with
-        // `|| rc=$?` it does not, and the shell exits 3 either way, which is the
-        // second half of this line — `||` is what stops `set -e` firing, so the
-        // installer's own code still reaches `concludeOp` unchanged. `rc=0`
-        // ahead of it because a bare `exit $rc` on an unset variable is `exit`,
-        // which answers with the status of whatever ran last — the `rm`.
-        let installer = "set -e; script=$(/usr/bin/mktemp); "
+        // that failed: with `; rc=$?` the shell would end right there, and the
+        // two lines after the installer — the one that reads the note a Stop
+        // left, and `exit $rc` — would never run. (The downloaded script is
+        // removed either way, by the EXIT trap below.) `||` is what stops
+        // `set -e` firing, so those lines run and the installer's own code still
+        // reaches `concludeOp` unchanged. `rc=0` ahead of it because the
+        // variable is otherwise unset when the installer succeeds, and a bare
+        // `exit $rc` on an unset variable is `exit`, which answers with the
+        // status of whatever ran last.
+        //
+        // **Stop ends the installer and takes the script with it, at any moment
+        // of the wrapper's life.** Stop's handle is this `bash -c`, and it is
+        // launched with the reach `.wholeGroup`: one TERM to the wrapper's
+        // process group, so the download or the installer — and whatever the
+        // installer started — is signalled by the Swift side in the same act as
+        // the wrapper. The wrapper therefore starts nothing in the background
+        // and carries no job control: an earlier shape put the download and the
+        // installer behind `&` and read `$!` on the next command, and a TERM
+        // between the two found no child to address (curl or the installer
+        // outlived the Stop and the script stayed behind) — and `set -m` printed
+        // `[1]+ Done …` lines into the page's console.
+        //
+        // What is left for the shell is the tail. A trap does not run until the
+        // foreground command has ended, and it ends by the same TERM, so `exit
+        // 143` runs a moment after; the `rm` sits in an EXIT trap set before the
+        // file exists, which also covers a download that fails under `set -e`.
+        // **`mktemp` runs with TERM ignored**, because it is the one command
+        // whose result is a name: a TERM that killed it after it made the file
+        // and before the assignment took would leave a file nobody can name.
+        // The Stop is not lost — the first trap only notes it, and the line
+        // after the swap reads the note.
+        //
+        // **The cleanup ignores TERM.** The `rm` in the EXIT trap is a member of
+        // the group a Stop signals, and the Stop signals it again 0.1 s and 0.4 s
+        // later: a TERM that landed on the `rm` ended it and left the downloaded
+        // installer in the temporary folder. `trap "" TERM` inside the trap is
+        // inherited by the `rm` it starts.
+        //
+        // **A Stop that arrives after the installer has finished is not a Stop.**
+        // Once the download is done the trap only notes the press, and the
+        // wrapper ends with the installer's own status; the 143 is kept for a
+        // press that did stop something — the installer ended by it, or one that
+        // came before the installer started. An installer that answered 0 has
+        // installed Homebrew, and the page must say so.
+        let installer = "set -e; script=; stopped=; "
+                      + "trap 'trap \"\" TERM; /bin/rm -f \"$script\"' EXIT; "
+                      + "trap 'stopped=1' TERM; "
+                      + "script=$(trap '' TERM; exec /usr/bin/mktemp); "
+                      + "trap 'exit 143' TERM; [ -z \"$stopped\" ] || exit 143; "
                       + "/usr/bin/curl -fsSL \(Self.installerURL) -o \"$script\"; "
+                      + "trap 'stopped=1' TERM; [ -z \"$stopped\" ] || exit 143; "
                       + "rc=0; /bin/bash \"$script\" || rc=$?; "
-                      + "/bin/rm -f \"$script\"; exit $rc"
+                      + "[ \"$rc\" -eq 0 ] || [ -z \"$stopped\" ] || exit 143; "
+                      + "exit $rc"
         // The dialog above blocked this thread for as long as the person took
         // to find their password, with a live Stop button on the page the whole
         // time; `startChild` is where a press that landed during it is read.
         startChild(label: label, launch: "/bin/bash", args: ["-c", installer],
-                   env: ["NONINTERACTIVE": "1"]) { [weak self] code in
-            self?.concludeOp(code: code, label: label)
+                   env: Self.installerEnvironment, reach: .wholeGroup) { [weak self] code in
+            guard let self else { return }
+            let stopped = self.concludeOp(code: code, label: label,
+                                          reason: code == 0 ? nil : .installerFailed)
+            self.logEnd(label, code: code, stopped: stopped)
         }
     }
 
@@ -977,7 +1319,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             // wrap it bought nothing and cost a second declaration.
             case .upgrade: self.upgrade(name: String(decoding: cmd.payload, as: UTF8.self))
             case .upgradeAll: self.upgradeAll()
-            case .installBrew: self.installBrew()
+            // Off the pool: the dialog inside blocks for as long as a person
+            // takes to find their password, and a tick continues into it.
+            case .installBrew: await offTheCooperativePool { self.installBrew() }
             case .stop: self.stop()
             }
             return Data()

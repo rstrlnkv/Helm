@@ -497,21 +497,36 @@ declaration is credited to the mount that made it by a generation number
 assigned when SwiftUI creates that mount's coordinator — the guard that keeps
 an outgoing page's late redeclare, or a language-triggered remount's old half,
 from overwriting the page now actually on screen. A page that never calls
-`helmWindowToolbar` leaves the bar showing the name and nothing else, which is
-not an error state: it is what a page with nothing to say there looks like on
-screen. All four module pages that carry any toolbar content —
-`HomebrewSettingsPage`, `HostsSettingsPage`, `LeftoversSettingsPage` and
+`helmWindowToolbar` leaves the bar showing the name — plus, under
+`PageBarStyle.moduleName`, a status-bearing page's own `helm.status` — and
+nothing else, which is not an error state: it is what a page with nothing to
+say there looks like on screen. All four module pages that carry any toolbar
+content — `HomebrewSettingsPage`, `HostsSettingsPage`, `LeftoversSettingsPage` and
 `UninstallerSettingsPage` — publish through this contract; none of them
 declares a SwiftUI `.toolbar` any more, and `SettingsSplitViewController` sets
 no `sceneBridgingOptions` on its detail controller at all, on purpose, since
 nothing in this window still needs that bridge to reach anywhere.
 
 The bar's zones, left to right: the sidebar's own tracking separator; the
-name — the module's plate and its name, with its own status word or badge
-beside it, drawn only under `PageBarStyle.moduleName`
-(`Sources/HelmUI/DesignSystem/PageBarStyle.swift`), the shipping default; a
-flexible space; the tabs, centred; a flexible space; one custom-view item for
-the whole action capsule; and the search field. **The actions are one
+name — the module's plate and its name, drawn only under
+`PageBarStyle.moduleName` (`Sources/HelmUI/DesignSystem/PageBarStyle.swift`),
+the shipping default; a flexible space; the tabs, centred; a flexible space;
+one custom-view item for the whole action capsule; and the search field. **No
+page declares tabs, actions or search *and* carries a status today**, so the
+one shape that combination would need does not exist yet — every status-
+bearing page (Keep Awake, VPN, Keyboard) draws the shared, four-item bar
+instead: separator, name, a flexible space, and `helm.status` — the module's
+status word or badge, moved to the bar's trailing edge (the owner,
+2026-09-28: «Давай вернем его в правую часть»), as far from the window's
+trailing edge as its drawn top is from the window's top edge
+(`StatusZoneView.trailingInset`), where the actions capsule's own last item
+keeps AppKit's 8 pt. Under `PageBarStyle.moduleName`,
+`helm.status` is always in that shared bar's identifier list, drawing nothing
+and out of VoiceOver on a page with no notion of running, so General, About,
+Log and every status-less module never see it move or appear
+(`SettingsToolbar.identifiers`, `StatusZoneView`) — under `.windowTitle` there
+is no `helm.status` item at all, and the status stays the window's own
+subtitle instead. **The actions are one
 `NSToolbarItem`, not one per action.** It hosts
 `HelmToolbarActionsCapsule` (`Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`),
 a SwiftUI `GlassEffectContainer` whose visible buttons morph as which of them
@@ -613,10 +628,11 @@ which is what VoiceOver opens; `HelmToolbarSwitcher` itself answers no menu
 gesture.
 
 `PageBarStyle` is a setting in Appearance rather than a dev-only toggle: the
-module's plate, name and status as the toolbar's own leading item — the
-shipping default, and what `PageBarStyle.init(stored:)` answers for an empty
-or unrecognised store — or the page's name as the window title with its
-status as the subtitle, set on the `NSWindow` from `HelmPageTitleKey`. The
+module's plate and name as the toolbar's own leading item, with a
+status-bearing page's own status at the bar's trailing edge — the shipping
+default, and what `PageBarStyle.init(stored:)` answers for an empty or
+unrecognised store — or the page's name as the window title with its status
+as the subtitle, set on the `NSWindow` from `HelmPageTitleKey`. The
 environment value `helmPageBar` is what the window sets; where it is nil — a
 sheet, a page mounted on its own — the header is the strip below, drawn in the
 page rather than in a toolbar that does not exist for it.
@@ -646,7 +662,7 @@ and whose band lies there depends on the system. `HelmBandChoice`
 running macOS and handed down as one value: on 27, Helm's band under a
 transparent title bar, which holds the system's scroll-edge effect off the pane;
 on 26, no band of Helm's and an opaque title bar, so the system's own effect
-draws there. `SettingsWindow` takes the value as an argument and passes it to
+draws there, and the pane asks that effect for its soft top edge. `SettingsWindow` takes the value as an argument and passes it to
 its pane through the environment, which is how a test builds either system's
 window on one Mac. The header drawn in the page gives up its band on 26 as well —
 the owner's answer is the system's edge everywhere there — and
@@ -899,11 +915,57 @@ transport is in-process with one sender.
 The in-app installer (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`)
 runs Homebrew's own `install.sh`, fetched over HTTPS from `installerURL`,
 which names `HEAD` rather than a pinned revision or checksum — whatever the branch
-holds the day the button is pressed. Before the download, one administrator dialog
-authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '<user>':admin
-/opt/homebrew`, which is the only privileged step; the installer itself then
-runs as the now-owning user. See «Giving everything back» for why that ownership
-change is the one reach this document does not describe as reversible.
+holds the day the button is pressed. It begins with Apple's Command Line Tools,
+because `install.sh` installs them itself only when `sudo` can ask on a terminal
+and Helm runs it with none: the engine reads whether `git` is where the script
+looks (`Sources/Modules/Homebrew/Engine/Logic/CommandLineTools.swift`), and if
+not it files Apple's own request and waits — a tick every two seconds through
+`WaitTicker`, the same operation under the same busy gate, shown to the page as
+`OpState.waiting` rather than as a phase of its own. The wait ends when `git`
+appears, when Apple's window has been seen and is gone without it, or when the
+person presses Stop (`stop()`), the module is switched off or the engine goes;
+whoever takes the wait's token owns the ending of the operation. A Stop pressed
+during the wait ends only Helm's waiting: no child exists to signal, Apple's
+window carries on in its own process, and Helm does not resume by itself — the
+page says so in the console, and a second press of Install Homebrew goes on from
+wherever the tools then are. There is no deadline, because an install of Apple's
+tools may honestly take a quarter of an hour. Only then, after the tools are read
+again one line before the dialog, one administrator dialog authorizes `/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R
+'<user>':admin /opt/homebrew`, which is the only privileged step; it goes through
+`PrivilegedRun` and answers `PrivilegedOutcome`, so a dialog answered no is not a
+failed `mkdir`. See «Giving everything back» for why that ownership change is the
+one reach this document does not describe as reversible.
+
+The installer itself then runs as the now-owning user, with `installerEnvironment`
+— `NONINTERACTIVE` and `HOMEBREW_NO_SUDO`, so a `NOPASSWD` rule under
+`/etc/sudoers.d` cannot make it try a `sudo` with nothing to ask on — inside a
+`bash -c` wrapper the engine composes. The wrapper downloads the script to a file
+`mktemp` made and then runs the file, never `eval "$(curl …)"`, where a failed
+download evaluates the empty string, exits 0 and reports a successful install of
+nothing. Both run in the foreground: the wrapper starts nothing in the background
+and has no job control. The file is removed by an `EXIT` trap that ignores `TERM`,
+so the Stop's own signal cannot end the `rm` and leave a script anybody running as
+the user could rewrite. The wrapper answers with the installer's status, except for Stop: a Stop that ended
+the download or the installer, or came before either began, ends it with 143 and
+the page reads that as stopped, while a Stop that arrives after the installer has
+finished is only noted, so a Homebrew that was installed is reported as installed.
+
+How far a Stop reaches is named per launch, as a `StopReach`
+(`Sources/Modules/Homebrew/Engine/Ports.swift`). A brew operation names `.process`:
+one signal through the child's handle. The installer's wrapper names `.wholeGroup`:
+the group the wrapper leads is signalled, only while it still leads it, and again
+0.1 s and 0.4 s later while the wrapper is still there, because a shell that forks
+a program at the instant of the signal creates it just after the signal was
+delivered, and only a later one finds it. The real handle is in
+`Sources/Modules/Homebrew/Engine/SystemPorts.swift`, and what a Stop really
+reached is read against the real runner in
+`Tests/Modules/Homebrew/EngineTests/TheStopsReachIsWhatItsOperationNamesTests.swift`.
+
+Apple's tools, time and root are three ports (`CommandLineToolsPort`,
+`WaitTicker`, `PrivilegedRunner`). The tools and root are never called under the
+engine's lock, because the tools reading hops to the main thread, which may be
+waiting for that lock; the ticker's `schedule` is, since it only queues the next
+tick and the token it returns is stored in the same hold.
 
 The module reaches one other place on the network, and unprompted rather than on
 a press. `FilePopularityStore`
@@ -944,17 +1006,47 @@ owner's decision, replacing a fourth tab of its own — and `HomebrewViewModel`
 owns the query rather than the page: typing filters whichever list `segment`
 is showing (`PackageStanding.matching`, `HealthScreen.matchingIssues`,
 `HealthScreen.matchingConfigGroups`, through the one substring rule in
-`ListFilter`), and only once that filter finds nothing does `queryMoved` start
-a pause (`HomebrewViewModel.searchPause`) toward asking brew about a package
-this Mac does not have — the same pause runs again on a tab switch and after
-every list refresh, since the tab just entered has not necessarily loaded yet.
-At most one such search is out at a time (`HomebrewViewModel.ask(_:)`); Return
-asks at once, with no pause and no minimum length, unless that word is already
-answered or still out (`HomebrewViewModel.searchNow()`). What comes back is
-filtered again, by id and never by name
-(`PackageStanding.notInstalled`), and drawn as an "Available to install"
-section under whichever list is on screen (`AvailableSection`) rather than as
-a segment of its own.
+`ListFilter`). On the two package tabs, once that filter finds nothing
+`queryMoved` starts a pause (`HomebrewViewModel.searchPause`) toward asking brew
+about a package this Mac does not have — the same pause runs again on a tab
+switch and after every list refresh, since the tab just entered has not
+necessarily loaded yet. At most one such search is out at a time
+(`HomebrewViewModel.ask(_:)`); Return asks at once, with no pause and no minimum
+length, unless that word is already answered or still out
+(`HomebrewViewModel.searchNow()`). What comes back is filtered again, by id and
+never by name (`PackageStanding.notInstalled`), and drawn as an "Available to
+install" section under the package list that is on screen (`AvailableSection`)
+rather than as a segment of its own. **The Health tab has none of that**: a
+search for a package is not a question about this Mac's health, so on that tab
+the field only filters, Return asks nothing, and no section is drawn.
+
+The two package tabs are a master list and an inspector (`InspectorState`,
+`HomebrewSplit`); **the Health tab is one page and has neither**
+(`HomebrewHealthPage`, mounted by `HomebrewSettingsPage.managerBody` before the
+split is asked anything, so nothing on it is ever selected). It reads top to
+bottom. First a verdict (`HealthVerdict`) — waiting, examined and clean, not
+examinable, or a count of findings with brew's own permission to ignore them
+when everything works — taken from the *unfiltered* reading
+(`HealthScreen.of`), so a word typed into the field cannot make a Mac look
+clean and a filter that hides every finding says so under the verdict
+(`HealthScreen.noMatches`) instead of replacing it. Then one card of findings,
+each a row that opens in place (`helmAccordion` on `HelmMotion.disclosure`); the
+only finding is open and has no control to close it
+(`HealthScreen.isOpen`, `HealthScreen.canToggle`), the row's Run sits in its
+header while it is closed and in its body beside the command while it is open,
+never in both, and a severity badge is drawn only for a `.danger` finding. Then
+the configuration, in a card of its own that opens the same way, whose header
+carries «Copy for a bug report» — the document `brew config` printed, byte for
+byte (`BrewConfig.text`), not the regrouped lines under it. The gate under the
+button is unchanged: the page's view model judges each fix through
+`DoctorFixCandidate.judging` (which calls `DoctorFix.judge`) before it is
+drawn, and the engine's `runDoctorFix` judges again against a list read at the
+press; `FixAsk` is the page's own, and decides only whether a question comes before the act. `DoctorParser` keeps a warning's *whole* block — up to the next
+`Warning:` or `Error:`, or brew's own frame around the findings (the aside to
+the reader, the support-tier message) — because the list of files, the PATH
+conflicts and «Run `brew link` on these:» all sit after a blank line inside
+one finding, and a body that ended there dropped exactly what a person would
+act on.
 
 ### Hosts
 
@@ -2112,7 +2204,12 @@ than chosen. A surface that floats over content takes `.glassEffect` rather than
 the two sites — because glass carries its own edge and its own shadow, which is the whole
 reason a floating thing wanted one, and a hairline drawn on top is a second silhouette
 disagreeing with the first. A token called `HelmSurface.floatingEdge` was named in the
-prose for a while and existed nowhere else.
+prose for a while and existed nowhere else. `Sources/HelmUI/DesignSystem/HelmStripedList.swift`
+holds `helmStripedList(rowPitch:)`, the one striped list in the house, laid on the `List` itself and
+nowhere above it, in the system's own colour with no token of its own. Each list declares
+its row pitch as one `HelmSpace` step, which becomes the list's minimum row height and so
+the step the stripe repeats at under the last row — AppKit draws the empty area at the
+table's row height by design, as Finder does, and nothing is measured at run time.
 
 A grouped `Form` insets a section *header* further than the section itself, and a section
 header is the one part of such a form drawn on the bare pane that still scrolls — which is

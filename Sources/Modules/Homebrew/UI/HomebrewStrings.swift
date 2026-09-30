@@ -16,7 +16,47 @@ enum HbStr {
     static var summary: String { L("Manage Homebrew packages") }
 
     static var notInstalledTitle: String { L("Homebrew isn’t installed") }
-    static var notInstalledBody: String { L("Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew.") }
+    /// What the page says before the press. **It names no number of password
+    /// prompts**: the sentence that used to say «once» was untrue on a Mac
+    /// without Apple's tools, and whether Apple's own installer asks for a
+    /// password on the macOS a person runs was not measured. Interpolated with
+    /// Apple's own name for the tools, so the table lives here (`appleTools`).
+    /// **The Spanish value carries a word joiner (`\u{2060}`) after each slash of
+    /// `/opt/homebrew`**: the typesetter may break a line after a slash, and at
+    /// the page's column it did, leaving `/opt/` at the end of one line and
+    /// `homebrew.` alone on the next (`ThePathInTheInstallSentenceStaysWholeTests`);
+    /// a joiner after the second slash alone only moved the break to the first.
+    /// The mark draws nothing. The sentence is not selectable — `HelmEmptyState`
+    /// draws its message without `textSelection` — so no path is copied out of
+    /// it and the mark is never carried anywhere.
+    static func notInstalledBody(language: AppLanguage = AppLanguage.current) -> String {
+        let tools = appleTools(language: language)
+        return L("Helm downloads Homebrew’s own installer and runs it. If the \(tools) are not installed yet, macOS installs them first, in a window of its own, and Helm carries on when they are ready. macOS asks for an administrator password to create /opt/homebrew.",
+                 [.ru: "Helm скачает официальный установщик Homebrew и запустит его. Если \(tools) ещё не установлены, macOS сначала установит их в своём окне, а Helm продолжит, когда они будут готовы. Чтобы создать /opt/homebrew, macOS запросит пароль администратора.",
+                  .es: "Helm descarga el instalador oficial de Homebrew y lo ejecuta. Si las \(tools) aún no están instaladas, macOS las instala primero en su propia ventana y Helm continúa cuando están listas. macOS solicita una contraseña de administración para crear /\u{2060}opt/\u{2060}homebrew.",
+                  .fr: "Helm télécharge le programme d’installation officiel de Homebrew et l’exécute. Si les \(tools) ne sont pas encore installés, macOS les installe d’abord dans sa propre fenêtre, puis Helm continue dès qu’ils sont prêts. macOS demande un mot de passe d’administrateur pour créer /opt/homebrew.",
+                  .de: "Helm lädt Homebrews eigenes Installationsprogramm und führt es aus. Sind die \(tools) noch nicht installiert, installiert macOS sie zuerst in einem eigenen Fenster, und Helm macht weiter, sobald sie bereit sind. Zum Anlegen von /opt/homebrew fragt macOS nach einem Adminpasswort.",
+                  .ja: "Helm が Homebrew 公式のインストーラをダウンロードして実行します。\(tools)がまだインストールされていない場合は、まず macOS が専用のウインドウでインストールし、準備ができたら Helm が続行します。/opt/homebrew を作るため、macOS が管理者パスワードを求めます。",
+                  .zh: "Helm 会下载 Homebrew 官方安装脚本并运行。若尚未安装\(tools)，macOS 会先在自己的窗口中安装，完成后 Helm 会自动继续。为创建 /opt/homebrew，macOS 会要求输入管理员密码。",
+                  .pt: "O Helm baixa o instalador oficial do Homebrew e o executa. Se as \(tools) ainda não estiverem instaladas, o macOS as instala primeiro em uma janela própria, e o Helm continua quando estiverem prontas. O macOS pede uma senha de administrador para criar /opt/homebrew."],
+                 language: language)
+    }
+
+    /// **Apple's own name for what it installs**, lifted out of the sentence its
+    /// installer alert draws (`ALERT_INFORMATIVE_STRING` in `Localizable.loctable`
+    /// of `Install Command Line Developer Tools.app`) and never translated by
+    /// this app: the person sees Apple's window naming the tools this way, and
+    /// a second name for the same thing here reads as a second thing — spelled
+    /// exactly as Apple spells it, Russian's no-break space before its last word
+    /// included. Without
+    /// the article, because the article agrees with the sentence the phrase sits
+    /// in and the sentences here add their own. `zh.lproj` and `pt.lproj` stand
+    /// for Apple's `zh_CN` and `pt_BR` (Simplified script, Brazilian wording —
+    /// `TheToolsAreNamedAsAppleNamesThemTests` reads Apple's bundle and holds
+    /// the eight to it).
+    static func appleTools(language: AppLanguage = AppLanguage.current) -> String {
+        L("command line developer tools", language: language)
+    }
     static var installBrew: String { L("Install Homebrew") }
 
     static var segInstalled: String { L("Installed") }
@@ -68,9 +108,10 @@ enum HbStr {
     static var noResults: String { L("No results.") }
     /// **The header over what a filtered query and an automatic `brew
     /// search` found that this Mac does not already have.** Drawn under
-    /// whichever list the tab already shows — Установленные, Обновления or
-    /// Состояние — never as a list of its own: the Search tab it used to sit
-    /// under was removed 2026-09-24, the owner's decision.
+    /// whichever package list the tab already shows — Установленные or
+    /// Обновления, and not Состояние: a search for a package is not a question
+    /// about this Mac's health — never as a list of its own: the Search tab it
+    /// used to sit under was removed 2026-09-24, the owner's decision.
     static var availableToInstall: String { L("Available to install") }
     /// The list itself has rows, and the query hides every one of them —
     /// distinct from `noResults`, which is `brew search` answering that
@@ -112,17 +153,162 @@ enum HbStr {
     /// Disk already draw them with the same meaning.
     static var stop: String { L("Stop") }
     static var stopped: String { L("Stopped") }
+    /// Beside Stop, for the operation that is waiting on Apple's window: it
+    /// ends the *waiting* and leaves Apple's installer alone, which a bare
+    /// «Stop» would promise to end.
+    static var stopWaiting: String { L("Stop waiting") }
+    /// The neutral word for a password dialog answered no. Not «Stopped»: the
+    /// person did not stop anything, they declined one question.
+    static var cancelled: String { L("Cancelled") }
+    /// What the pill says while an operation runs. The engine's label is a log
+    /// line naming the brew run without `brew` — `upgrade wget`, `uninstall
+    /// periphery`, and `upgrade all` for the run that upgrades everything,
+    /// which is `brew upgrade` and not a label of its arguments — the same
+    /// English in every language, except for the install of Homebrew itself,
+    /// which is not a brew run and which the engine names in English
+    /// (`HomebrewEngine.installBrewLabel`): that one is worded here, or the pill
+    /// changes from a translated sentence to a lowercase English one the moment
+    /// Apple's tools arrive.
+    static func operationName(_ label: String, language: AppLanguage = AppLanguage.current) -> String {
+        label == HomebrewEngine.installBrewLabel ? L("Installing Homebrew", language: language) : label
+    }
+    /// The pill while the operation waits for Apple's installer.
+    static func waitingForTools(language: AppLanguage = AppLanguage.current) -> String {
+        let tools = appleTools(language: language)
+        return L("Waiting for the \(tools)",
+                 [.ru: "Ждём \(tools)",
+                  .es: "Esperando las \(tools)",
+                  .fr: "En attente des \(tools)",
+                  .de: "Warten auf die \(tools)",
+                  .ja: "\(tools)を待機中",
+                  .zh: "正在等待\(tools)",
+                  .pt: "Aguardando as \(tools)"],
+                 language: language)
+    }
+
+    /// The console line at the start of the wait — what a person needs to know
+    /// while a window of Apple's is either in front of them or behind this one.
+    /// Its last sentence holds only while the wait does: a press on «Stop
+    /// waiting» ends it, and `toolsWaitStoppedConsole` is the line that says so.
+    /// **Apple's «Install» is `install` above, quoted**: it is the same word in
+    /// all eight languages (`TheToolsAreNamedAsAppleNamesThemTests` holds both
+    /// to Apple's bundle), so it is interpolated and never typed into a sentence.
+    static func toolsWaitingConsole(language: AppLanguage = AppLanguage.current) -> String {
+        let tools = appleTools(language: language)
+        let button = Quoted(L("Install", language: language), language: language)
+        return L("Homebrew needs the \(tools). macOS is showing its own installer window for them. Choose \(button) there. The window may be behind this one. Helm carries on by itself once they are installed.",
+                 [.ru: "Homebrew нужны \(tools). macOS показывает своё окно установки. Выберите в нём \(button). Окно может оказаться за этим окном. Helm продолжит сам, когда они будут установлены.",
+                  .es: "Homebrew necesita las \(tools). macOS muestra su propia ventana de instalación. Elige \(button) en ella. La ventana puede estar detrás de esta. Helm continuará solo cuando estén instaladas.",
+                  .fr: "Homebrew a besoin des \(tools). macOS affiche sa propre fenêtre d’installation. Choisissez \(button) dans cette fenêtre. Elle peut se trouver derrière celle-ci. Helm continuera seul une fois les outils installés.",
+                  .de: "Homebrew benötigt die \(tools). macOS zeigt dafür ein eigenes Installationsfenster. Wähle darin \(button). Das Fenster kann hinter diesem liegen. Helm macht selbstständig weiter, sobald sie installiert sind.",
+                  .ja: "Homebrew には\(tools)が必要です。macOS が専用のインストールウインドウを表示します。そこで\(button)を選択してください。ウインドウはこのウインドウの後ろにある場合があります。インストールが終わると、Helm が自動で続行します。",
+                  .zh: "Homebrew 需要\(tools)。macOS 会显示自己的安装窗口。请在其中选取\(button)。该窗口可能在此窗口后面。安装完成后，Helm 会自动继续。",
+                  .pt: "O Homebrew precisa das \(tools). O macOS mostra a própria janela de instalação. Escolha \(button) nela. A janela pode estar atrás desta. O Helm continua sozinho quando elas estiverem instaladas."],
+                 language: language)
+    }
+
+    /// The console line when the person pressed «Stop waiting»: Helm no longer
+    /// watches for the tools and will not go on by itself. **It says nothing of
+    /// Apple's window.** It used to say macOS carries on with the installation
+    /// in its own window, and that was a claim Helm had no reading for: the line
+    /// is chosen by the step `waiting → stopped` alone, and the same step is
+    /// reached over a window Helm never saw running and over one it had just
+    /// read closed without the tools. What follows is the person's press on the button the
+    /// page shows again — **it names the button by the same string the button
+    /// is drawn with** (`installBrew`), quoted, so a rename cannot leave this
+    /// sentence behind. It says nothing of the tools' name: the languages
+    /// disagree on the case that name would need after a verb.
+    static func toolsWaitStoppedConsole(language: AppLanguage = AppLanguage.current) -> String {
+        let button = Quoted(L("Install Homebrew", language: language), language: language)
+        return L("Helm stopped waiting and will not go on by itself. To continue, choose \(button) again.",
+                 [.ru: "Helm перестал ждать и сам не продолжит. Чтобы продолжить, снова выберите \(button).",
+                  .es: "Helm dejó de esperar y no continuará por sí solo. Para continuar, elige \(button) de nuevo.",
+                  .fr: "Helm a cessé d’attendre et ne continuera pas seul. Pour continuer, choisissez à nouveau \(button).",
+                  .de: "Helm wartet nicht mehr und macht nicht von selbst weiter. Wähle zum Fortfahren erneut \(button).",
+                  .ja: "Helm は待機をやめました。自動では続行しません。続けるには、もう一度\(button)を選択してください。",
+                  .zh: "Helm 已停止等待，不会自动继续。要继续，请再次选取\(button)。",
+                  .pt: "O Helm parou de esperar e não continuará sozinho. Para continuar, escolha \(button) novamente."],
+                 language: language)
+    }
+
+    /// The console line at the end of the wait, when the tools are there and
+    /// the password dialog is next.
+    static func toolsArrivedConsole(language: AppLanguage = AppLanguage.current) -> String {
+        let tools = appleTools(language: language)
+        return L("The \(tools) are installed. Continuing with Homebrew.",
+                 [.ru: "Установлены \(tools). Продолжаем установку Homebrew.",
+                  .es: "Las \(tools) están instaladas. Continuando con Homebrew.",
+                  .fr: "Les \(tools) sont installés. Suite de l’installation de Homebrew.",
+                  .de: "Die \(tools) sind installiert. Homebrew wird weiter installiert.",
+                  .ja: "\(tools)がインストールされました。Homebrew のインストールを続けます。",
+                  .zh: "已安装\(tools)。继续安装 Homebrew。",
+                  .pt: "As \(tools) estão instaladas. Continuando com o Homebrew."],
+                 language: language)
+    }
+
+    /// Why an install of Homebrew ended without Homebrew, one sentence per
+    /// reason the engine names — beside «Failed», or beside «Cancelled» for the
+    /// password.
+    static func toolsNotInstalled(language: AppLanguage = AppLanguage.current) -> String {
+        let tools = appleTools(language: language)
+        return L("The \(tools) were not installed, so Homebrew was not installed either.",
+                 [.ru: "Homebrew не установлен, потому что не установлены \(tools).",
+                  .es: "Las \(tools) no se instalaron, así que Homebrew tampoco se instaló.",
+                  .fr: "Les \(tools) n’ont pas été installés, donc Homebrew ne l’a pas été non plus.",
+                  .de: "Die \(tools) wurden nicht installiert, daher wurde auch Homebrew nicht installiert.",
+                  .ja: "\(tools)がインストールされなかったため、Homebrew もインストールされませんでした。",
+                  .zh: "未安装\(tools)，因此 Homebrew 也没有安装。",
+                  .pt: "As \(tools) não foram instaladas, então o Homebrew também não foi instalado."],
+                 language: language)
+    }
+    static func authorizationDeclined(language: AppLanguage = AppLanguage.current) -> String {
+        L("Administrator authorization was cancelled, so Homebrew was not installed.", language: language)
+    }
+    static func prefixNotPrepared(language: AppLanguage = AppLanguage.current) -> String {
+        L("macOS could not prepare /opt/homebrew, so Homebrew was not installed.", language: language)
+    }
+    /// The one note that carries a number: the installer's own exit code, which
+    /// is what somebody looking for the cause searches for. nil when the state
+    /// has none — the engine always sets one for this reason.
+    static func installerFailed(code: Int?, language: AppLanguage = AppLanguage.current) -> String {
+        let code = code.map(String.init) ?? "?"
+        return L("Homebrew’s installer stopped with exit code \(code). Its last lines are in the console.",
+                 [.ru: "Установщик Homebrew завершился с кодом \(code). Последние строки его вывода остались в консоли.",
+                  .es: "El instalador de Homebrew terminó con el código \(code). Sus últimas líneas están en la consola.",
+                  .fr: "Le programme d’installation de Homebrew s’est terminé avec le code \(code). Ses dernières lignes sont dans la console.",
+                  .de: "Das Homebrew-Installationsprogramm wurde mit dem Code \(code) beendet. Die letzten Zeilen stehen in der Konsole.",
+                  .ja: "Homebrew のインストーラがコード \(code) で終了しました。最後の出力はコンソールに残っています。",
+                  .zh: "Homebrew 安装脚本以退出码 \(code) 结束。最后几行输出保留在控制台中。",
+                  .pt: "O instalador do Homebrew terminou com o código \(code). As últimas linhas estão no console."],
+                 language: language)
+    }
     /// Why the operation failed before it could start: brew vanished between
     /// the page's status and the press — its own uninstaller in a terminal.
-    static var brewGone: String { L("Homebrew is no longer installed.") }
+    static func brewGone(language: AppLanguage = AppLanguage.current) -> String {
+        L("Homebrew is no longer installed.", language: language)
+    }
 
     /// The console's first line after a launch that follows an interrupted
-    /// quit: the child brew survived Helm and kept changing the Cellar with
-    /// nobody watching. Interpolated, so the table lives here; the label is a
-    /// brew command and stays whole in every language, quoted with the
-    /// language's own marks.
+    /// quit: the child survived Helm and kept going with nobody watching — a
+    /// brew run that kept changing the Cellar, or the bash wrapper of the
+    /// Homebrew installer. **Two sentences, because the two labels are two
+    /// kinds of thing.** The marker stores the engine's label and the line is
+    /// built from it at the next launch (`HomebrewViewModel.refreshStatus` hands
+    /// it over as it was stored). For a brew run the label is the phrase that
+    /// names it, without `brew` — English in every language, as it is in the
+    /// log — and the sentence quotes it with the language's own marks; that one
+    /// is interpolated, so its table lives here. For the install of Homebrew
+    /// (`HomebrewEngine.installBrewLabel`), which is not a brew run, the label
+    /// is a state's name and not a word of any language, so quoting it inside a
+    /// translated sentence put English in the middle of every translation: it has a
+    /// whole sentence of its own and a `.lproj` key, with no label in it
+    /// (`AnInterruptedInstallIsSaidInThePersonsLanguageTests`).
     static func interruptedAtQuit(_ label: String,
                                   language: AppLanguage = AppLanguage.current) -> String {
+        if label == HomebrewEngine.installBrewLabel {
+            return L("Helm quit while Homebrew was still being installed. The installation may not have finished.",
+                     language: language)
+        }
         let q = Quoted(label, language: language)
         return L("Helm quit while \(q) was still running. It may not have finished.",
                  [.ru: "Helm завершил работу, пока выполнялось \(q). Операция могла не завершиться.",
@@ -270,12 +456,13 @@ enum HbStr {
 
     // MARK: - What `brew doctor` found
 
-    /// The two severities `DoctorParser` reads off brew's own `Warning:` and
-    /// `Error:` prefixes. Neither is brew's word: `Warning` is already a key in
-    /// this app about something else, and one key means one thing — and
-    /// `Error` beside a tap's deprecation notice would call somebody's machine
-    /// broken over a cask that still works. These are what the *badge* says.
-    static var severityCaution: String { L("Caution") }
+    /// What the badge on a finding says, for the one severity that has a badge.
+    /// `DoctorParser` reads two off brew's own `Warning:` and `Error:` prefixes
+    /// and the word is not brew's: `Error` beside a tap's deprecation notice
+    /// would call somebody's machine broken over a cask that still works. The
+    /// other, a caution, is what nearly every finding is, and a badge saying so
+    /// on each row said the same word on all of them — it has no word at all
+    /// (`HomebrewSettingsPage.severityWord`).
     static var severityDanger: String { L("Problem") }
 
     /// While `brew doctor` is out. It is the slowest query in the module and
@@ -286,38 +473,48 @@ enum HbStr {
     /// as a healthy machine**, and it is a separate key from the refusal below
     /// for exactly that reason.
     static var nothingToFix: String { L("Nothing to fix.") }
-    /// `brew doctor` could not be asked, or answered nothing at all where it
-    /// always answers something. Deliberately says nothing about the machine:
+    /// `brew doctor` could not be asked, answered nothing at all where it
+    /// always answers something, or exited non-zero with nothing in its answer
+    /// this build could read (`HomebrewEngine.doctor`). Deliberately says
+    /// nothing about the machine:
     /// a Mac nobody could examine is not a Mac that is fine, and the sentence a
     /// person decides whether to trust the app on must not claim a reading that
     /// was never taken.
     static var couldNotExamine: String {
         L("Homebrew did not answer, so nothing is known about this Mac right now.")
     }
-    /// The inspector with nothing chosen in this segment. Not `nothingSelected`
-    /// — that says "Select a package", and neither a finding nor a group of
-    /// `brew config` lines is a package; one key means one thing, and several
-    /// languages inflect them differently.
-    ///
-    /// It said «Select a finding» while findings were all this list held. The
-    /// list holds the configuration as well now, and half a sentence about a
-    /// list with two kinds of thing on it is a sentence that is wrong whenever
-    /// somebody is looking at the other kind.
-    static var selectAFindingOrASection: String { L("Select a finding or a part of the configuration") }
+    /// What the verdict says over a Mac that `brew doctor` examined and found
+    /// nothing wrong with, in a second line: whose reading it is. Not brew's
+    /// own «Your system is ready to brew.» — that sentence is Homebrew's and
+    /// the app says what it did with it — and no more than `nothingToFix`
+    /// says: a claim about what was *read*, since the same tab can also be
+    /// looking at a Mac nobody could examine (`couldNotExamine`).
+    static var healthCleanNote: String {
+        L("Homebrew checked this Mac and found nothing to report.")
+    }
+    /// The count over a Mac with findings, as a label with a number and not as
+    /// a sentence, for `packagesStatus`'s reason: a sentence would need its own
+    /// plural in each of the eight languages.
+    static func findingsCount(_ count: Int) -> String { L("Findings: \(count)", [.ru: "Замечаний: \(count)", .es: "Observaciones: \(count)", .fr: "Remarques\u{00A0}: \(count)", .de: "Befunde: \(count)", .ja: "\(count) 件の項目", .zh: "发现 \(count) 项", .pt: "Observações: \(count)"]) }
+    /// Under the count: whose voice this is. `cmd/doctor.rb` prints exactly
+    /// this permission before its first warning — «If everything you use
+    /// Homebrew for is working fine: please don't worry or file an issue; just
+    /// ignore this.» — and `DoctorParser` throws that frame away on purpose, so
+    /// this is the one place the tab says it, in the app's words and named as
+    /// Homebrew's.
+    static var healthVerdictFrame: String {
+        L("Homebrew itself says: if everything you use it for works, you can ignore these.")
+    }
+    // MARK: - The configuration card
 
-    // MARK: - The two headings the health list is divided by
-
-    /// Over `brew doctor`'s findings. Not "Doctor", for `segHealth`'s reason —
-    /// that is Homebrew's name for the subcommand — and not the segment's own
-    /// word either: a heading repeating the tab above it says nothing.
-    static var headingCheckup: String { L("Checkup") }
-    /// Over `brew config`'s groups.
+    /// The title of the card holding `brew config`. There is no heading over the
+    /// findings any more: the verdict above them is what says what they are.
     static var headingConfiguration: String { L("Configuration") }
 
     /// The three groups `brew config`'s flat list is drawn in.
     ///
     /// **Ours, so translated — the keys beside them are Homebrew's, so never.**
-    /// `brew config` prints eighteen `key: value` lines and no heading at all;
+    /// `brew config` prints a list of `key: value` lines and no heading at all;
     /// `CLT` and `HOMEBREW_PREFIX` are Homebrew's words for those things and a
     /// person looking one up needs the word Homebrew uses, while "Machine" and
     /// "Tools" are this app's reading and belong to whoever is reading it.
@@ -392,7 +589,9 @@ enum HbStr {
     /// press and would not run it — the ordinary cause being the race this
     /// whole design is built around: the package left the Cellar between the
     /// screen being drawn and the button being pressed.
-    static var fixNotRunnable: String { L("Helm checked the command again and would not run it.") }
+    static func fixNotRunnable(language: AppLanguage = AppLanguage.current) -> String {
+        L("Helm checked the command again and would not run it.", language: language)
+    }
 
     /// The heading over the dependency chips.
     static var dependsOn: String { L("Depends on") }

@@ -63,7 +63,7 @@ private struct FixedLocator: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 @MainActor

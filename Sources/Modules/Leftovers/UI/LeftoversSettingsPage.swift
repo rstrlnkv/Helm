@@ -343,12 +343,12 @@ struct LeftoversSettingsPage: View {
                     Section(header: HelmSectionTitle(LfStr.kindName(group.kind))) {
                         ForEach(group.items) { item in
                             row(item)
+                                .listRowSeparator(.hidden)
                         }
                     }
                 }
             }
-            .listStyle(.inset)
-            .padding(.horizontal, 12)
+            .helmStripedList(rowPitch: HelmSpace.s8)
         }
     }
 

@@ -94,4 +94,43 @@ final class TheConsoleIsBoundedTests: XCTestCase {
         XCTAssertEqual(model.consoleLines.count, 20)
         XCTAssertEqual(model.consoleLines.first, "line 0")
     }
+
+    /// The newest line's identity moves on every arrival however full the
+    /// console is, and a row keeps its number while the trim moves it up the
+    /// array — the count cannot be followed once it has stopped changing.
+    func testTheNewestLineHasAnIdentityThatKeepsMovingAtTheBound() async {
+        let (model, transport) = model()
+
+        await log(HomebrewViewModel.consoleLimit + 3, into: transport, model: model)
+        let sequence = model.consoleSequence
+        let rows = model.consoleRows
+
+        XCTAssertEqual(model.consoleLines.count, HomebrewViewModel.consoleLimit)
+        XCTAssertEqual(sequence, HomebrewViewModel.consoleLimit + 3,
+                       "the sequence is the number of lines ever given, trimmed or not")
+        XCTAssertEqual(rows.last?.id, sequence - 1, "the newest row is not the newest number")
+        XCTAssertEqual(rows.first?.id, 3, "the oldest kept row lost its number to the trim")
+        XCTAssertEqual(Set(rows.map(\.id)).count, rows.count, "two rows share an identity")
+
+        await log(1, into: transport, model: model)
+
+        XCTAssertEqual(model.consoleLines.count, HomebrewViewModel.consoleLimit,
+                       "precondition: the count did not change, which is the point")
+        XCTAssertEqual(model.consoleSequence, sequence + 1,
+                       "an arrival at the bound left the newest line's identity where it was")
+        XCTAssertEqual(model.consoleRows.first?.id, 4)
+    }
+
+    /// Clearing empties the lines and does not take numbers back: a row from
+    /// before the clear and a row after it must never share one.
+    func testClearingDoesNotTakeNumbersBack() async {
+        let (model, transport) = model()
+        await log(5, into: transport, model: model)
+
+        model.clearConsole()
+        await log(2, into: transport, model: model)
+
+        XCTAssertEqual(model.consoleRows.map(\.id), [5, 6],
+                       "five lines, a clear and two more: the two are numbers 5 and 6, not 0 and 1")
+    }
 }

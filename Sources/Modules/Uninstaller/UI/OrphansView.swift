@@ -106,7 +106,7 @@ struct OrphansView: View {
                     }
                 }
             }
-            .listStyle(.inset)
+            .helmStripedList(rowPitch: HelmSpace.s8)
             }
     }
 

@@ -43,7 +43,7 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
     /// Says yes at the dialog and records nothing else: the preparation script
     /// is another test's subject.
     private struct AllowingPrivileged: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { true }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .done }
     }
 
     /// Keeps what it was asked to stream and never finishes it — the engine's

@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// The questions this codebase asks of a new query, asked of `info` — in the
@@ -63,7 +64,7 @@ private struct NoBrew: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {

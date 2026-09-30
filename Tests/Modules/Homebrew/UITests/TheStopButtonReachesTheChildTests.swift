@@ -2,6 +2,7 @@ import XCTest
 import HelmContract
 import HelmTestSupport
 import HelmUI
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
@@ -15,7 +16,7 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     private final class Handle: RunningProcess, @unchecked Sendable {

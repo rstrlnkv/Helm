@@ -37,7 +37,7 @@ final class TheUpdateIsOfferedWhereItIsSaidTests: XCTestCase {
     private func subject(outdated: [OutdatedPackage]) -> InspectorSubject? {
         guard case let .package(subject) = InspectorState.of(
             segment: .installed, selected: Self.caddy.id, installed: [Self.caddy],
-            outdated: outdated, loadedOutdated: true, hits: [], issues: [], config: [],
+            outdated: outdated, loadedOutdated: true, hits: [],
             descriptions: [:]) else { return nil }
         return subject
     }

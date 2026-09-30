@@ -17,7 +17,7 @@ public enum PrivilegedOutcome: Equatable, Sendable {
 /// `AppleScript`'s own doc comment predicted this file: the escaping moved to
 /// `HelmRuntime` first «until there is a shared privileged runner to put them
 /// in», and a second module needing the runner is what makes it worth having.
-/// Homebrew's `OSAPrivilegedRunner` adopting it is a separate change.
+/// Homebrew's `OSAPrivilegedRunner` runs through it too.
 public enum PrivilegedRun {
 
     /// AppleScript's number for a cancelled dialog, in the shape `osascript`

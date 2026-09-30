@@ -12,9 +12,10 @@ import Foundation
 /// an unescaped `"` ends the literal and everything after it is AppleScript,
 /// evaluated by a shell running as root.
 ///
-/// A shared *runner* is the larger idea and still worth having — Homebrew's
-/// port spawns `osascript` itself and so does `PmsetClamshellPort`. The escaping
-/// is the half that must not be written twice, so it moves first.
+/// The shared *runner* the first draft of this comment asked for is
+/// `PrivilegedRun`, and Homebrew's and Hosts' ports go through it; Keep Awake's
+/// `PmsetClamshellPort` still spawns `osascript` itself. The escaping is the
+/// half that must not be written twice, so it moved first.
 public enum AppleScript {
 
     /// A string as an AppleScript double-quoted literal's contents.

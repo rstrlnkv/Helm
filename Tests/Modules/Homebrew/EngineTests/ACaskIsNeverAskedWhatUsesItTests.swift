@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// Three questions about one new query, and the middle one is the point.
@@ -51,7 +52,7 @@ private struct NoBrew: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {

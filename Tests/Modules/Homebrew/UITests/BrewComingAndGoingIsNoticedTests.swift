@@ -50,7 +50,7 @@ final class BrewComingAndGoingIsNoticedTests: XCTestCase {
     }
 
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Answers the two `list` calls and counts them, so a test can say what a

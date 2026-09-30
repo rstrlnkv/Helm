@@ -182,6 +182,16 @@ struct HeaderEdgeLight: ViewModifier {
     }
 }
 
+/// The strip at the top of every page: what this page is, and the controls
+/// that belong to the page rather than to any row in it.
+///
+/// **No summary line.** It carried the module's one-sentence description under
+/// the name — «Не давать Mac засыпать» under «Не спать» — which is the sidebar
+/// row you just clicked, said again in more words. Every mockup in the
+/// redesign draws the plate, the name, and then the page's own controls; the
+/// sentence still has two homes where it is the answer rather than an echo:
+/// the empty state of a module that is switched off, and the composer's
+/// tooltip.
 public struct HelmPageHeader<Trailing: View>: View {
     /// **The strip has one appearance and three reasons to wear it.**
     ///
@@ -454,26 +464,30 @@ public extension View {
     /// **Where the window has a toolbar, the header goes there instead**
     /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws
     /// no row in the page at all. `subtitle` is the status said in words, for
-    /// the style that puts it under the window's title; `trailing` is the same
-    /// status as the page draws it, for the other two.
-    func helmPageHeader<Trailing: View>(
-        symbol: String, tint: Color, title: String, subtitle: String? = nil, bleeds: Bool = false,
-        @ViewBuilder trailing: () -> Trailing = { EmptyView() }
+    /// the `.windowTitle` style that puts it under the window's title. Carries
+    /// no trailing content any more, under either bar style or none: the one
+    /// caller that filled it drew a status badge, and that badge now lives at
+    /// the bar's own trailing edge (`SettingsToolbar.makeStatusItem`, the
+    /// owner, 2026-09-28) — a page mounted with no window toolbar at all (a
+    /// sheet, a page on its own) draws `HelmPageHeader` directly instead,
+    /// which still takes a `trailing` view of its own for that case
+    /// (`AboutPage`'s `WhatsNewView`, its one caller today).
+    func helmPageHeader(
+        symbol: String, tint: Color, title: String, subtitle: String? = nil, bleeds: Bool = false
     ) -> some View {
         modifier(PageHeaderPlacement(symbol: symbol, tint: tint, title: title, subtitle: subtitle,
-                                     bleeds: bleeds, trailing: trailing()))
+                                     bleeds: bleeds))
     }
 }
 
 /// The row in the page, or the header in the window's bar — one question,
 /// asked of the environment, so no page has to know which window it is in.
-private struct PageHeaderPlacement<Trailing: View>: ViewModifier {
+private struct PageHeaderPlacement: ViewModifier {
     let symbol: String
     let tint: Color
     let title: String
     let subtitle: String?
     let bleeds: Bool
-    let trailing: Trailing
 
     @Environment(\.helmPageBar) private var bar
 
@@ -481,10 +495,14 @@ private struct PageHeaderPlacement<Trailing: View>: ViewModifier {
     func body(content: Content) -> some View {
         if bar == nil {
             content.modifier(PageHeaderOverContent(symbol: symbol, tint: tint, title: title,
-                                                   bleeds: bleeds, trailing: trailing))
+                                                   bleeds: bleeds))
         } else {
-            content.modifier(PageBarContent(symbol: symbol, tint: tint, title: title,
-                                            subtitle: subtitle, trailing: trailing))
+            // `PageBarContent`'s `.moduleName` arm draws nothing of its own
+            // any more (its own comment, `PageBarStyle.swift`) —
+            // `SettingsToolbar` owns the name and the status item directly on
+            // the app-owned `NSToolbar`; neither the icon nor a trailing view
+            // reaches this arm.
+            content.modifier(PageBarContent(title: title, subtitle: subtitle))
         }
     }
 }
@@ -515,12 +533,11 @@ private struct PageHeaderPlacement<Trailing: View>: ViewModifier {
 /// by `ToolbarBackdrop` — the header is applied from outside the page, so a
 /// preference is the only way round, and the alternative would be a hand-kept
 /// list of pages living somewhere neither the page nor the band can see.
-private struct PageHeaderOverContent<Trailing: View>: ViewModifier {
+private struct PageHeaderOverContent: ViewModifier {
     let symbol: String
     let tint: Color
     let title: String
     let bleeds: Bool
-    let trailing: Trailing
 
     @State private var scrolled = false
     @State private var standsOnStillContent = false
@@ -543,7 +560,7 @@ private struct PageHeaderOverContent<Trailing: View>: ViewModifier {
             .safeAreaInset(edge: .top, spacing: 0) {
                 HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: bleeds,
                                overContent: true, scrolled: scrolled,
-                               standsOnStillContent: standsOnStillContent) { trailing }
+                               standsOnStillContent: standsOnStillContent)
             }
     }
 }

@@ -14,7 +14,7 @@ import XCTest
 /// animate is everything that changes *what is mounted*: switching segment
 /// replaced one list with another in a frame, a press on a row below
 /// `HomebrewSplit`'s threshold swapped the whole pane for the package in a frame,
-/// and the console arriving took 199 pt off everything above it in a frame.
+/// and the console arriving took its height off everything above it in a frame.
 /// `UninstallerSettingsPage` carries `HelmMotion.interface` on exactly these
 /// three kinds of change and says it is «the same one the other list screens
 /// use»; this page was the list screen that did not.
@@ -137,9 +137,11 @@ final class ThePageMovesRatherThanCutsTests: XCTestCase {
     /// **The one change that is a height rather than a swap, so it can be read as
     /// a curve.**
     ///
-    /// The first line `brew` prints puts a divider and a 148 pt well under the
-    /// page, and everything above it gives up the room. Measured at 199 pt of
-    /// travel, which is the figure the defect was described by.
+    /// The first line `brew` prints puts a divider and the console's well under
+    /// the page, and everything above it gives up the room. The well is ten
+    /// lines plus the inset each side (`consoleHeight`, in `HomebrewSettingsPage`);
+    /// this test reads the travel off the list it watches and asserts on that,
+    /// so no figure is held here to go stale.
     func testTheConsoleArrivingRampsInsteadOfSnapping() async throws {
         let (hb, transport, mount) = await page(width: 984, segment: .updates)
         let before = try XCTUnwrap(lists(mount).first)

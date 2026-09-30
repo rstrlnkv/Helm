@@ -10,9 +10,13 @@ import SwiftUI
 /// mockup, and this build still carries both.
 ///
 /// - `moduleName` — the module's plate and name as a toolbar item at the
-///   leading edge, with its shared glass background hidden, and the status
-///   right after the name: the header as it looked, lifted into the bar.
-///   **The owner's choice for the shipping layout** (2026-09-21): the module's
+///   leading edge, with its shared glass background hidden. The status word
+///   or badge does not ride beside the name any more (the owner, 2026-09-28:
+///   «Давай вернем его в правую часть») — `SettingsToolbar`'s own
+///   `helm.status` item carries it to the bar's trailing edge instead, and
+///   only on the shared name-only bar (`SettingsToolbar.identifiers()`);
+///   this view knows nothing of it. **The owner's choice for the shipping
+///   layout** (2026-09-21): the module's
 ///   name on the left, the switcher centred, and the buttons and search
 ///   packed to the trailing edge — a three-zone toolbar that needs a leading
 ///   item to be a real zone at all. It is also load-bearing for the search
@@ -166,8 +170,10 @@ public extension View {
     /// decide. Items and the title live in the titlebar's own view, above this
     /// one.
     ///
-    /// **On macOS 26 it draws nothing** — `HelmBandChoice`, read from the
-    /// environment, says whose band this is, and there it is the system's.
+    /// **On macOS 26 it draws nothing of its own** — `HelmBandChoice`, read
+    /// from the environment, says whose band this is, and there it is the
+    /// system's; the one thing it does there is ask the system's scroll edge
+    /// effect for its soft style over the top edge.
     func helmToolbarBackdrop() -> some View {
         modifier(ToolbarBackdrop())
     }
@@ -200,13 +206,13 @@ public extension View {
     ///
     /// For a page that draws its own header row outside `helmPageHeader`
     /// (the log, which is not a scroll view) and so needs to say both «here is
-    /// my title» and «draw the row only when there is no bar».
-    func helmPageBar<Trailing: View>(
-        symbol: String, tint: Color, title: String, subtitle: String? = nil,
-        @ViewBuilder trailing: () -> Trailing = { EmptyView() }
-    ) -> some View {
-        modifier(PageBarContent(symbol: symbol, tint: tint, title: title,
-                                subtitle: subtitle, trailing: trailing()))
+    /// my title» and «draw the row only when there is no bar». Carries no
+    /// trailing content of its own any more: `PageBarContent`'s `.moduleName`
+    /// arm draws nothing (`SettingsToolbar`'s own `makeNameItem`/
+    /// `makeStatusItem` own the bar directly), so a `trailing:` parameter here
+    /// would have nowhere left to be drawn.
+    func helmPageBar(title: String, subtitle: String? = nil) -> some View {
+        modifier(PageBarContent(title: title, subtitle: subtitle))
     }
 }
 
@@ -217,9 +223,22 @@ private struct HelmPageBarStyleTracker: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.helmPageBar, style ?? current())
-            // A new identity: the toolbar is AppKit's, and an environment
-            // change alone leaves the items it already published where they
-            // are (`AStyleChosenInTheBarReachesTheBarTests` holds the `id`).
+            // A new identity, not just a new environment value — not for the
+            // SwiftUI-AppKit bridge any more (that reason left with the
+            // bridge itself), but for a page's own `@State` captured once
+            // from `AppSettings.pageBarStyle` at its own init:
+            // `GeneralSettingsPage`'s picker (`pageBarStyle`) reads the
+            // setting that way, so a style chosen through the bar's own
+            // right-click menu (`SettingsToolbar.barMenuChosePageBar`) left
+            // that picker showing the old choice until the page was left and
+            // reopened. Measured (engineer, 2026-09-28): dropping this `.id`
+            // fails `TheGeneralPickerFollowsTheBarMenuTests
+            // .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu`, besides
+            // this file's own source check
+            // (`AStyleChosenInTheBarReachesTheBarTests
+            // .testThePageBarStyleTrackerKeysItsSubtreeOnTheStyle`, which
+            // fails on any source without this line by construction) —
+            // nothing else in this round's style-switch families.
             .id(style ?? current())
             .onReceive(NotificationCenter.default.publisher(for: .helmPageBarStyleChanged)) { _ in
                 style = current()
@@ -227,12 +246,9 @@ private struct HelmPageBarStyleTracker: ViewModifier {
     }
 }
 
-struct PageBarContent<Trailing: View>: ViewModifier {
-    let symbol: String
-    let tint: Color
+struct PageBarContent: ViewModifier {
     let title: String
     let subtitle: String?
-    let trailing: Trailing
 
     @Environment(\.helmPageBar) private var bar
 
@@ -249,30 +265,17 @@ struct PageBarContent<Trailing: View>: ViewModifier {
         case .moduleName:
             content
                 .modifier(ReportsScrolledUnderBar())
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        HStack(spacing: HelmSpace.s5) {
-                            HelmIconPlate(symbol: symbol, tint: tint, size: 24)
-                            Text(title)
-                                .font(.system(size: 16, weight: .semibold))
-                                .tracking(-0.2)
-                                .lineLimit(1)
-                            // The status sits after the name rather than at the
-                            // trailing edge, where the page's own actions are:
-                            // measured in a probe window, a status item there
-                            // took the Refresh button's place.
-                            trailing
-                        }
-                        // The toolbar puts a navigation item 8,5 pt from the
-                        // sidebar's edge, where the window's own title starts at
-                        // 20 — photographed 2026-09-17, the plate sat hard against
-                        // the divider while the other shape's title had the page
-                        // gutter. 12 more puts the plate where that title starts.
-                        .padding(.leading, HelmSpace.s5)
-                    }
-                    // A title is not a control: no glass behind it.
-                    .sharedBackgroundVisibility(.hidden)
-                }
+                // Nothing is drawn here any more — `SettingsWindow` sets no
+                // `sceneBridgingOptions`, so a `.toolbar` modifier on this
+                // pane has no bridge left to carry it onto the real window.
+                // The name itself, and the trailing `helm.status` item, are
+                // both drawn by `SettingsToolbar` straight onto the app-owned
+                // `NSToolbar` (`makeNameItem`, `makeStatusItem`) — this arm
+                // still carries two jobs of its own: publishing the window's
+                // own title, and reporting scroll position through
+                // `ReportsScrolledUnderBar` above, which `ToolbarBackdrop`
+                // reads (`HelmPageScrolledKey`) to light the strip.
+                //
                 // Still the window's title — the Window menu and Mission
                 // Control name the window by it — but not drawn in the bar,
                 // which already says it.
@@ -311,8 +314,23 @@ private struct ToolbarBackdrop: ViewModifier {
             helmsBand(content)
         } else {
             // The system's: an opaque title bar lets its own scroll-edge
-            // effect attach to the pane (`HelmBandChoice`).
-            content
+            // effect attach to the pane (`HelmBandChoice`), and this asks that
+            // effect for its soft style —
+            // `View.scrollEdgeEffectStyle(_:for:)` with
+            // `ScrollEdgeEffectStyle.soft`, "a subtle, blurred boundary" in
+            // Apple's documentation (macOS 26.0), which is what fades and
+            // blurs the content passing under the toolbar (the owner: content
+            // behind the toolbar should blur slightly). Without a style the
+            // system picks `.automatic`; WWDC25 session 356 says "Hard is
+            // mostly used on macOS". On macOS 27.2
+            // `On26TheBandAsksTheSystemForASoftEdgeTests
+            // .testOn27SoftAndNoModifierDrawTheSameParts` measured automatic
+            // drawing the same parts as soft, which says nothing about 26.
+            // Only the top edge, where the toolbar is.
+            // **Unmeasured here**: this Mac runs macOS 27, whose arm is the
+            // other one, so how the blur looks on 26 is the owner's to read
+            // in a virtual machine.
+            content.scrollEdgeEffectStyle(.soft, for: .top)
         }
     }
 

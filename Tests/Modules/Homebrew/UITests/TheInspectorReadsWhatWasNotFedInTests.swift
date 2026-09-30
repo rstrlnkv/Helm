@@ -23,11 +23,11 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
                        installed: [BrewPackage] = [], outdated: [OutdatedPackage] = [],
-                       hits: [SearchHit] = [], issues: [DoctorIssue] = [],
+                       hits: [SearchHit] = [],
                        loadedOutdated: Bool = true) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
                           outdated: outdated, loadedOutdated: loadedOutdated,
-                          hits: hits, issues: issues, config: [], descriptions: [:])
+                          hits: hits, descriptions: [:])
     }
 
     private func subject(_ state: InspectorState, _ what: String,
@@ -140,6 +140,8 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     func testASelectionIntoAnEmptiedListIsNothingSelectedInEverySegment() {
         XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
         XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
+        // Состояние has no inspector, so an id it once could have held is
+        // nothing there either (`InspectorStateTests.testTheHealthSegmentHasNoInspector`).
         XCTAssertEqual(state(.health, "f:helm", hits: []), .nothingToSelect)
     }
 
@@ -147,7 +149,8 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     /// selection standing across a segment switch would take if `installed`
     /// and `outdated` shared one. `hits` is deliberately not this test's
     /// concern any more: it is the one list every segment now shares on
-    /// purpose (`testAHitUnderTheSectionOffersInstallationOnEveryOtherSegmentToo`,
+    /// purpose on the two package tabs
+    /// (`testAHitUnderTheSectionOffersInstallationOnUpdatesToo`,
     /// `InspectorStateTests.swift`), so a hit resolving under a segment that is
     /// not Установленные is the feature working rather than a collision.
     func testASelectionFromAnotherSegmentsListIsNothingSelected() {

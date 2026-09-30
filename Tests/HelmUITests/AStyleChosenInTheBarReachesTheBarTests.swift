@@ -4,20 +4,33 @@ import HelmTestSupport
 /// **A page-bar style chosen for the toolbar has to give the page a new
 /// identity, not just a new environment value.**
 ///
-/// Measured on the dev build by 2026-09-17, while a page's controls were
-/// bridged into the window's own AppKit toolbar: an environment change alone
-/// did not republish them, and choosing another `PageBarStyle` left the bar
-/// exactly as it was until the page was left and opened again. The tracker
-/// keys the subtree on the style, and photographs of the same flip afterwards
-/// showed the bar following it.
+/// Not the SwiftUI-AppKit bridge any more — that reason left with the bridge
+/// itself. What is measured today: `GeneralSettingsPage`'s own picker
+/// (`pageBarStyle`) reads `AppSettings.pageBarStyle` once into a `@State` var
+/// at its own init, so a style chosen through the bar's own right-click menu
+/// (`SettingsToolbar.barMenuChosePageBar`) leaves that picker showing the old
+/// choice until the page's subtree is torn down and rebuilt — an environment
+/// change alone reaches `PageBarContent`'s own `@Environment` read, which
+/// redraws on its own, but never reaches a `@State` initial value. Removing
+/// the `.id` here (engineer, 2026-09-28, reverted) failed
+/// `TheGeneralPickerFollowsTheBarMenuTests
+/// .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu`, besides this
+/// file's own `testThePageBarStyleTrackerKeysItsSubtreeOnTheStyle`, which
+/// checks the source directly and fails on any source without the line.
 ///
-/// Read off the construction: the bridge needed a window with a toolbar, which
-/// a page mounted in a hosting view does not have, so nothing offscreen can
-/// see this. What a test can hold is that the tracker does not lose the `id`
-/// again. The switcher style had a tracker of its own under the pane, held
-/// here to the opposite; it went on 2026-09-28, when nothing under the pane
-/// read the value any more — every switcher is built in the toolbar's own
-/// hosting views and handed its style there.
+/// This file cannot mount `GeneralSettingsPage` under the real bar's own
+/// right-click menu, so it cannot see the picker go stale directly — what a
+/// test here can hold is only that the tracker keeps the `id` at all.
+/// `TheGeneralPickerFollowsTheBarMenuTests
+/// .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu` does mount that
+/// combination, ordered in behind the other windows, through
+/// `SettingsSplitViewController`, sends the
+/// bar's own menu action and reads the picker back through Vision — that is
+/// where the staleness above was actually measured. The switcher style had a
+/// tracker of its own under the pane, held here to the opposite; it went on
+/// 2026-09-28, when nothing under the pane read the value any more — every
+/// switcher is built in the toolbar's own hosting views and handed its style
+/// there.
 final class AStyleChosenInTheBarReachesTheBarTests: XCTestCase {
 
     private func trackerBody(_ name: String, in file: String) throws -> String {
@@ -32,8 +45,9 @@ final class AStyleChosenInTheBarReachesTheBarTests: XCTestCase {
         let body = try trackerBody("HelmPageBarStyleTracker",
                                    in: "Sources/HelmUI/DesignSystem/PageBarStyle.swift")
         XCTAssertTrue(body.contains(".id(style ?? current())"), """
-            the page-bar tracker hands the subtree a value and not an identity, so the header shape \
-            chosen in Settings does not reach the window's toolbar until the page is reopened
+            the page-bar tracker hands the subtree a value and not an identity, so a page's own \
+            `@State` captured from `AppSettings.pageBarStyle` at init — General's own picker among \
+            them — keeps showing the old choice until the page is reopened
             """)
     }
 }

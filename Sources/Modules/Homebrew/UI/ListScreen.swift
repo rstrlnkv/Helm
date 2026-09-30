@@ -92,11 +92,9 @@ enum ListScreen: Equatable {
 
     /// Whether a package list's own section is drawn as a `List` row rather
     /// than as a single centred sentence — the section forces the shape even
-    /// over a state that would otherwise be centred, mirroring `healthScreen`'s
-    /// own `.sentence` → `.groups(checkup: [.note(note)], …)` rewrite one
-    /// file over. Extracted so a test holds the shape decision without a
-    /// `body`, the way `AvailableSection.of` already lets one hold the
-    /// section's own decision.
+    /// over a state that would otherwise be centred. Extracted so a test holds
+    /// the shape decision without a `body`, the way `AvailableSection.of`
+    /// already lets one hold the section's own decision.
     static func forcesListShape(section: AvailableSection?, screen: ListScreen) -> Bool {
         section != nil || screen == .rows || screen == .noMatches
     }

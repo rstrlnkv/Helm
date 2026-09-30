@@ -31,9 +31,42 @@ final class ThePageSpellsOneDecisionOnceTests: XCTestCase {
 
     private static let page = "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift"
 
+    /// The Health tab's own file, where the fix command and the configuration
+    /// values are drawn since the tab became a page of its own.
+    private static let healthPage = "Sources/Modules/Homebrew/UI/HomebrewHealthPage.swift"
+
     private func code() throws -> String {
         try SwiftSource.code(String(contentsOf: RepoSource.root
             .appendingPathComponent(Self.page), encoding: .utf8))
+    }
+
+    /// Every file this module's page is drawn from, for a rule about a
+    /// spelling that may sit in either.
+    private func everyPageCode() throws -> String {
+        try [Self.page, Self.healthPage].map {
+            try SwiftSource.code(String(contentsOf: RepoSource.root
+                .appendingPathComponent($0), encoding: .utf8))
+        }.joined(separator: "\n")
+    }
+
+    /// A monospaced face whose size is typed in: `.system(size: …, design: .monospaced)`
+    /// in one expression. Not «the file has a `.system(size:` somewhere and a
+    /// monospaced face somewhere» — that reading flagged the Health page's
+    /// verdict line, a 16 pt semibold title, beside a text-style monospaced
+    /// command it has nothing to do with.
+    private static func freezesAMonospacedSize(_ code: String) -> Bool {
+        code.range(of: #"\.system\(size:[^)]*design: \.monospaced"#, options: .regularExpression) != nil
+    }
+
+    /// **And the rule can see the shape it is about**, in both directions: it
+    /// finds a frozen size and passes a text style and a proportional size.
+    func testTheFrozenSizeRuleSeesTheShape() {
+        XCTAssertTrue(Self.freezesAMonospacedSize(".font(.system(size: 11, design: .monospaced))"))
+        XCTAssertTrue(Self.freezesAMonospacedSize(".font(.system(size: 11, weight: .medium, design: .monospaced))"))
+        XCTAssertFalse(Self.freezesAMonospacedSize(".font(.system(.subheadline, design: .monospaced))"))
+        XCTAssertFalse(Self.freezesAMonospacedSize(".font(.system(size: 16, weight: .semibold))"))
+        XCTAssertFalse(Self.freezesAMonospacedSize(
+            ".font(.system(size: 16, weight: .semibold))\n.font(.system(.subheadline, design: .monospaced))"))
     }
 
     /// **The premise: the scan is reading the page and not an empty string.**
@@ -59,9 +92,10 @@ final class ThePageSpellsOneDecisionOnceTests: XCTestCase {
     /// still a `Section`.
     func testNoSectionHereLetsMacOSDrawItsHeading() throws {
         let lines = try code().components(separatedBy: "\n")
-        // `\bSection\(` and not a substring search: `.configSection(group)` is an
-        // enumeration case on this page and contains the word, which the first
-        // version of this rule reported as a bare-string header.
+        // `\bSection\(` and not a substring search: a name that merely ends in
+        // the word (`.configSection(group)` was one, on this page) is not a
+        // section, which the first version of this rule reported as a
+        // bare-string header.
         let opens = try NSRegularExpression(pattern: #"\bSection\("#)
         let systemDrawn = lines.enumerated().filter { _, line in
             let range = NSRange(line.startIndex..., in: line)
@@ -78,8 +112,8 @@ final class ThePageSpellsOneDecisionOnceTests: XCTestCase {
         // And it still finds sections at all, or the emptiness above is about a
         // page with no groups in it.
         XCTAssertGreaterThanOrEqual(lines.filter { $0.contains("Section(header:") }.count, 2,
-                                    "the page draws fewer than the two groups the health list "
-                                    + "has, so this rule is guarding nothing")
+                                    "the page draws fewer than the two headed sections its package "
+                                    + "lists have, so this rule is guarding nothing")
     }
 
     /// **One monospaced face, spelled one way.**
@@ -98,8 +132,8 @@ final class ThePageSpellsOneDecisionOnceTests: XCTestCase {
     /// other deliberate monospaced face in the tree takes (`HostsTable`,
     /// `HostsSettingsPage`, `LayoutLists`, `LayoutTestField`).
     func testTheMonospacedFaceIsSpelledOneWay() throws {
-        let code = try code()
-        XCTAssertFalse(code.contains("design: .monospaced") && code.contains(".system(size:"), """
+        let code = try everyPageCode()
+        XCTAssertFalse(Self.freezesAMonospacedSize(code), """
             a monospaced face is still frozen at a hand-typed size on this page. A text style \
             resolves to the same 11 at the default setting and follows the system text size \
             from there, which a literal cannot
@@ -112,7 +146,8 @@ final class ThePageSpellsOneDecisionOnceTests: XCTestCase {
         let spelled = code.components(separatedBy: ".system(.subheadline, design: .monospaced)").count - 1
         XCTAssertEqual(spelled, 3, """
             the page spells the settled monospaced face \(spelled) times where it draws three \
-            monospaced things — the fix command, a console line and a configuration value. \
+            monospaced things — the fix command (on the Health page), a console line and a \
+            configuration value (on the Health page). \
             Either one of them has changed face, or this floor is stale
             """)
     }

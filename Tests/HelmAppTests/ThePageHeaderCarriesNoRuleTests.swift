@@ -125,13 +125,12 @@ final class ThePageHeaderCarriesNoRuleTests: XCTestCase {
     /// The first code line **after** the call that starts on `start` — its
     /// sibling in whatever stack it sits in.
     ///
-    /// Counted rather than guessed at. One call site here spans four lines and
-    /// another spans forty, because the module page's header takes a trailing
-    /// closure holding a badge, a switch and a comment about `ViewBuilder`; a
-    /// scan that looked a fixed number of lines ahead found two of the three
-    /// rules and reported the tree clean of the third. Parens close the
-    /// argument list, braces close the trailing closure if there is one, and
-    /// the next line carrying code is the sibling.
+    /// Counted rather than guessed at, not measured once and trusted forever
+    /// — a call's own line count is free to change with any edit, and a scan
+    /// that looked a fixed number of lines ahead instead would silently stop
+    /// finding the sibling the day a call grew or shrank past it. Parens
+    /// close the argument list, braces close the trailing closure if there
+    /// is one, and the next line carrying code is the sibling.
     ///
     /// Nil when the call never closes, which is a file this test cannot read
     /// rather than a file that passes.

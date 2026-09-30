@@ -121,8 +121,13 @@ final class TheFieldFiltersTheTabItIsOnTests: XCTestCase {
         await vm.loadIfNeeded()
         await vm.refreshDoctor()
 
-        vm.query = "xcode"
-        XCTAssertEqual(vm.shownIssues.map(\.title), ["Xcode CLT out of date"])
+        let screen = HealthScreen.of(vm.doctor, config: vm.configGroups,
+                                     needle: ListFilter.needle("xcode"))
+        XCTAssertEqual(screen.findings.map(\.title), ["Xcode CLT out of date"])
+        XCTAssertEqual(screen.verdict, .findings(2), """
+            the verdict counts what `brew doctor` found and not what the field leaves, so a \
+            word typed over the page cannot change what the page says about the Mac
+            """)
     }
 
     func testHealthFiltersConfigGroupsByALineValue() async {
@@ -133,11 +138,13 @@ final class TheFieldFiltersTheTabItIsOnTests: XCTestCase {
         await vm.loadIfNeeded()
         await vm.refreshConfig()
 
-        vm.query = "7.0.1"
-        XCTAssertEqual(vm.shownConfigGroups.map(\.section), [.brew],
+        func kept(_ word: String) -> [ConfigSection] {
+            HealthScreen.of(.examined([]), config: vm.configGroups,
+                            needle: ListFilter.needle(word)).configuration.map(\.section)
+        }
+        XCTAssertEqual(kept("7.0.1"), [.brew],
                        "a group matching on one line's value kept the group whole")
-        vm.query = "arm64"
-        XCTAssertEqual(vm.shownConfigGroups.map(\.section), [.machine])
+        XCTAssertEqual(kept("arm64"), [.machine])
     }
 
     /// A finding hidden by the filter must read as "no match", never as
@@ -151,10 +158,13 @@ final class TheFieldFiltersTheTabItIsOnTests: XCTestCase {
 
         let filtered = HealthScreen.of(vm.doctor, config: vm.configGroups,
                                        needle: ListFilter.needle("zzqqnope"))
-        XCTAssertEqual(filtered, .sentence(.noMatches), """
+        XCTAssertTrue(filtered.noMatches, "the filter hid the only finding and said nothing")
+        XCTAssertEqual(filtered.verdict, .findings(1), """
             \(filtered) — a finding the filter hides must not be reported as "Nothing to \
             fix", which is a claim about the machine and not about the query
             """)
+        XCTAssertNotEqual(filtered.verdict, .clean)
+        XCTAssertEqual(filtered.findings, [])
     }
 
     // MARK: - Selection dropped when the filter hides the row

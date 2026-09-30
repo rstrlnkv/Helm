@@ -617,26 +617,16 @@ public enum HelmSignal {
     }
 }
 
-/// The strip at the top of every page: what this page is, and the controls
-/// that belong to the page rather than to any row in it.
-///
-/// **No summary line.** It carried the module's one-sentence description under
-/// the name — «Не давать Mac засыпать» under «Не спать» — which is the sidebar
-/// row you just clicked, said again in more words. Every mockup in the
-/// redesign draws the plate, the name, and then the page's own controls; the
-/// sentence still has two homes where it is the answer rather than an echo:
-/// the empty state of a module that is switched off, and the composer's
-/// tooltip.
-/// The heading over a group of rows: small, upper case, spaced, quiet.
+/// The heading over a group of rows: small, quiet, sentence case.
 ///
 /// The system's own `Section("…")` draws 13 pt semibold in sentence case,
 /// which puts a section heading at the same weight as the rows under it and
 /// only two points below the page's own name. The redesign draws it as a label
-/// rather than a title — `--t-micro`, upper case, .08em of tracking — so the
-/// eye reads the group as a group and the page keeps one title.
+/// rather than a title — 11 pt semibold in the quiet ink, sentence case, no
+/// tracking — so the eye reads the group as a group and the page keeps one
+/// title.
 ///
-/// Upper case is done by the string, not by a font trait: `.textCase(.uppercase)`
-/// on a `Form` section is the platform's own styling and would fight this.
+/// It is not uppercased; the body says why the capitals went.
 public struct HelmSectionTitle: View {
     private let title: String
     public init(_ title: String) { self.title = title }
@@ -654,6 +644,11 @@ public struct HelmSectionTitle: View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(HelmText.quiet)
+            // A heading over rows is a heading to the rotor, said once here so a
+            // call site cannot forget it (`AHeadingIsAHeadingToTheRotorTests`).
+            // The trait is a set: a site or a `Section(header:)` that says it
+            // again changes nothing.
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

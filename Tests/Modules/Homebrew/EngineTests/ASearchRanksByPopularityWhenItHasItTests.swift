@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// The port's two states, both of which happen every day: a Mac that has the
@@ -30,7 +31,7 @@ private struct FixedLocator: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 private struct FixedPopularity: PopularityReading {

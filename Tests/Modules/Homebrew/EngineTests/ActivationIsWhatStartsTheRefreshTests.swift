@@ -1,5 +1,6 @@
 import XCTest
 import HelmTestSupport
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A store that answers nothing and records that it was asked to refresh.
@@ -33,7 +34,7 @@ private struct IdleRunner: ProcessRunner, @unchecked Sendable {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 /// **The one line that makes the whole feature run, held by a test.**

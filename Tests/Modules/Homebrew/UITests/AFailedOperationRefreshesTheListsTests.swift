@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmUI
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
@@ -23,7 +24,7 @@ final class AFailedOperationRefreshesTheListsTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// Queries answer instantly and are counted; the long operation hangs

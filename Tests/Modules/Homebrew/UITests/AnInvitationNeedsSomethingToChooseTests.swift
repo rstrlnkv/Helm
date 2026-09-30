@@ -37,23 +37,15 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
     private static let outdated = OutdatedPackage(name: "wget", installed: "1.24.0",
                                                  latest: "1.25.0", isCask: false)
     private static let hit = SearchHit(name: "wget", isCask: false)
-    private static let issue = DoctorIssue(severity: .caution, title: "Unbrewed header files",
-                                           body: "…", fix: nil)
-    private static let group = ConfigGroup(section: .brew,
-                                           lines: [ConfigLine(key: "HOMEBREW_VERSION",
-                                                              value: "7.0.1", section: .brew)])
-
     private func state(segment: HomebrewViewModel.Segment,
                        selected: String?,
                        installed: [BrewPackage] = [],
                        outdated: [OutdatedPackage] = [],
                        hits: [SearchHit] = [],
-                       issues: [DoctorIssue] = [],
-                       config: [ConfigGroup] = [],
                        shownEmpty: Bool? = nil) -> InspectorState {
         InspectorState.of(segment: segment, selected: selected, installed: installed,
-                          outdated: outdated, loadedOutdated: true, hits: hits, issues: issues,
-                          config: config, descriptions: [:], shownEmpty: shownEmpty)
+                          outdated: outdated, loadedOutdated: true, hits: hits,
+                          descriptions: [:], shownEmpty: shownEmpty)
     }
 
     /// **The claim, one segment at a time.** An empty list answers
@@ -79,23 +71,21 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
         XCTAssertEqual(state(segment: .installed, selected: nil, hits: [Self.hit]),
                        .nothingSelected)
 
-        // Состояние counts both of its lists. `brew doctor` refusing still
-        // leaves `brew config`'s groups on screen, and those rows *are*
-        // selectable — so only the pane with neither is the empty one.
+        // Состояние has no inspector at all — its findings and its
+        // configuration open in place (`HomebrewHealthPage`) — so there is
+        // nothing to invite a choice of, whatever the other lists hold: this
+        // is the one segment whose answer does not depend on a list.
         XCTAssertEqual(state(segment: .health, selected: nil), .nothingToSelect)
-        XCTAssertEqual(state(segment: .health, selected: nil, issues: [Self.issue]),
-                       .nothingSelected)
-        XCTAssertEqual(state(segment: .health, selected: nil, config: [Self.group]),
-                       .nothingSelected, """
-            a refused `brew doctor` with a configuration beside it draws no invitation, where \
-            the configuration's own rows are there to be chosen
+        XCTAssertEqual(state(segment: .health, selected: nil, installed: [Self.wget],
+                             outdated: [Self.outdated], hits: [Self.hit]), .nothingToSelect, """
+            Состояние invited a choice out of another tab's lists
             """)
     }
 
     /// **A query that hides every row is not the same fact as an empty
     /// Cellar, but the invitation must not appear over either.** The page
     /// passes `shownEmpty` off its own filtered lists precisely because
-    /// `installed`/`outdated`/`issues`/`config` here stay the *raw* answer —
+    /// `installed`/`outdated` here stay the *raw* answer —
     /// a query hiding every row leaves the raw list non-empty, so without
     /// `shownEmpty` this would read `.nothingSelected` and invite a choice
     /// beside a master saying «Nothing in this list matches.», which has
@@ -127,7 +117,8 @@ final class AnInvitationNeedsSomethingToChooseTests: XCTestCase {
         XCTAssertEqual(state(segment: .updates, selected: Self.outdated.id), .nothingToSelect)
         // A stale hit id over an empty section is still nothing to choose.
         XCTAssertEqual(state(segment: .installed, selected: Self.hit.id), .nothingToSelect)
-        XCTAssertEqual(state(segment: .health, selected: Self.issue.id), .nothingToSelect)
+        XCTAssertEqual(state(segment: .health, selected: Self.wget.id, installed: [Self.wget]),
+                       .nothingToSelect)
 
         // And a selection no *populated* list holds is still the invitation:
         // there are rows, one of them can be picked, and this one is stale.

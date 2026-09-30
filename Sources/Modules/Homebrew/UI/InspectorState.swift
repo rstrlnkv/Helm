@@ -4,6 +4,12 @@ import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
 ///
+/// **Two of the three tabs have an inspector; Состояние does not.** Its findings
+/// open in place in a card of their own and its configuration opens the same
+/// way (`HomebrewHealthPage`), so there is nothing to select there and nothing
+/// for this type to describe: `.health` answers `.nothingToSelect`, which the
+/// page never mounts.
+///
 /// `AvailableSection.of` is the shape this follows: the page asks a value type
 /// what it is looking at, and the decision is held by a test rather than by a
 /// screenshot. Everything here is a function of what the page already has — no
@@ -33,28 +39,18 @@ enum InspectorState: Equatable {
     /// would be a third.
     case nothingToSelect
     case package(InspectorSubject)
-    /// One `brew doctor` finding, whole. Unlike a package, nothing is composed
-    /// for it from two containers and nothing about it is waited on — the
-    /// severity, the title and the body all arrive together from the one query,
-    /// and the fix beside them was put there by `HomebrewViewModel.refreshDoctor`
-    /// before this was ever asked.
-    case issue(DoctorIssue)
-    /// One group of `brew config`'s lines, whole. The other half of what the
-    /// health list holds: the segment's list has two kinds of thing in it, and
-    /// the inspector describes whichever is selected.
-    case configSection(ConfigGroup)
-
     /// `hits` is what the "Available to install" section under whichever list
     /// is on screen actually draws (`HomebrewViewModel.shownHits`) — already
-    /// filtered to what is not on this Mac, by id — so every segment falls
-    /// back to it the same way and none of the three needs its own "already
+    /// filtered to what is not on this Mac, by id — so both package segments
+    /// fall back to it the same way and neither needs its own "already
     /// installed" reading any more (`PackageStanding.notInstalled` is where
-    /// that exclusion happens once).
+    /// that exclusion happens once). The health segment never gets this far:
+    /// it answers `.nothingToSelect` before `hits` is read.
     ///
     /// `shownEmpty` is nil for a caller with no filter of its own — every
-    /// existing test keeps the three-list reading below byte for byte. The
+    /// existing test keeps the two-list reading below byte for byte. The
     /// page passes its own segment's filtered emptiness once a query is in
-    /// the field: `installed`/`outdated`/`issues`/`config` stay the *full*
+    /// the field: `installed`/`outdated` stay the *full*
     /// lists here regardless, because a lookup by id and the update fact a
     /// selected package's row carries (`PackageStanding.updates`) are correct
     /// off the full list whenever `selected` is reachable at all — dropping a
@@ -69,18 +65,20 @@ enum InspectorState: Equatable {
                    outdated: [OutdatedPackage],
                    loadedOutdated: Bool,
                    hits: [SearchHit],
-                   issues: [DoctorIssue],
-                   config: [ConfigGroup],
                    descriptions: [String: String],
                    shownEmpty: Bool? = nil) -> InspectorState {
         // **Asked before the selection is, and of the same lists the master
         // draws.** A pane with nothing in it cannot have something picked out
         // of it, so a stale `selected` left over from a list that has since
         // emptied is not a reason to go on offering the invitation either.
-        // Состояние counts both of its lists: `brew doctor` refusing still
-        // leaves `brew config`'s groups to choose from, and those rows are
-        // selectable. `hits` counts on every segment now, since the section
-        // it describes sits under all three.
+        // `hits` counts on the two package tabs, since the section it
+        // describes sits under those and not under Состояние.
+        //
+        // **Состояние first, and whatever it is holding.** It has no inspector
+        // (see the type's own comment), so a selection left on it is not
+        // something this could describe, and a hit the section drew there —
+        // it no longer draws one — is not one to offer an install for.
+        if segment == .health { return .nothingToSelect }
         let empty: Bool
         if let shownEmpty {
             empty = shownEmpty && hits.isEmpty
@@ -88,7 +86,7 @@ enum InspectorState: Equatable {
             switch segment {
             case .installed: empty = installed.isEmpty && hits.isEmpty
             case .updates: empty = outdated.isEmpty && hits.isEmpty
-            case .health: empty = issues.isEmpty && config.isEmpty && hits.isEmpty
+            case .health: return .nothingToSelect // answered above
             }
         }
         if empty { return .nothingToSelect }
@@ -126,14 +124,7 @@ enum InspectorState: Equatable {
             guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
             return hit(h)
         case .health:
-            // **Two lists of its own, not one, and now a third it shares with
-            // every segment.** The ids cannot collide: a `DoctorIssue`'s is
-            // built from its own text around NUL separators, a `ConfigGroup`'s
-            // is `cfg:` and a case name, and a hit's is a `BrewKey`.
-            if let issue = issues.first(where: { $0.id == selected }) { return .issue(issue) }
-            if let group = config.first(where: { $0.id == selected }) { return .configSection(group) }
-            guard let h = hits.first(where: { $0.id == selected }) else { return .nothingSelected }
-            return hit(h)
+            return .nothingToSelect // answered above
         }
     }
 }
@@ -154,8 +145,11 @@ enum DoctorReading: Equatable {
     /// `brew doctor` ran and this is what it found — possibly nothing, which is
     /// the one reading that may be drawn as a healthy machine.
     case examined([DoctorIssue])
-    /// The question could not be put: brew is gone, the run timed out, or the
-    /// tool printed nothing at all where it always prints something. Not a
+    /// The question could not be put: brew is gone, the run timed out, the
+    /// tool printed nothing at all where it always prints something, or it
+    /// exited non-zero with nothing in its answer this build could read
+    /// (`HomebrewEngine.doctor` — the reasons all arrive as the same empty
+    /// reply, and this case is all of them). Not a
     /// clean machine — an unexamined one.
     case refused
 
@@ -165,18 +159,19 @@ enum DoctorReading: Equatable {
     }
 }
 
-/// What the health master list puts on screen — **four answers, and the middle
-/// two are the whole point.**
+/// What `brew doctor`'s reading comes to for the health tab — **four answers,
+/// and the middle two are the whole point.**
 ///
 /// `AvailableSection.of` is the shape this follows, for the reason that file
 /// gives: which sentence stands over which state is the whole of the decision,
 /// and a `body` is nowhere a test can reach.
 ///
-/// `.clean` and `.unexaminable` are both an empty screen and they are not the
-/// same sentence. One is `brew doctor` having looked and found nothing, which
+/// `.clean` and `.unexaminable` are both an empty list of findings and they are
+/// not the same sentence. One is `brew doctor` having looked and found nothing, which
 /// is the only reading that may be drawn as a healthy machine; the other is the
 /// question never having been put — brew gone, the run cut off at the deadline,
-/// or a tool that printed nothing where it always prints something. Collapsed
+/// a tool that printed nothing where it always prints something, or one that
+/// exited non-zero with nothing in its answer this build could read. Collapsed
 /// into one they read as «Nothing to fix» over a Mac nobody examined, which is
 /// this app telling somebody their machine is fine on the strength of an answer
 /// it never got.
@@ -204,7 +199,7 @@ enum HealthListState: Equatable {
 /// **The grouping is presentation and lives here rather than in the engine.**
 /// `brew config` prints one flat list; `ConfigLine.section` is the engine's
 /// answer for *which* heading a line belongs under, and this is the list the
-/// health segment draws a row for. A group with no lines in it is not a group:
+/// configuration card draws a block for. A group with no lines in it is not a group:
 /// an empty heading over nothing is a promise the document did not make.
 struct ConfigGroup: Equatable, Identifiable {
     let section: ConfigSection
@@ -228,61 +223,61 @@ struct ConfigGroup: Equatable, Identifiable {
     }
 }
 
-/// The sentence the health list has instead of findings — named rather than
-/// spelled, so the value the tests read carries no language in it.
+/// **What `brew doctor` says about this Mac, in the one line the tab opens with
+/// — the verdict.**
 ///
-/// Each of the first three is `HealthListState`'s own reading of `brew
-/// doctor`, and they stay three for the reason that type spells out: «Nothing
-/// to fix» and «Homebrew did not answer» are one empty list and must never be
-/// one sentence. `noMatches` is the fourth, added 2026-09-24 when the health
-/// list gained a filter of its own: a finding the query hides must never read
-/// as `.clean` — «Nothing to fix» is earned only when `brew doctor` genuinely
-/// found nothing, not when a word typed over the page hides what it found.
-enum HealthNote: String, Equatable { case busy, clean, unexaminable, noMatches }
-
-/// One row under the Checkup heading: a finding, or the one sentence that
-/// stands in for the findings when there are none to draw.
-enum HealthRow: Equatable, Identifiable {
-    case note(HealthNote)
-    case issue(DoctorIssue)
-    /// A note is not selectable and the list says so; the id is still distinct,
-    /// because a `ForEach` needs one and two rows sharing an id is a row that
-    /// redraws as the other.
-    var id: String {
-        switch self {
-        case let .note(note): return "note:" + note.rawValue
-        case let .issue(issue): return issue.id
-        }
-    }
+/// `HealthListState`'s four answers as a value the header is drawn from, and
+/// it is read off the *unfiltered* reading and never off what the search field
+/// leaves: a word typed over the page must not be able to say the Mac is clean
+/// (`HealthScreen.of`).
+///
+/// `.clean` and `.unexaminable` stay two, for the reason `HealthListState`
+/// spells out: «Nothing to fix» is earned only by a `brew doctor` that ran and
+/// named nothing, and a refusal says what is *not known*. The count rides on
+/// `.findings` so a verdict of zero findings cannot be spelled.
+enum HealthVerdict: Equatable {
+    /// Nobody has asked yet, or the ask is out.
+    case checking
+    /// Examined, and nothing was found.
+    case clean
+    /// The question could not be put.
+    case unexaminable
+    /// Examined, and this many findings — never zero.
+    case findings(Int)
 }
 
-/// **What the whole health segment puts on screen — one list with two kinds of
-/// thing in it, or one sentence and nothing else.**
+/// **What the whole health tab puts on screen: a verdict, the findings the
+/// search field leaves, and the configuration the search field leaves.**
 ///
-/// The segment held only `brew doctor`'s findings, so an empty reading was an
-/// empty screen and `HelmEmptyState` was the whole of it. It holds `brew
-/// config` as well now, and that changes what an empty reading means: a Mac
-/// whose findings could not be read still has a configuration to show, and
-/// collapsing to the centred sentence would throw away rows that were read
-/// successfully. Collapsing the other way would be worse — the sentence saying
-/// **why** there are no findings is the one a person decides whether to trust
-/// their Mac on, and it has to survive the configuration being there.
+/// The tab used to be a striped list with an inspector beside it and the
+/// sentence for each reading a row in that list. It is one page now — the
+/// verdict first, then a card of findings that each open in place, then the
+/// configuration in a card of its own (`HomebrewHealthPage`) — so what the
+/// three parts hold is decided here, where a test can reach it and a `body`
+/// cannot.
 ///
-/// So: the sentence becomes a row under its own heading when there is anything
-/// else on the list, and stays the centred empty state when there is not. Both
-/// readings are kept in one place a test can reach, for the reason
-/// `HealthListState` gives about a `body`.
-enum HealthScreen: Equatable {
-    /// The whole segment is one sentence: `brew doctor` has nothing to draw and
-    /// `brew config` answered nothing either.
-    case sentence(HealthNote)
-    /// A list. `configuration` empty means that heading is not drawn at all.
-    case groups(checkup: [HealthRow], configuration: [ConfigGroup])
+/// **The fourth reading, `noMatches`, is about the findings and not about the
+/// Mac.** `brew doctor` really finding nothing and a query hiding what it did
+/// find are two different facts, and collapsing them would let a stray
+/// character in the search field tell somebody their Mac has nothing wrong
+/// with it. So the verdict is always the unfiltered one, and a filter that
+/// empties a non-empty list is `noMatches` under it, in the place of the card.
+struct HealthScreen: Equatable {
+    let verdict: HealthVerdict
+    /// The findings a needle keeps, in brew's order. Empty for every verdict
+    /// but `.findings`, and also for one whose findings the needle hides.
+    let findings: [DoctorIssue]
+    /// The needle hides every finding there is.
+    let noMatches: Bool
+    /// The groups a needle keeps — all of them without one. Empty when `brew
+    /// config` has answered nothing, and then the card is not drawn at all: a
+    /// card with nothing in it is a promise the document did not make.
+    let configuration: [ConfigGroup]
 
-    /// The findings a needle keeps — its title and its body. Shared by
-    /// `of(_:config:needle:)` and by `HomebrewViewModel.shownIssues`, through
-    /// this one function, so the health list and its own account of "empty"
-    /// cannot disagree about what an unmatched finding is.
+    /// The findings a needle keeps — its title and its body. `of(_:config:needle:)`
+    /// is its one caller; it is a function of its own so that what an unmatched
+    /// finding is stays one sentence, apart from the screen that is built
+    /// around it.
     static func matchingIssues(_ needle: String?, _ issues: [DoctorIssue]) -> [DoctorIssue] {
         guard let needle else { return issues }
         return issues.filter { ListFilter.matches(needle, [$0.title, $0.body]) }
@@ -290,7 +285,7 @@ enum HealthScreen: Equatable {
 
     /// The groups a needle keeps — a group's own heading, or any line's key
     /// or value. Whole groups rather than lines: there is no reading in which
-    /// the inspector shows a group with some of its own lines missing.
+    /// the page shows a group with some of its own lines missing.
     static func matchingConfigGroups(_ needle: String?, _ groups: [ConfigGroup]) -> [ConfigGroup] {
         guard let needle else { return groups }
         return groups.filter { group in
@@ -299,39 +294,36 @@ enum HealthScreen: Equatable {
         }
     }
 
-    /// `needle` is nil for the ordinary, unfiltered reading — every existing
-    /// caller keeps the old behaviour byte for byte.
-    ///
-    /// **`.clean` survives filtering; a filtered-out finding does not read as
-    /// it.** `brew doctor` really finding nothing and a query hiding what it
-    /// did find are two different facts about the machine, and collapsing
-    /// them would let a stray character in the search field tell somebody
-    /// their Mac has nothing wrong with it. So `.clean` is read off the
-    /// *unfiltered* reading — `HealthListState.of(reading)` — and only a
-    /// non-empty `.rows(issues)` that filtering then empties reaches
-    /// `.noMatches` instead.
+    /// **The only finding is open, and stays open.** A card of one row that
+    /// hides its one paragraph asks a click for nothing, so it is drawn open
+    /// and given no control to close it (`canToggle`). `total` is the reading's
+    /// own count of findings and not what a needle leaves, so a word that
+    /// narrows three findings to one does not make that one uncloseable.
+    static func isOpen(_ issue: DoctorIssue, of total: Int, opened: Set<String>) -> Bool {
+        total == 1 || opened.contains(issue.id)
+    }
+
+    /// Whether a finding's title is a control at all — see `isOpen`.
+    static func canToggle(total: Int) -> Bool { total > 1 }
+
+    /// `needle` is nil for the ordinary, unfiltered reading.
     static func of(_ reading: DoctorReading, config: [ConfigGroup],
                    needle: String? = nil) -> HealthScreen {
-        let filteredConfig = matchingConfigGroups(needle, config)
-        func checkup(_ note: HealthNote) -> HealthScreen {
-            filteredConfig.isEmpty ? .sentence(note)
-                                   : .groups(checkup: [.note(note)], configuration: filteredConfig)
-        }
+        let configuration = matchingConfigGroups(needle, config)
         switch HealthListState.of(reading) {
-        case .busy: return checkup(.busy)
-        case .clean: return checkup(.clean)
-        case .unexaminable: return checkup(.unexaminable)
+        case .busy:
+            return HealthScreen(verdict: .checking, findings: [], noMatches: false,
+                                configuration: configuration)
+        case .clean:
+            return HealthScreen(verdict: .clean, findings: [], noMatches: false,
+                                configuration: configuration)
+        case .unexaminable:
+            return HealthScreen(verdict: .unexaminable, findings: [], noMatches: false,
+                                configuration: configuration)
         case let .rows(issues):
-            guard let needle else {
-                // Findings are rows whether or not there is a configuration
-                // beside them: a list is already the shape, so there is
-                // nothing to collapse.
-                return .groups(checkup: issues.map(HealthRow.issue), configuration: filteredConfig)
-            }
-            let filtered = matchingIssues(needle, issues)
-            return filtered.isEmpty
-                ? checkup(.noMatches)
-                : .groups(checkup: filtered.map(HealthRow.issue), configuration: filteredConfig)
+            let shown = matchingIssues(needle, issues)
+            return HealthScreen(verdict: .findings(issues.count), findings: shown,
+                                noMatches: shown.isEmpty, configuration: configuration)
         }
     }
 }

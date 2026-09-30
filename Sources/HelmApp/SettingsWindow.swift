@@ -333,11 +333,13 @@ final class SettingsSplitViewController: NSSplitViewController {
             rootView: SettingsDetail(model: model)
                 // A page publishes its tabs, actions and search through this
                 // channel (`HelmWindowToolbar.swift` in `HelmUI`); a page that
-                // never does leaves the window showing its name only
-                // (`SettingsToolbar.refresh`) — which is every page's own
-                // toolbar, including one with nothing to put in it, since the
-                // toolbar exists whether or not any page ever asks it for
-                // anything.
+                // never does leaves the window showing its name — plus a
+                // status-bearing page's own status: `helm.status` under
+                // `PageBarStyle.moduleName`, the window's subtitle under
+                // `.windowTitle` — and nothing else (`SettingsToolbar.refresh`).
+                // This is every page's own toolbar, including one with
+                // nothing to put in it, since the toolbar exists whether or
+                // not any page ever asks it for anything.
                 .environment(\.helmWindowToolbarChannel, toolbarChannel)
                 // The strip under the toolbar, lit once the page's content
                 // has scrolled beneath it — `helmToolbarBackdrop` says why it
@@ -369,11 +371,14 @@ final class SettingsSplitViewController: NSSplitViewController {
         // wants in its toolbar through `helmWindowToolbar`, which reaches
         // `SettingsToolbar` through `HelmWindowToolbarChannel` and needs no
         // bridge from this controller at all. A page that calls neither
-        // `helmWindowToolbar` nor anything else toolbar-shaped simply shows
-        // the window's name and nothing else, which is what "temporarily
-        // show only the name" (this migration's own words, while some pages
-        // were still on the retired `.toolbar`/`sceneBridgingOptions` route)
-        // means for a page with genuinely nothing to declare.
+        // `helmWindowToolbar` nor anything else toolbar-shaped shows the
+        // window's name — plus a status-bearing page's own status:
+        // `helm.status` under `PageBarStyle.moduleName`, the window's
+        // subtitle under `.windowTitle` — and nothing else, which
+        // is what "temporarily show only the name" (this migration's own
+        // words, while some pages were still on the retired
+        // `.toolbar`/`sceneBridgingOptions` route) means for a page with
+        // genuinely nothing to declare.
         detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420
@@ -702,20 +707,26 @@ private struct ModuleDetailView: View {
     let descriptor: any ModuleDescriptor
     let id: String
 
-    /// The badge's own reason to redraw.
+    /// `statusWord`'s own reason to redraw — the badge that used to sit
+    /// beside the name here is gone (the owner, 2026-09-28: «Давай вернем
+    /// его в правую часть»; `SettingsToolbar.makeStatusItem` draws it now, at
+    /// the bar's own trailing edge).
     ///
     /// `activity` reads a `@Published` on the module's view model — an object
-    /// this view holds and does not observe — so measured, the badge changed
-    /// exactly once per visit to the page: start a session from the hero, and
-    /// the countdown ran while the badge two inches above it still said «Not
-    /// active», until you left the page and came back.
+    /// this view holds and does not observe — so measured, the badge this
+    /// once fed changed exactly once per visit to the page: start a session
+    /// from the hero, and the countdown ran while the badge two inches above
+    /// it still said «Not active», until you left the page and came back.
+    /// `statusWord` inherits the same publisher for the same reason, now
+    /// feeding only the `.windowTitle` style's subtitle.
     ///
     /// `statusChanges` is the publisher for exactly this and already existed
-    /// with one subscriber, the status item. The badge is its second.
+    /// before this view subscribed — `command grep -rn 'statusChanges(live.vm)'
+    /// Sources | command grep -v '///'` finds every subscriber.
     @State private var activityRevision = 0
 
     /// The module's own «my state moved» signal, or nothing for a module that
-    /// publishes none — in which case the badge is absent anyway.
+    /// publishes none — in which case `statusWord` stays nil below.
     private var activityChanges: AnyPublisher<Void, Never> {
         guard let live = host.liveModule(id),
               let changes = descriptor.statusChanges(live.vm) else {
@@ -744,44 +755,18 @@ private struct ModuleDetailView: View {
                             tint: descriptor.moduleTint.colour,
                             title: descriptor.moduleMetadata.name,
                             subtitle: statusWord,
-                            bleeds: descriptor.pageBleeds) {
-                // Only for a module that can say. Most answer nil, and nil
-                // draws nothing rather than «Not active» for a module with no
-                // notion of running at all.
-                if let live = host.liveModule(id),
-                   let activity = descriptor.activity(live.vm) {
-                    // Read so this branch depends on it; the value means
-                    // nothing, the dependency is the point.
-                    //
-                    // **`let` is load-bearing.** A `ViewBuilder` takes
-                    // declarations and drops them; a bare `_ = x` is an
-                    // *expression* of type `()`, and the builder then asks `()`
-                    // to conform to `View`. `swiftlint --fix` rewrote this line
-                    // under `redundant_discardable_let` on 2026-08-11 and the
-                    // whole app stopped compiling. That rule is off here.
-                    let _ = activityRevision
-                    switch activity {
-                    case .active:
-                        HelmBadge(AppStr.moduleActive, tint: HelmSignal.success)
-                    case .idle:
-                        // Quiet text, not a badge. «Not active» is the ordinary
-                        // state, and a badge on every page for the ordinary
-                        // state is a mark that means nothing.
-                        Text(AppStr.moduleIdle)
-                            .font(.system(size: 11))
-                            .foregroundStyle(HelmText.quiet)
-                    }
-                }
-            }
-            // The badge above reads a value off an object this view does not
+                            bleeds: descriptor.pageBleeds)
+            // `statusWord` reads a value off an object this view does not
             // observe, so without this it is right once per visit and stale
             // after.
             .onReceive(activityChanges) { _ in activityRevision &+= 1 }
     }
 
-    /// The same status the header's trailing view draws, said in words — for
-    /// the style that puts it under the window's title, where a badge cannot
-    /// go. nil for a module with no notion of running, like the view.
+    /// The same status `SettingsToolbar`'s own `helm.status` item draws, said
+    /// in words — for the `.windowTitle` style that puts it under the
+    /// window's title, where that item does not apply (`PageBarContent`'s
+    /// `.windowTitle` arm, `PageBarStyle.swift`). nil for a module with no
+    /// notion of running, like that item.
     private var statusWord: String? {
         _ = activityRevision
         guard let live = host.liveModule(id), let activity = descriptor.activity(live.vm) else {

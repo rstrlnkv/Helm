@@ -97,7 +97,7 @@ struct LogView: View {
         // the header in the window's toolbar is drawn by `helmToolbarBackdrop`
         // a window away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
-        .helmPageBar(symbol: "text.alignleft", tint: .gray, title: AppStr.logPane)
+        .helmPageBar(title: AppStr.logPane)
         .onAppear {
             refresh()
             // One second: the log is read, not animated, and a person watching

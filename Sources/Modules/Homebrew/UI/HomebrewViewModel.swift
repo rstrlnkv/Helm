@@ -38,6 +38,27 @@ import Module_Homebrew_Engine
     /// and this is the same problem: a running record somebody reads the end of.
     public static let consoleLimit = 1000
     @Published public private(set) var consoleLines: [String] = []
+    /// **How many lines the console has ever been given; the newest one's
+    /// identity is one less.** Never reset, not by `clearConsole` and not by
+    /// the trim: a full console keeps `consoleLines.count` at `consoleLimit`
+    /// for ever, so anything that follows the tail by its count has stopped
+    /// following at line number `consoleLimit`. The line at index `i` is number
+    /// `consoleSequence - consoleLines.count + i`, which is what the page gives
+    /// each row as its identity, and the newest is `consoleSequence - 1`.
+    @Published public private(set) var consoleSequence = 0
+
+    /// A console line with the number it was given, for the page's rows.
+    struct ConsoleRow: Identifiable {
+        let id: Int
+        let text: String
+    }
+
+    /// The lines as the page draws them: each under its own number, so a row
+    /// keeps its identity while the trim moves it up the array.
+    var consoleRows: [ConsoleRow] {
+        let first = consoleSequence - consoleLines.count
+        return consoleLines.enumerated().map { ConsoleRow(id: first + $0.offset, text: $0.element) }
+    }
     @Published public private(set) var op: OpState = .idle
     /// The uninstall a person is being asked about, and what the Cellar said
     /// still needs it. They move together: the names are read for *this* press
@@ -161,7 +182,7 @@ import Module_Homebrew_Engine
     ///
     /// **Re-evaluates the automatic search on the way in, not only the
     /// selection.** A word already typed can go unmatched on one tab and
-    /// matched on another — `shownIssues` is empty where `shownInstalled` is
+    /// matched on another — `shownOutdated` is empty where `shownInstalled` is
     /// not — so switching tabs is a second place `scheduleAutomaticSearch`
     /// has to run, on top of the pause that starts it after typing.
     ///
@@ -175,8 +196,7 @@ import Module_Homebrew_Engine
     /// typed and `[node]` behind `brew outdated` asked brew before that query
     /// had even been sent. Scheduling the same pause `queryMoved` uses gives
     /// the tab's own refresh (and every later one — the pause is restarted
-    /// from `refreshInstalled`/`refreshOutdated`/`refreshConfig`/
-    /// `refreshDoctor` too) the chance to land before `searchAfterPause`
+    /// from `refreshInstalled`/`refreshOutdated` too) the chance to land before `searchAfterPause`
     /// re-reads the list it is about.
     @Published var segment: Segment = .installed {
         didSet {
@@ -314,8 +334,8 @@ import Module_Homebrew_Engine
     /// matches nothing on Состояние but something on Установленные does not
     /// spend a second `brew search` just because the tab moved.
     ///
-    /// **An unread or still-loading tab is never "empty".** `shownInstalled`,
-    /// `shownOutdated`, `shownIssues` and `shownConfigGroups` all read `[]`
+    /// **An unread or still-loading tab is never "empty".** `shownInstalled`
+    /// and `shownOutdated` both read `[]`
     /// before their list has ever answered — the same `[]` a genuinely empty
     /// answer leaves — so reading emptiness alone asked brew for a word this
     /// Mac had all along, on the first visit to a tab whose own refresh
@@ -326,9 +346,8 @@ import Module_Homebrew_Engine
     /// that query had even been sent, and a cold `brew outdated` runs 7.4 s
     /// (`SystemPorts.swift` probe) — long enough that the 700 ms pause always
     /// elapses first. Guarding here rather than skipping the call costs
-    /// nothing: every one of `refreshInstalled`/`refreshOutdated`/
-    /// `refreshConfig`/`refreshDoctor` calls `scheduleAutomaticSearch` again
-    /// on completion, so the tab's first real answer re-asks this same
+    /// nothing: both of `refreshInstalled`/`refreshOutdated` call
+    /// `scheduleAutomaticSearch` again on completion, so the tab's first real answer re-asks this same
     /// question with a reading that is no longer `.notAsked`/`.waiting`.
     private func ownListShowsNothing(for q: String) -> Bool {
         guard q.count >= Self.shortestAutomaticQuery, q != searchedQuery else { return false }
@@ -340,15 +359,13 @@ import Module_Homebrew_Engine
             guard outdatedReading != .notAsked, outdatedReading != .waiting else { return false }
             return shownOutdated.isEmpty
         case .health:
-            // `doctor` has no `.waiting` case of its own (`DoctorReading`'s
-            // doc comment) — it reads `.notAsked` for as long as the ask is
-            // out — so that one comparison covers both "never opened" and
-            // "still running". `configReading` is `installedReading`'s own
-            // shape, checked the same way for the same reason: "never asked"
-            // and "still waiting" both mean nothing has been read yet.
-            guard doctor != .notAsked,
-                  configReading != .notAsked, configReading != .waiting else { return false }
-            return shownIssues.isEmpty && shownConfigGroups.isEmpty
+            // Nothing is offered here even when the filter finds nothing: the
+            // "Available to install" section is not drawn under Состояние (a
+            // search for a package is not a question about this Mac's health),
+            // so a `brew search` asked from here would be paid for and never
+            // shown. The word is still in the field when the person moves to a
+            // tab that does draw it, and the pause starts there.
+            return false
         }
     }
 
@@ -359,6 +376,9 @@ import Module_Homebrew_Engine
     /// again, since a refusal earns nothing kept.
     func searchNow() {
         pause?.cancel()
+        // Return on Состояние filters and asks nothing, for the reason
+        // `ownListShowsNothing` gives for the pause.
+        guard segment != .health else { return }
         guard let q = ListFilter.needle(query) else { return }
         if q == searchedQuery, searchReading == .waiting || searchReading == .answered { return }
         ask(q)
@@ -483,10 +503,11 @@ import Module_Homebrew_Engine
         func ref(_ name: String, _ isCask: Bool) -> PackageRef {
             PackageRef(name: name, isCask: isCask)
         }
-        // Every segment now falls back to the "Available to install" section
-        // under it, since search is a field on every tab rather than a list
-        // of its own: a hit selected under Состояние still gets `brew info`,
-        // which is why `.health` no longer returns nil outright.
+        // The two package tabs fall back to the "Available to install"
+        // section under them, since search is a field on every tab rather than
+        // a list of its own. Состояние has no section and no selection: its
+        // findings open in place (`HomebrewHealthPage`), so nothing there names
+        // a package for `brew info` to be asked about.
         switch segment {
         case .installed:
             if let p = installed.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
@@ -495,7 +516,7 @@ import Module_Homebrew_Engine
             if let p = outdated.first(where: { $0.id == id }) { return ref(p.name, p.isCask) }
             return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
         case .health:
-            return shownHits.first { $0.id == id }.map { ref($0.name, $0.isCask) }
+            return nil
         }
     }
 
@@ -568,7 +589,8 @@ import Module_Homebrew_Engine
         switch segment {
         case .installed: own = Set(shownInstalled.map(\.id))
         case .updates: own = Set(shownOutdated.map(\.id))
-        case .health: own = Set(shownIssues.map(\.id)).union(shownConfigGroups.map(\.id))
+        // Nothing on Состояние can be selected: no list, no section.
+        case .health: return []
         }
         return own.union(shownHits.map(\.id))
     }
@@ -601,18 +623,6 @@ import Module_Homebrew_Engine
     var shownOutdated: [OutdatedPackage] {
         PackageStanding.matching(ListFilter.needle(query), outdated, descriptions: descriptions)
     }
-    /// `issues`, filtered by the same rule — a finding matches on its title
-    /// and its body.
-    var shownIssues: [DoctorIssue] {
-        HealthScreen.matchingIssues(ListFilter.needle(query), issues)
-    }
-    /// `configGroups`, filtered on a group's own heading or on any line's key
-    /// or value — a group matches or it does not, whole: there is no reading
-    /// in which the inspector shows a group with some of its lines missing.
-    var shownConfigGroups: [ConfigGroup] {
-        HealthScreen.matchingConfigGroups(ListFilter.needle(query), configGroups)
-    }
-
     /// What `AvailableSection.of` says the "Available to install" section
     /// should draw right now — nil when nothing belongs there, which is most
     /// of the time: no query, nothing asked yet, or an answer that belongs to
@@ -729,7 +739,7 @@ import Module_Homebrew_Engine
     private func handle(_ e: EngineEvent) {
         switch HomebrewEvent(rawValue: e.name) {
         case .opLog:
-            consoleLines.append(String(decoding: e.payload, as: UTF8.self))
+            say(String(decoding: e.payload, as: UTF8.self))
             // Bounded, the way `LogTail` is. Nothing trimmed this: it is
             // cleared by pressing Clear and by starting an install, so on the
             // ordinary path — upgrade, upgrade again, search — it only grew,
@@ -737,16 +747,17 @@ import Module_Homebrew_Engine
             // view model. The engine keeps stderr on purpose because a console
             // should show what the tool says, and a `brew` command passes 64 KB
             // of deprecation warnings without trying. Each line is also a view:
-            // the page renders a `ForEach` over the whole array and scrolls on
-            // every count change, so the cost is paid twice.
+            // the page renders a `ForEach` over the whole array and follows
+            // every new line, so the cost is paid twice.
             //
             // From the front, which is what a terminal's scrollback does: the
-            // end is the half a person is reading.
-            if consoleLines.count > Self.consoleLimit {
-                consoleLines.removeFirst(consoleLines.count - Self.consoleLimit)
-            }
+            // end is the half a person is reading. (`say` does it, so the
+            // lines the model writes itself are bounded by the same rule.)
         case .opState:
             guard let s = try? JSONDecoder().decode(OpState.self, from: e.payload) else { return }
+            // Before `op` changes, because the line is about the step between
+            // the two states.
+            if let line = Self.consoleLine(from: op, to: s) { say(line) }
             op = s
             // `.failed` as well as `.done`: a failed operation is not a no-op on
             // the machine. `brew upgrade` walks the outdated list and exits
@@ -756,6 +767,32 @@ import Module_Homebrew_Engine
         case .none:
             break
         }
+    }
+
+    /// The console line a step between two operation states earns, in words the
+    /// engine does not have: it names the state (`OpState.waiting`) and the words
+    /// are the page's, in the person's language.
+    ///
+    /// Entering the wait says what Apple's window is and where the person's part
+    /// is; leaving it into ordinary running says the tools are there; leaving it
+    /// by the person's Stop says that Helm has stopped waiting — the entering
+    /// line promised that Helm carries on by itself, and the console is not
+    /// cleared by a stop, so that promise would stay on screen under «Stopped».
+    /// Any other step — a failure, a stop of an operation that was not waiting,
+    /// a second identical state — says nothing here.
+    /// Pure and static, so a test can hold the lines without a view model.
+    static func consoleLine(from old: OpState, to new: OpState,
+                            language: AppLanguage = AppLanguage.current) -> String? {
+        if old.waiting == nil, new.waiting == .commandLineTools, new.phase == .running {
+            return HbStr.toolsWaitingConsole(language: language)
+        }
+        if old.waiting != nil, new.waiting == nil, new.phase == .running {
+            return HbStr.toolsArrivedConsole(language: language)
+        }
+        if old.waiting != nil, new.phase == .failed, new.reason == .stopped {
+            return HbStr.toolsWaitStoppedConsole(language: language)
+        }
+        return nil
     }
 
     /// The status too, and it is not a nicety: installing Homebrew is one of
@@ -812,7 +849,7 @@ import Module_Homebrew_Engine
         // the first status after an interrupted quit says it — into the
         // console, the surface that already narrates operations.
         if let label = status.interruptedOp {
-            consoleLines.append(HbStr.interruptedAtQuit(label))
+            say(HbStr.interruptedAtQuit(label))
         }
     }
     /// No `?? []` on any list reply: an empty reply is "the module could not
@@ -870,44 +907,16 @@ import Module_Homebrew_Engine
     /// answer, and the one that goes stale is the one a page reads.
     var issues: [DoctorIssue] { doctor.issues }
 
-    /// What `brew config` last answered — the lines the Configuration heading
+    /// What `brew config` last answered — the lines the configuration card
     /// is drawn from, **and the document «Copy for a bug report» puts on the
     /// pasteboard**. nil until it has been asked, which is every launch:
     /// `loadIfNeeded` does not ask, the segment's own refresh does.
     @Published private(set) var config: BrewConfig?
 
-    /// **Whether `config` has ever been read, separately from whether the read
-    /// succeeded.** `ownListShowsNothing`'s `.health` case used to ask
-    /// `config != nil`, which a refusal never sets — a `brew config` that
-    /// failed left this gate reading "never asked" for ever, the same way
-    /// `installedReading`/`outdatedReading` exist so their own guard does not
-    /// have to ask a list "are you empty because nobody asked, or because
-    /// brew said so."
-    private var configReading: ListReading = .notAsked
-
-    /// Those lines as the three groups the list draws a row each for. Computed
+    /// Those lines as the three groups the configuration card draws. Computed
     /// rather than stored beside `config`, for the reason `issues` is: two
     /// fields are two accounts of one answer.
     var configGroups: [ConfigGroup] { ConfigGroup.grouping(config?.lines ?? []) }
-
-    /// **Everything the health list can have selected — findings *and*
-    /// configuration groups.**
-    ///
-    /// The segment's list holds two kinds of thing and `reconcile` takes one
-    /// set of ids, so a reconcile that knew only the findings dropped the
-    /// person's selection every time the other half was re-read — and a refused
-    /// `brew doctor` deselected the configuration group they were reading,
-    /// which has nothing to do with `brew doctor` at all.
-    ///
-    /// **And the section's own hits, a third time over.** `shownHits` sits
-    /// under Состояние the same as under either other tab, and it is not
-    /// counted by either of the two lists above — without it, selecting a hit
-    /// there and then refreshing `brew config` or `brew doctor` (which the
-    /// page's own `.onChange(of: segment)` does on every arrival) reconciled
-    /// the selection away against a set that had never heard of it.
-    private var healthSelectableIDs: Set<String> {
-        Set(issues.map(\.id)).union(configGroups.map(\.id)).union(shownHits.map(\.id))
-    }
 
     /// What `brew config` says about this Homebrew and this Mac.
     ///
@@ -919,22 +928,8 @@ import Module_Homebrew_Engine
     /// ("no `?? []` on any list reply"), where the last answer is still a true
     /// thing about a machine that has almost certainly not moved.
     func refreshConfig() async {
-        configReading = .waiting
-        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else {
-            // Unlike `installedReading`/`outdatedReading`, there is no "last
-            // answer" fact to weigh here — `config` itself never moves on a
-            // refusal, keeping whatever the pane last drew — this reading
-            // exists only so `ownListShowsNothing` can tell "never asked" from
-            // "asked and refused."
-            configReading = .unanswerable
-            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
-            return
-        }
+        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else { return }
         config = answer
-        configReading = .answered
-        reconcile(.health, against: healthSelectableIDs)
-        reconcileVisible()
-        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
     }
 
     /// **A refusal replaces the issues rather than keeping them.** The other
@@ -959,13 +954,6 @@ import Module_Homebrew_Engine
         if !loadedInstalled { await refreshInstalled() }
         guard let answer: [DoctorIssue] = await client.request(HomebrewCommand.doctor) else {
             doctor = .refused
-            // Against everything the list still holds, not against nothing: the
-            // configuration groups are on this list too and a refused `brew
-            // doctor` says nothing about them, so sweeping them out here took
-            // away the group the person was reading.
-            reconcile(.health, against: healthSelectableIDs)
-            reconcileVisible()
-            if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
             return
         }
         // The parser always answers `fix: nil` — a command read out of a tool's
@@ -975,9 +963,6 @@ import Module_Homebrew_Engine
         // against a list read at the press, which is what decides what runs.
         let installedNames = installed.map(\.name)
         doctor = .examined(answer.map { DoctorFixCandidate.judging($0, installed: installedNames) })
-        reconcile(.health, against: healthSelectableIDs)
-        reconcileVisible()
-        if let q = ListFilter.needle(query) { scheduleAutomaticSearch(for: q) }
     }
 
     /// The fix a person is being asked about, or nil because nothing is being
@@ -1213,4 +1198,15 @@ import Module_Homebrew_Engine
     public func stop() { client.fire(HomebrewCommand.stop) }
 
     public func clearConsole() { consoleLines.removeAll() }
+
+    /// The one door a console line comes in by: it takes the next number and
+    /// keeps the newest `consoleLimit`. Numbered before the trim, so the
+    /// newest line's number moves on every arrival however full the console is.
+    private func say(_ line: String) {
+        consoleLines.append(line)
+        consoleSequence += 1
+        if consoleLines.count > Self.consoleLimit {
+            consoleLines.removeFirst(consoleLines.count - Self.consoleLimit)
+        }
+    }
 }

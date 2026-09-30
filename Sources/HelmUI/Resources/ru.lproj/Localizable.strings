@@ -252,7 +252,6 @@
 "Helm Settings" = "Настройки Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm работает с VoiceOver. Каждый элемент управления теперь называет себя — редактор правил состоял из кнопок и полей, не сообщавших ничего, и правило нельзя было составить вслепую.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm мог аварийно завершиться, когда приложение закрывалось ровно в тот момент, когда модуль VPN смотрел на список запущенных программ.";
-"Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm скачает официальный установщик Homebrew и запустит его. macOS один раз запросит пароль администратора, чтобы создать /opt/homebrew.";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm теперь представляется. При первой установке один раз открывается короткий тур: что такое Helm, затем по экрану на модуль, с кнопками «Назад», «Далее» и «Пропустить». Он только рассказывает — ничего не включает и никаких разрешений не просит. Если Helm уже стоял, тур покажется один раз и вам: «Автопилот» и «Дубликаты» появились, когда о них никто не рассказал.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm состоит из модулей. Каждый делает одно дело, и ненужные можно выключить.";
 "Helm is missing permissions it needs" = "У Helm нет нужных разрешений";
@@ -265,6 +264,7 @@
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "У macOS есть собственный индикатор. Выключите его в настройках клавиатуры, иначе индикаторов будет два.";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew больше не установлен.";
+"Helm quit while Homebrew was still being installed. The installation may not have finished." = "Helm завершил работу во время установки Homebrew. Установка могла не завершиться.";
 "Homebrew isn’t installed" = "Homebrew не установлен";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Модуль Homebrew: установленные пакеты, обновления, поиск и установка, живая консоль и описания пакетов.";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew удалит его сразу. В Корзину он не попадёт, и отменить это будет нельзя.";
@@ -510,6 +510,12 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Кнопка остановки действительно останавливает скан. Переход в папку посреди скана запускал второй, и первый оставался ходить по диску без возможности его прервать. А в дубликатах «освободится» теперь считает именно те копии, которые уйдут.";
 "Stop watching" = "Перестать следить";
 "Stopped" = "Остановлено";
+"command line developer tools" = "инструменты командной строки для разработчиков";
+"Stop waiting" = "Не ждать";
+"Cancelled" = "Отменено";
+"Installing Homebrew" = "Установка Homebrew";
+"Administrator authorization was cancelled, so Homebrew was not installed." = "Авторизация администратора отменена, поэтому Homebrew не установлен.";
+"macOS could not prepare /opt/homebrew, so Homebrew was not installed." = "macOS не смог подготовить /opt/homebrew, поэтому Homebrew не установлен.";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "Остановленное сканирование диска больше не теряет то, что успело измерить. Раньше кольцо исчезало и вы возвращались к выбору тома — после минуты наблюдения за тем, как оно растёт. Теперь дерево остаётся с пометкой «Остановлено», а на следующий раз не сохраняется: в незакончённом обходе папка может содержать больше, чем показано.";
 "Style" = "Вид";
 "Switched on, but macOS is withholding what it needs" = "Включён, но macOS не даёт того, что ему нужно";
@@ -647,10 +653,10 @@
 "by kind" = "по виду";
 "by month" = "по месяцу";
 "cask" = "cask";
-"collapsed" = "свернуто";
+"collapsed" = "свернутая";
 "contains" = "содержит";
 "ends with" = "заканчивается на";
-"expanded" = "развернуто";
+"expanded" = "развернутая";
 "failed" = "не удалось";
 "free" = "свободно";
 "guess" = "догадка";
@@ -1174,12 +1180,12 @@
 "It no longer meets Homebrew’s conditions for a cask." = "Он больше не отвечает требованиям Homebrew к пакетам cask.";
 "It does not pass the macOS Gatekeeper check." = "Он не проходит проверку Gatekeeper в macOS.";
 "Health" = "Состояние";
-"Caution" = "Внимание";
 "Problem" = "Проблема";
 "Checking this Mac…" = "Проверка этого Mac…";
 "Nothing to fix." = "Исправлять нечего.";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew не ответил, поэтому о состоянии этого Mac сейчас ничего не известно.";
-"Select a finding or a part of the configuration" = "Выберите замечание или часть конфигурации";
+"Homebrew checked this Mac and found nothing to report." = "Homebrew проверил этот Mac и ничего не нашёл.";
+"Homebrew itself says: if everything you use it for works, you can ignore these." = "Сам Homebrew пишет: если всё, для чего вы им пользуетесь, работает, это можно не трогать.";
 "Helm reads this as" = "Helm читает это так";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew не назвал здесь никакой команды — он сказал, что не так, и на этом остановился. Строка выше — это то, как её прочитал сам Helm.";
 "Run" = "Выполнить";
@@ -1187,7 +1193,6 @@
 "Copy" = "Скопировать";
 "Helm does not run this one. It is here to read and to copy." = "Helm сам её не выполняет. Она здесь для того, чтобы её прочитать и скопировать.";
 "Helm checked the command again and would not run it." = "Helm проверил команду ещё раз и выполнять её не стал.";
-"Checkup" = "Проверка";
 "Configuration" = "Конфигурация";
 "Machine" = "Машина";
 "Tools" = "Инструменты";

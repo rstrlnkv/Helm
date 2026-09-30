@@ -24,10 +24,11 @@ struct HomebrewSettingsPage: View {
                 console
             }
         }
-        // **The console arrives by taking 200 pt off everything above it**, and
-        // it used to do that in one frame: the first install of the session put
-        // a divider and a 160 pt well under the page, and the list, the status
-        // bar and whatever row the eye was on jumped up together. One token, on
+        // **The console arrives by taking its height off everything above it**
+        // (`ThePageMovesRatherThanCutsTests` measures the travel), and it used
+        // to do that in one frame: the first install of the session put a
+        // divider and the well under the page, and the list, the status bar and
+        // whatever row the eye was on jumped up together. One token, on
         // the fact that decides it — the same one the other list screens use
         // (`UninstallerSettingsPage`, which carries three of these).
         //
@@ -132,7 +133,7 @@ struct HomebrewSettingsPage: View {
         HelmEmptyState(symbol: "shippingbox",
                        tint: HomebrewDescriptor.tint.colour,
                        title: HbStr.notInstalledTitle,
-                       message: HbStr.notInstalledBody) {
+                       message: HbStr.notInstalledBody()) {
             Button {
                 hb.installBrew()
             } label: {
@@ -194,7 +195,13 @@ struct HomebrewSettingsPage: View {
             // drift into offering two different things for one of them.
             GeometryReader { proxy in
                 let split = HomebrewSplit(availableWidth: proxy.size.width)
-                if split.showsInspector {
+                if hb.segment == .health {
+                    // **Not a master and a subject, at any width.** Состояние
+                    // is one page whose findings open where they stand
+                    // (`HomebrewHealthPage`), so the split is not asked and
+                    // no selection exists to put a back bar over.
+                    listArea(singleColumn: false)
+                } else if split.showsInspector {
                     // **No stack spacing — the list meets the divider.** The
                     // owner's own choice, shown a screenshot of the list
                     // falling short of its own block: an equal `HelmSpace.s5`
@@ -350,166 +357,31 @@ struct HomebrewSettingsPage: View {
         switch hb.segment {
         case .installed: installedList(singleColumn: singleColumn)
         case .updates: updatesList(singleColumn: singleColumn)
-        case .health: healthList(singleColumn: singleColumn)
-        }
-    }
-
-    /// What `brew doctor` found and what `brew config` said, under one heading
-    /// each, in one list.
-    ///
-    /// **Two kinds of thing on one list, and every sentence kept.** The three
-    /// readings `brew doctor` can be in are still three — «Checking this Mac…»,
-    /// «Nothing to fix» and «Homebrew did not answer» are the distinction this
-    /// segment turns on, and an empty list that was *measured* is not the empty
-    /// list nobody could take. What has changed is where that sentence goes: a
-    /// Mac whose findings could not be read still has a configuration to draw,
-    /// so the sentence becomes a row under its own heading instead of taking
-    /// the whole pane. `HealthScreen.of` decides which of the two, and a test
-    /// reads it rather than a `body`.
-    ///
-    /// No description line whatever the pane's width: a finding's body is prose, often
-    /// several lines of it, and one clipped line of it in a row says less than
-    /// nothing. The title is the row.
-    ///
-    /// **The section forces the list shape, even over a Состояние that has
-    /// never been opened.** `HealthScreen.of` alone still reads "nothing
-    /// asked yet, nothing configured" as one centred sentence whatever a
-    /// search is doing, and the section that would show the difference sits
-    /// inside the `List` below — a Mac that has never asked `brew doctor` and
-    /// is searching would otherwise draw «Checking this Mac…» over a section
-    /// that never appears, the way a genuinely empty Установленные once drew
-    /// «No packages installed.» over the same section (`listOrEmpty`'s own
-    /// comment on that). Plain rather than `@ViewBuilder`, since `healthList`
-    /// below needs the value rather than a view to switch on.
-    private var healthScreen: HealthScreen {
-        let screen = HealthScreen.of(hb.doctor, config: hb.configGroups,
-                                     needle: ListFilter.needle(hb.query))
-        guard hb.section != nil, case let .sentence(note) = screen else { return screen }
-        return .groups(checkup: [.note(note)], configuration: [])
-    }
-
-    @ViewBuilder
-    private func healthList(singleColumn: Bool) -> some View {
-        switch healthScreen {
-        case let .sentence(note):
-            // The whole segment is this one sentence, so it is centred rather
-            // than sitting in a list with nothing else in it.
-            if note == .busy {
-                HelmBusyState(Self.healthNote(note))
-            } else {
-                HelmEmptyState(message: Self.healthNote(note))
-            }
-        case let .groups(checkup, configuration):
-            // `Section`, not rows with a heading drawn by hand: a section
-            // header is not selectable, which is the whole of what a heading in
-            // a selectable list has to be.
-            //
-            // **`header:` rather than a bare string, which is a different
-            // question from that one.** `Section("…")` is still a `Section` and
-            // still not selectable; what it also is, is the only place in the app
-            // that lets macOS *draw* the heading — 13 pt semibold in sentence
-            // case, which is the same weight as the rows under it and the exact
-            // shape `HelmSectionTitle`'s own doc comment names as what the
-            // redesign replaced. So this page had two list headings in the app's
-            // voice (`configDetail`'s and the inspector's) and two in the
-            // system's, on one screen. `LeftoversSettingsPage` is the same
-            // construction to the line — `HelmSectionTitle` inside a
-            // `Section(header:)` of an inset `List` — and `HelmSectionTitle` is
-            // what every section heading in the app is set in bar one:
-            // `OrphansView` builds its own header out of
-            // `HelmText.sectionHeading`, which is the section *face* and a step
-            // larger. `command grep -rn 'HelmSectionTitle\|HelmText.sectionHeading' Sources`
-            // is the list; the majority is not close.
-            List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
-                Section(header: sectionHeader(HbStr.headingCheckup)) {
-                    ForEach(checkup) { row in healthRow(row, singleColumn: singleColumn) }
-                }
-                if !configuration.isEmpty {
-                    Section(header: sectionHeader(HbStr.headingConfiguration)) {
-                        ForEach(configuration) { group in
-                            HStack(spacing: HelmSpace.s3) {
-                                Text(HbStr.configSectionName(group.section))
-                                Spacer(minLength: 0)
-                                goesToItsOwnScreen(singleColumn)
-                            }
-                            .helmListRow()
-                            .helmOpensAScreen(singleColumn)
-                        }
-                    }
-                }
-                // The third section on this list, shared with the other two
-                // tabs: the query that just filtered Checkup and Configuration
-                // above is the same one that may be asking brew about a
-                // package this Mac does not have.
-                if let section = hb.section {
-                    Section(header: sectionHeader(HbStr.availableToInstall)) {
-                        availableRows(section, hits: hb.shownHits, singleColumn: singleColumn,
-                                     marksUpdates: false)
-                    }
-                }
-            }
-            // No inset of its own. It carried `.padding(.horizontal,
-            // HelmSpace.s5)`, which put this page's rows 12 pt further in than
-            // the rows of every other list in the app — and the row treatment
-            // `helmListRow` exists to put this page *with* those two screens.
-            // `.listStyle(.inset)` is where Uninstaller, Orphans, Disk,
-            // Autopilot and Duplicates all stop.
-            .listStyle(.inset)
+        // No columns and no inspector: the tab is one page (`HomebrewHealthPage`),
+        // which `managerBody` mounts before it asks the split anything.
+        case .health: HomebrewHealthPage(hb: hb)
         }
     }
 
     /// The heading over a group of rows, in the app's own voice rather than the
     /// system's.
     ///
-    /// The trait is said here as well as by `Section(header:)`, for the reason
-    /// `OrphansView` gives at its own header: the trait is a set, so saying it
-    /// twice costs nothing and never saying it costs the rotor the only two
-    /// landmarks this segment has.
+    /// The header trait is carried by `HelmSectionTitle` itself, so the rotor
+    /// keeps the landmark over the "Available to install" rows without a
+    /// second statement of it here.
     private func sectionHeader(_ title: String) -> some View {
-        HelmSectionTitle(title).accessibilityAddTraits(.isHeader)
-    }
-
-    @ViewBuilder
-    private func healthRow(_ row: HealthRow, singleColumn: Bool) -> some View {
-        switch row {
-        case let .issue(issue):
-            issueRow(issue, singleColumn: singleColumn)
-        case let .note(note):
-            // **Waiting moves.** `HealthScreen.of` puts this sentence in a
-            // row rather than in the centred `HelmBusyState` whenever
-            // `brew config` has anything to draw beside it — which it
-            // almost always does, because `refresh` asks it first on
-            // purpose, and it is fast where `brew doctor` is the slowest
-            // query in the module. So the ordinary Состояние wait was a
-            // plain 36 pt text row with **no progress indicator anywhere on
-            // the page**, while every other wait in this module and in the
-            // app spins. The refusal keeps the still row it had: there is
-            // nothing on its way to indicate.
-            noteRow(Self.healthNote(note), busy: note == .busy)
-        }
-    }
-
-    /// The sentence each reading draws, apart from the views that draw it —
-    /// the same reason `severityWord` is out here: which reading says which
-    /// sentence is a decision a test can hold, and a `body` is not.
-    static func healthNote(_ note: HealthNote) -> String {
-        switch note {
-        case .busy: return HbStr.examiningThisMac
-        case .clean: return HbStr.nothingToFix
-        case .unexaminable: return HbStr.couldNotExamine
-        case .noMatches: return HbStr.noMatches
-        }
+        HelmSectionTitle(title)
     }
 
     /// The sentence a package list's own section draws instead of its rows,
     /// or nil when `screen` says to draw the rows themselves — apart from
-    /// `packageList`'s `body` for `healthNote`'s own reason: which reading
+    /// `packageList`'s `body` for `severityWord`'s reason: which reading
     /// says which sentence is a decision a test can hold. `notes` are the
     /// three sentences each call site already carries (`installedList`'s
     /// "No packages installed.", `updatesList`'s "Everything is up to date.",
     /// and the two refusals beside them); `.noMatches` earns the one sentence
     /// every tab shares, since a query hiding every row says the same thing
-    /// on all three.
+    /// on both.
     static func ownListNote(_ screen: ListScreen,
                             notes: (nothing: String, unanswerable: String, waiting: String))
         -> (text: String, busy: Bool)? {
@@ -525,7 +397,7 @@ struct HomebrewSettingsPage: View {
     /// **Not selectable, because there is nothing to select.** A note is
     /// the sentence standing in for rows there are none of, and a row that
     /// highlights and then describes nothing in the inspector is a row that
-    /// looks broken. Shared by all three tabs' empty rows and by the
+    /// looks broken. Shared by both package tabs' empty rows and by the
     /// "Available to install" section's own three sentences — one builder,
     /// so a note row cannot drift into three shapes across the page.
     private func noteRow(_ text: String, busy: Bool = false) -> some View {
@@ -538,9 +410,8 @@ struct HomebrewSettingsPage: View {
     }
 
     /// **The "Available to install" section's own three sentences, and its
-    /// rows.** Shared by all three tabs' `listOrEmpty` and by `healthList`,
-    /// which builds its own `List` by hand rather than going through
-    /// `listOrEmpty`.
+    /// rows.** Shared by both package tabs' `listOrEmpty`, the only place it is
+    /// drawn: Состояние has no such section.
     ///
     /// `marksUpdates` reserves the update mark's slot on Установленные so a
     /// hit's name lines up with the installed rows above it — `pkgRow`'s own
@@ -561,49 +432,6 @@ struct HomebrewSettingsPage: View {
         }
     }
 
-    /// A row of the health list: the finding's title, and nothing else.
-    /// Same shape as `pkgRow` — no button, at any width — since selecting is
-    /// what reaches the one place an action ever draws.
-    ///
-    /// **The severity badge is not here, and that is a measurement rather than
-    /// a preference.** The master column is pinned at 310 pt, so the title has
-    /// about 286 pt whatever the window does; the badge took roughly 50 of them
-    /// plus a step, and the two findings this Mac's own `brew doctor` produces
-    /// read «Caution Calling `postflight` is depre…» and «Caution Some installed
-    /// formulae are…» — cut mid-word to make room for a word that is the same on
-    /// both rows. Moving it to the trailing edge was the other candidate and
-    /// buys nothing: with a `Spacer` between them the title competes for the
-    /// same width and truncates at the same character, only further left.
-    ///
-    /// **Where the severity went, and why nobody loses it.** `issueDetail`
-    /// draws the same `HelmBadge` at full size beside the full title, one
-    /// selection away and — above the threshold — on the same screen. That badge
-    /// carries `severityWord`, so the difference between a `.danger` finding and
-    /// a `.caution` one is a **word**, not a hue: it never lived in the tint,
-    /// and a reader who cannot see colour reads it exactly as anyone else does.
-    /// What this row drops, it drops for everybody equally.
-    private func issueRow(_ issue: DoctorIssue, singleColumn: Bool) -> some View {
-        HStack(spacing: HelmSpace.s3) {
-            // One line, like `pkgRow`'s name and for the same reason: the row
-            // is the handle and `issueDetail` beside it carries the whole
-            // title.
-            //
-            // **It said two, and two was never what it drew.** Measured
-            // 2026-09-15 with a 73-character title in a 286 pt column: the row
-            // came out one line tall either way, because a `Text` in an
-            // `HStack` beside a `Spacer` is compressed to one line and
-            // truncated rather than allowed to wrap — `lineLimit(2)` permits a
-            // second line and nothing here asks for one. So this is the number
-            // that says what happens, and it is also the one that keeps saying
-            // it if a future layout stops compressing.
-            Text(issue.title).lineLimit(1)
-            Spacer(minLength: 0)
-            goesToItsOwnScreen(singleColumn)
-        }
-        .helmListRow()
-        .helmOpensAScreen(singleColumn)
-    }
-
     /// What the console says beside «Failed», when the engine knew more than an
     /// exit code.
     ///
@@ -613,13 +441,38 @@ struct HomebrewSettingsPage: View {
     /// saying why, which is a refusal reaching the page as an empty fact.
     /// `.stopped` is nil because the arm above this one draws its own pill: the
     /// person asked for that end, and it is not a failure to explain.
-    static func failureNote(_ reason: OpFailureReason?) -> String? {
-        guard let reason else { return nil }
+    ///
+    /// Takes the whole state, not the reason alone, because `installerFailed`
+    /// names the installer's exit code and the code is on the state.
+    static func failureNote(_ op: OpState, language: AppLanguage = AppLanguage.current) -> String? {
+        guard let reason = op.reason else { return nil }
         switch reason {
-        case .brewMissing: return HbStr.brewGone
+        case .brewMissing: return HbStr.brewGone(language: language)
         case .stopped: return nil
-        case .fixRefused: return HbStr.fixNotRunnable
+        case .fixRefused: return HbStr.fixNotRunnable(language: language)
+        case .toolsNotInstalled: return HbStr.toolsNotInstalled(language: language)
+        case .authorizationDeclined: return HbStr.authorizationDeclined(language: language)
+        case .prefixNotPrepared: return HbStr.prefixNotPrepared(language: language)
+        case .installerFailed: return HbStr.installerFailed(code: op.exitCode, language: language)
         }
+    }
+
+    /// The running pill's words: what is waited for while the operation waits,
+    /// the operation's name otherwise — the engine's label as the engine wrote
+    /// it (`upgrade wget`, in English in every language), except for the
+    /// install of Homebrew itself, which `HbStr.operationName` words in the
+    /// person's language.
+    /// Static, so a test can reach it without a view.
+    static func pillTitle(for op: OpState, language: AppLanguage = AppLanguage.current) -> String {
+        op.waiting == nil ? HbStr.operationName(op.label, language: language)
+                          : HbStr.waitingForTools(language: language)
+    }
+
+    /// Stop's title while the operation is the wait for Apple's tools: the
+    /// press ends the waiting and leaves Apple's window to finish. Static, so a
+    /// test can reach it without a view.
+    static func stopTitle(for op: OpState) -> String {
+        op.waiting == .commandLineTools ? HbStr.stopWaiting : HbStr.stop
     }
 
     /// The badge's word and the badge's tint, apart from the views that draw
@@ -675,16 +528,23 @@ struct HomebrewSettingsPage: View {
         (["brew"] + fix.argv).joined(separator: " ")
     }
 
-    static func severityWord(_ severity: DoctorSeverity) -> String {
+    /// The word on a finding's badge — **and nil for a caution, which has no
+    /// badge.** A caution is what nearly every finding is, and a pill saying so
+    /// on each row said the same word on all of them; only the severity that
+    /// stands out is worded. No `default:` on either switch: a third severity
+    /// has to be a build error here, where the decision is made.
+    static func severityWord(_ severity: DoctorSeverity) -> String? {
         switch severity {
-        case .caution: return HbStr.severityCaution
+        case .caution: return nil
         case .danger: return HbStr.severityDanger
         }
     }
 
-    static func severityTint(_ severity: DoctorSeverity) -> Color {
+    /// The badge's ink, nil exactly where `severityWord` is: a finding with no
+    /// badge has no tint to draw.
+    static func severityTint(_ severity: DoctorSeverity) -> Color? {
         switch severity {
-        case .caution: return HelmSignal.warning
+        case .caution: return nil
         case .danger: return HelmSignal.danger
         }
     }
@@ -746,14 +606,13 @@ struct HomebrewSettingsPage: View {
     /// It decides nothing itself: `InspectorState.of` answers what is being
     /// looked at, and each kind of subject has exactly one builder below.
     ///
-    /// **The empty sentence belongs to the segment.** «Select a package» is
-    /// wrong over a list of findings, and one key means one thing — a finding
-    /// is not a package, and the languages that inflect the two differently are
-    /// the ones a shared key would have read worst in.
+    /// **Only the two package tabs have one.** Состояние is a page whose rows
+    /// open in place (`HomebrewHealthPage`), so this is never mounted there and
+    /// `InspectorState.of` answers `.nothingToSelect` if it is ever asked.
     ///
     /// **The current tab's own list, after the filter, not the raw answer.**
-    /// `InspectorState.of`'s own three-list emptiness check answers off
-    /// `hb.installed`/`hb.outdated`/`hb.issues`/`hb.configGroups`, which is the
+    /// `InspectorState.of`'s own emptiness check answers off
+    /// `hb.installed`/`hb.outdated`, which is the
     /// *unfiltered* Cellar — so a query that hid every row still saw a
     /// non-empty list and invited a choice beside a master saying «Nothing in
     /// this list matches.», a sentence with nothing left to pick. Read once
@@ -764,7 +623,7 @@ struct HomebrewSettingsPage: View {
         switch hb.segment {
         case .installed: return hb.shownInstalled.isEmpty
         case .updates: return hb.shownOutdated.isEmpty
-        case .health: return hb.shownIssues.isEmpty && hb.shownConfigGroups.isEmpty
+        case .health: return true // no inspector on this tab, so nothing to invite a choice of
         }
     }
 
@@ -773,13 +632,11 @@ struct HomebrewSettingsPage: View {
             switch InspectorState.of(segment: hb.segment, selected: hb.selected,
                                      installed: hb.installed, outdated: hb.outdated,
                                      loadedOutdated: hb.loadedOutdated,
-                                     hits: hb.shownHits, issues: hb.issues,
-                                     config: hb.configGroups,
+                                     hits: hb.shownHits,
                                      descriptions: hb.descriptions,
                                      shownEmpty: shownEmpty) {
             case .nothingSelected:
-                HelmEmptyState(message: hb.segment == .health ? HbStr.selectAFindingOrASection
-                                                              : HbStr.nothingSelected)
+                HelmEmptyState(message: HbStr.nothingSelected)
             case .nothingToSelect:
                 // **Nothing, deliberately.** The list next to this already
                 // carries the sentence for whichever of the three readings it
@@ -793,10 +650,6 @@ struct HomebrewSettingsPage: View {
                 Color.clear
             case let .package(subject):
                 packageDetail(subject)
-            case let .issue(issue):
-                issueDetail(issue)
-            case let .configSection(group):
-                configDetail(group)
             }
         }
     }
@@ -883,222 +736,6 @@ struct HomebrewSettingsPage: View {
                 if let info = hb.info { PackageSecondTier(info: info, size: hb.size) }
             }
             .helmInspectorColumn()
-        }
-    }
-
-    /// **The one builder for what a `brew doctor` finding draws.**
-    ///
-    /// Three shapes, and which one is drawn is `DoctorFix.kind`'s answer and
-    /// not this view's: a fix the engine judged `.runnable` gets the command
-    /// and a button that acts; a `.copyOnly` fix gets the command, a copy
-    /// affordance and **no button that acts**; an issue with no fix at all gets
-    /// neither, because there is nothing to say and a well with nothing in it
-    /// is a promise this page cannot keep.
-    ///
-    /// Scrolled for the reason `packageDetail` is: a `brew doctor` body is
-    /// prose of whatever length brew felt like, and the postflight block on
-    /// this Mac is three lines one of which is a full path.
-    private func issueDetail(_ issue: DoctorIssue) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                // **The word over the title, not beside it.** Beside it the
-                // badge took its own width out of every line the title had, so
-                // a long `brew doctor` heading wrapped under a pill and began
-                // its second line at a different edge from its first. Stacked,
-                // the title keeps the column's whole measure and one left edge.
-                VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                    HelmBadge(Self.severityWord(issue.severity),
-                              tint: Self.severityTint(issue.severity))
-                    Text(issue.title).font(HelmText.sectionHeading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                // Brew's own words, kept as brew wrote them — the parser keeps
-                // body lines verbatim on purpose (`DoctorParser.body`), and a
-                // body line naming a path is somebody's path.
-                //
-                // In a card and at full ink: this is what the person opened the
-                // finding to read, and it was the quietest text in the pane.
-                Text(issue.body)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .helmCard(padding: HelmSpace.s5)
-                if let fix = issue.fix { fixBlock(fix) }
-            }
-            .helmInspectorColumn()
-        }
-    }
-
-    /// **The one builder for what a group of `brew config` lines draws.**
-    ///
-    /// The heading, the lines under it as they were read, and one action: the
-    /// whole document on the pasteboard. Scrolled for the reason the two
-    /// builders above are — nine lines under the Homebrew heading, each with a
-    /// path in it, below `HomebrewSplit`'s threshold with the console under it.
-    ///
-    /// The key is drawn as Homebrew spells it and the value in a monospaced
-    /// face: eight of the eighteen are a version, a path or a hash, which is
-    /// what a reader compares character by character rather than reads as a
-    /// word. The value is selectable, because a person who is not copying the
-    /// whole document is copying exactly one of these.
-    private func configDetail(_ group: ConfigGroup) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                // A header to VoiceOver as well as to the eye: it introduces
-                // the rows under it, so the rotor has to be able to jump to it
-                // (`AHeadingIsAHeadingToTheRotorTests`).
-                Text(HbStr.configSectionName(group.section))
-                    .font(HelmText.sectionHeading)
-                    .accessibilityAddTraits(.isHeader)
-                // A `Grid`, so the key column is as wide as the widest key and
-                // not a number written down here. The drawing fixes that column
-                // at 150 pt; a constant would be a threshold nothing measures,
-                // and while these keys are Homebrew's own and never translated,
-                // Homebrew adds keys between releases — `Core cask tap` and
-                // `Metal Toolchain` are both newer than the capture this was
-                // designed against — so the column has to be able to grow.
-                //
-                // In a card, one rule between lines — the facts card's shape. A
-                // view that is not a `GridRow` spans every column, which is what
-                // makes the rule run the card's width without a number for it.
-                Grid(alignment: .leadingFirstTextBaseline,
-                     horizontalSpacing: HelmSpace.s5, verticalSpacing: HelmSpace.s3) {
-                    ForEach(Array(group.lines.enumerated()), id: \.element.id) { index, line in
-                        if index > 0 { Divider() }
-                        GridRow {
-                            Text(line.key)
-                                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                            Text(line.value)
-                                // The one spelling this module gives a monospaced
-                                // face, settled on the shape the rest of the tree
-                                // uses. `HelmText.rowDetail.monospaced()` drew the
-                                // identical face — `rowDetail` *is* `.subheadline`
-                                // — so this is vocabulary rather than a size:
-                                // three spellings of one decision read as three
-                                // decisions.
-                                .font(.system(.subheadline, design: .monospaced))
-                                .textSelection(.enabled)
-                                .gridColumnAlignment(.leading)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .helmCard(padding: HelmSpace.s5)
-                // **The document, not this group, and not Helm's reading of
-                // it.** `BrewConfig.text` is what brew printed byte for byte;
-                // the lines above are a reading regrouped under headings this
-                // app invented, and a bug report asks for the first. Drawn only
-                // when there is a document — a button that copies an empty
-                // string is a button that silently does nothing.
-                //
-                // A pasteboard write from the view, the way `fixBlock` and
-                // `LogView` already do it: nothing leaves this process, so
-                // there is no engine command for it.
-                if let text = hb.config?.text {
-                    Button(HbStr.copyForABugReport) {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(text, forType: .string)
-                    }
-                }
-            }
-            .helmInspectorColumn()
-        }
-    }
-
-    /// The command, whose label says whose reading it is, and whatever this app
-    /// may do with it.
-    ///
-    /// **No control here attributes the command to Homebrew.** Measured on this
-    /// Mac (Homebrew 7.0.1, 2026-09-15): `brew doctor` printed 1,194 bytes and
-    /// not one `brew …` command line, so `uninstall <name>` is Helm's reading
-    /// of a heading brew printed and not a line brew wrote —
-    /// `HbStr.helmReadsThisAs` and `HbStr.brewNamedNoCommand` are the two
-    /// places that say so, and the second is drawn for both kinds of fix,
-    /// because the provenance is a fact about the command rather than about the
-    /// button beside it.
-    ///
-    /// The copy is a pasteboard write from the view, the way `KeysTable` and
-    /// `LogView` already do it: there is no engine command for it, because
-    /// nothing leaves this process.
-    private func fixBlock(_ fix: DoctorFix) -> some View {
-        let command = Self.commandLine(fix)
-        return VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            // Whose reading this is, as the heading of the card below it
-            // rather than a quiet line inside the same stack — so the card
-            // is visibly Helm's and the body above it visibly brew's.
-            HelmSectionTitle(HbStr.helmReadsThisAs)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.leading, HelmSpace.s5)
-            VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            HStack(spacing: HelmSpace.s3) {
-                Text(command)
-                    // A text *style* rather than a frozen 11 pt, for the reason
-                    // `PackageSecondTier`'s caveats block states two files away:
-                    // `.subheadline` resolves to the same 11 at the default
-                    // setting and follows the system text size from there, which
-                    // a literal cannot. It is the spelling every deliberate
-                    // monospaced face in the tree takes (`HelmExplainer`,
-                    // `HostsTable`, `LayoutLists`).
-                    .font(.system(.subheadline, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    // `ctl` and not `card`: the design system's small field wells
-                    // take the control corner and its block-sized ones the
-                    // card's. This is one line of text, and at `card` it was the
-                    // roundest well in the inspector — rounder than the fact
-                    // tiles, the quiet notes and the multi-line caveats block
-                    // beside it, every one of which is `ctl`, and as round as the
-                    // 160 pt console. The smaller box had the bigger corner. The
-                    // fill token's doc comment names a well of this kind as its
-                    // call site and says nothing about radius, which is what the
-                    // note here used to cite.
-                    .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                        .fill(HelmSurface.wellFill))
-                Button(HbStr.copyTheFix) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
-                }
-                if fix.kind == .runnable {
-                    // **The destructive one, drawn and behaved as the
-                    // destructive one it is.** Measured 2026-09-16: it sat 6 pt
-                    // from Copy, at the same weight, with no role and no
-                    // question — and the command behind it on this Mac is
-                    // `brew uninstall periphery`, the same irreversible
-                    // deletion the Uninstall button raises a dialog for. The
-                    // role is what makes it read differently; `askToRunFix` is
-                    // what makes it *behave* differently, and `FixAsk` decides
-                    // which of the two commands on the allowlist that means —
-                    // `brew cleanup` still runs on the press, because a cached
-                    // download comes back.
-                    //
-                    // The step before it is `HelmSpace.s5` where the row's own
-                    // is `s3`: a press meant for Copy that lands on this one is
-                    // not a press anybody can take back.
-                    //
-                    // **And the role is kept without being trusted to show.**
-                    // The gap and the question both landed and the weight did
-                    // not: measured again on 2026-09-16, «Скопировать» and
-                    // «Выполнить» sampled the *same* darkest pixel, `#303030`
-                    // at 11.49:1 on the same `#EFEFEF` fill. `helmDestructive`
-                    // carries what a person can actually see; the role stays
-                    // because it is still what this button means.
-                    Button(role: .destructive) { hb.askToRunFix(fix) } label: {
-                        Text(Self.runLabel(fix)).helmDestructive()
-                    }
-                    .disabled(hb.running)
-                    .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
-                }
-            }
-            Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            if fix.kind == .copyOnly {
-                Text(HbStr.helmDoesNotRunThis).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .helmCard(padding: HelmSpace.s5)
         }
     }
 
@@ -1191,32 +828,29 @@ struct HomebrewSettingsPage: View {
                 if hb.running {
                     // The only way out of a brew that will not finish — the
                     // module used to be dead until an app restart.
-                    Button(HbStr.stop) { hb.stop() }.controlSize(.small)
+                    Button(Self.stopTitle(for: hb.op)) { hb.stop() }.controlSize(.small)
                 }
                 Button(HbStr.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
             }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                        ForEach(Array(hb.consoleLines.enumerated()), id: \.offset) { i, line in
-                            // The same spelling the fix command above takes, and
-                            // for the same reason: a text style follows the
-                            // system text size where a frozen 11 does not.
-                            Text(line).font(.system(.subheadline, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading).id(i)
-                        }
-                        Color.clear.frame(height: 1).id("bottom")
-                    }
-                }
-                .onChange(of: hb.consoleLines.count) { _, _ in
-                    withAnimation(HelmMotion.interface) { proxy.scrollTo("bottom", anchor: .bottom) }
-                }
-            }
+            ConsoleScroll(rows: hb.consoleRows, sequence: hb.consoleSequence)
+            // **The inset is outside the scroll view, so its clip sits at the
+            // inset.** Padding inside the scrolled content scrolls away with
+            // it: the first line was off the top edge at rest only, and once
+            // the console scrolled, a line partly cut by the top was cut at the
+            // box's edge, its ink a point or two from it. With the padding out
+            // here the visible text region is inset from the box on all four
+            // sides in every scroll position, and a partly scrolled line is
+            // clipped at the inset. The well's fill and corners are on the
+            // outer box, below.
+            .padding(Self.consoleInset)
             .frame(height: Self.consoleHeight)
-            // `card` and not `ctl`, which is the other half of the fix command's
-            // note above: this is a block-sized well and those take the card's
-            // corner. The token's own doc comment names console output as its
-            // call site.
+            // `card` and not `ctl`: this page's own choice for a block-sized
+            // well, not a rule of the design system, which draws its own
+            // multi-line well (`helmFieldWell()`) with the control corner.
+            // The fix command's one-line field takes the control corner
+            // here too. The well's fill,
+            // `HelmSurface.wellFill`, is the token whose own doc comment names
+            // console output.
             .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .fill(HelmSurface.wellFill))
         }
@@ -1232,27 +866,57 @@ struct HomebrewSettingsPage: View {
     /// fewer than a handful of those shows the fetch and not what it belongs to,
     /// while one twice this deep is the page it arrives into.
     ///
-    /// **Computed, not held, and both halves of the arithmetic follow the system
-    /// text size.** At the default setting `.subheadline` is 11 pt and SF Mono at
-    /// 11 lays out on a 13 pt line, so ten of them with `HelmSpace.s1` between —
-    /// the step the console's own stack uses — is 10 × 13 + 9 × 2 = 148, twelve
-    /// short of the number that was written here. A `static let` would freeze at
-    /// whatever the size was when the app launched, which is the reason
-    /// `HelmMotion`'s reduce-motion flag is a computed property too: a person who
-    /// raises their interface text size while Helm is open would otherwise get
-    /// bigger lines in a box measured for the smaller ones.
+    /// **The line is what SwiftUI lays out, asked of SwiftUI.** Ten of them with
+    /// `HelmSpace.s1` between — the step the console's own stack uses — plus
+    /// `consoleInset` above and below. The line used to be read off `NSFont`'s
+    /// ascender, descender and leading, which at the default text size is 13 pt,
+    /// while SwiftUI sets the same face on a 14 pt line: the pitch drawn was 16
+    /// and the formula counted 15, so the box held nine whole lines and the
+    /// tenth was cut by the bottom edge with the inset gone.
     ///
-    /// The face is asked for its own metrics rather than an `NSLayoutManager`,
-    /// which allocates per access and would be doing it per line of output;
-    /// measured on this Mac the two agree to within a twentieth of a point
-    /// (12.955 against 13.0), and the line is rounded up for that reason.
+    /// **Computed, not held, and it follows the system text size.** A `static
+    /// let` would freeze at whatever the size was when the app launched, which is
+    /// the reason `HelmMotion`'s reduce-motion flag is a computed property too: a
+    /// person who raises their interface text size while Helm is open would
+    /// otherwise get bigger lines in a box measured for the smaller ones.
     private static var consoleHeight: CGFloat {
-        let face = NSFont.monospacedSystemFont(
-            ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .regular)
-        let line = (face.ascender - face.descender + face.leading).rounded(.up)
-        return line * CGFloat(consoleLinesShown)
+        consoleLine * CGFloat(consoleLinesShown)
             + HelmSpace.s1 * CGFloat(consoleLinesShown - 1)
+            + consoleInset * 2
     }
+
+    /// What a console line is drawn in — one declaration, read by the rows and
+    /// by the measurement of their height, so the box cannot be sized for a
+    /// face the rows are not set in.
+    static let consoleFont = Font.system(.subheadline, design: .monospaced)
+
+    /// One line's height, measured the way `SidebarComposerSheet` measures its
+    /// note: a hosting controller asked what the text needs (`sizeThatFits`),
+    /// which is SwiftUI's own answer and not a second account of it. A
+    /// controller per read would be built per line of output, since the page
+    /// redraws for each, so the reading is kept against the point size it was
+    /// taken at and taken again when the system text size moves — the key is
+    /// the size, so the cache cannot go stale the way a `static let` would.
+    private static var consoleLine: CGFloat {
+        let size = NSFont.preferredFont(forTextStyle: .subheadline).pointSize
+        if let held = measuredLine, held.size == size { return held.height }
+        let height = NSHostingController(rootView: Text("M").font(consoleFont))
+            .sizeThatFits(in: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+            .height
+        measuredLine = (size, height)
+        return height
+    }
+
+    private static var measuredLine: (size: CGFloat, height: CGFloat)?
+
+    /// **How far the text sits from the box on every side.**
+    ///
+    /// `HelmSpace.s4`, the step between rows of one list: the monospaced lines
+    /// were drawn flush to the well's edges, the first glyph on the left edge
+    /// and the first line on the top. The box is taller by twice this, so the
+    /// ten lines the derivation above promises are still ten with the inset
+    /// taken off the top and the bottom.
+    static let consoleInset = HelmSpace.s4
 
     /// The ten. Its own constant so the derivation above has something to name
     /// and a test has something to multiply by.
@@ -1261,17 +925,31 @@ struct HomebrewSettingsPage: View {
     @ViewBuilder private var statusPill: some View {
         switch hb.op.phase {
         case .running:
-            HStack(spacing: HelmSpace.s3) { ProgressView().controlSize(.small); Text(hb.op.label).font(HelmText.rowDetail) }
+            // Waiting names what it waits for: the label is the operation's own
+            // words («install Homebrew»), which say nothing about a window that
+            // may be behind this one.
+            HStack(spacing: HelmSpace.s3) {
+                ProgressView().controlSize(.small)
+                Text(Self.pillTitle(for: hb.op)).font(HelmText.rowDetail)
+            }
         case .done:
             Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(HelmText.rowDetail)
         case .failed where hb.op.reason == .stopped:
             // The person asked for this end; a red octagon would call their own
             // press a defect.
             Label(HbStr.stopped, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
+        case .failed where hb.op.reason == .authorizationDeclined:
+            // A question answered no: neutral, with the sentence beside it.
+            HStack(spacing: HelmSpace.s3) {
+                Label(HbStr.cancelled, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
+                if let note = Self.failureNote(hb.op) {
+                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                }
+            }
         case .failed:
             HStack(spacing: HelmSpace.s3) {
                 Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
-                if let note = Self.failureNote(hb.op.reason) {
+                if let note = Self.failureNote(hb.op) {
                     Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 }
             }
@@ -1380,15 +1058,14 @@ struct HomebrewSettingsPage: View {
     ///
     /// A `Section` header inside the `List` rather than a strip above it, which
     /// is the whole of how it lines up: the list insets its headers and rows by
-    /// one amount, so nothing here measures an inset — the Health list's two
-    /// headings are built the same way. The one thing a header cannot know is
+    /// one amount, so nothing here measures an inset. The one thing a header cannot know is
     /// what a row puts at its two edges, so it reserves those widths with the
     /// same views, hidden: the update mark's slot on the installed list, and
     /// the chevron in the single-column pane, which would otherwise push every
     /// version a chevron's width left of «Version».
     ///
     /// In the house's section voice (`HelmSectionTitle`), and marked a header
-    /// for the rotor, as the Health list's headings are.
+    /// for the rotor, as `sectionHeader` is.
     private func columnHeader(_ columns: ListColumns, singleColumn: Bool) -> some View {
         HStack(spacing: HelmSpace.s3) {
             if columns.marksUpdates {
@@ -1551,10 +1228,18 @@ struct HomebrewSettingsPage: View {
                 }
             }
         }
-        // No inset of its own, for the reason `healthList`'s own list gives:
-        // `.listStyle(.inset)` is where every other list in the app stops,
-        // and 12 pt more of it put this page's rows further in than theirs.
-        .listStyle(.inset)
+        // **Striped, and no inset of its own.** These two lists are rows of
+        // one shape and a great many of them, which is what a stripe is for: it
+        // keeps the eye on a row while it crosses from a name to a version at
+        // the far edge, and it puts the page with the other striped lists —
+        // Uninstaller, Orphans and Leftovers stop at
+        // `helmStripedList(rowPitch:)`; Disk, Autopilot and Duplicates stay
+        // plain. The Health tab is not one of them any more: its rows are
+        // paragraphs, one to three of them, with nothing to cross
+        // (`HomebrewHealthPage`). The list carried `.padding(.horizontal,
+        // HelmSpace.s5)` once, which put this page's rows 12 pt further in than
+        // the rows of every other list in the app.
+        .helmStripedList(rowPitch: HelmSpace.s8)
     }
 
 }
@@ -1600,29 +1285,33 @@ private extension View {
     }
 }
 
-/// **One row of either list on this page: how tall it is, and what does not
-/// divide it from the next one.**
+/// **One row of either package list on this page: what does not divide it from
+/// the next one.**
 ///
-/// The height is `HelmSpace.s7` where it was 34 — a number off the ladder, and
-/// one that a `List`'s own row insets then took to a 42 pt step for a single
-/// line of content, measured 2026-09-15 on both of this page's lists. A step
-/// that long over one line of text reads as a settings form rather than as a
-/// list of things.
+/// The height is the list's own, not the row's: both lists pass
+/// `HelmSpace.s8` as `helmStripedList(rowPitch:)`, which is the minimum height
+/// of every row in them and the step the stripe repeats at under the last one,
+/// so the two cannot be two numbers. It was `frame(minHeight: HelmSpace.s7)`
+/// on the row, which a `List`'s own row insets took to 36 pt for a single line
+/// of content (measured on both lists, 2026-09-29); the step is 40 now, the
+/// ladder's nearest to that. Before that it was 34, off the ladder, which the
+/// insets took to 42 — a step that long over one line of text reads as a
+/// settings form rather than as a list of things.
 ///
-/// **And the separator goes with it.** macOS draws one per row across the whole
+/// **The separator is hidden.** macOS draws one per row across the whole
 /// column, which at this step is a rule every few lines in a 310 pt column of
 /// short names; the approved drawing has a hairline at a twentieth of that
 /// weight, which macOS's is not and cannot be made into. What separates one row
-/// from the next instead is the row's own content and the selection macOS draws
-/// under it — and in the health list the two `Section` headers, which carry the
-/// structure the rules were standing in for. Hiding them also puts this page
-/// with the app's other two list screens rather than against them:
-/// `OrphansView` and `DiskResultView` hide theirs already, and Homebrew was the
-/// one list still drawing rules.
+/// from the next now is the alternating fill `helmStripedList(rowPitch:)` turns on for
+/// both of them, and the `Section` headers over them, which carry the structure
+/// the rules were standing in for. Hiding
+/// the separator also puts this page with the app's other striped list
+/// screens rather than against them: `OrphansView`, Uninstaller and Leftovers
+/// all hide theirs on the row, and Homebrew was the one list still drawing
+/// rules.
 private extension View {
     func helmListRow() -> some View {
-        frame(minHeight: HelmSpace.s7)
-            .listRowSeparator(.hidden)
+        listRowSeparator(.hidden)
     }
 
     /// **What a row promises when pressing it changes the whole pane.**
@@ -1699,4 +1388,118 @@ struct ListColumns {
     let leading: String
     let trailing: String?
     let marksUpdates: Bool
+}
+
+/// **The console's lines and the rule that follows them.** A struct of its own,
+/// not a property of the page, so that its `followsConsole` lives exactly as
+/// long as the scroll view does: the page keeps the console off the screen
+/// while there is nothing to say, and a person who scrolled up in one run's
+/// output must not find the next run's not followed.
+private struct ConsoleScroll: View {
+    let rows: [HomebrewViewModel.ConsoleRow]
+    /// `HomebrewViewModel.consoleSequence`: how many lines have ever arrived,
+    /// so the newest line's identity is one less than this.
+    let sequence: Int
+    @State private var followsConsole = true
+    /// Starts at the end, which is where a page mounted over lines opens —
+    /// mounting is what coming back to the page, or a window returning from
+    /// hidden, is. A short console still sits at the top of its box: an edge
+    /// position moves nothing when there is nothing to scroll.
+    @State private var position = ScrollPosition(edge: .bottom)
+    /// What the hold below reads and never draws, so it is a reference and not
+    /// a `@State` value: writing it must not redraw `HomebrewViewModel.consoleLimit` rows.
+    @State private var book = Book()
+
+    /// **The facts the hold needs between one arrival and the next.**
+    /// `heights` is each row's measured height by its number; `firstID` the
+    /// oldest row drawn when the last arrival was answered; `offset` where the
+    /// scroll view stood.
+    private final class Book {
+        var heights: [Int: CGFloat] = [:]
+        var firstID: Int?
+        var offset: CGFloat = 0
+    }
+
+    /// The offset and the furthest the offset can go.
+    struct Reach: Equatable {
+        let offset: CGFloat
+        let end: CGFloat
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
+                // Each row is its line's number and not its index: at the limit
+                // an arrival drops the first line and every index moves up by
+                // one, so an index is a different line's identity every time.
+                ForEach(rows) { row in
+                    // A text style follows the system text size where a frozen
+                    // 11 does not (the same reason the fix command's field
+                    // names its font by style). Held once because the box
+                    // around this is measured in it.
+                    Text(row.text).font(HomebrewSettingsPage.consoleFont)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                            book.heights[row.id] = height
+                        }
+                }
+            }
+            // The offered width, whether or not a line has arrived: a stack
+            // takes the width of its widest child, so with no rows (a run that
+            // has not printed yet, a failure with no line, a console just
+            // cleared) it was 0 and the box drew as its insets alone, then
+            // jumped to full width with the first line.
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollPosition($position)
+        .onAppear { book.firstID = rows.first?.id }
+        // **Follows the sequence, which moves with every arrival, never the
+        // count.** At `HomebrewViewModel.consoleLimit` an arrival drops one
+        // line and adds one, so the count stays where it is for ever and a
+        // follow keyed to it went quiet at line number `consoleLimit`.
+        //
+        // **Following is a jump to the end and not an animated scroll.** Lines
+        // arrive faster than an animation runs, and one restarted per arrival
+        // trailed the end by thousands of points until the stream thinned; a
+        // jump per arrival lands on the newest line each time.
+        //
+        // **A person who has scrolled up keeps the line they are reading.**
+        // At the bound each arrival drops the oldest rows from the top, so an
+        // offset that holds still lets the text slide down the box one row per
+        // arrival. The rows dropped were measured while they were drawn, so
+        // the offset is lowered by their heights and the spacing between them,
+        // in the update that dropped them. When the line being read is among
+        // the dropped, the offset would go below the top and stops at it: the
+        // oldest lines that are left, not the end, which nobody asked for.
+        .onChange(of: sequence) { _, _ in
+            let first = rows.first?.id
+            defer { book.firstID = first }
+            if followsConsole {
+                position.scrollTo(edge: .bottom)
+            } else if let first, let was = book.firstID, first > was {
+                var trimmed: CGFloat = 0
+                for id in was..<first {
+                    trimmed += (book.heights.removeValue(forKey: id) ?? 0) + HelmSpace.s1
+                }
+                position.scrollTo(y: max(0, book.offset - trimmed))
+            }
+        }
+        // **Whether the person has scrolled up, read off the offset's own
+        // moves.** A line arriving grows the content and leaves the offset
+        // alone, so growth never reads as leaving the end; the follow's own
+        // scroll only ever moves the offset down, so a move up while the
+        // follow is on is the person leaving. The hold above moves the offset
+        // up as well, but it runs only when `followsConsole` is already off,
+        // so reading its move as leaving changes nothing; and reaching the end
+        // again is the person coming back.
+        .onScrollGeometryChange(for: Reach.self) { geometry in
+            Reach(offset: geometry.contentOffset.y,
+                  end: max(0, geometry.contentSize.height - geometry.containerSize.height))
+        } action: { old, new in
+            book.offset = new.offset
+            guard new.offset != old.offset else { return }
+            if new.offset < old.offset - 0.5 { followsConsole = false }
+            if new.offset >= new.end - 1 { followsConsole = true }
+        }
+    }
 }

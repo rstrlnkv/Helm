@@ -150,8 +150,7 @@ final class TheDestructiveControlIsMarkedInInkTests: XCTestCase {
             await hb.loadIfNeeded()
             hb.segment = .health
             await hb.refreshDoctor()
-            XCTAssertEqual(hb.issues.count, 1, "\(screen): precondition: one finding to select")
-            hb.select(hb.issues.first?.id)
+            XCTAssertEqual(hb.issues.count, 1, "\(screen): precondition: one finding, drawn open")
 
             let mount = MountedRender(HomebrewSettingsPage(vm: mvm),
                                       width: 984, height: 700, appearance: appearance)
@@ -168,16 +167,17 @@ final class TheDestructiveControlIsMarkedInInkTests: XCTestCase {
                 mount.host.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
             }
             mount.settle(30)
-            // The fix row's two buttons: the only two focus rings in the
-            // inspector's column, side by side on one row. The segment bar draws
-            // one of its own wherever the pane takes the menu shape, which is
-            // why the reading is banded below the bar.
+            // The fix row's two buttons: the only two focus rings on the Health
+            // page (the one finding is open and has no control of its own),
+            // side by side on one row. The segment bar draws one of its own
+            // wherever the pane takes the menu shape, which is why the reading
+            // is banded below the bar.
             let buttons = mount.host.everyView(named: "_FocusRingView")
                 .map { $0.convert($0.bounds, to: mount.host) }
                 .filter { $0.minY >= 48 && $0.minX > 400 }
                 .sorted { $0.minX < $1.minX }
             XCTAssertEqual(buttons.count, 2, """
-                \(screen): \(buttons.count) control(s) in the inspector where the fix row draws \
+                \(screen): \(buttons.count) control(s) on the Health page where the fix row draws \
                 Copy and Run — nothing below is a reading of either button
                 """)
             guard buttons.count == 2 else { mount.drop(); continue }

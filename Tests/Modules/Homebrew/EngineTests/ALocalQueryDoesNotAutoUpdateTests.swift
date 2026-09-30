@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A query that reads the disk must not be allowed to change the machine.
@@ -54,7 +55,7 @@ private struct FixedLocator: BrewLocator {
 }
 
 private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> Bool { false }
+    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {

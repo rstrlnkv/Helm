@@ -93,9 +93,9 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
     }
 
     /// The second search is the ordinary case: the person typed something else,
-    /// and the hit they had open is not in the new answer. Read on Состояние —
-    /// any tab does, since the "Available to install" section replaced the
-    /// Search segment 2026-09-24 and now sits under all three.
+    /// and the hit they had open is not in the new answer. Read on Обновления —
+    /// either package tab does, since the "Available to install" section
+    /// replaced the Search segment 2026-09-24 and sits under both of them.
     ///
     /// `search(_:)` is called directly, the raw ask `AStaleSearchDoesNotLandOnANewerOneTests`
     /// already covers — `query` is set to match it *afterwards*, so
@@ -104,7 +104,7 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
     func testTheSectionDropsASelectionTheNewHitsDoNotHold() async {
         let (transport, vm) = pair()
         transport.hits = [helm, SearchHit(name: "helmfile", isCask: false)]
-        vm.segment = .health
+        vm.segment = .updates
         await vm.search("helm")
         vm.query = "helm"
         vm.select(helm.id)
@@ -114,7 +114,7 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
         await vm.search("wget")
         vm.query = "wget"
         XCTAssertNil(vm.selected, """
-            the health inspector is still describing \(helm.id) after a search for something \
+            the inspector is still describing \(helm.id) after a search for something \
             else — with an Install button that would act on it
             """)
     }
@@ -148,16 +148,16 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
     }
 
     /// **The section's own selection is a third list by the same rule**, now
-    /// that it sits under every tab rather than being a segment of its own: a
-    /// hit selected under Состояние must survive a refresh of Установленные,
-    /// which shares nothing with it but the one query field.
+    /// that it sits under the package tabs rather than being a segment of its
+    /// own: a hit selected under Обновления must survive a refresh of
+    /// Установленные, which shares nothing with it but the one query field.
     func testARefreshLeavesTheSectionsOwnSelectionAlone() async {
         let (transport, vm) = pair()
         transport.installed = [wget]
         transport.hits = [helm]
 
         await vm.refreshInstalled()
-        vm.segment = .health
+        vm.segment = .updates
         await vm.search("helm")
         vm.query = "helm"
         vm.select(helm.id)
@@ -167,9 +167,9 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
         vm.segment = .installed
         await vm.refreshInstalled()
 
-        vm.segment = .health
+        vm.segment = .updates
         XCTAssertEqual(vm.selected, helm.id, """
-            refreshing the installed list threw away the health segment's own hit selection, \
+            refreshing the installed list threw away the updates segment's own hit selection, \
             which belongs to a section that did not move
             """)
     }
@@ -252,30 +252,28 @@ final class EverySegmentReconcilesItsOwnSelectionTests: XCTestCase {
             """)
     }
 
-    /// The same defect, on Состояние — the one segment `healthSelectableIDs`
-    /// exists for rather than the plain per-list `reconcile(_:against:)` the
-    /// other two segments use. Exercised off `refreshDoctor`'s own *refusal*
-    /// branch (the fake answers no `brew doctor` document at all): that
-    /// branch calls `reconcile(.health, against: healthSelectableIDs)` on a
-    /// line of its own, separate from the answered branch's, and is the one
-    /// this file had never reached before this test — a review copy with
-    /// `.union(shownHits.map(\.id))` removed from `healthSelectableIDs`
-    /// stayed green across every other Module_Homebrew_UITests case.
-    func testARefreshOfHealthLeavesItsOwnSectionSelectionAlone() async {
+    /// **Состояние holds no selection at all.** Its findings open in place and
+    /// its search section is not drawn (`HomebrewHealthPage`), so nothing on
+    /// it can be selected and nothing selected there can be one of the ids the
+    /// tab shows: `visibleIDs` is empty for it, and the next move of the field
+    /// drops whatever was left there — a hit selected under Обновления and
+    /// carried across by the picker's own binding is the way one could arrive.
+    func testNothingStaysSelectedUnderTheHealthTab() async {
         let (transport, vm) = pair()
         transport.hits = [helm]
-
-        vm.segment = .health
+        vm.segment = .updates
         await vm.search("helm")
         vm.query = "helm"
         vm.select(helm.id)
         XCTAssertEqual(vm.selected, helm.id, "precondition: the selection was made")
 
-        await vm.refreshDoctor()
-
-        XCTAssertEqual(vm.selected, helm.id, """
-            refreshing Состояние's own findings threw away the section's selection sitting \
-            under that very tab
+        vm.segment = .health
+        XCTAssertNil(vm.selected, "a selection was carried onto a tab that has nothing to select")
+        vm.select(helm.id)
+        vm.query = "helm "
+        XCTAssertNil(vm.selected, """
+            a selection made under Состояние survived a move of the field, which is where \
+            `reconcileVisible` is asked what the tab can still show
             """)
     }
 

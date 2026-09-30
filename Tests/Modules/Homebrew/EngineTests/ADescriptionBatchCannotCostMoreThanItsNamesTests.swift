@@ -3,6 +3,7 @@
 
 import Foundation
 import XCTest
+import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **The split-and-retry has no floor, and the crash report names this
@@ -46,7 +47,7 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
     }
 
     private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> Bool { false }
+        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
     }
 
     /// A brew that resolves the names in `known` and refuses any call carrying

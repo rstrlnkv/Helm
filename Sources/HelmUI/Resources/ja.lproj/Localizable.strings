@@ -252,7 +252,6 @@
 "Helm Settings" = "Helm 設定";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "VoiceOver で操作できるようになりました。すべてのコントロールが自分の役割を読み上げます。ルールエディタは何も読み上げず、目視なしでは使えませんでした。";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "VPN モジュールが実行中プログラムの一覧を見ている最中にアプリが終了すると、Helm が異常終了することがありました。";
-"Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm が Homebrew 公式のインストーラをダウンロードして実行します。/opt/homebrew を作るため、macOS が管理者パスワードを一度求めます。";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm が自己紹介するようになりました。新規インストール時に短いツアーが一度だけ開きます。Helm とは何かを説明し、続いてモジュールごとに 1 画面ずつ、“戻る”、“次へ”、“スキップ”で進みます。案内するだけで、何かを有効にしたり許可を求めたりはしません。すでに使っている方にも一度表示されます。オートパイロットと重複は、紹介のないまま増えた機能だからです。";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm はモジュールでできています。それぞれが一つの仕事をし、要らないものはオフにできます。";
 "Helm is missing permissions it needs" = "Helm に必要な権限がありません";
@@ -265,6 +264,7 @@
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS も独自の表示を出します。キーボード設定でオフにしないと2つ並びます。";
 "Homebrew" = "Homebrew";
 "Homebrew is no longer installed." = "Homebrew はアンインストールされています。";
+"Helm quit while Homebrew was still being installed. The installation may not have finished." = "Homebrew のインストール中に Helm が終了しました。インストールが完了していない可能性があります。";
 "Homebrew isn’t installed" = "Homebrew がインストールされていません";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew モジュール：インストール済みパッケージ、アップデート、検索とインストール。ライブコンソールと説明付き。";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew はすぐに削除します。ゴミ箱には入らず、取り消せません。";
@@ -510,6 +510,12 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止がディスクスキャンを確実に止めます。重複の“空き容量”は実際に消えるコピーを数えます。";
 "Stop watching" = "監視をやめる";
 "Stopped" = "停止";
+"command line developer tools" = "コマンドラインデベロッパツール";
+"Stop waiting" = "待機をやめる";
+"Cancelled" = "キャンセル済み";
+"Installing Homebrew" = "Homebrew をインストール中";
+"Administrator authorization was cancelled, so Homebrew was not installed." = "管理者の認証がキャンセルされたため、Homebrew はインストールされませんでした。";
+"macOS could not prepare /opt/homebrew, so Homebrew was not installed." = "macOS が /opt/homebrew を準備できなかったため、Homebrew はインストールされませんでした。";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "ディスクスキャンを停止しても、それまでに計測した内容が残ります。以前はリングが消えてボリューム選択に戻り、1 分かけて育つのを見ていた結果が失われていました。いまはツリーが“停止”の表示とともに残ります。未完了のスキャンではフォルダが表示より大きい場合があるため、次回のために保存はされません。";
 "Style" = "スタイル";
 "Switched on, but macOS is withholding what it needs" = "オンですが、必要な権限を macOS が与えていません";
@@ -647,10 +653,10 @@
 "by kind" = "種類別";
 "by month" = "月別";
 "cask" = "cask";
-"collapsed" = "折りたたまれています";
+"collapsed" = "下位項目が折りたたまれました";
 "contains" = "を含む";
 "ends with" = "で終わる";
-"expanded" = "展開されています";
+"expanded" = "表示されました";
 "failed" = "失敗";
 "free" = "空き";
 "guess" = "推測";
@@ -1174,12 +1180,12 @@
 "It no longer meets Homebrew’s conditions for a cask." = "cask に対する Homebrew の条件を満たさなくなりました。";
 "It does not pass the macOS Gatekeeper check." = "macOS の Gatekeeper のチェックを通りません。";
 "Health" = "状態";
-"Caution" = "注意";
 "Problem" = "問題";
 "Checking this Mac…" = "この Mac を確認しています…";
 "Nothing to fix." = "直すところはありません。";
 "Homebrew did not answer, so nothing is known about this Mac right now." = "Homebrew が応答しなかったため、この Mac の状態は今のところ分かりません。";
-"Select a finding or a part of the configuration" = "項目または構成の一部を選んでください";
+"Homebrew checked this Mac and found nothing to report." = "Homebrew がこの Mac を確認しましたが、報告する項目はありませんでした。";
+"Homebrew itself says: if everything you use it for works, you can ignore these." = "Homebrew 自身の案内: 普段の用途で問題なく動いているなら、これらは無視してかまいません。";
 "Helm reads this as" = "Helm はこう読み取ります";
 "Homebrew named no command here — it said what is wrong and left it at that. The line above is Helm’s own reading of that." = "Homebrew はここでコマンドを示していません。何が問題かを述べただけです。上の行は、それを Helm が読み取った結果です。";
 "Run" = "実行";
@@ -1187,7 +1193,6 @@
 "Copy" = "コピー";
 "Helm does not run this one. It is here to read and to copy." = "これは Helm では実行しません。読んでコピーするためにここにあります。";
 "Helm checked the command again and would not run it." = "Helm はコマンドを確認し直し、実行しませんでした。";
-"Checkup" = "点検";
 "Configuration" = "構成";
 "Machine" = "マシン";
 "Tools" = "ツール";

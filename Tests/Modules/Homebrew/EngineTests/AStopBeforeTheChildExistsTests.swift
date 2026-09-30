@@ -60,21 +60,21 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         private let answered = DispatchSemaphore(value: 0)
         private let lock = NSLock()
         private var _scripts: [String] = []
-        private let reply: Bool
+        private let reply: PrivilegedOutcome
 
         /// `holds: false` is the dialog somebody answers instantly — the shape
         /// every other fake in this suite has, kept for the control below. The
         /// permit is granted by a `signal` rather than by an initial value:
         /// libdispatch traps when a semaphore is deallocated below the value it
         /// was born with.
-        init(reply: Bool, holds: Bool = true) {
+        init(reply: PrivilegedOutcome, holds: Bool = true) {
             self.reply = reply
             if !holds { answered.signal() }
         }
 
         var scripts: [String] { lock.lock(); defer { lock.unlock() }; return _scripts }
 
-        func runAdmin(_ script: String) -> Bool {
+        func runAdmin(_ script: String) -> PrivilegedOutcome {
             lock.lock(); _scripts.append(script); lock.unlock()
             appeared.signal()
             answered.wait()
@@ -165,7 +165,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     // MARK: - The window
 
     func testAStopPressedAtTheDialogDoesNotThenRunTheInstaller() {
-        let privileged = DialogOnScreen(reply: true)
+        let privileged = DialogOnScreen(reply: .done)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -189,7 +189,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     }
 
     func testAStopPressedAtTheDialogEndsTheOperation() async {
-        let privileged = DialogOnScreen(reply: true)
+        let privileged = DialogOnScreen(reply: .done)
         let runner = HangingRunner()
         let transport = LocalTransport()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -219,7 +219,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     /// also exercises the capability `InstallBrewTests`' `NoProcess()` runner
     /// cannot: the Homebrew installer itself being terminated.
     func testOnceTheInstallerIsRunningStopReachesIt() {
-        let privileged = DialogOnScreen(reply: true, holds: false)
+        let privileged = DialogOnScreen(reply: .done, holds: false)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
@@ -237,7 +237,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     /// And a dialog nobody stopped still installs: the guard being asked for
     /// must not become "installBrew never runs the installer".
     func testAnUnstoppedDialogStillRunsTheInstaller() {
-        let privileged = DialogOnScreen(reply: true)
+        let privileged = DialogOnScreen(reply: .done)
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",

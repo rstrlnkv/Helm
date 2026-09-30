@@ -153,11 +153,15 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// private now, so a call to it would not compile — what a reader has to be
     /// stopped from is a *new* unconfirmed path.
     func testThePageAsksAndRetires() throws {
-        let source = try String(
-            contentsOf: RepoSource.root.appendingPathComponent(
-                "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift"),
-            encoding: .utf8)
-        XCTAssertTrue(source.contains("role: .destructive) { hb.askToRunFix(fix) }"),
+        func read(_ path: String) throws -> String {
+            try String(contentsOf: RepoSource.root.appendingPathComponent(path), encoding: .utf8)
+        }
+        // The Run button is drawn on the Health page (`HomebrewHealthPage`),
+        // where a finding's fix lives; the question it raises, and the
+        // dialog that answers it, are the page's own.
+        let health = try read("Sources/Modules/Homebrew/UI/HomebrewHealthPage.swift")
+        let source = try read("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
+        XCTAssertTrue(health.contains("role: .destructive) { hb.askToRunFix(fix) }"),
                       "the Run button no longer asks, or no longer reads as the destructive one")
         XCTAssertTrue(source.contains("hb.cancelFix()"),
                       "the page does not retire a standing question when it goes away")

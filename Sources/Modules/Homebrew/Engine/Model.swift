@@ -158,6 +158,34 @@ public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
     /// is an outcome and it is named: a press that answered nothing at all is
     /// the defect `AVanishedBrewIsNotASilentPressTests` was written against.
     case fixRefused
+    /// Homebrew's installer needs Apple's Command Line Tools and they never
+    /// arrived: the person closed Apple's window without installing (Cancel,
+    /// Disagree, Stop, a network failure on Apple's side), or the request was
+    /// refused and the tools are still not there. Nothing was changed on the
+    /// Mac; pressing Install Homebrew again asks again.
+    case toolsNotInstalled
+    /// The administrator dialog was answered no. A person's answer, not a
+    /// defect — apart from `prefixNotPrepared`, which is root being asked and
+    /// the script failing.
+    case authorizationDeclined
+    /// Root was asked to create and hand over `/opt/homebrew` and the script
+    /// failed. The exit code is on the state.
+    case prefixNotPrepared
+    /// Homebrew's own `install.sh` ended non-zero. The exit code is on the
+    /// state; the last lines of its output are in the console.
+    case installerFailed
+}
+
+/// What a running operation is waiting for, when it is waiting and not working.
+///
+/// A field on `OpState` and not an `OpPhase`: to everything that reads the
+/// phase — the busy gate, Stop, Clear — waiting *is* running. What reads the
+/// field itself is what draws the wait differently: the pill, Stop's title, and
+/// the console, which says one line as the wait begins and another as it ends
+/// (`HomebrewViewModel.consoleLine`).
+public enum OpWait: String, Codable, Sendable, CaseIterable {
+    /// Apple's Command Line Tools are being installed in Apple's own window.
+    case commandLineTools
 }
 
 public struct OpState: Codable, Equatable, Sendable {
@@ -166,10 +194,12 @@ public struct OpState: Codable, Equatable, Sendable {
     public let exitCode: Int?
     /// Optional, so the synthesized decode reads an older payload without it.
     public let reason: OpFailureReason?
+    /// Optional for the same reason: an older payload has no such key.
+    public let waiting: OpWait?
     public init(phase: OpPhase, label: String, exitCode: Int? = nil,
-                reason: OpFailureReason? = nil) {
+                reason: OpFailureReason? = nil, waiting: OpWait? = nil) {
         self.phase = phase; self.label = label; self.exitCode = exitCode
-        self.reason = reason
+        self.reason = reason; self.waiting = waiting
     }
     public static let idle = OpState(phase: .idle, label: "")
 }
@@ -204,7 +234,7 @@ public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
 
 /// Which heading one `brew config` line is drawn under.
 ///
-/// **Ours, not Homebrew's.** `brew config` prints one flat list of eighteen
+/// **Ours, not Homebrew's.** `brew config` prints one flat list of
 /// `key: value` lines with no headings anywhere in it; the three groups are
 /// Helm's reading of that list, which is why their names are translated where
 /// the keys beside them never are. The mapping from key to group is

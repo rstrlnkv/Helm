@@ -210,7 +210,6 @@ struct PackageSecondTier: View {
     private func chips(_ heading: String, _ names: [String]) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             HelmSectionTitle(heading)
-                .accessibilityAddTraits(.isHeader)
                 .padding(.leading, HelmSpace.s5)
             HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
                             alignment: .leading) {
@@ -232,7 +231,6 @@ struct PackageSecondTier: View {
     private func caveatsBlock(_ caveats: String) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             HelmSectionTitle(HbStr.packageNotes)
-                .accessibilityAddTraits(.isHeader)
                 .padding(.leading, HelmSpace.s5)
             Text(caveats)
                 // A text *style* rather than a frozen 11 pt: it resolves to the
