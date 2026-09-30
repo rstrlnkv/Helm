@@ -1247,3 +1247,11 @@
 "Toolbar button glyphs — Refresh list and the rest — draw at the system’s own size for a bordered toolbar button." = "工具栏按钮的图标 — “刷新列表”及其余按钮 — 现在以系统为带边框工具栏按钮设定的尺寸绘制。";
 "On macOS 26, Settings no longer draws Helm’s own band under the toolbar, and leaves that edge to the system." = "在 macOS 26 上，设置不再在工具栏下方绘制 Helm 自己的条带，而是把这条边缘交给系统。";
 "Upgrade all has a new icon, an arrow pointing down to a line." = "“全部升级”换了新图标：一个向下指向一条横线的箭头。";
+"The module’s status badge sits at the right edge of the settings window, and its distance from that edge equals its distance from the top." = "模块的状态徽章位于设置窗口的右边缘，与该边缘的距离等于与顶部的距离。";
+"Lists in Homebrew, Uninstaller (including Leftovers) and Login Items & Extensions are striped in the system’s own way." = "Homebrew、“卸载器”（包括“残留”）和“登录项与扩展”中的列表采用系统自身的条纹样式。";
+"Install Homebrew waits for Apple’s command line developer tools first, says what it is waiting for, and offers Stop waiting; cancelling the administrator password is reported as cancelled, not as a failed install." = "“安装 Homebrew”会先等待 Apple 的命令行开发者工具，说明正在等待什么，并提供“停止等待”；取消输入管理员密码会报告为已取消，而不是安装失败。";
+"Homebrew’s Health tab is redesigned: a verdict on top, findings that open in place, and a Configuration card, without stripes, with the whole of brew’s text." = "Homebrew 的“状态”标签页已重新设计：顶部是结论，发现的问题就地展开，还有一张不带条纹的“配置”卡片，显示 brew 的全部文本。";
+"The Homebrew console’s text sits inside its box on every side, opens and follows at the last line, and is full width from the first frame." = "Homebrew 控制台的文本四边都位于框内，打开时停在最后一行并随之跟进，并从第一帧起就占满整个宽度。";
+"VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver 会用 macOS 自己的措辞朗读展开按钮的展开和折叠状态。";
+"Section headings are headings to VoiceOver’s rotor." = "分区标题在 VoiceOver 转子中被识别为标题。";
+"On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "在 macOS 26 上，工具栏下方的页面条带会向系统请求柔和滚动边缘，使工具栏下方的内容变得模糊。";

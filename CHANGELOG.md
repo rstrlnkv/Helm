@@ -145,6 +145,14 @@ only once it has no known problems left.
 - **UPD** Toolbar button glyphs — Refresh list and the rest — draw at the system’s own size for a bordered toolbar button.
 - **UPD** On macOS 26, Settings no longer draws Helm’s own band under the toolbar, and leaves that edge to the system.
 - **UPD** Upgrade all has a new icon, an arrow pointing down to a line.
+- **NEW** The module’s status badge sits at the right edge of the settings window, and its distance from that edge equals its distance from the top.
+- **UPD** Lists in Homebrew, Uninstaller (including Leftovers) and Login Items & Extensions are striped in the system’s own way.
+- **UPD** Install Homebrew waits for Apple’s command line developer tools first, says what it is waiting for, and offers Stop waiting; cancelling the administrator password is reported as cancelled, not as a failed install.
+- **UPD** Homebrew’s Health tab is redesigned: a verdict on top, findings that open in place, and a Configuration card, without stripes, with the whole of brew’s text.
+- **FIX** The Homebrew console’s text sits inside its box on every side, opens and follows at the last line, and is full width from the first frame.
+- **UPD** VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words.
+- **UPD** Section headings are headings to VoiceOver’s rotor.
+- **UPD** On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar.
 
 ## 0.10.0 — 2026-08-09
 
