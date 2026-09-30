@@ -95,6 +95,65 @@ final class AModulePlateIsTheModulesOwnColourTests: XCTestCase {
             """)
     }
 
+    // MARK: - The one plate that is not the module's
+
+    /// The tints a verdict plate may take: the three signals and the grey of
+    /// "could not tell". Written as the source spells them, because the scan
+    /// reads source.
+    private static let signalTints: Set<String> = [
+        "HelmSignal.success", "HelmSignal.warning", "HelmSignal.danger", ".gray",
+    ]
+
+    /// `HelmSignalPlate` draws exactly what `HelmIconPlate` draws and is not on
+    /// the scan's list above, so without this it is a door past the rule: a
+    /// module plate in a category colour and the module's own glyph passes the
+    /// moment it is spelled `HelmSignalPlate`, and it did, green, when that was
+    /// tried. So every signal plate anywhere in `Sources` takes a signal tint
+    /// and a literal glyph that is no module's glyph — a verdict, never an
+    /// identity.
+    func testASignalPlateCarriesAVerdictAndNeverAModule() throws {
+        let moduleSymbols = Set(ModuleRegistry.all.map { $0.moduleMetadata.sfSymbol })
+        XCTAssertGreaterThan(moduleSymbols.count, 5, "the registry names too few module glyphs to judge against")
+        var seen = 0
+        var offenders: [String] = []
+        for file in try RepoSource.swiftFiles(under: "Sources") {
+            let lines = try RepoSource.lines(of: file).map(RepoSource.code)
+            for (index, line) in lines.enumerated() where line.contains("HelmSignalPlate(") {
+                let call = Self.arguments(from: lines, at: index, of: "HelmSignalPlate")
+                seen += 1
+                let tint = Self.tint(in: call) ?? "no tint"
+                let symbol = Self.value(of: "symbol:", in: call) ?? "no symbol"
+                let glyph = symbol.hasPrefix("\"") && symbol.hasSuffix("\"")
+                    ? String(symbol.dropFirst().dropLast()) : nil
+                if !Self.signalTints.contains(tint) {
+                    offenders.append("\(file):\(index + 1)  tint \(tint) is not a signal")
+                }
+                if glyph == nil {
+                    offenders.append("\(file):\(index + 1)  symbol \(symbol) is not a literal — cannot be judged")
+                } else if let glyph, moduleSymbols.contains(glyph) {
+                    offenders.append("\(file):\(index + 1)  symbol \"\(glyph)\" is a module's own glyph")
+                }
+            }
+        }
+        XCTAssertGreaterThanOrEqual(seen, 3, """
+            the scan found \(seen) signal plates; Homebrew's Health verdict alone draws three, \
+            so it has stopped reading the tree
+            """)
+        XCTAssertEqual(offenders, [], """
+            `HelmSignalPlate` carries a verdict — a signal tint from `HelmSignal` or grey, a \
+            glyph that is nobody's module. A module plate belongs to `HelmIconPlate` in \
+            the module's own colour.
+            \(offenders.joined(separator: "\n"))
+            """)
+    }
+
+    /// What the call passes for `label`, up to the next comma or line end.
+    private static func value(of label: String, in call: String) -> String? {
+        guard let range = call.range(of: label) else { return nil }
+        let rest = call[range.upperBound...]
+        return rest.prefix { $0 != "," && $0 != "\n" }.trimmingCharacters(in: .whitespaces)
+    }
+
     // MARK: - Why the rule exists, measured
 
     /// The category palette against the white glyph drawn on it.

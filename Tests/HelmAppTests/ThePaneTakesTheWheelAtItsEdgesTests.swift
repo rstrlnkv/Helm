@@ -59,25 +59,23 @@ final class ThePaneTakesTheWheelAtItsEdgesTests: XCTestCase {
     /// is what makes the check about capping rather than about 744.
     private static let panes: [CGFloat] = [845, 1149]
 
-    /// The two pages that still have a dead band, and why they are named here
+    /// The one page that still has a dead band, and why it is named here
     /// rather than fixed.
     ///
-    /// Both put `.padding(.horizontal, 12)` on the `List` that scrolls, which is
-    /// the same defect as the `Form`'s and 12 pt wide instead of 50: measured at
-    /// a 845 pt pane, x 4 and x 10 are dead and x 422 is live. Every repair that
-    /// restores the wheel — dropping the padding, `contentMargins`,
-    /// `listRowInsets` — also moves the row's content by some amount, and **the
-    /// amount is not measurable here**: `cacheDisplay` does not composite a
-    /// table-backed `List` at all (it returns the scroll view's background, read
-    /// identical to the scroller's own frame in all four arrangements), the row
-    /// backing view spans the clip view whatever the content does, and
-    /// `screencapture` wants a Screen Recording grant that a measurement has no
-    /// business asking for. Moving a visible gutter on an unmeasured guess is
-    /// the trade this repository does not take.
+    /// What the test measures is only that this page's scroller does not take
+    /// the wheel at both edges of the 845 pt and 1149 pt panes. Its cause is
+    /// not established here: homebrew and leftovers were recorded together
+    /// (dc4ec80e) and both had a `.padding(.horizontal, 12)` then; homebrew's
+    /// was removed later (199af7f6) and its dead band stayed, so that padding
+    /// does not explain it.
+    /// Any repair that restores the wheel may also move the row's content by an
+    /// amount `cacheDisplay` cannot measure on a table-backed `List`, and moving
+    /// a visible gutter on an unmeasured guess is the trade this repository
+    /// does not take.
     ///
     /// The list is **two-sided**, so it cannot go stale in silence: a page on it
     /// that starts reaching its edges fails too, saying to take it off.
-    private static let knownDead: Set<String> = ["homebrew", "leftovers"]
+    private static let knownDead: Set<String> = ["homebrew"]
 
     // MARK: - What the wheel reaches
 

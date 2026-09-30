@@ -233,6 +233,30 @@ public struct HelmIconPlate: View {
     }
 }
 
+/// A plate that carries a *verdict's* signal rather than a module's identity —
+/// the orange warning or green check a page answers with.
+///
+/// It draws exactly what `HelmIconPlate` draws (it is one), so the look is
+/// pixel-identical; it exists as its own name so that the guard which holds
+/// every module plate to the module's own colour can tell the two meanings
+/// apart, and so that the tint it takes is a signal from `HelmSignal` or grey
+/// and never a module's colour.
+public struct HelmSignalPlate: View {
+    let symbol: String
+    let tint: Color
+    var size: CGFloat = 44
+
+    public init(symbol: String, tint: Color, size: CGFloat = 44) {
+        self.symbol = symbol
+        self.tint = tint
+        self.size = size
+    }
+
+    public var body: some View {
+        HelmIconPlate(symbol: symbol, tint: tint, size: size)
+    }
+}
+
 /// A screen's masthead: icon plate, title, one line of what the screen is for,
 /// and whatever control belongs at the far end (usually the on/off switch).
 /// The width of a settings page's content, and where it sits.

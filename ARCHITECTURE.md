@@ -2193,7 +2193,7 @@ which every module's UI target depends on and no engine does.
 
 **Surfaces.** `Sources/HelmUI/DesignSystem/HelmSurfaces.swift` holds `HelmSurface` — a
 small set of fills over `Color.primary`, no border among them — `HelmLayout`, `HelmText`,
-`HelmSignal`, `HelmIconPlate` and `HelmMetricStrip`. `helmCard()`
+`HelmSignal`, `HelmIconPlate`, `HelmSignalPlate` and `HelmMetricStrip`. `helmCard()`
 (`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:88`) is the one card treatment: a fill,
 continuous corners at `HelmRadius.card`, and no border. Half of Helm's pages are macOS
 grouped `Form` sections, which the system draws as a plain fill and which cannot be
@@ -2344,7 +2344,8 @@ disappearing rows keep drawing over what sits below.
 **The language.** Every screen speaks one visual language derived from the app's subject.
 `Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is icon plate, title, one line of what
 the screen is for, and the screen's primary control at the far end. `HelmIconPlate` is the
-symbol on its category tint, lit from behind, and stands alone in empty states.
+symbol on the module's own colour (`descriptor.moduleTint.colour`), lit from behind, and
+stands alone in empty states; a verdict's plate is `HelmSignalPlate`.
 `HelmMetricStrip` is an instrument readout — monospaced figures over small-caps labels,
 split by hairlines — and it belongs to form screens, where the dials read as state; list
 screens leave it aside deliberately, their chrome being one toolbar row with the counts as

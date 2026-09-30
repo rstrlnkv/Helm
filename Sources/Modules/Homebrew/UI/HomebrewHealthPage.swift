@@ -134,12 +134,12 @@ struct HomebrewHealthPage: View {
                     .padding(.top, HelmSpace.s2)
                     .frame(width: Self.plate, height: Self.plate, alignment: .top)
             case .clean:
-                HelmIconPlate(symbol: "checkmark", tint: HelmSignal.success, size: Self.plate)
+                HelmSignalPlate(symbol: "checkmark", tint: HelmSignal.success, size: Self.plate)
             case .unexaminable:
-                HelmIconPlate(symbol: "questionmark", tint: .gray, size: Self.plate)
+                HelmSignalPlate(symbol: "questionmark", tint: .gray, size: Self.plate)
             case .findings:
-                HelmIconPlate(symbol: "exclamationmark.triangle.fill", tint: HelmSignal.warning,
-                              size: Self.plate)
+                HelmSignalPlate(symbol: "exclamationmark.triangle.fill", tint: HelmSignal.warning,
+                                size: Self.plate)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s2) {
                 Text(Self.verdictTitle(verdict))
