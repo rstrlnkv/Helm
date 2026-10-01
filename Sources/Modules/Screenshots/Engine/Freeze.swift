@@ -62,12 +62,16 @@ public struct FrozenWindow: Sendable, Equatable {
     /// The owning process's name from the same list reading; empty when the list
     /// gave none.
     public let ownerName: String
+    /// A system surface whose own picture is the thing itself (the Dock, placed by
+    /// its Accessibility bounds): asked for by id, not cut from the freeze.
+    public let drawnAlone: Bool
 
-    public init(id: UInt32, frame: CGRect, layer: Int, ownerName: String = "") {
+    public init(id: UInt32, frame: CGRect, layer: Int, ownerName: String = "", drawnAlone: Bool = false) {
         self.id = id
         self.frame = frame
         self.layer = layer
         self.ownerName = ownerName
+        self.drawnAlone = drawnAlone
     }
 }
 

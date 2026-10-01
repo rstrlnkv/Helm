@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import CoreGraphics
 import Darwin
 import Foundation
@@ -24,10 +25,13 @@ private struct Unshared<T>: @unchecked Sendable {
 /// defect this excludes.
 public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private let store: NamespacedStore
+    private let dockBounds: DockBounds
 
     public init(store: NamespacedStore = NamespacedStore(namespace: ScreenshotsEngine.moduleID,
-                                                         backing: UserDefaults.standard)) {
+                                                         backing: UserDefaults.standard),
+                dockBounds: DockBounds = SystemDockBounds()) {
         self.store = store
+        self.dockBounds = dockBounds
     }
 
     public func access() -> CaptureAccess {
@@ -68,6 +72,13 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         // again at a cost per display (measured: about 65 ms more over three
         // displays when every one took it).
         let pointer = cursor ? CGEvent(source: nil)?.location : nil
+        // The window list is taken first, so the Dock's Accessibility read — main
+        // thread, cold on the first press after launch — runs beside the captures and
+        // not after them. The list now precedes the pictures by their capture time
+        // and no longer follows them.
+        let entries = Self.rawWindows()
+        let ports = dockBounds
+        async let dock = MainActor.run { Self.dockPlacement(entries: entries, ports: ports) }
         let outcomes: [(Int, DisplayShot?)] = await withTaskGroup(of: (Int, DisplayShot?).self) { group in
             // The two ScreenCaptureKit objects are immutable descriptions the
             // framework hands out for exactly this use, and are not declared
@@ -83,10 +94,10 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
             for await outcome in group { collected.append(outcome) }
             return collected.sorted { $0.0 < $1.0 }
         }
-        let dockStrip = await MainActor.run { Self.dockStrip() }
+        let placed = await dock
         // `nil` is a display the system declined to capture for lack of the grant.
         if outcomes.contains(where: { $0.1 == nil }) { return .denied }
-        return .frozen(Freeze(displays: outcomes.compactMap(\.1), windows: Self.windowList(excluding: me, dockStrip: dockStrip)))
+        return .frozen(Freeze(displays: outcomes.compactMap(\.1), windows: WindowListing.visible(entries, excluding: me, dock: placed)))
     }
 
     private static func capture(_ display: SCDisplay, excluding own: [SCRunningApplication],
@@ -169,13 +180,12 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         return ns.domain == SCStreamErrorDomain && ns.code == SCStreamError.Code.userDeclined.rawValue
     }
 
-    /// Front to back, in CG-global points. Only what a person could mean by "a
-    /// window": on screen, not Helm's, not transparent.
-    private static func windowList(excluding pid: pid_t, dockStrip strip: CGRect?) -> [FrozenWindow] {
+    /// The window list as the system gave it, front to back, in CG-global points.
+    private static func rawWindows() -> [RawWindow] {
         guard let raw = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
                                                    kCGNullWindowID) as? [[String: Any]]
         else { return [] }
-        let entries: [RawWindow] = raw.compactMap { entry in
+        return raw.compactMap { entry in
             guard let number = entry[kCGWindowNumber as String] as? UInt32,
                   let layer = entry[kCGWindowLayer as String] as? Int,
                   let bounds = entry[kCGWindowBounds as String] as? [String: CGFloat],
@@ -189,7 +199,6 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
                              frame: CGRect(x: x, y: y, width: width, height: height),
                              ownedByDock: layer == WindowPick.dockLevel && isTheDock(pid_t(owner)))
         }
-        return WindowListing.visible(entries, excluding: pid, dockStrip: strip)
     }
 
     /// Whether `pid` runs the Dock's executable. Read from the path of the process,
@@ -200,11 +209,76 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         return String(cString: buffer) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
     }
 
-    /// The Dock's strip in CG-global points, from the display that gives up room
-    /// for it; nil when none does. Called on the main actor, as every AppKit screen
-    /// reading is.
-    @MainActor private static func dockStrip() -> CGRect? {
-        DockStrip.rect(displays: NSScreen.screens.map { (frame: $0.frame, visible: $0.visibleFrame) })
+    /// Where the Dock is: its Accessibility bounds when they are on a display, else the
+    /// strip of the display that gives up room for it, else nil. Called on the main
+    /// actor, as every AppKit screen reading is. The Dock's pid is the window list's
+    /// own (`DockStrip.dockPID`), so no workspace reading is made here. A Dock that
+    /// did not answer in time is logged: it is the system declining, not an absence.
+    @MainActor private static func dockPlacement(entries: [RawWindow], ports: DockBounds) -> DockPlacement? {
+        let screens = NSScreen.screens
+        let strip = DockStrip.rect(displays: screens.map { (frame: $0.frame, visible: $0.visibleFrame) })
+        let height = screens.first?.frame.height ?? 0
+        // AppKit frames to CG-global points: the display that holds the origin gives the flip.
+        let displays = screens.map {
+            CGRect(x: $0.frame.minX, y: height - $0.frame.maxY, width: $0.frame.width, height: $0.frame.height)
+        }
+        return DockStrip.placement(entries: entries, ports: ports, displays: displays, strip: strip) {
+            HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the Dock did not answer Accessibility in time; its strip is used")
+        }
+    }
+}
+
+// MARK: - The Dock's own bounds
+
+/// The Dock's list element through Accessibility — the rectangle macOS's own Screenshot
+/// uses for it. Never prompts: `AXIsProcessTrusted` is the non-prompting reading, and
+/// the prompting variant is not called anywhere. Main thread only.
+///
+/// **Bounded:** the messaging timeout belongs to the element it is set on (measured on
+/// a stopped process: the application element failed after 0.105 s, a child with no
+/// timeout of its own after 1.505 s), so it is set on every element read, and the
+/// whole read gives up at `budget` between calls and at the first call that does not
+/// answer. A stalled Dock costs at most one call's timeout past the budget, and the
+/// reading is `.timedOut`.
+public struct SystemDockBounds: DockBounds {
+    static let timeout: Float = 0.05
+    static let budget: TimeInterval = 0.15
+
+    public init() {}
+
+    public func read(dockPID pid: pid_t) -> DockBoundsReading {
+        guard AXIsProcessTrusted() else { return .notTrusted }
+        let deadline = Date().addingTimeInterval(Self.budget)
+        /// One attribute, or the reason there is none: a timeout is told from absence.
+        func value(_ element: AXUIElement, _ attribute: String) -> (value: CFTypeRef?, status: AXError) {
+            guard Date() < deadline else { return (nil, .cannotComplete) }
+            AXUIElementSetMessagingTimeout(element, Self.timeout)
+            var out: CFTypeRef?
+            let status = AXUIElementCopyAttributeValue(element, attribute as CFString, &out)
+            return (status == .success ? out : nil, status)
+        }
+        let app = AXUIElementCreateApplication(pid)
+        let children = value(app, kAXChildrenAttribute)
+        guard let elements = children.value as? [AXUIElement] else {
+            return children.status == .cannotComplete ? .timedOut : .noElement
+        }
+        for element in elements {
+            let role = value(element, kAXRoleAttribute)
+            if role.status == .cannotComplete { return .timedOut }
+            guard (role.value as? String) == kAXListRole as String else { continue }
+            let position = value(element, kAXPositionAttribute)
+            let size = value(element, kAXSizeAttribute)
+            if position.status == .cannotComplete || size.status == .cannotComplete { return .timedOut }
+            var origin = CGPoint.zero
+            var span = CGSize.zero
+            guard let position = position.value, let size = size.value,
+                  CFGetTypeID(position) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID(),
+                  AXValueGetValue(position as! AXValue, .cgPoint, &origin),
+                  AXValueGetValue(size as! AXValue, .cgSize, &span)
+            else { return .noElement }
+            return .bounds(CGRect(origin: origin, size: span))
+        }
+        return .noElement
     }
 }
 

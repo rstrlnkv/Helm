@@ -227,3 +227,24 @@ enum ScreenshotsLog {
         HelmLog.shared.clearTail()
     }
 }
+
+/// The Dock's Accessibility bounds, in every state the real port has: trusted with a
+/// rectangle (on a display or hidden off one), trusted with no list element, and not
+/// trusted. It records the pid it was asked about.
+final class FakeDockBounds: DockBounds, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _reading: DockBoundsReading
+    private var _asked: [pid_t] = []
+
+    init(_ reading: DockBoundsReading) { _reading = reading }
+
+    var reading: DockBoundsReading {
+        get { lock.withLock { _reading } }
+        set { lock.withLock { _reading = newValue } }
+    }
+    var asked: [pid_t] { lock.withLock { _asked } }
+
+    func read(dockPID pid: pid_t) -> DockBoundsReading {
+        lock.withLock { _asked.append(pid); return _reading }
+    }
+}

@@ -14,6 +14,7 @@ final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase 
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }
 
     static let strip = CGRect(x: 0, y: 908, width: 1512, height: 74)
+    static let stripDock = DockPlacement(rect: strip, drawnAlone: false)
     static let menuBar = CGRect(x: 0, y: 0, width: 1512, height: 33)
 
     private func owners(extra: [FrozenWindow] = [], strip: CGRect? = TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests.strip) -> [FrozenWindow] {
@@ -121,7 +122,7 @@ final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase 
     /// The sheet is in the raw list and there is no strip: the pick over the whole
     /// display must be the pick with no Dock, and the sheet must not be listed.
     func testADockThatHidesItselfIsNeverListedAndNeverPicked() {
-        let listed = WindowListing.visible(raw(), excluding: 999, dockStrip: nil)
+        let listed = WindowListing.visible(raw(), excluding: 999, dock: nil)
         XCTAssertEqual(listed.map(\.id), [24, 101], "the Dock's sheet was listed with no strip")
         for x in stride(from: 0, to: 1512, by: 37) {
             for y in stride(from: 0, to: 982, by: 29) {
@@ -132,11 +133,11 @@ final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase 
     }
 
     func testTheDockIsListedAtTheStripAndNotAtTheSheet() {
-        let dock = WindowListing.visible(raw(), excluding: 999, dockStrip: Self.strip).first { $0.id == 20 }
+        let dock = WindowListing.visible(raw(), excluding: 999, dock: Self.stripDock).first { $0.id == 20 }
         XCTAssertEqual(dock?.frame, Self.strip)
         XCTAssertEqual(dock?.layer, WindowPick.dockLevel)
         XCTAssertEqual(dock?.ownerName, "Dock")
-        let listed = WindowListing.visible(raw(), excluding: 999, dockStrip: Self.strip)
+        let listed = WindowListing.visible(raw(), excluding: 999, dock: Self.stripDock)
         XCTAssertNil(WindowPick.window(at: CGPoint(x: 1450, y: 500), in: listed), "the sheet's rect is back")
         XCTAssertEqual(WindowPick.window(at: CGPoint(x: 700, y: 950), in: listed)?.id, 20)
     }
@@ -147,16 +148,16 @@ final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase 
     func testOnlyTheDocksOwnWindowAtItsLevelIsReframed() {
         let stranger = RawWindow(number: 31, layer: 20, ownerPID: 400, ownerName: "Other", frame: CGRect(x: 10, y: 10, width: 300, height: 300))
         let second = RawWindow(number: 32, layer: 20, ownerPID: 70, ownerName: "Dock", frame: Self.sheet, ownedByDock: true)
-        let listed = WindowListing.visible([stranger] + raw() + [second], excluding: 999, dockStrip: Self.strip)
+        let listed = WindowListing.visible([stranger] + raw() + [second], excluding: 999, dock: Self.stripDock)
         XCTAssertEqual(listed.map(\.id), [24, 20, 101])
         XCTAssertEqual(listed.first { $0.id == 20 }?.frame, Self.strip)
-        XCTAssertEqual(WindowListing.visible([stranger], excluding: 999, dockStrip: nil), [])
+        XCTAssertEqual(WindowListing.visible([stranger], excluding: 999, dock: nil), [])
     }
 
     func testHelmsOwnAndTransparentWindowsAreLeftOutAndTheRestKeepTheirFrames() {
         let mine = RawWindow(number: 50, layer: 0, ownerPID: 999, frame: CGRect(x: 0, y: 0, width: 100, height: 100))
         let clear = RawWindow(number: 51, layer: 0, ownerPID: 300, alpha: 0, frame: CGRect(x: 0, y: 0, width: 100, height: 100))
-        let listed = WindowListing.visible([mine, clear] + raw(), excluding: 999, dockStrip: Self.strip)
+        let listed = WindowListing.visible([mine, clear] + raw(), excluding: 999, dock: Self.stripDock)
         XCTAssertEqual(listed.map(\.id), [24, 20, 101])
         XCTAssertEqual(listed.last?.frame, CGRect(x: 100, y: 80, width: 700, height: 500))
     }

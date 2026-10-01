@@ -143,8 +143,10 @@ public final class CaptureSession: @unchecked Sendable {
     public func window(_ id: UInt32, in freeze: Freeze) async -> WindowResult {
         // The menu bar and the Dock are cut from the freeze at their own rects: the
         // Dock's window is a display-sized sheet and the system's picture of it
-        // is not the strip.
-        if let surface = freeze.windows.first(where: { $0.id == id }), WindowPick.isSystemSurface(surface) {
+        // is not the strip. A Dock placed by its own Accessibility bounds is the
+        // exception: the system's picture of that window is the Dock alone.
+        if let surface = freeze.windows.first(where: { $0.id == id }), WindowPick.isSystemSurface(surface),
+           !surface.drawnAlone {
             return cutFromFreeze(id, in: freeze)
         }
         switch await capture.window(id, cursor: settings().showCursor) {
