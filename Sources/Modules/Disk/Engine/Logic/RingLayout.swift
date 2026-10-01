@@ -58,7 +58,9 @@ public enum RingLayout {
     public static func layout(focus: DiskNode, path: String,
                               depthLevels: Int, freeBytes: Int) -> [RingSegment] {
         let dataBytes = focus.bytes
-        let total = dataBytes + max(freeBytes, 0)
+        // Saturating: a volume may report a figure near Int.max (a wire payload,
+        // a filesystem that lies about its capacity), and the sum must not trap.
+        let total = dataBytes.saturatingAdding(max(freeBytes, 0))
         guard total > 0, dataBytes > 0 else { return [] }
 
         let dataSpan = 2 * .pi * Double(dataBytes) / Double(total)
@@ -90,7 +92,9 @@ public enum RingLayout {
         for child in sorted {
             let span = parentSpan * Double(child.bytes) / Double(parentBytes)
             if span < minimumVisibleAngle {
-                foldedBytes += child.bytes
+                // Saturating, like the free-space sum above: narrow children can
+                // together outweigh an integer when the tree was decoded from a file.
+                foldedBytes = foldedBytes.saturatingAdding(max(child.bytes, 0))
                 continue
             }
             let childPath = ScanPath.child(of: parentPath, name: child.name)

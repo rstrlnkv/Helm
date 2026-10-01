@@ -3,71 +3,57 @@ import HelmUI
 import Module_Autopilot_Engine
 import SwiftUI
 
-/// Five rules somebody can have without writing one.
+/// Five rules somebody can have without writing one, as a menu.
 ///
-/// **A row is a button that shows, not a switch that does.** A switch here would
-/// be the one gesture in this module that starts unattended work on somebody's
-/// files without their having seen what it does to them — which is the whole
-/// discipline the dry run exists for, one level up. So the row opens the
-/// ordinary editor on an unsaved draft: everything is visible and editable, Done
-/// is the ordinary save, and Cancel leaves no folder and no rule.
+/// **An item is a button that shows, not a switch that does.** A switch here
+/// would be the one gesture in this module that starts unattended work on
+/// somebody's files without their having seen what it does to them — which is
+/// the whole discipline the dry run exists for, one level up. So an item opens
+/// the ordinary editor on an unsaved draft: everything is visible and editable,
+/// Done is the ordinary save, and Cancel leaves no folder and no rule.
 ///
-/// It appears in two places and disappears from both when there is nothing left
-/// to offer: under the empty state, where it is the second answer to «what do I
-/// do with this page», and above the history on a page that already has rules,
-/// where it is a quiet list rather than a call to action.
+/// **Grouped by folder, because the item is where a folder is first named.** A
+/// preset's folder is `FileManager`'s answer rather than a panel's, so the menu
+/// says which one in a heading and the editor repeats it on its first line.
+/// Groups keep the order the folders first appear in, so the order the engine
+/// offers them in is kept inside each.
+///
+/// Where it is drawn is the page's business (`AutopilotSettingsPage.presets`):
+/// beside «Add folder…» and nowhere else, and not at all once there is a rule
+/// or nothing left to offer.
 struct PresetSection: View {
     let presets: [OfferedPreset]
-    /// Drawn instead of the buttons when macOS is withholding the access. Every
-    /// one of these folders reads as empty without it, so a dry run would show
-    /// nothing and the rule would look like one that matches nothing.
+    /// Disabled while macOS is withholding the access. Every one of these
+    /// folders reads as empty without it, so a dry run would show nothing and the
+    /// rule would look like one that matches nothing; the page's own
+    /// `HelmPermissionNote` already says why, and a second sentence beside the
+    /// button would read as a second permission.
     let diskAccess: PermissionState
     let open: (OfferedPreset) -> Void
     /// The home directory macOS's own folder names are measured against.
     var home: String = NSHomeDirectory()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            Text(ApStr.presetsTitle).font(HelmText.sectionHeading)
-                // A heading, so VoiceOver's rotor can jump to it rather than
-                // reading every preset row to find where the section starts.
-                .accessibilityAddTraits(.isHeader)
-            if diskAccess == .denied {
-                // The sentence, and not a second `HelmPermissionNote`: the page
-                // already draws one with the button in it, and two grants side
-                // by side read as two different permissions.
-                Text(ApStr.needsAccess)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(alignment: .leading, spacing: HelmSpace.s4) {
-                    ForEach(presets) { row($0) }
+        Menu(ApStr.welcomeOffer) {
+            ForEach(groups, id: \.path) { group in
+                Section(group.name) {
+                    ForEach(group.offers) { offer in
+                        Button(offer.draft.name) { open(offer) }
+                    }
                 }
             }
         }
-        .helmCard()
+        .fixedSize()
+        .disabled(diskAccess == .denied)
     }
 
-    private func row(_ offer: OfferedPreset) -> some View {
-        // Built once. `draft` composes a `Rule` and looks its name up, and the
-        // two lines below both want it.
-        let draft = offer.draft
-        return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                Text(draft.name).font(HelmText.rowTitle)
-                // The rule saying itself. Nothing here describes a preset in
-                // prose: a sentence written beside a rule is a second place the
-                // rule lives, and the one that goes stale is always the prose.
-                Text(RuleSummary.describe(draft))
-                    .font(.caption2).foregroundStyle(HelmText.faint)
-                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
-            Spacer(minLength: 12)
-            Button(ApStr.seePreset(in: offer.folderName(home: home))) { open(offer) }
-                .controlSize(.small)
-                .fixedSize()
+    /// The offers by folder, in the order each folder first appears.
+    private var groups: [(path: String, name: String, offers: [OfferedPreset])] {
+        var paths: [String] = []
+        for offer in presets where !paths.contains(offer.folder.path) { paths.append(offer.folder.path) }
+        return paths.map { path in
+            let offers = presets.filter { $0.folder.path == path }
+            return (path, offers[0].folderName(home: home), offers)
         }
     }
 }
@@ -75,13 +61,13 @@ struct PresetSection: View {
 extension OfferedPreset {
     /// The rule this preset is, under the name this language gives it.
     ///
-    /// **One place, so the row and the rule cannot say different things.** The
-    /// row draws this name and the editor saves this rule; built separately they
-    /// would be two calls to keep in step, and the row is where somebody decides
+    /// **One place, so the item and the rule cannot say different things.** The
+    /// menu draws this name and the editor saves this rule; built separately they
+    /// would be two calls to keep in step, and the item is where somebody decides
     /// whether to press.
     var draft: Rule { preset.rule(named: ApStr.presetName(preset.kind), in: folder.path) }
 
-    /// What the button calls the folder: macOS's own name for it, and the last
+    /// What the menu calls the folder: macOS's own name for it, and the last
     /// path component for a folder macOS does not name — one somebody moved to
     /// another disk.
     func folderName(home: String = NSHomeDirectory()) -> String {

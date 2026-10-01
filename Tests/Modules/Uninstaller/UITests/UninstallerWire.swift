@@ -45,6 +45,11 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
     /// thing the page could know (`TrashWatch`).
     private var watch: TrashWatch
     private var answer: Answer
+    /// What Spotlight says: a date per path, a path missing from it having no
+    /// record, and `unreadDates` the paths its read never reached.
+    private var opens: [String: Date] = [:]
+    private var unreadDates: [String] = []
+    private var order: AppSortOrder = .standard
     /// A reply that will not decode is a fact about one command, not about the
     /// engine: the removal can be lost while the scan behind it still answers.
     private var perCommand: [UninstallerCommand: Answer] = [:]
@@ -76,6 +81,12 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
     func answers(_ next: Answer, to command: UninstallerCommand) {
         lock.withLock { perCommand[command] = next }
     }
+
+    /// What the engine says about last-opened dates and the remembered order.
+    func setOpened(_ dates: [String: Date], unread: [String] = []) {
+        lock.withLock { opens = dates; unreadDates = unread }
+    }
+    func setOrder(_ next: AppSortOrder) { lock.withLock { order = next } }
 
     /// The state the engine reports for the switch. Its own setter, because the
     /// grant it depends on is taken away and given back while the app runs.
@@ -148,12 +159,20 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
                                              appPath: request?.appPath ?? "",
                                              appSizeBytes: 0, leftovers: [],
                                              runningNow: false))
+        case .lastOpened:
+            return .json(AppOpenedReading(opened: opens, unread: unreadDates))
+        case .sortOrder: return .json(order)
         case .trashPaths: return .json(removal)
         case .trashedAppLeftovers: return .json(offers)
         case .watchingTrash: return .json(watch)
         case .scanOrphans: return .json([OrphanGroup]())
         // No reply at all is what the engine itself answers to these.
         case .backgroundScan, .quit, .setWatchingTrash, .dismissTrashedApp: return .empty
+        // The engine keeps what it is told, as the real port does — a fake that
+        // forgot it answered the next `sortOrder` with the old order.
+        case .setSortOrder:
+            if let next = try? JSONDecoder().decode(AppSortOrder.self, from: payload) { order = next }
+            return .empty
         }
     }
 

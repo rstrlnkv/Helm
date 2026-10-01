@@ -375,7 +375,7 @@ public enum HelmDates {
     public static func day(_ stored: String,
                            language: String = AppLanguage.current.rawValue) -> String {
         guard let date = cache.storage.date(from: stored) else { return stored }
-        return cache.day(language: language).string(from: date)
+        return cache.day(language: language, zone: cache.storage.timeZone).string(from: date)
     }
 
     /// The same long day, for a date the app already holds.
@@ -385,9 +385,15 @@ public enum HelmDates {
     /// explains is measured in months. `dayAndMinute` is for a report of
     /// today's activity; this is for a date far enough back that the minute is
     /// noise.
+    ///
+    /// Written in the zone the process is in *now*, read at each call, the way the
+    /// language is — `NSTimeZone.default`, which `Calendar.current` follows, and not
+    /// `TimeZone.current`, which is a snapshot that a zone change does not move.
+    /// The row's clock and a calendar grouping follow the machine's zone, so a label cached in the zone of the first call names a different day
+    /// than the time beside it after the Mac changes zone under a running app.
     public static func day(_ date: Date,
                            language: String = AppLanguage.current.rawValue) -> String {
-        cache.day(language: language).string(from: date)
+        cache.day(language: language, zone: NSTimeZone.default).string(from: date)
     }
 
     private static let cache = Cache()
@@ -412,16 +418,20 @@ public enum HelmDates {
             return formatter
         }()
 
-        func day(language: String) -> DateFormatter {
+        /// Keyed by the language *and* the zone: a formatter's zone is not safe
+        /// to change under a reader, so a new zone is a new formatter and the old
+        /// one stays for whoever still holds it. The stored-day reading passes the
+        /// zone `storage` parsed in, so its day cannot shift.
+        func day(language: String, zone: TimeZone) -> DateFormatter {
+            let key = "\(language)|\(zone.identifier)"
             lock.lock(); defer { lock.unlock() }
-            if let existing = days[language] { return existing }
+            if let existing = days[key] { return existing }
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: language)
             formatter.dateStyle = .long
             formatter.timeStyle = .none
-            // The zone the stored day was parsed in, so the day cannot shift.
-            formatter.timeZone = storage.timeZone
-            days[language] = formatter
+            formatter.timeZone = zone
+            days[key] = formatter
             return formatter
         }
 

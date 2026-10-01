@@ -1,5 +1,6 @@
 import AppKit
 import HelmContract
+import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
 import SwiftUI
@@ -89,6 +90,11 @@ import SwiftUI
 
     func load() async {
         folders = await client.request(AutopilotCommand.folders) ?? []
+        // In the turn the folders land, before the status is awaited: rules that
+        // arrive with this reading must not stand beside a block that was drawn
+        // for a page without them. Hide only — whether to *offer* waits for the
+        // status, since `[]` is also what a refused set answers.
+        if hasRules { presets = [] }
         // Asked for in the same breath as the folders, because an empty list is
         // not a fact on its own: the engine hands `[]` out for a rule set
         // something else wrote exactly as it does for a Mac that never had one,
@@ -116,8 +122,17 @@ import SwiftUI
     /// save, and while the rules are refused a save is refused with them — so
     /// the whole section would be buttons whose only outcome is a line in the
     /// log.
+    ///
+    /// **Nor once any rule exists.** The block is a way to begin, and a page that
+    /// has a rule — switched on or off, in whichever folder — has begun. It is
+    /// decided here, from the same `folders` the page draws its rules from, so
+    /// the two places that draw the block (the empty screen and the folder list)
+    /// agree without either asking «are there rules» a second time.
+    /// `StartingRulesAreOfferedOnlyWhileThereAreNoneTests` holds it.
+    private var hasRules: Bool { folders.contains { !$0.rules.isEmpty } }
+
     private func refreshPresets() {
-        presets = refusal == nil
+        presets = refusal == nil && !hasRules
             ? PresetOffer.offered(watching: folders, paths: presetFolders, home: home)
             : []
     }
@@ -209,6 +224,15 @@ import SwiftUI
     /// why this is asked of the folders as well as of the passes.
     var historyEmpty: HistoryEmpty.Reason? {
         HistoryEmpty.reason(folders: folders, runs: runs)
+    }
+
+    /// Whether the history card has anything to draw: a pass, a reason to state
+    /// that there is none, or a refused history whose card carries the way out.
+    /// A folder with no rules and nothing done has none of the three, and the
+    /// page's own «No rules yet» is its sentence — a titled card over nothing
+    /// says nothing.
+    var drawsHistory: Bool {
+        !runs.isEmpty || historyEmpty != nil || historyRefused
     }
 
     func clearHistory() {
@@ -365,8 +389,8 @@ import SwiftUI
     /// the page offering a gesture whose only outcome is a line in the log.
     private func save() {
         // Before the guard, because every gesture that reaches here changed the
-        // rule set: a preset added, a rule deleted — which offers that preset
-        // again — a folder no longer watched.
+        // rule set: a preset added, a rule deleted — which offers the block again
+        // only when it was the last one — a folder no longer watched.
         refreshPresets()
         guard refusal == nil else { return }
         let list = folders
@@ -406,10 +430,30 @@ import SwiftUI
         panel.allowsMultipleSelection = false
         panel.prompt = ApStr.addFolder
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        guard admitted(url.path) else { return }
-        guard !folders.contains(where: { $0.path == url.path }) else { return }
-        folders.append(WatchedFolder(path: url.path))
+        addFolder(at: url.path)
+    }
+
+    /// What the panel's answer does, apart from the panel — a sheet runs a
+    /// modal session nothing can drive, and this is the half with decisions in it.
+    func addFolder(at path: String) {
+        guard admitted(path) else { return }
+        guard watchedFolder(at: path) == nil else { return }
+        folders.append(WatchedFolder(path: path))
         save()
+    }
+
+    /// The folder already watched that `path` names, under whatever spelling.
+    ///
+    /// **Asked of the gate itself.** `WatchScope` judges where a path *leads*, so
+    /// `/private/var/…`, a link to the folder and another case of one component
+    /// pass it as the one directory; an identity that compared the strings would
+    /// store that directory twice, and the second copy is new to the page and is
+    /// swept at once. This used to be a second reading of the same question
+    /// (`PathCanonical` plus a follow of every link) and the two disagreed on a
+    /// link to a folder that is not there; the offer in the engine asks
+    /// `WatchScope.sameFolder`, so this does too — one rule, in one place.
+    private func watchedFolder(at path: String) -> WatchedFolder? {
+        folders.first { WatchScope.sameFolder($0.path, path) }
     }
 
     /// The same gate the engine applies, asked early so the refusal is a
@@ -481,9 +525,10 @@ import SwiftUI
     /// **A folder that arrives with a rule already in it, and no panel.**
     ///
     /// The single named exception to «a folder gets in through the open panel»,
-    /// and it is narrow by construction: the path was `FileManager`'s answer,
-    /// the button said which folder in words, and the dry run the person just
-    /// read was of that folder. The same gate the panel path applies is applied
+    /// and it is narrow by construction: the path was `FileManager`'s answer —
+    /// or the one the person chose in the editor's own panel, through
+    /// `draftFolder` — the editor said which folder in words, and the dry run
+    /// the person just read was of that folder. The same gate the panel path applies is applied
     /// here too — the runner refuses out-of-scope work anyway, and this is the
     /// half that says so in a sentence instead of in the log.
     ///
@@ -498,16 +543,72 @@ import SwiftUI
     /// only place it happens, because it is the only place Helm knows the folder
     /// holds nothing but what a preset just put there: a folder somebody was
     /// already watching has their own rules in it, and sweeping it on their
-    /// behalf would run all of them over everything in it.
+    /// behalf would run all of them over everything in it. And only for a rule
+    /// that is on: `sweepsAfterSaving` decides, for this and for the sheet's
+    /// sentence alike.
     private func saveRuleWithItsFolder(_ rule: Rule, in folder: WatchedFolder) async {
         guard refusal == nil else { return }
         guard admitted(folder.path) else { return }
+        // Asked before the append, which is what the answer depends on: after
+        // it the folder is watched and the same question reads «no».
+        let sweeps = sweepsAfterSaving(rule, in: folder)
         var fresh = folder
         fresh.rules = [rule]
         folders.append(fresh)
         refreshPresets()
         await sendFolders(folders)
-        await runNow(fresh)
+        if sweeps { await runNow(fresh) }
+    }
+
+    /// Whether Done is followed by a sweep.
+    ///
+    /// **One expression, read by the sweep and by the editor's sentence**, so the
+    /// sheet cannot promise «straight away» over a save that then does nothing,
+    /// nor say nothing over one that acts. A rule set refused — possibly only
+    /// after the sheet was opened — is written over by nothing, so it sweeps
+    /// nothing and promises nothing. A rule saved switched off acts on
+    /// nothing — the engine would still walk the folder and report «Processed 0
+    /// of 10» — so it neither sweeps nor promises to; a folder that is already
+    /// watched has its own rules in it and is never swept on a preset's behalf.
+    func sweepsAfterSaving(_ rule: Rule, in folder: WatchedFolder) -> Bool {
+        refusal == nil && rule.enabled && !folders.contains { $0.id == folder.id }
+    }
+
+    /// The folder a preset's editor is pointed at when somebody chooses another,
+    /// or nil when `WatchScope` refuses it.
+    ///
+    /// **Asked at the moment of choosing, before the draft's folder changes.**
+    /// The dry run reads whatever folder it is handed with Helm's Full Disk
+    /// Access, so a refusal left to the save would already have listed the file
+    /// names of `~/Library/Messages` in the sheet. No banner: the page's banner
+    /// sits under the sheet and would stay stale on the page after Cancel.
+    ///
+    /// A folder that is already watched comes back as the stored one, never as a
+    /// second `WatchedFolder` for the same path — the duplicate `PresetOffer`
+    /// takes care not to make — so the save joins it instead of storing the path
+    /// twice.
+    func draftFolder(at path: String) -> WatchedFolder? {
+        guard WatchScope.allows(path, home: home) else { return nil }
+        return watchedFolder(at: path) ?? WatchedFolder(path: path)
+    }
+
+    /// What a preset's rule is called while it watches `path`: the name the
+    /// preset gave it in the folder it began in, and a name over the folder's own
+    /// display name anywhere else.
+    ///
+    /// **The one place the name is decided**, so the editor can ask «is this
+    /// still the name the preset gave» of the folder the rule is leaving and set
+    /// the answer for the folder it is going to — the same unedited-only rule the
+    /// action follows. The preset's own folder is the port's answer, read in the
+    /// gate's terms (`WatchScope.sameFolder`) so a spelling of it is still it.
+    func presetName(_ preset: RulePreset, at path: String) -> String {
+        if let own = presetFolders.path(of: preset.folder),
+           WatchScope.sameFolder(own, path) {
+            return ApStr.presetName(preset.kind)
+        }
+        let folder = SystemFolderNames.displayOrOwn(path: path, home: home,
+                                                    language: AppLanguage.current.rawValue)
+        return ApStr.presetName(preset.kind, inFolder: folder)
     }
 
     func remove(_ rule: Rule, from folder: WatchedFolder) {
@@ -550,7 +651,10 @@ import SwiftUI
         // the first match wins and a rule above takes the files first.
         let probe = folder.previewing(rule)
         let rows: [PreviewRow]? = await client.request(AutopilotCommand.previewDraft, encoding: probe)
-        guard previewingRuleID == rule.id else { return }
+        // A cancelled ask is one the editor has already replaced — the folder
+        // was changed under it — and the rule id is the same, so the check below
+        // cannot tell its answer from the current one.
+        guard !Task.isCancelled, previewingRuleID == rule.id else { return }
         preview = rows ?? []
     }
 

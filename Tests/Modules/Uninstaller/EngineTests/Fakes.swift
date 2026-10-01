@@ -31,6 +31,14 @@ struct FakeApps: AppLister {
     var apps: [InstalledApp] = []
     func installedApps() -> [InstalledApp] { apps }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+    /// Every state Spotlight has: a date (in the table), no record (not in it),
+    /// and slow — `lookupDelay` per call, for a Mac that is reindexing.
+    var opened: [String: Date] = [:]
+    var lookupDelay: TimeInterval = 0
+    func lastOpened(path: String) -> Date? {
+        if lookupDelay > 0 { Thread.sleep(forTimeInterval: lookupDelay) }
+        return opened[path]
+    }
 }
 final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []

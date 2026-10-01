@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import HelmContract
+import HelmRuntime
 import HelmUI
 import Module_Hosts_Engine
 
@@ -48,6 +49,22 @@ import Module_Hosts_Engine
     /// the last moment is a button that lied while it was being pressed.
     @Published private(set) var sshWritable = true
     @Published private(set) var sshOutcome: SSHConfigOutcome?
+    /// Whether a write of the config is in flight. Hosts has `applying`, which
+    /// the engine publishes; this one is this model's own, set around the call,
+    /// because the config's write is a request with an answer and no event.
+    @Published private(set) var sshApplying = false
+    /// How long an Apply waits for the engine before this model stops waiting.
+    /// The write is a request with no deadline of its own (a home folder on a
+    /// network volume whose server went away blocks it), and this model outlives
+    /// the page, so a flag with no end would hold Revert and Apply grey until the
+    /// module is switched off. Thirty seconds is a ceiling chosen, not measured:
+    /// a write to a local disk answers at once and this only has to be short
+    /// enough that a person is not left looking at grey buttons; a test sets
+    /// its own.
+    var sshWriteDeadline: TimeInterval = 30
+    /// Which Apply is the latest, so an answer that comes after its deadline
+    /// cannot be said over a newer one.
+    private var sshAttempt = LatestRequest()
 
     // MARK: - The join both tabs are drawn from
 
@@ -288,7 +305,19 @@ import Module_Hosts_Engine
 
     /// Through the setter above, so «what revert means» and «what typing means»
     /// cannot end up refreshing different things.
-    func revertSSH() { setSSHText(sshOnDisk) }
+    ///
+    /// **It forgets the last Apply's refusal too**: that sentence is about the
+    /// edit just thrown away, and left on the strip it says the save failed
+    /// about text that is no longer on screen.
+    ///
+    /// **Not while the engine is writing**: what Revert means is what disk
+    /// says, and disk is about to say what was sent. Refused here as well as
+    /// greyed on the page, since the model is where the two ends meet.
+    func revertSSH() {
+        guard !sshApplying else { return }
+        setSSHText(sshOnDisk)
+        sshOutcome = nil
+    }
 
     /// Rewrites one field of one block, and answers whether the editor took it.
     ///
@@ -316,10 +345,48 @@ import Module_Hosts_Engine
     /// Writes the config. No password dialog — it is the person's own file —
     /// and no backup: the two things standing where those stand on tab 1 are
     /// the engine's gate and its read-back.
+    ///
+    /// **The answer is about the text that was sent.** Typing is not blocked
+    /// during the write, so when the text has moved since, a refusal is not
+    /// said over the new one — the strip would name a failure of an edit the
+    /// engine never saw.
+    ///
+    /// **It does not wait for ever.** When `sshWriteDeadline` passes the model
+    /// lets go: the buttons come back and the strip says the config could not be
+    /// saved — never «Saved», because nothing has said so. The write may still
+    /// finish, and the engine runs writes one at a time in the order asked, so a
+    /// late one cannot land over a newer. Its answer is then read only if no
+    /// newer Apply has been made since: when the text has moved it is not said
+    /// over the new text, and a «could not be saved» left by the deadline is
+    /// cleared, because the file holds what was sent — as an answer in time does.
     func applySSH() async {
-        let outcome: SSHConfigOutcome? = await client.request(
-            HostsCommand.applySSHConfig, encoding: SSHConfigApply(text: sshText))
-        sshOutcome = outcome
+        guard !sshApplying else { return }
+        let sent = sshText
+        let mine = sshAttempt.take()
+        sshApplying = true
+        let gate = FirstAnswer<SSHConfigOutcome?>()
+        let client = self.client
+        Task { [weak self] in
+            let outcome: SSHConfigOutcome? = await client.request(
+                HostsCommand.applySSHConfig, encoding: SSHConfigApply(text: sent))
+            if gate.settle(outcome) { return }
+            // Late: the deadline already answered for it.
+            guard let self, let outcome else { return }
+            self.sshLateAnswer(outcome, sent: sent, attempt: mine)
+        }
+        let answer = await gate.wait(deadline: sshWriteDeadline)
+        sshApplying = false
+        switch answer {
+        case .answered(let outcome):
+            sshOutcome = sshText == sent ? outcome : nil
+        case .timedOut:
+            if sshText == sent { sshOutcome = .failed }
+        }
+    }
+
+    private func sshLateAnswer(_ outcome: SSHConfigOutcome, sent: String, attempt: Int) {
+        guard sshAttempt.isLatest(attempt) else { return }
+        sshOutcome = sshText == sent ? outcome : nil
     }
 
     /// **The refusal has to survive the hop.** Every editor answers
@@ -540,5 +607,51 @@ import Module_Hosts_Engine
         defer { forgetting = nil }
         knownHostsOutcome = await client.request(HostsCommand.forgetKnownHost,
                                                  encoding: KnownHostsForget(line: entry.raw))
+    }
+}
+
+/// One answer or one deadline, whichever comes first, and a way for the loser to
+/// find out it lost. The request is not cancelled when the deadline wins — the
+/// transport has no way to take back a command the engine is inside — so the
+/// request's own task stays and learns from `settle` that it was late.
+private final class FirstAnswer<Value: Sendable>: @unchecked Sendable {
+    enum Result { case answered(Value), timedOut }
+
+    private let lock = NSLock()
+    private var result: Result?
+    private var waiter: CheckedContinuation<Result, Never>?
+
+    /// Records `new` if nothing has been recorded, and wakes the waiter.
+    /// Synchronous, so the lock is never held across a suspension.
+    private func record(_ new: Result) -> Bool {
+        let (won, waiting): (Bool, CheckedContinuation<Result, Never>?) = lock.withLock {
+            guard result == nil else { return (false, nil) }
+            result = new
+            defer { waiter = nil }
+            return (true, waiter)
+        }
+        waiting?.resume(returning: new)
+        return won
+    }
+
+    private func park(_ continuation: CheckedContinuation<Result, Never>) {
+        let ready: Result? = lock.withLock {
+            if let result { return result }
+            waiter = continuation
+            return nil
+        }
+        if let ready { continuation.resume(returning: ready) }
+    }
+
+    /// - Returns: whether the answer was in time.
+    func settle(_ value: Value) -> Bool { record(.answered(value)) }
+
+    func wait(deadline: TimeInterval) async -> Result {
+        let timer = Task { [self] in
+            try? await Task.sleep(nanoseconds: UInt64(max(0, deadline) * 1_000_000_000))
+            if !Task.isCancelled { _ = record(.timedOut) }
+        }
+        defer { timer.cancel() }
+        return await withCheckedContinuation { park($0) }
     }
 }

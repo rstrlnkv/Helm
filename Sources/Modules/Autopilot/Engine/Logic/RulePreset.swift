@@ -212,6 +212,11 @@ public enum PresetOffer {
     /// somebody made about their own Mac — and a button that cannot work is
     /// worse than no button.
     ///
+    /// **The filter on what is already added is this function's own contract,
+    /// not the page's.** The page calls it only while no rule exists anywhere, so
+    /// there it filters nothing; a caller that hands it folders with rules gets
+    /// the presets those rules do not already cover.
+    ///
     /// **One draft folder per path.** Two of the five watch Downloads, and a
     /// separate `WatchedFolder` value for each would carry a separate id: adding
     /// both would then store the same folder twice, with one rule in each, and
@@ -229,7 +234,11 @@ public enum PresetOffer {
                   let path = paths.path(of: preset.folder),
                   WatchScope.allows(path, home: home)
             else { return nil }
-            if let watched = folders.first(where: { $0.path == path }) {
+            // Through the gate's own reading of a path, never the spelling: a
+            // link to a watched folder, its `/private` spelling and another case
+            // are all that folder, and calling it new would store it twice and
+            // sweep it on Done — which runs the person's own rules over it.
+            if let watched = folders.first(where: { WatchScope.sameFolder($0.path, path) }) {
                 return OfferedPreset(preset: preset, folder: watched, folderIsNew: false)
             }
             let draft = drafts[path] ?? WatchedFolder(path: path)

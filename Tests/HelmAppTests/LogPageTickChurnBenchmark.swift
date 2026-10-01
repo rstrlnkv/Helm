@@ -8,12 +8,16 @@ import HelmUI
 
 /// What one second of the log page costs while somebody is reading it.
 ///
-/// `LogView` polls: a `RepeatingTick(interval: 1)` calls `refresh()`, which
-/// reassigns `@State entries` with a fresh copy of the tail (LogView.swift:381).
-/// SwiftUI cannot know the copy is equal — a `@State` write dirties the page —
-/// so every second the page is on screen re-evaluates `body`, re-filters the
-/// full tail (`shown` is computed in three places), and re-diffs a `ForEach`
-/// over up to 1000 rows, whether or not a single line arrived.
+/// `LogView` polls: a `RepeatingTick(interval: 1)` calls `refresh()`, which reads
+/// the tail and assigns `@State entries` only if the copy differs from what the
+/// page holds (`LogEntry`'s `==` is its five parts, so a tail that says the same
+/// thing is the same tail). A `@State` write dirties the page whether or not the
+/// value is equal, so without that guard every second the page was on screen
+/// re-evaluated `body`, re-filtered the full tail and re-diffed a `ForEach` over
+/// up to 1000 rows, whether or not a single line arrived; `refresh()`'s doc cites
+/// this file as the reading of what that cost. What the two cases measure is the
+/// page as it is — on a tail nothing writes to, and on one that grows a line per
+/// poll.
 ///
 /// The page it measures is the one the owner triages on: the no-phase footprint
 /// swings in `helm.log` (±80–140 MB between 15 s samples, «no phases running»)

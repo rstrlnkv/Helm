@@ -255,7 +255,8 @@ enum ModulePageRender {
                      width: CGFloat, seededBy seed: @escaping Seed = ModulePageRender.pastFirstRun,
                      wiredBy wire: Wiring = answering,
                      primedBy prime: Priming = opened,
-                     granting grants: HelmGrants = granted) -> Page {
+                     granting grants: HelmGrants = granted,
+                     declaringTo channel: HelmWindowToolbarChannel? = nil) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
         // Before the engine and before the page: both read the store as they are
@@ -275,6 +276,12 @@ enum ModulePageRender {
             // Named, not inherited: see `granted` above. Nil inside would mean
             // «ask this Mac», which is the dependence this parameter removes.
             .environment(\.helmGrants, grants)
+            // `nil` is the ordinary case and publishes nothing: the page's own
+            // layers are counted with the window's controls out of the count.
+            // A caller that wants to read what the page declares for the toolbar
+            // — its tabs, and the binding that switches them — passes a channel
+            // (`EveryTabSwitchIsACutTests`).
+            .environment(\.helmWindowToolbarChannel, channel)
             // This window never orders in and the page must draw anyway —
             // without the declaration `helmIdlesOffScreen` (which every
             // settings page carries) unmounts the content of an off-screen

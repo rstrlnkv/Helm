@@ -617,7 +617,7 @@ import HelmUI
                 case .toggle(let isOn, _):
                     return HelmToolbarAction(id: action.id, title: action.title, symbol: action.symbol,
                                              isEnabled: action.isEnabled, isVisible: action.isVisible,
-                                             isOn: isOn) {}
+                                             isOn: isOn, face: action.toggleFace) {}
                 case .menu(let items):
                     return HelmToolbarAction(id: action.id, title: action.title, symbol: action.symbol,
                                              isEnabled: action.isEnabled, isVisible: action.isVisible,
@@ -2735,7 +2735,8 @@ import HelmUI
                 }, selectedID: selection.wrappedValue, reserveWidth: segmentedReserveWidth(options))
             }
             return HelmToolbarActionsModel.Entry(id: action.id, title: action.title, symbol: action.symbol,
-                                                 isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind)
+                                                 isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind,
+                                                 toggleFace: action.toggleFace)
         }
     }
 

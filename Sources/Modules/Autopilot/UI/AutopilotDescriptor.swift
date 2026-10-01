@@ -11,11 +11,14 @@ import SwiftUI
     /// gesture; this one does nothing at all until somebody writes a rule, and a
     /// tour that left them at «Autopilot: folders that keep themselves in order»
     /// has described a feature and delivered none of it. The offer is the way to
-    /// the five rules they can have without writing one.
+    /// the page that shows the five rules they can have without writing one —
+    /// worded as going there (`tourOffer`) and not as showing the rules, because
+    /// the tour cannot know whether the page still has them to show: it does
+    /// only while there is no rule at all.
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
         sfSymbol: "location.north.circle", permissions: [.fullDisk],
-        welcomeOffer: ApStr.welcomeOffer) }
+        welcomeOffer: ApStr.tourOffer) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .autopilot
     /// Folders and their rules span the pane; the header must not centre itself

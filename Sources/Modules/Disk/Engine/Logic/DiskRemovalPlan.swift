@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The step between what the person picked and what the Trash is asked for.
 ///
@@ -57,9 +58,9 @@ public enum DiskRemovalPlan {
     public static func question(basket: [DiskEntry], advice: [DiskAdvice]) -> Question {
         let named = basket.filter { !$0.isFolded }
         return Question(paths: targets(basket: named.map(\.path), advice: advice),
-                        bytes: named.reduce(0) { total, entry in
-                            total + (advice.first { $0.path == entry.path }?.bytes ?? entry.bytes)
-                        })
+                        bytes: named.map { entry in
+                            advice.first { $0.path == entry.path }?.bytes ?? entry.bytes
+                        }.saturatingSum())
     }
 
     /// The paths a basket really hands to the Trash, in the order it holds them.

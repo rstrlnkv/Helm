@@ -11,9 +11,16 @@ public enum LogLevel: String, Sendable {
 
 /// Whether this build writes a log. Pure so the rule is testable.
 public enum LogPolicy {
+    /// **A dev build always logs, whatever was saved.** The Log page greys the
+    /// «Write a log file» item of its «More actions» menu on a dev build — the
+    /// file is what the build is triaged on — so a saved «off» could be neither
+    /// read nor undone there. One
+    /// reaches a dev build all the same: the installed Helm on the dev channel
+    /// shares its settings domain with the beta, where the switch is live.
+    /// Everywhere else the saved choice wins.
     public static func isEnabled(version: String, override: Bool?) -> Bool {
-        if let override { return override }
-        return version.contains("-dev")
+        if version.contains("-dev") { return true }
+        return override ?? false
     }
 }
 
@@ -191,6 +198,10 @@ public final class HelmLog: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "helm.log", qos: .utility)
     private var enabled = false
+    /// The version this process was started as, kept so the line written when
+    /// logging is switched back on can name it: a launch that wrote no start line
+    /// (logging was off when it opened) is otherwise unrecognisable in the file.
+    private var runVersion: String?
     /// The files the first `recentEntries()` reads back — this process's two, in
     /// the order they happened.
     ///
@@ -210,7 +221,7 @@ public final class HelmLog: @unchecked Sendable {
     /// the user-facing switch (nil = follow the build type).
     public func start(version: String, override: Bool?) {
         let on = LogPolicy.isEnabled(version: version, override: override)
-        queue.async { self.enabled = on }
+        queue.async { self.enabled = on; self.runVersion = version }
         discardPreRedactionLog()
         // Once a launch, not once a line. `append` creates the file privately,
         // but a file an earlier build created keeps its 0644 for ever otherwise —
@@ -256,16 +267,31 @@ public final class HelmLog: @unchecked Sendable {
     /// Both edges are written, and the off edge is written **before** the flag
     /// moves: a file that simply stops cannot be told from an app that died, and
     /// «the person switched it off» is the commonest reason of the two.
+    ///
+    /// **The on edge names the version** — «logging enabled (0.11.0)» — because a
+    /// «logging disabled» from one launch and a «logging enabled» from the next
+    /// sit side by side in the file with nothing between them, and the page
+    /// cannot tell that from the two edges of one sitting. `LogSessions` reads the
+    /// version back; `LogSeed` still reads the line as it always did, since the
+    /// version is part of the message.
     public func setEnabled(_ on: Bool) {
         if !on { write(.info, "app", "logging disabled") }
         queue.async { self.enabled = on }
-        if on { write(.info, "app", "logging enabled") }
+        if on {
+            // `sync` after the `async` above: the queue is serial, so the version
+            // `start` stored is there, and nothing on the queue waits for the
+            // caller's thread.
+            let version = queue.sync { runVersion }
+            write(.info, "app", version.map { "logging enabled (\($0))" } ?? "logging enabled")
+        }
     }
 
     /// The last lines, for a dev build that wants to watch them arrive rather
     /// than open the file afterwards. Guarded by the same queue as the file, so
     /// a reader never sees a half-written line.
     private var tail = LogTail()
+    /// The most lines `recentEntries()` ever answers with.
+    public static var tailLimit: Int { LogTail.standardLimit }
     /// The file has been read once. It is read at the first `recentEntries()`
     /// rather than at launch: nothing but the page asks, and a launch that reads
     /// two megabytes for a window nobody opened is a cost paid by everybody.

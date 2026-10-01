@@ -71,7 +71,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     /// A disk plugged in, ejected, or filling up while the app runs.
     ///
     /// **A volume list fixed at init cannot change under the app**, which is the
-    /// one thing this port really does: `statfs` answers a different number every
+    /// one thing this port really does: a volume-attributes read answers a different number every
     /// time somebody writes a file, and a Mac gains and loses disks. A fake that
     /// answers the same list for ever makes «the tile is showing what the disk held
     /// at launch» unrepresentable (CLAUDE.md § What not to do, and what breaks if

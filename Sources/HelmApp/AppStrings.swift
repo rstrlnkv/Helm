@@ -261,7 +261,6 @@ enum AppStr {
     /// *while deciding*, and it described a mouse jiggle.
     static var accessibilityWhy: String { L("Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.") }
     static var writeLog: String { L("Write a log file") }
-    static var logNoteDev: String { L("Dev builds always log. The file lives in ~/Library/Logs/Helm.") }
     static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm.") }
     static var revealLog: String { L("Show in Finder") }
     static var copyLog: String { L("Copy log") }
@@ -460,10 +459,9 @@ enum AppStr {
     static var moduleBlockedByPermission: String {
         L("Switched on, but macOS is withholding what it needs")
     }
-    // MARK: - The live log (dev builds only)
+    // MARK: - The live log
 
     static var logPane: String { L("Log") }
-    static var logLevel: String { L("What to show") }
     static var logLevelAll: String { L("Everything") }
     static var logLevelWarnings: String { L("Warnings") }
     static var logLevelErrors: String { L("Errors") }

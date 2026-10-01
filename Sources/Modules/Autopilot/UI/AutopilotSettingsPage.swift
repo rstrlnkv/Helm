@@ -14,6 +14,10 @@ struct AutopilotSettingsPage: View {
     struct EditingRule: Identifiable {
         let folder: WatchedFolder
         var rule: Rule
+        /// The preset the draft came from, when it came from one — the editor
+        /// offers a folder chooser only then, and needs to know which action is
+        /// still the preset's own.
+        var preset: RulePreset?
         var id: String { rule.id }
     }
 
@@ -100,7 +104,8 @@ struct AutopilotSettingsPage: View {
         // moving focus, so they are silent to VoiceOver unless said.
         .helmAnnounces(rvm.banner)
         .sheet(item: $editing) { context in
-            RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule)
+            RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule,
+                       preset: context.preset)
         }
     }
 
@@ -110,6 +115,9 @@ struct AutopilotSettingsPage: View {
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 12)
+            // Beside the button that adds a folder, where a page that already
+            // has folders but no rules still looks for a way to begin.
+            presets.controlSize(.small)
             Button(ApStr.addFolder) { rvm.addFolder() }
                 .controlSize(.small)
                 .fixedSize()
@@ -133,14 +141,16 @@ struct AutopilotSettingsPage: View {
                 HelmEmptyState(symbol: "location.north.circle",
                                tint: AutopilotDescriptor.tint.colour,
                                message: ApStr.startHint) {
-                    Button(ApStr.addFolder) { rvm.addFolder() }
-                        .buttonStyle(.borderedProminent)
+                    // The second answer to «what do I do with this page», beside
+                    // the first: on a Mac that has never had a rule it is the
+                    // easier one, since the button opens a panel and asks for a
+                    // decision, and the menu shows what a decision would do.
+                    HStack(spacing: HelmSpace.s4) {
+                        Button(ApStr.addFolder) { rvm.addFolder() }
+                            .buttonStyle(.borderedProminent)
+                        presets
+                    }
                 }
-                // The second answer to «what do I do with this page», and on a
-                // Mac that has never had a rule it is the easier one: the empty
-                // state's button opens a panel and asks for a decision, and this
-                // one shows what a decision would do.
-                presets
             }
             .padding(.horizontal, HelmLayout.formInset)
             .padding(.bottom, HelmSpace.s5)
@@ -153,17 +163,18 @@ struct AutopilotSettingsPage: View {
                         folderHeader(folder)
                     }
                 }
-                Section { presets }
-                Section {
-                    HistorySection(history: rvm.history, runs: rvm.runs,
-                                   empty: rvm.historyEmpty,
-                                   clear: { rvm.clearHistory() },
-                                   refused: rvm.historyRefused,
-                                   canPutBack: rvm.canPutBack,
-                                   canPutBackRun: rvm.canPutBack,
-                                   putBack: { record in Task { await rvm.undo(record) } },
-                                   putBackRun: { pass in Task { await rvm.undoRun(pass) } },
-                                   note: { rvm.undoNote(for: $0) })
+                if rvm.drawsHistory {
+                    Section {
+                        HistorySection(history: rvm.history, runs: rvm.runs,
+                                       empty: rvm.historyEmpty,
+                                       clear: { rvm.clearHistory() },
+                                       refused: rvm.historyRefused,
+                                       canPutBack: rvm.canPutBack,
+                                       canPutBackRun: rvm.canPutBack,
+                                       putBack: { record in Task { await rvm.undo(record) } },
+                                       putBackRun: { pass in Task { await rvm.undoRun(pass) } },
+                                       note: { rvm.undoNote(for: $0) })
+                    }
                 }
             }
             .listStyle(.inset)
@@ -176,8 +187,8 @@ struct AutopilotSettingsPage: View {
         }
     }
 
-    /// The presets still worth offering, in both the places they appear — and
-    /// nowhere at all when there are none left, which is what the empty view
+    /// The starting rules, as one menu, in both the places it appears — and
+    /// nowhere at all when there are none to offer, which is what the empty view
     /// answers with.
     ///
     /// Not drawn on the refused screen: `content` never reaches this branch
@@ -186,7 +197,8 @@ struct AutopilotSettingsPage: View {
     @ViewBuilder private var presets: some View {
         if !rvm.presets.isEmpty {
             PresetSection(presets: rvm.presets, diskAccess: diskAccess) { offer in
-                editing = EditingRule(folder: offer.folder, rule: offer.draft)
+                editing = EditingRule(folder: offer.folder, rule: offer.draft,
+                                      preset: offer.preset)
             }
         }
     }

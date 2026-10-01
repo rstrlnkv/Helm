@@ -118,8 +118,14 @@ struct LeftoversSettingsPage: View {
         // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
         // below for what each zone carries and why.
         .helmWindowToolbar(toolbarContent, token: LeftoversDescriptor.id.rawValue)
-        .animation(HelmMotion.interface, value: lvm.items.count)
-        .animation(HelmMotion.interface, value: lvm.showAll)
+        // **No curve on the page, on the tab or on the count.** «Leftovers» and
+        // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
+        // a removal changes the same list, so a curve on the whole page (keyed to
+        // the tab or to `lvm.items.count`) was SwiftUI interpolating two states of
+        // one view: the «Found: N» figure morphed
+        // digit by digit, rows the new tab drops were still drawn and re-laid out
+        // under moving stripes, and the section headers slid
+        // (`TheTabSwitchHoldsStillAtItsEdgesTests`). A tab and a rescan are a swap.
         // Narrowing the list drops the ticks it hides, the way the kind filter
         // and a fresh scan already do. Without this the switcher was the one
         // way a selection could outlive its row. Moved here from the switcher

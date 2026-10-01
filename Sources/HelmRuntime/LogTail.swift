@@ -43,10 +43,16 @@ public struct LogEntry: Sendable, Equatable, Identifiable {
 /// oldest line goes when the newest arrives, which is the behaviour of every
 /// `tail -f` anybody has ever read.
 struct LogTail: Sendable {
+    /// How many lines the page's tail keeps. One number, read by the page too
+    /// (`HelmLog.tailLimit`): the footer says older lines are in the file only
+    /// when the tail is full, and a second literal would say it at the wrong
+    /// count.
+    static let standardLimit = 1000
+
     let limit: Int
     private var buffer: [LogEntry] = []
 
-    init(limit: Int = 1000) {
+    init(limit: Int = LogTail.standardLimit) {
         self.limit = limit
         buffer.reserveCapacity(limit)
     }

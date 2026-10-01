@@ -82,7 +82,7 @@
 "Choose apps" = "Apps auswählen";
 "Choose folder" = "Ordner wählen";
 "Choose this app again to confirm which app it is" = "Wähle diese App erneut aus, um ihre Identität zu bestätigen";
-"Choose…" = "Wählen…";
+"Choose…" = "Wählen …";
 "Clear" = "Löschen";
 "Clear selection" = "Auswahl aufheben";
 "Clear the marks" = "Markierungen entfernen";
@@ -183,7 +183,6 @@
 "Default duration" = "Standarddauer";
 "Delete" = "Löschen";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev-Builds protokollieren immer. Die Datei liegt in ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnose: Helm kann protokollieren, was es tut — bereit zum Teilen, wenn etwas schiefgeht. In Dev-Builds immer an.";
 "Disabled" = "Deaktiviert";
 "Disconnected" = "Getrennt";
@@ -238,6 +237,8 @@
 "Folder" = "Ordner";
 "Folders that keep themselves in order" = "Ordner, die sich selbst in Ordnung halten";
 "Follow" = "Mitlaufen";
+"Following" = "Läuft mit";
+"Not following" = "Läuft nicht mit";
 "Force quit and remove anyway" = "Sofort beenden und entfernen";
 "Full Disk Access" = "Festplattenvollzugriff";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Der Festplattenzugriff ist aus. Ohne ihn sieht die Analyse nicht alle Ordner, und beim Entfernen bleiben Container liegen.";
@@ -397,7 +398,9 @@
 "On power" = "Am Netzstrom";
 "On quit only" = "Nur beim Beenden";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Eine Taste für beide Korrekturen: rechte ⌘, ⌥, ⌃ oder ⇧ wählen und allein drücken. Das erste Mal korrigiert das letzte Wort, das nächste stellt es zurück. Gehalten oder kombiniert bleibt sie ein gewöhnlicher Modifikator.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "Nach dem Sichern beobachtet Helm diesen Ordner und führt sofort aus, was unten aufgeführt ist.";
 "Open Accessibility…" = "Bedienungshilfen öffnen…";
+"Open Autopilot" = "Autopilot öffnen";
 "Open Extensions…" = "Erweiterungen öffnen…";
 "Open Full Disk Access…" = "Festplattenvollzugriff öffnen…";
 "Open Helm at login" = "Helm bei der Anmeldung öffnen";
@@ -890,7 +893,6 @@
 "An extra copy is" = "Eine überzählige Kopie ist";
 "the one that arrived later" = "die, die später hinzukam";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplikate fragt, welche Kopie die überzählige ist: die in Downloads oder auf dem Schreibtisch oder die, die später hinzukam. Jede Gruppe sagt, warum ihre Kopie bleibt, jede Zeile kann dazu gemacht werden, und „Empfehlung wiederherstellen“ nimmt das zurück.";
-"Rules to start with" = "Regeln für den Anfang";
 "Screenshots into their own folder" = "Bildschirmfotos in einen eigenen Ordner";
 "Downloads sorted by kind" = "Downloads nach Art sortiert";
 "Old installers to the Trash" = "Alte Installationsprogramme in den Papierkorb";
@@ -1323,3 +1325,23 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Nötig, damit Bildschirmfotos den Bildschirm aufnehmen können. Helm nimmt weder Video noch Ton auf — macOS hat nur einen Schalter für das Lesen von Pixeln und für Aufnahmen.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Die Aufnahme von Bildschirm & Systemaudio ist ausgeschaltet. Ohne sie kann Helm den Bildschirm nicht lesen, daher nehmen die Kurzbefehle für Bildschirmfotos nichts auf.";
 "Open Screen & System Audio Recording…" = "Aufnahme von Bildschirm & Systemaudio öffnen…";
+"Sort By" = "Sortieren nach";
+"Sort by Name" = "Nach Name sortieren";
+"Sort by Size" = "Nach Größe sortieren";
+"Sort by Date Last Opened" = "Nach Zuletzt geöffnet sortieren";
+"No record of opening" = "Kein Öffnungsdatum bekannt";
+"Search the log" = "Im Protokoll suchen";
+"Earlier launch" = "Früherer Start";
+"older lines are in the file" = "ältere Zeilen stehen in der Datei";
+"About Helm keeps its own name as the window’s title; with the page header set to “Without Icon” it was titled “Helm Settings”." = "Über Helm behält als Fenstertitel seinen eigenen Namen; mit dem Seitenkopf auf „Ohne Symbol“ hieß das Fenster „Helm-Einstellungen“.";
+"The Log is a list of launches: each launch of Helm is a card of its own, under headings that name the day, so you can tell one day from the next." = "Das Protokoll ist eine Liste von Starts: Jeder Start von Helm ist eine eigene Karte unter Überschriften, die den Tag nennen, sodass sich ein Tag vom nächsten unterscheiden lässt.";
+"Follow in the Log is an eye — open while it follows, slashed while it does not, and never blue; new lines no longer move what you are reading." = "Mitlaufen im Protokoll ist ein Auge — offen, solange es mitläuft, durchgestrichen, wenn nicht, und nie blau; neue Zeilen verschieben nicht mehr, was gerade gelesen wird.";
+"Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in." = "Hosts & Schlüssel: In „Reiner Text“ sitzt das Feld für die SSH-Konfiguration auf allen Seiten innerhalb eines Rands, wie die Homebrew-Konsole, und die „Tabelle“ steht am selben Rand; der Hinweis darüber klappt auf, statt hereinzuspringen.";
+"Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back." = "Anwenden in Hosts & Schlüssel wartet nicht mehr ewig: Antwortet die SSH-Konfiguration nicht binnen einer halben Minute, meldet die Seite, dass sie nicht gespeichert werden konnte, und gibt die Schaltflächen wieder frei.";
+"Login Items & Extensions: switching tabs no longer re-lays out its text and blocks." = "Anmeldeobjekte & Erweiterungen: Beim Wechseln der Tabs werden Text und Blöcke nicht mehr neu gesetzt.";
+"Switching a tab changes the page at once everywhere, in Settings and in the menu-bar panel; only the switcher’s own selection slides." = "Beim Wechseln eines Tabs ändert sich die Seite überall sofort, in den Einstellungen und im Menüleisten-Panel; nur die Auswahl der Umschaltleiste selbst gleitet.";
+"Autopilot’s “Show the rules to start with” is a menu beside “Add folder…”, grouped by folder, and it is there only while you have no rules." = "Autopilots „Die Regeln für den Anfang zeigen“ ist ein Menü neben „Ordner hinzufügen…“, nach Ordnern gruppiert, und es erscheint nur, solange es noch keine Regeln gibt.";
+"A starting rule opens its editor with the folder named, and “Choose…” there picks another folder; the rule’s name follows the folder." = "Eine Startregel öffnet ihren Editor mit dem genannten Ordner, und „Wählen …“ wählt dort einen anderen Ordner; der Name der Regel folgt dem Ordner.";
+"Uninstaller has “Sort By” in the toolbar — “Sort by Name”, “Sort by Size”, “Sort by Date Last Opened” — and each app shows when it was last opened, or “No record of opening”." = "„Deinstallation“ hat in der Symbolleiste „Sortieren nach“ — „Nach Name sortieren“, „Nach Größe sortieren“, „Nach Zuletzt geöffnet sortieren“ — und jede App zeigt, wann sie zuletzt geöffnet wurde, oder „Kein Öffnungsdatum bekannt“.";
+"Disk reports free space the way Finder does, counting what macOS can free by itself, so the figure on the page and in the panel’s tile matches Finder’s." = "„Festplatte“ meldet freien Speicherplatz so wie der Finder und zählt mit, was macOS selbst freigeben kann, sodass die Angabe auf der Seite und in der Kachel „Festplatte“ im Panel mit der des Finders übereinstimmt.";
+"Helm’s log and Autopilot’s history no longer record the names of apps you remove, or of protected files a rule was kept away from." = "Das Protokoll von Helm und der Verlauf von Autopilot zeichnen die Namen entfernter Apps nicht mehr auf, ebenso wenig die von geschützten Dateien, von denen eine Regel ferngehalten wurde.";

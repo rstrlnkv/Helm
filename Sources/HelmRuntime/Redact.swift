@@ -56,24 +56,27 @@ public enum Redact {
         let stem = softwareStem(path)
         guard !stem.isEmpty else { return shown }
         let name = (shown as NSString).lastPathComponent
-        let ext = (name as NSString).pathExtension
+        let ext = knownExtension(of: name)
         return ((shown as NSString).deletingLastPathComponent as NSString)
             .appendingPathComponent(app(stem) + (ext.isEmpty ? "" : "." + ext))
     }
 
     /// Any text that may quote the software a path names, with that name tagged.
     ///
-    /// **Because Helm's half of a line is not all of it.** A refusal is logged as
-    /// what Helm was doing plus what the system said, and what the system said is
-    /// composed out of the file: `NSFileNoSuchFileError` arrives as «The file
-    /// “com.acme.tool.plist” doesn’t exist», with the name in the message and again
-    /// under `NSFilePathErrorKey`. Redacting only the path Helm wrote leaves the
-    /// name in the line two more times.
+    /// Replaces every occurrence of the software's name in `text` with its tag,
+    /// for a line that quotes the name outside the path Helm wrote.
+    ///
+    /// **Known gap Redact-F1:** its one call site, in `HelmTrash`, hands it not the
+    /// system's sentence for a software leaf but Helm's own verdict
+    /// («<domain> <code>, <reason>»), and this replaces every occurrence, so an app
+    /// named like a word of that verdict («Cocoa», «Permission», «missing») garbles
+    /// the line and can be read back from the tag.
+    /// `testTheVerdictIsNotRewrittenByTheSoftwaresName` reproduces it.
     ///
     /// Four characters at least, because this replaces every occurrence rather than
     /// a delimited one: swapping a two-letter name out of a sentence rewrites the
-    /// sentence instead of redacting it. Such a name survives inside a system
-    /// message — never in the path, where the leaf is delimited and `path(_:leaf:)`
+    /// sentence instead of redacting it. Such a name is left as it is in `text` —
+    /// never in the path, where the leaf is delimited and `path(_:leaf:)`
     /// replaces it whatever its length.
     public static func naming(_ text: String, software path: String, leaf: Leaf) -> String {
         guard leaf == .softwareName else { return text }
@@ -82,10 +85,37 @@ public enum Redact {
         return text.replacingOccurrences(of: stem, with: app(stem))
     }
 
-    /// The part of a leaf that names software: everything but the extension.
+    /// The part of a leaf that names software: everything but a *known* extension.
+    ///
+    /// **Not `deletingPathExtension`**, which takes the last dot of anything for an
+    /// extension: a folder named by a bundle id (`Containers/com.acme.SecretTool`)
+    /// has no extension, and reading its last component as one left the product's
+    /// name in clear beside a tag of the vendor. Only the suffixes the app-cleanup
+    /// modules actually meet count. A list rather than `UTType`, because a type
+    /// registry answers for *this* Mac: an installed app can register its own
+    /// product name as a filename extension, and a gate that opens for it on one
+    /// machine and not another is a redaction that fails open where nobody looks.
+    /// **Known gap Redact-F2:** a bundle id that happens to end in one of these words
+    /// (`com.acme.log`) is read as a name plus an extension and wears two tags, and a
+    /// vendor's ids do not share one.
+    /// `testAnIDEndingInAListedWordWearsOneTagAcrossItsLeftovers` reproduces it.
     private static func softwareStem(_ path: String) -> String {
-        ((path as NSString).lastPathComponent as NSString).deletingPathExtension
+        let leaf = (path as NSString).lastPathComponent
+        let ext = knownExtension(of: leaf)
+        return ext.isEmpty ? leaf : String(leaf.dropLast(ext.count + 1))
     }
+
+    /// The extension of a leaf as spelled, or empty when it is not one of the known.
+    private static func knownExtension(of leaf: String) -> String {
+        let ext = (leaf as NSString).pathExtension
+        return knownExtensions.contains(ext.lowercased()) ? ext : ""
+    }
+
+    private static let knownExtensions: Set<String> = [
+        "app", "plist", "savedstate", "binarycookies", "qlgenerator", "prefpane",
+        "plugin", "component", "bundle", "appex", "xpc", "kext", "saver",
+        "framework", "systemextension", "pkg", "bom", "log", "db", "lockfile"
+    ]
 
     public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {
         paths.map { self.path($0, home: home) }.joined(separator: ", ")

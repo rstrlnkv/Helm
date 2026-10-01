@@ -73,10 +73,21 @@ final class AnEmptyHistorySaysWhyTests: XCTestCase {
                        .everyRuleOff)
     }
 
-    /// A folder with no rules in it yet is the same state read from one step
-    /// earlier: nothing can run.
-    func testAFolderWithNoRulesCountsAsEveryRuleOff() {
-        XCTAssertEqual(HistoryEmpty.reason(folders: [folder(rules: [])], runs: []),
+    /// **No rule at all is not «every rule is off».** A folder with no rules
+    /// written yet has nothing switched off: the page already says «No rules
+    /// yet» under that folder, and a second sentence claiming somebody switched
+    /// rules off was drawn 509 pt away from it, in the state a new person is in.
+    /// `contains` over an empty list is false, which is how it got there.
+    func testAFolderWithNoRulesIsNotEveryRuleOff() {
+        XCTAssertNil(HistoryEmpty.reason(folders: [folder(rules: [])], runs: []))
+    }
+
+    /// The control for the one above: the moment a rule exists and is switched
+    /// off, the sentence is true again, so the fix did not just delete it.
+    func testAFolderWithOnlyASwitchedOffRuleStillSaysSo() {
+        XCTAssertEqual(HistoryEmpty.reason(folders: [folder(rules: []),
+                                                     folder(rules: [rule(enabled: false)])],
+                                           runs: []),
                        .everyRuleOff)
     }
 

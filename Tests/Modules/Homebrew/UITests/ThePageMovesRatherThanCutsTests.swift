@@ -7,17 +7,19 @@ import XCTest
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **The three biggest changes this page makes were all cuts.**
+/// **What this page moves and what it cuts.**
 ///
-/// The module animated two things — the Refresh glyph while a query is out, and
-/// the console's scroll to the bottom — and both are right. What it did not
-/// animate is everything that changes *what is mounted*: switching segment
-/// replaced one list with another in a frame, a press on a row below
-/// `HomebrewSplit`'s threshold swapped the whole pane for the package in a frame,
-/// and the console arriving took its height off everything above it in a frame.
-/// `UninstallerSettingsPage` carries `HelmMotion.interface` on exactly these
-/// three kinds of change and says it is «the same one the other list screens
-/// use»; this page was the list screen that did not.
+/// The module animates the Refresh glyph while a query is out, the console's
+/// scroll to the bottom, the console arriving and — below `HomebrewSplit`'s
+/// threshold — a press on a row that swaps the whole pane for the package.
+/// **Switching segment is a cut, and this file used to demand the opposite**: it
+/// held a 220 ms crossfade between the two lists (the outgoing one mounted for
+/// 26 turns) that drew every package name twice for a few frames, and the owner
+/// decided on 2026-09-30 that tabs switch at once everywhere. The two segment
+/// cases below were rewritten rather than deleted, and now assert the reverse —
+/// the outgoing list is gone on the first turn — because a cut is a claim a
+/// later edit can undo as quietly as a curve was once missing. The all-module
+/// statement of it is `EveryTabSwitchIsACutTests` (`Tests/HelmAppTests`).
 ///
 /// **A test that asserts an animation exists passes over one that never runs**,
 /// which is the trap this file was written to avoid. So nothing here reads the
@@ -31,25 +33,19 @@ import XCTest
 /// - a **subtree being replaced** stays mounted for the length of the animation
 ///   instead of being removed in the frame the value changed.
 ///
-/// **Both were measured with the token deleted, which is the control.** Recorded
-/// 2026-09-16 at a 984 pt pane, 10 ms a turn:
-///
-/// | change | with the token | with it deleted |
-/// |---|---|---|
-/// | console arrives (list height) | 552 → 353 over 19 turns, 20 distinct readings | 353 on turn 1, one reading |
-/// | segment switch (outgoing list) | mounted for 26 turns | gone on turn 1 |
-/// | narrow selection (outgoing list) | mounted for 26 turns | gone on turn 1 |
-///
 /// The layer's `opacity` is **not** the instrument, and that is a measurement
 /// too: it read 1.0 on both lists through the whole crossfade, because whatever
 /// SwiftUI fades is not the `NSScrollView`'s own layer. A sampler keyed on it
-/// would have reported no animation on a page that was animating.
+/// would have reported no animation on a page that was animating. The pixels
+/// are the other instrument (`FrameRecorder`), and the one that sees a doubled
+/// name, which geometry does not.
 ///
 /// **And the assertions turn on Reduce Motion rather than ignoring it**, because
 /// `HelmMotion` collapses every token to a 0.01 s cut when the setting is on —
 /// which is the whole point of the tokens, and which would make a ramp test fail
 /// on the Mac of the one person the setting exists for. With it on, the same
-/// instrument is asked for the opposite answer.
+/// instrument is asked for the opposite answer. The cut cases need no such turn:
+/// a cut is a cut under either setting.
 @MainActor
 final class ThePageMovesRatherThanCutsTests: XCTestCase {
 
@@ -191,37 +187,61 @@ final class ThePageMovesRatherThanCutsTests: XCTestCase {
             """)
     }
 
-    // MARK: - The two swaps
+    // MARK: - The segment switch, and the swap
 
-    /// **Switching segment must not cut one list to another.**
+    /// **Switching segment cuts one list to the other in a frame.**
     ///
     /// The two lists are different views, so nothing about them interpolates —
-    /// what an animated transaction buys here is that the outgoing one stays
-    /// mounted while it goes, and that is what is read.
-    func testSwitchingSegmentDoesNotCutOneListAwayInAFrame() async {
+    /// what an animated transaction bought here was that the outgoing one stayed
+    /// mounted while it went, and that is what is read: on the first sampled turn
+    /// only the incoming list is mounted.
+    func testSwitchingSegmentCutsOneListAwayInAFrame() async throws {
         let (hb, _, mount) = await page(width: 984, segment: .updates)
         XCTAssertEqual(lists(mount).count, 1, "precondition: the Updates list is not mounted alone")
+        let before = try XCTUnwrap(mount.pixels())
 
+        let began = Date()
         hb.segment = .installed
-        let counts = samples(40, of: mount) { lists(mount).count }
+        // One turn at a time, counting and photographing on the same turn: the
+        // pictures start on the first turn after the switch, where a crossfade
+        // is still on screen, and not after forty turns, where it is over.
+        var counts: [Int] = []
+        var shots: [FrameRecorder.Frame] = []
+        for _ in 0..<45 {
+            shots += try FrameRecorder.photograph(mount.host, turns: 1, since: began)
+            counts.append(lists(mount).count)
+        }
 
         XCTAssertEqual(counts.last, 1, """
-            \(counts.last ?? -1) lists are still mounted when the animation is over, so the \
-            outgoing one was never removed — which is a leak with a scrollbar rather than a \
-            transition
+            \(counts.last ?? -1) lists are mounted when the switch is over, so the incoming \
+            list is not the only one left and this case is not measuring a switch
             """)
         let overlapping = counts.prefix { $0 > 1 }.count
-        if HelmMotion.reduceMotion {
-            XCTAssertEqual(overlapping, 0,
-                           "Reduce Motion is on and the outgoing list still lingered "
-                           + "\(overlapping) turns")
-            return
-        }
-        XCTAssertGreaterThan(overlapping, 5, """
-            the outgoing list was gone after \(overlapping) turns of the run loop, so the \
-            segment switch is a cut. With the token the same sampler reads 26 turns; with it \
-            deleted, zero
+        XCTAssertEqual(overlapping, 0, """
+            the outgoing list was still mounted for \(overlapping) turns of the run loop after \
+            the segment switch, so the switch is a crossfade. A cut removes it on the first
             """)
+        try FrameRecorder.judge(shots, before: before, "light, Homebrew updates → installed")
+    }
+
+    /// **And a switch that also changes what is selected is the same cut.**
+    /// `selected` is per segment, so leaving the segment a package is selected in
+    /// for one where nothing is flips `hb.selected == nil` in the same update —
+    /// the value the page's other curve is keyed on. The switch must not ride it.
+    func testSwitchingSegmentWithASelectionIsStillACut() async throws {
+        let (hb, _, mount) = await page(width: 984, segment: .installed)
+        hb.select(Cellar.openssl.id)
+        mount.settle(40)
+        XCTAssertNotNil(hb.selected, "precondition: nothing is selected in Installed")
+        XCTAssertNil(hb.selection[.updates], "precondition: Updates holds a selection of its own")
+        let before = try XCTUnwrap(mount.pixels())
+
+        let began = Date()
+        hb.segment = .updates
+        XCTAssertNil(hb.selected, "the switch did not change what is selected, so this is the plain case")
+        let shots = try FrameRecorder.photograph(mount.host, since: began)
+
+        try FrameRecorder.judge(shots, before: before, "light, Homebrew installed (selected) → updates")
     }
 
     /// **And neither must a press on a row at a width with no room for two

@@ -353,7 +353,7 @@ final class AutopilotSelfSortTests: XCTestCase {
             rule: Rule(id: "r", name: "r", enabled: true,
                        conditions: [.kind(.folder)], action: .move(to: bucket.path)))
 
-        XCTAssertEqual(runner.run(plan, at: bucket.path, key: TestRuleKey.material), .refused(.outOfScope))
+        XCTAssertEqual(runner.run(plan, at: bucket.path, key: TestRuleKey.material), .targetOutOfScope)
         XCTAssertTrue(FileManager.default.fileExists(atPath: bucket.path))
     }
 }

@@ -62,6 +62,30 @@ public struct HelmToolbarMenuItem {
     }
 }
 
+/// **A toggle whose state is its glyph.** The capsule tints a plain toggle's
+/// glyph with the accent when it is on; a toggle given a face is never tinted
+/// and draws `offSymbol` when off and its own `symbol` when on — the open eye
+/// and the slashed one for Follow — and says what it is doing as its
+/// accessibility value, which a glyph swap alone does not say to VoiceOver.
+/// Closure-free on purpose, like `HelmToolbarActionsModel.Entry`.
+public struct HelmToolbarToggleFace: Equatable, Sendable {
+    public let offSymbol: String
+    public let onValue: String
+    public let offValue: String
+
+    public init(offSymbol: String, onValue: String, offValue: String) {
+        self.offSymbol = offSymbol
+        self.onValue = onValue
+        self.offValue = offValue
+    }
+
+    /// The glyph to draw: the action's own symbol when on, `offSymbol` when off.
+    func symbol(isOn: Bool, on symbol: String) -> String { isOn ? symbol : offSymbol }
+
+    /// The accessibility value to say, one word pair for the two states.
+    func value(isOn: Bool) -> String { isOn ? onValue : offValue }
+}
+
 /// One button in the toolbar's single Liquid Glass action capsule
 /// (`HelmToolbarActionsCapsule`, `HelmToolbarActions.swift`, this same
 /// directory) — every declared action shares that one capsule and one
@@ -124,6 +148,9 @@ public struct HelmToolbarAction {
     /// menu down at all.
     public let isBusy: Bool
     public let kind: Kind
+    /// Set only by the toggle initializer that takes one; nil for every other
+    /// action, which draws exactly as it did before there was a face.
+    public let toggleFace: HelmToolbarToggleFace?
 
     /// A plain button — the shape every action but Hosts' view-mode switcher
     /// and Leftovers' kind filter takes.
@@ -136,13 +163,16 @@ public struct HelmToolbarAction {
         self.isVisible = isVisible
         self.isBusy = isBusy
         self.kind = .button(perform)
+        self.toggleFace = nil
     }
 
-    /// A toggle: `isOn` decides the glyph's tint, and the same `perform`
-    /// convention as a plain button — the caller flips its own state, which
-    /// the next declare reads back into `isOn`.
+    /// A toggle: `isOn` decides the glyph's tint — or, given a `face`, which of
+    /// two glyphs is drawn, untinted — and the same `perform` convention as a
+    /// plain button: the caller flips its own state, which the next declare
+    /// reads back into `isOn`.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
-                isVisible: Bool = true, isOn: Bool, perform: @escaping () -> Void) {
+                isVisible: Bool = true, isOn: Bool, face: HelmToolbarToggleFace? = nil,
+                perform: @escaping () -> Void) {
         self.id = id
         self.title = title
         self.symbol = symbol
@@ -150,6 +180,7 @@ public struct HelmToolbarAction {
         self.isVisible = isVisible
         self.isBusy = false
         self.kind = .toggle(isOn: isOn, perform)
+        self.toggleFace = face
     }
 
     /// A menu of checkmarked items — no `perform` of the action's own; each
@@ -163,6 +194,7 @@ public struct HelmToolbarAction {
         self.isVisible = isVisible
         self.isBusy = false
         self.kind = .menu(menu)
+        self.toggleFace = nil
     }
 
     /// A segmented control: `title` names the *group* — the switcher's own
@@ -181,6 +213,7 @@ public struct HelmToolbarAction {
         self.isVisible = isVisible
         self.isBusy = false
         self.kind = .segmented(options: options, selection: selection)
+        self.toggleFace = nil
     }
 }
 

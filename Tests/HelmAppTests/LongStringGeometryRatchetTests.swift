@@ -107,8 +107,8 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     ///
     /// **32 as of 2026-08-18, and it is the same arithmetic a fourth time.** The
     /// hosts page arrived with a «Table / Plain text» segmented control in its
-    /// header, sized by `HelmPickerWidth.segmented` from its own two labels — so
-    /// drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true by construction,
+    /// header, sized from its own two labels by a helper `HelmPickerWidth` no
+    /// longer has — so drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true by construction,
     /// in each of the eight languages. Eight more readings, none of them a control
     /// that stopped fitting; `atFullSize` is still 0, which is the half that can
     /// fall. Unlike the three before it this one is not the fixture's reach — the

@@ -37,6 +37,18 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// teardown can cancel one that has not begun. See `activate()`.
     private let readings = DispatchQueue(label: "helm.hosts.readings", qos: .userInitiated)
     private let firstReadingLock = NSLock()
+    /// Where Apply's config write and Forget's known-hosts write run, one at a
+    /// time and in the order they were asked for. Key generation and the permission
+    /// repair also write under `~/.ssh` and do not go through it.
+    ///
+    /// The transport's handler is not serial, and a write held by a home folder
+    /// on a volume that went away outlives the page's deadline. Without a queue
+    /// a second Apply ran beside the held one and the older text could land
+    /// last; and a blocking write called straight from the handler held a
+    /// thread of the Swift-concurrency pool, which the deadline's own timer
+    /// also needs. A queue of the engine's own is the serial place
+    /// `offTheCooperativePool` points at for work that must also be ordered.
+    private let sshWrites = DispatchQueue(label: "helm.hosts.sshWrites", qos: .userInitiated)
     private var firstReading: DispatchWorkItem?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
@@ -566,11 +578,17 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
             case .applySSHConfig:
                 guard let request = EngineReply.decode(SSHConfigApply.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(self.applySSH(request.text), for: command)
+                let outcome = await withCheckedContinuation { (done: CheckedContinuation<SSHConfigOutcome, Never>) in
+                    self.sshWrites.async { done.resume(returning: self.applySSH(request.text)) }
+                }
+                return EngineReply.encode(outcome, for: command)
             case .forgetKnownHost:
                 guard let request = EngineReply.decode(KnownHostsForget.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(self.forgetKnownHost(request.line), for: command)
+                let outcome = await withCheckedContinuation { (done: CheckedContinuation<SSHConfigOutcome, Never>) in
+                    self.sshWrites.async { done.resume(returning: self.forgetKnownHost(request.line)) }
+                }
+                return EngineReply.encode(outcome, for: command)
             case .fixKeyPermissions:
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }

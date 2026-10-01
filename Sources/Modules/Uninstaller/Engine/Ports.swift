@@ -24,6 +24,22 @@ public protocol AppLister: Sendable {
     /// looks the same and means the same thing — the data stays in use.
     func installedPaths(forBundleID id: String) -> [String]
 
+    /// When Spotlight last recorded this bundle being opened, or `nil`.
+    ///
+    /// **Every reason it has no date collapses into `nil`, and the caller cannot
+    /// tell them apart:** the volume is not indexed or indexing is off, the
+    /// bundle has not been indexed yet (a fresh install, a reindex in progress),
+    /// Spotlight has an entry with no last-used attribute (never opened, or not
+    /// yet recorded; on a volume it does not index the system's own answer is the
+    /// file's modification date, which is not an opening and is refused), the
+    /// attribute is not a date, and the path is gone. It is the *opening of this
+    /// bundle* through LaunchServices — an app used every
+    /// day through a helper in another bundle can read as long unopened.
+    /// A caller must therefore say "no record", never "never opened".
+    ///
+    /// Blocking, one Spotlight lookup per call: call it off the main thread.
+    func lastOpened(path: String) -> Date?
+
     /// Application bundles sitting in the user's Trash, or `nil` when the Trash
     /// could not be read at all.
     ///
@@ -54,6 +70,9 @@ public extension AppLister {
     /// Nothing, for a lister that only knows what is installed — an answer, since
     /// such a lister is not the one being refused a read.
     func trashedApps() -> [TrashedApp]? { [] }
+
+    /// No dates, for a lister that only lists — an answer, "no record".
+    func lastOpened(path: String) -> Date? { nil }
 }
 
 public protocol FileSystemPort: Sendable {

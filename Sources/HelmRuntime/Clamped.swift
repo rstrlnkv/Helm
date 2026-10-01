@@ -55,3 +55,23 @@ public extension FloatingPoint {
         isNaN ? fallback : clamped(to: range)
     }
 }
+
+public extension Int {
+    /// The sum, held at `Int.max` or `Int.min` instead of trapping.
+    ///
+    /// For figures that came out of a file or off the wire, where one bound on
+    /// each figure does not bound a sum of thousands of them: an integer add traps
+    /// in release as well as debug, and a figure that is only large is a better
+    /// answer than a process that is gone. `RingLayout` calls this for both its sums.
+    func saturatingAdding(_ other: Int) -> Int {
+        let (sum, overflowed) = addingReportingOverflow(other)
+        return overflowed ? (other < 0 ? .min : .max) : sum
+    }
+}
+
+public extension Sequence where Element == Int {
+    /// `reduce(0, +)` that saturates, see `Int.saturatingAdding(_:)`.
+    func saturatingSum() -> Int {
+        reduce(0) { $0.saturatingAdding($1) }
+    }
+}

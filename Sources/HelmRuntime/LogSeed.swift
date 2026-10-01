@@ -132,8 +132,10 @@ enum LogSeed {
     ///   - startedMidFile: the read began at an offset, so the first line is a
     ///     fragment of one the reader cut rather than one anything tore. That one
     ///     is the reader's own doing and goes; every other unreadable line stays.
-    ///   - fallback: the date for an unreadable line with no readable line above
-    ///     it — the file's own modification date, never now.
+    ///   - fallback: the date for an unreadable line when no line in the text is
+    ///     readable at all — the file's own modification date, never now. An
+    ///     unreadable line above the first readable one takes that line's date
+    ///     instead, so it opens no day of its own.
     ///   - limit: how many lines are wanted, dropped **before** the parse rather
     ///     than after it. The byte window below holds about 3 400 lines of a log
     ///     whose newest thousand average 76 bytes, and the tail keeps 1 000, so
@@ -147,15 +149,25 @@ enum LogSeed {
         if lines.count > limit { lines.removeFirst(lines.count - limit) }
         var out: [LogEntry] = []
         var last = fallback
+        // Unreadable lines with no readable line above them yet. They are kept
+        // whole and dated once a readable line below them says what day the
+        // file was on; until then the fallback would be the newest moment in the
+        // file and would head it with a day none of its lines was written on.
+        var leading: [String] = []
         for line in lines where !line.isEmpty {
             switch parse(line, using: formatter) {
             case .entry(let entry):
+                out += leading.map { LogEntry(date: entry.date, level: .info, category: "", message: $0) }
+                leading.removeAll()
                 last = entry.date
                 out.append(entry)
             case .unreadable(let text):
-                out.append(LogEntry(date: last, level: .info, category: "", message: text))
+                if out.isEmpty { leading.append(text) }
+                else { out.append(LogEntry(date: last, level: .info, category: "", message: text)) }
             }
         }
+        // Nothing in the text was readable: the caller's date is all there is.
+        out += leading.map { LogEntry(date: fallback, level: .info, category: "", message: $0) }
         return out
     }
 

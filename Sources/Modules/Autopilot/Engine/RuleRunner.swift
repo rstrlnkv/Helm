@@ -16,12 +16,26 @@ public enum RuleOutcome: Equatable, Sendable {
     /// The rule had already had its turn at this file.
     case alreadyDone
     case refused(Refusal)
+    /// The file is the person's own — the gate passed it — and what the action
+    /// would have done with it is not: a destination or a bucket outside the
+    /// allowed folders, a folder asked to go inside itself, a Trash the shared
+    /// gate will not empty into.
+    ///
+    /// **Not `.refused(.outOfScope)`, which is the file itself being somewhere no
+    /// rule may reach.** That one is written down without a name, because a name
+    /// there can be a protected file's; this one names it, because the file was
+    /// just judged to be the person's own and «which of my files did not go» is
+    /// what the page is for. Both are stored as the same reason and read as the
+    /// same sentence — the difference is the subject.
+    case targetOutOfScope
     case failed(String)
 
     // CaseIterable so the guard on how these read on screen loops the real
     // list instead of keeping a copy — see `ARefusalSpeaksTheLanguageTests`.
     public enum Refusal: String, CaseIterable, Equatable, Sendable {
-        /// The file or the destination is not the user's to move.
+        /// The file is not somewhere a rule may reach — the one thing a refusal for
+        /// scope can mean *here*. Its record carries no name and no path
+        /// (`RuleOutcome.targetOutOfScope` is the other half).
         case outOfScope
         /// A rename pattern the filesystem should not be asked to take.
         case badPattern
@@ -62,23 +76,29 @@ struct RuleRunner: Sendable {
     /// which is what an unstampable volume already looks like. Unreachable from
     /// the module's own triggers, which have no rules to run without a key.
     func run(_ plan: RulePlan, at path: String, key: Data?) -> RuleOutcome {
-        guard FileManager.default.fileExists(atPath: path) else { return .refused(.missing) }
-        let stamp = key.map(RuleStamp.init(key:))
-        // Asked before anything happens, so a file already handled by this rule
-        // costs a stat rather than a move.
-        guard stamp?.isStamped(path, by: plan.rule.id) != true else { return .alreadyDone }
         // The file itself has to be somewhere a rule may reach, whatever the
         // rule says — the rules are JSON in a plist any process can write, so
         // this is the only place the question is settled. `WatchScope` rather
         // than `UserFileScope`: the shared gate answers "may this be trashed
         // without breaking the machine", which says yes to `~/Library/Messages`
         // and to `~/Library/LaunchAgents`.
+        //
+        // **First, before anything asks the disk about the path.** A file gone
+        // between the plan and this call is `.missing`, and that record carries
+        // the file's name; for a path the gate refuses it is a leak of what a
+        // protected folder held, reached when a watched folder was swapped for a
+        // link. Out of scope is the answer whether or not the file is there.
         guard WatchScope.allows(path, home: home) else { return .refused(.outOfScope) }
+        guard FileManager.default.fileExists(atPath: path) else { return .refused(.missing) }
+        let stamp = key.map(RuleStamp.init(key:))
+        // Asked before anything happens, so a file already handled by this rule
+        // costs a stat rather than a move.
+        guard stamp?.isStamped(path, by: plan.rule.id) != true else { return .alreadyDone }
         let approved = ancestry(path)
 
         let outcome = perform(plan, at: path, approved: approved)
         switch outcome {
-        case .refused, .failed, .alreadyDone:
+        case .refused, .targetOutOfScope, .failed, .alreadyDone:
             break
         case let .moved(to: destination):
             // Stamped where it landed: the mark travels with a move, but the
@@ -211,7 +231,7 @@ struct RuleRunner: Sendable {
         // reach here at all, `UserFileScope` that trashing it will not
         // break the machine.
         let (allowed, _) = UserFileScope.partition([path])
-        guard !allowed.isEmpty else { return .refused(.outOfScope) }
+        guard !allowed.isEmpty else { return .targetOutOfScope }
         guard leadsWhereItLed(path, approved) else { return .refused(.changedSinceCheck) }
         do {
             // **The resulting URL, at last.** Passing `nil` here was what made
@@ -256,13 +276,19 @@ struct RuleRunner: Sendable {
         // A destination outside the user's own files is refused however it got
         // into the rule — a rule is a decision made once and executed forever,
         // so the check cannot live in the editor.
-        guard WatchScope.allows(folder.path, home: home) else { return .refused(.outOfScope) }
+        guard WatchScope.allows(folder.path, home: home) else { return .targetOutOfScope }
         // A folder cannot be moved inside itself. Reachable without malice: a
         // sorting rule whose conditions eventually match a folder will one day
         // be handed the bucket folder it made itself, and `moveItem` would then
         // fail with EINVAL on every sweep, forever, logging as it went.
-        guard !folder.path.hasPrefix(url.path + "/"), folder.path != url.path
-        else { return .refused(.outOfScope) }
+        //
+        // Asked the way the gate asks, of where both lead: the walk hands back
+        // the root's own links resolved (`/private/var/…`) and the destination is
+        // spelled as the person's panel gave it (`/var/…`), so two spellings of
+        // one folder passed a comparison of strings and reached `moveItem`, which
+        // answered EINVAL on every sweep for ever.
+        guard !WatchScope.isWithin(folder.path, url.path)
+        else { return .targetOutOfScope }
         // The file is already there, so there is nothing to do and — this is
         // the part that bites — something to avoid doing. `free` would read the
         // file's own name as taken, by the file itself, and number the arrival:
@@ -289,7 +315,7 @@ struct RuleRunner: Sendable {
             // against, and taking it before creation would refuse every first
             // arrival into a bucket.
             guard WatchScope.allows(folder.path, home: home) else {
-                return .refused(.outOfScope)
+                return .targetOutOfScope
             }
             let landing = folder.appendingPathComponent(url.lastPathComponent)
             let approvedDestination = ancestry(landing.path)

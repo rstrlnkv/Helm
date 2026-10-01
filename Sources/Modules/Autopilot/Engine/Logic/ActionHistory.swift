@@ -267,6 +267,19 @@ public extension ActionRecord {
                    identify: (String) -> PathCanonical.FileIdentity? = {
                        PathCanonical.identity(of: $0)
                    }) -> ActionRecord? {
+        // **A refusal for scope writes down neither the name nor the path.**
+        // The history sits in a property list any process running as the user
+        // reads without a grant, and a file refused for lying outside the
+        // allowed folders is by definition somewhere the person did not mean a
+        // rule to go — often somewhere macOS protects, reached through a link.
+        // Its name and path would be the one thing this record could leak. The
+        // row reads as the reason and the rule only (an empty subject); the
+        // per-rule repeat collapse keeps it one row rather than one per file.
+        if case .refused(.outOfScope) = outcome {
+            return ActionRecord(at: at, rule: plan.rule.name, file: "", kind: .refused,
+                                detail: RuleOutcome.Refusal.outOfScope.rawValue, path: "",
+                                run: run, ruleID: plan.rule.id)
+        }
         func make(_ kind: Kind, _ detail: String, _ destination: String) -> ActionRecord {
             let who = destination.isEmpty ? nil : identify(destination)
             return ActionRecord(at: at, rule: plan.rule.name, file: plan.facts.name,
@@ -300,6 +313,14 @@ public extension ActionRecord {
         // is not something to open a window on.
         case let .trashed(to: bin): return make(.trashed, "", bin)
         case let .refused(reason): return make(.refused, reason.rawValue, "")
+        // The file is the person's own and in plain sight, and the part that was
+        // refused is what the action aimed at — so the row names the file, as the
+        // row of every other refusal about it does. Stored as the same reason a
+        // record from an earlier build holds, because it reads as the same
+        // sentence and a word nothing older knows would fall through to a bare
+        // verb on the page.
+        case .targetOutOfScope:
+            return make(.refused, RuleOutcome.Refusal.outOfScope.rawValue, "")
         case let .failed(description): return make(.failed, description, "")
         // Nothing happened, so there is nothing to say happened. A rule that
         // matches a file it has already dealt with runs on every sweep, and

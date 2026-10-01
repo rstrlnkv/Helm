@@ -195,7 +195,7 @@ final class RingAccessibilityTests: XCTestCase {
     }
 
     /// Negative free space — a volume that reports more used than it has, which
-    /// `statfs` does under pressure — must not open a wedge that runs backwards.
+    /// a volume-attributes read does under pressure — must not open a wedge that runs backwards.
     func testNegativeFreeSpaceDrawsNoSector() {
         let segments = RingLayout.layout(focus: node("root", 100, children: [node("a", 100)]),
                                          path: "/", depthLevels: 1, freeBytes: -5_000)

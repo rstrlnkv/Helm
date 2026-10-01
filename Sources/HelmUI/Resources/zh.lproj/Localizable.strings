@@ -82,7 +82,7 @@
 "Choose apps" = "选择应用";
 "Choose folder" = "选择文件夹";
 "Choose this app again to confirm which app it is" = "请重新选择此应用以确认其身份";
-"Choose…" = "选择…";
+"Choose…" = "选取…";
 "Clear" = "清除";
 "Clear selection" = "取消选择";
 "Clear the marks" = "清除标记";
@@ -183,7 +183,6 @@
 "Default duration" = "默认时长";
 "Delete" = "删除";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "开发版始终记录日志。文件位于 ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
 "Disabled" = "已停用";
 "Disconnected" = "已断开连接";
@@ -238,6 +237,8 @@
 "Folder" = "文件夹";
 "Folders that keep themselves in order" = "会自己保持整齐的文件夹";
 "Follow" = "跟随";
+"Following" = "跟随中";
+"Not following" = "未跟随";
 "Force quit and remove anyway" = "强制退出并删除";
 "Full Disk Access" = "完全磁盘访问权限";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "磁盘访问已关闭。扫描无法读取全部文件夹，卸载应用时容器会残留。";
@@ -397,7 +398,9 @@
 "On power" = "接通电源时";
 "On quit only" = "仅退出时";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "一个键完成两件事：选择右侧 ⌘、⌥、⌃ 或 ⇧ 并单独按下，第一次修正上一个词，再按一次还原。按住或与其他键同时按下时，它仍是普通修饰键。";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "保存后，Helm 会开始监视这个文件夹，并立即执行下面列出的操作。";
 "Open Accessibility…" = "打开无障碍…";
+"Open Autopilot" = "打开自动整理";
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
 "Open Helm at login" = "登录时打开 Helm";
@@ -890,7 +893,6 @@
 "An extra copy is" = "多余的副本是指";
 "the one that arrived later" = "较晚出现的那份";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重复文件”会先问哪一份才是多余的副本：位于“下载”或“桌面”中的那份，还是较晚出现的那份。每组都会说明为什么保留这份副本，任意一行都可以设为保留，“恢复推荐选择”可以撤回。";
-"Rules to start with" = "从这些规则开始";
 "Screenshots into their own folder" = "截屏放进专属文件夹";
 "Downloads sorted by kind" = "下载按类型归类";
 "Old installers to the Trash" = "旧安装包移到废纸篓";
@@ -1323,3 +1325,23 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "截屏功能需要此权限才能截取屏幕。Helm 不录制视频，也不录音——只是 macOS 把读取像素和录制用同一个开关管理。";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "录屏与系统录音已关闭。没有它，Helm 无法读取屏幕，截屏快捷键不会截取任何内容。";
 "Open Screen & System Audio Recording…" = "打开录屏与系统录音…";
+"Sort By" = "排序方式";
+"Sort by Name" = "按名称排序";
+"Sort by Size" = "按大小排序";
+"Sort by Date Last Opened" = "按上次打开日期排序";
+"No record of opening" = "没有打开记录";
+"Search the log" = "搜索日志";
+"Earlier launch" = "更早的启动";
+"older lines are in the file" = "更早的行在文件中";
+"About Helm keeps its own name as the window’s title; with the page header set to “Without Icon” it was titled “Helm Settings”." = "“关于 Helm”窗口保留自己的名称作为标题；页面标题设为“不带图标”时，它曾被命名为“Helm 设置”。";
+"The Log is a list of launches: each launch of Helm is a card of its own, under headings that name the day, so you can tell one day from the next." = "日志是一份启动列表：Helm 的每次启动都是独立的一张卡片，位于标明日期的标题之下，便于分辨一天与下一天。";
+"Follow in the Log is an eye — open while it follows, slashed while it does not, and never blue; new lines no longer move what you are reading." = "日志中的“跟随”是一只眼睛：跟随时睁开，未跟随时带斜线，且从不显示为蓝色；新的行不再移动你正在阅读的内容。";
+"Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in." = "“主机与密钥”：在“纯文本”中，SSH 配置框四周都留有边距，与 Homebrew 控制台一致，“表格”也位于同一边缘；上方的说明会展开，而不是突然跳出。";
+"Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back." = "“主机与密钥”中的“应用”不再无限等待：如果 SSH 配置在半分钟内没有响应，页面会提示无法保存，并将按钮还给你。";
+"Login Items & Extensions: switching tabs no longer re-lays out its text and blocks." = "“登录项与扩展”：切换标签页不再重新排版其文字和区块。";
+"Switching a tab changes the page at once everywhere, in Settings and in the menu-bar panel; only the switcher’s own selection slides." = "切换标签页会让页面在各处立即切换，无论在设置中还是菜单栏面板里；只有切换器自身的选择项会滑动。";
+"Autopilot’s “Show the rules to start with” is a menu beside “Add folder…”, grouped by folder, and it is there only while you have no rules." = "自动整理的“查看可以从这里开始的规则”是位于“添加文件夹…”旁边的菜单，按文件夹分组，仅在没有任何规则时才会出现。";
+"A starting rule opens its editor with the folder named, and “Choose…” there picks another folder; the rule’s name follows the folder." = "起始规则会在打开编辑器时显示文件夹名称，其中的“选取…”可选取另一个文件夹；规则名称随文件夹而变。";
+"Uninstaller has “Sort By” in the toolbar — “Sort by Name”, “Sort by Size”, “Sort by Date Last Opened” — and each app shows when it was last opened, or “No record of opening”." = "“卸载器”的工具栏中有“排序方式”——“按名称排序”、“按大小排序”、“按上次打开日期排序”——每个 App 还会显示上次打开的时间，或“没有打开记录”。";
+"Disk reports free space the way Finder does, counting what macOS can free by itself, so the figure on the page and in the panel’s tile matches Finder’s." = "“磁盘”报告可用空间的方式与访达一致，会计入 macOS 可自行释放的空间，因此页面上和面板磁贴中的数值与访达的相同。";
+"Helm’s log and Autopilot’s history no longer record the names of apps you remove, or of protected files a rule was kept away from." = "Helm 的日志和自动整理的历史记录不再记录你所移除 App 的名称，也不再记录规则被拦在外面的受保护文件的名称。";

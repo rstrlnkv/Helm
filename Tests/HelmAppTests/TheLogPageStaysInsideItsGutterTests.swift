@@ -6,17 +6,16 @@ import SwiftUI
 import XCTest
 @testable import HelmApp
 
-/// The Log page's filter row ran off its own inset in Russian at the app's
-/// smallest window.
+/// The Log page's cards ran off their own inset in no language — and this holds
+/// it, because the page it replaced did in Russian.
 ///
-/// **Measured 2026-08-14**, offscreen, `.aqua`, three consecutive runs identical:
-/// the furthest drawn layer reached **x = 632.5** at a 645 pt pane in `ru`,
-/// against **625.0** — the pane minus the 20 pt form inset — for every other
-/// language at that width and for `ru` at 680, 720, 770 and 810. The row holds
-/// three controls of fixed width: a segmented picker pinned to
-/// `HelmPickerWidth.segmented`, 403.5 pt in Russian, a `.fixedSize()` menu, and
-/// the `.fixedSize()` Follow toggle — 605 pt of room for the three of them and
-/// the spacer between the menu and Follow.
+/// **Measured 2026-08-14 on the page this one replaced**, offscreen, `.aqua`:
+/// the filter row's furthest drawn layer reached x = 632.5 at a 645 pt pane in
+/// `ru`, against 625.0 — the pane minus the 20 pt form inset — for every other
+/// language. That row is gone (its controls are the window's toolbar now); what
+/// is left to overflow is the card: a header with a time, a version and two
+/// badges that a longer language spells wide, and rows with a wrapped message
+/// and a source line.
 ///
 /// 645 is a real width: `contentMinSize` is 860 and the sidebar's default is 214.
 ///
@@ -30,21 +29,48 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// window can be made without also dragging the divider.
     private let narrowest: CGFloat = 645
     /// And with the divider dragged to its stop: `contentMinSize` 860 less the
-    /// sidebar at `sidebarMaximum` (320) and the split view's own rule, the same
-    /// arithmetic 645 comes from. No pane narrower than this can be reached, so
-    /// this is where every language that folds at all has folded.
+    /// sidebar at `sidebarMaximum` (320) and the split view's own rule.
     private let narrowestWithWidestSidebar: CGFloat = 539
-    /// The pane at the default 1060 pt window, where nothing has ever overflowed.
-    private let widest: CGFloat = 810
 
     override func tearDown() {
         AppLanguage.override = nil
         super.tearDown()
     }
 
+    /// Two launches with everything a card can carry: a fold, a run of the same
+    /// warning with a count, an error with a long message and a source line, a
+    /// line this app did not write, and enough badges for the header to be
+    /// crowded in the languages that spell «warnings» longest.
+    private func fixture() -> [LogEntry] {
+        let base = Date(timeIntervalSince1970: 1_790_000_000)
+        func at(_ seconds: Double) -> Date { base.addingTimeInterval(seconds) }
+        let site = LogSite(file: "LayoutEngine.swift", line: 214, function: "startTap()")
+        var lines = [LogEntry(date: at(0), level: .info, category: "app",
+                              message: "Helm 0.11.1-dev.14 started")]
+        for index in 1...8 {
+            lines.append(LogEntry(date: at(Double(index) * 0.01), level: .info, category: "host",
+                                  message: "enable module \(index)"))
+        }
+        for index in 0..<12 {
+            lines.append(LogEntry(date: at(60 + Double(index)), level: .warn, category: "layout",
+                                  message: "no accessibility grant — not watching", site: site))
+        }
+        lines.append(LogEntry(date: at(90), level: .error, category: "uninstaller.scanLeftovers",
+                              message: String(repeating: "trash refused the folder ", count: 14),
+                              site: LogSite(file: "HelmTrash.swift", line: 140,
+                                            function: "remove(allowed:outOfScope:sharedWith:module:leaf:)")))
+        lines.append(LogEntry(date: at(91), level: .info, category: "",
+                              message: "Helm-OLD-FORMAT half-written line without a stamp or a level"))
+        lines.append(LogEntry(date: at(9_000), level: .info, category: "app",
+                              message: "Helm 0.11.1-dev.15 started"))
+        lines.append(LogEntry(date: at(9_001), level: .warn, category: "vpn", message: "never connected"))
+        return lines
+    }
+
     /// The furthest right anything is drawn, ignoring the full-width containers —
-    /// the hosting view's own layer, the dividers and the row backgrounds all
-    /// reach the pane's edge by construction and say nothing about content.
+    /// the hosting view's own layer and the dividers reach the pane's edge by
+    /// construction and say nothing about content. The cards' own fill ends at
+    /// the gutter, which is the bound.
     private func furthestDrawn(_ shell: ModulePageRender.Shell, width: CGFloat) -> CGFloat {
         shell.layers
             .filter { $0.frame.width < width - 1 }
@@ -52,8 +78,6 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
             .max() ?? 0
     }
 
-    /// The layers past the inset, furthest first, for a message somebody has to
-    /// act on: a number says the row overflows and not which control did it.
     private func offenders(_ shell: ModulePageRender.Shell, width: CGFloat) -> String {
         shell.layers
             .filter { $0.frame.width < width - 1 && $0.frame.maxX > width - HelmLayout.formInset }
@@ -64,283 +88,28 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
             .joined(separator: "\n  ")
     }
 
-    private func page(_ width: CGFloat,
-                      _ appearance: NSAppearance.Name = .aqua) -> ModulePageRender.Shell {
-        ModulePageRender.drawn(LogView(source: { [] }, storedLog: { false }),
-                               in: appearance, width: width)
-    }
-
-    func testTheFilterRowFitsTheNarrowestPaneInEveryLanguage() {
-        let inset = HelmLayout.formInset
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            let drawn = page(narrowest)
-
-            XCTAssertGreaterThanOrEqual(drawn.layers.count, 20, """
-                the log page drew \(drawn.layers.count) layers in \(language.rawValue) — either \
-                it has lost its content or nothing rendered at all, and in the second case the \
-                measurement below is zero for free
-                """)
-            XCTAssertLessThanOrEqual(furthestDrawn(drawn, width: narrowest), narrowest - inset, """
-                the log page draws to x = \(furthestDrawn(drawn, width: narrowest)) in \
-                \(language.rawValue) at the narrowest pane the window allows (\(narrowest) pt), \
-                past its own \(inset) pt inset at \(narrowest - inset). A reader of that language \
-                loses the right edge of the last control in the filter row.
-                  \(offenders(drawn, width: narrowest))
-                """)
-        }
-    }
-
-    /// **The fold happened**, and this is the assertion that says the tests here
-    /// are measuring a fix rather than a page that stopped drawing. At 539 pt the
-    /// Russian row cannot be one line whatever Follow costs: the segmented picker
-    /// alone is 403.5 pt and the module menu 107, against the 499 the pane has —
-    /// so this is the one reading that is still two lines tall, and the one that
-    /// proves `filterRowHeight` can see a fold at all.
-    func testTheRussianRowFoldsAtTheNarrowestPaneWithTheWidestSidebar() {
-        AppLanguage.override = .ru
-
-        XCTAssertGreaterThan(filterRowHeight(page(narrowestWithWidestSidebar)),
-                             filterRowHeight(page(widest)) + 10,
-                             "the Russian filter row is the same height at 539 pt as at 810 — it "
-                             + "did not fold, so whatever keeps it inside the inset is something "
-                             + "else")
-    }
-
-    /// One line of this row, measured 2026-08-14: **49.0 pt** — two
-    /// `HelmSpace.s5` insets around a 33 pt control — at every width in all
-    /// eight languages, against 79.0 for the Russian fold at 645.
-    ///
-    /// A number rather than the English row's height, which is what this was
-    /// first written against: a row that wrapped at *every* width kept all eight
-    /// readings equal to each other and passed, so the check could not fail for
-    /// the thing it exists to catch. Measured with a mutation that folded
-    /// unconditionally.
-    private let oneLineRow: CGFloat = 49
-
-    /// And it folds **only** where it must: a row wrapped at every width would
-    /// pass the overflow test above and lose the layout for everybody.
-    ///
-    /// Two readings, because neither is enough on its own. The height says the
-    /// row is one line — and a wrapping row is *also* one line whenever the
-    /// three controls fit, which is every language at 810 pt, so a page that had
-    /// given up the arrangement entirely measured 49.0 pt exactly like this one.
-    /// What the arrangement is *for* is the right edge: Follow sits against the
-    /// gutter with the gap in the middle, and a wrap packs it to the left.
-    func testNoLanguageFoldsTheRowAtTheDefaultWindow() {
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            let drawn = page(widest)
-            let height = filterRowHeight(drawn)
-            let rightmost = furthestDrawn(inFilterRowOf: drawn)
-
-            XCTAssertEqual(height, oneLineRow, accuracy: 1,
-                           "the filter row is \(height) pt tall in \(language.rawValue) at the "
-                           + "default window against the \(oneLineRow) pt one line of it takes — "
-                           + "it has folded where it has the room not to")
-            XCTAssertEqual(rightmost, widest - HelmLayout.formInset, accuracy: 1,
-                           "the filter row ends at x = \(rightmost) in \(language.rawValue) at the "
-                           + "default window, not at the \(widest - HelmLayout.formInset) pt "
-                           + "gutter — Follow has stopped being pushed to the right edge, so the "
-                           + "row is being laid out as if it had no room")
-        }
-    }
-
-    /// A folded row starts at the gutter, like every other row on the page.
-    ///
-    /// **The test above cannot see this and never could.** It asks only how far
-    /// right the row reaches, and a row centred in its pane reaches *less* far —
-    /// so the fold that fixed the overflow was blessed by a green assertion
-    /// while it drew the Russian row starting at x = 68.0 against the writing
-    /// row's 20.0 above it and the footer's 20.0 below it.
-    ///
-    /// The cause is a pair, not a bug in either half: `HelmWrappingRow` reports
-    /// the width of its widest *line* rather than the width it was proposed, and
-    /// `ViewThatFits` gives the branch it picks that ideal width instead of the
-    /// pane — so the block is smaller than the pane and the default centring
-    /// puts it in the middle. The row's own `.center` default is right for the
-    /// hero's preset rows, so the frame that fixes this belongs at this call
-    /// site.
-    func testTheFoldedFilterRowStartsAtTheGutterInEveryLanguage() {
-        let inset = HelmLayout.formInset
+    func testTheCardsFitTheNarrowPanesInEveryLanguage() {
+        let lines = fixture()
         for width in [narrowest, narrowestWithWidestSidebar] {
-            // Both, always: a reading has a screen, and the two are not the same
-            // tree — SwiftUI draws layers in one it does not draw in the other.
-            for appearance in RenderedInk.bothAppearances {
-                for language in AppLanguage.allCases {
-                    AppLanguage.override = language
-                    let drawn = page(width, appearance)
-                    let screen = "\(language.rawValue) at \(width) pt, "
-                        + RenderedInk.label(of: appearance)
+            for language in AppLanguage.allCases {
+                AppLanguage.override = language
+                let drawn = ModulePageRender.drawn(LogView(source: { lines }, storedLog: { false }),
+                                                   in: .aqua, width: width)
 
-                    XCTAssertGreaterThanOrEqual(drawn.layers.count, 20, """
-                        the log page drew \(drawn.layers.count) layers in \(screen) — nothing \
-                        rendered, and the edge below is then whatever an empty list defaults to
-                        """)
-                    guard let edge = levelPickerEdge(inFilterRowOf: drawn) else {
-                        XCTFail("""
-                            no layer in the filter band is \(levelPickerWidth) pt wide in \
-                            \(screen) — the level picker is not where this measurement looks for \
-                            it, and an edge read from nothing would pass for free
-                            """)
-                        continue
-                    }
-                    XCTAssertEqual(edge, inset, accuracy: 0.5, """
-                        the filter row starts at x = \(edge) in \(screen), not at the \(inset) pt \
-                        inset every other row on this page starts at. The row is centred in the \
-                        pane rather than laid against the gutter.
-                        """)
-                }
+                XCTAssertGreaterThanOrEqual(drawn.layers.count, 30, """
+                    the log page drew \(drawn.layers.count) layers in \(language.rawValue) at \
+                    \(width) pt — either it has lost its content or nothing rendered at all, and in \
+                    the second case the measurement below is zero for free
+                    """)
+                XCTAssertLessThanOrEqual(furthestDrawn(drawn, width: width),
+                                         width - HelmLayout.formInset + 0.5, """
+                    the log page draws to x = \(furthestDrawn(drawn, width: width)) in \
+                    \(language.rawValue) at \(width) pt, past its own \(HelmLayout.formInset) pt \
+                    inset at \(width - HelmLayout.formInset).
+                      \(offenders(drawn, width: width))
+                    """)
             }
         }
-    }
-
-    /// Every language keeps one line at 645 pt, which is what Follow gave its
-    /// word up for.
-    ///
-    /// The owner's screenshot showed the Russian row folding while seven others
-    /// kept the line: three words plus a picker that is its own labels' width is
-    /// a row only some languages can afford. Follow is a glyph now — the name
-    /// lives in its tooltip and its accessibility label — and the row it leaves
-    /// behind fits in all eight languages at every pane down to 645. Measured
-    /// 2026-08-16: with the word the Russian row was 79 pt tall — folded — at
-    /// 645 and reached only x = 542.5; without it the row is 49 pt everywhere
-    /// down to 645 and ends at the 625 pt gutter.
-    ///
-    /// French is the fine print this test also carries, measured 2026-08-14: a
-    /// `Spacer(minLength: 12)` put 24 pt into the ideal width and folded a row
-    /// that fits by 2.0 pt. At `minLength: 0` it is taken.
-    ///
-    /// **The height is not enough on its own, which is why the right edge is
-    /// asserted too.** The three controls fit on one line of the wrapping row as
-    /// well, so a wrongly-folded French row measured 49.0 pt — one line — while
-    /// being drawn 20…613.5 packed and centred, with no gap between the menu and
-    /// Follow. The gutter is the only reading that tells the two apart.
-    func testEveryLanguageKeepsOneLineAtTheNarrowestPane() {
-        let gutter = narrowest - HelmLayout.formInset
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            let drawn = page(narrowest)
-            let height = filterRowHeight(drawn)
-            let rightEdge = furthestDrawn(inFilterRowOf: drawn)
-
-            XCTAssertEqual(height, oneLineRow, accuracy: 1, """
-                the \(language.rawValue) filter row is \(height) pt tall at \(narrowest) pt \
-                against the \(oneLineRow) pt one line takes — Follow is on a second line again, \
-                which is the fold its label was traded away to end
-                """)
-            XCTAssertEqual(rightEdge, gutter, accuracy: 1, """
-                the \(language.rawValue) filter row ends at x = \(rightEdge) at \(narrowest) pt, \
-                not at the \(gutter) pt gutter — Follow has stopped being pushed to the right edge
-                """)
-        }
-    }
-
-    /// The furthest right anything is drawn *inside the filter band*. The page's
-    /// own right edge says nothing here: the writing row above it also ends at
-    /// the gutter, so a measurement over the whole page reads that instead.
-    private func furthestDrawn(inFilterRowOf shell: ModulePageRender.Shell) -> CGFloat {
-        inFilterRow(of: shell).map(\.frame.maxX).max() ?? 0
-    }
-
-    /// Where the row begins, which is the reading the overflow test above cannot
-    /// take: a `maxX ≤ width − inset` assertion is *satisfied* by a row that has
-    /// drifted right-to-left into the middle of the pane, so it went green on
-    /// the very defect this file is about.
-    ///
-    /// The level picker, found by the width the app itself computes for it, and
-    /// **not the leftmost layer in the band**. That was the first reading taken
-    /// and it measures AppKit rather than Helm: the module menu is an
-    /// `NSPopUpButton` inside, which draws 5.0 pt to the left of where SwiftUI
-    /// placed it and hangs a label layer 5.5 pt further left again — so at 539 pt
-    /// in Russian, where the menu is the first control on the second line, the
-    /// band's minimum is 9.5 while the menu's own text starts at 21.0. Nothing
-    /// in this repository can move those 10.5 pt.
-    ///
-    /// The picker is the row's leading control on its first line at every width
-    /// and in all eight languages, and `HelmWrappingRow` starts every line at
-    /// `bounds.minX` — so where the picker is, the row is.
-    ///
-    /// **`<= 0.5`, not `< 0.5`.** `HelmPickerWidth.segmented` rounds to the half
-    /// point — the grid AppKit itself lays a segment out on — so in en, de, ja
-    /// and ru the computed width is an exact `X.5`. This measuring bench draws
-    /// at `displayScale` 1 (`TheHeaderIsTheSystemsScrollEdgeTests` documents the
-    /// same split from the real, 2×, app), and a half-point frame snaps up to
-    /// the next whole point there: measured 266.0 for a computed 265.5 in en at
-    /// 645 pt, 281.0 for 280.5 in de, 185.0 for 184.5 in ja, 404.0 for 403.5 in
-    /// ru — always +0.5, never more, and 0 in every language whose computed
-    /// width already lands on a whole point (zh 150.0, es 204.0, fr 351.0, pt
-    /// 189.0). A strict `< 0.5` excludes exactly the drift this bench always
-    /// introduces, which is why the picker read as absent in precisely those
-    /// four languages and nowhere else.
-    private func levelPickerEdge(inFilterRowOf shell: ModulePageRender.Shell) -> CGFloat? {
-        inFilterRow(of: shell)
-            .filter { abs($0.frame.width - levelPickerWidth) <= 0.5 }
-            .map(\.frame.minX)
-            .min()
-    }
-
-    /// Computed from the page's own labels, never from a second copy of them:
-    /// this is the width `levelFilter` pins the control to, so the two cannot
-    /// disagree when somebody changes one of the three words.
-    private var levelPickerWidth: CGFloat { HelmPickerWidth.segmented(LogView.levelLabels) }
-
-    /// The content of the filter band: everything drawn between the second and
-    /// third rules that is not itself a full-width container. The first is the
-    /// band's own edge, which is not a band boundary.
-    private func inFilterRow(of shell: ModulePageRender.Shell) -> [ModulePageRender.Drawn] {
-        let rules = fullWidthRules(of: shell)
-        guard rules.count == Self.ruleCount else { return [] }
-        return shell.layers.filter {
-            $0.frame.width < shell.width - 1
-                && $0.frame.minY >= rules[1] && $0.frame.maxY <= rules[2]
-        }
-    }
-
-    /// **Four: the band's own edge and the page's three `Divider()`s.** The
-    /// page is header, **rule**, the writing switch, rule, **the filters**,
-    /// rule, the lines, rule, footer.
-    ///
-    /// It was four until 2026-08-20, then three, and it is four again for a
-    /// different reason each time. The first four counted a hairline that
-    /// fenced the header off from the page, and it went with the one under
-    /// every other page header (`ThePageHeaderCarriesNoRuleTests`). The line
-    /// back at the top now is the band's own scroll edge, drawn because the log
-    /// declares `helmPageStandsOnStillContent` — nothing scrolls under this
-    /// page, so the band is lit from the first frame and its rule with it
-    /// (`TheBandStandsOnWhatIsUnderItTests`). Same pixels, opposite meanings:
-    /// one was a fence this app measured away, the other is the edge System
-    /// Settings and Finder both draw.
-    ///
-    /// Which is why the count is asserted and not assumed, and why the filter
-    /// band is read from the *second* and third rules rather than the first
-    /// two — anchored on the first, this would have measured the writing
-    /// switch and gone on reporting a number.
-    private static let ruleCount = 4
-
-    /// The filter row is what lies between the second and third rules. Its
-    /// height is the only signal of the fold that does not depend on
-    /// recognising a SwiftUI-drawn control by its class.
-    private func filterRowHeight(_ shell: ModulePageRender.Shell) -> CGFloat {
-        let rules = fullWidthRules(of: shell)
-        guard rules.count == Self.ruleCount else {
-            XCTFail("the log page draws \(rules.count) full-width rules, not the "
-                    + "\(Self.ruleCount) this measurement is built on — it is measuring "
-                    + "some other band of the page")
-            return 0
-        }
-        return rules[2] - rules[1]
-    }
-
-    /// The band's own edge and the `Divider()`s, top down — the only
-    /// boundaries on this page that do not mean recognising a SwiftUI-drawn
-    /// control by its class. Both are one-point full-width fills and nothing
-    /// here can tell them apart; the order is what says which is which.
-    private func fullWidthRules(of shell: ModulePageRender.Shell) -> [CGFloat] {
-        shell.layers
-            .filter { $0.frame.height <= 1.5 && $0.frame.width >= shell.width - 1 }
-            .map(\.frame.minY)
-            .sorted()
     }
 
     // MARK: - What the two buttons under the lines can do

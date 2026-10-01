@@ -30,6 +30,12 @@ public enum UninstallerCommand: String, CaseIterable, Sendable {
     case dismissTrashedApp
     case setWatchingTrash
     case watchingTrash
+    /// The listed apps' last-opened dates, from Spotlight. Its own command: the
+    /// sizes take seconds and the dates should not wait behind them.
+    case lastOpened
+    /// The remembered order of the Apps tab, and the write of a new one.
+    case sortOrder
+    case setSortOrder
 }
 
 /// What the uninstaller's engine says without being asked.

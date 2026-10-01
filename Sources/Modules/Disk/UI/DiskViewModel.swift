@@ -10,6 +10,8 @@ import Module_Disk_Engine
 
     @Published public private(set) var phase: Phase = .start
     @Published public private(set) var volumes: [VolumeInfo] = []
+    /// When `volumes` was last answered; the wedge weighs it against the scan's own reading.
+    private var volumesReadAt: Date?
     // `internal(set)` rather than `private(set)` on the fields below that the
     // basket writes: the setter's audience is still this type — its basket half
     // lives in `DiskViewModel+Basket.swift`, and `private` stops at the file.
@@ -164,7 +166,7 @@ import Module_Disk_Engine
         // page is open never showed up in the picker at all.
         //
         // `loadVolumes` is one request and returns, so the strong hold the task
-        // takes on `self` once it starts lasts as long as a `statfs` — not the
+        // takes on `self` once it starts lasts as long as a volume-attributes read — not the
         // trap CLAUDE.md records for a `for await` over a stream nothing
         // finishes.
         mounts = MountWatch { [weak self] in
@@ -219,7 +221,15 @@ import Module_Disk_Engine
         }
         result = cached.result
         scannedPath = cached.result.root.path
-        completedAt = cached.savedAt
+        // A date ahead of the clock is no reading at all: the clock was set back
+        // after the scan, or the file came from a Mac whose clock ran fast. Kept
+        // as it stands it is later than every list this Mac reads until the clock
+        // passes it, so the wedge would draw the saved figure beside a tile that
+        // says another, and every re-save would carry the date on into the next
+        // launch. It is taken as no newer than the list already read, and failing
+        // that as now.
+        let now = Date()
+        completedAt = cached.savedAt <= now ? cached.savedAt : (volumesReadAt ?? now)
         restored = true
         stopped = false
         rootTitle = ""
@@ -255,7 +265,7 @@ import Module_Disk_Engine
     public var walking: Bool { live || measuring }
 
     public var focus: DiskEntry? { focusPath.last }
-    public var basketBytes: Int { basket.reduce(0) { $0 + $1.bytes } }
+    public var basketBytes: Int { basket.map(\.bytes).saturatingSum() }
     /// Whether the page draws the bar under the ring — for a basket waiting to
     /// be emptied, or for the report of an emptying that has happened.
     ///
@@ -287,6 +297,7 @@ import Module_Disk_Engine
             return
         }
         volumes = list
+        volumesReadAt = Date()
         volumeListLost = false
         // **The ring is laid out against this list, and this list arrives after
         // it.** `recomputeSegments` asks `isVolumeScan`, a membership test of
@@ -613,7 +624,18 @@ import Module_Disk_Engine
         // folder fell under the minimum visible angle and was folded into
         // "other". The ring came out a flat grey disc that said nothing about
         // the folder it was measuring.
-        let free = focusPath.count == 1 && isVolumeScan ? (result?.freeBytes ?? 0) : 0
+        // The wedge draws the freshest of two readings of the same volume: the
+        // list the tile beside it draws (`volumesReadAt`) and the free space the
+        // scan read at the end of its walk (`completedAt`, which a restore sets
+        // to the day the scan was saved). «Scan again» reads the second and not
+        // the first, so after emptying the Trash the list is the older one; a
+        // restored scan is older than any list read since, and a saved date ahead
+        // of the clock was already pulled back to the list's own at the restore
+        // (`restoreLastScan`). A tie goes to the list.
+        let live = volumes.first { $0.path == scannedPath }?.freeBytes
+        let scanIsNewer = volumesReadAt.map { read in completedAt.map { $0 > read } ?? false } ?? true
+        let free = focusPath.count == 1 && isVolumeScan
+            ? (scanIsNewer ? (result?.freeBytes ?? live) : live) ?? 0 : 0
         // One level deeper than the ring draws: the spare is invisible until a
         // drill starts, and it is what the new outermost ring slides in from.
         // See `RingUnfold.opacity(isSpare:)`.

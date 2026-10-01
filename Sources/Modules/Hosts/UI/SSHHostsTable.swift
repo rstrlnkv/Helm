@@ -44,7 +44,10 @@ struct SSHHostsTable: View {
             }
             if !hvm.otherTrusted.isEmpty { other }
         }
-        .padding(HelmLayout.formInset)
+        // The SSH tab's margin, the one the text box and the strip over both
+        // stand on (`HostsSettingsPage.textBoxMargin`), so switching the view
+        // moves the content and not its edge.
+        .padding(HostsSettingsPage.textBoxMargin)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -136,10 +139,17 @@ struct SSHHostsTable: View {
             // The name takes you to the key. A row that only printed it would
             // leave somebody scrolling the first tab for a file name they have
             // just read.
-            Button(HostsStr.usesKey(name)) { select(name) }
-                .buttonStyle(.link)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            //
+            // **The label carries its own limit.** A `.link` button given a
+            // title wraps it whatever `lineLimit` is put outside the button —
+            // German drew «Schlüssel:» over the file name, centred, and the
+            // card grew 16 pt — so the text is the label and is limited there.
+            Button { select(name) } label: {
+                Text(HostsStr.usesKey(name))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .buttonStyle(.link)
         case .missing(let name):
             HStack(spacing: HelmSpace.s2) {
                 Text(HostsStr.usesKey(name))

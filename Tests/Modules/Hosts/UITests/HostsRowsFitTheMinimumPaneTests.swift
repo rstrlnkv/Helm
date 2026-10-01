@@ -208,7 +208,10 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
     /// Two as well: the address, and the fingerprint of the trust drawn under
     /// the host.
     func testTheHostRowFitsTheNarrowestPane() {
-        judge("the host row", atLeast: 2) { SSHHostsTable(hvm: $0, select: { _ in }) }
+        // The SSH tab's own margin, which the table shares with the text box.
+        judge("the host row", atLeast: 2, inset: HostsSettingsPage.textBoxMargin) {
+            SSHHostsTable(hvm: $0, select: { _ in })
+        }
     }
 
     /// The `/etc/hosts` editor is off the screen and still in the tree, and its
@@ -253,7 +256,7 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
 
     /// The four readings, on one subject.
     private func judge(_ what: String, atLeast lines: Int, growing: Int = 1,
-                       wrapping: Int = 0,
+                       wrapping: Int = 0, inset: CGFloat = HelmLayout.formInset,
                        _ view: (HostsViewModel) -> some View) {
         let narrow = draw(view(model()), at: narrowest)
         let wide = draw(view(model()), at: widest)
@@ -319,12 +322,13 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
             what the longest-line reading above cannot see once another line is already growing.
             """)
 
-        assertTheRowKeepsItsGutter(what, narrow: narrow, wide: wide)
+        assertTheRowKeepsItsGutter(what, narrow: narrow, wide: wide, inset: inset)
     }
 
     /// The two readings that need no text: the row starts where every other row
     /// on the page starts, and ends before the gutter.
-    private func assertTheRowKeepsItsGutter(_ what: String, narrow: Drawing, wide: Drawing) {
+    private func assertTheRowKeepsItsGutter(_ what: String, narrow: Drawing, wide: Drawing,
+                                            inset: CGFloat = HelmLayout.formInset) {
         XCTAssertGreaterThanOrEqual(content(narrow).count, 5,
                                     "\(what) drew \(content(narrow).count) layers at "
                                     + "\(narrowest) pt — nothing rendered, and every edge below "
@@ -336,9 +340,9 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
             the right edge — SwiftUI centres it — so the row walks in from the gutter, which is \
             what a width in points looks like from the outside.
             """)
-        XCTAssertLessThanOrEqual(furthest(narrow), narrowest - HelmLayout.formInset + 1, """
+        XCTAssertLessThanOrEqual(furthest(narrow), narrowest - inset + 1, """
             \(what) draws to x = \(furthest(narrow)) at the \(narrowest) pt pane, past its own \
-            \(HelmLayout.formInset) pt inset at \(narrowest - HelmLayout.formInset).
+            \(inset) pt inset at \(narrowest - inset).
             """)
     }
 }

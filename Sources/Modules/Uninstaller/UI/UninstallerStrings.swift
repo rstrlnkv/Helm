@@ -191,6 +191,23 @@ enum UnStr {
     static var openExtensions: String { HelmControlName.openExtensions }
     static var done: String { L("Done") }
     static var refreshList: String { L("Refresh list") }
+    /// The toolbar action's tooltip and VoiceOver name. Finder's own words for
+    /// the same menu.
+    static var sortBy: String { L("Sort By") }
+    /// Whole phrases and not «Name»: that key already names an Autopilot rule's
+    /// field, «Size» its condition — one key, one meaning.
+    static func sortName(_ order: AppSortOrder) -> String {
+        switch order {
+        case .name: return L("Sort by Name")
+        case .size: return L("Sort by Size")
+        case .dateLastOpened: return L("Sort by Date Last Opened")
+        }
+    }
+    /// The age is `HelmDates.age(_, style: .full)`.
+    static func opened(_ age: String) -> String { L("Opened \(age)", [.ru: "Открыто \(age)", .es: "Abierta \(age)", .fr: "Ouverte \(age)", .de: "Geöffnet \(age)", .ja: "開いた: \(age)", .zh: "打开于 \(age)", .pt: "Aberto \(age)"]) }
+    /// Spotlight has no date. Deliberately not «Never opened»: it is silent for
+    /// an unindexed volume and for a fresh reindex as well.
+    static var noRecordOfOpening: String { L("No record of opening") }
     /// Nil while the first query is still out: the line reads as a count that
     /// has not arrived rather than a count of zero.
     static func appsCount(_ n: Int?) -> String {
