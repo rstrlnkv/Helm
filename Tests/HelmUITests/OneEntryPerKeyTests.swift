@@ -17,8 +17,8 @@ import XCTest
 /// the glyph picker, the rest by three later features, each re-adding a key
 /// that was already there under a translation written for something else.
 ///
-/// **A duplicate key is CLAUDE.md's "one English key means one thing" rule
-/// wearing a disguise**: two entries under one key are two meanings that
+/// **A duplicate key is CLAUDE.md's rule of different English for a second
+/// meaning, wearing a disguise**: two entries under one key are two meanings that
 /// somebody translated separately, and the file quietly picks one.
 final class OneEntryPerKeyTests: XCTestCase {
 

@@ -88,7 +88,7 @@ public enum DuplicatesSettings {
     /// settings window that could not answer a mouse-up. `DuplicatesViewModel` is
     /// `@MainActor` and read the policy inside its own `init`, which is the same
     /// door: a `@State` initial value, a window's construction and a page's view
-    /// model are all «an `init`», and CLAUDE.md's rule about that names them all.
+    /// model are all «an `init`», and CLAUDE.md's rule names the first of them.
     ///
     /// Nil is **«not yet»**, a third answer beside the two the seal gives, and it
     /// is deliberately not `.standard`: a caller that folded it into the default

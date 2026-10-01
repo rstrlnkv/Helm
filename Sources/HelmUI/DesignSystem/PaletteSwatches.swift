@@ -6,9 +6,9 @@ import AppKit
 
 /// `PaletteColor.offered` and a colour of your own, as one compact control.
 /// One of these, no local variants: it was a private method inside
-/// `KeepAwakeSettingsPage` until VPN needed the same control, and CLAUDE.md's
-/// list of things written twice before they moved exists to stop the second
-/// copy.
+/// `KeepAwakeSettingsPage` until VPN needed the same control, and the list of
+/// things written twice before they moved, in ARCHITECTURE.md § Tests and
+/// measurement, exists to stop the second copy.
 ///
 /// **A menu, not a row of swatches.** Two of these in one card — the active
 /// colour and the countdown colour — were two rainbows 270 pt wide, and a

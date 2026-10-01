@@ -16,9 +16,9 @@ import Module_Uninstaller_Engine
 /// now (`SettingsToolbar`, `HelmApp`-only — `LivePageToolbarFixture`'s own
 /// header says why a module's own `UITests` target has no way to build one),
 /// so a check that types into it has to live where that toolbar can be built:
-/// `Tests/HelmAppTests`, per `CLAUDE.md`'s own "put a check for the app
-/// layer in `Tests/HelmAppTests`, since the host does take a test target and
-/// there is no reason to move code out of it to reach one." `UninstallerWire`,
+/// `Tests/HelmAppTests`, per `CLAUDE.md`'s "app-layer checks in
+/// `Tests/HelmAppTests`" and ARCHITECTURE.md § Targets, where the host does take
+/// a test target. `UninstallerWire`,
 /// the engine double the original file drove, is a fixture private to
 /// `Module_Uninstaller_UITests` and cannot cross that boundary either — the
 /// inline `AppsStub` below answers the one command this file needs

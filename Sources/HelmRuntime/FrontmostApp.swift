@@ -7,7 +7,7 @@ import AppKit
 /// applications carries the stack trace from the four releases where the VPN
 /// engine proved it.
 ///
-/// The Keyboard module then proved it a second time. `frontmostBundleID` read
+/// Layout's fix gesture then proved it a second time. `frontmostBundleID` read
 /// `NSWorkspace.shared.frontmostApplication` on whatever thread asked, which was
 /// survivable while the callers were the tap's own main-thread callback — and
 /// stopped being survivable the moment the gesture moved to a background queue

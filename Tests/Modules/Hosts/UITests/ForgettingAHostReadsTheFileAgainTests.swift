@@ -25,7 +25,7 @@ import XCTest
 /// as `applied`, because the engine reads back what it just sent and finds it
 /// there.
 ///
-/// This is the family CLAUDE.md names «a reading older than the act», and the
+/// This is the family ARCHITECTURE.md § The gates names a reading older than the act, and the
 /// fix has a shape the module already uses: the act names the line
 /// (`KnownHostsFile.Entry.raw` is held on the value for exactly this kind of
 /// reason), and the engine re-reads, removes that line and writes.

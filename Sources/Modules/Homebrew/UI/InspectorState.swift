@@ -516,7 +516,7 @@ enum PackageBlocks {
 }
 
 /// The two questions the rows and the inspector both ask, answered once —
-/// "build them from the same expressions the behaviour consults" (CLAUDE.md).
+/// published sets "built once from the same expressions the behaviour consults" (CLAUDE.md).
 enum PackageStanding {
     /// Whether an installed package has an update waiting, without asking
     /// `brew outdated` again: it reads the list the page already holds, and
