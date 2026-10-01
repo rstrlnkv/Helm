@@ -59,11 +59,15 @@ public struct FrozenWindow: Sendable, Equatable {
     public let id: UInt32
     public let frame: CGRect
     public let layer: Int
+    /// The owning process's name from the same list reading; empty when the list
+    /// gave none.
+    public let ownerName: String
 
-    public init(id: UInt32, frame: CGRect, layer: Int) {
+    public init(id: UInt32, frame: CGRect, layer: Int, ownerName: String = "") {
         self.id = id
         self.frame = frame
         self.layer = layer
+        self.ownerName = ownerName
     }
 }
 

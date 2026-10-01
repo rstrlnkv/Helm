@@ -8,16 +8,35 @@ public enum WindowPick {
     /// screen, and the topmost of them under the pointer is nearly always one.
     public static let smallest: CGFloat = 8
 
-    /// The frontmost window under `point` (CG-global points), from a list that is
-    /// ordered front to back.
-    ///
-    /// Only layer 0 and above: the wallpaper and the desktop icons sit below it
-    /// and are not a window a person means.
+    /// The lowest window level a person points at: an ordinary application window.
+    /// Read from `CGWindowLevelForKey` once, so the bound is the system's own and
+    /// not a number copied from a header. The wallpaper and the desktop icons sit
+    /// below it.
+    public static let lowestLevel = Int(CGWindowLevelForKey(.normalWindow))
+
+    /// The highest one: a floating panel (a utility palette, an inspector). Above
+    /// it live the Dock (a full-screen transparent sheet at its own level), the
+    /// menu bar, status items and overlays, none of which is "a window" to
+    /// Command-Shift-4 and then Space.
+    public static let highestLevel = Int(CGWindowLevelForKey(.floatingWindow))
+
+    /// The two processes whose windows are the system's furniture, whatever level
+    /// they claim. Names are fixed by the system, not localised.
+    static let furniture: Set<String> = ["Dock", "Window Server"]
+
+    /// Whether a person could mean this window by pointing at it: an ordinary or
+    /// floating application window of a useful size, not the system's furniture.
+    /// The one predicate every reader of the window list asks.
+    public static func isPickable(_ window: FrozenWindow) -> Bool {
+        (lowestLevel...highestLevel).contains(window.layer)
+            && !furniture.contains(window.ownerName)
+            && window.frame.width >= smallest && window.frame.height >= smallest
+    }
+
+    /// The frontmost pickable window under `point` (CG-global points), from a
+    /// list that is ordered front to back.
     public static func window(at point: CGPoint, in windows: [FrozenWindow]) -> FrozenWindow? {
-        windows.first {
-            $0.layer >= 0 && $0.frame.width >= smallest && $0.frame.height >= smallest
-                && $0.frame.contains(point)
-        }
+        windows.first { isPickable($0) && $0.frame.contains(point) }
     }
 
     /// The display a window belongs to for a crop, and the part of the window on it.

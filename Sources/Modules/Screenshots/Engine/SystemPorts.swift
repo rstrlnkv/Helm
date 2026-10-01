@@ -184,7 +184,8 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
                   let width = bounds["Width"], let height = bounds["Height"]
             else { return nil }
             return FrozenWindow(id: number, frame: CGRect(x: x, y: y, width: width, height: height),
-                                layer: layer)
+                                layer: layer,
+                                ownerName: entry[kCGWindowOwnerName as String] as? String ?? "")
         }
     }
 }
