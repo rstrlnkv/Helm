@@ -153,6 +153,18 @@ only once it has no known problems left.
 - **UPD** VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words.
 - **UPD** Section headings are headings to VoiceOver’s rotor.
 - **UPD** On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar.
+- **FIX** About Helm keeps its own name as the window’s title; with the page header set to “Without Icon” it was titled “Helm Settings”.
+- **NEW** The Log is a list of launches: each launch of Helm is a card of its own, under headings that name the day, so you can tell one day from the next.
+- **UPD** Follow in the Log is an eye — open while it follows, slashed while it does not, and never blue; new lines no longer move what you are reading.
+- **FIX** Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in.
+- **FIX** Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back.
+- **FIX** Login Items & Extensions: switching tabs no longer re-lays out its text and blocks.
+- **UPD** Switching a tab changes the page at once everywhere, in Settings and in the menu-bar panel; only the switcher’s own selection slides.
+- **UPD** Autopilot’s “Show the rules to start with” is a menu beside “Add folder…”, grouped by folder, and it is there only while you have no rules.
+- **NEW** A starting rule opens its editor with the folder named, and “Choose…” there picks another folder; the rule’s name follows the folder.
+- **NEW** Uninstaller has “Sort By” in the toolbar — “Sort by Name”, “Sort by Size”, “Sort by Date Last Opened” — and each app shows when it was last opened, or “No record of opening”.
+- **FIX** Disk reports free space the way Finder does, counting what macOS can free by itself, so the figure on the page and in the panel’s tile matches Finder’s.
+- **FIX** Helm’s log and Autopilot’s history no longer record the names of apps you remove, or of protected files a rule was kept away from.
 
 ## 0.10.0 — 2026-08-09
 

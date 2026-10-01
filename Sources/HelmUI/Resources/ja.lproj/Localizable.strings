@@ -1265,3 +1265,15 @@
 "Search the log" = "ログを検索";
 "Earlier launch" = "以前の起動";
 "older lines are in the file" = "それ以前の行はファイルにあります";
+"About Helm keeps its own name as the window’s title; with the page header set to “Without Icon” it was titled “Helm Settings”." = "ページヘッダを“アイコンなし”にしても、“Helm について”のウインドウのタイトルは“Helm 設定”にならず、自身の名前のままです。";
+"The Log is a list of launches: each launch of Helm is a card of its own, under headings that name the day, so you can tell one day from the next." = "ログは起動ごとの一覧になりました。Helm の起動ごとに専用のカードがあり、日付を示す見出しの下に並ぶので、日の区切りが分かります。";
+"Follow in the Log is an eye — open while it follows, slashed while it does not, and never blue; new lines no longer move what you are reading." = "ログの“追従”は目のアイコンです。追従中は開き、していないときは斜線が入り、青にはなりません。新しい行が読んでいる位置を動かすこともなくなりました。";
+"Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in." = "“ホストと鍵”の“標準テキスト”では、SSH 設定のボックスが四方に余白を取って収まり、Homebrew のコンソールと同じになりました。“表”も同じ端に揃います。上の注記は、いきなり現れずに開きます。";
+"Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back." = "“ホストと鍵”の“適用”は、いつまでも待たなくなりました。SSH 設定が 30 秒たっても応答しない場合は、保存できなかったことをページが知らせ、ボタンを使えるように戻します。";
+"Login Items & Extensions: switching tabs no longer re-lays out its text and blocks." = "“ログイン項目と機能拡張”：タブを切り替えても、テキストとブロックのレイアウトをやり直さなくなりました。";
+"Switching a tab changes the page at once everywhere, in Settings and in the menu-bar panel; only the switcher’s own selection slides." = "タブを切り替えると、設定でもメニューバーのパネルでも、ページがすぐに切り替わります。スライドするのは切り替えスイッチ自身の選択だけです。";
+"Autopilot’s “Show the rules to start with” is a menu beside “Add folder…”, grouped by folder, and it is there only while you have no rules." = "オートパイロットの“はじめの一歩となるルールを見る”は、“フォルダを追加…”の隣にあるメニューで、フォルダごとにまとまっていて、ルールがない間だけ表示されます。";
+"A starting rule opens its editor with the folder named, and “Choose…” there picks another folder; the rule’s name follows the folder." = "スタートルールのエディタはフォルダ名を示した状態で開き、そこで“選択…”を選ぶと別のフォルダを選べます。ルール名はフォルダに合わせて変わります。";
+"Uninstaller has “Sort By” in the toolbar — “Sort by Name”, “Sort by Size”, “Sort by Date Last Opened” — and each app shows when it was last opened, or “No record of opening”." = "“アンインストーラ”のツールバーに“表示順序”が加わりました。“名前で並べ替え”、“サイズで並べ替え”、“最後に開いた日で並べ替え”があり、各 App には最後に開いた日、または“開いた記録なし”が表示されます。";
+"Disk reports free space the way Finder does, counting what macOS can free by itself, so the figure on the page and in the panel’s tile matches Finder’s." = "“ディスク”は Finder と同じ方法で空き容量を報告し、macOS が自動で空けられる分も数えるので、ページとパネルのタイルの数値が Finder の値と一致します。";
+"Helm’s log and Autopilot’s history no longer record the names of apps you remove, or of protected files a rule was kept away from." = "Helm のログとオートパイロットの履歴には、削除した App の名前や、ルールの対象外とされた保護ファイルの名前が記録されなくなりました。";
