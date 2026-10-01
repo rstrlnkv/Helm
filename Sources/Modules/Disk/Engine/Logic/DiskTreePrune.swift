@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Applies a deletion to a scanned tree instead of re-measuring the disk.
 /// A whole-volume scan takes a minute; the one thing a trash operation
@@ -22,8 +23,8 @@ public enum DiskTreePrune {
         // Only the removed children's bytes leave; whatever the parent held
         // beyond its listed children (folded buckets, unlisted remainder)
         // stays charged to it.
-        let lost = node.children.reduce(0) { $0 + $1.bytes }
-            - children.reduce(0) { $0 + $1.bytes }
+        let lost = node.children.map(\.bytes).saturatingSum()
+            - children.map(\.bytes).saturatingSum()
         return DiskEntry(name: node.name, path: node.path, bytes: max(node.bytes - lost, 0),
                          isDirectory: node.isDirectory, noAccess: node.noAccess,
                          children: children, isFolded: node.isFolded)

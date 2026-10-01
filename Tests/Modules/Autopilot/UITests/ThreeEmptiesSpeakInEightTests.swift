@@ -1,5 +1,6 @@
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 import XCTest
 import Module_Autopilot_Engine
@@ -23,18 +24,26 @@ final class ThreeEmptiesSpeakInEightTests: XCTestCase {
 
     // MARK: - The reason the page actually reaches
 
-    /// Each of the three states built out of what the engine answers, so the
+    /// Each of the four pages built out of what the engine answers — three
+    /// reasons and the folder with no rules, which says nothing — so the
     /// sentences below are ones this page can really draw. **The state is
     /// asserted before the reason** — a reason computed over a page that never
     /// reached that state is a check that cannot fail.
-    func testTheThreeStatesEachReachTheirOwnReason() async {
+    func testTheFourPagesEachReachTheirOwnReason() async {
         let watched = WatchedFolder(id: "f", path: home + "/Downloads", rules: [])
         var running = watched
         running.rules = [Rule(id: "r", name: "r", enabled: true,
                               conditions: [.fileExtension(["pdf"])], action: .trash)]
 
+        var off = watched
+        off.rules = [Rule(id: "r", name: "r", enabled: false,
+                          conditions: [.fileExtension(["pdf"])], action: .trash)]
+
+        // A folder with no rules says nothing here: the page's own «No rules
+        // yet» is the sentence, and a second one contradicted it.
         for (folders, expected) in [([], HistoryEmpty.Reason.noFolders),
-                                    ([watched], .everyRuleOff),
+                                    ([watched], nil),
+                                    ([off], .everyRuleOff),
                                     ([running], .nothingYet)] {
             let wire = AutopilotWire(folders: folders)
             let model = model(on: wire)
@@ -116,9 +125,9 @@ final class ThreeEmptiesSpeakInEightTests: XCTestCase {
         }
     }
 
-    /// The button that adds a folder says which folder, in macOS's own word for
-    /// it — never a ninth translation of a name the system already has.
-    func testTheButtonNamesTheFolderInTheSystemsOwnWord() async throws {
+    /// The menu names each folder in macOS's own word for it — never a ninth
+    /// translation of a name the system already has.
+    func testTheMenuNamesTheFolderInTheSystemsOwnWord() async throws {
         let model = model(on: AutopilotWire())
         await model.load()
         let offer = try XCTUnwrap(model.presets.first { $0.preset.folder == .downloads })
@@ -135,15 +144,12 @@ final class ThreeEmptiesSpeakInEightTests: XCTestCase {
                               "precondition: macOS renames this folder in \(language.rawValue)")
         }
 
-        for language in AppLanguage.allCases {
-            let folder = SystemFolderNames.display(path: home + "/Downloads", home: home,
-                                                   language: language.rawValue) ?? "Downloads"
-            XCTAssertTrue(ApStr.seePreset(in: folder, language: language).contains(folder),
-                          "\(language.rawValue) dropped the folder name off the button")
+        AppLanguage.each { language in
+            XCTAssertEqual(offer.folderName(home: home),
+                           SystemFolderNames.display(path: home + "/Downloads", home: home,
+                                                     language: language.rawValue)
+                               ?? "Downloads",
+                           "\(language.rawValue): the menu's heading is not the system's word")
         }
-        XCTAssertEqual(offer.folderName(home: home),
-                       SystemFolderNames.display(path: home + "/Downloads", home: home,
-                                                 language: AppLanguage.current.rawValue)
-                           ?? "Downloads")
     }
 }

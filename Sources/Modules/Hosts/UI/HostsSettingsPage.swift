@@ -43,14 +43,35 @@ struct HostsSettingsPage: View {
     @State private var barHeight: CGFloat = 0
     @State private var showingBar: Bool
 
+    /// The SSH strip's natural height, measured, and whether it is *drawn* —
+    /// the pair `helmAccordion` takes. Same shape as the bar above, and for the
+    /// same reason: a strip put in by `if` moves everything under it, the text
+    /// box and the caret in it included, in one frame.
+    @State private var sshHeaderHeight: CGFloat?
+    @State private var showingSSHHeader: Bool
+
     init(vm: ModuleViewModel) {
+        self.init(vm: vm, opensOnSSHText: false)
+    }
+
+    /// The seam a render reaches the SSH tab's plain-text box through: `tab`
+    /// and `showingText` are this visit's own state, with no other way in from
+    /// outside the view.
+    init(vm: ModuleViewModel, opensOnSSHText: Bool) {
         let model = HostsViewModel.shared(vm: vm)
         hvm = model
+        if opensOnSSHText {
+            _tab = State(initialValue: .ssh)
+            _showingText = State(initialValue: true)
+        }
         // Seeded from the model rather than from `false`: a page reopened on
         // edits somebody left behind must show the bar, not play it growing in.
         // A `State` initial value is used once per identity, and this page's
         // identity lasts as long as the visit.
         _showingBar = State(initialValue: model.hasUnsavedChanges)
+        // The same for the SSH strip: a page reopened with something to say
+        // shows it, and does not play it growing in.
+        _showingSSHHeader = State(initialValue: Self.sshHeaderHasSomethingToSay(model))
     }
 
     var body: some View {
@@ -69,6 +90,18 @@ struct HostsSettingsPage: View {
         // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
         // below for what each zone carries and why.
         .helmWindowToolbar(toolbarContent, token: HostsDescriptor.id.rawValue)
+        .onChange(of: sshHeaderHasSomethingToSay) { _, something in
+            withAnimation(HelmMotion.disclosure) { showingSSHHeader = something }
+        }
+        // **The measured height does not outlive the tab it was measured in.**
+        // This page lives across tabs and `sshTab` does not, so a height taken
+        // while the strip was empty (13 pt) was still stored when the tab came
+        // back with a sentence due, and the first frame replayed the reveal
+        // from it. Forgotten on the way out, the return is a first measurement
+        // — which `helmMeasuredHeight` does not animate.
+        .onChange(of: tab) { _, now in
+            if now != .ssh { sshHeaderHeight = nil }
+        }
     }
 
     /// The two view-mode options, in the order the switcher shows them —
@@ -293,28 +326,72 @@ struct HostsSettingsPage: View {
     /// fingerprints already trusted for it — and the same raw view of the file
     /// beside them, because the text is what gets written.
     ///
-    /// The header says what this file does *not* need: no password, because it
-    /// is the person's own.
+    /// A strip over it says what the file needs from the person — a refusal, a
+    /// `known_hosts` that is missing, Revert and Apply for an edit — and is
+    /// there only while it has something to say. There is no password to ask
+    /// for: the file is the person's own.
+    ///
+    /// **One left edge and one right edge for the whole tab**
+    /// (`textBoxMargin`): the strip's note and buttons, the banner, the box and
+    /// the table's cards all stand on it, so turning the view switcher moves
+    /// the content and not its edge.
     private var sshTab: some View {
         VStack(spacing: 0) {
-            sshHeader
-            Divider()
+            // Open only while it has a sentence or a button, as `keysHeader`
+            // is drawn: with neither it was an empty row and a rule, in both
+            // views. It is *revealed*, not inserted — `helmAccordion`, the
+            // measured height under a clip on `HelmMotion.disclosure`, which
+            // collapses under Reduce Motion — because the first typed letter
+            // otherwise moved the text box and its caret 37 pt in one frame.
+            // The flag is this view's own and is written inside the
+            // transaction where the change lands (the `onChange` in `body`),
+            // since the change is the engine's snapshot or a keystroke and has
+            // no call site to wrap.
+            VStack(spacing: 0) {
+                sshHeader
+                Divider()
+            }
+            .helmAccordion(open: showingSSHHeader, height: $sshHeaderHeight)
             if hvm.sshReadable {
                 if !hvm.sshWritable {
                     // Said on open rather than at the press, for the reason the
                     // hosts tab says its own refusal early: a refusal somebody
                     // meets only at Apply is a refusal that costs them their
                     // work. The file is still shown — Helm reads it either way.
+                    //
+                    // On the tab's margin in both views — the same edges, and
+                    // the margin for the gap above and below it: under it the
+                    // box and the table each carry their own.
                     HelmBanner(HostsStr.sshNotWritable)
-                        .padding(.horizontal, HelmLayout.formInset)
-                        .padding(.vertical, HelmSpace.s3)
+                        .padding(.horizontal, Self.textBoxMargin)
+                        .padding(.top, Self.textBoxMargin)
                 }
                 if showingText {
                     TextEditor(text: Binding(get: { hvm.sshText },
                                              set: { hvm.setSSHText($0) }))
                         .font(.system(.body, design: .monospaced))
+                        // **The band under the header was the text view's own
+                        // fill.** A `TextEditor` is an `NSScrollView` over an
+                        // `NSTextView` and paints `textBackgroundColor` edge to
+                        // edge — white in light, near-black in dark — against
+                        // a pane that is neither, so a slab began at the
+                        // header's divider and ran to the window's edges. The
+                        // platform's fill is hidden and the box is drawn as the
+                        // console on the Homebrew page is: a well.
+                        .scrollContentBackground(.hidden)
                         .accessibilityLabel(HostsStr.sshTab)
                         .disabled(!hvm.sshWritable)
+                        // **The inset is outside the scroll view**, for the
+                        // reason the Homebrew console's is: padding inside the
+                        // scrolled content scrolls away and leaves the clip on
+                        // the box's edge. `HelmSpace.s4`, the same step.
+                        .padding(Self.textBoxInset)
+                        .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
+                            .fill(HelmSurface.wellFill))
+                        // Out from the page's edges and from the header by
+                        // the step the Homebrew console takes for it, on all
+                        // four sides.
+                        .padding(Self.textBoxMargin)
                 } else {
                     ScrollView {
                         SSHHostsTable(hvm: hvm) { key in
@@ -333,6 +410,34 @@ struct HostsSettingsPage: View {
                 empty("doc.text.magnifyingglass", HostsStr.sshUnreadable)
             }
         }
+    }
+
+    /// How far the plain-text box's text sits from the box on every side —
+    /// `HelmSpace.s4`, the step the Homebrew console takes for the same thing.
+    static let textBoxInset = HelmSpace.s4
+
+    /// How far the box itself sits from the page's edges and from what is
+    /// above it — `HelmSpace.s5`, the step the Homebrew console's stack is
+    /// padded by (`HomebrewSettingsPage.console`); the box is a console, and is
+    /// placed as one. **It is the SSH tab's margin, not the box's alone**: the
+    /// strip, the banner and `SSHHostsTable` read it too, so the two views
+    /// share an edge. The Keys tab keeps the page's 20 pt column
+    /// (`HelmLayout.formInset`); that is a step between tabs, which are never
+    /// on screen together, and not inside one.
+    static let textBoxMargin = HelmSpace.s5
+
+    /// Whether `sshHeader` has anything to put on it: the same conditions its
+    /// body reads, so a note or a button added there without being added here
+    /// is a header that never draws.
+    private var sshHeaderHasSomethingToSay: Bool { Self.sshHeaderHasSomethingToSay(hvm) }
+
+    /// Static so `init` can seed the drawn flag from the model before there is
+    /// a `self` to ask.
+    private static func sshHeaderHasSomethingToSay(_ hvm: HostsViewModel) -> Bool {
+        if !hvm.knownHostsReadable { return true }
+        if let outcome = hvm.knownHostsOutcome, outcome != .applied { return true }
+        if let outcome = hvm.sshOutcome, outcome != .applied { return true }
+        return hvm.sshHasUnsavedChanges
     }
 
     private var sshHeader: some View {
@@ -361,13 +466,17 @@ struct HostsSettingsPage: View {
                 note(sshOutcomeSaid(outcome))
             }
             if hvm.sshHasUnsavedChanges {
+                // Both are off while the engine is writing, as hosts' are:
+                // a Revert then had the answer arrive about text that was no
+                // longer on screen.
                 Button(HostsStr.revert) { hvm.revertSSH() }
+                    .disabled(hvm.sshApplying)
                 Button(HostsStr.apply) { Task { await hvm.applySSH() } }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!hvm.sshWritable)
+                    .disabled(!hvm.sshWritable || hvm.sshApplying)
             }
         }
-        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.horizontal, Self.textBoxMargin)
         .padding(.vertical, HelmSpace.s3)
     }
 

@@ -78,6 +78,35 @@ public enum WatchScope {
         return false
     }
 
+    /// Whether two paths lead to one folder, read the way `allows` reads them.
+    ///
+    /// For every question of the form «is this folder already the watched one»:
+    /// the gate judges where a path *leads*, so `/private/var/…`, a link to the
+    /// folder and another case of one component are a single directory to it, and
+    /// a comparison of the strings would call them two. Paths that are not
+    /// absolute are compared as they are spelled — `canonical` would resolve
+    /// them against the working directory, which is how the gate's own opening
+    /// guard came to exist.
+    public static func sameFolder(_ a: String, _ b: String) -> Bool {
+        let a = (a as NSString).standardizingPath, b = (b as NSString).standardizingPath
+        guard a.hasPrefix("/"), b.hasPrefix("/") else { return a == b }
+        return canonical(a) == canonical(b)
+    }
+
+    /// Whether `path` is `ancestor` or lies inside it, both read as `allows`
+    /// reads them.
+    ///
+    /// The other half of `sameFolder`: «a folder cannot be moved into itself» is
+    /// a question about where two paths lead, and a prefix test on their spelling
+    /// answers it for one spelling only. Not absolute is a comparison of the text,
+    /// for the reason `sameFolder` gives.
+    public static func isWithin(_ path: String, _ ancestor: String) -> Bool {
+        let a = (path as NSString).standardizingPath, b = (ancestor as NSString).standardizingPath
+        guard a.hasPrefix("/"), b.hasPrefix("/") else { return a == b || a.hasPrefix(b + "/") }
+        let inner = canonical(a), outer = canonical(b)
+        return inner == outer || inner.hasPrefix(outer + "/")
+    }
+
     /// A path canonicalized as far as the filesystem can take it, including the
     /// part of it that does not exist yet.
     ///

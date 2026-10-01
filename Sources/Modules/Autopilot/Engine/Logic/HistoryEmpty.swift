@@ -1,6 +1,7 @@
 import Foundation
 
-/// Why the record of what Autopilot did is empty — or nothing, when it is not.
+/// Why the record of what Autopilot did is empty — or nothing, when it is not,
+/// or when the page already says why (folders with no rules in them).
 ///
 /// **«Autopilot has not done anything yet» was three sentences wearing one.** A
 /// Mac with no watched folder is not idle, it is unconfigured. A rule set whose
@@ -24,9 +25,10 @@ public enum HistoryEmpty {
         /// statement about the module at all.
         case noFolders
         /// Folders are watched and not one rule in them could run: every rule
-        /// switched off, every folder switched off, or no rules written yet.
-        /// One sentence for all three, because for a reader they are one fact —
-        /// nothing will ever appear here until something is switched on.
+        /// switched off, or every folder switched off. One sentence for both,
+        /// because for a reader they are one fact — nothing will ever appear
+        /// here until something is switched on. Not «no rules written yet»:
+        /// that is `nil`, nothing was switched off.
         case everyRuleOff
         /// Set up, running, and nothing has matched. The only case where «a file
         /// arriving is checked, and every folder is swept once an hour» is an
@@ -44,6 +46,11 @@ public enum HistoryEmpty {
     public static func reason(folders: [WatchedFolder], runs: [ActionRun]) -> Reason? {
         guard runs.isEmpty else { return nil }
         guard !folders.isEmpty else { return .noFolders }
+        // No rule written anywhere is not «every rule is off»: nothing was
+        // switched, and `contains` over an empty list would say it was. The
+        // page already says «No rules yet» under each such folder, so this
+        // section stays silent rather than contradict it.
+        guard folders.contains(where: { !$0.rules.isEmpty }) else { return nil }
         // `activeRules` is empty for a folder whose own switch is off, which is
         // the one place the two switches are already reconciled.
         let running = folders.flatMap(\.activeRules).contains { $0.enabled }

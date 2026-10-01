@@ -18,8 +18,8 @@ import Module_Disk_Engine
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine() }
     /// Not a utility any more. It has two figures worth a glance — how much
-    /// room is left and out of how much — and both cost a `statfs` rather than
-    /// a walk.
+    /// room is left and out of how much — and both cost a volume-attributes
+    /// read rather than a walk.
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
         MenuBarContribution(panelTile: AnyView(DiskWidget(vm: vm, size: .wide)))
     }

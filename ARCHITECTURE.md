@@ -244,7 +244,7 @@ the path is composed by whichever traversal needs one, through
 `Tests/Modules/Disk/EngineTests/DerivedPathTests.swift:39` asserts the absence of
 the field with a `Mirror` as well as pinning the composed strings. A running
 record is bounded or it is a leak with a scrollbar:
-`Sources/HelmRuntime/LogTail.swift:49` at 1000 and
+`Sources/HelmRuntime/LogTail.swift:50` at 1000 and
 `Sources/Modules/Autopilot/Engine/Logic/ActionHistory.swift:182` at 500.
 
 **A module's state belongs to its view model rather than to its page.** Leaving a
@@ -325,7 +325,7 @@ hand every other thread a snapshot: whoever was running, or in front, a
 moment ago. Layout's fix gesture and the Uninstaller's quit loop both call
 through the snapshot rather than straight into AppKit
 (`Sources/Modules/Layout/Engine/SystemPorts.swift:630`,
-`Sources/Modules/Uninstaller/Engine/SystemPorts.swift:239`), because both run
+`Sources/Modules/Uninstaller/Engine/SystemPorts.swift:255`), because both run
 off the main thread by construction — the gesture to keep a slow
 accessibility call off the run loop, the quit loop on the transport's own
 pool — which is exactly where a straight read would crash.
@@ -375,7 +375,7 @@ leaves SwiftUI animations unticked until it is key.
 `helmPanelWidth` is 320 (`Sources/HelmApp/PanelWindow.swift:48`), and the number
 has an arithmetic behind it: `PanelGrid.minimumTile` is 144, `PanelGrid.padding`
 12 and `PanelGrid.gap` 8 (`Sources/HelmUI/PanelGrid.swift:44`), so
-`PanelGrid.narrowestPanel` (`Sources/HelmUI/PanelGrid.swift:57`) is
+`PanelGrid.narrowestPanel` (`Sources/HelmUI/PanelGrid.swift:63`) is
 `2 * 144 + 8 + 2 * 12`. A card of 300 bought two columns ten points under the
 app's own floor. `Tests/HelmAppTests/PanelWidthTests.swift:8` and
 `Tests/HelmAppTests/CardEdgesAreTheGridsConstantsTests.swift:25` are the guards
@@ -383,8 +383,8 @@ that keep the card's edges the grid's constants rather than numbers typed twice.
 
 A widget size is a word: `compact`, `wide`, `tall`
 (`Sources/HelmUI/PanelGrid.swift:12`). `PanelGrid.resolve`
-(`Sources/HelmUI/PanelGrid.swift:84`) clamps a size a module no longer offers to
-its neighbour, and `PanelGrid.rows` (`Sources/HelmUI/PanelGrid.swift:142`) packs so
+(`Sources/HelmUI/PanelGrid.swift:90`) clamps a size a module no longer offers to
+its neighbour, and `PanelGrid.rows` (`Sources/HelmUI/PanelGrid.swift:149`) packs so
 a full-width tile has a row to itself. SwiftUI has no column span, so the grid is
 rows of `HStack`.
 
@@ -411,10 +411,10 @@ and its failure would look like a tile left hanging under the pointer rather tha
 like anything thrown or logged.
 
 The panel's two bar heights are `CGFloat?`
-(`Sources/HelmApp/HelmPanel.swift:58`, `:59`), `nil` until measured, on the
+(`Sources/HelmApp/HelmPanel.swift:67`, `:68`), `nil` until measured, on the
 contract `helmMeasuredHeight` states
 (`Sources/HelmUI/DesignSystem/HelmAccordion.swift:65`), because
-`PanelGrid.roomForGrid(strip:top:foot:)` (`Sources/HelmUI/PanelGrid.swift:125`)
+`PanelGrid.roomForGrid(strip:top:foot:)` (`Sources/HelmUI/PanelGrid.swift:132`)
 reads `nil` as "not drawn" and `0` as "drawn, not yet measured" — two facts a
 `CGFloat = 0` cannot tell apart.
 
@@ -462,7 +462,7 @@ invisible until the one time a row asks for more than the pane has.
 count. `ModuleOrder` reorders that same kind of id list too, but nothing in
 `Sources/` calls it — only its own tests do. The only registry count drawn is About's
 (`Sources/HelmApp/AboutPage.swift:101`); the sidebar summary counts the
-arrangement (`Sources/HelmApp/AppStrings.swift:529`). The Log row ships on every
+arrangement (`Sources/HelmApp/AppStrings.swift:540`). The Log row ships on every
 build, because the logging switch lives in it — the reason is written on the
 `.log` case itself. `show(selecting:)`
 (`Sources/HelmApp/SettingsWindow.swift`) opens directly on a module's page.
@@ -840,7 +840,7 @@ other path.
 
 The ring lays out one level more than it draws:
 `Sources/Modules/Disk/UI/RingView.swift:53` is `visibleRings = 3` and
-`Sources/Modules/Disk/UI/DiskViewModel.swift:596` asks `RingView.visibleRings + 1`
+`Sources/Modules/Disk/UI/DiskViewModel.swift:607` asks `RingView.visibleRings + 1`
 levels, so the level that becomes outermost after a drill has somewhere to slide in
 from. The drill lands before the animation starts: `onSelect` runs first and the
 animation carries a snapshot of the layout being left out over the top.
@@ -883,7 +883,7 @@ journal.
 of run are governed differently on purpose.
 
 The read-only queries carry a deadline —
-`Sources/Modules/Homebrew/Engine/SystemPorts.swift:83` is
+`Sources/Modules/Homebrew/Engine/SystemPorts.swift:92` is
 `defaultQueryTimeout: TimeInterval = 90`. Past it `HelmProcess` answers
 `HelmProcess.timedOutStatus` (`Sources/HelmRuntime/HelmProcess.swift:74`, the value
 `-2`) with no output. The five long operations stream and no clock ends them. A
@@ -908,7 +908,7 @@ deliberately: it is one `brew uses` over one name, well under a second, and the
 registry is phase-level and must not be told that a single sub-second tool run is
 bulk work. Package names travel as array elements after `--`, so a name starting with a
 dash is a package rather than a flag, and they reach the log through `Redact.pkg`
-(`Sources/HelmRuntime/Redact.swift:143`). The engine executes a package reference
+(`Sources/HelmRuntime/Redact.swift:168`). The engine executes a package reference
 straight off the wire with no gate of its own, which is sound only while the
 transport is in-process with one sender.
 
@@ -1269,7 +1269,7 @@ glob results are filtered against the installed set two ways at once:
 `AppLister.isKnownToSystem` asks LaunchServices and `installedPaths(forBundleID:)`
 asks the directory listing
 (`Sources/Modules/Uninstaller/Engine/Ports.swift:17` and `:25`,
-`Sources/Modules/Uninstaller/Engine/SystemPorts.swift:33` and `:48`). The exact
+`Sources/Modules/Uninstaller/Engine/SystemPorts.swift:34` and `:49`). The exact
 candidates go through the same filter, because their hazard is different — an app
 that declares somebody else's bundle id in its own Info.plist.
 `Sources/Modules/Uninstaller/Engine/Logic/LeftoverOwnership.swift` is where that
@@ -1282,7 +1282,7 @@ off the checkbox entirely, because a refusal after the click is the right
 explanation at the wrong moment.
 
 Quitting is asked rather than assumed. `UninstallerEngine.waitUntilGone`
-(`Sources/Modules/Uninstaller/Engine/UninstallerEngine.swift:275`) polls to a
+(`Sources/Modules/Uninstaller/Engine/UninstallerEngine.swift:361`) polls to a
 deadline, and the deadline ends the *wait* rather than the question:
 `UninstallPlan.verdict(running:mayQuit:)`
 (`Sources/Modules/Uninstaller/Engine/Logic/UninstallPlan.swift:99`) is asked again
@@ -1293,7 +1293,7 @@ its own field on `UninstallResult`
 failure — nothing was attempted and macOS said nothing.
 
 The quit is by bundle identifier: `RunningAppsPort.quit(bundleID:force:)`
-(`Sources/Modules/Uninstaller/Engine/Ports.swift:117`) names no location, so it
+(`Sources/Modules/Uninstaller/Engine/Ports.swift:136`) names no location, so it
 reaches every copy of the app that is running. A fake can only record ids, so "the
 wrong copy was quit" is a state no test can express while the port has that shape.
 
@@ -1356,7 +1356,7 @@ seconds, so it runs off the cooperative pool and comes back to the serial work q
 (`Sources/Modules/VPN/Engine/VPNWorkQueue.swift`) only to write what it learned.
 `Sources/Modules/VPN/Engine/Logic/VPNSpeedReading.swift` takes every field or none,
 because a run killed at its deadline prints part of its JSON. Names reach the log
-through `Redact.vpn` (`Sources/HelmRuntime/Redact.swift:134`); counts and outcomes
+through `Redact.vpn` (`Sources/HelmRuntime/Redact.swift:159`); counts and outcomes
 are free. An engine refuses a payload equal in every field to the last one it sent,
 so a poll that re-reads behind one connect puts one payload on the wire rather than
 many.
@@ -1530,7 +1530,7 @@ rather than literal — `Sources/HelmRuntime/HelmTrash.swift:117` builds
 name of whichever module is deleting.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
-(`Sources/HelmRuntime/PermissionCheck.swift:153`) carries `outOfScope`,
+(`Sources/HelmRuntime/PermissionCheck.swift:158`) carries `outOfScope`,
 `changedSinceScan`, `unreadable`, `readOnlyVolume`, `diskFull`, `missing`,
 `needsFullDiskAccess`, `activeSystemExtension`, `noPermission`, `systemRefused` —
 `outOfScope` is Helm refusing before anything was attempted. `TrashFailure`
@@ -1554,7 +1554,7 @@ lands second overwrites the model's report of the reply that landed first, so
 the person is told the removal that worked failed, over a list of files that
 plainly did not move.
 
-`Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift:33` walks every
+`Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift:34` walks every
 file under `Sources/Modules/` and fails on any that sends a removal without
 the guard; the files it finds today are the output of
 `command grep -rln "guard !busy" Sources/Modules/`, since the count itself
@@ -1618,19 +1618,20 @@ Support directory (`Sources/HelmRuntime/HelmSupport.swift:20`) and
 ## Diagnostics log
 
 `~/Library/Logs/Helm/helm.log`, two megabytes and then one rollover
-(`Sources/HelmRuntime/HelmLog.swift:190`), in a folder created 0700
+(`Sources/HelmRuntime/HelmLog.swift:197`), in a folder created 0700
 (`Sources/HelmRuntime/PrivateFile.swift:204`). `LogPolicy`
 (`Sources/HelmRuntime/HelmLog.swift:13`) answers whether it logs at all, and
-`LogDestination` (`:43`) answers where it lives. `LogPolicy.isEnabled` (`:14`) keys off
-the `-dev` substring in the version (`:16`), so every prerelease ships with the log on
-and a beta build stays silent until its owner turns the switch on. That switch is in
-the Log page (`Sources/HelmApp/LogView.swift:43`).
+`LogDestination` (`:50`) answers where it lives. `LogPolicy.isEnabled` (`:21`) keys off
+the `-dev` substring in the version (`:22`), so every prerelease ships with the log on —
+whatever was saved, because the page greys its switch there — and a beta build stays
+silent until its owner turns the switch on. That switch is the «Write a log file» item of
+the «More actions» menu on the Log page's window toolbar (`Sources/HelmApp/LogView.swift:208`).
 
 A failure that cannot be triaged is recorded rather than logged. `HelmLog.warn`
-(`Sources/HelmRuntime/HelmLog.swift:388`) and `.error` (`:395`) capture `#fileID`,
-`#line` and `#function` automatically; `info` (`:347`) leaves them out, because it
+(`Sources/HelmRuntime/HelmLog.swift:414`) and `.error` (`:421`) capture `#fileID`,
+`#line` and `#function` automatically; `info` (`:373`) leaves them out, because it
 describes an event rather than a fault and a source location is noise on every line of
-a healthy log. `HelmLog.failure` (`:403`) is the common shape.
+a healthy log. `HelmLog.failure` (`:429`) is the common shape.
 `HelmFailure.describe` (`Sources/HelmRuntime/HelmFailure.swift:50`) unwraps an
 `NSError` to domain, code, message, failure reason, failing path and the underlying
 error, which is in the great majority of cases the actual answer; `osStatus` (`:93`)
@@ -1638,13 +1639,13 @@ adds the name macOS knows for a code and `posix` (`:106`) names an errno, becaus
 bare integer is a number to paste into a search engine rather than a fact.
 
 `Redact` (`Sources/HelmRuntime/Redact.swift`) is what goes into the file in place of a
-name: `path` (`:20`) rewrites the home prefix, and `vpn` (`:134`), `app` (`:138`) and
-`pkg` (`:143`) give a short stable tag. The digest is FNV-1a rather than `Hasher`,
+name: `path` (`:20`) rewrites the home prefix, and `vpn` (`:159`), `app` (`:163`) and
+`pkg` (`:168`) give a short stable tag. The digest is FNV-1a rather than `Hasher`,
 which is seeded per process — comparing a line from one session with a line from
-another is exactly what triage does — and it is salted (`:109`, `:152`), because a
+another is exactly what triage does — and it is salted (`:134`, `:177`), because a
 keyless hash of a name drawn from a small public list is an index into that list rather
 than redaction. The salt is per install and lives beside the log in a `0600` file
-(`:159`), which keeps the property the digest was chosen for while making a tag pasted
+(`:184`), which keeps the property the digest was chosen for while making a tag pasted
 into a bug report meaningless on another machine. `HelmFailure.describe` strips the
 home path from every string it emits, including messages, which carry no key for
 `Redact.path` to find them by.
@@ -1654,7 +1655,7 @@ has run in a file beside the log rather than in `UserDefaults`, which is namespa
 process: any binary linking `HelmRuntime` ran the purge again against the one real log.
 And a test runner writes into a folder of its own —
 `LogDestination.directory(home:temporary:underTest:)`
-(`Sources/HelmRuntime/HelmLog.swift:158`) moves the folder rather than the file, because
+(`Sources/HelmRuntime/HelmLog.swift:52`) moves the folder rather than the file, because
 the rollover, the purge latch and the salt all belong beside whatever file is real. The
 question "is this a test runner" is answered once, by `TestProcess.isRunning`
 (`Sources/HelmRuntime/TestProcess.swift:21`), which reads
@@ -1687,7 +1688,7 @@ run outside it.
 
 ### The memory trail
 
-`HelmLog.memory(_:)` (`Sources/HelmRuntime/HelmLog.swift:359`) is the other instrument:
+`HelmLog.memory(_:)` (`Sources/HelmRuntime/HelmLog.swift:385`) is the other instrument:
 the process footprint under the `memory` category, as a delta against the last reading
 for the same label, with `HelmActivity.describe` appended. The figure is
 `phys_footprint` (`Sources/HelmRuntime/MemoryFootprint.swift:26`) — what Activity
@@ -1697,8 +1698,8 @@ accounting and the threshold sit in `FootprintTracker`
 `8 * 1024 * 1024` (`:37`) and which measures from the last *reported* value (`:57`), so
 a slow drift crosses eventually. `sample` and `launch` are the two labels that ask about
 everything and are therefore not excluded from their own description
-(`Sources/HelmRuntime/HelmLog.swift:365`). The second overload, `memory(_:grewBy:)`
-(`:384`), reports a bounded scope from two readings taken around it and has no threshold
+(`Sources/HelmRuntime/HelmLog.swift:392`). The second overload, `memory(_:grewBy:)`
+(`:410`), reports a bounded scope from two readings taken around it and has no threshold
 at all — its figures are single-digit megabytes and being small is the answer
 (`Sources/HelmRuntime/ScopeCost.swift`).
 
@@ -1715,25 +1716,80 @@ obliged to carry a reading at all.
 ### The log pane
 
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
-on every build. It computes nothing: one `write`, one format, and the pane is a window
-onto it. It is also where logging is switched on, where the file is revealed and where
-it is cleared, so the place a person is sent to when they report a problem is the one
-named after it.
+on every build. It computes nothing about the file: one `write`, one format, and the pane
+is a window onto it. Its controls live in the settings window's own toolbar rather than
+in a band of the page: the level as three tabs in the centre, and in the capsule a module
+filter, Follow, Copy and a «More actions» menu that holds where logging is switched on, where the
+file is revealed and where it is cleared — so the place a person is sent to when they
+report a problem is the one named after it. The search field is the toolbar's own. Follow
+says its state with its glyph and not with a fill — an open eye when following, a slashed one
+when not — through the `HelmToolbarToggleFace` a toggle action may carry (a toggle with no
+face is still drawn in the accent), and its accessibility value says following or not
+following.
+
+The page draws **one card per launch**, and what a launch is comes out of the lines
+themselves, in pure functions in `Sources/HelmApp/LogSessions.swift` and not in the
+view, so a fixture can be handed to them. A card opens on the line `HelmLog.start`
+writes and ends at the next one or at the launch's own «terminating»; a run that has no
+start line — the head of a tail that began mid-launch, what follows a «terminating», an
+unanswered «logging enabled» — is a card that claims no version, and is called «Earlier
+launch» only when it is the head of the tail: a run after a «terminating» began later than
+the card above it and is named by the time of its first line alone. The card names its day
+and minute, its version and the lines it holds as badges for errors and warnings; the
+start-up burst folds to one line; consecutive identical lines fold to one row with a
+count; a day heading is written inside a card where a launch crosses midnight. Nothing is
+dropped or reordered on the way: the cards joined are the tail. Card identity is the
+start line's, and one fixed identity for the head of the tail, because a full tail loses
+its oldest line every second and a card keyed on that line would be rebuilt whole on
+every tick. The footer counts the lines that passed the filters, while a badge counts all of its
+launch's lines, so under a filter the two differ by design; a warning on a start line
+(one a crash tore and the next launch glued on) is the card's first row as well as its
+header, so no badge counts a line the page does not draw.
+A second «terminating» right after a first belongs to the launch it ends, and a search
+finds a card by the version, «Helm» and the version, or the day and minute as drawn —
+whole, never by a part of it, since «Helm» or «PM» would otherwise draw every launch of
+the tail as a card with no line in it. The head of the tail's «Earlier launch» is drawn
+but is not among those words, so no query finds a card by it; a day span across midnight
+is written by the system's interval formatter, which in Chinese and Japanese is numerals
+beside long-form day headings. Both are decided and deferred, and are skipped in
+`Tests/HelmAppTests/TheLogsHeadingsAndMarksHoldInEveryLanguageAndAppearanceTests.swift`.
+Every known gap in the tree is skipped the one way: the test is skipped unless
+`HELM_KNOWN_GAPS=1` is set, with a reason that starts «Known gap <id>», at the top of
+the test, the reproduction left intact below, so `HELM_KNOWN_GAPS=1` runs all of them
+and each reads red while its gap is open.
 
 `Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `limit`, default
-1000 (`:49`), trimmed from the front (`:58`). It is filled from the parts a file line is
-spelled from rather than by parsing the line back apart.
+`standardLimit` (`:50`), trimmed from the front (`:64`). It is filled from the parts a
+file line is spelled from rather than by parsing the line back apart.
 `Sources/HelmRuntime/LogSeed.swift` is the one exception and says so in its own first
 line: a seed has no parts to hold, so it parses — once, in a type whose name says so,
 and as the exact inverse of the format rather than an approximate reader of it. It seeds
 from this process's log files and their predecessor on disk
-(`Sources/HelmRuntime/HelmLog.swift:194`, read at the first `recentEntries()`, `:283`),
+(`Sources/HelmRuntime/HelmLog.swift:184`, read at the first `recentEntries()`, `:309`),
 so the pane is not limited to what this process happened to write. A line it cannot read
-is kept whole, claims no level and no category, and takes the date of the line above it.
+is kept whole, claims no level and no category, and takes the date of the line above it
+— or, when it comes before the first line that can be read, of the first readable line below
+it;
+a line a crash tore and the next launch's start line glued on is one such entry, and the
+split reads its start out of it.
 
 The pane follows the newest line by its identity rather than by the tail's count
-(`Sources/HelmApp/LogView.swift:266`) — the count is the limit for ever once the tail is
-full.
+(`Sources/HelmApp/LogView.swift:322`) — the count is the limit for ever once the tail is
+full. While Follow is lit and the view is at the end the scroll view holds it
+(`defaultScrollAnchor` for the first offset and for size changes), and `LogReaderPlace`
+asks for the end again when it has been missed; a card's rows are plain up to
+`LogView.lazyAbove` and lazy above it, so the height of a large card is an estimate
+until its rows are drawn and a one-off scroll lands on that estimate rather than on the
+end. A reader who is not at the end — Follow off, or lit and scrolled up — is held by
+the line at the top of the view and not by the scroll offset: `LogReaderPlace` remembers
+the line and its distance from the top, and when the line moves in the content while the
+view does not (the oldest line leaving a full tail, a fold opened, a narrower window)
+it moves the view by the difference. That is a reading where the rows above are
+measured, which is why a card of up to `lazyAbove` rows is drawn plain, and it has one
+known exception: a line taller than the room below it is moved by the hold itself
+(`log-tall-line`, skipped unless `HELM_KNOWN_GAPS=1` in
+`Tests/HelmAppTests/TheReadersLineLandsWhereItWasTests.swift`); a reader inside a larger
+card is held no better than the lazy estimate allows.
 
 ## Localization
 
@@ -1799,7 +1855,7 @@ Everything the language shapes goes through `Sources/HelmUI` rather than through
 `HelmBytes.string` (`Sources/HelmRuntime/HelmBytes.swift:30`) for a size,
 `HelmBytes.decimal` (`:59`) for a mantissa with grouping off, since a separator there is
 a second decimal mark, `HelmBytes.grouped` (`:74`) for a count with grouping on, `Quoted`
-(`Sources/HelmUI/L10n.swift:516`) for a language's own quotation marks, and `HelmDates`
+(`Sources/HelmUI/L10n.swift:526`) for a language's own quotation marks, and `HelmDates`
 (`Sources/HelmUI/L10n.swift:202`) for relative times. A formatter is cached per language
 and per style rather than held in a `static let`, because the app's language changes
 while it runs, and because a cache keyed by language alone answers whichever style asked
@@ -1812,8 +1868,8 @@ so is a screen reader's vocabulary
 (`Sources/HelmUI/DesignSystem/A11yStrings.swift:16`). French is the one of the eight that
 spaces its punctuation, with an unbreakable space before a colon and a question mark and
 inside a pair of guillemets, where an ordinary space is a line-breaking one.
-`Tests/HelmUITests/PunctuationIsTerminologyTests.swift:21` is the guard, and it seeds its
-union of marks from `Quoted`'s own answers (`:40`) rather than from a list.
+`Tests/HelmUITests/PunctuationIsTerminologyTests.swift:27` is the guard, and it seeds its
+union of marks from `Quoted`'s own answers (`:46`) rather than from a list.
 
 A language code is not in every case the directory macOS files it under.
 `SystemFolderNames` (`Sources/HelmRuntime/SystemFolderNames.swift:73`) carries a
@@ -1823,9 +1879,10 @@ so the failure was silent.
 
 Fixed widths are measured rather than chosen. `HelmPickerWidth.fitting`
 (`Sources/HelmUI/DesignSystem/PickerWidth.swift:36`) sizes a pop-up from its own titles,
-and `segmented` (`:83`) models the different arithmetic of a segmented control, whose
-segments AppKit draws equal-width and rounds up per segment; a number chosen for one
-language cannot survive eight.
+and `fittingSymbolled` (`:52`) adds the column a symbol beside the title costs; a
+segmented control has no helper, because it divides itself into equal segments and its
+width is the widest label times the count; a number chosen for one language cannot
+survive eight.
 `Tests/HelmAppTests/AnImposedPickerWidthFitsItsLabelsTests.swift:57` measures every
 imposed width in the tree against a hosted control's own answer.
 
@@ -1837,7 +1894,7 @@ signed delta in several languages, which reads as a negative number rather than 
 time. A comment warning against it would be a comment; an enum that cannot spell it is a
 build error.
 
-`HelmDates.age` (`Sources/HelmUI/L10n.swift:267`) returns an optional and refuses below
+`HelmDates.age` (`Sources/HelmUI/L10n.swift:266`) returns an optional and refuses below
 `youngestAgeWrittenAsPast`, one second (`:289`). Two ways a stamp arrives in the future
 voice, and only the first is expected: a clock genuinely ahead, and a stamp behind the
 clock by less than a second — the formatter rounds to the nearest second and renders a
@@ -1919,7 +1976,7 @@ and not from the page: both hosting controllers that `SettingsSplitViewControlle
 builds end on `helmIdlesOffScreen()` — the one hosting `SettingsSidebar`, and the one
 hosting `SettingsDetail`, the pane that holds whichever module page is open, so a page
 inherits the idling without asking for it. `helmSettingsColumn()`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:263`) ends on the same modifier (`:266`),
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:287`) ends on the same modifier (`:290`),
 so a block that takes the column takes the idling with it; a page whose root is a `Form`
 takes no column and calls `helmIdlesOffScreen()` on its own
 (`Sources/HelmApp/GeneralSettingsPage.swift:469`).
@@ -2194,13 +2251,13 @@ which every module's UI target depends on and no engine does.
 **Surfaces.** `Sources/HelmUI/DesignSystem/HelmSurfaces.swift` holds `HelmSurface` — a
 small set of fills over `Color.primary`, no border among them — `HelmLayout`, `HelmText`,
 `HelmSignal`, `HelmIconPlate`, `HelmSignalPlate` and `HelmMetricStrip`. `helmCard()`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:88`) is the one card treatment: a fill,
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:92`) is the one card treatment: a fill,
 continuous corners at `HelmRadius.card`, and no border. Half of Helm's pages are macOS
 grouped `Form` sections, which the system draws as a plain fill and which cannot be
 restyled, so an outlined card of our own reads as a different kind of box on the next page
 over. The fill is measured against a real `Form` section on the same background rather
 than chosen. A surface that floats over content takes `.glassEffect` rather than an edge —
-`Sources/HelmApp/HelmPanel.swift:922` and `Sources/Modules/Disk/UI/RingView.swift:239` are
+`Sources/HelmApp/HelmPanel.swift:969` and `Sources/Modules/Disk/UI/RingView.swift:239` are
 the two sites — because glass carries its own edge and its own shadow, which is the whole
 reason a floating thing wanted one, and a hairline drawn on top is a second silhouette
 disagreeing with the first. A token called `HelmSurface.floatingEdge` was named in the
@@ -2215,7 +2272,7 @@ A grouped `Form` insets a section *header* further than the section itself, and 
 header is the one part of such a form drawn on the bare pane that still scrolls — which is
 why a hero or a block of cards lives in one. The difference is
 `HelmLayout.groupedHeaderOutset`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:292`), negated onto the block, and it is
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:320`), negated onto the block, and it is
 right for a grid the page draws itself and wrong for a filled field, which is a row that
 has not been written yet.
 
@@ -2242,7 +2299,7 @@ fixed `.system(size:)` gives a Mac whose owner raised the interface text size a 
 that did not follow. `.headline` is not the heading — on macOS it is bold rather than
 semibold, so mapping `sectionHeading` onto it would weight every heading a step heavier
 with the size unchanged, which no layout test can see. `HelmText.rowDetailNSFont`
-(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:505`) is the same style as AppKit sees it,
+(`Sources/HelmUI/DesignSystem/HelmSurfaces.swift:533`) is the same style as AppKit sees it,
 for the two places that measure text rather than draw it. `HelmText.figureFont` is the one
 face for a figure — a byte size, a count, a version — because a monospaced face and a
 tabular proportional one at nominally similar sizes render the same number at visibly

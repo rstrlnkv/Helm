@@ -70,6 +70,9 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
                  why: "a row's title with its own note under it, not a heading over rows"),
         RowTitle(file: "Sources/Modules/Autopilot/UI/AutopilotSettingsPage.swift", subject: "Redact.path(folder.path)",
                  why: "the watched folder in its row, between the switch that names it and the buttons"),
+        RowTitle(file: "Sources/Modules/Autopilot/UI/RuleEditor.swift", subject: "folderName",
+                 why: "the folder the rule acts in, on its own line beside its path and the "
+                     + "button that changes it — a fact about the rule, not a heading over rows"),
         RowTitle(file: "Sources/HelmUI/DesignSystem/HelmExplainer.swift", subject: "content.title",
                  why: "the same judgement as the custom-duration popover above: an explanation's "
                      + "single title, over the points it introduces and nothing to jump between"),
@@ -195,7 +198,7 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
             recorded and the record cannot name it:
             \(found.filter { $0.subject == "?" }.map(\.described).joined(separator: "\n"))
             """)
-        for expected in ["Sources/Modules/Autopilot/UI/PresetSection.swift",
+        for expected in ["Sources/Modules/Autopilot/UI/AutopilotSettingsPage.swift",
                          "Sources/Modules/Autopilot/UI/RuleEditor.swift",
                          "Sources/Modules/Hosts/UI/KeysTable.swift"] {
             XCTAssertTrue(files.contains(expected), "\(expected) sets no heading this scan can see")
@@ -267,7 +270,7 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
 
     func testTheRuleReadsTheTraitAndNotTheNeighbourhood() {
         let marked = """
-            Text(ApStr.presetsTitle).font(HelmText.sectionHeading)
+            Text(ApStr.whenLabel).font(HelmText.sectionHeading)
                 // A heading, so the rotor can jump to it.
                 .accessibilityAddTraits(.isHeader)
             """

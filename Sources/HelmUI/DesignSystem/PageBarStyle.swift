@@ -206,9 +206,10 @@ public extension View {
     ///
     /// For a page that draws its own header row outside `helmPageHeader`
     /// (the log, which is not a scroll view) and so needs to say both «here is
-    /// my title» and «draw the row only when there is no bar». Carries no
-    /// trailing content of its own any more: `PageBarContent`'s `.moduleName`
-    /// arm draws nothing (`SettingsToolbar`'s own `makeNameItem`/
+    /// my title» and «draw the row only when there is no bar». A page with no
+    /// title row of its own can call it for the window title alone (About
+    /// does). Carries no trailing content of its own any more:
+    /// `PageBarContent`'s `.moduleName` arm draws nothing (`SettingsToolbar`'s own `makeNameItem`/
     /// `makeStatusItem` own the bar directly), so a `trailing:` parameter here
     /// would have nowhere left to be drawn.
     func helmPageBar(title: String, subtitle: String? = nil) -> some View {

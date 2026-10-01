@@ -53,6 +53,15 @@ struct HelmPanelContent: View {
     /// content — otherwise a panel holding two widgets would be as tall as the
     /// screen.
     @State private var gridHeight: CGFloat?
+    /// A tab was just picked, so the grid's next measured height is written
+    /// plain. The strip's selection slides on the press's own transaction; what
+    /// is under it cuts, and so does the card — the measurement travels in a
+    /// transaction of its own, which is why the press's curve never reached it
+    /// and the footer slid on `disclosure` anyway. Cleared by a timer of 150 ms
+    /// after the pick (the figure is chosen by eye, not measured); the next
+    /// switch cancels the running timer and sets the flag again.
+    @State private var cutsGridHeight = false
+    @State private var cutsGridHeightClear: Task<Void, Never>?
     /// The pinned parts, measured rather than derived: what is pinned changes
     /// with the mode, and the grid gets whatever is left.
     @State private var topChrome: CGFloat?
@@ -208,6 +217,22 @@ struct HelmPanelContent: View {
         return Widget(id: Self.permissionsWidget,
                       content: .module(AnyView(PermissionsWidget(withheld: missing))),
                       size: .wide, pinned: true)
+    }
+
+    /// What the strip writes when a tab is picked: the tab, and the card's
+    /// height told to follow without a curve, in the one transaction.
+    private var pickedTab: Binding<Int> {
+        Binding(get: { activeTab }, set: { tab in
+            guard tab != activeTab else { return }
+            cutsGridHeight = true
+            activeTab = tab
+            cutsGridHeightClear?.cancel()
+            cutsGridHeightClear = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                cutsGridHeight = false
+            }
+        })
     }
 
     private var tabIndex: Int { activeTab.clamped(to: 0...max(0, layout.tabs.count - 1)) }
@@ -736,7 +761,13 @@ struct HelmPanelContent: View {
                     // Keyed to the tab, so switching is a swap the transition
                     // can see rather than a list that happens to differ.
                     .id(layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].id : "none")
-                    .transition(.opacity)
+                    // A cut, and not a fade: the owner's rule is that tabs
+                    // switch sharply everywhere («вкладки везде переключаются
+                    // резко»). Only the strip's selection plate moves. The
+                    // identity transition is stated because a view replaced in
+                    // an animated transaction cross-fades by default.
+                    .transition(.identity)
+                    .transaction(value: activeTab) { $0.animation = nil }
                 // Shown only when there is something in it: a heading over a
                 // sentence saying there is nothing to do belongs on no screen,
                 // least of all the one where every other row is doing
@@ -798,7 +829,7 @@ struct HelmPanelContent: View {
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
                               labels: tabLabels, selection: tabSelection,
-                              activeTab: $activeTab, pickingGlyph: $pickingGlyph,
+                              activeTab: pickedTab, pickingGlyph: $pickingGlyph,
                               rename: { tab, current in
                                   draftName = current
                                   renaming = tab
@@ -836,7 +867,19 @@ struct HelmPanelContent: View {
                 // full height to its content while the card is pinned at the
                 // top. Opening the panel looked like the block unfolding from
                 // its middle in both directions.
-                .helmMeasuredHeight($gridHeight)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                    // `helmMeasuredHeight`'s law, with one exception that is this
+                    // panel's own: right after a tab is picked the write is
+                    // plain. The first measurement is plain for the same reason.
+                    guard measured > 0, gridHeight != measured else { return }
+                    if gridHeight == nil || cutsGridHeight {
+                        var plain = Transaction()
+                        plain.disablesAnimations = true
+                        withTransaction(plain) { gridHeight = measured }
+                    } else {
+                        withAnimation(HelmMotion.disclosure) { gridHeight = measured }
+                    }
+                }
             }
             // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
             // height is not its content's, so in a stack that is free to be

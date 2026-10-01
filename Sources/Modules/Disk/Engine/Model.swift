@@ -8,11 +8,23 @@ public struct VolumeInfo: Codable, Equatable, Sendable, Identifiable {
     public let path: String
     public let totalBytes: Int
     public let freeBytes: Int
+    /// Cannot trap: both fields are bounded to `0...Int.max` on the way in
+    /// (`init` and decoding), so the subtraction has no overflowing operands.
     public var usedBytes: Int { max(totalBytes - freeBytes, 0) }
 
     public init(name: String, path: String, totalBytes: Int, freeBytes: Int) {
         self.name = name; self.path = path
-        self.totalBytes = totalBytes; self.freeBytes = freeBytes
+        self.totalBytes = max(totalBytes, 0); self.freeBytes = max(freeBytes, 0)
+    }
+
+    /// A payload decoded off the wire reaches `usedBytes` without passing the
+    /// engine's clamp, so it goes through the same bound here.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(name: try c.decode(String.self, forKey: .name),
+                  path: try c.decode(String.self, forKey: .path),
+                  totalBytes: try c.decode(Int.self, forKey: .totalBytes),
+                  freeBytes: try c.decode(Int.self, forKey: .freeBytes))
     }
 }
 
@@ -40,6 +52,19 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// scan cached by an earlier build has no such key.
     public let isFolded: Bool
 
+    /// The largest figure a decoded entry may carry: one pebibyte, far past any
+    /// volume this app is pointed at. The saved scan is a file any process running
+    /// as the user can write, `restoreLastScan` decodes it on every opening of the
+    /// page, and a figure near `Int.max` reaches the sums over children, where an
+    /// integer add traps in release too. A bound here makes a single figure
+    /// harmless; it does not make a sum of thousands of them so, which is why
+    /// every sum a saved file can reach saturates (`Sequence.saturatingSum()`, and
+    /// `RingLayout` for its own), and why `DiskAdvice.Target` is held to the same
+    /// ceiling where the advice is decoded in its current form (`targets`). An advice
+    /// row in the older form, with no `targets` key, is not clamped: a known gap,
+    /// `Q-legacy-advice`, in `AnOlderAdviceRowIsHeldToTheCeilingTests`.
+    public static let byteCeiling = 1 << 50
+
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,
                 noAccess: Bool, children: [DiskEntry], isFolded: Bool = false) {
         self.name = name; self.path = path; self.bytes = bytes
@@ -51,7 +76,7 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decode(String.self, forKey: .name)
         path = try c.decode(String.self, forKey: .path)
-        bytes = try c.decode(Int.self, forKey: .bytes)
+        bytes = try c.decode(Int.self, forKey: .bytes).clamped(to: 0...Self.byteCeiling)
         isDirectory = try c.decode(Bool.self, forKey: .isDirectory)
         noAccess = try c.decode(Bool.self, forKey: .noAccess)
         children = try c.decode([DiskEntry].self, forKey: .children)
@@ -86,7 +111,7 @@ public struct ScanResult: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         root = try c.decode(DiskEntry.self, forKey: .root)
-        freeBytes = try c.decode(Int.self, forKey: .freeBytes)
+        freeBytes = try c.decode(Int.self, forKey: .freeBytes).clamped(to: 0...DiskEntry.byteCeiling)
         filesScanned = try c.decode(Int.self, forKey: .filesScanned)
         seconds = try c.decode(Double.self, forKey: .seconds)
         advice = try c.decodeIfPresent([DiskAdvice].self, forKey: .advice) ?? []

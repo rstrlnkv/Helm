@@ -23,6 +23,32 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// list that had not changed. Caching the view model alone would not have
     /// helped while the list it produced lived on the page.
     @Published public private(set) var apps: [InstalledApp] = []
+    /// Which sizes have been measured, by path. **Absent means "not measured"**,
+    /// which `InstalledApp.sizeBytes == 0` cannot say: the list arrives with
+    /// zeros and a bundle that could not be read measures as zero too.
+    @Published public private(set) var measuredSizes: [String: Int] = [:]
+    /// When Spotlight says each app was last opened; `nil` until it has been
+    /// asked. An app missing from an answered table has no record.
+    @Published public private(set) var lastOpened: [String: Date]?
+    /// Paths the last-opened read did not reach: neither a date nor "no record".
+    @Published public private(set) var lastOpenedUnread: Set<String> = []
+    /// The remembered order, as the engine last said it. The engine owns it.
+    @Published public private(set) var sortOrder: AppSortOrder = .standard
+
+    /// What the list is really ordered by — a stored date order over a Mac where
+    /// Spotlight said nothing reads as the name order.
+    public var effectiveSortOrder: AppSortOrder {
+        AppSort.effective(sortOrder, opened: lastOpened)
+    }
+
+    /// The list in the person's order; search narrows this and never reorders it.
+    public var sortedApps: [InstalledApp] {
+        AppSort.sorted(apps, order: sortOrder, sizes: measuredSizes, opened: lastOpened,
+                       unread: lastOpenedUnread)
+    }
+
+    public var dateOrderAvailable: Bool { AppSort.dateOrderAvailable(lastOpened) }
+
     /// True while the names are being fetched. Sizes land afterwards and do not
     /// hold the list back — the names are what somebody is looking for.
     @Published public private(set) var loadingApps = false
@@ -123,19 +149,67 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         loadingApps = true
         if let list = await listApps() {
             apps = list
+            // The readings belong to the list they were taken for.
+            measuredSizes = [:]
+            lastOpened = nil
+            lastOpenedUnread = []
             loadedApps = true
         } else {
             // Counts and outcomes are free; nothing here names an application.
             HelmLog.shared.info(UninstallerEngine.moduleID, "app list reply lost")
         }
         loadingApps = false
-        await fillInSizes()
+        // Independent: the dates take milliseconds and must not wait behind sizes
+        // that take seconds, nor the other way round.
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.fillInSizes() }
+            group.addTask { await self.fillInDates() }
+        }
+    }
+
+    private func fillInDates() async {
+        guard let reading = await lastOpened(for: apps) else {
+            // Not answered is not "no record": the reading stays where it was.
+            HelmLog.shared.info(UninstallerEngine.moduleID, "last-opened reply lost")
+            return
+        }
+        lastOpened = reading.opened
+        lastOpenedUnread = Set(reading.unread)
+    }
+
+    /// How many times the person has chosen an order. A reading of the stored
+    /// order is only as new as the count it was taken at.
+    private var sortChoices = 0
+
+    /// The remembered order, read again on every appearance of the page.
+    ///
+    /// **An answer older than a choice does not overwrite it.** The reading is
+    /// asked for from the page's `.task`, and a press that lands before the
+    /// engine answers is newer than what the engine is about to say — assigned
+    /// anyway, it put the screen back on the old order while the engine already
+    /// held the new one, and the next visit "changed its mind".
+    public func refreshSortOrder() async {
+        let asked = sortChoices
+        guard let order: AppSortOrder = await client.request(UninstallerCommand.sortOrder) else {
+            HelmLog.shared.info(UninstallerEngine.moduleID, "sort order reply lost")
+            return
+        }
+        guard asked == sortChoices else { return }
+        sortOrder = order
+    }
+
+    /// The press answers at once and the engine remembers it.
+    public func setSortOrder(_ order: AppSortOrder) async {
+        sortChoices += 1
+        sortOrder = order
+        await client.send(UninstallerCommand.setSortOrder, encoding: order)
     }
 
     /// The list is drawn from names alone and the numbers land a moment later.
     private func fillInSizes() async {
         let sizes = await appSizes(for: apps)
         guard !sizes.isEmpty else { return }
+        measuredSizes = sizes
         apps = apps.map { app in
             // By path: two copies of one app share a bundle id and each has its
             // own size.
@@ -168,6 +242,22 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     public func setSelected(leftover path: String, _ on: Bool) {
         if on { selectedLeftovers.insert(path) } else { selectedLeftovers.remove(path) }
+    }
+
+    /// What the review would move, or `nil` while any app in it has not been
+    /// measured — a sum with one term missing is a smaller number nobody
+    /// measured. Read from `measuredSizes`, which keeps arriving after the review
+    /// opened; `groups` is a snapshot and carries the list's zero.
+    public var reviewBytes: Int? {
+        guard !groups.isEmpty,
+              groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
+        let measured = groups.map { group in
+            UninstallGroup(app: InstalledApp(name: group.app.name, bundleID: group.app.bundleID,
+                                             path: group.app.path,
+                                             sizeBytes: measuredSizes[group.app.path] ?? 0),
+                           leftovers: group.leftovers, running: group.running)
+        }
+        return UninstallPlan.totalBytes(measured, selectedLeftovers: selectedLeftovers)
     }
 
     /// Leaving the review ends the round, so the report of the last press goes
@@ -295,7 +385,8 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         let moved = Bytes(result.freedBytes)
         if !result.failed.isEmpty {
             HelmLog.shared.warn(UninstallerEngine.moduleID,
-                                "failed to trash: \(Redact.paths(result.failed))")
+                                "failed to trash: "
+                                + result.failed.map { Redact.path($0, leaf: .softwareName) }.joined(separator: ", "))
             resultBanner = UnStr.movedWithFailures(moved, result.failed.count)
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.
@@ -343,6 +434,10 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// second time to rebuild what the caller already had.
     public func appSizes(for list: [InstalledApp]) async -> [String: Int] {
         await client.request(UninstallerCommand.appSizes, encoding: list) ?? [:]
+    }
+
+    public func lastOpened(for list: [InstalledApp]) async -> AppOpenedReading? {
+        await client.request(UninstallerCommand.lastOpened, encoding: list)
     }
 
     public func scan(_ app: InstalledApp) async -> ScanResult? {

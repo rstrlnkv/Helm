@@ -82,7 +82,7 @@
 "Choose apps" = "选择应用";
 "Choose folder" = "选择文件夹";
 "Choose this app again to confirm which app it is" = "请重新选择此应用以确认其身份";
-"Choose…" = "选择…";
+"Choose…" = "选取…";
 "Clear" = "清除";
 "Clear selection" = "取消选择";
 "Clear the marks" = "清除标记";
@@ -183,7 +183,6 @@
 "Default duration" = "默认时长";
 "Delete" = "删除";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "开发版始终记录日志。文件位于 ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
 "Disabled" = "已停用";
 "Disconnected" = "已断开连接";
@@ -238,6 +237,8 @@
 "Folder" = "文件夹";
 "Folders that keep themselves in order" = "会自己保持整齐的文件夹";
 "Follow" = "跟随";
+"Following" = "跟随中";
+"Not following" = "未跟随";
 "Force quit and remove anyway" = "强制退出并删除";
 "Full Disk Access" = "完全磁盘访问权限";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "磁盘访问已关闭。扫描无法读取全部文件夹，卸载应用时容器会残留。";
@@ -397,7 +398,9 @@
 "On power" = "接通电源时";
 "On quit only" = "仅退出时";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "一个键完成两件事：选择右侧 ⌘、⌥、⌃ 或 ⇧ 并单独按下，第一次修正上一个词，再按一次还原。按住或与其他键同时按下时，它仍是普通修饰键。";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "保存后，Helm 会开始监视这个文件夹，并立即执行下面列出的操作。";
 "Open Accessibility…" = "打开无障碍…";
+"Open Autopilot" = "打开自动整理";
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
 "Open Helm at login" = "登录时打开 Helm";
@@ -890,7 +893,6 @@
 "An extra copy is" = "多余的副本是指";
 "the one that arrived later" = "较晚出现的那份";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重复文件”会先问哪一份才是多余的副本：位于“下载”或“桌面”中的那份，还是较晚出现的那份。每组都会说明为什么保留这份副本，任意一行都可以设为保留，“恢复推荐选择”可以撤回。";
-"Rules to start with" = "从这些规则开始";
 "Screenshots into their own folder" = "截屏放进专属文件夹";
 "Downloads sorted by kind" = "下载按类型归类";
 "Old installers to the Trash" = "旧安装包移到废纸篓";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver 会用 macOS 自己的措辞朗读展开按钮的展开和折叠状态。";
 "Section headings are headings to VoiceOver’s rotor." = "分区标题在 VoiceOver 转子中被识别为标题。";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "在 macOS 26 上，工具栏下方的页面条带会向系统请求柔和滚动边缘，使工具栏下方的内容变得模糊。";
+"Sort By" = "排序方式";
+"Sort by Name" = "按名称排序";
+"Sort by Size" = "按大小排序";
+"Sort by Date Last Opened" = "按上次打开日期排序";
+"No record of opening" = "没有打开记录";
+"Search the log" = "搜索日志";
+"Earlier launch" = "更早的启动";
+"older lines are in the file" = "更早的行在文件中";

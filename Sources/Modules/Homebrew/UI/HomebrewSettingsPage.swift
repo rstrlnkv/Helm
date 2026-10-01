@@ -269,18 +269,27 @@ struct HomebrewSettingsPage: View {
             .frame(minHeight: 25)
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
         }
-        // **Two things on this page change what is mounted, and neither moved.**
-        // Switching segment replaced one list with another in a single frame,
-        // and below `HomebrewSplit`'s threshold a press on a row swapped the
-        // whole pane for the package — the two biggest changes the page makes,
-        // drawn as cuts. One token each, the same one the other list screens
-        // use.
+        // **A press on a row moves; a switch of segment cuts.** Below
+        // `HomebrewSplit`'s threshold a press on a row swaps the whole pane for
+        // the package, and that swap runs on one token, the same one the other
+        // list screens use.
         //
         // `hb.selected == nil` and not `hb.selected`: what the narrow branch
         // turns on is whether *anything* is selected, so this is the value that
         // swaps the pane. Keyed on the selection itself, moving between two
         // packages beside the list would animate a pane that is not swapping.
-        .animation(HelmMotion.interface, value: hb.segment)
+        //
+        // **Switching segment carries no curve — the owner's decision,
+        // 2026-09-30 («вкладки везде переключаются резко»).** It used to: the
+        // two lists are different views, so the animation was a crossfade, and
+        // the two columns put a package's name 19 pt apart, which drew every name
+        // twice for a few frames. `selected` is per segment, so a switch can also
+        // flip `selected == nil`; the transaction line below is *inner* to the
+        // curve line, where the nearer modifier wins, and so a switch of segment
+        // reaches the pane as a cut even when it changes what is selected.
+        // `EveryTabSwitchIsACutTests` holds it across every module, and
+        // `ThePageMovesRatherThanCutsTests` holds this page's own shapes of it.
+        .transaction(value: hb.segment) { $0.animation = nil }
         .animation(HelmMotion.interface, value: hb.selected == nil)
         // **The page's controls, in the window's own `NSToolbar`
         // (`SettingsToolbar`), through the contract every module page shares**

@@ -183,7 +183,6 @@
 "Default duration" = "Default duration";
 "Delete" = "Delete";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev builds always log. The file lives in ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds.";
 "Disabled" = "Disabled";
 "Disconnected" = "Disconnected";
@@ -238,6 +237,8 @@
 "Folder" = "Folder";
 "Folders that keep themselves in order" = "Folders that keep themselves in order";
 "Follow" = "Follow";
+"Following" = "Following";
+"Not following" = "Not following";
 "Force quit and remove anyway" = "Force quit and remove anyway";
 "Full Disk Access" = "Full Disk Access";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind.";
@@ -397,7 +398,9 @@
 "On power" = "On power";
 "On quit only" = "On quit only";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "Once saved, Helm watches this folder and does what is listed below straight away.";
 "Open Accessibility…" = "Open accessibility…";
+"Open Autopilot" = "Open Autopilot";
 "Open Extensions…" = "Open Extensions…";
 "Open Full Disk Access…" = "Open Full Disk Access…";
 "Open Helm at login" = "Open Helm at login";
@@ -890,7 +893,6 @@
 "An extra copy is" = "An extra copy is";
 "the one that arrived later" = "the one that arrived later";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back.";
-"Rules to start with" = "Rules to start with";
 "Screenshots into their own folder" = "Screenshots into their own folder";
 "Downloads sorted by kind" = "Downloads sorted by kind";
 "Old installers to the Trash" = "Old installers to the Trash";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words.";
 "Section headings are headings to VoiceOver’s rotor." = "Section headings are headings to VoiceOver’s rotor.";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar.";
+"Sort By" = "Sort By";
+"Sort by Name" = "Sort by Name";
+"Sort by Size" = "Sort by Size";
+"Sort by Date Last Opened" = "Sort by Date Last Opened";
+"No record of opening" = "No record of opening";
+"Search the log" = "Search the log";
+"Earlier launch" = "Earlier launch";
+"older lines are in the file" = "older lines are in the file";

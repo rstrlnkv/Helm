@@ -11,8 +11,9 @@ import Module_Disk_Engine
 /// The panel tile is the module's most-seen surface, and the two numbers on it
 /// are the only ones in this app that cost nothing to be right about.
 ///
-/// «This one costs a `statfs`, not a scan», says the tile's own doc, «and they
-/// are the two numbers somebody opens a disk tool to see first». It asked for
+/// The tile's own doc says the filesystem answers capacity and free space
+/// «immediately» and that «they are the two numbers somebody opens a disk tool to
+/// see first». It asked for
 /// them **once per launch**: `DiskWidget.task` was `if vm.volumes.isEmpty`, and
 /// `DiskViewModel.shared(vm:)` lives as long as the app does. A menu-bar app
 /// runs for weeks, so «free» was the figure from the first time the panel was
@@ -65,7 +66,7 @@ final class TheTileReadsTheDiskAgainTests: XCTestCase {
         XCTAssertEqual(transport.volumeReads, atLaunch + 3, """
             the tile was shown three times and asked \(transport.volumeReads - atLaunch) times. \
             It is drawing what the disk held the first time the panel was ever opened, and a \
-            statfs is the cheapest read in the app.
+            volume-attributes read is the cheapest read in the app.
             """)
     }
 

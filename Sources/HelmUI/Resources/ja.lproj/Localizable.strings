@@ -183,7 +183,6 @@
 "Default duration" = "デフォルトの継続時間";
 "Delete" = "削除";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev ビルドは常にログを記録します。ファイルは ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
 "Disabled" = "無効";
 "Disconnected" = "接続解除済み";
@@ -238,6 +237,8 @@
 "Folder" = "フォルダ";
 "Folders that keep themselves in order" = "自分で整った状態を保つフォルダ";
 "Follow" = "追従";
+"Following" = "追従中";
+"Not following" = "追従していない";
 "Force quit and remove anyway" = "強制終了して削除";
 "Full Disk Access" = "フルディスクアクセス";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "ディスクへのアクセスがオフです。すべてのフォルダを読めず、アンインストーラ時にコンテナが残ります。";
@@ -397,7 +398,9 @@
 "On power" = "電源接続時";
 "On quit only" = "終了時のみ";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "ひとつのキーで両方。右の ⌘ / ⌥ / ⌃ / ⇧ を選んで単独で押すと、1 回目で直前の単語を修正し、もう一度で元に戻します。押しっぱなしや同時押しでは通常の修飾キーのままです。";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "保存すると、Helm はこのフォルダを監視し、下に表示した内容をすぐに実行します。";
 "Open Accessibility…" = "アクセシビリティを開く…";
+"Open Autopilot" = "オートパイロットを開く";
 "Open Extensions…" = "機能拡張を開く…";
 "Open Full Disk Access…" = "フルディスクアクセスを開く…";
 "Open Helm at login" = "ログイン時に Helm を開く";
@@ -890,7 +893,6 @@
 "An extra copy is" = "余分なコピーとは";
 "the one that arrived later" = "あとから来たもの";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重複”は、どちらのコピーが余分かを尋ねます。ダウンロードやデスクトップにあるものか、あとから来たものかです。グループごとに残す理由が表示され、どの行でも残す側にでき、“おすすめに戻す”で元に戻せます。";
-"Rules to start with" = "はじめの一歩となるルール";
 "Screenshots into their own folder" = "スクリーンショットを専用フォルダへ";
 "Downloads sorted by kind" = "ダウンロードを種類別に整理";
 "Old installers to the Trash" = "古いインストーラをゴミ箱へ";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver は、開閉ボタンの展開・折りたたみの状態を macOS 自身の言葉で読み上げます。";
 "Section headings are headings to VoiceOver’s rotor." = "セクション見出しが VoiceOver のローターで見出しとして扱われます。";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "macOS 26 では、ツールバーの下のページの帯がシステムにソフトなスクロールエッジを求め、ツールバーの下のコンテンツをぼかします。";
+"Sort By" = "表示順序";
+"Sort by Name" = "名前で並べ替え";
+"Sort by Size" = "サイズで並べ替え";
+"Sort by Date Last Opened" = "最後に開いた日で並べ替え";
+"No record of opening" = "開いた記録なし";
+"Search the log" = "ログを検索";
+"Earlier launch" = "以前の起動";
+"older lines are in the file" = "それ以前の行はファイルにあります";

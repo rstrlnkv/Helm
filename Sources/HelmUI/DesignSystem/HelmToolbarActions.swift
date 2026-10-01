@@ -53,15 +53,20 @@ public final class HelmToolbarActionsModel {
         /// ever carries `true` here.
         public let isBusy: Bool
         public let kind: EntryKind
+        /// The toggle's own two glyphs and two words, when it has them
+        /// (`HelmToolbarToggleFace`); nil draws the accent-tinted toggle.
+        public let toggleFace: HelmToolbarToggleFace?
 
         public init(id: String, title: String, symbol: String, isEnabled: Bool,
-                    isBusy: Bool = false, kind: EntryKind = .button) {
+                    isBusy: Bool = false, kind: EntryKind = .button,
+                    toggleFace: HelmToolbarToggleFace? = nil) {
             self.id = id
             self.title = title
             self.symbol = symbol
             self.isEnabled = isEnabled
             self.isBusy = isBusy
             self.kind = kind
+            self.toggleFace = toggleFace
         }
     }
 
@@ -636,9 +641,9 @@ public struct HelmToolbarActionsCapsule: View {
     /// same `Self.side` frame whatever its size, so no reserve, fold prediction
     /// or edge margin reads it.
     @ViewBuilder
-    private func glyph(_ entry: HelmToolbarActionsModel.Entry) -> some View {
+    private func glyph(_ entry: HelmToolbarActionsModel.Entry, symbol: String? = nil) -> some View {
         let isDisabled = !entry.isEnabled || !model.isInteractive
-        Label(entry.title, systemImage: entry.symbol)
+        Label(entry.title, systemImage: symbol ?? entry.symbol)
             .font(.system(size: 13, weight: .medium))
             .imageScale(.large)
             .labelStyle(.iconOnly)
@@ -673,17 +678,31 @@ public struct HelmToolbarActionsCapsule: View {
             }
             .buttonStyle(.plain)
         case .toggle(let isOn):
-            Button {
-                model.press(entry.id)
-            } label: {
-                if isOn {
-                    glyph(entry).foregroundStyle(Color.accentColor)
-                } else {
-                    glyph(entry)
+            if let face = entry.toggleFace {
+                // The state is the glyph, and never a tint: an accent fill
+                // beside the capsule's other glyphs reads as a different kind
+                // of control. The word the glyph stands for is the
+                // accessibility value, since the label stays the name.
+                Button {
+                    model.press(entry.id)
+                } label: {
+                    glyph(entry, symbol: face.symbol(isOn: isOn, on: entry.symbol))
                 }
+                .buttonStyle(.plain)
+                .accessibilityValue(face.value(isOn: isOn))
+            } else {
+                Button {
+                    model.press(entry.id)
+                } label: {
+                    if isOn {
+                        glyph(entry).foregroundStyle(Color.accentColor)
+                    } else {
+                        glyph(entry)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isOn ? .isSelected : [])
             }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(isOn ? .isSelected : [])
         case .menu(let items):
             Menu {
                 ForEach(items) { item in

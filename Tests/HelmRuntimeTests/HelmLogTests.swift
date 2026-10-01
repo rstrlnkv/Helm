@@ -10,8 +10,14 @@ final class LogPolicyTests: XCTestCase {
     func testStableBuildsStaySilentUnlessAskedTo() {
         XCTAssertFalse(LogPolicy.isEnabled(version: "0.7.0", override: nil))
         XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0", override: true))
-        // An explicit opt-out wins even on a dev build.
-        XCTAssertFalse(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: false))
+        XCTAssertFalse(LogPolicy.isEnabled(version: "0.7.0", override: false))
+    }
+
+    /// The page greys the switch on a dev build, so a «off» saved by the beta
+    /// that shares the settings domain must not silence it with no way back.
+    func testADevBuildLogsWhateverWasSaved() {
+        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: false))
+        XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: true))
     }
 }
 

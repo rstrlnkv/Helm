@@ -44,9 +44,12 @@ struct UninstallerSettingsPage: View {
     private var checked: Set<String> { uvm.checked }
     private var failures: [TrashFailureInfo] { uvm.failures }
 
+    /// Sorted first, narrowed after: the search never reorders. The order itself
+    /// is `AppSort`'s, on the view model — nothing here decides it.
     private var filtered: [InstalledApp] {
-        guard !search.isEmpty else { return apps }
-        return apps.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        let ordered = uvm.sortedApps
+        guard !search.isEmpty else { return ordered }
+        return ordered.filter { $0.name.localizedCaseInsensitiveContains(search) }
     }
 
     private var runningNames: [String] {
@@ -65,6 +68,7 @@ struct UninstallerSettingsPage: View {
             .helmTracksFullDiskAccess($diskAccess)
             .task {
                 await uvm.refreshTrashWatch()
+                await uvm.refreshSortOrder()
                 await uvm.loadAppsIfNeeded()
             }
     }
@@ -99,6 +103,19 @@ struct UninstallerSettingsPage: View {
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             tabsEnabled: step != .review,
             actions: [
+                // Nothing to order on the review or the failure report, and
+                // nothing to order on the Leftovers tab. The choice is the
+                // engine's to remember; a press answers at once.
+                HelmToolbarAction(id: "sort", title: UnStr.sortBy, symbol: "arrow.up.arrow.down",
+                                  isEnabled: step == .pick && failures.isEmpty,
+                                  isVisible: tab == .apps,
+                                  menu: AppSortOrder.allCases.map { order in
+                    HelmToolbarMenuItem(id: order.rawValue, title: UnStr.sortName(order),
+                                        isOn: uvm.effectiveSortOrder == order,
+                                        isEnabled: order != .dateLastOpened || uvm.dateOrderAvailable) {
+                        Task { await uvm.setSortOrder(order) }
+                    }
+                }),
                 HelmToolbarAction(id: "refresh", title: UnStr.refreshList, symbol: "arrow.clockwise",
                                   isEnabled: !loading, isVisible: tab == .apps, isBusy: loading) {
                     Task { await refreshApps() }
@@ -148,9 +165,9 @@ struct UninstallerSettingsPage: View {
         // (2026-09-21, `un-leave`, against the earlier SwiftUI-bridged bar):
         // Refresh's glyph moved 175 pt inside a single frame — 41.7-50 ms at
         // this clip's dropped-frame rate — right when this condition flipped
-        // leaving Приложения, while the very same tab change already sits
-        // under `.animation(HelmMotion.interface, value: tab)` below and
-        // still snapped, because that transaction is SwiftUI's and the
+        // leaving Приложения, while the very same tab change then sat
+        // under a page-wide `.animation(value: tab)` (removed since: it
+        // cross-faded the two tabs) and still snapped, because that transaction is SwiftUI's and the
         // toolbar's own relayout is AppKit's, which no curve in this file
         // reaches (`ARCHITECTURE.md`'s "The page header" section: the tabs
         // and the actions both live in `NSToolbar`'s own layout, not
@@ -161,8 +178,6 @@ struct UninstallerSettingsPage: View {
         // .pick`, exactly as it did before.
         .helmWindowToolbar(toolbarContent, token: UninstallerDescriptor.id.rawValue)
         .animation(HelmMotion.interface, value: step)
-        .animation(HelmMotion.interface, value: tab)
-        .animation(HelmMotion.interface, value: apps.count)
     }
 
     /// The one note about the one permission, or nil when there is nothing to say.
@@ -223,7 +238,7 @@ struct UninstallerSettingsPage: View {
     private var sizeText: String {
         let bytes: Int
         if step == .review {
-            bytes = UninstallPlan.totalBytes(groups, selectedLeftovers: uvm.selectedLeftovers)
+            bytes = uvm.reviewBytes ?? 0
         } else {
             bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + $1.sizeBytes }
         }
@@ -377,11 +392,51 @@ struct UninstallerSettingsPage: View {
             // operate rather than to read.
             .accessibilityElement(children: .combine)
             Spacer()
-            Text(Bytes(app.sizeBytes))
-                .helmFigure().foregroundStyle(HelmText.quiet)
+            VStack(alignment: .trailing, spacing: HelmSpace.s1) {
+                // Nothing until measured: `sizeBytes` is zero in a list that has
+                // not been measured, and «0 bytes» is a claim nobody made. A bundle
+                // measured as nothing reads as the dash the total already uses.
+                // The place is kept either way — the sizes land seconds after the
+                // list, and a line that appeared above the date slid every date on
+                // screen down half a line at once. Hidden, so it draws and reads
+                // as nothing while it holds the line.
+                if let size = uvm.measuredSizes[app.path] {
+                    Text(size > 0 ? Bytes(size) : "—")
+                        .helmFigure().foregroundStyle(HelmText.quiet)
+                } else {
+                    Text(verbatim: "—").helmFigure().hidden()
+                }
+                openedLine(app)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { uvm.toggleChecked(app.bundleID) }
+    }
+
+    /// When the app was last opened, on every row in every order — the fact the
+    /// date order sorts by, so it can be checked by eye. Blank while Spotlight
+    /// is being asked and for an app the read did not reach, «no record» for one
+    /// Spotlight has no date for, and absent altogether when Spotlight answered
+    /// for no app at all: every row would say «no record».
+    ///
+    /// Written out in full — «hace 7 meses», «il y a 2 ans» — because the short
+    /// form of es and fr is one letter for a month and for a year («7 m», «2 a»),
+    /// unreadable in exactly the spans this line exists to show.
+    ///
+    /// Blank is a held place, not a missing line: the line's height stays, so the
+    /// size above it does not move when the date arrives.
+    @ViewBuilder private func openedLine(_ app: InstalledApp) -> some View {
+        if let line = openedText(app) {
+            Text(line).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+        } else {
+            Text(verbatim: "—").font(HelmText.rowDetail).hidden()
+        }
+    }
+
+    private func openedText(_ app: InstalledApp) -> String? {
+        guard uvm.dateOrderAvailable, !uvm.lastOpenedUnread.contains(app.path) else { return nil }
+        guard let date = uvm.lastOpened?[app.path] else { return UnStr.noRecordOfOpening }
+        return HelmDates.age(date, style: .full).map(UnStr.opened)
     }
 
     // MARK: - Step 2: review the files, grouped per app
@@ -439,7 +494,11 @@ struct UninstallerSettingsPage: View {
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.back) { uvm.backToPick() }
                 Spacer()
-                Text(UnStr.toTrash(sizeText)).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                // A total that is not known is not drawn: the sizes are still
+                // being measured, or a bundle measured as nothing promises none.
+                if let bytes = uvm.reviewBytes, bytes > 0 {
+                    Text(UnStr.toTrash(Bytes(bytes))).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                }
                 let ready = UninstallPlan.readiness(groups, forceQuit: uvm.forceQuit) == .ready
                 Button {
                     Task { await uvm.removeSelection() }
@@ -514,8 +573,7 @@ struct UninstallerSettingsPage: View {
             }
             .accessibilityElement(children: .combine)
             Spacer()
-            Text(Bytes(app.sizeBytes))
-                .helmFigure().foregroundStyle(HelmText.quiet)
+            sizeFigure(of: app)
         }
     }
 
@@ -581,6 +639,18 @@ struct UninstallerSettingsPage: View {
         }
     }
 
+    /// The size of an app in the review, read from the measurement as it stands
+    /// and not from the snapshot the review was built from: that carries the
+    /// list's zero for as long as the sizes have not landed, and «0 bytes» is a
+    /// claim nobody made. Nothing is drawn until it is measured, and it appears
+    /// when it lands.
+    @ViewBuilder private func sizeFigure(of app: InstalledApp) -> some View {
+        if let size = uvm.measuredSizes[app.path] {
+            Text(size > 0 ? Bytes(size) : "—")
+                .helmFigure().foregroundStyle(HelmText.quiet)
+        }
+    }
+
     private func groupHeader(_ group: UninstallGroup) -> some View {
         HStack(spacing: 8) {
             // The icon reads as an unticked checkbox beside a column of them,
@@ -593,8 +663,7 @@ struct UninstallerSettingsPage: View {
                 HelmBadge(UnStr.runningBadge, tint: .orange)
             }
             Spacer()
-            Text(Bytes(group.app.sizeBytes))
-                .helmFigure().foregroundStyle(HelmText.quiet)
+            sizeFigure(of: group.app)
         }
         // A name, a "Running" badge and a size: one heading, read in order.
         .accessibilityElement(children: .combine)

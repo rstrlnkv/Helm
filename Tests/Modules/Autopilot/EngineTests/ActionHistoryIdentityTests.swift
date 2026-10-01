@@ -30,13 +30,17 @@ final class ActionHistoryIdentityTests: XCTestCase {
     /// Two files, two refusals, two things still sitting where they were. The
     /// page says "not completed: 1" and lists one row, and whichever of the two
     /// the person goes looking for, the report is about the other one.
+    ///
+    /// A refusal about the file itself — `.missing`. A refusal for scope writes
+    /// down no file at all, so it is one row per rule by design
+    /// (`AFolderReachedThroughALinkIsNotReadTests`).
     func test_two_files_of_one_name_refused_are_two_rows() throws {
         let first = try XCTUnwrap(ActionRecord.of(
             RulePlan(facts: facts("/Users/x/Downloads/2025/report.pdf"), rule: rule),
-            .refused(.outOfScope), at: at(1)))
+            .refused(.missing), at: at(1)))
         let second = try XCTUnwrap(ActionRecord.of(
             RulePlan(facts: facts("/Users/x/Downloads/2026/report.pdf"), rule: rule),
-            .refused(.outOfScope), at: at(2)))
+            .refused(.missing), at: at(2)))
 
         var history = ActionHistory.recording(first, into: [], now: at(2))
         history = ActionHistory.recording(second, into: history, now: at(2))

@@ -21,8 +21,11 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     /// Every scan in flight, not the last one started: drilling into a folder
     /// the walk never reached starts a second scan beside the first.
     private let scanners = ScanRegistry<DiskScanner>()
+    private let capacity: any VolumeCapacityPort
 
-    public init(transport: LocalTransport = LocalTransport()) {
+    public init(transport: LocalTransport = LocalTransport(),
+                capacity: any VolumeCapacityPort = SystemVolumeCapacity()) {
+        self.capacity = capacity
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -33,18 +36,15 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         cancel()
     }
 
+    /// Free space here is what Finder shows — purgeable space counts as free
+    /// (`VolumeReadout.freeSpace`), so the tile and the page agree with the
+    /// system's own figure rather than reading tens of gigabytes low.
     public func volumes() -> [VolumeInfo] {
-        let keys: [URLResourceKey] = [.volumeNameKey, .volumeTotalCapacityKey,
-                                      .volumeAvailableCapacityKey, .volumeIsBrowsableKey]
-        let urls = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: keys,
-                                                         options: [.skipHiddenVolumes]) ?? []
-        return urls.compactMap { url in
-            guard let values = try? url.resourceValues(forKeys: Set(keys)),
-                  values.volumeIsBrowsable == true,
-                  let total = values.volumeTotalCapacity,
-                  let free = values.volumeAvailableCapacity else { return nil }
-            return VolumeInfo(name: values.volumeName ?? url.lastPathComponent,
-                              path: url.path, totalBytes: total, freeBytes: free)
+        capacity.mounted().compactMap { readout in
+            guard readout.isBrowsable, let total = readout.total,
+                  let free = readout.freeSpace else { return nil }
+            return VolumeInfo(name: readout.name ?? URL(fileURLWithPath: readout.path).lastPathComponent,
+                              path: readout.path, totalBytes: total, freeBytes: free.bytes)
         }
     }
 
@@ -142,11 +142,10 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     /// flight rather than the one that started last.
     public func cancel() { scanners.inFlight.forEach { $0.cancel() } }
 
-    /// Free space of the volume a path lives on — the ring's dim sector.
+    /// Free space of the volume a path lives on — the ring's dim sector, the
+    /// same figure `volumes()` reports. Unreadable is 0, which draws no wedge.
     private func freeBytes(forPathOn path: String) -> Int {
-        let url = URL(fileURLWithPath: path)
-        let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityKey])
-        return values?.volumeAvailableCapacity ?? 0
+        capacity.readout(at: path)?.freeSpace?.bytes ?? 0
     }
 
     /// **The heaviest removal in the app**: `HelmTrash.remove` weighs every path

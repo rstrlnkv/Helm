@@ -236,8 +236,19 @@ public enum HelmTrash {
                     // “com.acme.tool.plist” doesn’t exist» and repeats the path under
                     // `NSFilePathErrorKey`, so redacting Helm's own half would leave a
                     // module whose leaf is a bundle id naming it twice more.
+                    //
+                    // And for a module whose leaf names software, **not the system's
+                    // sentence at all**: macOS quotes a bundle by its *display name*
+                    // («“Hidden Title” couldn’t be moved…»), which is not the file's
+                    // name, and a name under four characters is never replaced inside
+                    // a sentence. The domain, the code and Helm's own classification
+                    // say everything the sentence did; the sentence itself reaches the
+                    // screen through the engine's own record of it.
+                    let said = leaf == .softwareName
+                        ? "\((error as NSError).domain) \((error as NSError).code), \(reason.rawValue)"
+                        : HelmFailure.describe(error)
                     HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
-                        + Redact.naming(HelmFailure.describe(error), software: path, leaf: leaf))
+                        + Redact.naming(said, software: path, leaf: leaf))
                 }
             }
 

@@ -25,6 +25,17 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
             self.path = path
             self.bytes = bytes
         }
+
+        /// Held to `DiskEntry.byteCeiling` as the tree's own figures are: the file
+        /// is one any process running as the user can write, and the sum over
+        /// targets in `DiskAdvice` runs in the decoder. Only for the form that has
+        /// `targets`: an older row decodes `bytes` unbounded and builds a `Target`
+        /// through the memberwise initialiser, the known gap `Q-legacy-advice`.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            path = try c.decode(String.self, forKey: .path)
+            bytes = try c.decode(Int.self, forKey: .bytes).clamped(to: 0...DiskEntry.byteCeiling)
+        }
     }
 
     public var id: String { path }
@@ -61,7 +72,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
         self.name = name; self.path = path; self.kind = kind
         self.modified = modified
         self.targets = targets
-        self.bytes = targets.reduce(0) { $0 + $1.bytes }
+        self.bytes = targets.map(\.bytes).saturatingSum()
     }
 
     /// A scan cached by a build that named only the container decodes as one

@@ -24,9 +24,10 @@ import XCTest
 /// Homebrew's whole page was 12 layers — so the segmented control in its toolbar
 /// was measured in no render, in no language. `ModulePageRender.Wire` answers
 /// those pages from a fixture now, and Homebrew's toolbar is in the ratchet's
-/// reading. Leftovers' filter row and the log's level filter are the two left,
-/// which is why they are the two `recorded` below: this file is the measurement of
-/// what the render still cannot see, and it shrinks when the render grows.
+/// reading. Leftovers' filter row and the log's level filter were the two left,
+/// which is why they were the two `recorded` below, and both have since moved
+/// into the window's toolbar: this file is the measurement of what the render
+/// still cannot see, and it shrinks when the render grows — it is empty now.
 ///
 /// **The rule here is the ratchet's own rule**, not a new one: a control drawn
 /// narrower than the width it asks for clips (`testWhatDoesNotFitTodayDoesNotGrow`),
@@ -43,16 +44,15 @@ import XCTest
 /// chosen against English and translated past, and both were invisible until
 /// somebody switched the app to Russian and looked at it.
 ///
-/// **And the sanctioned answer was a model of a different control.**
-/// `HelmPickerWidth.segmented` used to add up the label widths and 26 pt a
-/// segment, which is what `NSSegmentedControl` does with
-/// `.segmentDistribution = .fit`. SwiftUI's `.segmented` picker fills its segments
-/// **equally**: measured here, the hosted control's intrinsic width equals
-/// `.fillEqually`'s `sizeToFit` in all 24 readings taken, and exceeded the old
-/// answer by up to 140 pt (the log's level filter in Russian: 263 written, 403.5
-/// asked for). Both sites that clipped were that arithmetic — once written out by
-/// hand as 300, once called directly — and `PickerWidthTests` now pins the helper
-/// against `.fillEqually` label set by label set.
+/// **The sanctioned answer for a segmented control is gone, and so is its
+/// recogniser.** `HelmPickerWidth.segmented` was a model of a different control
+/// than the one SwiftUI draws (it added up label widths, which is
+/// `.segmentDistribution = .fit`; SwiftUI's `.segmented` picker fills its
+/// segments **equally**), it was rewritten once to match, and when the log's
+/// level filter moved into the window's toolbar it had no caller left — so it was
+/// removed rather than kept as a width for a control the tree no longer draws.
+/// A segmented picker that wants a width of its own is a literal now, which the
+/// scan below reports like any other.
 @MainActor
 final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
 
@@ -62,15 +62,10 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     private enum Imposed: Hashable {
         /// A number in the source, the `f69fcaf` shape.
         case points(CGFloat)
-        /// `HelmPickerWidth.segmented`, computed from the same labels the picker
-        /// draws — the sanctioned form, and a model of `.fit` rather than of what
-        /// SwiftUI draws.
-        case helmSegmented
 
         var described: String {
             switch self {
             case .points(let width): return "width \(Int(width))"
-            case .helmSegmented: return "width HelmPickerWidth.segmented(…)"
             }
         }
     }
@@ -84,7 +79,6 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
         var key: String {
             switch imposed {
             case .points(let width): return "\(shortFile)|\(Int(width))"
-            case .helmSegmented: return "\(shortFile)|HelmPickerWidth"
             }
         }
         var described: String { "\(shortFile):\(line) \(imposed.described)" }
@@ -98,73 +92,51 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// a fact about everything above it, so an edit elsewhere in the page would
     /// break the record without touching the picker. Changing the width does break
     /// it, which is the moment it has to be measured again.
-    /// **Two entries, and both are the computed one.** Leftovers' written 180 came
-    /// off on 2026-08-13 in favour of `.fixedSize()` — the sixth page to have that
-    /// figure and the last one in the tree — so what is left here is a width the
-    /// labels themselves answer. The scan above is what keeps a hand-written one
-    /// from arriving unmeasured: a new number fails `testTheScanAndTheRecordAgree`
-    /// until somebody records the labels it is supposed to fit.
     ///
-    /// The hosts page's «Table / Plain text» is the second, added with the page on
-    /// 2026-08-18. The `ModulePageRender` reading can see this control — it is a
-    /// segmented picker, which AppKit draws — so it is in that ratchet as well; it
-    /// is recorded here because this is the file that asks whether an imposed width
-    /// fits the labels *it* draws, and the answer for a computed width has to be
-    /// measured rather than assumed.
-    private static let recorded: [String: @Sendable () -> [String]] = [
-        "LogView.swift|HelmPickerWidth": { [AppStr.logLevelAll, AppStr.logLevelWarnings,
-                                            AppStr.logLevelErrors] },
-    ]
+    /// **What the record held, and why it is empty.** Leftovers' written 180 came
+    /// off on 2026-08-13 in favour of `.fixedSize()`, the sixth page to have that
+    /// figure and the last one in the tree. The hosts page's «Table / Plain text»
+    /// control was recorded here from 2026-08-18, because this is the file that
+    /// asks whether an imposed width fits the labels *it* draws, and the answer for
+    /// a computed width has to be measured rather than assumed. The scan above is
+    /// what keeps a hand-written width from arriving unmeasured: a new number fails
+    /// `testTheScanAndTheRecordAgree` until somebody records the labels it is
+    /// supposed to fit.
+    ///
+    /// **Empty from 2026-09-30, and that is the state this file is for.** The log's
+    /// level filter was the last picker in the tree with a width of its own; it
+    /// moved into the window's toolbar as the centred tabs with the rest of the
+    /// page's controls, and its record went with it. A new imposed width fails
+    /// `testTheScanAndTheRecordAgree` until somebody records the labels it has to
+    /// fit, so the empty list is a claim the scan keeps checking, not a place to
+    /// stop looking.
+    private static let recorded: [String: @Sendable () -> [String]] = [:]
 
-    /// **Measured 2026-08-11, three consecutive runs in agreement.** Both numbers
-    /// were 2 and 3 when this file was written; what lowered them was
-    /// `HelmPickerWidth.segmented` learning the control SwiftUI actually draws —
-    /// `count × (widest label + 24)`, rounded up to the half point, which is
-    /// `.fillEqually`'s own arithmetic to the point — and Homebrew's written 300
-    /// coming off in favour of `.fixedSize()`.
+    /// **Both numbers are 0.** They were 2 and 3 on 2026-08-11, three consecutive
+    /// runs in agreement, and what lowered them was sizing the segmented control
+    /// from its own labels — `count × (widest label + 24)`, rounded up to the half
+    /// point, which is `.fillEqually`'s own arithmetic to the point; that helper is
+    /// gone from `HelmPickerWidth` now — and Homebrew's written 300 coming off in
+    /// favour of `.fixedSize()`.
     ///
     /// `clipping` is a site whose imposed width is under what its labels ask for in
     /// at least one language, and it is **zero**: the two that clipped were the
     /// `LogView` filter (short in seven of eight languages — ru 263 against 403.5)
     /// and Homebrew's toolbar (short in four — ru 366, ja 370.5, es 357, pt 303).
     ///
-    /// `tight` is a site with less than 40 % of room, and **one** is left, there
-    /// honestly:
-    ///
-    /// - `LogView.swift` is at **exactly** 1.00 × in all eight, because a computed
-    ///   width *is* what the control asks for. That is the fix, not a finding:
-    ///   headroom would be slack, AppKit centres a segmented control in the width
-    ///   it is given, and the row's left edge would then walk off the 20 pt gutter
-    ///   with the language. Padding this number to satisfy the ratchet would be
-    ///   putting the defect back.
-    ///
-    /// It was 2 until 2026-08-13, and the other one was `LeftoversSettingsPage`'s
-    /// written 180 — a control that asks 161 pt in English, 152 in Russian and 117
-    /// in German, so up to 63 pt of the frame was slack AppKit spent on centring the
-    /// control away from the page's gutter. `.fixedSize()` is what it takes now, and
-    /// with it the last hand-written picker width in the tree is gone: every entry
-    /// in `recorded` is computed from the labels it draws.
-    ///
-    /// Both numbers are only ever lowered, by the commit that lowers them.
-    /// **`tight` is 2 from 2026-08-18**, and the second is the hosts page's
-    /// «Table / Plain text», there for exactly the reason the first one is: a width
-    /// computed from the labels *is* what the control asks for, so the ratio is
-    /// 1.00 × in all eight languages by construction. Padding it to make this
-    /// number stay 1 would put back the defect `HelmPickerWidth` exists to end.
-    /// `clipping` is unmoved at 0, which is the half of this pair that can fall.
-    ///
-    /// **`tight` is 1 again from 2026-09-16**, and it fell for a reason the
-    /// number cannot see: the hosts page's view picker moved into the settings
-    /// window's toolbar as a pair of glyphs and no longer carries a width of its
-    /// own, so its record went with it.
+    /// `tight` is a site with less than 40 % of room. The last one was `LogView`'s
+    /// level filter, at exactly 1.00 × in all eight languages because a computed
+    /// width *is* what the control asks for; it left with the control, which is the
+    /// window's toolbar's now, and `LeftoversSettingsPage`'s written 180 went on
+    /// 2026-08-13. **`tight` is 0 from 2026-09-30.**
     private static let recordedClipping = 0
-    private static let recordedTight = 1
+    private static let recordedTight = 0
     private static let inflation: CGFloat = 1.4
 
     /// Every file a picker can be written in: the shared enumeration the ladder
     /// scans use — HelmUI plus the UI half of every module in `Package.swift` — and
     /// `HelmApp`'s own, which it does not cover. The log window and the panel are
-    /// drawn UI too, and the log is where one of the two clipping sites is.
+    /// drawn UI too; the log draws no `Picker(` any more, and `recordedClipping` is 0.
     private func uiFiles() throws -> [String] {
         try UISources.files() + RepoSource.swiftFiles(under: "Sources/HelmApp")
     }
@@ -212,9 +184,6 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
                 depth += code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
                 if let width = number(after: ".frame(width:", in: code) {
                     out.append(Site(file: file, line: index + 1, imposed: .points(width)))
-                } else if code.hasPrefix(".frame(width:"),
-                          code.contains("HelmPickerWidth.segmented") {
-                    out.append(Site(file: file, line: index + 1, imposed: .helmSegmented))
                 }
             }
         }
@@ -281,7 +250,6 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     private func imposedWidth(_ site: Site, labels: [String]) -> CGFloat {
         switch site.imposed {
         case .points(let width): return width
-        case .helmSegmented: return HelmPickerWidth.segmented(labels)
         }
     }
 
@@ -360,10 +328,9 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// pass; a site that has been fixed has to lose its record with it.
     func testTheScanAndTheRecordAgree() throws {
         let found = try sites()
-        XCTAssertFalse(found.isEmpty,
-                       "the scan finds no imposed picker width at all — it has stopped matching, "
-                       + "and both ratchets below pass over an empty list")
-
+        // No `XCTAssertFalse(found.isEmpty)` any more: the tree has no imposed picker
+        // width left, and that is the fix. That the scan can still *see* one is what
+        // `testTheScanRecognisesTheDefectAndNotTheFix` holds, on the offence itself.
         XCTAssertEqual(Set(found.map(\.key)), Set(Self.recorded.keys), """
             a picker carries a width nothing here has measured, or a record names a site that \
             has gone.
@@ -409,7 +376,7 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
         let onlyAComment = """
             /// Hard-coded widths are what this type exists to end — 260 was 3 pt
             /// from clipping in Russian, and `.frame(width: 200)` clipped at 208.
-            public static func segmented(_ labels: [String]) -> CGFloat { 0 }
+            public static func fitting(_ labels: [String]) -> CGFloat { 0 }
             """
 
         XCTAssertEqual(scanned(offence).map(\.imposed), [.points(200)],

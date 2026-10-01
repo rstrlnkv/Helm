@@ -183,7 +183,6 @@
 "Default duration" = "Duração padrão";
 "Delete" = "Excluir";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Builds Dev sempre registram. O arquivo fica em ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnóstico: o Helm pode manter um registro do que faz, pronto para compartilhar se algo der errado. Sempre ativo em builds Dev.";
 "Disabled" = "Desativado";
 "Disconnected" = "Desconectado";
@@ -238,6 +237,8 @@
 "Folder" = "Pasta";
 "Folders that keep themselves in order" = "Pastas que se mantêm em ordem";
 "Follow" = "Acompanhar";
+"Following" = "Acompanhando";
+"Not following" = "Não acompanhando";
 "Force quit and remove anyway" = "Forçar encerramento e remover";
 "Full Disk Access" = "Acesso Total ao Disco";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "O acesso ao disco está desligado. Sem ele a varredura não lê todas as pastas e a remoção deixa contêineres.";
@@ -397,7 +398,9 @@
 "On power" = "Na tomada";
 "On quit only" = "Só ao fechar";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Uma tecla para as duas correções: escolha ⌘, ⌥, ⌃ ou ⇧ da direita e pressione sozinha. A primeira vez corrige a última palavra, a seguinte desfaz. Segurada ou combinada, continua um modificador comum.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "Depois de salvar, o Helm passa a vigiar esta pasta e faz imediatamente o que está listado abaixo.";
 "Open Accessibility…" = "Abrir Acessibilidade…";
+"Open Autopilot" = "Abrir Piloto automático";
 "Open Extensions…" = "Abrir Extensões…";
 "Open Full Disk Access…" = "Abrir Acesso Total ao Disco…";
 "Open Helm at login" = "Abrir o Helm no início da sessão";
@@ -890,7 +893,6 @@
 "An extra copy is" = "Uma cópia a mais é";
 "the one that arrived later" = "a que chegou depois";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplicados pergunta qual cópia é a que sobra: a que está em Transferências ou na Mesa, ou a que chegou depois. Cada grupo diz por que aquela cópia fica, qualquer linha pode passar a ser a que fica, e “Voltar à recomendação” desfaz isso.";
-"Rules to start with" = "Regras para começar";
 "Screenshots into their own folder" = "Capturas de tela para a própria pasta";
 "Downloads sorted by kind" = "Downloads organizados por tipo";
 "Old installers to the Trash" = "Instaladores antigos para o Lixo";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "O VoiceOver lê o estado expandido e recolhido de um botão de expansão com as próprias palavras do macOS.";
 "Section headings are headings to VoiceOver’s rotor." = "Os títulos de seção aparecem como títulos no rotor do VoiceOver.";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "No macOS 26, a faixa da página sob a barra de ferramentas pede ao sistema a borda de rolagem suave, que desfoca o conteúdo sob a barra de ferramentas.";
+"Sort By" = "Ordenar por";
+"Sort by Name" = "Ordenar por Nome";
+"Sort by Size" = "Ordenar por Tamanho";
+"Sort by Date Last Opened" = "Ordenar por Data da Última Abertura";
+"No record of opening" = "Sem registro de abertura";
+"Search the log" = "Buscar no registro";
+"Earlier launch" = "Inicialização anterior";
+"older lines are in the file" = "as linhas anteriores estão no arquivo";

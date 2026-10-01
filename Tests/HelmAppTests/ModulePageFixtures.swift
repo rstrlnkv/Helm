@@ -728,7 +728,47 @@ final class FixtureTransport: EngineTransport, @unchecked Sendable {
         for event in wire.events { local.emit(event) }
     }
 
-    func send(_ command: EngineCommand) async throws -> Data { try await local.send(command) }
+    // MARK: Holding the wire
+    //
+    // **A reply that lands is content arriving, and a recorder that photographs a
+    // switch cannot tell it from motion.** A page that asks its engine for a tab's
+    // data the moment the tab is shown (Homebrew's `refresh(segment)`) draws the
+    // answer a turn or two after the cut, and a run that reads «a frame after the
+    // grace differs from the end» reports that as a curve. `hold()` parks every
+    // command until `release()`, so a measurement of the switch sees the page in
+    // the state the question leaves it in, and the answer arrives when the caller
+    // says — after it has stopped looking. Every command is parked, answered
+    // ones and refused ones alike; nothing is dropped, and `release()` lets all of
+    // them through in the order they came.
+    private let gate = NSLock()
+    private var held = false
+    private var parked: [CheckedContinuation<Void, Never>] = []
+
+    func hold() { gate.withLock { held = true } }
+
+    func release() {
+        let waiting: [CheckedContinuation<Void, Never>] = gate.withLock {
+            held = false
+            defer { parked = [] }
+            return parked
+        }
+        waiting.forEach { $0.resume() }
+    }
+
+    private func parkWhileHeld() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let park = gate.withLock { () -> Bool in
+                if held { parked.append(continuation) }
+                return held
+            }
+            if !park { continuation.resume() }
+        }
+    }
+
+    func send(_ command: EngineCommand) async throws -> Data {
+        await parkWhileHeld()
+        return try await local.send(command)
+    }
     var events: AsyncStream<EngineEvent> { local.events }
     /// How many readers are listening right now — the seam that tells a live wire
     /// from a stream that finished, which draw the same page.

@@ -116,8 +116,8 @@ final class TheWindowReaderAnswersAtDeliveryTests: XCTestCase {
     // MARK: - No window, reached the way the app reaches it
 
     /// The `?? true` the offscreen render harnesses stand on
-    /// (`Tests/Support/RenderedInk.swift:235`,
-    /// `Tests/HelmAppTests/ModulePageRender.swift:282`), driven through
+    /// (`Tests/Support/RenderedInk.swift:242`,
+    /// `Tests/HelmAppTests/ModulePageRender.swift:289`), driven through
     /// `viewDidMoveToWindow` rather than by calling `report()` on a view that
     /// never had a window — a different call site, and the only one the app
     /// itself ever takes.

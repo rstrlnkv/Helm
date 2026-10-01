@@ -4,7 +4,7 @@ import Module_Disk_Engine
 
 /// The disk in the panel: how much room is left, out of how much there is.
 ///
-/// **This one costs a `statfs`, not a scan.** Everything else the Disk module
+/// **This one costs a volume-attributes read, not a scan.** Everything else the Disk module
 /// knows — what is taking up the space — has to be walked for, and a widget
 /// that started a walk when the panel opened would be the worst thing in the
 /// app. Capacity and free space are a question the filesystem answers
@@ -59,7 +59,7 @@ struct DiskWidget: View {
             // of the panel — for weeks, on a menu-bar app — and `CapacityBar`'s
             // red-over-90 % could never fire on a disk filling up while Helm
             // ran, which is the only way disks fill up. The panel rebuilds its
-            // widgets on every opening, and this read is a `statfs`.
+            // widgets on every opening, and this read is a volume-attributes read.
             await vm.loadVolumes()
         }
     }
@@ -91,7 +91,7 @@ private struct CapacityBar: View {
 
 /// The way from the tile into the module, and it is a chevron.
 ///
-/// **What this tile answers and what it cannot.** Free space is a `statfs` — the
+/// **What this tile answers and what it cannot.** Free space is a volume-attributes read — the
 /// panel can have it instantly, which is why the tile exists. *What is taking
 /// the space* has to be walked for, and a tile that started a walk when the
 /// panel opened would be the worst thing in the app. So the tile always ends in

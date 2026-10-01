@@ -156,6 +156,11 @@ struct AboutHelmView: View {
             .padding(.vertical, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The page's own name for the window's title bar. Without it nothing
+        // publishes a title, and under `PageBarStyle.windowTitle`
+        // `SettingsWindow.applyTitle(_:)` falls back to the window's own name
+        // («Настройки Helm» over this page). A no-op where no bar is set.
+        .helmPageBar(title: AppStr.aboutHelm)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
         }

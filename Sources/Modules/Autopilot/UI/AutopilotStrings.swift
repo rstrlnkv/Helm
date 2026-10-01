@@ -94,11 +94,17 @@ enum ApStr {
 
     // MARK: - Rules somebody can have without writing one
 
-    static var presetsTitle: String { L("Rules to start with") }
-    /// The same offer worded as a button, for the tour's Autopilot step. Its own
-    /// key rather than the heading's: a heading and a button are two different
-    /// things to say, and one English key means one thing.
+    /// The menu that opens a starting rule, on the empty page and beside «Add
+    /// folder…» — drawn only where there are no rules, which is what makes the
+    /// words true. The tour's step has its own (`tourOffer`).
     static var welcomeOffer: String { L("Show the rules to start with") }
+
+    /// The tour's button on Autopilot's step, which is not the menu above: the
+    /// tour is static metadata and holds no reading of the rules, and the block
+    /// of starting rules is on the page only while there are none — so a button
+    /// promising it is false for everyone who has a rule (the tour shown once to
+    /// an existing install, or reopened). This one says only where it goes.
+    static var tourOffer: String { L("Open Autopilot") }
 
     /// The five names, and the only part of a preset that is translated.
     ///
@@ -119,21 +125,38 @@ enum ApStr {
         }
     }
 
-    /// **The button says which folder, because pressing it is what adds one.**
+    /// What a preset is called over a folder that is not its own.
     ///
-    /// Every other folder in this module arrives through the open panel, where
-    /// the person picks the path. This one arrives because `FileManager` named
-    /// it, so the name has to be on the control rather than discovered
-    /// afterwards on the page — and it is macOS's own name for that folder,
-    /// never a ninth translation of one the system already has.
-    static func seePreset(in folder: String,
-                          language: AppLanguage = AppLanguage.current) -> String {
-        L("What would happen in \(folder)", [.ru: "Что будет в папке \(folder)", .es: "Qué pasaría en \(folder)", .fr: "Ce qui se passerait dans \(folder)", .de: "Was in \(folder) passieren würde", .ja: "\(folder) で何が起きるか", .zh: "在\(folder)里会发生什么", .pt: "O que aconteceria em \(folder)"], language: language)
+    /// Two of the five names carry a folder word, and a «Downloads sorted by
+    /// kind» over Pictures is a name that lies, so those two are built from the
+    /// folder's display name. **Not a template over the five names above**: a
+    /// name like «Téléchargements triés par type» agrees in gender with its
+    /// folder, and the two that take any folder put it first and follow it with a
+    /// phrase that agrees with nothing — a noun after a colon or a dash in
+    /// Russian, Spanish, French and Portuguese, and a participle or a particle
+    /// with neither in English, German, Japanese and Chinese. The other three
+    /// read the same anywhere and are returned as they are.
+    ///
+    /// Interpolated, so the table is inline, and French takes an unbreakable
+    /// space before its colon.
+    static func presetName(_ kind: PresetKind, inFolder folder: String,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        switch kind {
+        case .downloadsByKind:
+            L("\(folder) sorted by kind", [.ru: "\(folder) — по типам", .es: "\(folder): orden por tipo", .fr: "\(folder)\u{00A0}: tri par type", .de: "\(folder) nach Art sortiert", .ja: "\(folder)を種類別に整理", .zh: "\(folder)按类型归类", .pt: "\(folder): organização por tipo"], language: language)
+        case .desktopByMonth:
+            L("\(folder) sorted by month", [.ru: "\(folder) — по месяцам", .es: "\(folder): orden por mes", .fr: "\(folder)\u{00A0}: tri par mois", .de: "\(folder) nach Monat sortiert", .ja: "\(folder)を月別に整理", .zh: "\(folder)按月份归类", .pt: "\(folder): organização por mês"], language: language)
+        case .screenshots, .oldInstallers, .largeDownloads:
+            presetName(kind, language: language)
+        }
     }
 
     // MARK: - Dry run
 
     static var dryRun: String { L("What would happen") }
+    /// Under the folder line of a preset's editor, only while Done is followed by
+    /// a sweep — `AutopilotViewModel.sweepsAfterSaving` decides both.
+    static var savingStartsTheWatch: String { L("Once saved, Helm watches this folder and does what is listed below straight away.") }
     static var dryRunNote: String { L("A rule is a decision made once and carried out from then on, so it is shown before it is switched on.") }
     static var nothingWouldHappen: String { L("Nothing in this folder matches yet.") }
     /// The heading over the rows this rule does not get.

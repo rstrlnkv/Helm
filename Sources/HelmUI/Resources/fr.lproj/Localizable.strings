@@ -183,7 +183,6 @@
 "Default duration" = "Durée par défaut";
 "Delete" = "Supprimer";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Les versions Dev journalisent toujours. Le fichier est dans ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnostic : Helm peut tenir un journal de ses actions, prêt à partager en cas de problème. Toujours actif dans les versions Dev.";
 "Disabled" = "Désactivé";
 "Disconnected" = "Déconnecté";
@@ -238,6 +237,8 @@
 "Folder" = "Dossier";
 "Folders that keep themselves in order" = "Des dossiers qui se tiennent en ordre";
 "Follow" = "Suivre";
+"Following" = "Suivi actif";
+"Not following" = "Suivi inactif";
 "Force quit and remove anyway" = "Forcer à quitter et supprimer";
 "Full Disk Access" = "Accès complet au disque";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "L’accès au disque est désactivé. Sans lui l’analyse ne voit pas tous les dossiers, et la désinstallation laisse les conteneurs.";
@@ -397,7 +398,9 @@
 "On power" = "Sur secteur";
 "On quit only" = "À la fermeture seulement";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Une touche pour les deux corrections : choisissez ⌘, ⌥, ⌃ ou ⇧ droite et appuyez seule. La première fois corrige le dernier mot, la suivante le restaure. Maintenue ou combinée, elle reste un modificateur.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "Une fois la règle enregistrée, Helm surveille ce dossier et applique aussitôt ce qui est listé ci-dessous.";
 "Open Accessibility…" = "Ouvrir Accessibilité…";
+"Open Autopilot" = "Ouvrir Pilote automatique";
 "Open Extensions…" = "Ouvrir Extensions…";
 "Open Full Disk Access…" = "Ouvrir Accès complet au disque…";
 "Open Helm at login" = "Ouvrir Helm avec la session";
@@ -890,7 +893,6 @@
 "An extra copy is" = "Une copie en trop :";
 "the one that arrived later" = "celle qui est arrivée plus tard";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Doublons demande quelle copie est celle en trop : celle qui est dans Téléchargements ou sur le Bureau, ou celle qui est arrivée plus tard. Chaque groupe dit pourquoi sa copie est conservée, n’importe quelle ligne peut le devenir, et « Rétablir la recommandation » revient en arrière.";
-"Rules to start with" = "Règles pour commencer";
 "Screenshots into their own folder" = "Les captures d’écran dans leur propre dossier";
 "Downloads sorted by kind" = "Téléchargements triés par type";
 "Old installers to the Trash" = "Anciens programmes d’installation dans la corbeille";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver annonce l’état déplié ou replié d’un bouton d’affichage avec les propres mots de macOS.";
 "Section headings are headings to VoiceOver’s rotor." = "Les titres de section apparaissent comme des titres dans le rotor de VoiceOver.";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "Sous macOS 26, la bande de page sous la barre d’outils demande au système le bord de défilement doux, qui floute le contenu sous la barre d’outils.";
+"Sort By" = "Trier par";
+"Sort by Name" = "Trier par nom";
+"Sort by Size" = "Trier par taille";
+"Sort by Date Last Opened" = "Trier par date de dernière ouverture";
+"No record of opening" = "Aucune trace d’ouverture";
+"Search the log" = "Rechercher dans le journal";
+"Earlier launch" = "Lancement antérieur";
+"older lines are in the file" = "les lignes plus anciennes sont dans le fichier";

@@ -114,9 +114,9 @@ struct PanelTabStrip: View {
         // four times — and once more by the fit above, which needs every name to
         // decide whether any of them is drawn.
         Button {
-            // The strip and the grid move together: the selection slides while
-            // the widgets under it cross-fade, on one transaction rather than
-            // two.
+            // Only the selection slides, on this transaction. The grid under it
+            // cuts and the card's height follows without a curve — the panel
+            // strips both on its side, where the tab is written (`pickedTab`).
             withAnimation(HelmMotion.interface) { activeTab = index }
         } label: {
             // The tab as the Liquid Glass mockup drew it (direction B): a

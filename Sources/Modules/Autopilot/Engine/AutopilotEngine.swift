@@ -33,8 +33,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// Whose rules these are, which one of the person's rule sets they are, and
     /// the only thing here that touches the keychain — `SealedRules`.
     private let rules: SealedRules
-    private let reader = FolderReader()
+    /// Internal rather than private so a test can put a reader with a seam in it
+    /// in the engine's hand; nothing else assigns it after `init`.
+    var reader: FolderReader
     private let runner: RuleRunner
+    /// `WatchScope`'s reference point, for the one question the engine asks
+    /// itself before it reads a folder — the runner holds its own copy for the
+    /// files.
+    private let home: String
     /// The other direction. Beside the runner and holding the same home,
     /// because a return goes through a gate measured against the same one.
     private let undoer: UndoRunner
@@ -67,6 +73,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 sequence: RuleSequencePort = KeychainRuleSequence(),
                 sweepNotice: SweepNotifier? = nil) {
         self.sweepNotice = sweepNotice
+        self.home = home
+        self.reader = FolderReader(home: home)
         self.runner = RuleRunner(home: home)
         self.undoer = UndoRunner(home: home)
         self.store = store
@@ -116,7 +124,13 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         // is not a reason to hold every other reader of the rule set behind a
         // filesystem call, and `state(of:)` never touches the rules.
         var states: [String: FolderState] = [:]
-        for folder in watched { states[folder.id] = reader.state(of: folder.path) }
+        for folder in watched {
+            // The sweep's own root question, asked first: a folder the gate
+            // refuses is `.refused` to the sweep, and a page told `.read` for it
+            // draws no notice over a row that does nothing, hour after hour.
+            states[folder.id] = WatchScope.allows(folder.path, home: home)
+                ? reader.state(of: folder.path) : .refused
+        }
         return AutopilotStatus(refusal: reason, folders: states,
                                watching: watchLock.withLock { watching },
                                historyRefused: historyRefused)
@@ -370,9 +384,31 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         // silent below its threshold, so an ordinary keystroke writes nothing.
         HelmActivity.phase("autopilot.preview") {
             defer { HelmLog.shared.memory("autopilot.preview") }
-            let files = reader.facts(in: folder.path, depth: folder.depth)
-            return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))
+            // The root is asked before it is read: the rules are a property
+            // list any process can write, and a link standing in for one of the
+            // folder's ancestors makes a path that *spells* as an ordinary
+            // folder lead into `~/Library`. A refused root previews as nothing.
+            return RulePlan.decide(readGated(folder).files, rules: folder.rules.filter(\.enabled))
         }
+    }
+
+    /// A folder read, with the gate asked on both sides of the read.
+    ///
+    /// Before: the root, which the runner's per-file gate cannot stand in for —
+    /// by the time that one refuses, every name in the folder is in hand. After:
+    /// every file the read returned, because the two questions are not one
+    /// question. A link put in place of an ancestor between the first and the
+    /// walk leads the walk somewhere the first never judged, and the walk
+    /// answers in the *resolved* spelling, so what comes back is the paths of a
+    /// folder no rule may reach. Dropped here, they are never planned, counted,
+    /// logged or recorded; the runner's own gate stays behind this one and is
+    /// not relied on to be the first. A refused root reads as `.refused`, the
+    /// state the page already draws for a folder Helm may not open.
+    private func readGated(_ folder: WatchedFolder) -> FolderReading {
+        guard WatchScope.allows(folder.path, home: home) else { return .refused }
+        let reading = reader.reading(in: folder.path, depth: folder.depth)
+        return FolderReading(state: reading.state,
+                             files: reading.files.filter { WatchScope.allows($0.path, home: home) })
     }
 
     /// `manual` is the trigger, and it decides the sweep's voice alone —
@@ -391,7 +427,13 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// builds no report at all.
     private func swept(_ folder: WatchedFolder,
                        manual: Bool) -> (report: SweepReport, records: [ActionRecord]) {
-        let reading = reader.reading(in: folder.path, depth: folder.depth)
+        // The root is asked before it is read, which the runner's per-file gate
+        // cannot stand in for: by the time that one refuses, the folder has been
+        // enumerated and every name in it is in hand. A link planted in place of
+        // an ancestor leads the hourly sweep into a folder no rule may reach,
+        // and what it read would go into a history any process can read. The
+        // same state the page already draws for a folder Helm may not open.
+        let reading = readGated(folder)
         let files = reading.files
         let plans = RulePlan.decide(files, rules: folder.activeRules)
         let key = rules.keyMaterial
@@ -411,7 +453,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 break
             case let .refused(reason):
                 refused += 1
-                HelmLog.shared.warn(Self.moduleID, "refused \(Redact.path(path)): \(reason.rawValue)")
+                HelmLog.shared.warn(Self.moduleID, Self.refusalLine(reason, plan: plan, path: path))
+            case .targetOutOfScope:
+                refused += 1
+                HelmLog.shared.warn(Self.moduleID,
+                                    "refused \(Redact.path(path)): \(RuleOutcome.Refusal.outOfScope.rawValue)")
             case let .failed(description):
                 failed += 1
                 HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
@@ -481,7 +527,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// An FSEvents stream is recursive whether or not anyone asked, so which
     /// files a rule may be offered has to be decided here — `plan(for:among:)`,
-    /// which asks the reader the same question the sweep's enumerator asks.
+    /// which asks the reader the same question the sweep's walk asks.
     /// Without it a depth-1 watch on Downloads acted on every file in every
     /// project unzipped into it, and on the contents of application bundles.
     ///
@@ -515,7 +561,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                     if let record = ActionRecord.of(plan, outcome, run: pass) {
                         records.append(record)
                     }
-                    if self.note(outcome, at: path) { acted += 1 }
+                    if self.note(outcome, plan: plan, at: path) { acted += 1 }
                 }
                 self.remember(records)
                 if acted > 0 {
@@ -544,13 +590,29 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// The log's line for a refusal about a file.
+    ///
+    /// **A scope refusal names the rule and not the file.** It is the answer for a
+    /// file the gate found somewhere no rule may reach, often a folder macOS
+    /// protects behind a link, and a leaf written here is the same leak the
+    /// history's record closes — `helm.log` is read by any process running as the
+    /// user, with no grant. The rule's id is what a person looking into it needs:
+    /// it says which rule met something outside the allowed folders, and the
+    /// file is one they can find from the rule. Every other reason is about a file
+    /// the gate approved, and keeps its path.
+    static func refusalLine(_ reason: RuleOutcome.Refusal, plan: RulePlan, path: String) -> String {
+        reason == .outOfScope
+            ? "refused (rule \(plan.rule.id)): \(reason.rawValue)"
+            : "refused \(Redact.path(path)): \(reason.rawValue)"
+    }
+
     /// One file's outcome in the log, and whether it counts as work.
     ///
     /// The unattended path: a file arrived and a rule acted on it with nobody
     /// looking, which is exactly why every case is logged — this once recorded
     /// only refusals and failures, so a rule that worked left no trace and "what
     /// moved my file" had no answer anywhere.
-    private func note(_ outcome: RuleOutcome, at path: String) -> Bool {
+    private func note(_ outcome: RuleOutcome, plan: RulePlan, at path: String) -> Bool {
         switch outcome {
         case let .moved(destination):
             HelmLog.shared.info(Self.moduleID,
@@ -565,7 +627,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         case .alreadyDone:
             return false
         case let .refused(reason):
-            HelmLog.shared.warn(Self.moduleID, "refused \(Redact.path(path)): \(reason.rawValue)")
+            HelmLog.shared.warn(Self.moduleID, Self.refusalLine(reason, plan: plan, path: path))
+            return false
+        case .targetOutOfScope:
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused \(Redact.path(path)): \(RuleOutcome.Refusal.outOfScope.rawValue)")
             return false
         case let .failed(description):
             HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
@@ -581,7 +647,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// all, whether it is still there, and which rule takes it.
     private func plan(for path: String, among watched: [WatchedFolder]) -> RulePlan? {
         let url = URL(fileURLWithPath: path)
-        guard let folder = folder(for: path, among: watched),
+        // The gate before any read of the path: `admits` and `facts(of:)` stat
+        // it, and a path behind a link into a protected folder is not one whose
+        // metadata this module may take — the runner's gate stays behind this.
+        guard WatchScope.allows(path, home: home),
+              let folder = folder(for: path, among: watched),
               // The same question the sweep's reader asks, so a rule means one
               // thing whichever trigger fires it.
               reader.admits(url, under: folder),
@@ -599,11 +669,21 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// `~/Downloads` claimed the files in `~/Downloads Old`.
     ///
     /// Whether the folder's rules may be offered *this* file — its depth, and
-    /// the hidden and package questions the sweep's enumerator asks — is
+    /// the hidden and package questions the sweep's walk asks — is
     /// `FolderReader.admits`, which used to be half here and half nowhere.
+    ///
+    /// **By spelling first, by where both lead if that finds nothing.** FSEvents
+    /// reports real paths, and a folder saved as a link (`~/DL` for `~/Downloads`)
+    /// is spelled under no event's path — the sweep read it and the watcher never
+    /// matched a file to it. The second question is the gate's own
+    /// (`WatchScope.isWithin`) and costs a few stats a path, so the common case
+    /// pays only the prefix.
     private func folder(for path: String, among watched: [WatchedFolder]) -> WatchedFolder? {
-        watched.filter { path.hasPrefix($0.path + "/") }
-            .max(by: { $0.path.count < $1.path.count })
+        let spelled = watched.filter { path.hasPrefix($0.path + "/") }
+        let inside = spelled.isEmpty
+            ? watched.filter { path != $0.path && WatchScope.isWithin(path, $0.path) }
+            : spelled
+        return inside.max(by: { $0.path.count < $1.path.count })
     }
 
     // MARK: - Transport

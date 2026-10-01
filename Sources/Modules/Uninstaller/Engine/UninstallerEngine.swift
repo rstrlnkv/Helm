@@ -167,6 +167,92 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return sizes
     }
 
+    // MARK: - Order and last-opened dates
+
+    private static let sortOrderKey = "sortOrder"
+
+    /// The remembered order, read from the store every time it is asked — so a
+    /// value written by anything else, or by an older build, is judged when it
+    /// is used and there is nothing cached to go stale across an activation.
+    /// Not sealed: it steers no unattended work, and a seal read while a view is
+    /// built is a keychain dialog on every install.
+    public var sortOrder: AppSortOrder {
+        AppSortOrder(stored: store.string(Self.sortOrderKey, default: ""))
+    }
+
+    public func setSortOrder(_ order: AppSortOrder) {
+        guard order != sortOrder else { return }
+        store.set(order.rawValue, for: Self.sortOrderKey)
+    }
+
+    /// The most bundles one read looks up, and the longest it may take. Each
+    /// lookup is a millisecond or so on an indexed Mac; the ceilings are for a
+    /// Mac where Spotlight is busy reindexing and one call takes far longer.
+    /// What the read did not reach comes back as `unread`, which is not "no record".
+    public static let lastOpenedCeiling = 1_000
+    public static let lastOpenedDeadline: TimeInterval = 5
+
+    /// Off the pool, bounded, and a date later than now is dropped: a clock that
+    /// was wrong when the app was opened is not evidence of when it was.
+    ///
+    /// **The deadline bounds the whole read, not the gap between two lookups.**
+    /// Checked only before each call it let one hung Spotlight call carry the
+    /// read as long as it hung (0.2 s asked, 2.01 s taken). The lookups run on a
+    /// worker of their own and the caller is answered at the deadline with what
+    /// the worker had by then; the call in flight and everything behind it read
+    /// as `unread`. A hung call cannot be interrupted, so the worker is told to
+    /// stop and ends as soon as that call returns, never later than that. While
+    /// one is still stuck a new read starts no second worker behind it — Refresh
+    /// pressed again would otherwise stack a thread per press — and answers
+    /// everything as `unread`, which is what the screen already draws for it.
+    public func lastOpened(_ list: [InstalledApp],
+                           deadline: TimeInterval = UninstallerEngine.lastOpenedDeadline,
+                           ceiling: Int = UninstallerEngine.lastOpenedCeiling,
+                           now: Date = Date()) async -> AppOpenedReading {
+        let reading: AppOpenedReading
+        if list.isEmpty {
+            reading = AppOpenedReading(opened: [:], unread: [])
+        } else if !claimOpenedWorker() {
+            reading = AppOpenedReading(opened: [:], unread: list.map(\.path))
+        } else {
+            reading = await withCheckedContinuation { continuation in
+                let read = OpenedRead(paths: list.map(\.path), ceiling: ceiling,
+                                      continuation: continuation)
+                DispatchQueue.global(qos: .userInitiated).async { [apps] in
+                    read.run(until: Date().addingTimeInterval(deadline)) { path in
+                        guard let date = apps.lastOpened(path: path), date <= now else { return nil }
+                        return date
+                    }
+                    // Given back **before** the caller is answered: a read made
+                    // straight after this one returns finds the worker free.
+                    self.releaseOpenedWorker()
+                    read.answer()
+                }
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + deadline) {
+                    read.cutShort()
+                }
+            }
+        }
+        if !reading.unread.isEmpty {
+            HelmLog.shared.warn(UninstallerEngine.moduleID,
+                                "last-opened read stopped early: \(reading.unread.count) of \(list.count) not read")
+        }
+        return reading
+    }
+
+    private let openedWorkerLock = NSLock()
+    private var openedWorkerBusy = false
+
+    private func claimOpenedWorker() -> Bool {
+        openedWorkerLock.withLock {
+            if openedWorkerBusy { return false }
+            openedWorkerBusy = true
+            return true
+        }
+    }
+
+    private func releaseOpenedWorker() { openedWorkerLock.withLock { openedWorkerBusy = false } }
+
     public func scan(bundleID: String, appPath: String, appName: String) async throws -> ScanResult {
         await offTheCooperativePool { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
     }
@@ -599,6 +685,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         var saidByPath: [String: String] = [:]
         let result = HelmTrash.remove(
             allowed: allowed, outOfScope: refused, module: Self.moduleID,
+            // The leaf of an app bundle is the name the person gave it and of a
+            // leftover a bundle id; neither belongs in the log.
+            leaf: .softwareName,
             hasSystemExtension: { path in
                 guard Self.isAppBundle(path) else { return false }
                 // Match the app's bundle id, not the path: /Applications/X.app
@@ -653,6 +742,16 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
                 else { return Data() }
                 return EngineReply.encode(await self.appSizes(list), for: cmd)
+            case .lastOpened:
+                guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
+                else { return Data() }
+                return EngineReply.encode(await self.lastOpened(list), for: cmd)
+            case .sortOrder:
+                return EngineReply.encode(self.sortOrder, for: cmd)
+            case .setSortOrder:
+                guard let order = EngineReply.decode(AppSortOrder.self, from: cmd) else { return Data() }
+                self.setSortOrder(order)
+                return Data()
             case .scan:
                 guard let r = EngineReply.decode(UninstallScanRequest.self, from: cmd)
                 else { return Data() }
@@ -695,5 +794,56 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 return Data()
             }
         }
+    }
+}
+
+/// One last-opened read in flight: the worker fills it in, and whichever of the
+/// worker finishing and the deadline arrives first answers the caller, once.
+private final class OpenedRead: @unchecked Sendable {
+    private let lock = NSLock()
+    private let paths: [String]
+    private let ceiling: Int
+    private var continuation: CheckedContinuation<AppOpenedReading, Never>?
+    private var opened: [String: Date] = [:]
+    /// How many paths have been looked up to the end. The one being looked up
+    /// now is not counted, so a call that never returns reads as `unread`.
+    private var done = 0
+    private var stopped = false
+
+    init(paths: [String], ceiling: Int, continuation: CheckedContinuation<AppOpenedReading, Never>) {
+        self.paths = paths
+        self.ceiling = ceiling
+        self.continuation = continuation
+    }
+
+    /// Reads until done, the ceiling or the deadline. It does **not** answer: the
+    /// caller of the worker gives the worker back first and then calls `answer()`.
+    func run(until: Date, lookup: (String) -> Date?) {
+        for (index, path) in paths.enumerated() {
+            guard index < ceiling, Date() < until, !isStopped else { break }
+            let date = lookup(path)
+            lock.withLock {
+                if let date { opened[path] = date }
+                done = index + 1
+            }
+        }
+    }
+
+    var isStopped: Bool { lock.withLock { stopped } }
+
+    /// The deadline: stop the worker and answer with what it has.
+    func cutShort() {
+        lock.withLock { stopped = true }
+        answer()
+    }
+
+    func answer() {
+        let taken: (CheckedContinuation<AppOpenedReading, Never>, AppOpenedReading)? = lock.withLock {
+            guard let continuation else { return nil }
+            self.continuation = nil
+            let reading = AppOpenedReading(opened: opened, unread: Array(paths[min(done, paths.count)...]))
+            return (continuation, reading)
+        }
+        taken.map { $0.0.resume(returning: $0.1) }
     }
 }

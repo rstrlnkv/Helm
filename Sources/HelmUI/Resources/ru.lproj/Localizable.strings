@@ -183,7 +183,6 @@
 "Default duration" = "Длительность по умолчанию";
 "Delete" = "Удалить";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "В dev-сборках журнал всегда включён. Файл — в ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
 "Disabled" = "Выключено";
 "Disconnected" = "Не подключено";
@@ -238,6 +237,8 @@
 "Folder" = "Папка";
 "Folders that keep themselves in order" = "Папки, которые держат себя в порядке";
 "Follow" = "Следить";
+"Following" = "Следит";
+"Not following" = "Не следит";
 "Force quit and remove anyway" = "Завершить принудительно и удалить";
 "Full Disk Access" = "Доступ к диску";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "«Доступ к диску» выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
@@ -397,7 +398,9 @@
 "On power" = "При питании";
 "On quit only" = "Только при выходе";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Одна клавиша на оба действия. Выберите правую ⌘, ⌥, ⌃ или ⇧ и нажмите её отдельно: первое нажатие исправляет последнее слово, второе возвращает как было. Модификатором она быть не перестаёт — зажатая или нажатая вместе с чем-то ещё, это обычная клавиша, и всё, для чего вы её уже используете, продолжает работать.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "После сохранения Helm начнёт следить за этой папкой и сразу сделает то, что показано ниже.";
 "Open Accessibility…" = "Открыть «Универсальный доступ»…";
+"Open Autopilot" = "Открыть Автопилот";
 "Open Extensions…" = "Открыть «Расширения»…";
 "Open Full Disk Access…" = "Открыть «Доступ к диску»…";
 "Open Helm at login" = "Открывать Helm при входе";
@@ -890,7 +893,6 @@
 "An extra copy is" = "Лишняя копия —";
 "the one that arrived later" = "та, что появилась позже";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "«Дубликаты» спрашивают, какую копию считать лишней: ту, что лежит в Загрузках или на Рабочем столе, или ту, что появилась позже. Каждая группа говорит, почему оставлена именно эта копия, любую строку можно сделать оставшейся, а «Вернуть рекомендацию» возвращает всё как было.";
-"Rules to start with" = "С чего начать";
 "Screenshots into their own folder" = "Скриншоты — в свою папку";
 "Downloads sorted by kind" = "Загрузки — по типам";
 "Old installers to the Trash" = "Старые установщики — в Корзину";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver называет развёрнутое и свёрнутое состояние кнопки раскрытия словами самой macOS.";
 "Section headings are headings to VoiceOver’s rotor." = "Заголовки разделов видны ротору VoiceOver как заголовки.";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "В macOS 26 полоса страницы под панелью инструментов запрашивает у системы мягкий край прокрутки, который размывает содержимое под панелью инструментов.";
+"Sort By" = "Сортировать";
+"Sort by Name" = "Сортировать по имени";
+"Sort by Size" = "Сортировать по размеру";
+"Sort by Date Last Opened" = "Сортировать по дате последнего открытия";
+"No record of opening" = "Нет записи об открытии";
+"Search the log" = "Поиск в журнале";
+"Earlier launch" = "Более ранний запуск";
+"older lines are in the file" = "более ранние — в файле";

@@ -99,10 +99,13 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         let wire = AutopilotWire()
         let model = model(on: wire)
         await model.load()
+        // Both taken before the first save: the block is gone from the page the
+        // moment a rule exists, so the second is no longer on offer afterwards —
+        // and a `save` that still arrives with one is what this holds.
         let first = try offer(model, .downloadsByKind)
+        let second = try offer(model, .oldInstallers)
         await model.save(draft(first), in: first.folder)
 
-        let second = try offer(model, .oldInstallers)
         await model.save(draft(second), in: second.folder)
 
         let saved = try XCTUnwrap(wire.saved.last)
@@ -111,7 +114,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
                        ["preset.downloads-by-kind", "preset.old-installers"])
     }
 
-    /// Added, and gone from the list of things to add.
+    /// Added, and the block is gone with it: the first rule on the page ends the
+    /// offer (`StartingRulesAreOfferedOnlyWhileThereAreNoneTests`).
     func testAPresetThatWasAddedIsNoLongerOffered() async throws {
         let wire = AutopilotWire()
         let model = model(on: wire)
@@ -120,8 +124,7 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         await model.save(draft(offer), in: offer.folder)
 
-        XCTAssertFalse(model.presets.contains { $0.preset.kind == .screenshots })
-        XCTAssertEqual(model.presets.count, PresetKind.allCases.count - 1)
+        XCTAssertEqual(model.presets, [])
     }
 
     // MARK: - The sweep
@@ -152,7 +155,13 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         let wire = AutopilotWire(folders: [watched])
         let model = model(on: wire)
         await model.load()
-        let offer = try offer(model, .screenshots)
+        // Asked of the engine's own gate: the page offers nothing once a rule
+        // exists, but a draft over a watched folder is still what `save` may be
+        // handed, and it is the one whose sweep must not run.
+        let offer = try XCTUnwrap(PresetOffer.offered(watching: [watched],
+                                                      paths: FakePresetFolders(home: home),
+                                                      home: home)
+            .first { $0.preset.kind == .screenshots })
         XCTAssertFalse(offer.folderIsNew, "precondition: the folder is already watched")
 
         await model.save(draft(offer), in: offer.folder)

@@ -1,4 +1,5 @@
 import AppKit
+import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
 import SwiftUI
@@ -12,14 +13,25 @@ import SwiftUI
 /// duplicate basket, one level earlier.
 struct RuleEditor: View {
     @ObservedObject var rvm: AutopilotViewModel
-    let folder: WatchedFolder
+    /// State and not a constant, because a preset's editor can be pointed at
+    /// another folder (`chooseFolder`); every other editor never changes it.
+    @State private var folder: WatchedFolder
     @State private var rule: Rule
+    /// The preset this draft is, or nil for a rule somebody wrote or opened. Only
+    /// a preset's folder is a default the person may replace: any other rule is
+    /// already in the folder it belongs to.
+    private let preset: RulePreset?
+    /// A folder was chosen and `WatchScope` refused it. Cleared by the next
+    /// choice; nothing else changed, so the sentence is about the choice alone.
+    @State private var outOfReach = false
     @Environment(\.dismiss) private var dismiss
 
-    init(rvm: AutopilotViewModel, folder: WatchedFolder, rule: Rule) {
+    init(rvm: AutopilotViewModel, folder: WatchedFolder, rule: Rule,
+         preset: RulePreset? = nil) {
         self.rvm = rvm
-        self.folder = folder
+        _folder = State(initialValue: folder)
         _rule = State(initialValue: rule)
+        self.preset = preset
     }
 
     var body: some View {
@@ -28,6 +40,7 @@ struct RuleEditor: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    folderLine
                     conditions
                     action
                     dryRun
@@ -55,6 +68,100 @@ struct RuleEditor: View {
             Spacer()
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
+
+    // MARK: - Where
+
+    /// **The folder this rule acts in, named where it is decided.** A preset's
+    /// folder arrived because `FileManager` named it, and Done is what starts
+    /// watching it — so the sheet says which folder, and, while Done is followed
+    /// by a sweep, that it acts straight away. The sentence is gated on the view
+    /// model's own `sweepsAfterSaving`, the expression the sweep reads, so the
+    /// two cannot disagree.
+    private var folderLine: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            HStack(spacing: HelmSpace.s3) {
+                Image(systemName: "folder").foregroundStyle(HelmText.quiet)
+                    .accessibilityHidden(true)
+                Text(folderName).font(HelmText.sectionHeading)
+                Text(Redact.path(folder.path))
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                    .lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: HelmSpace.s5)
+                if preset != nil {
+                    Button(ApStr.chooseDestination) { chooseFolder() }
+                        .controlSize(.small)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            if outOfReach {
+                HelmBanner(ApStr.folderOutOfReach)
+            }
+            if rvm.sweepsAfterSaving(rule, in: folder) {
+                Text(ApStr.savingStartsTheWatch)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .helmAnnounces(outOfReach ? ApStr.folderOutOfReach : nil)
+    }
+
+    /// What this folder is called: macOS's own name for it, and the last path
+    /// component for one macOS does not name.
+    private var folderName: String {
+        SystemFolderNames.displayOrOwn(path: folder.path, home: NSHomeDirectory(),
+                                       language: AppLanguage.current.rawValue)
+    }
+
+    /// The panel is the only way another folder gets in, as everywhere in this
+    /// module. A cancelled panel changes nothing and says nothing.
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = ApStr.chooseDestination
+        panel.directoryURL = URL(fileURLWithPath: folder.path)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let next = Self.pointing(rule, at: url.path, from: folder,
+                                       preset: preset, rvm: rvm) else {
+            outOfReach = true
+            return
+        }
+        outOfReach = false
+        folder = next.folder
+        rule = next.rule
+    }
+
+    /// The editor's state once a folder was chosen, or nil when the gate refuses
+    /// it — in which case nothing is handed back to change, so a refusal cannot
+    /// leave a half-pointed editor behind.
+    ///
+    /// **The preset's name goes with the folder too, unless it was edited** —
+    /// over Invoices a rule still called «Downloads sorted by kind» is a name
+    /// that lies, and it is what the list then shows under that folder. «Unedited»
+    /// is the name the view model builds for the folder being left
+    /// (`presetName`), so a name the person typed is never rebuilt, and choosing
+    /// the preset's own folder again restores the name it began with.
+    ///
+    /// **The preset's action goes with the folder, unless it was edited.** A
+    /// preset that moves into `Screenshots` names an absolute path inside its own
+    /// folder, so leaving it would move files out of one folder into another's
+    /// subfolder; one the person changed is theirs and is left alone. «Unedited»
+    /// is the preset's action in the old folder, compared as the engine's own
+    /// `Equatable` value rather than as text.
+    static func pointing(_ rule: Rule, at path: String, from folder: WatchedFolder,
+                         preset: RulePreset?, rvm: AutopilotViewModel)
+        -> (folder: WatchedFolder, rule: Rule)? {
+        guard let chosen = rvm.draftFolder(at: path) else { return nil }
+        var pointed = rule
+        if let preset, rule.action == preset.action.action(in: folder.path) {
+            pointed.action = preset.action.action(in: chosen.path)
+        }
+        if let preset, rule.name == rvm.presetName(preset, at: folder.path) {
+            pointed.name = rvm.presetName(preset, at: chosen.path)
+        }
+        return (chosen, pointed)
     }
 
     // MARK: - When
@@ -217,10 +324,13 @@ struct RuleEditor: View {
         .helmCard()
     }
 
+    private var previewKey: String { Self.previewKey(folder: folder, rule: rule) }
+
     /// What a change to the rule means for the preview. The name is not in it:
-    /// renaming a rule cannot change what it would do.
-    private var previewKey: String {
-        var key = rule.match.rawValue
+    /// renaming a rule cannot change what it would do; the folder is, since the
+    /// list is of what is in it.
+    static func previewKey(folder: WatchedFolder, rule: Rule) -> String {
+        var key = folder.path + rule.match.rawValue
         for condition in rule.conditions { key += RuleSummary.describe(condition) }
         return key + RuleSummary.describe(rule.action)
     }

@@ -82,7 +82,7 @@
 "Choose apps" = "Elegir apps";
 "Choose folder" = "Elegir carpeta";
 "Choose this app again to confirm which app it is" = "Vuelve a elegir esta app para confirmar su identidad";
-"Choose…" = "Elegir…";
+"Choose…" = "Seleccionar…";
 "Clear" = "Borrar";
 "Clear selection" = "Quitar selección";
 "Clear the marks" = "Quitar las marcas";
@@ -183,7 +183,6 @@
 "Default duration" = "Duración por defecto";
 "Delete" = "Eliminar";
 "Dev" = "Dev";
-"Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Las compilaciones Dev siempre registran. El archivo está en ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnóstico: Helm puede registrar lo que hace, listo para compartir si algo falla. Siempre activo en compilaciones Dev.";
 "Disabled" = "Desactivado";
 "Disconnected" = "Sin conexión";
@@ -238,6 +237,8 @@
 "Folder" = "Carpeta";
 "Folders that keep themselves in order" = "Carpetas que se mantienen en orden";
 "Follow" = "Seguir";
+"Following" = "Siguiendo";
+"Not following" = "Sin seguir";
 "Force quit and remove anyway" = "Forzar salida y eliminar";
 "Full Disk Access" = "Acceso total al disco";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "El acceso al disco está desactivado. Sin él el escaneo no ve todas las carpetas y al desinstalar quedan los contenedores.";
@@ -397,7 +398,9 @@
 "On power" = "Con corriente";
 "On quit only" = "Solo al cerrar";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Una tecla para ambas correcciones: elige ⌘, ⌥, ⌃ o ⇧ derecha y púlsala sola. La primera vez corrige la última palabra, la siguiente la devuelve. Sigue siendo un modificador cuando la mantienes o la combinas.";
+"Once saved, Helm watches this folder and does what is listed below straight away." = "Una vez guardada la regla, Helm vigilará esta carpeta y hará de inmediato lo que se muestra abajo.";
 "Open Accessibility…" = "Abrir Accesibilidad…";
+"Open Autopilot" = "Abrir Piloto automático";
 "Open Extensions…" = "Abrir Extensiones…";
 "Open Full Disk Access…" = "Abrir Acceso total al disco…";
 "Open Helm at login" = "Abrir Helm al iniciar sesión";
@@ -890,7 +893,6 @@
 "An extra copy is" = "Una copia de más es";
 "the one that arrived later" = "la que llegó después";
 "Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplicados pregunta qué copia es la de más: la que está en Descargas o en el Escritorio, o la que llegó después. Cada grupo dice por qué se conserva esa copia, cualquier fila puede pasar a ser la que se conserva y “Volver a la recomendación” lo deshace.";
-"Rules to start with" = "Reglas para empezar";
 "Screenshots into their own folder" = "Capturas de pantalla a su propia carpeta";
 "Downloads sorted by kind" = "Descargas ordenadas por tipo";
 "Old installers to the Trash" = "Instaladores antiguos a la papelera";
@@ -1255,3 +1257,11 @@
 "VoiceOver reads a disclosure button’s expanded and collapsed states in macOS’s own words." = "VoiceOver lee el estado desplegado y contraído de un botón desplegable con las propias palabras de macOS.";
 "Section headings are headings to VoiceOver’s rotor." = "Los encabezados de sección aparecen como encabezados en el rotor de VoiceOver.";
 "On macOS 26, the page band under the toolbar asks the system for the soft scroll edge, which blurs content under the toolbar." = "En macOS 26, la franja de la página bajo la barra de herramientas pide al sistema el borde de desplazamiento suave, que desenfoca el contenido bajo la barra de herramientas.";
+"Sort By" = "Ordenar por";
+"Sort by Name" = "Ordenar por nombre";
+"Sort by Size" = "Ordenar por tamaño";
+"Sort by Date Last Opened" = "Ordenar por fecha de la última apertura";
+"No record of opening" = "Sin registro de apertura";
+"Search the log" = "Buscar en el registro";
+"Earlier launch" = "Inicio anterior";
+"older lines are in the file" = "las líneas anteriores están en el archivo";

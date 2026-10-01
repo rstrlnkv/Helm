@@ -81,7 +81,7 @@ final class RuleRunnerTests: XCTestCase {
     func testADestinationOutsideTheUsersFilesIsRefused() throws {
         let file = try write("a.pdf", in: root)
         let outcome = runner.run(plan(file, .move(to: "/System/Library/Helm")), at: file.path, key: TestRuleKey.material)
-        XCTAssertEqual(outcome, .refused(.outOfScope))
+        XCTAssertEqual(outcome, .targetOutOfScope)
         XCTAssertTrue(exists(file.path), "the file was moved anyway")
     }
 
