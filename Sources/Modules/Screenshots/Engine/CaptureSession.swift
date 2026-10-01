@@ -141,6 +141,12 @@ public final class CaptureSession: @unchecked Sendable {
     /// which is what the person was looking at when they clicked. A protected
     /// window is saved as it came.
     public func window(_ id: UInt32, in freeze: Freeze) async -> WindowResult {
+        // The menu bar and the Dock are cut from the freeze at their own rects: the
+        // Dock's window is a display-sized sheet and the system's picture of it
+        // is not the strip.
+        if let surface = freeze.windows.first(where: { $0.id == id }), WindowPick.isSystemSurface(surface) {
+            return cutFromFreeze(id, in: freeze)
+        }
         switch await capture.window(id, cursor: settings().showCursor) {
         case .image(let image):
             return .image(image)

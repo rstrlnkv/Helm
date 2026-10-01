@@ -14,22 +14,35 @@ public enum WindowPick {
     /// below it.
     public static let lowestLevel = Int(CGWindowLevelForKey(.normalWindow))
 
-    /// The highest one: a floating panel (a utility palette, an inspector). Above
-    /// it live the Dock (a full-screen transparent sheet at its own level), the
-    /// menu bar, status items and overlays, none of which is "a window" to
-    /// Command-Shift-4 and then Space.
+    /// The highest one an application's own window reaches: a floating panel (a
+    /// utility palette, an inspector). Above it live the system's surfaces and
+    /// status items and overlays, none of which is "a window" to Command-Shift-4
+    /// and then Space, bar the two below.
     public static let highestLevel = Int(CGWindowLevelForKey(.floatingWindow))
 
-    /// The two processes whose windows are the system's furniture, whatever level
-    /// they claim. Names are fixed by the system, not localised.
-    static let furniture: Set<String> = ["Dock", "Window Server"]
+    /// The menu bar's level, and the Dock's: the two system surfaces macOS offers
+    /// as targets. Read from the system, never typed.
+    public static let menuBarLevel = Int(CGWindowLevelForKey(.mainMenuWindow))
+    public static let dockLevel = Int(CGWindowLevelForKey(.dockWindow))
+
+    /// The process that draws the menu bar. Its name is fixed by the system. The
+    /// Dock is not identified by name — Dock.app's display name is localised — but
+    /// by its level alone.
+    static let menuBarOwner = "Window Server"
+
+    /// Whether this is the menu bar or the Dock, the two surfaces that are not
+    /// application windows and are cut from the freeze, not asked for by id.
+    /// The list is trusted to carry the Dock's window at the **strip's** frame
+    /// (`DockStrip`), never at the sheet's: the ports file does that when it reads.
+    public static func isSystemSurface(_ window: FrozenWindow) -> Bool {
+        (window.layer == menuBarLevel && window.ownerName == menuBarOwner) || window.layer == dockLevel
+    }
 
     /// Whether a person could mean this window by pointing at it: an ordinary or
-    /// floating application window of a useful size, not the system's furniture.
-    /// The one predicate every reader of the window list asks.
+    /// floating application window, the menu bar or the Dock strip, of a useful
+    /// size. The one predicate every reader of the window list asks.
     public static func isPickable(_ window: FrozenWindow) -> Bool {
-        (lowestLevel...highestLevel).contains(window.layer)
-            && !furniture.contains(window.ownerName)
+        ((lowestLevel...highestLevel).contains(window.layer) || isSystemSurface(window))
             && window.frame.width >= smallest && window.frame.height >= smallest
     }
 

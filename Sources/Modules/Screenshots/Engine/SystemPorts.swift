@@ -83,9 +83,10 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
             for await outcome in group { collected.append(outcome) }
             return collected.sorted { $0.0 < $1.0 }
         }
+        let dockStrip = await MainActor.run { Self.dockStrip() }
         // `nil` is a display the system declined to capture for lack of the grant.
         if outcomes.contains(where: { $0.1 == nil }) { return .denied }
-        return .frozen(Freeze(displays: outcomes.compactMap(\.1), windows: Self.windowList(excluding: me)))
+        return .frozen(Freeze(displays: outcomes.compactMap(\.1), windows: Self.windowList(excluding: me, dockStrip: dockStrip)))
     }
 
     private static func capture(_ display: SCDisplay, excluding own: [SCRunningApplication],
@@ -170,23 +171,40 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 
     /// Front to back, in CG-global points. Only what a person could mean by "a
     /// window": on screen, not Helm's, not transparent.
-    private static func windowList(excluding pid: pid_t) -> [FrozenWindow] {
+    private static func windowList(excluding pid: pid_t, dockStrip strip: CGRect?) -> [FrozenWindow] {
         guard let raw = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
                                                    kCGNullWindowID) as? [[String: Any]]
         else { return [] }
-        return raw.compactMap { entry in
+        let entries: [RawWindow] = raw.compactMap { entry in
             guard let number = entry[kCGWindowNumber as String] as? UInt32,
                   let layer = entry[kCGWindowLayer as String] as? Int,
                   let bounds = entry[kCGWindowBounds as String] as? [String: CGFloat],
-                  let owner = entry[kCGWindowOwnerPID as String] as? Int, pid_t(owner) != pid,
-                  (entry[kCGWindowAlpha as String] as? Double ?? 1) > 0,
+                  let owner = entry[kCGWindowOwnerPID as String] as? Int,
                   let x = bounds["X"], let y = bounds["Y"],
                   let width = bounds["Width"], let height = bounds["Height"]
             else { return nil }
-            return FrozenWindow(id: number, frame: CGRect(x: x, y: y, width: width, height: height),
-                                layer: layer,
-                                ownerName: entry[kCGWindowOwnerName as String] as? String ?? "")
+            return RawWindow(number: number, layer: layer, ownerPID: pid_t(owner),
+                             ownerName: entry[kCGWindowOwnerName as String] as? String ?? "",
+                             alpha: entry[kCGWindowAlpha as String] as? Double ?? 1,
+                             frame: CGRect(x: x, y: y, width: width, height: height),
+                             ownedByDock: layer == WindowPick.dockLevel && isTheDock(pid_t(owner)))
         }
+        return WindowListing.visible(entries, excluding: pid, dockStrip: strip)
+    }
+
+    /// Whether `pid` runs the Dock's executable. Read from the path of the process,
+    /// which needs no grant; the window's owner name is localised and is not used.
+    private static func isTheDock(_ pid: pid_t) -> Bool {
+        var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+        guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return false }
+        return String(cString: buffer) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
+    }
+
+    /// The Dock's strip in CG-global points, from the display that gives up room
+    /// for it; nil when none does. Called on the main actor, as every AppKit screen
+    /// reading is.
+    @MainActor private static func dockStrip() -> CGRect? {
+        DockStrip.rect(displays: NSScreen.screens.map { (frame: $0.frame, visible: $0.visibleFrame) })
     }
 }
 
