@@ -1317,7 +1317,12 @@ rule with the clock passed in), in points of the display they were drawn on; the
 read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
-so the file and the screen share one geometry.
+so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pencil
+and highlighter; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
+export's context both read; the pencil and the highlighter are freehand through the same trail of kept
+points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
+45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
+in the file. ⇧ is read from the flags of each event and never kept from the press.
 
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`

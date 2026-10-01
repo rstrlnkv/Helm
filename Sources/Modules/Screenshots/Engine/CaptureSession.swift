@@ -211,17 +211,21 @@ public final class CaptureSession: @unchecked Sendable {
                 context.scaleBy(x: scale, y: -scale)
                 context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
                 context.setAllowsAntialiasing(true)
-                context.setLineWidth(Annotation.lineWidth)
-                context.setLineJoin(.miter)
                 for layer in layers {
+                    context.saveGState()
                     context.addPath(layer.outline)
-                    if layer.isFilled {
+                    if let stroke = layer.stroke {
+                        context.setLineWidth(stroke.width)
+                        context.setLineCap(stroke.rounded ? .round : .butt)
+                        context.setLineJoin(stroke.rounded ? .round : .miter)
+                        context.setStrokeColor(stroke.color)
+                        if stroke.multiplies { context.setBlendMode(.multiply) }
+                        context.strokePath()
+                    } else {
                         context.setFillColor(Annotation.ink)
                         context.fillPath()
-                    } else {
-                        context.setStrokeColor(Annotation.ink)
-                        context.strokePath()
                     }
+                    context.restoreGState()
                 }
                 return context.makeImage()
             }

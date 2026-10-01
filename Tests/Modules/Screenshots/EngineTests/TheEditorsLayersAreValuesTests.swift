@@ -11,7 +11,7 @@ final class TheEditorsLayersAreValuesTests: XCTestCase {
     private func draw(_ editing: inout AnnotationEditing, _ tool: AnnotationTool = .arrow,
                       from: CGPoint = CGPoint(x: 120, y: 120), to: CGPoint = CGPoint(x: 220, y: 180)) {
         editing.begin(tool, at: from)
-        editing.drag(to: to)
+        editing.drag(to: to, shift: false)
         editing.end()
     }
 
@@ -65,9 +65,9 @@ final class TheEditorsLayersAreValuesTests: XCTestCase {
         editing.begin(.arrow, at: CGPoint(x: CGFloat.nan, y: 120))
         XCTAssertNil(editing.draft, "a draft began on a point that is not a number")
         editing.begin(.arrow, at: CGPoint(x: 120, y: 120))
-        editing.drag(to: CGPoint(x: CGFloat.infinity, y: 150))
+        editing.drag(to: CGPoint(x: CGFloat.infinity, y: 150), shift: false)
         XCTAssertEqual(editing.draft?.end, CGPoint(x: 120, y: 120), "a point that is not finite moved the draft")
-        editing.drag(to: CGPoint(x: 9_999, y: -50))
+        editing.drag(to: CGPoint(x: 9_999, y: -50), shift: false)
         XCTAssertEqual(editing.draft?.end, CGPoint(x: 500, y: 100), "a point outside the selection was not taken to its edge")
     }
 

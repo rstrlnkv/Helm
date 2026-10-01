@@ -197,7 +197,7 @@ enum OverlayResult {
     func mouseDragged(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
         if var current = edit, drag == nil {
-            current.layers.drag(to: local)
+            current.layers.drag(to: local, shift: flags.contains(.shift))
             edit = current
             render()
             return
@@ -255,7 +255,14 @@ enum OverlayResult {
     }
 
     func flagsChanged(_ flags: NSEvent.ModifierFlags) {
-        // Shift and option change the selection without the pointer moving.
+        // Shift and option change the selection without the pointer moving, and ⇧
+        // reshapes the stroke under the pointer the same way.
+        if var current = edit, drag == nil {
+            current.layers.modifiersChanged(shift: flags.contains(.shift))
+            edit = current
+            render()
+            return
+        }
         guard var current = drag, let pointer, pointer.display == current.display else { return }
         current.drag.move(to: pointer.point, shift: flags.contains(.shift),
                           option: flags.contains(.option), space: false)
@@ -622,14 +629,18 @@ final class OverlayView: NSView {
             shape.contentsScale = frozen.scale
             shape.frame = layersClip.bounds
             shape.path = annotation.outline.copy(using: &turn)
-            shape.lineJoin = .miter
-            if annotation.isFilled {
+            if let stroke = annotation.stroke {
+                shape.fillColor = nil
+                shape.strokeColor = stroke.color
+                shape.lineWidth = stroke.width
+                shape.lineCap = stroke.rounded ? .round : .butt
+                shape.lineJoin = stroke.rounded ? .round : .miter
+                // The export's `.multiply` blend; a layer composites with the picture
+                // beneath it by this filter name.
+                if stroke.multiplies { shape.compositingFilter = "multiplyBlendMode" }
+            } else {
                 shape.fillColor = Annotation.ink
                 shape.strokeColor = nil
-            } else {
-                shape.fillColor = nil
-                shape.strokeColor = Annotation.ink
-                shape.lineWidth = Annotation.lineWidth
             }
             layersClip.addSublayer(shape)
         }

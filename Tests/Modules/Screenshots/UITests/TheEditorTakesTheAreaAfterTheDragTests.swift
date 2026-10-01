@@ -144,6 +144,42 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(edited()).layers.map(\.tool), [.arrow, .rectangle])
     }
 
+    /// P, L, O and H on a Russian layout make з, д, щ and р: the code names the tool.
+    func testPencilLineEllipseAndMarkerAreKeyCodesOnARussianLayout() throws {
+        let id = try build()
+        select(id)
+        let keys: [(UInt16, String, AnnotationTool)] = [(35, "з", .pencil), (37, "д", .line), (31, "щ", .ellipse), (4, "р", .highlighter)]
+        for (index, (code, character, _)) in keys.enumerated() {
+            overlay?.keyDown(key(code, character))
+            stroke(id, from: CGPoint(x: 150, y: 150 + 20 * index), to: CGPoint(x: 300, y: 250 + 10 * index))
+        }
+        overlay?.keyDown(key(kReturn, "\r"))
+        XCTAssertEqual(try XCTUnwrap(edited()).layers.map(\.tool), keys.map(\.2))
+    }
+
+    /// ⇧ is read off each event: down for one drag event, up for the next, and the
+    /// shape follows the pointer again; a flags change with the pointer still reshapes.
+    func testShiftPressedAndReleasedMidDragIsReadFromEachEvent() throws {
+        let id = try build()
+        select(id)
+        overlay?.keyDown(key(37, "д"))
+        overlay?.mouseDown(on: id, at: CGPoint(x: 150, y: 150), flags: [])
+        overlay?.mouseDragged(on: id, at: CGPoint(x: 300, y: 160), flags: .shift)
+        overlay?.mouseDragged(on: id, at: CGPoint(x: 300, y: 160), flags: [])
+        overlay?.mouseUp(on: id)
+        overlay?.keyDown(key(37, "д"))
+        overlay?.keyDown(key(37, "д"))
+        overlay?.mouseDown(on: id, at: CGPoint(x: 150, y: 250), flags: [])
+        overlay?.mouseDragged(on: id, at: CGPoint(x: 300, y: 260), flags: [])
+        overlay?.flagsChanged(.shift)
+        overlay?.mouseUp(on: id)
+        overlay?.keyDown(key(kReturn, "\r"))
+        let layers = try XCTUnwrap(edited()).layers
+        XCTAssertEqual(layers.count, 2)
+        XCTAssertEqual(layers[0].end, CGPoint(x: 300, y: 160), "⇧ released before the last event was still applied")
+        XCTAssertEqual(layers[1].end.y, 250, accuracy: 0.001, "⇧ pressed with the pointer still did not snap the line")
+    }
+
     func testTheCharacterWithTheWrongKeyCodePicksNothing() throws {
         let id = try build()
         select(id)

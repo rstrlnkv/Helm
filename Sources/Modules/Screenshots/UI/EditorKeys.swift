@@ -29,6 +29,10 @@ enum EditorKeys {
         switch (Int(keyCode), flags) {
         case (kVK_ANSI_A, []): return .tool(.arrow)
         case (kVK_ANSI_R, []): return .tool(.rectangle)
+        case (kVK_ANSI_O, []): return .tool(.ellipse)
+        case (kVK_ANSI_L, []): return .tool(.line)
+        case (kVK_ANSI_P, []): return .tool(.pencil)
+        case (kVK_ANSI_H, []): return .tool(.highlighter)
         case (kVK_ANSI_Z, .command): return .undo
         case (kVK_ANSI_Z, [.command, .shift]): return .redo
         case (kVK_ANSI_C, .command): return .exit(.copy)

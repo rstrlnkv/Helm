@@ -10,7 +10,7 @@ final class TheEscRuleHoldsAtItsEdgesTests: XCTestCase {
     private func armed() -> AnnotationEditing {
         var editing = AnnotationEditing(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
         editing.begin(.arrow, at: CGPoint(x: 10, y: 10))
-        editing.drag(to: CGPoint(x: 100, y: 80))
+        editing.drag(to: CGPoint(x: 100, y: 80), shift: false)
         editing.end()
         XCTAssertEqual(editing.layers.count, 1, "no layer, so the rule below would close at once for another reason")
         XCTAssertEqual(editing.escape(), .armed)
@@ -47,7 +47,7 @@ final class TheEscQuestionOutlastsAPauseTests: XCTestCase {
     func testASecondPressAfterARealPauseStillClosesAndTheQuestionStaysArmed() {
         var editing = AnnotationEditing(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
         editing.begin(.arrow, at: CGPoint(x: 10, y: 10))
-        editing.drag(to: CGPoint(x: 100, y: 80))
+        editing.drag(to: CGPoint(x: 100, y: 80), shift: false)
         editing.end()
         XCTAssertEqual(editing.escape(), .armed)
         Thread.sleep(forTimeInterval: 0.3)
