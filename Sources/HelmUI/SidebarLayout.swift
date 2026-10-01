@@ -93,19 +93,48 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
             return copy
         }
 
+        let categoryOf = Dictionary(registry, uniquingKeysWith: { first, _ in first })
         for (id, category) in registry where !seen.contains(id) {
             let seed = category.rawValue
             if let index = sections.firstIndex(where: { $0.seed == seed }) {
+                // The section seeded for the category wins even when it is empty:
+                // the seed is the person's own mark of where the category lives,
+                // and an empty section they kept is a home they chose to keep.
+                sections[index].modules.append(id)
+            } else if let index = Self.sectionHoldingMost(of: category, in: sections, categoryOf: categoryOf) {
                 sections[index].modules.append(id)
             } else {
-                // The person removed the section this belongs to, and a module
-                // with nowhere to go is a module they cannot switch on. Put the
+                // No section is seeded for the category and no module of it is
+                // placed anywhere, so there is no neighbour to join. A module
+                // with nowhere to go is a module they cannot switch on; put the
                 // section back rather than inventing a home for it.
                 sections.append(Section(id: "seed.\(seed)", seed: seed, name: nil, modules: [id]))
             }
             seen.insert(id)
         }
         return SidebarLayout(sections: sections)
+    }
+
+    /// The index of the section holding the most modules of `category`, or nil
+    /// when none holds one.
+    ///
+    /// **The category comes from the registry (`categoryOf`) and never from a
+    /// section's seed or name**, so a hand-made section the person filled with
+    /// the category's modules is found as readily as a seeded one, whatever it
+    /// is called in whichever language.
+    ///
+    /// **A tie goes to the first section in layout order.** Top-first is the
+    /// order the sidebar is read in, and it depends on nothing but the stored
+    /// order, so every read of the same bytes picks the same section.
+    private static func sectionHoldingMost(of category: ModuleCategory, in sections: [Section],
+                                           categoryOf: [String: ModuleCategory]) -> Int? {
+        var best: (index: Int, count: Int)?
+        for (index, section) in sections.enumerated() {
+            let count = section.modules.filter { categoryOf[$0] == category }.count
+            // Strictly greater, so an equal later section never displaces the first.
+            if count > 0, count > (best?.count ?? 0) { best = (index, count) }
+        }
+        return best?.index
     }
 
     // MARK: - What the sidebar lists

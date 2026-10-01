@@ -105,38 +105,184 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
     }
 
     /// Deleted: the composer rehomes the siblings into the section above, and
-    /// the new module has no Utilities to join. `reconciled(with:)` puts a seeded
-    /// Utilities back at the foot of the sidebar holding the new module alone —
-    /// away from its siblings, in a section the person removed. Pinned so the
-    /// choice is visible; the owner's "next to whatever already lives there"
-    /// cannot hold here, since what lived there now lives somewhere else.
-    func testADeletedUtilitiesComesBackAtTheFootHoldingOnlyTheNewModule() throws {
+    /// the seeded Utilities is gone. The module joins the section that now holds
+    /// the Utilities modules, at its end, so it sits beside its siblings and no
+    /// section the person removed comes back.
+    func testADeletedUtilitiesLetsTheNewModuleJoinTheSectionHoldingItsSiblings() throws {
         let arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
         XCTAssertFalse(arranged.sections.contains { $0.seed == "utilities" })
-        let siblingHome = try section(holding: siblings[0], in: arranged).id
+        let siblingHome = try section(holding: siblings[0], in: arranged)
         let read = arrive(arranged)
         let home = try section(holding: shot, in: read)
-        XCTAssertEqual(home.id, utilities)
-        XCTAssertNil(home.name, "translated from its seed")
-        XCTAssertEqual(home.modules, [shot])
-        XCTAssertEqual(read.sections.last?.id, utilities, "appended at the foot")
-        XCTAssertEqual(read.sections.count, arranged.sections.count + 1, "one section the person removed is back")
-        XCTAssertNotEqual(home.id, siblingHome, "not beside its siblings")
+        XCTAssertEqual(home.id, siblingHome.id, "beside its siblings")
+        XCTAssertEqual(home.modules, siblingHome.modules + [shot], "last in that section")
+        XCTAssertEqual(read.sections.count, arranged.sections.count, "the removed section stays removed")
+        XCTAssertFalse(read.sections.contains { $0.id == utilities })
     }
 
     /// Deleted and replaced by a hand-made section the person called
-    /// "Utilities": the hand-made one has no seed, so it is not found, and the
-    /// seeded Utilities comes back beside it — two sections that read alike.
-    func testAHandMadeUtilitiesIsNotRecognised() throws {
+    /// "Utilities" and filled with the siblings: the category comes from the
+    /// registry and not from the name or the seed, so the hand-made section is
+    /// the one holding the most Utilities modules and receives the newcomer. No
+    /// second seeded Utilities appears.
+    func testAHandMadeSectionHoldingTheSiblingsReceivesIt() throws {
         var arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
         arranged = arranged.addingSection(named: "Utilities")
         let handMade = try XCTUnwrap(arranged.sections.last).id
         for id in siblings { arranged = arranged.moving(id, toSection: handMade, before: nil) }
         let read = arrive(arranged)
         let home = try section(holding: shot, in: read)
+        XCTAssertEqual(home.id, handMade)
+        XCTAssertEqual(home.modules, siblings + [shot])
+        XCTAssertEqual(read.sections.count, arranged.sections.count)
+    }
+
+    /// A hand-made section merely *named* "Utilities" and holding none of the
+    /// category is not a home: the name decides nothing, and with no module of
+    /// the category anywhere a seeded section is created at the foot.
+    func testAHandMadeSectionHoldingNoneIsNotAHome() throws {
+        var arranged = SidebarLayout.seeded(from: before.filter { $0.1 != .utilities })
+        arranged = arranged.addingSection(named: "Utilities")
+        let handMade = try XCTUnwrap(arranged.sections.last).id
+        let read = SidebarLayout(sections: arranged.sections)
+            .reconciled(with: SidebarLayoutStore.registry().filter { $0.1 != .utilities || $0.0 == shot })
+        let home = try section(holding: shot, in: read)
         XCTAssertNotEqual(home.id, handMade)
         XCTAssertEqual(home.id, utilities)
         XCTAssertEqual(home.modules, [shot])
+        XCTAssertEqual(read.sections.last?.id, utilities, "at the foot")
+    }
+
+    // MARK: - The rule on a small registry
+
+    private let other: ModuleCategory = ModuleCategory.allCases.first { $0 != .utilities }!
+
+    private func section(_ id: String, _ modules: [String], seed: String? = nil) -> SidebarLayout.Section {
+        SidebarLayout.Section(id: id, seed: seed, name: id, modules: modules)
+    }
+
+    /// Two sections hold the same number of the category and no section is
+    /// seeded for it: the first in layout order takes the newcomer.
+    func testATieGoesToTheFirstSectionInOrder() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a"]), section("two", ["b"])])
+        let read = layout.reconciled(with: registry)
+        XCTAssertEqual(read.sections.map(\.modules), [["a", "new"], ["b"]])
+        let swapped = SidebarLayout(sections: [section("two", ["b"]), section("one", ["a"])])
+        XCTAssertEqual(swapped.reconciled(with: registry).sections.map(\.modules), [["b", "new"], ["a"]])
+    }
+
+    /// The larger holder wins over an earlier smaller one.
+    func testTheSectionHoldingMostWinsOverAnEarlierOne() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities),
+                                                    ("c", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a"]), section("two", ["b", "c"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["a"], ["b", "c", "new"]])
+    }
+
+    /// Modules of other categories do not count, whatever the section is called.
+    func testOtherCategoriesDoNotCount() {
+        let registry: [(String, ModuleCategory)] = [("x", other), ("y", other), ("a", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["x", "y"]), section("two", ["a"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["x", "y"], ["a", "new"]])
+    }
+
+    /// No module of the category exists anywhere else: a fresh seeded section
+    /// at the foot holds the newcomer alone.
+    func testNoModuleOfTheCategoryAnywhereMakesAFootSection() throws {
+        let registry: [(String, ModuleCategory)] = [("x", other), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["x"])])
+        let read = layout.reconciled(with: registry)
+        XCTAssertEqual(read.sections.count, 2)
+        XCTAssertEqual(read.sections.last?.id, utilities)
+        XCTAssertEqual(read.sections.last?.seed, "utilities")
+        XCTAssertEqual(read.sections.last?.modules, ["new"])
+    }
+
+    /// A seeded section is present but empty while another section holds the
+    /// category's modules: the seeded section still wins. That is right because
+    /// the seed is the person's own mark of where the category lives and they
+    /// kept the empty section; guessing a better home from a head count would
+    /// move a module out of the section they named for it.
+    func testAnEmptySeededSectionStillBeatsAFullerOne() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a", "b"]),
+                                              section(utilities, [], seed: "utilities")])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["a", "b"], ["new"]])
+    }
+
+    /// The same answer on every read of the same bytes, and after a write.
+    func testAHeadCountArrivalIsStableAcrossReadsAndAWrite() throws {
+        let arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
+        let s = store()
+        SidebarLayoutStore.write(arranged, to: s)
+        let first = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
+        XCTAssertEqual(try section(holding: shot, in: first).id,
+                       try section(holding: siblings[0], in: first).id)
+        XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry()), first)
+        SidebarLayoutStore.write(first, to: s)
+        XCTAssertEqual(SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry()), first)
+    }
+
+    // MARK: - Several arrivals in one read
+
+    /// Two newcomers of one category arriving together both join the section
+    /// holding their siblings, in registry order — the first one's placement
+    /// adds to the winner's count and cannot hand the second a different home.
+    func testTwoNewcomersOfOneCategoryJoinTheSiblingsTogether() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities), ("c", .utilities),
+                                                    ("n1", .utilities), ("n2", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a"]), section("two", ["b", "c"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules),
+                       [["a"], ["b", "c", "n1", "n2"]])
+    }
+
+    /// Two newcomers of one category with no sibling anywhere: the first
+    /// recreates the seeded section and the second joins it, rather than a
+    /// second section with the same id.
+    func testTwoHomelessNewcomersShareOneFootSection() {
+        let registry: [(String, ModuleCategory)] = [("x", other), ("n1", .utilities), ("n2", .utilities)]
+        let read = SidebarLayout(sections: [section("one", ["x"])]).reconciled(with: registry)
+        XCTAssertEqual(read.sections.map(\.id), ["one", utilities])
+        XCTAssertEqual(read.sections.map(\.modules), [["x"], ["n1", "n2"]])
+    }
+
+    /// Two newcomers of different categories in one read each find their own
+    /// siblings; neither is counted toward the other's category.
+    func testNewcomersOfTwoCategoriesEachJoinTheirOwnSiblings() {
+        let registry: [(String, ModuleCategory)] = [("x", other), ("a", .utilities),
+                                                    ("nu", .utilities), ("no", other)]
+        let layout = SidebarLayout(sections: [section("one", ["x"]), section("two", ["a"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules),
+                       [["x", "no"], ["a", "nu"]])
+    }
+
+    // MARK: - What a corrupt store must not count
+
+    /// A module held twice counts once, at its first placement: the duplicate
+    /// is collapsed before the head count, so a second copy cannot outvote the
+    /// section the module actually sits in.
+    func testAModuleHeldTwiceCountsOnceInTheHeadCount() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["b"]), section("two", ["a", "b"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["b", "new"], ["a"]])
+    }
+
+    /// Ids this build does not ship count for nothing, however many a section holds.
+    func testUnknownIdsDoNotCount() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a"]),
+                                              section("two", ["ghost1", "ghost2", "b"])])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["a", "new"], ["b"]])
+    }
+
+    /// A seeded section holding fewer of the category than another still wins.
+    func testASeededSectionBeatsAFullerOneWhenNotEmptyEither() {
+        let registry: [(String, ModuleCategory)] = [("a", .utilities), ("b", .utilities),
+                                                    ("c", .utilities), ("new", .utilities)]
+        let layout = SidebarLayout(sections: [section("one", ["a", "b"]),
+                                              section(utilities, ["c"], seed: "utilities")])
+        XCTAssertEqual(layout.reconciled(with: registry).sections.map(\.modules), [["a", "b"], ["c", "new"]])
     }
 
     /// The first read's answer is not persisted by the read, so it has to be the
