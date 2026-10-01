@@ -45,8 +45,8 @@ final class TheBandIsThereFromTheFirstFrameTests: XCTestCase {
 
     /// How long a trace runs. `HelmMotion.hover(entering: true)` is 0,19 s and
     /// a spring settles asymptotically after it, so a span shorter than this
-    /// would read the ramp's tail as its end — CLAUDE.md's «measure at the
-    /// shipping duration».
+    /// would read the ramp's tail as its end — ARCHITECTURE.md § Tests and
+    /// measurement's «measures at the shipping duration».
     private static let span: TimeInterval = 0.9
 
     /// How many times each reading is taken before it is believed.

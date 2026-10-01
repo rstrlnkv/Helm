@@ -1173,8 +1173,8 @@ struct HomebrewSettingsPage: View {
         // different views at two different positions in the tree — moving
         // between "no section" and "a section just appeared" tore the table
         // down and rebuilt it, on every keystroke that flipped which branch
-        // was taken, which is exactly the identity CLAUDE.md says SwiftUI
-        // never interpolates across. `screen` now travels into the one call
+        // was taken, which is exactly the identity ARCHITECTURE.md § Design system says
+        // SwiftUI never interpolates across. `screen` now travels into the one call
         // site instead, and `packageList` reads the sentence for its own
         // reading out of it — the note this list draws for a waiting or
         // refused query no longer disappears the moment the section takes

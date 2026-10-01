@@ -8,8 +8,8 @@ import HelmTestSupport
 /// catches a translation that was never written. This asks whether anything
 /// still *wants* the key — and a key nothing asks for is not merely weight.
 ///
-/// **An orphan is a trap for the next person.** CLAUDE.md's rule is that one
-/// English key means one thing, and seventeen keys had already come to mean two
+/// **An orphan is a trap for the next person.** CLAUDE.md's rule is different
+/// English for a second meaning, so one key means one thing, and seventeen keys had already come to mean two
 /// each before twelve of them had to be split. The orphans found when this was
 /// written were `Medium`, `Small`, `Large`, `Empty`, `Filled`, `Dot`, `Tiny`
 /// and `Very small` — left behind when the menu-bar icon's five size names were

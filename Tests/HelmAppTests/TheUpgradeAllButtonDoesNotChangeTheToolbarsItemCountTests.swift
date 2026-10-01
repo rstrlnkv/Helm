@@ -31,7 +31,7 @@ import HelmContract
 /// this file now reads the AX tree the capsule actually draws, and the
 /// overflow menu form that item answers for when it does not fit — the
 /// `SettingsToolbar`, live, is still the only place that can be built at all
-/// (`CLAUDE.md`'s own "put a check for the app layer in `Tests/HelmAppTests`").
+/// (`CLAUDE.md`'s "app-layer checks in `Tests/HelmAppTests`").
 @MainActor
 final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCase {
 

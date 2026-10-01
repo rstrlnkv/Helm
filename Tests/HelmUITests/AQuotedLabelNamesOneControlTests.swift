@@ -6,9 +6,10 @@ import HelmTestSupport
 /// control in all eight languages.
 ///
 /// CLAUDE.md orders the label taken from the string the control itself calls,
-/// «or a rename leaves the sentence behind and all seven translations
-/// faithfully translate the wrong word», and records that the fix is one key
-/// deleted and rewritten in eight files. Nothing held anyone to it: the entry
+/// or a rename strands the sentence, and ARCHITECTURE.md § Release records
+/// that a wrong name is faithfully translated into all seven other languages
+/// and the fix is one key deleted and rewritten in eight files. Nothing held
+/// anyone to it: the entry
 /// for 0.10.0 said the colour menu ends with «Other…» while the menu draws
 /// «Other colour…», and it shipped. The English was the only wrong one — the
 /// seven had been read out of Calendar — so no reader of one language could
@@ -185,8 +186,7 @@ final class AQuotedLabelNamesOneControlTests: XCTestCase {
         XCTAssertTrue(offenders.isEmpty, """
             \(offenders.count) changelog citation(s) name one control in English and another, \
             or none, in a translation. CLAUDE.md: call the same string the control calls, or a \
-            rename leaves the sentence behind and all seven translations faithfully translate \
-            the wrong word.
+            rename strands the sentence.
             \(offenders.sorted().joined(separator: "\n"))
             """)
     }

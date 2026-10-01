@@ -13,9 +13,9 @@ import Module_Homebrew_Engine
 /// the page was at least consistent; after it, one 984 pt pane carried
 /// «Homebrew не ответил, поэтому об установленных пакетах сейчас ничего не
 /// известно.» with its ink at y 357.5…389.5 and «Читаем список пакетов…» 327 pt
-/// below it at y 716.5…730.5 — measured 2026-09-16 — and CLAUDE.md's rule about
-/// one screen carrying two accounts of one fact says the quieter of the two is
-/// the one that gets believed.
+/// below it at y 716.5…730.5 — measured 2026-09-16 — and what ARCHITECTURE.md § KeepAwake
+/// says of one screen carrying two accounts of one rule holds here too: the quieter
+/// of the two is the one that gets believed.
 ///
 /// **What this asserts is agreement, not vocabulary.** A case that asked
 /// whether the bar "says something about a refusal" passes over a bar that says

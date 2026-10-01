@@ -52,7 +52,10 @@ contents are not listed in prose; `ls Sources/HelmRuntime` is the list and
 `ls Sources/HelmRuntime | wc -l` the count, because a figure describing the tree
 belongs in the tree — the list was spelled out twice here and went stale both
 times. `HelmTestSupport` (`Tests/Support`) is to test plumbing what
-`Sources/HelmRuntime` is to app plumbing, and `ls Tests/Support` is that list.
+`Sources/HelmRuntime` is to app plumbing, and `ls Tests/Support` is that list. A shared helper is no simpler than the thing it stands in
+for, because the drain in `Tests/Support/ScratchDirectory.swift` is the point of it — a
+single removal loses a race against code that saves from a task of its own — and a local
+helper that does more keeps its own body and calls the shared one.
 
 The deployment target is `.macOS("26.0")` and the default localization is `en`.
 One product is declared, `HelmApp`, so that `--product HelmApp` in
@@ -107,7 +110,9 @@ entry: `Sources/Modules/<Name>/Engine`, `Sources/Modules/<Name>/UI`,
 required, so a missing one is a manifest error on every machine rather than a
 module quietly having no tests. The manifest deliberately leaves the filesystem
 unread: walking `Sources/Modules` would turn a missing directory into a missing
-target, which is the same silence in a new shape.
+target, which is the same silence in a new shape. At least one tracked file goes into a new test
+directory before pushing, or the manifest is refused on every checkout but the author's
+(see Release).
 
 `ls Sources/Modules` gives the modules. The order in `Package.swift` is the order
 `HelmApp` listed them in.
@@ -235,7 +240,9 @@ attributes arrive in attribute **bit** order rather than request order
 (`:299`–`:302`); `ATTR_CMN_DEVID` from a bulk read is the parent filesystem's
 view, so `BulkWalk.deviceID(of:)` (`:114`) stays a `stat`; and a `Date` composed
 through the epoch loses its last bits, so the epoch is subtracted from the whole
-seconds first.
+seconds first. A device identifier is signed, as `BulkWalk.DeviceID`
+(`Sources/HelmRuntime/BulkWalk.swift:90`) wraps a signed `st_dev`, and is never converted
+to an unsigned type.
 
 A stored field is multiplied by the node count.
 `Sources/Modules/Disk/Engine/Logic/DiskNode.swift:19` carries a name and no path;
@@ -262,6 +269,19 @@ page keeps in `@State` dies with the page.
 **`ModuleMetadata.shortName` defaults to `name`**
 (`Sources/HelmContract/ModuleMetadata.swift:45`). The sidebar column is fixed and
 truncates mid-word; page headers, the panel and the icon menu take the full name.
+
+A port's doc comment says which reasons collapse into an empty read, and a caller that
+must tell them apart is given a second entry point or an enum naming each reason, never a
+convention for reading one optional two ways. A sentinel is the same defect: a zero
+meaning "not measured yet" cannot also mean "not drawn". An unreadable system answer is
+not folded toward the permissive side without asking whether the guard downstream needs
+the difference, or "battery with an unreadable charge" becomes decidable nowhere. A port
+that can change under the app has a reverse channel and its fake stands in that state
+too, since a local flag set once against a live external fact goes on reporting a world
+that has moved. An engine reloads its cached settings in its activation and not only on a
+settings-changed message: a field with no sensible initial value is bound to nothing on
+every launch and refuses before there is anything to log, and a test that sends the
+message itself cannot see it.
 
 ### Running other programs
 
@@ -304,6 +324,22 @@ the order is the whole security property — and
 `AppleScript.administratorShellScript` (`:31`) is the one place that composes the
 privileged line.
 
+A value crossing `DispatchQueue.main.async` is a *reading* or a *payload*, and the two are
+handled in opposite ways: a reading is taken inside the block, a payload is captured before
+it. `WindowSeenReader` (`Sources/HelmUI/DesignSystem/OffScreenIdle.swift`) sampled the
+window's level before the hop and delivered that sample after the window had opened,
+unmounting both Settings panes behind a window that was on screen and tearing down a live
+toolbar. Layout's fix gesture (`Sources/Modules/Layout/Engine/LayoutEngine.swift`) and the
+hotkey handler (`Sources/HelmApp/HotkeyManager.swift`) sample before the hop on purpose,
+because what the person had selected when they pressed is what must be converted, and
+re-reading after the hop converts whatever they have selected since. Moving work off the
+main thread is a change to every AppKit call it can reach: Layout's fix gesture took eight
+call sites with it and went down on the first use with text selected.
+
+A blocking call is hopped through `Sources/HelmRuntime/OffTheCooperativePool.swift`,
+since a transport handler runs on the Swift-concurrency pool and a process waited on or a
+recursive scan parks a pool thread for seconds.
+
 ### Running applications
 
 `NSWorkspace.runningApplications` and `.frontmostApplication` are read on the
@@ -313,8 +349,8 @@ behind a KVO helper, `-applications` copies that array under a lock while the
 main thread mutates it as apps come and go, and the VPN engine reading it off
 its own serial queue segfaulted the whole program inside `_cow_copy` the
 moment an app quit at the wrong instant
-(`Sources/HelmRuntime/RunningApps.swift:4-24`). The Keyboard module proved the
-same fact a second time over `frontmostApplication`, once its gesture moved
+(`Sources/HelmRuntime/RunningApps.swift:4-24`). Layout's fix gesture proved the
+same fact a second time over `frontmostApplication`, once it moved
 onto a background queue and took eight call sites with it
 (`Sources/HelmRuntime/FrontmostApp.swift:6`).
 
@@ -801,6 +837,16 @@ record's shape, `WatchScope` on both ends, and device-and-inode identity through
 `PathCanonical.FileIdentity`. A history seal that fails to verify freezes the
 history rather than being overwritten or deleted.
 
+A per-rule fact stays per-rule, and a module macOS is blocking is marked from the declared
+permission and not from the switch. A module-wide suppression marked on every switched-on
+rule says "paused" about rules that are merely waiting, and a page reading its own enabled
+flag shows "Active" for a module that has been inert all session.
+
+Autopilot has no script action, and its action set is closed on purpose. The rules live
+in a property list any process running as the user can write, so an action that ran a
+script would turn "a file appeared" into arbitrary execution; the seal keeps a forged
+rule from running at all, and the closed set bounds what even a sealed one can do.
+
 ### Disk
 
 `Sources/Modules/Disk/` answers where the space went, so it is the one module
@@ -1097,6 +1143,14 @@ and no `String` is made of it inside that file.
 module that can carry one; the other acts take a key name, which has no field for a
 secret.
 
+`Sources/Modules/Hosts/Engine/Logic/KeyGeneration.swift` never aims `ssh-keygen` at a
+name already in the directory. The tool asks whether to overwrite and this design
+answers prompts, so an answer meant for a passphrase would land on that question and
+destroy a key nobody offered to replace. The terminal's echo is switched off before the
+child is spawned (`Sources/Modules/Hosts/Engine/PTYProcess.swift` carries the flags),
+because a terminal echoes what is written to it and the passphrase would otherwise come
+straight back into the transcript.
+
 `Sources/Modules/Hosts/Engine/Logic/KnownHostsFile.swift` keeps every line exactly
 as written and renders by joining those bytes, so a round trip holds by
 construction and the only edit is dropping a line whole. A hashed file is an
@@ -1125,6 +1179,14 @@ deactivates or continues as automatic.
 `Sources/Modules/KeepAwake/Engine/Logic/BatteryVetoNews.swift` are the battery's
 veto and the sentence it earns.
 
+A permanent passwordless root grant is paid for only where the thing is otherwise
+impossible, and nothing here raises a dialog on the way out. A global-queue dispatch from
+a terminating process either never runs or asks for a password during quit with nothing
+on screen to explain why, so a rule too old to withdraw itself is left where it is. The
+one grant with no revocation is `/opt/homebrew`'s ownership change (see Homebrew): Helm
+cannot know what the ownership was before, and the new ownership is what the installed
+program needs.
+
 Two things here cross out of the module's own process. The pointer jiggle
 (`Sources/Modules/KeepAwake/Engine/Logic/JiggleTarget.swift`) resets the system idle
 counter, which is why `Sources/HelmRuntime/ScanSchedule.swift` declares
@@ -1136,7 +1198,8 @@ system-wide and stays in force after Helm quits, reached through a NOPASSWD rule
 (`Sources/Modules/KeepAwake/Engine/Logic/SudoersRule.swift:25`). That rule's text is
 pure data in a logic unit rather than a comment, it ends with an argument-exact
 entry permitting only its own removal, so the grant carries its own revocation and
-the withdrawal costs no dialog. It lives in its own coordinator so the code that can
+the withdrawal costs no dialog; it has to carry it because dragging the application to
+the Trash runs no code. It lives in its own coordinator so the code that can
 leave a Mac unable to sleep is separable from the session logic, which only asks for
 the lid and is told whether it got it. That coordinator is
 `@unchecked Sendable` rather than `@MainActor` (`:30`), which is load-bearing: a
@@ -1155,7 +1218,9 @@ subject.
 A veto that ends everything is on the wire under its own name, and the engine
 refreshes the published sets *before* the veto returns
 (`Sources/Modules/KeepAwake/Engine/KeepAwakeEngine.swift:568`–`:575`), so a screen
-drawn under a veto is not drawn from whatever the sets held when it began. Two sets
+drawn under a veto is not drawn from whatever the sets held when it began and does not
+offer to pause a rule that is not holding. One screen carrying two accounts of one rule
+shows the quieter one, which is the one that sounds like nothing is wrong. Two sets
 exist deliberately: `activeConditions` is the list of reasons the Mac is *currently*
 being held, and is empty for a suppressed rule; `triggeredConditions`
 (`Sources/Modules/KeepAwake/Engine/KeepAwakeEngine.swift:75`) is the set of triggers
@@ -1166,6 +1231,14 @@ apart. The row's four states are decided in one pure place,
 (`Sources/Modules/KeepAwake/Engine/Logic/RuleNote.swift:51`), where the veto
 outranks the pause (`:54`) and `triggerHolds` is per-rule rather than the module's
 own flag.
+
+When a guard has stopped everything, that is said on the wire, because a session that ends
+with nobody touching anything leaves the log as the only place that can say who ended it
+and why. The guard takes the one notice slot when both it and a pause are true, since only
+one of the two explains why nothing at all is running. The slot is gated on "there is
+something to say" rather than on the pause flag, because a guard that sets no flag of its
+own would otherwise collapse the banner to nothing. The notice carries no button, because a
+control that cannot do what it says is worse than none.
 
 ### Layout
 
@@ -1518,6 +1591,26 @@ rewrites `/private/var/…` to `/var/…` for a path that exists on disk and lea
 alone for one that does not. Symlinks are resolved separately (`:33`), since
 `standardizingPath` does not follow them, and case is not folded by it at all (`:61`).
 `Sources/HelmRuntime/PathCanonical.swift:180` is the shared spelling of the same fact.
+Which gate is asked decides what the symptom looks like. Pointing the duplicate finder at
+`~/Downloads` under `RemovableScope` disabled every checkbox in its own result, which
+reads as a permissions problem and is a question put to the wrong gate.
+
+A walk asks a directory's *name* and never its contents: reading a directory to decide
+whether to read it is itself the Photos consent prompt, and package-descendant skipping
+is no substitute, because it asks whether the type is registered on this Mac. The gate is
+asked of every directory a walk meets and not of the root alone
+(`Sources/Modules/Duplicates/Engine/DuplicateScanner.swift`), since the home folder is
+the intended root and its very first descent reaches the subtrees the rule exists to keep
+out. A walk's paths are compared against a root with `/private` stripped from both sides,
+because the enumerator resolves the root's own symlinks on the way out; a gate comparing
+raw strings matches nothing and fails open, silently, so such a gate is tested with
+paths that exist on disk. A scan that came back with nothing because its root was refused
+is a nil report and never an empty one (see Background scans, where the attempt is
+written before the work).
+
+What happened between a reading and the act is asked of every stored reading, and who
+re-asked: a flag is the wrong question, and a reading that was true when taken is not
+evidence at the moment of the act.
 
 ### Removal
 
@@ -1535,6 +1628,18 @@ Refusals are values rather than silences: `TrashFailure.Reason`
 `needsFullDiskAccess`, `activeSystemExtension`, `noPermission`, `systemRefused` —
 `outOfScope` is Helm refusing before anything was attempted. `TrashFailure`
 classifies from the Cocoa error code rather than from the shape of a path.
+
+A folder's size never comes from `totalFileAllocatedSize`: on APFS it answers for the
+directory entry and is zero, so Disk once told people a folder they had just trashed
+freed nothing. The folder is walked, and what a removal returns counts a clone family
+once (`Sources/HelmRuntime/CloneShare.swift`), because Finder's Duplicate command makes
+clones and a group of them would promise twice the space the disk gives back; a file
+whose family id cannot be read counts as its own, since under-reporting is the safer
+error. The engine's own gate has the last word on what is deleted, because the engine
+takes a list of strings and deletes them: an empty display name once claimed
+`~/Library/Application Support` itself, so a scope never widens without a test naming the
+new path (`Tests/HelmRuntimeTests/RemovableScopeTests.swift`,
+`Tests/HelmRuntimeTests/UserFileScopeTests.swift`).
 
 ### One removal at a time
 
@@ -1558,7 +1663,7 @@ plainly did not move.
 file under `Sources/Modules/` and fails on any that sends a removal without
 the guard; the files it finds today are the output of
 `command grep -rln "guard !busy" Sources/Modules/`, since the count itself
-does not belong in this sentence (CLAUDE.md:129). It scans by whether a file
+does not belong in this sentence (CLAUDE.md § Where things go). It scans by whether a file
 **sends** a removal — matching `Command.trash` or `uvm.trashPaths(` in its
 own source — rather than by whether a view model **names** it: an earlier
 version matched `lastPathComponent.contains("ViewModel")` and missed two
@@ -1627,6 +1732,10 @@ whatever was saved, because the page greys its switch there — and a beta build
 silent until its owner turns the switch on. That switch is the «Write a log file» item of
 the «More actions» menu on the Log page's window toolbar (`Sources/HelmApp/LogView.swift:208`).
 
+What the installed build says about itself is read from that file rather than assumed: the
+lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants it
+actually holds, which no setting on screen can tell you.
+
 A failure that cannot be triaged is recorded rather than logged. `HelmLog.warn`
 (`Sources/HelmRuntime/HelmLog.swift:414`) and `.error` (`:421`) capture `#fileID`,
 `#line` and `#function` automatically; `info` (`:373`) leaves them out, because it
@@ -1663,6 +1772,12 @@ question "is this a test runner" is answered once, by `TestProcess.isRunning`
 `XCTestConfigurationFilePath` is Xcode's and `swift test` leaves it unset. The scan
 journal reads the same answer, since the two decide the same question.
 
+A line is logged for a refusal and never for an absence. "No cached credentials" is the
+ordinary state after every install of an ad-hoc signed build, and a warning on it sends an
+investigation after something that already happened. A line reporting on the state of the
+world is run against an ordinary machine and its silences counted before it ships; if the
+answer is "rarely", the design is wrong however good the filter is.
+
 ### The activity registry
 
 `Sources/HelmRuntime/HelmActivity.swift` is the registry of named phases — what is
@@ -1670,7 +1785,13 @@ running *now*. `HelmActivity.phase(_:_:)` exists in a synchronous and an `async`
 overload (`:45` and `:59`); each opens an `os_signpost` interval on the same call and
 closes both the interval and the registry entry from a `defer`, so a phase closes on
 return, on throw and on cancellation. `begin`/`end` (`:70`, `:76`) is the pair for a
-body the closure cannot take. The live set is bounded at `HelmActivity.liveLimit`,
+body the closure cannot take. It is used only with a `defer` on the very next line, and
+only where the phase is the whole body of an asynchronous function, because a `defer`
+ends at the end of the function and so is the end of the phase only there; the
+balance-by-hand the phase call replaces caused three cancel-path defects. The label goes
+on the shared path rather than at each call site, as `HelmTrash` does with
+`"\(module).trash"` (see Removal), so every module deleting through `HelmTrash` carries the name and a new one
+cannot forget to. The live set is bounded at `HelmActivity.liveLimit`,
 declared 64 (`:35`), and `begin` drops a phase rather than growing past it (`:72`).
 `HelmActivity.sweep(module:)` (`:84`) removes every phase whose label is the module id
 or begins with it; it is called from `Sources/HelmApp/ModuleHost.swift:81` and `:135`,
@@ -1712,6 +1833,19 @@ budget carries its ceiling as a file rather than as a paragraph, per entry or pe
 `Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift:51`, with
 `Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
 obliged to carry a reading at all.
+
+`Tests/Support/ThreadAllocations.swift` judges one call by the requests it made and never
+by a high-water sampled from those books. The books are the whole process's, and a sampled
+peak carries the sampler's luck and whatever the heap was doing besides: on one payload
+with nothing changed, the peak read 50 MB where the case was the only one in its process
+and 63 MB where 235 others had run first, so a ceiling calibrated alone fails in the
+suite, while the requests behind both readings were identical to the byte. A memory peak
+is never attributed to a neighbouring log line; the same signature is looked for in a run
+where the suspect was idle, and the log that raised the suspicion usually holds the run
+that settles it. Bulk phases carry both the named interval and the memory reading or stay
+out of the trail, and the trail never says the app is idle, because an empty registry
+means no *named* phase is open while the render, a refresh, an update check and a trash
+sweep all run outside it.
 
 ### The log pane
 
@@ -1886,6 +2020,19 @@ survive eight.
 `Tests/HelmAppTests/AnImposedPickerWidthFitsItsLabelsTests.swift:57` measures every
 imposed width in the tree against a hosted control's own answer.
 
+Quotation marks come from `Quoted` in `Sources/HelmUI/L10n.swift` and never from the mark
+that comes to mind, because the marks differ per language and writing one into all eight
+files is the mistake that keeps recurring; an English key with no quotes is cheaper still,
+since the seven translations then have nothing to copy. After keys are added the French
+folder is swept in a pass of its own with an explicit escape for the unbreakable space,
+never the literal character: a literal one does not survive a shell heredoc into Python,
+it arrives as an ordinary space and the substitution silently does nothing, so the count
+is checked with `command grep -c` before and after. A system spelling is read from macOS's
+own bundle when a string names something macOS also names, from the table that is
+*displayed* and not the one that is searched: three units and four pane names were
+invented before anyone opened those files, and a pane's search terms are the phrases that
+find it and are never drawn.
+
 ### An age has two spellings
 
 `HelmDates.AgeStyle` (`Sources/HelmUI/L10n.swift:220`) offers `.full` and `.short`, and a
@@ -2020,6 +2167,27 @@ dropped when the module is switched off is not woken by the next disk
 somebody plugs in
 (`Sources/Modules/Disk/UI/DiskViewModel.swift:65`).
 
+An unretained C context is not repaired by retaining it. A retained context keeps the
+object alive until the port is invalidated, and only the object's own teardown
+invalidates it, which is a cycle in which a switched-off module goes on reading every
+keystroke. A run loop source is removed **and** invalidated
+(`Sources/Modules/KeepAwake/Engine/SystemPorts.swift`): removal takes it off this run loop,
+and invalidation stops the callback already scheduled, which is the one that lands on the
+freed object. Layout's tap (`Sources/Modules/Layout/Engine/SystemPorts.swift`) removes its
+source and invalidates the mach port that made it instead, which frees the port and the
+source it caches and, as that file's doc comment says, does not by itself fix the crash:
+stopping the tap in the owner's `deinit` does. A module that is already live is not bootstrapped again, because assigning
+a fresh engine over a live one leaves a keyboard tap on the run loop and power assertions
+held.
+
+The system withdraws an observer on its own. An event tap is disabled for timeout and for
+user input, and revoked when the grant is withdrawn, and the only announcement is an event
+of that disabling type arriving down the tap
+(`Sources/Modules/Layout/Engine/Logic/TapDisabled.swift`). Anything derived from an event
+stream has an event that clears it and a case where that event never comes: every event
+carries the live modifier flags and no release is guaranteed, and one code left behind
+spoiled every tap from then on, permanently and silently.
+
 ### Sealed settings
 
 `Sources/HelmRuntime/SettingGuard.swift` is the door on a stored value: `seal` (`:30`),
@@ -2035,6 +2203,33 @@ Autopilot's moved rather than a second one — Autopilot keeps its own keychain 
 because that item already exists on every Mac that has run the module. A broken seal
 refuses in each side's own safe direction: the folder is left unwalked, and the disabled
 list becomes every scannable module.
+
+A stored setting that steers unattended work is sealed, because the property list is
+writable by any process running as the user and an unsealed setting is somebody else
+borrowing Helm's Full Disk Access. A broken seal refuses in the safe direction, and the
+writer never refuses to *save* what a person asked for, since failing there is the wrong
+end to fail at. Nothing an initialiser reads is sealed, a SwiftUI state's initial value
+included: that is a keychain dialog in front of a window that has drawn nothing, on every
+install. What is read occasionally is sealed, and first use is spent at the getter's early
+return so a planted value is never adopted before the guard is touched.
+
+A missing seal is never the sign that a migration is due; only a missing keychain key is
+(`Sources/HelmRuntime/KeychainSealKey.swift`), because a seal is data sitting beside the
+rules it signs and whoever can write the file can delete the seal too. Nothing is written
+back from a refused read: the editor once drew a tampered rule set the way it drew none,
+and the next ordinary save sealed that emptiness with Helm's own key. A new setting takes
+a new keychain account, because Autopilot's item exists on every Mac that has run the
+module and moving it would read there as "somebody rewrote your rules".
+
+The reads of the rules come from the sweep timer, from file-system events, from the
+transport and from the watch refresh. One lock covers reading, judging against the seal
+and recording the judgement; another covers saving payload and seal. Without the second,
+a read landing between the two writes judges new rules against an old seal and calls
+Helm's own work tampering, and unordered, "these are Helm's own rules" lands on top of
+"something else wrote these"
+(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both). Each
+lock is taken on both sides of a field, in a synchronous property that returns the value
+rather than holding it across a suspension.
 
 What is *not* sealed is as much a part of the shape.
 `KeepAwakeSettings.clamshellEnabled`
@@ -2054,7 +2249,8 @@ the number — the settings
 (`Sources/Modules/KeepAwake/Engine/KeepAwakeSettings.swift:132`, `:191`), the extend
 button (`Sources/Modules/KeepAwake/Engine/Logic/TimerPolicy.swift:50`) and the drawn
 label — so the multiply is unreachable by construction rather than guarded at each call
-site. `SessionRestore.decide` refuses a restored deadline rather than bringing it down to
+site. A value read at launch is bounded as strictly as one read from a window, because a
+trap during launch is the app terminating with no window left to undo the bad value from. `SessionRestore.decide` refuses a restored deadline rather than bringing it down to
 the ceiling, and checks the two dates are ordered before either bound runs.
 `UpdateCheck.lastChecked(stored:now:)` (`Sources/HelmRuntime/UpdateCheck.swift:74`) reads
 a stamp as a moment rather than doing arithmetic on the raw `Int`.
@@ -2063,7 +2259,22 @@ a stamp as a moment rather than doing arithmetic on the raw `Int`.
 `min(max(x, lo), hi)` order (`:20`) that propagates NaN rather than absorbing it. Which
 answer a NaN gets is stated at the call site through `clamped(to:whenNotANumber:)`
 (`:54`); `clampedIfFinite(to:)` (`:37`) is the caller who wants `nil` instead and is not
-a substitute, since it refuses infinity too.
+a substitute, since it refuses infinity too. A bound that is relative to something and
+proven from one side only is unproven from the other, so when a fix adds a bound the
+question is which direction the tests exercise.
+
+Completeness is judged on every part of a value and not on the part that was easy to
+check. One predicate answers the switch, the store and a hand-edited file, and a scan's
+completeness is never read from a flag that is true while the walk is running. A condition
+left blank can be an all-matcher, which with a destructive action is a working rule three
+gestures away; and when the screen and the sweep disagree about what "finished" means, a
+save door taken mid-walk writes a partial result the module reopens on, labelled as
+measured.
+
+An older encoded payload is not made to decode by a defaulted property. The synthesised
+decoding requires the coding key regardless of the initial value and gives up on the whole
+document rather than filling in the one field, so the initialiser is written by hand and
+the later fields are read as optional-if-present.
 
 ## Release
 
@@ -2123,7 +2334,9 @@ promise what no release has earned. In the app the switch is About → Update ch
 switching re-checks at once.
 
 Everything reaches the dev channel first, as a `vX.Y.Z-dev.N` prerelease, and the same
-code goes out as the beta `vX.Y.Z` release once the count of known problems is zero. A
+code goes out as the beta `vX.Y.Z` release once the count of known problems is zero. A dev
+build writes its log itself and a beta build does not (§ Diagnostics log), so the dev round
+is the only round with evidence in it to triage against `helm.log`. A
 `-dev.N` prerelease leaves the beta numbering alone: the eventual `vX.Y.Z` supersedes
 every `-dev.N` before it. Two consequences of that arrangement look like faults and are
 not. A release published with `--prerelease` is invisible to the Beta channel, because
@@ -2139,7 +2352,9 @@ downloads for a silent install; the dmg is the manual drag-install path, and a r
 with no zip asset falls back to opening the release page.
 
 `Scripts/package-app.sh:258` builds `swift build -c release --product HelmApp`, assembles
-and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for inspection.
+and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for inspection. Only the signed copy under `$TMPDIR` is
+installed: it is the bundle the script signed and verified, while `.build/` holds an
+unsigned one with no usable identity at all.
 `Scripts/make-dmg.sh:12` and `Scripts/make-zip.sh:14` read the **signed** bundle from
 `$TMPDIR/helm-package` and re-run `codesign --verify --deep --strict`
 (`Scripts/make-dmg.sh:14`, `Scripts/make-zip.sh:16`) before packaging, exiting non-zero
@@ -2157,6 +2372,25 @@ line, and counts a `--filter`'s alternatives against the `Test Case` lines the
 run itself selected — or, under `--parallel`, the `Testing` lines it prints
 instead — so a run naming several guards at once still fails when one of them
 stopped matching.
+
+The push comes before the release is created, never after: the release is tagged against
+the remote HEAD, so an unpushed commit puts the tag on the wrong one. A bad dev build is
+undone by publishing the next dev number with the reverted code and its digest lines,
+never by deleting or re-tagging a release people may have downloaded. A prerelease user
+who switches to Beta sees "up to date", because Beta reads the last non-prerelease tag,
+which is lower than what they are running, so the switch appears to do nothing until the
+next beta passes them.
+
+Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
+when a declared test path does not exist, so an untracked test directory makes `swift
+test` work in one checkout and on nobody else's, and the working copy is not evidence. The
+checkout stays out from under a file provider (iCloud Drive, Dropbox and the like) and is
+signed from the staged path `Scripts/package-app.sh` prints, never in place: a provider
+stamps `com.apple.FinderInfo` onto the directories it manages faster than `xattr -c`
+clears it, and `codesign` refuses a bundle carrying it. An unsigned bundle has no cdhash
+for TCC to hang Full Disk Access on, so the permission comes loose on every rebuild. A
+passing strict signature verification says the bundle is valid and not that it is the
+same program TCC granted.
 
 ### The updater
 
@@ -2195,6 +2429,12 @@ than stored so the current language resolves on every read (`:71`). A version he
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.
+
+The text of a changelog entry is written for the person who updated and is not part of
+making the code change. An entry that names a control is read against the running app and
+not only for grammar, because the English string is the key: a wrong name is faithfully
+translated into all seven other languages, and the fix is one key deleted and rewritten in
+eight files.
 
 ### The disk image window
 
@@ -2241,6 +2481,16 @@ bottom of the artwork. And `text_size` (`Scripts/dmg-settings.py:42`) has a floo
 writes item names in icon view with no way to turn them off, the smallest value that works
 is what that line holds, and a smaller one is written happily by `dmgbuild` and then
 rejected wholesale by Finder — no background, no positions, no complaint.
+
+A disk image is judged by mounting it and never by reading the script, which always
+finishes and always prints something that looks like a result. The mounted volume's Finder
+settings file is well over the size of an untouched one when the settings took; a file of
+an untouched one's size is the tell that Finder wrote a default and the settings were
+lost; the volume carries the custom-icon flag; and a
+strict signature verification still passes on the app *inside* the image. A new background
+is judged against a composite of the real icons and their real labels and not against the
+empty artwork, because Finder writes the item's name under the icon and the first bezel ran
+straight through the word.
 
 ## Design system
 
@@ -2461,9 +2711,140 @@ pure ink, so a literal `0.035` read off `HelmSurface` is not what lands on a win
 value macOS supplies moves when macOS moves. The nine opacities sit in the record beside
 the colours they produce and are divided back out of them rather than written down again,
 which is what lets the failure say whose edit it was — a hand-written copy of those nine
-went red on the right token and blamed the operating system. Not covered: the type styles,
+went red on the right token and blamed the operating system. The mode that regenerates the file
+(`HELM_WRITE_DESIGN_TOKENS=1`) never passes, because a mode that rewrites its own
+expectation and then reports success is a check that cannot fail; and what the design
+system published outside this repository is built from the record, so a change here is
+only half a change until that is republished. Not covered: the type styles,
 whose sizes follow the interface text size and so describe the Mac running the suite; and
 contrast, which is `SignalColourContrastTests` and its neighbours.
+
+A width is read from a sibling with no size of its own and never from the view being
+measured: a geometry reading reports a view's *resolved* size, so once a row overflows it
+reports what the row demanded, and a threshold fed by it latches upward and cannot come
+back down. A threshold is measured against the widest the string can become in every
+language, and then the question is what window ever crosses it, because a control gated
+above every reachable width is a deleted control that still costs a constant and a test.
+
+A menu swatch is drawn already coloured and left a non-template image, because a menu item
+takes an image and drops a tint, and a template is recoloured by whatever menu draws it.
+The colour panel's target is held from the view (`Sources/HelmUI/DesignSystem/PaletteSwatches.swift`),
+since the panel keeps it weakly and a bridge created inside the action is deallocated
+before the first colour comes back. A colour is converted to sRGB on the way in, because
+three bytes of another space read back as sRGB are a different colour at the next launch,
+and a stored case is retired and never removed, since a case that stops existing reads
+back as the default with no explanation on a Mac that has already run the app. A
+component's contrast is measured against what it actually draws on rather than against
+the page, and a control is checked for being photographable before it is chosen for a
+surface this house verifies by photograph: AppKit draws some controls outside the layer a
+cached display reads, so they render as nothing in a harness and in a real window.
+
+## Tests and measurement
+
+A check is judged by what its total failure would print. If that looks the same as
+success it is not a check yet; the defect is put back and the check watched going red,
+because a check never seen to fail is not a guard. A test that measures asserts
+something: one that logs a figure for a person to read cannot fail, and a real regression
+sits in it until somebody reads the number by hand. A test looking for a missing word
+asserts first that the subject happened at all, since it passes when nothing was logged,
+which is the default in a test process because the log is off outside a dev build.
+
+A volume-group walk is asserted on tree structure and never on sizes: which side of a
+duplicate path wins is a race, so a size assertion passes by luck, and it did once. A
+result found while more than one suite run was up is re-run alone at least three times
+before it is believed, because the build lock serialises building and not running, and
+two runs share the scratch directories, the Trash and Application Support. Any reading is
+taken more than once: a count taken while the suite was still building was off by ten
+where three consecutive runs agreed. A render names its appearance, because this machine
+switches by the sun and an unnamed reading is a reading of the hour; a suite has gone red
+between two runs with nothing committed between them.
+
+A mutated file is restored from a copy and never with `git checkout` on its path, which
+restores to HEAD and discards every uncommitted edit in the file; three separate pieces
+of work were destroyed that way in one afternoon. Committing before mutating is better
+still, and the mutant is read back out of the file before its outcome is believed,
+because three separate "0 failures" results in one pass were substitutions that had never
+applied.
+
+A fake has every state the real port has and no state it does not, stands for one side of
+a boundary only, and finishes the prompt it stands for. A simpler fake makes a failure
+unrepresentable rather than untested; a freer one proves a branch unreachable in
+production; an encoder and decoder that disagree are green against a fake that encodes its
+own reply; a fake that never completes leaves the engine mid-prompt for ever behind an
+in-flight guard. The fake port is named at every construction, because a defaulted port
+is the machine's own keychain, and eleven forgetful constructions rolled a real rule set
+back. A busy gate is tested with a runner that never exits, because a fake answering
+synchronously releases the gate before the call it gates returns and the test passes with
+the gate deleted; a cooperative yield is never a wait, because it buys a turn on the pool
+and no wall-clock time, so no number of passes widens the window a writer can land in.
+
+`Tests/Support/ScratchDirectory.swift` is the scratch directory: its teardown drains on
+the clock and asserts the directory is empty, where a single removal loses a race against
+any code that saves from a task of its own. A restore that must outlive the sweep is
+registered as a teardown block, and teardown blocks run first, so a directory left
+unreadable is otherwise swept before it is made readable again. A local helper that does
+more than the shared one keeps its own body and calls the shared one.
+`Tests/Support/EachLanguage.swift` runs an assertion about a visible string across the
+eight languages with `AppLanguage.each` and `AppLanguage.only`, and no test reads
+`AppLanguage.current`: this Mac runs in Russian, so a bare assertion exercises one of
+eight, and a mutation planted in an English value once passed a whole suite. A hand-rolled
+loop leaves the process in the last language it set when a body fails mid-loop.
+
+A harness is pointed at a temporary folder, and what it saved under
+`~/Library/Application Support/Helm/` is deleted and the app's own state checked before
+the work is called done: real code writes, and the app has twice been handed back with
+somebody's test tree in it and no way out. Whether a thing predates the session is asked
+before anything under `/Applications` is removed, and what a harness launches is proved
+able to replace what it kills before it kills anything. Accessibility is granted to the
+process at the top of the launch chain rather than to the test runner, because the system
+attributes the ask to the responsible process.
+
+Motion is recorded with a screen recording and the recorder is never wrapped in a timeout:
+the file is written when the recording stops and the signal kills it first, which reads
+exactly like a permissions refusal. Stills arrive at about five a second and are for
+settled states, and a shot is taken by window number rather than display index, because
+that index is not the screen order and a full-screen capture photographs whatever else is
+open on somebody's machine. A pixel probe timestamps its sampling loop, because reading
+pixels costs enough per frame that twenty "20 ms" samples cover more than a second; it
+anchors on something that moves with what is measured, since a fixed rectangle over a
+growing page measures the page; it crops to the part that moves, because a whole-window
+difference is dominated by whatever else changed; it measures at the shipping duration,
+because at three seconds an instant snap reads as "it drew quickly at the start"; and it
+ships the control with every ramp test, because without it the ramp passes on a machine
+that animates everything by default. Motion is never measured from a hosting view's
+fitting size, which answers with the ideal size and reads every ramp as a step.
+
+The commands a session runs each have a reason that is not obvious from the command. A
+filtered run is seconds against minutes, which is what makes running a guard before the
+suite cheap enough to actually do. The design-token regeneration mode never passes, because
+a mode that rewrites its own expectation and then reports success is a check that cannot
+fail; the record it writes is what the design system published outside this repository is
+built from, so a change here is only half a change until that is republished. A malformed
+`Localizable.strings` is silent and every string in it falls back to English with no error
+anywhere, which is why `plutil -lint` follows any hand edit, and the three string guards
+finish in seconds, with the runner failing, naming it, if one of the three stops matching a
+test. The visual harness is env-gated and belongs in the working tree only while it is
+being used, so `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
+
+"Who uses this" is answered from an index and never from `grep`: the tree writes backticked
+names inside doc comments deliberately and at volume, so a grep counts prose as a caller.
+The `periphery` report is not a to-do list either: its "unused" covers dead code, a marker a
+test checks by type rather than by call, and a fake's capability no test has needed yet,
+while its assign-only findings are usually a property held to keep an object alive, a
+token whose clearing is the cancellation, or a field a synthesized conformance reads.
+
+A cleanup is measured before it is believed: `du -sh "$TMPDIR"` first, then what under it
+is not `helm-*`, because the same folder holds other programs' files. `--scratch-path` is
+passed only when another suite run may be up, and one path is reused for the session,
+since a fresh directory per invocation is over a gigabyte that nothing sweeps while the
+machine stays up. The dev build installs beside the real app with its own bundle id and settings domain, so a
+manual check does not cost the installed app its grants.
+
+The helper directories change faster than prose about them: `ls
+Sources/HelmRuntime`, `ls Sources/HelmUI/DesignSystem` and `ls Tests/Support` are read
+before a helper is written, because what they held was spelled out in prose twice and went
+stale both times, and the scratch directory, the repository-root walk and the progress box
+were each hand-rolled in dozens of files before they moved there.
 
 ## What else to read
 
@@ -2493,3 +2874,10 @@ that check through `Tests/Support/SwiftSource.swift` with comments blanked and s
 literals kept, so a name only a comment writes is not in the tree and a name a literal
 writes is; the other extensions are read whole, since `#` is not a comment in a plist and
 `//` is half of every URL in one.
+
+Work on this tree goes through the crew's lead role. A plan carried out by a skill's own
+implementers commits on its own and goes round the engineer, tester and verifier roles, so
+the crew's journal records none of it, and a spec or plan such a skill writes has nowhere
+to live here: Helm keeps no specs in the tree. A worktree sits inside the tree, under its
+own folder, so anything outside the tree is reached by its full path — one level up from a
+worktree is not where a sibling checkout is, and nothing links a worktree for you.
