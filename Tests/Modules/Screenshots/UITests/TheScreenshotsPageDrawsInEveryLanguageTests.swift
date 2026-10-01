@@ -59,6 +59,23 @@ final class TheScreenshotsPageDrawsInEveryLanguageTests: XCTestCase {
         }
     }
 
+    /// **The panel has a recorder of its own on the page, and it is judged like the others.**
+    /// ⇧⌘5 recorded for the panel while macOS's box 184 is still on is a held
+    /// combination and gets the row's note; with the box off it does not. The
+    /// difference is the third row speaking, which a page without one cannot do.
+    func testTheThirdRecorderIsOnThePageAndSaysWhenMacOSHoldsItsKey() {
+        let recorded: [String: Any] = ["panelHotkeyKeyCode": 23, "panelHotkeyModifiers": 768, "panelHotkeyLabel": "⇧⌘5"]
+        var panelOff = ScreenshotsPageRender.untouched
+        panelOff.boxes = SystemShortcuts.boxes(from: .read(["184": ["enabled": false]]))
+        for language in AppLanguage.allCases {
+            let held = ScreenshotsPageRender.height(of: ScreenshotsPageRender.mount(
+                language: language, appearance: .aqua, values: recorded))
+            let free = ScreenshotsPageRender.height(of: ScreenshotsPageRender.mount(
+                language: language, appearance: .aqua, state: panelOff, values: recorded))
+            XCTAssertGreaterThan(held, free + 12, "\(language): the panel's recorder said nothing about a held key — \(held) against \(free)")
+        }
+    }
+
     /// The shipped defaults hold no box, so a fresh install's page is not
     /// accusing the person of anything.
     func testTheShippedShortcutsDrawNoConflictNote() {

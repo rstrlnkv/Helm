@@ -35,31 +35,31 @@ final class TheSectionDrawsATwinOnlyWhileItConflictsTests: XCTestCase {
 
     func testATwinThatIsOnAndHoldsNothingRecordedIsNotDrawn() {
         let boxes = SystemShortcuts.boxes(from: .absent)
-        XCTAssertEqual(boxes.filter { $0.state == .on }.count, 4, "the subject: both twins on")
+        XCTAssertEqual(boxes.filter { $0.state == .on }.count, 5, "the subject: both twins and the panel's box on")
         let shipped = ScreenshotsHotkey.allCases.map { (keyCode: $0.fallback.keyCode, modifiers: $0.fallback.modifiers) }
-        XCTAssertEqual(drawn(boxes, shipped), [.saveScreen, .saveArea])
-        XCTAssertEqual(drawn(boxes, []), [.saveScreen, .saveArea], "nothing recorded at all")
+        XCTAssertEqual(drawn(boxes, shipped), [.saveScreen, .saveArea, .panel])
+        XCTAssertEqual(drawn(boxes, []), [.saveScreen, .saveArea, .panel], "nothing recorded at all")
     }
 
     func testATwinThatIsOffIsNotDrawnOverItsOwnCombination() {
         let boxes = SystemShortcuts.boxes(from: .read(["29": ["enabled": false], "31": ["enabled": false]]))
         XCTAssertEqual(boxes.first { $0.box == .copyArea }?.state, .off, "the subject: the twin read as off")
         XCTAssertEqual(boxes.first { $0.box == .copyArea }?.keyCode, 21, "the subject: it still carries ⌃⇧⌘4")
-        XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd), (20, ctrlShiftCmd)]), [.saveScreen, .saveArea])
+        XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd), (20, ctrlShiftCmd)]), [.saveScreen, .saveArea, .panel])
     }
 
     func testAnUnreadableReadingDrawsTheTwoAndNoTwin() {
         let boxes = SystemShortcuts.boxes(from: .unreadable)
         XCTAssertTrue(boxes.allSatisfy { $0.state == .unknown }, "the subject: every box unknown")
         XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd), (20, ctrlShiftCmd), (21, shiftCmd)]),
-                       [.saveScreen, .saveArea], "an unknown box is drawn as the two Helm replaces and nothing else")
+                       [.saveScreen, .saveArea, .panel], "an unknown box is drawn as the three Helm may take and nothing else")
     }
 
     func testBothTwinsConflictingAreBothDrawnInTheTablesOrder() {
         let boxes = SystemShortcuts.boxes(from: .absent)
         XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd), (20, ctrlShiftCmd)]),
-                       [.saveScreen, .copyScreen, .saveArea, .copyArea])
-        XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd)]), [.saveScreen, .saveArea, .copyArea])
+                       [.saveScreen, .copyScreen, .saveArea, .copyArea, .panel])
+        XCTAssertEqual(drawn(boxes, [(21, ctrlShiftCmd)]), [.saveScreen, .saveArea, .copyArea, .panel])
     }
 
     // MARK: - What the section actually draws

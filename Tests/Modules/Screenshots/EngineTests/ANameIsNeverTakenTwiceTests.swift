@@ -14,9 +14,9 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
     func testATakenNameGoesOnCounting() throws {
         let folder = scratchDirectory("shots-names")
         let writer = FileShotWriter()
-        let first = writer.write(Data("one".utf8), into: folder, base: base)
-        let second = writer.write(Data("two".utf8), into: folder, base: base)
-        let third = writer.write(Data("three".utf8), into: folder, base: base)
+        let first = writer.write(Data("one".utf8), into: folder, base: base, pathExtension: "png")
+        let second = writer.write(Data("two".utf8), into: folder, base: base, pathExtension: "png")
+        let third = writer.write(Data("three".utf8), into: folder, base: base, pathExtension: "png")
 
         XCTAssertEqual(first, .written(folder.appendingPathComponent("\(base).png")))
         XCTAssertEqual(second, .written(folder.appendingPathComponent("\(base) (1).png")))
@@ -29,7 +29,7 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
         let precious = Data("the picture somebody took a second ago".utf8)
         try precious.write(to: original)
 
-        let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base)
+        let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base, pathExtension: "png")
 
         XCTAssertEqual(try Data(contentsOf: original), precious, "the writer replaced a file that was there")
         XCTAssertEqual(result, .written(folder.appendingPathComponent("\(base) (1).png")))
@@ -39,28 +39,28 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
 
     func testNoTemporaryFileIsLeftBehind() throws {
         let folder = scratchDirectory("shots-names-tmp")
-        _ = FileShotWriter().write(Data("x".utf8), into: folder, base: base)
-        _ = FileShotWriter().write(Data("y".utf8), into: folder, base: base)
+        _ = FileShotWriter().write(Data("x".utf8), into: folder, base: base, pathExtension: "png")
+        _ = FileShotWriter().write(Data("y".utf8), into: folder, base: base, pathExtension: "png")
         let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
         XCTAssertEqual(names.sorted(), ["\(base) (1).png", "\(base).png"])
     }
 
     func testAFolderThatIsNotThereIsRefusedAndNothingIsCreated() throws {
         let folder = scratchDirectory("shots-names-missing").appendingPathComponent("gone", isDirectory: true)
-        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: folder, base: base), .refused(.noFolder))
+        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: folder, base: base, pathExtension: "png"), .refused(.noFolder))
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path))
     }
 
     func testAFileWhereTheFolderShouldBeIsRefused() throws {
         let file = try write("not-a-folder", in: scratchDirectory("shots-names-file"))
-        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: file, base: base), .refused(.notAFolder))
+        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: file, base: base, pathExtension: "png"), .refused(.notAFolder))
     }
 
     func testAFolderNobodyMayWriteIsRefusedAsPermission() throws {
         let folder = scratchDirectory("shots-names-locked")
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
         addTeardownBlock { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path) }
-        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: folder, base: base), .refused(.noPermission))
+        XCTAssertEqual(FileShotWriter().write(Data("x".utf8), into: folder, base: base, pathExtension: "png"), .refused(.noPermission))
     }
 
     /// The fake walks the same ladder, so the session's tests rest on the same rule.
@@ -69,7 +69,7 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
         XCTAssertEqual(ShotNames.candidate(base: base, pathExtension: "png", attempt: 12), "\(base) (12).png")
         let writer = FakeWriter()
         writer.taken = ["\(base).png"]
-        XCTAssertEqual(writer.write(Data(), into: URL(fileURLWithPath: "/x"), base: base),
+        XCTAssertEqual(writer.write(Data(), into: URL(fileURLWithPath: "/x"), base: base, pathExtension: "png"),
                        .written(URL(fileURLWithPath: "/x/\(base) (1).png")))
     }
 }

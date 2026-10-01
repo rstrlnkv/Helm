@@ -35,12 +35,14 @@ public enum ScreenshotsEvent: String, Sendable {
 /// **Deployed stored data: a store prefix never moves.** A new shortcut takes a
 /// new prefix.
 ///
-/// Only the two that do something exist. The panel's shortcut is a case the day
-/// the panel is, and a recorder for an action that is not built would be a row
-/// drawing a shortcut that does nothing.
+/// Only shortcuts that do something exist: a recorder for an action that is not
+/// built would be a row drawing a shortcut that does nothing.
 public enum ScreenshotsHotkey: String, CaseIterable, Sendable {
     case area
     case fullScreen
+    /// Opens the capture panel — the bar with the mode buttons, the options and
+    /// the timer. It takes no capture of its own.
+    case panel
 
     /// The slot `HotkeyManager` files the binding under.
     public var slot: String { "\(ScreenshotsEngine.moduleID).\(rawValue)" }
@@ -48,14 +50,18 @@ public enum ScreenshotsHotkey: String, CaseIterable, Sendable {
     /// `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label` in the module's store.
     public var storePrefix: String { "\(rawValue)Hotkey" }
 
-    /// ⌘⇧1 for the whole screen and ⌘⇧2 for an area — the owner's choice. They
-    /// are not macOS's own (those are ⌘⇧3, ⌘⇧4 and ⌘⇧5), so the module works the
+    /// ⌘⇧1 for the whole screen, ⌘⇧2 for an area and ⌘⇧8 for the panel. None is
+    /// macOS's own (those are ⌘⇧3, ⌘⇧4 and ⌘⇧5, and ⌘⇧6 and ⌘⇧7 are taken too —
+    /// `TheSystemDefaultsAreMacOSsOwnTests` reads the table), so the module works the
     /// moment it is switched on, without asking anybody to untick anything
-    /// first. The label is spelled the way `HotkeyCombination.label` spells it.
+    /// first; ⌘⇧5 goes to the panel only through the page's button, and only
+    /// once macOS's own box for it is read as off. The label is spelled the way
+    /// `HotkeyCombination.label` spells it.
     public var fallback: HotkeyFallback {
         switch self {
         case .fullScreen: HotkeyFallback(keyCode: 18, modifiers: CarbonModifier.cmd | CarbonModifier.shift, label: "⇧⌘1")
         case .area: HotkeyFallback(keyCode: 19, modifiers: CarbonModifier.cmd | CarbonModifier.shift, label: "⇧⌘2")
+        case .panel: HotkeyFallback(keyCode: 28, modifiers: CarbonModifier.cmd | CarbonModifier.shift, label: "⇧⌘8")
         }
     }
 }

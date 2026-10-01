@@ -23,6 +23,7 @@ final class TheShortcutsHaveOneNameEachTests: XCTestCase {
     func testThePrefixesAreTheOnesAlreadyOnDisk() {
         XCTAssertEqual(ScreenshotsHotkey.area.storePrefix, "areaHotkey")
         XCTAssertEqual(ScreenshotsHotkey.fullScreen.storePrefix, "fullScreenHotkey")
+        XCTAssertEqual(ScreenshotsHotkey.panel.storePrefix, "panelHotkey")
     }
 
     /// What ships must be something Carbon can register — inside the bounds the
@@ -36,13 +37,29 @@ final class TheShortcutsHaveOneNameEachTests: XCTestCase {
         }
         XCTAssertEqual(ScreenshotsHotkey.fullScreen.fallback.label, "⇧⌘1")
         XCTAssertEqual(ScreenshotsHotkey.area.fallback.label, "⇧⌘2")
+        XCTAssertEqual(ScreenshotsHotkey.panel.fallback.label, "⇧⌘8")
         XCTAssertEqual(ScreenshotsHotkey.fullScreen.fallback.keyCode, 18, "kVK_ANSI_1")
         XCTAssertEqual(ScreenshotsHotkey.area.fallback.keyCode, 19, "kVK_ANSI_2")
+        XCTAssertEqual(ScreenshotsHotkey.panel.fallback.keyCode, 28, "kVK_ANSI_8")
     }
 
-    /// The panel's shortcut is not here until the panel is: a recorder for an
-    /// action that is not built is a row drawing a shortcut that does nothing.
-    func testThereAreExactlyTheTwoShortcutsThatDoSomething() {
-        XCTAssertEqual(Set(ScreenshotsHotkey.allCases.map(\.rawValue)), ["area", "fullScreen"])
+    /// Exactly the shortcuts that do something: a recorder for an action that is
+    /// not built is a row drawing a shortcut that does nothing.
+    func testThereAreExactlyTheThreeShortcutsThatDoSomething() {
+        XCTAssertEqual(Set(ScreenshotsHotkey.allCases.map(\.rawValue)), ["area", "fullScreen", "panel"])
+    }
+
+    /// The panel's own default is free in macOS's table: a shipped combination
+    /// macOS holds is a shortcut that does nothing until somebody unticks a box.
+    func testNoShippedCombinationIsOneMacOSHolds() {
+        let boxes = SystemShortcuts.boxes(from: .absent)
+        for hotkey in ScreenshotsHotkey.allCases {
+            XCTAssertEqual(SystemShortcuts.holding(keyCode: hotkey.fallback.keyCode,
+                                                   modifiers: hotkey.fallback.modifiers, in: boxes), [],
+                           "\(hotkey) ships on a combination macOS holds")
+        }
+        // ⇧⌘5 is macOS's, and is the panel's only through the page's button.
+        XCTAssertEqual(SystemShortcuts.holding(keyCode: 23, modifiers: CarbonModifier.cmd | CarbonModifier.shift, in: boxes),
+                       [.panel])
     }
 }

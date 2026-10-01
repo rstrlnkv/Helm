@@ -17,20 +17,26 @@ enum ScStr {
     static var shortcuts: String { L("Keyboard shortcuts") }
     static var captureArea: String { L("Capture an area") }
     static var captureScreen: String { L("Capture the whole screen") }
+    static var openPanel: String { L("Open the capture panel") }
     static var conflict: String {
         L("macOS still holds this combination for one of its own shortcuts. Untick it below first.")
     }
 
     static var systemSection: String { L("System shortcuts") }
-    static var replaceTitle: String { L("Use ⇧⌘3 and ⇧⌘4 here") }
+    /// Over the boxes, which are three — ⇧⌘3 and ⇧⌘4 with their clipboard
+    /// twins, and box 184 — so the title names none of the combinations.
+    static var replaceTitle: String { L("macOS's own screenshot shortcuts") }
     static var replaceBody: String {
-        L("To use them, untick these two in System Settings. Helm reads that setting and never changes it.")
+        L("To use them, untick their boxes below in System Settings. Helm reads that setting and never changes it.")
     }
     static var stillOn: String { L("Still on in macOS") }
     static var isOff: String { L("Off in macOS") }
     static var unknown: String { L("macOS did not say") }
     static var openSystemSettings: String { L("Open System Settings…") }
     static var useSystemKeys: String { L("Use ⇧⌘3 and ⇧⌘4") }
+    /// Its own key and not an interpolation: the three combinations are spelled
+    /// whole in each language, and the button that takes ⇧⌘5 as well says so.
+    static var useSystemKeysAndPanel: String { L("Use ⇧⌘3, ⇧⌘4 and ⇧⌘5") }
 
     /// The four boxes macOS ticks, in macOS's own words — copied out of the
     /// Keyboard settings extension's `DefaultShortcutsTable.loctable`, which is
@@ -42,26 +48,77 @@ enum ScStr {
         case .saveArea: L("Save picture of selected area as a file")
         case .copyScreen: L("Copy picture of screen to the clipboard")
         case .copyArea: L("Copy picture of selected area to the clipboard")
+        case .panel: L("Screenshot and recording options")
         }
     }
 
-    static var afterFullScreen: String { L("After a full-screen capture") }
-    static var afterFile: String { L("Save to the folder") }
-    static var afterClipboard: String { L("Copy to the clipboard") }
-    static var afterBoth: String { L("Save and copy") }
-    static func after(_ destination: ScreenDestination) -> String {
-        switch destination {
-        case .file: afterFile
-        case .clipboard: afterClipboard
-        case .both: afterBoth
+    /// Under macOS's box 184, which is ⇧⌘5: that shortcut is also how screen
+    /// recording is reached from the keyboard, and Helm has no recording.
+    static var panelBoxWarning: String {
+        L("Helm's panel takes ⇧⌘5 only when this is unticked. Unticking it also removes the keyboard shortcut for screen recording.")
+    }
+
+    /// macOS's own words for the bar — the tooltips of its three capture buttons,
+    /// «Options», «Timer», «Capture», «Show Floating Thumbnail» and «Remember Last
+    /// Selection» — read out of `screencaptureui`'s `Localizable.loctable`;
+    /// `TheNameIsMacOSsInEveryLanguageTests` reads that table and compares.
+    static var panelScreen: String { L("Capture entire screen") }
+    static var panelWindow: String { L("Capture selected window") }
+    static var panelArea: String { L("Capture selected portion") }
+    static var captureButton: String { L("Capture") }
+    static var options: String { L("Options") }
+    static var timer: String { L("Timer") }
+    static func timer(_ timer: CaptureTimer) -> String {
+        switch timer {
+        case .none: L("No timer")
+        case .five: L("5 seconds")
+        case .ten: L("10 seconds")
+        }
+    }
+    static var floatingThumbnail: String { L("Show floating thumbnail") }
+    static var rememberSelection: String { L("Remember last selection") }
+    static var closePanel: String { L("Close") }
+
+    /// macOS's own words — Save to, Desktop, Documents, Clipboard, Other… — read
+    /// out of `screencaptureui`'s `Localizable.loctable`, where the same menu is drawn.
+    static var saveTo: String { L("Save to") }
+    static var targetMacOS: String { L("Same as macOS") }
+    static var targetDesktop: String { L("Desktop") }
+    static var targetDocuments: String { L("Documents") }
+    static var targetClipboard: String { L("Clipboard") }
+    /// Its own key, not KeepAwake's «Other…»: one key means one thing, and
+    /// Portuguese says «Outra» for a folder where a duration is «Outro».
+    /// The seven translations are macOS's «Other…» from the same table.
+    static var targetOther: String { L("Other folder…") }
+    static func target(_ target: SaveTarget) -> String {
+        switch target {
+        case .macOS: targetMacOS
+        case .desktop: targetDesktop
+        case .documents: targetDocuments
+        case .clipboard: targetClipboard
+        case .other: targetOther
         }
     }
 
-    static var thumbnail: String { L("Show a thumbnail after a capture") }
+    static var format: String { L("Capture format") }
+    /// File-format names: the same letters in every language.
+    static func format(_ format: ShotFormat) -> String {
+        switch format {
+        case .png: L("PNG")
+        case .jpeg: L("JPEG")
+        }
+    }
+    static var shutterSound: String { L("Shutter sound") }
+    static var showCursor: String { L("Show mouse pointer") }
+    static var chooseFolder: String { L("Choose…") }
+
     static var folder: String { L("Save folder") }
     static var folderNote: String { L("Where macOS keeps screenshots. Helm reads it and never changes it.") }
     static var folderRefused: String {
         L("The folder macOS names cannot be used, so Helm saves to the Desktop.")
+    }
+    static var chosenRefused: String {
+        L("That folder cannot be used, so Helm saves to the Desktop.")
     }
 
     // MARK: - The toast

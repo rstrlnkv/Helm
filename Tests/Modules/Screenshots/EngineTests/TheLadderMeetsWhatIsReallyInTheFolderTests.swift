@@ -33,7 +33,7 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
         try manager.createSymbolicLink(atPath: folder.appendingPathComponent(name(2)).path,
                                        withDestinationPath: nowhere.path)
 
-        let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base)
+        let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base, pathExtension: "png")
 
         XCTAssertEqual(result, .written(folder.appendingPathComponent(name(3))))
         XCTAssertEqual(try Data(contentsOf: precious), bytes, "a link's target was written through")
@@ -51,7 +51,7 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
             XCTAssertTrue(FileManager.default.createFile(atPath: folder.appendingPathComponent(name(attempt)).path,
                                                          contents: Data()))
         }
-        let result = FileShotWriter().write(Data("one too many".utf8), into: folder, base: base)
+        let result = FileShotWriter().write(Data("one too many".utf8), into: folder, base: base, pathExtension: "png")
         XCTAssertEqual(result, .refused(.namesExhausted))
         let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
         XCTAssertEqual(names.count, ShotNames.limit, "the folder gained or lost a file: \(names.count)")
@@ -71,7 +71,7 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
         let outcomes = Outcomes()
         let base = base
         DispatchQueue.concurrentPerform(iterations: count) { index in
-            let outcome = FileShotWriter().write(Data("capture \(index)".utf8), into: folder, base: base)
+            let outcome = FileShotWriter().write(Data("capture \(index)".utf8), into: folder, base: base, pathExtension: "png")
             outcomes.lock.withLock { outcomes.byIndex[index] = outcome }
         }
         let results = outcomes.byIndex

@@ -32,23 +32,28 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
-        func write(_ png: Data, into folder: URL, base: String) -> ShotWrite {
+        func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + ".png"))
+            return .written(folder.appendingPathComponent(base + "." + pathExtension))
         }
     }
 
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
+        func uiSounds() -> RawSetting { RawSetting(nil) }
+    }
+
+    private struct NoShutter: ShutterPlaying {
+        func play() {}
     }
 
     /// A grant nobody asks about: a hand-off never freezes anything.
     private struct NeverAsked: ScreenCapturing {
         func access() -> CaptureAccess { .denied }
         func requestAccess() {}
-        func freeze() async -> FreezeOutcome { .failed }
-        func window(_ id: UInt32) async -> WindowShot { .failed }
+        func freeze(cursor: Bool) async -> FreezeOutcome { .failed }
+        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .failed }
     }
 
     private func picture() throws -> CGImage {
@@ -58,14 +63,14 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         return try XCTUnwrap(context.makeImage())
     }
 
-    private func controller(after destination: ScreenDestination) -> (CaptureController, Board, Disk) {
+    private func controller(saving target: SaveTarget) -> (CaptureController, Board, Disk) {
         let board = Board(), disk = Disk()
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
-        store.set(destination.rawValue, for: ScreenshotsSettings.Key.afterFullScreen)
+        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: NeverAsked(), writer: disk, pasteboard: board, preferences: NoPreferences(),
+        let session = CaptureSession(capture: NeverAsked(), writer: disk, pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
@@ -75,19 +80,23 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
 
     func testEveryKindOfPickIsCopiedAndSaved() async throws {
         for kind in [CapturedShot.Kind.area, .window, .display] {
-            let (controller, board, disk) = controller(after: .file)
+            let (controller, board, disk) = controller(saving: .desktop)
             await controller.handOff(CapturedShot(image: try picture(), kind: kind))
             XCTAssertEqual(board.copies, 1, "\(kind): the picture was not copied")
             XCTAssertEqual(disk.written, 1, "\(kind): the picture was not saved")
         }
     }
 
-    func testTheFullScreenDestinationIsNotTheAreasToChoose() async throws {
-        for destination in ScreenDestination.allCases {
-            let (controller, board, disk) = controller(after: destination)
+    /// One setting decides where a capture goes, and an area follows it like a
+    /// screen does: the clipboard target is a copy and no file, every other is a
+    /// copy and a file until the editor's own buttons take that over.
+    func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
+        for target in SaveTarget.allCases {
+            let (controller, board, disk) = controller(saving: target)
             await controller.handOff(CapturedShot(image: try picture(), kind: .area))
-            XCTAssertEqual(board.copies, 1, "after \(destination): an area was not copied")
-            XCTAssertEqual(disk.written, 1, "after \(destination): an area was not saved")
+            XCTAssertEqual(board.copies, 1, "target \(target): an area was not copied")
+            XCTAssertEqual(disk.written, target == .clipboard ? 0 : 1,
+                           "target \(target): an area was \(target == .clipboard ? "saved as a file though the target is the clipboard" : "not saved")")
         }
     }
 }

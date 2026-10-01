@@ -23,16 +23,24 @@ public enum CarbonModifier {
 ///
 /// `id` is the symbolic hotkey's number. 28 and 30 are the two Helm replaces —
 /// ⌘⇧3 and ⌘⇧4 — and 29 and 31 are their clipboard twins, which stay with
-/// macOS. 184 is ⌘⇧5, which belongs to the panel and is not read until the panel
-/// is built.
+/// macOS. 184 is ⌘⇧5, "Screenshot and recording options": macOS's own panel,
+/// which is also how a person reaches screen recording from the keyboard.
 public enum SystemBox: Int, CaseIterable, Sendable, Codable {
     case saveScreen = 28
     case copyScreen = 29
     case saveArea = 30
     case copyArea = 31
+    case panel = 184
 
-    /// The boxes a person has to untick for Helm to own ⌘⇧3 and ⌘⇧4.
-    public static let replaced: [SystemBox] = [.saveScreen, .saveArea]
+    /// The boxes the page draws as the ones Helm takes over: always all three,
+    /// so the person sees what ⌘⇧5 is before deciding about it.
+    public static let replaced: [SystemBox] = [.saveScreen, .saveArea, .panel]
+
+    /// The two a person has to untick for Helm to own ⌘⇧3 and ⌘⇧4, which is
+    /// what gates the button. 184 is not among them: a person who keeps macOS's
+    /// panel — and with it screen recording on the keyboard — still gets the
+    /// other two.
+    public static let capture: [SystemBox] = [.saveScreen, .saveArea]
 
     /// What macOS ships: the key code and the Cocoa modifier mask, copied from
     /// the system's own `DefaultShortcutsTable.xml` in the Keyboard settings
@@ -44,6 +52,7 @@ public enum SystemBox: Int, CaseIterable, Sendable, Codable {
         case .copyScreen: (20, 1_441_792)
         case .saveArea: (21, 1_179_648)
         case .copyArea: (21, 1_441_792)
+        case .panel: (23, 1_179_648)
         }
     }
 }

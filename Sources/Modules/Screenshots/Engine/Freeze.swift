@@ -14,18 +14,37 @@ public struct DisplayID: Hashable, Sendable {
 /// `ScreenSpace`), `scale` the pixels to a point, and the image is at native
 /// scale: a 5K display's frame is some sixty megabytes, which is why none of
 /// this travels over the transport.
+///
+/// **`image` never has the pointer in it; `withCursor` does.** The overlay draws
+/// `image` under a live crosshair, and a pointer baked into that would be a
+/// second one beside it. The cut — `CaptureSession.crop` and the full-screen
+/// shot — takes `withCursor` when it exists, which is the same moment on the same
+/// display with the pointer macOS draws, in the size and colour Accessibility
+/// gives it. It exists only when the setting asked for it, and only for the
+/// display the pointer was on: the others hold no pointer, and `shot` falls back
+/// to `image` for them.
 public struct FrozenDisplay: @unchecked Sendable {
     public let id: DisplayID
     public let frame: CGRect
     public let scale: CGFloat
     public let image: CGImage
+    public let withCursor: CGImage?
+    /// The display's UUID, which survives a re-plug where `id` may not — what a
+    /// remembered selection is keyed to. Nil when the system would not give one.
+    public let uuid: String?
 
-    public init(id: DisplayID, frame: CGRect, scale: CGFloat, image: CGImage) {
+    public init(id: DisplayID, frame: CGRect, scale: CGFloat, image: CGImage,
+                withCursor: CGImage? = nil, uuid: String? = nil) {
         self.id = id
         self.frame = frame
         self.scale = scale
         self.image = image
+        self.withCursor = withCursor
+        self.uuid = uuid
     }
+
+    /// What is cut and saved: the pointer's frame when there is one.
+    public var shot: CGImage { withCursor ?? image }
 }
 
 /// What the freeze found for one display: its frame, or the fact that it was

@@ -31,16 +31,22 @@ public struct ScreenshotsState: Codable, Equatable, Sendable {
 public struct ScreenshotsLocations: Sendable {
     public let home: URL
     public let desktop: URL
+    public let documents: URL
 
-    public init(home: URL, desktop: URL) {
+    /// `documents` defaults to the home's own, so a test that names a scratch
+    /// home has a Documents inside it and never the person's.
+    public init(home: URL, desktop: URL, documents: URL? = nil) {
         self.home = home
         self.desktop = desktop
+        self.documents = documents ?? home.appendingPathComponent("Documents", isDirectory: true)
     }
 
     public static var system: ScreenshotsLocations {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
             ?? home.appendingPathComponent("Desktop", isDirectory: true)
-        return ScreenshotsLocations(home: home, desktop: desktop)
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? home.appendingPathComponent("Documents", isDirectory: true)
+        return ScreenshotsLocations(home: home, desktop: desktop, documents: documents)
     }
 }

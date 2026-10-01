@@ -30,7 +30,25 @@ final class TheSystemDefaultsAreMacOSsOwnTests: XCTestCase {
         XCTAssertEqual(compared, SystemBox.allCases.count, "not every box was compared")
     }
 
-    func testTheReplacedBoxesAreTheTwoSaveBoxes() {
-        XCTAssertEqual(SystemBox.replaced, [.saveScreen, .saveArea])
+    /// The page draws all three boxes Helm may take, always; the button asks about the two that give ⇧⌘3 and ⇧⌘4.
+    func testTheReplacedBoxesAreTheTwoSaveBoxesAndThePanelsAndOnlyTheTwoGateTheButton() {
+        XCTAssertEqual(SystemBox.replaced, [.saveScreen, .saveArea, .panel])
+        XCTAssertEqual(SystemBox.capture, [.saveScreen, .saveArea])
+    }
+
+    /// Box 184 is read from macOS's table like the others — ⇧⌘5, key code 23 —
+    /// and compared above through `allCases`; this names it so a table that
+    /// stops carrying it fails here by name and not as an unexplained count.
+    func testTheCommandShiftFiveBoxIsInMacOSsTableAsTheSystemSaysItIs() throws {
+        let data = try XCTUnwrap(FileManager.default.contents(atPath: table))
+        let sections = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [[String: Any]])
+        let entry = try XCTUnwrap(sections.flatMap { $0["elements"] as? [[String: Any]] ?? [] }
+            .first { ($0["sybmolichotkey"] as? Int) == 184 })
+        XCTAssertEqual(SystemBox.panel.rawValue, 184)
+        XCTAssertEqual(entry["key"] as? Int, 23)
+        XCTAssertEqual(entry["modifier"] as? Int, 1_179_648)
+        XCTAssertEqual(SystemBox.panel.defaultKey.keyCode, 23)
+        XCTAssertEqual(SystemBox.panel.defaultKey.cocoaModifiers, 1_179_648)
+        XCTAssertTrue(SystemBox.allCases.contains(.panel), "the box is not read")
     }
 }

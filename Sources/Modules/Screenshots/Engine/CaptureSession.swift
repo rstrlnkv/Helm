@@ -63,14 +63,15 @@ public final class CaptureSession: @unchecked Sendable {
     private let writer: ShotWriting
     private let pasteboard: ShotPasteboard
     private let preferences: CapturePreferences
+    private let shutterPort: ShutterPlaying
     private let settings: () -> ScreenshotsSettings
     private let naming: () -> ShotNaming
     private let now: () -> Date
     private let locations: ScreenshotsLocations
-    private let category = "screenshots"
+    private let category = ScreenshotsEngine.moduleID
 
     public init(capture: ScreenCapturing, writer: ShotWriting, pasteboard: ShotPasteboard,
-                preferences: CapturePreferences,
+                preferences: CapturePreferences, shutter: ShutterPlaying,
                 settings: @escaping () -> ScreenshotsSettings,
                 naming: @escaping () -> ShotNaming = { .english },
                 now: @escaping () -> Date = { Date() },
@@ -79,6 +80,7 @@ public final class CaptureSession: @unchecked Sendable {
         self.writer = writer
         self.pasteboard = pasteboard
         self.preferences = preferences
+        self.shutterPort = shutter
         self.settings = settings
         self.naming = naming
         self.now = now
@@ -96,7 +98,7 @@ public final class CaptureSession: @unchecked Sendable {
             refuseForPermission()
             return .refused(.noPermission)
         }
-        switch await capture.freeze() {
+        switch await capture.freeze(cursor: settings().showCursor) {
         case .frozen(let freeze):
             return .ready(freeze)
         case .denied:
@@ -118,15 +120,16 @@ public final class CaptureSession: @unchecked Sendable {
 
     // MARK: - Cutting
 
-    /// A selection made on one display, cut from that display's frozen frame.
-    /// Nil when nothing of the selection is on the frame.
+    /// A selection made on one display, cut from that display's frozen frame —
+    /// the one with the pointer in it when the freeze took one. Nil when nothing
+    /// of the selection is on the frame.
     public func crop(_ freeze: Freeze, display: DisplayID, local rect: CGRect) -> CGImage? {
         guard let frame = freeze.frames.first(where: { $0.id == display }),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
                                               imageWidth: frame.image.width,
                                               imageHeight: frame.image.height)
         else { return nil }
-        return frame.image.cropping(to: pixels)
+        return frame.shot.cropping(to: pixels)
     }
 
     /// One window, **asked for again at the click**.
@@ -138,7 +141,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// which is what the person was looking at when they clicked. A protected
     /// window is saved as it came.
     public func window(_ id: UInt32, in freeze: Freeze) async -> WindowResult {
-        switch await capture.window(id) {
+        switch await capture.window(id, cursor: settings().showCursor) {
         case .image(let image):
             return .image(image)
         case .gone:
@@ -177,14 +180,27 @@ public final class CaptureSession: @unchecked Sendable {
         return delivery
     }
 
+    /// `saves` asks for a file and is answered by the setting: under the
+    /// clipboard target no file is made, and `copies` is what puts the picture
+    /// on the board. The file is in the setting's format and the clipboard's copy
+    /// is always PNG; a PNG is encoded once when both want one.
     private func deliver(_ image: CGImage, saves: Bool, copies: Bool,
                          into delivery: inout Delivery) async {
-        guard let png = await offTheCooperativePool({ Self.encode(image) }) else {
-            HelmLog.shared.warn(category, "a picture could not be encoded")
-            delivery.refusals.append(.encoding)
-            return
+        let current = settings()
+        let toFile = saves && current.saveTarget.savesAFile
+        let format = current.format
+        let png: Data?
+        if copies || (toFile && format == .png) {
+            png = await offTheCooperativePool({ Self.encode(image, as: .png) })
+            if png == nil {
+                HelmLog.shared.warn(category, "a picture could not be encoded")
+                delivery.refusals.append(.encoding)
+                return
+            }
+        } else {
+            png = nil
         }
-        if copies {
+        if copies, let png {
             switch pasteboard.copy(png: png) {
             case .accepted: delivery.copied = true
             case .refused:
@@ -192,11 +208,23 @@ public final class CaptureSession: @unchecked Sendable {
                 delivery.refusals.append(.pasteboard)
             }
         }
-        guard saves else { return }
-        let folder = await resolvedFolder()
+        guard toFile else { return }
+        let bytes: Data
+        if format == .png, let png {
+            bytes = png
+        } else if let jpeg = await offTheCooperativePool({ Self.encode(image, as: format) }) {
+            bytes = jpeg
+        } else {
+            HelmLog.shared.warn(category, "a picture could not be encoded")
+            delivery.refusals.append(.encoding)
+            return
+        }
+        guard let folder = await resolvedFolder(for: current) else { return }
         let base = ShotNames.base(date: now(), naming: naming())
         let writer = writer
-        let outcome = await offTheCooperativePool { writer.write(png, into: folder.url, base: base) }
+        let outcome = await offTheCooperativePool {
+            writer.write(bytes, into: folder.url, base: base, pathExtension: format.pathExtension)
+        }
         switch outcome {
         case .written(let url):
             delivery.files.append(url)
@@ -206,8 +234,11 @@ public final class CaptureSession: @unchecked Sendable {
         }
     }
 
-    /// The full-screen shortcut: one file per display, and the clipboard — when it is asked for —
-    /// gets the first display's picture, which is the main one.
+    /// The full-screen shortcut: one file per display, or — under the clipboard
+    /// target — the first display's picture on the board, which is the main one.
+    ///
+    /// The shutter sounds at the freeze, before anything is written: it is the
+    /// moment the picture was taken, and a disk that is slow does not delay it.
     ///
     /// The count of files is the count of files written. A display that was
     /// listed and gone is a refusal and **not** a file: counting it as saved
@@ -225,7 +256,15 @@ public final class CaptureSession: @unchecked Sendable {
         // presented: the caller cancels a press whose module was switched off
         // during the freeze, and a check after this returns is too late.
         guard !Task.isCancelled else { return delivery }
-        let destination = settings().afterFullScreen
+        shutter()
+        return await deliverScreens(freeze)
+    }
+
+    /// The part of `captureScreens` after the freeze: every display of it, to
+    /// the file or the clipboard the setting names.
+    public func deliverScreens(_ freeze: Freeze) async -> Delivery {
+        var delivery = Delivery()
+        let toBoard = settings().saveTarget == .clipboard
         var copiedOne = false
         for shot in freeze.displays {
             switch shot {
@@ -233,13 +272,22 @@ public final class CaptureSession: @unchecked Sendable {
                 HelmLog.shared.warn(category, "a display was gone before it could be captured")
                 delivery.refusals.append(.displayGone)
             case .image(let frame):
-                if delivery.image == nil { delivery.image = frame.image }
-                await deliver(frame.image, saves: destination.saves,
-                              copies: destination.copies && !copiedOne, into: &delivery)
-                copiedOne = copiedOne || destination.copies
+                if delivery.image == nil { delivery.image = frame.shot }
+                await deliver(frame.shot, saves: true, copies: toBoard && !copiedOne, into: &delivery)
+                copiedOne = copiedOne || toBoard
             }
         }
         return delivery
+    }
+
+    // MARK: - The shutter
+
+    /// Plays the shutter when the module's setting and the system's both say so.
+    /// The engine decides whether; the caller decides when.
+    public func shutter() {
+        let sounds = preferences.uiSounds().value
+        guard ShutterRule.plays(setting: settings().shutterSound, uiAudio: sounds) else { return }
+        shutterPort.play()
     }
 
     // MARK: - The folder
@@ -247,29 +295,83 @@ public final class CaptureSession: @unchecked Sendable {
     /// Read at each save, not once: the folder is a preference the person
     /// changes in another program, and a volume can leave between two presses.
     /// A refusal is logged here, where it is acted on, and the Desktop carries on.
-    func resolvedFolder() async -> SaveFolder {
+    /// Nil when the target is the clipboard.
+    func resolvedFolder(for current: ScreenshotsSettings) async -> SaveFolder? {
         let raw = await offTheCooperativePool { [preferences] in preferences.location() }
-        let folder = SaveLocation.resolve(raw: raw.value, desktop: locations.desktop,
-                                          home: locations.home)
+        let locations = locations
+        guard let folder = SaveLocation.folder(for: current, macOS: raw.value, locations: locations)
+        else { return nil }
         if let reason = folder.refused {
-            HelmLog.shared.warn(category, "the save folder macOS names was refused (\(reason.rawValue)); using the Desktop")
+            let which: String
+            switch current.saveTarget {
+            case .other: which = "the folder chosen in Helm"
+            case .documents: which = "the Documents folder"
+            case .desktop: which = "the Desktop"
+            case .macOS, .clipboard: which = "the save folder macOS names"
+            }
+            HelmLog.shared.warn(category, "\(which) was refused (\(reason.rawValue)); using the Desktop")
         }
         return folder
     }
 
-    // MARK: - PNG
+    // MARK: - Encoding
 
-    /// A PNG of the picture, or nil when ImageIO would not make one. The pool is
-    /// inside the call: encoding a 5K frame leaves autoreleased buffers, and the
-    /// work is one iteration of whoever called.
-    static func encode(_ image: CGImage) -> Data? {
+    /// What a JPEG is flattened onto: white. It is what macOS's own tool puts
+    /// under a window's shadow — the corner of `screencapture -l<id> -t jpg` was
+    /// read back as 255, 255, 255 — and a JPEG has no alpha to leave it in.
+    static let jpegGround = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+
+    /// The picture as a PNG or a JPEG, or nil when ImageIO would not make one. The
+    /// pool is inside the call: encoding a 5K frame leaves autoreleased buffers,
+    /// and the work is one iteration of whoever called.
+    ///
+    /// **A JPEG is drawn onto an opaque ground first,** so the ground is Helm's
+    /// choice and not whatever ImageIO makes of an alpha channel it is about to
+    /// drop. (On the macOS this was written on, ImageIO alone also lands on
+    /// white — a clear picture and a half-transparent one both came out right
+    /// with the flattening taken out — so this pins the ground rather than
+    /// repairing a defect that was seen.)
+    static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
         autoreleasepool {
+            let source: CGImage
+            switch format {
+            case .png: source = image
+            case .jpeg:
+                guard let flat = flattened(image) else { return nil }
+                source = flat
+            }
             let data = NSMutableData()
-            guard let destination = CGImageDestinationCreateWithData(
-                data, "public.png" as CFString, 1, nil) else { return nil }
-            CGImageDestinationAddImage(destination, image, nil)
+            let type = format == .png ? "public.png" : "public.jpeg"
+            guard let destination = CGImageDestinationCreateWithData(data, type as CFString, 1, nil)
+            else { return nil }
+            let options: CFDictionary? = format == .jpeg
+                ? [kCGImageDestinationLossyCompressionQuality: ShotFormat.jpegQuality] as CFDictionary
+                : nil
+            CGImageDestinationAddImage(destination, source, options)
             guard CGImageDestinationFinalize(destination), data.length > 0 else { return nil }
             return data as Data
         }
+    }
+
+    /// The picture over `jpegGround`, in its own colour space when that is an RGB
+    /// one an 8-bit bitmap can be made in, sRGB otherwise — an extended-range
+    /// space (a display's HDR or wide-gamut reading) cannot hold one, and a PNG
+    /// of the same picture is fine, so the JPEG falls back rather than refuses.
+    static func flattened(_ image: CGImage) -> CGImage? {
+        let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
+        var spaces = [srgb]
+        if let own = image.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
+        for space in spaces {
+            guard let context = CGContext(data: nil, width: image.width, height: image.height,
+                                          bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+            else { continue }
+            let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+            context.setFillColor(jpegGround)
+            context.fill(rect)
+            context.draw(image, in: rect)
+            return context.makeImage()
+        }
+        return nil
     }
 }

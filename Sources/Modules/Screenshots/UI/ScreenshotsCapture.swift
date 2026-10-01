@@ -49,7 +49,11 @@ struct CapturedShot {
     private let store: NamespacedStore
     private let session: CaptureSession
     private let toast = ShotToast()
+    /// Not private: a test reads what the bar says through it, and puts no window on a screen.
+    let bar: CapturePanel
     private var overlay: CaptureOverlay?
+    /// One flag for the bar, its countdown and the overlay: they are one
+    /// capture in three stages, and a second press at any of them is dropped.
     private var busy = false
     /// The press in flight, held so `cancel` can reach it: the freeze is the one
     /// long wait and the module's switch can be turned inside it.
@@ -57,27 +61,83 @@ struct CapturedShot {
     /// Puts the overlay on the screens. A seam for a test, which must see whether
     /// the area shortcut reached it without putting panels on the screen of whoever runs the suite.
     private let presentOverlay: (CaptureOverlay) -> Bool
+    /// Puts the bar on the screen; a seam for the same reason.
+    private let presentBar: (CapturePanel) -> Void
+    /// One second of the countdown. A seam: a test passes a wait it controls,
+    /// and the running app sleeps.
+    private let tick: (Duration) async throws -> Void
 
-    /// `session` and `presentOverlay` are seams for a test, which builds a session
-    /// over fake ports and counts the presentations; the running app passes
-    /// nothing and gets the real ones.
+    /// `session`, `presentOverlay`, `presentBar` and `tick` are seams for a test,
+    /// which builds a session over fake ports, counts the presentations and holds
+    /// the countdown still; the running app passes nothing and gets the real ones.
     init(owner: ModuleViewModel, store: NamespacedStore, session: CaptureSession? = nil,
-         presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() }) {
+         presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
+         presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
+         tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.owner = owner
         self.store = store
         self.presentOverlay = presentOverlay
+        self.presentBar = presentBar
+        self.tick = tick
+        self.bar = CapturePanel(store: store)
         self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
+        bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
+        bar.model.cancel = { [weak self] in self?.cancel() }
     }
+
+    /// Whether a press is in progress at any stage. A test waits on it.
+    var isBusy: Bool { busy }
 
     func begin(_ hotkey: ScreenshotsHotkey) {
         guard !busy else { return }
         busy = true
+        switch hotkey {
+        case .panel:
+            // A press that finished leaves its task behind; the bar's own Capture
+            // starts a new one and asks that none is in flight.
+            pressTask = nil
+            presentBar(bar)
+        case .area:
+            pressTask = Task { await self.area() }
+        case .fullScreen:
+            pressTask = Task { await self.fullScreen() }
+        }
+    }
+
+    // MARK: - The panel
+
+    /// Capture pressed on the bar: the countdown if there is one, then the mode
+    /// the bar was on. A second press while one is running is dropped.
+    func capture(from mode: PanelMode) {
+        guard busy, pressTask == nil else { return }
         pressTask = Task {
-            switch hotkey {
-            case .area: await self.area()
-            case .fullScreen: await self.fullScreen()
+            let seconds = ScreenshotsSettings.read(store).timer.seconds
+            // The bar is where the countdown shows, so it stays up through it and
+            // goes before the freeze: Esc, the close control and a module
+            // switched off all end the press here, with no freeze taken.
+            if seconds > 0 {
+                do { try await countdown(seconds) } catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            bar.close()
+            switch mode {
+            case .screen: await fullScreen()
+            case .window: await area(mode: .window)
+            case .area: await area(mode: .area, remembered: true)
             }
         }
+    }
+
+    /// Counts down on the bar, and **asks after every wait whether it was
+    /// cancelled**: a wait that ends normally is not evidence that nobody
+    /// pressed Esc during it.
+    private func countdown(_ seconds: Int) async throws {
+        for remaining in stride(from: seconds, to: 0, by: -1) {
+            bar.model.countdown = remaining
+            try await tick(.seconds(1))
+            try Task.checkCancellation()
+        }
+        bar.model.countdown = nil
     }
 
     /// The overlay and the work in flight go with the module. The press is
@@ -87,6 +147,7 @@ struct CapturedShot {
     func cancel() {
         pressTask?.cancel()
         pressTask = nil
+        bar.close()
         overlay?.close()
         overlay = nil
         toast.dismiss()
@@ -104,7 +165,7 @@ struct CapturedShot {
 
     // MARK: - The area shortcut
 
-    private func area() async {
+    private func area(mode: CaptureOverlay.Mode = .area, remembered: Bool = false) async {
         let began = await session.begin()
         // The module went off during the freeze: no overlay for a module that is off.
         guard !Task.isCancelled else { return }
@@ -113,7 +174,12 @@ struct CapturedShot {
             toast.showRefusal(reason)
             busy = false
         case .ready(let freeze):
-            let overlay = CaptureOverlay(freeze: freeze) { [weak self] result in
+            // Read after the freeze, against the displays it found: only the
+            // panel's Area mode opens on the last selection, and only while the
+            // option is on.
+            let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
+                ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
+            let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection) { [weak self] result in
                 self?.overlayFinished(result, freeze: freeze)
             }
             self.overlay = overlay
@@ -134,6 +200,7 @@ struct CapturedShot {
             case .cancelled:
                 break
             case .area(let display, let local):
+                remember(display: display, local: local, in: freeze)
                 if let image = session.crop(freeze, display: display, local: local) {
                     await handOff(CapturedShot(image: image, kind: .area))
                 }
@@ -153,6 +220,15 @@ struct CapturedShot {
         }
     }
 
+    /// Written for every confirmed area while the option is on, whichever door it
+    /// came through; read only by the bar's Area mode.
+    private func remember(display: DisplayID, local: CGRect, in freeze: Freeze) {
+        guard ScreenshotsSettings.read(store).rememberSelection,
+              let uuid = freeze.frames.first(where: { $0.id == display })?.uuid,
+              let record = RememberedSelection(display: uuid, rect: local) else { return }
+        record.write(to: store)
+    }
+
     // MARK: - The seam
 
     /// **Part 2 replaces the body of this and nothing else.** Every area, window
@@ -162,6 +238,7 @@ struct CapturedShot {
     /// and the thumbnail says so.
     func handOff(_ shot: CapturedShot) async {
         let settings = ScreenshotsSettings.read(store)
+        session.shutter()
         if settings.thumbnail { toast.showWorking(shot.image) }
         let delivery = await session.deliver(shot.image, saves: true, copies: true)
         present(delivery)

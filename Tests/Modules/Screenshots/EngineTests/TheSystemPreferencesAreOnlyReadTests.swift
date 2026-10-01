@@ -30,11 +30,11 @@ final class TheSystemPreferencesAreOnlyReadTests: XCTestCase {
     }
 
     /// The scan above is silent when it reads the wrong thing, so the same files
-    /// are read for what they *do* carry: the two reads this module makes.
+    /// are read for what they *do* carry: the three reads this module makes.
     func testTheScanSeesTheReadsItIsClearingTheModuleOf() throws {
         let reads = try SwiftSource.code(under: "Sources/Modules/Screenshots")
         let copies = reads.reduce(0) { $0 + $1.text.components(separatedBy: "CFPreferencesCopyAppValue").count - 1 }
-        XCTAssertEqual(copies, 2, "the location and the symbolic hotkeys are the two reads")
+        XCTAssertEqual(copies, 3, "the location, the symbolic hotkeys and the interface-sounds switch are the three reads")
     }
 
     /// The scan can fail: a writer put in front of it is found.

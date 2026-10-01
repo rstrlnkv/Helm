@@ -44,7 +44,25 @@ public enum SaveLocation {
     /// The folder is judged against the disk as it is at this call: it exists,
     /// it is a directory, and it is writable. A volume that was unplugged since
     /// the preference was set is `missing`, and the Desktop takes the picture.
-    public static func resolve(raw: Any?, desktop: URL, home: URL) -> SaveFolder {
+    public static func resolve(raw: Any?, desktop: URL, home: URL,
+                               writable: (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) -> SaveFolder {
+        let shaped = shape(raw: raw, desktop: desktop, home: home)
+        guard shaped.refused == nil, raw != nil else { return shaped }
+        let url = shaped.url
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        else { return SaveFolder(url: desktop, refused: .missing) }
+        guard isDirectory.boolValue else { return SaveFolder(url: desktop, refused: .notAFolder) }
+        guard writable(url.path) else { return SaveFolder(url: desktop, refused: .notWritable) }
+        return SaveFolder(url: url, refused: nil)
+    }
+
+    /// Everything `resolve` can say **without asking the disk**: the shape of the
+    /// value and the path it spells. A view body draws from this and nothing else,
+    /// because asking the disk about the Desktop or Documents is what raises a
+    /// protected-folder prompt, and a body runs on every render. `url` is the
+    /// path the raw value spells, or the Desktop when it spells none.
+    public static func shape(raw: Any?, desktop: URL, home: URL) -> SaveFolder {
         guard let raw else { return SaveFolder(url: desktop, refused: nil) }
         guard let text = raw as? String else { return SaveFolder(url: desktop, refused: .notAPath) }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -59,14 +77,42 @@ public enum SaveLocation {
             expanded = trimmed
         }
         guard expanded.hasPrefix("/") else { return SaveFolder(url: desktop, refused: .relative) }
+        return SaveFolder(url: URL(fileURLWithPath: expanded, isDirectory: true), refused: nil)
+    }
 
-        let url = URL(fileURLWithPath: expanded, isDirectory: true)
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
-        else { return SaveFolder(url: desktop, refused: .missing) }
-        guard isDirectory.boolValue else { return SaveFolder(url: desktop, refused: .notAFolder) }
-        guard FileManager.default.isWritableFile(atPath: url.path)
-        else { return SaveFolder(url: desktop, refused: .notWritable) }
-        return SaveFolder(url: url, refused: nil)
+    /// Where this capture's file goes, or nil for the clipboard, which has none.
+    ///
+    /// **Every folder is judged by `resolve`, the chosen one included:** the
+    /// Desktop and Documents are asked by path like any other, and the folder a
+    /// person chose in Helm is a string in a file anything running as them can
+    /// write, so it is no more trusted than `location` is. `macOS` is
+    /// `location`'s raw value, read by the caller. A target `other` with no
+    /// folder stored is a refusal (`empty`) and not a quiet Desktop: somebody
+    /// chose something and it is not there.
+    public static func folder(for settings: ScreenshotsSettings, macOS: Any?,
+                              locations: ScreenshotsLocations,
+                              writable: (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) -> SaveFolder? {
+        guard let raw = rawValue(for: settings, macOS: macOS, locations: locations) else { return nil }
+        return resolve(raw: raw.value, desktop: locations.desktop, home: locations.home, writable: writable)
+    }
+
+    /// The same folder as `folder(for:)` names, without asking the disk.
+    public static func shownFolder(for settings: ScreenshotsSettings, macOS: Any?,
+                                   locations: ScreenshotsLocations) -> SaveFolder? {
+        guard let raw = rawValue(for: settings, macOS: macOS, locations: locations) else { return nil }
+        return shape(raw: raw.value, desktop: locations.desktop, home: locations.home)
+    }
+
+    private struct Raw { let value: Any? }
+
+    private static func rawValue(for settings: ScreenshotsSettings, macOS: Any?,
+                                 locations: ScreenshotsLocations) -> Raw? {
+        switch settings.saveTarget {
+        case .clipboard: nil
+        case .macOS: Raw(value: macOS)
+        case .desktop: Raw(value: locations.desktop.path)
+        case .documents: Raw(value: locations.documents.path)
+        case .other: Raw(value: settings.otherFolder ?? "")
+        }
     }
 }

@@ -1273,9 +1273,9 @@ screenshot shortcuts are still ticked — as `ScreenshotsState`.
 
 Everything the session asks of the machine is a port with a fake
 (`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the
-clipboard, and two preference domains macOS owns. Both domains are **read and never
-written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
-for the boxes — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
+clipboard, and three preference reads of what macOS owns. All three are **read and
+never written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
+for the boxes, and the global domain's user-interface-sound switch for the shutter — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
 `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` are what judge them:
 an absent box is one macOS still holds, and an unreadable reading is unknown rather
 than free. Changing a system shortcut is the person's act in System Settings; Helm
@@ -1289,6 +1289,18 @@ coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a dis
 own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
 and nowhere else. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
+
+The panel (`Sources/Modules/Screenshots/UI/CapturePanel.swift`) is the bar the third
+shortcut opens: Whole screen, Window and Area, an Options menu that reads and writes the
+same settings the page does, and Capture. It is a non-activating key panel in every
+Space, and `CaptureController` holds one `busy` flag for the bar, its countdown and the
+overlay, so a second press at any stage is dropped. The countdown runs inside the press's
+own task, one `tick` at a time, and asks after every tick whether it was cancelled; the
+freeze comes only after it, so Esc, the close control and the module being switched off
+all end a press that has frozen nothing. The last confirmed area is kept by
+`Sources/Modules/Screenshots/Engine/Logic/RememberedSelection.swift` as a display's UUID
+and a rectangle in that display's points, read back through the same bounds as any
+stored number, and only the bar's Area mode opens the overlay on it.
 
 A picture is written to a temporary name and moved into place with RENAME_EXCL
 (`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a

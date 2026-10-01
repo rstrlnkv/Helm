@@ -28,22 +28,41 @@ enum OverlayResult {
 /// the selection is — mode, drag, space — cannot belong to one panel's view.
 /// Views report what happened to them and draw what this says.
 @MainActor final class CaptureOverlay {
-    private enum Mode { case area, window }
+    /// What the overlay opens in: the area crosshair, or the camera over windows.
+    enum Mode { case area, window }
 
     private let freeze: Freeze
     private var onFinish: ((OverlayResult) -> Void)?
     private var panels: [DisplayID: (panel: OverlayPanel, view: OverlayView)] = [:]
     private var screenObserver: NSObjectProtocol?
 
-    private var mode = Mode.area { didSet { render() } }
+    private var mode: Mode { didSet { render() } }
     private var drag: (display: DisplayID, drag: SelectionDrag)?
+    /// The remembered area the panel's Area mode opens on, drawn as a selection
+    /// that Return confirms and any new drag replaces. A reading, already cut to
+    /// the display as it is now by `RememberedSelection.landing`.
+    private var preselected: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
 
-    init(freeze: Freeze, onFinish: @escaping (OverlayResult) -> Void) {
+    /// What the overlay opened on, for a test that must know the bar's Area mode
+    /// handed it the remembered selection and no other press did.
+    var preselection: (display: DisplayID, rect: CGRect)? { preselected }
+
+    /// What each view is drawing as its picture, for a test that must know it is
+    /// the frame without the pointer: the live crosshair is drawn over it, and a
+    /// pointer baked into it would be a second one.
+    var drawnPictures: [DisplayID: CGImage] {
+        panels.compactMapValues { $0.view.drawnPicture }
+    }
+
+    init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
+         onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
+        self.mode = mode
+        self.preselected = mode == .area ? preselection : nil
         self.onFinish = onFinish
     }
 
@@ -92,6 +111,8 @@ enum OverlayResult {
         for (id, entry) in panels where entry.panel.frame.contains(mouse) {
             pointer = (id, local(mouse, in: entry.panel, frame: entry.view.frozen.frame.height))
         }
+        // Opened in window mode, the window under the pointer is lit at once.
+        if mode == .window, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
         render()
         return true
     }
@@ -142,6 +163,7 @@ enum OverlayResult {
         case .area:
             guard let frame = freeze.frames.first(where: { $0.id == display }) else { return }
             let bounds = CGRect(origin: .zero, size: frame.frame.size)
+            preselected = nil
             drag = (display, SelectionDrag(start: local, bounds: bounds))
             render()
         }
@@ -186,6 +208,11 @@ enum OverlayResult {
         case 53: // escape
             finish(.cancelled)
         case 36, 76: // return, enter
+            // The remembered selection stands for a selection made: Return takes it.
+            if drag == nil, mode == .area, let preselected {
+                finish(.area(display: preselected.display, local: preselected.rect))
+                return
+            }
             // Nothing selected: the whole display the pointer is on, as macOS does.
             guard drag == nil, let display = pointer?.display ?? freeze.frames.first?.id else { return }
             finish(.wholeDisplay(display))
@@ -229,6 +256,7 @@ enum OverlayResult {
             scene.windowMode = mode == .window
             if let pointer, pointer.display == id { scene.pointer = pointer.point }
             if let drag, drag.display == id { scene.selection = drag.drag.rect }
+            else if mode == .area, let preselected, preselected.display == id { scene.selection = preselected.rect }
             if mode == .window, let hovered, let frame = freeze.frames.first(where: { $0.id == id }) {
                 let part = ScreenSpace.local(hovered.frame, in: frame.frame)
                     .intersection(CGRect(origin: .zero, size: frame.frame.size))
@@ -290,6 +318,12 @@ final class OverlayView: NSView {
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
+
+    var drawnPicture: CGImage? {
+        guard let contents = imageLayer.contents, CFGetTypeID(contents as CFTypeRef) == CGImage.typeID
+        else { return nil }
+        return (contents as! CGImage)
+    }
 
     init(frozen: FrozenDisplay, overlay: CaptureOverlay) {
         self.frozen = frozen

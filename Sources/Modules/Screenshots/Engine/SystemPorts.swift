@@ -47,7 +47,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         _ = CGRequestScreenCaptureAccess()
     }
 
-    public func freeze() async -> FreezeOutcome {
+    public func freeze(cursor: Bool) async -> FreezeOutcome {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -62,6 +62,12 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 
         // All displays at once — the freeze is on the critical path of the
         // overlay appearing, and two displays taken in turn cost twice as long.
+        // With the pointer asked for, the second frame is taken in the same task,
+        // beside the first and not after it — and only of the display the pointer
+        // is on: the others show no pointer, so theirs would be the same picture
+        // again at a cost per display (measured: about 65 ms more over three
+        // displays when every one took it).
+        let pointer = cursor ? CGEvent(source: nil)?.location : nil
         let outcomes: [(Int, DisplayShot?)] = await withTaskGroup(of: (Int, DisplayShot?).self) { group in
             // The two ScreenCaptureKit objects are immutable descriptions the
             // framework hands out for exactly this use, and are not declared
@@ -70,7 +76,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
             for (index, display) in displays.enumerated() {
                 let target = Unshared(display)
                 group.addTask {
-                    (index, await Self.capture(target.value, excluding: shared.value))
+                    (index, await Self.capture(target.value, excluding: shared.value, pointer: pointer))
                 }
             }
             var collected: [(Int, DisplayShot?)] = []
@@ -82,25 +88,51 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         return .frozen(Freeze(displays: outcomes.compactMap(\.1), windows: Self.windowList(excluding: me)))
     }
 
-    private static func capture(_ display: SCDisplay, excluding own: [SCRunningApplication]) async -> DisplayShot? {
+    private static func capture(_ display: SCDisplay, excluding own: [SCRunningApplication],
+                                pointer: CGPoint?) async -> DisplayShot? {
+        let cursor = pointer.map { display.frame.contains($0) } ?? false
         let filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
         let scale = CGFloat(SCShareableContent.info(for: filter).pointPixelScale)
-        let configuration = SCStreamConfiguration()
-        configuration.width = Int((CGFloat(display.width) * scale).rounded())
-        configuration.height = Int((CGFloat(display.height) * scale).rounded())
-        configuration.showsCursor = false
-        configuration.pixelFormat = kCVPixelFormatType_32BGRA
+        let width = Int((CGFloat(display.width) * scale).rounded())
+        let height = Int((CGFloat(display.height) * scale).rounded())
+        let target = Unshared(filter)
+        // The overlay's picture never has the pointer in it, and the cut's does
+        // when asked: `FrozenDisplay` says why there are two.
+        async let plain = frame(target, width: width, height: height, pointer: false)
+        async let pointed: Unshared<CGImage>? = cursor
+            ? try? await frame(target, width: width, height: height, pointer: true) : nil
         do {
-            let image = try await SCScreenshotManager.captureImage(contentFilter: filter,
-                                                                   configuration: configuration)
+            let image = try await plain.value
+            let withCursor = await pointed?.value
+            if cursor, withCursor == nil {
+                HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the frame with the pointer could not be captured; the picture has none")
+            }
             return .image(FrozenDisplay(id: DisplayID(display.displayID), frame: display.frame,
-                                        scale: scale, image: image))
+                                        scale: scale, image: image, withCursor: withCursor,
+                                        uuid: uuid(of: display.displayID)))
         } catch {
             return isDeclined(error) ? nil : .gone(DisplayID(display.displayID))
         }
     }
 
-    public func window(_ id: UInt32) async -> WindowShot {
+    private static func frame(_ filter: Unshared<SCContentFilter>, width: Int, height: Int,
+                              pointer: Bool) async throws -> Unshared<CGImage> {
+        let configuration = SCStreamConfiguration()
+        configuration.width = width
+        configuration.height = height
+        configuration.showsCursor = pointer
+        configuration.pixelFormat = kCVPixelFormatType_32BGRA
+        return Unshared(try await SCScreenshotManager.captureImage(contentFilter: filter.value,
+                                                                   configuration: configuration))
+    }
+
+    private static func uuid(of display: CGDirectDisplayID) -> String? {
+        guard let reference = CGDisplayCreateUUIDFromDisplayID(display)?.takeRetainedValue()
+        else { return nil }
+        return CFUUIDCreateString(nil, reference) as String?
+    }
+
+    public func window(_ id: UInt32, cursor: Bool) async -> WindowShot {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -109,21 +141,21 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         }
         guard let window = content.windows.first(where: { $0.windowID == id }) else { return .gone }
         let filter = SCContentFilter(desktopIndependentWindow: window)
-        let info = SCShareableContent.info(for: filter)
-        let scale = CGFloat(info.pointPixelScale)
-        let configuration = SCStreamConfiguration()
-        configuration.width = max(1, Int((info.contentRect.width * scale).rounded()))
-        configuration.height = max(1, Int((info.contentRect.height * scale).rounded()))
-        configuration.showsCursor = false
-        configuration.pixelFormat = kCVPixelFormatType_32BGRA
-        // The window's own pixels: exactly its frame, over a transparent ground.
-        // The shadow is left out on purpose — with it the picture is larger than
-        // `contentRect` and this sizes the output from `contentRect`.
-        configuration.ignoreShadowsSingleWindow = true
-        configuration.shouldBeOpaque = false
+        // **No size is given, and it is `SCScreenshotConfiguration` and not the
+        // stream's.** Measured on a 993×747 pt window at 2×: a stream
+        // configuration with no size answers a fixed 1920×1080 with the window
+        // scaled to fit; one sized to `contentRect` keeps the shadow inside that
+        // size by shrinking the window to 1870×1407 px; this one answers
+        // 2078×1586 with the window at exactly 1986×1494, the shadow around it
+        // untouched — the picture macOS's own tool makes of the same window.
+        let configuration = SCScreenshotConfiguration()
+        configuration.ignoreShadows = false
+        configuration.showsCursor = cursor
         do {
-            return .image(try await SCScreenshotManager.captureImage(contentFilter: filter,
-                                                                     configuration: configuration))
+            let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter,
+                                                                         configuration: configuration)
+            guard let image = output.sdrImage else { return .failed }
+            return .image(image)
         } catch {
             return Self.isDeclined(error) ? .denied : .failed
         }
@@ -179,7 +211,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
 public struct FileShotWriter: ShotWriting {
     public init() {}
 
-    public func write(_ png: Data, into folder: URL, base: String) -> ShotWrite {
+    public func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory)
         else { return .refused(.noFolder) }
@@ -190,7 +222,7 @@ public struct FileShotWriter: ShotWriting {
         guard descriptor >= 0 else { return .refused(Self.refusal(errno)) }
 
         var failure: Int32 = 0
-        png.withUnsafeBytes { buffer in
+        data.withUnsafeBytes { buffer in
             var offset = 0
             while offset < buffer.count {
                 let written = Darwin.write(descriptor, buffer.baseAddress! + offset, buffer.count - offset)
@@ -210,7 +242,7 @@ public struct FileShotWriter: ShotWriting {
 
         for attempt in 0..<ShotNames.limit {
             let destination = folder.appendingPathComponent(
-                ShotNames.candidate(base: base, pathExtension: "png", attempt: attempt))
+                ShotNames.candidate(base: base, pathExtension: pathExtension, attempt: attempt))
             var answer = renamex_np(temporary, destination.path, UInt32(RENAME_EXCL))
             var code = errno
             if answer != 0, code == ENOTSUP || code == EINVAL {
@@ -288,11 +320,51 @@ public struct SystemCapturePreferences: CapturePreferences {
         RawSetting(CFPreferencesCopyAppValue("location" as CFString, "com.apple.screencapture" as CFString))
     }
 
+    public func uiSounds() -> RawSetting {
+        RawSetting(CFPreferencesCopyAppValue("com.apple.sound.uiaudio.enabled" as CFString,
+                                             kCFPreferencesAnyApplication))
+    }
+
     public func symbolicHotkeys() -> SymbolicHotkeysReading {
         guard let value = CFPreferencesCopyAppValue("AppleSymbolicHotKeys" as CFString,
                                                     "com.apple.symbolichotkeys" as CFString)
         else { return .absent }
         guard let table = value as? [String: Any] else { return .unreadable }
         return .read(table)
+    }
+}
+
+// MARK: - The shutter
+
+/// macOS's own capture sound, read from its bundle at run time and not copied.
+///
+/// `Screen Capture.aif` under CoreAudio's system sounds is the file; `Grab.aif`
+/// and `Shutter.aif` beside it are the same inode on the Mac this was written on.
+/// Which of the three macOS's own capture plays was not verified. A file that is
+/// not there is an absence and not a refusal — a future macOS may move it — so
+/// the shutter is silent and nothing is logged.
+///
+/// `NSSound` is touched on the main thread only: `play()` hops there and returns
+/// at once, so the freeze's caller is never held by the sound.
+public final class SystemShutter: ShutterPlaying, @unchecked Sendable {
+    static let path = "/System/Library/Components/CoreAudio.component/Contents/SharedSupport/SystemSounds/system/Screen Capture.aif"
+
+    /// Read and written on the main thread only.
+    private var sound: NSSound?
+    private var loaded = false
+
+    public init() {}
+
+    public func play() {
+        DispatchQueue.main.async { [self] in
+            if !loaded {
+                loaded = true
+                sound = NSSound(contentsOfFile: Self.path, byReference: true)
+            }
+            // A second shot inside the first's tail restarts it: `play` answers
+            // false on a sound that is still sounding.
+            sound?.stop()
+            sound?.play()
+        }
     }
 }

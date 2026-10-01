@@ -12,13 +12,77 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheReplaceSectionOffersOnlyWhatIsTrueTests: XCTestCase {
 
-    private func readings(save: BoxState, area: BoxState) -> [SystemBoxReading] {
+    private func readings(save: BoxState, area: BoxState, panel: BoxState = .on) -> [SystemBoxReading] {
         SystemShortcuts.boxes(from: .absent).map { reading in
             switch reading.box {
             case .saveScreen: SystemBoxReading(box: reading.box, state: save, keyCode: 20, modifiers: 768)
             case .saveArea: SystemBoxReading(box: reading.box, state: area, keyCode: 21, modifiers: 768)
+            case .panel: SystemBoxReading(box: reading.box, state: panel, keyCode: 23, modifiers: 768)
             default: reading
             }
+        }
+    }
+
+    /// Box 184 is never what gates the button: a person who keeps macOS's panel,
+    /// and screen recording on the keyboard with it, is still offered the other two.
+    func testTheButtonIsAskedOfTheTwoCaptureBoxesAndNeverOfThePanelsBox() {
+        for panel in [BoxState.on, .off, .unknown] {
+            XCTAssertTrue(ScreenshotsSettingsPage.offersToUseSystemKeys(readings(save: .off, area: .off, panel: panel)),
+                          "box 184 read \(panel) took the button away from a person who unticked 28 and 30")
+            XCTAssertFalse(ScreenshotsSettingsPage.offersToUseSystemKeys(readings(save: .on, area: .off, panel: .off)),
+                           "box 184 off offered the button over a box that is still on")
+        }
+    }
+
+    /// ⇧⌘5 goes to the panel only when 184 is **read** as off; on and unknown are
+    /// both a combination macOS may still hold.
+    func testTheButtonAssignsTheCommandShiftFiveKeyOnlyWhenBox184ReadsOff() {
+        for (panel, expected) in [(BoxState.off, true), (.on, false), (.unknown, false)] {
+            let boxes = readings(save: .off, area: .off, panel: panel)
+            let assigned = ScreenshotsSettingsPage.systemKeys(for: boxes)
+            XCTAssertEqual(assigned.map(\.0), expected ? [.fullScreen, .area, .panel] : [.fullScreen, .area], "184 \(panel)")
+            XCTAssertEqual(assigned.first { $0.0 == .fullScreen }?.1.label, "⇧⌘3")
+            XCTAssertEqual(assigned.first { $0.0 == .area }?.1.label, "⇧⌘4")
+            if expected {
+                let key = assigned.first { $0.0 == .panel }?.1
+                XCTAssertEqual(key?.label, "⇧⌘5")
+                XCTAssertEqual(key?.keyCode, 23)
+                XCTAssertEqual(key?.modifiers, CarbonModifier.cmd | CarbonModifier.shift)
+            }
+        }
+    }
+
+    /// The page always draws 184 and always says what unticking it costs; no
+    /// other box carries a note. Said in every language, with the combination it names.
+    func testBox184IsAlwaysDrawnAndAlwaysCarriesTheScreenRecordingWarning() throws {
+        for panel in [BoxState.on, .off, .unknown] {
+            let drawn = ScreenshotsSettingsPage.drawnBoxes(readings(save: .off, area: .off, panel: panel), against: [])
+            XCTAssertTrue(drawn.contains { $0.box == .panel }, "box 184 read \(panel) was not drawn")
+        }
+        XCTAssertNil(ScreenshotsSettingsPage.note(for: .saveScreen))
+        XCTAssertNil(ScreenshotsSettingsPage.note(for: .saveArea))
+        AppLanguage.each { language in
+            let note = ScreenshotsSettingsPage.note(for: .panel)
+            XCTAssertEqual(note, ScStr.panelBoxWarning, "\(language)")
+            XCTAssertTrue(note?.contains("⇧⌘5") == true, "\(language): the warning does not name the combination: \(note ?? "nil")")
+            if language != .en {
+                XCTAssertNotEqual(note, L("Helm's panel takes ⇧⌘5 only when this is unticked. Unticking it also removes the keyboard shortcut for screen recording.", language: .en),
+                                  "\(language): the warning is the English sentence")
+            }
+        }
+    }
+
+    /// Two keys and no interpolation: the button that takes ⇧⌘5 as well carries
+    /// all three combinations as macOS spells them, in every language.
+    func testTheButtonThatTakesTheThirdKeyNamesAllThreeAndIsItsOwnKey() throws {
+        let labels = try [20, 21, 23].map {
+            try XCTUnwrap(HotkeyCombination(keyCode: $0, modifiers: CarbonModifier.cmd | CarbonModifier.shift)).label
+        }
+        XCTAssertEqual(labels, ["⇧⌘3", "⇧⌘4", "⇧⌘5"])
+        AppLanguage.each { language in
+            XCTAssertTrue(labels.allSatisfy(ScStr.useSystemKeysAndPanel.contains), "\(language): «\(ScStr.useSystemKeysAndPanel)»")
+            XCTAssertNotEqual(ScStr.useSystemKeysAndPanel, ScStr.useSystemKeys, "\(language)")
+            XCTAssertFalse(ScStr.useSystemKeysAndPanel.contains("%"), "\(language): the key interpolates")
         }
     }
 
@@ -103,14 +167,14 @@ final class TheReplaceSectionOffersOnlyWhatIsTrueTests: XCTestCase {
     }
 
     /// One combination is written in one order on the page: the recorder's, which
-    /// is macOS's (⇧ before ⌘). A heading that said ⌘⇧3 above a row that said ⇧⌘3
+    /// is macOS's (⇧ before ⌘). A button that said ⌘⇧3 above a row that said ⇧⌘3
     /// was one shortcut in two spellings.
     func testTheHeadingAndTheButtonSpellTheCombinationsAsTheRecorderDoes() throws {
         let three = try XCTUnwrap(HotkeyCombination(keyCode: 20, modifiers: CarbonModifier.cmd | CarbonModifier.shift)).label
         let four = try XCTUnwrap(HotkeyCombination(keyCode: 21, modifiers: CarbonModifier.cmd | CarbonModifier.shift)).label
         XCTAssertEqual([three, four], ["⇧⌘3", "⇧⌘4"])
         AppLanguage.each { language in
-            for text in [ScStr.replaceTitle, ScStr.useSystemKeys] {
+            for text in [ScStr.useSystemKeys] {
                 XCTAssertTrue(text.contains(three) && text.contains(four), "\(language): «\(text)»")
                 XCTAssertFalse(text.contains("⌘⇧"), "\(language): «\(text)» spells the combination the other way round")
             }

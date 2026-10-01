@@ -77,6 +77,99 @@ final class TheNameIsMacOSsInEveryLanguageTests: XCTestCase {
         }
     }
 
+    /// Helm's `pt` and `en` write macOS's title case in sentence case, as the
+    /// rest of their files do; the other six are copied as macOS has them.
+    private func sentence(_ text: String, _ language: AppLanguage) -> String {
+        guard language == .en || language == .pt else { return text }
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        return ([String(words[0])] + words.dropFirst().map { $0.lowercased() }).joined(separator: " ")
+    }
+
+    /// «No timer» is its own key, not the «None» the hotkey recorder uses: German
+    /// has «Keiner» for the one and macOS says «Ohne» in the Timer menu, and one key
+    /// means one thing.
+    /// The bar's words — the three capture buttons' tooltips, Capture, Options,
+    /// the floating thumbnail and the remembered selection — are the ones the
+    /// system's own bar carries, in each language.
+    func testTheBarsWordsAreMacOSsInEveryLanguage() throws {
+        let capture = try table(Self.capture)
+        let pairs = [("Capture entire screen", "CAPTURESCREEN"), ("Capture selected window", "CAPTUREWINDOW"),
+                     ("Capture selected portion", "CAPTURESELECTION"), ("Capture", "Capture"), ("Options", "Options"),
+                     ("Show floating thumbnail", "Show Floating Thumbnail"),
+                     ("Remember last selection", "Remember Last Selection"), ("Timer", "Timer"), ("No timer", "None")]
+        var compared = 0
+        AppLanguage.each { language in
+            guard let entry = capture[system(language)] else { return XCTFail("\(language): no table") }
+            for (key, source) in pairs {
+                guard let word = entry[source] else { return XCTFail("\(language): macOS has no \(source)") }
+                // The English key is Helm's own wording for macOS's «None» (see above).
+                let expected = key == "No timer" && language == .en ? key : sentence(word, language)
+                XCTAssertEqual(L(key, language: language), expected, "\(language): \(key)")
+                compared += 1
+            }
+        }
+        XCTAssertEqual(compared, pairs.count * AppLanguage.allCases.count)
+    }
+
+    /// The folder choice at the end of Save to is macOS's «Other…» from the same
+    /// table, and its own key — KeepAwake's «Other…» stays — so Portuguese can say
+    /// «Outra…» for a folder.
+    func testTheFolderChoiceIsMacOSsOtherInEveryLanguage() throws {
+        let capture = try table(Self.capture)
+        AppLanguage.each { language in
+            guard let word = capture[system(language)]?["Other…"] else { return XCTFail("\(language): macOS has no Other…") }
+            // The English key is Helm's own wording, «Other folder…», since the
+            // English «Other…» does not say what it is other than; the seven
+            // translations are macOS's word.
+            XCTAssertEqual(ScStr.targetOther, language == .en ? "Other folder…" : word, "\(language)")
+        }
+        AppLanguage.only(.pt) { XCTAssertEqual(ScStr.targetOther, "Outra…") }
+    }
+
+    /// «Save to» and «Save folder» are two things and read as two in every language
+    /// (Japanese had one word, 保存先, for both).
+    func testSaveToAndSaveFolderAreTwoLabelsInEveryLanguage() {
+        AppLanguage.each { language in
+            XCTAssertNotEqual(ScStr.saveTo, ScStr.folder, "\(language)")
+        }
+    }
+
+    /// The page and the bar name the thumbnail the same, macOS's way: the key the
+    /// bar test above compares, and no second wording for it on the page.
+    func testThePageAndTheBarShareOneThumbnailKey() throws {
+        let page = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift")
+        XCTAssertTrue(page.contains("ScStr.floatingThumbnail"), "the page does not use the bar's thumbnail key")
+        XCTAssertFalse(page.contains("ScStr.thumbnail,") || page.contains("ScStr.thumbnail)"), "the page has a wording of its own")
+    }
+
+    /// «5 seconds» and «10 seconds» are macOS's own plural, taken at 5 and at 10 — the Russian
+    /// is the genitive plural at both, which is why they are two keys.
+    func testTheTimerChoicesAreMacOSsSecondsInEveryLanguage() throws {
+        let data = try XCTUnwrap(FileManager.default.contents(atPath: Self.capture))
+        let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+        AppLanguage.each { language in
+            let entry = (plist[system(language)] as? [String: Any])?["%d Seconds"] as? [String: Any]
+            let forms = entry?["seconds"] as? [String: Any]
+            let form = language == .ru ? "many" : "other"
+            guard let pattern = forms?[form] as? String else { return XCTFail("\(language): no \(form) form") }
+            for (key, number) in [("5 seconds", 5), ("10 seconds", 10)] {
+                let expected = pattern.replacingOccurrences(of: "%2$@", with: String(number))
+                XCTAssertEqual(L(key, language: language), language == .en ? expected.lowercased() : expected,
+                               "\(language): \(key)")
+            }
+        }
+    }
+
+    /// Box 184's name is the one macOS's Keyboard pane draws.
+    func testThePanelBoxIsNamedAsMacOSNamesIt() throws {
+        let keyboard = try table(Self.keyboard)
+        AppLanguage.each { language in
+            XCTAssertEqual(ScStr.boxName(.panel),
+                           keyboard[system(language)]?["Screenshot and recording options"] ?? "<not in macOS>",
+                           "\(language)")
+        }
+    }
+
     func testTheModuleNameAndThePaneNameAreMacOSsToo() throws {
         let keyboard = try table(Self.keyboard), privacy = try table(Self.privacy)
         AppLanguage.each { language in

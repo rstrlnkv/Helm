@@ -51,6 +51,7 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     private var _freeze: FreezeOutcome = .failed
     private var _windows: [UInt32: WindowShot] = [:]
     private var _freezeCalls = 0, _requestCalls = 0, _windowCalls = 0
+    private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = []
 
     var grant: CaptureAccess {
         get { lock.withLock { _access } }
@@ -67,12 +68,18 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     var freezeCalls: Int { lock.withLock { _freezeCalls } }
     var requestCalls: Int { lock.withLock { _requestCalls } }
     var windowCalls: Int { lock.withLock { _windowCalls } }
+    /// What each call was asked about the pointer, in order — what a session
+    /// reads from the setting and hands the port.
+    var freezeCursors: [Bool] { lock.withLock { _freezeCursors } }
+    var windowCursors: [Bool] { lock.withLock { _windowCursors } }
 
     func access() -> CaptureAccess { lock.withLock { _access } }
     func requestAccess() { lock.withLock { _requestCalls += 1 } }
-    func freeze() async -> FreezeOutcome { lock.withLock { _freezeCalls += 1; return _freeze } }
-    func window(_ id: UInt32) async -> WindowShot {
-        lock.withLock { _windowCalls += 1; return _windows[id] ?? .gone }
+    func freeze(cursor: Bool) async -> FreezeOutcome {
+        lock.withLock { _freezeCalls += 1; _freezeCursors.append(cursor); return _freeze }
+    }
+    func window(_ id: UInt32, cursor: Bool) async -> WindowShot {
+        lock.withLock { _windowCalls += 1; _windowCursors.append(cursor); return _windows[id] ?? .gone }
     }
 }
 
@@ -84,6 +91,7 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
     private var _taken: Set<String> = []
     private var _refuse: WriteRefusal?
     private var _written: [(url: URL, bytes: Int)] = []
+    private var _data: [Data] = []
 
     var taken: Set<String> {
         get { lock.withLock { _taken } }
@@ -94,16 +102,19 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
         set { lock.withLock { _refuse = newValue } }
     }
     var written: [(url: URL, bytes: Int)] { lock.withLock { _written } }
+    /// The bytes of each file written, in order.
+    var contents: [Data] { lock.withLock { _data } }
 
-    func write(_ png: Data, into folder: URL, base: String) -> ShotWrite {
+    func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
         lock.withLock {
             if let refusal = _refuse { return .refused(refusal) }
             for attempt in 0..<ShotNames.limit {
-                let name = ShotNames.candidate(base: base, pathExtension: "png", attempt: attempt)
+                let name = ShotNames.candidate(base: base, pathExtension: pathExtension, attempt: attempt)
                 if _taken.contains(name) { continue }
                 _taken.insert(name)
                 let url = folder.appendingPathComponent(name)
                 _written.append((url, png.count))
+                _data.append(png)
                 return .written(url)
             }
             return .refused(.namesExhausted)
@@ -133,6 +144,7 @@ final class FakePreferences: CapturePreferences, @unchecked Sendable {
     private let lock = NSLock()
     private var _location: RawSetting = RawSetting(nil)
     private var _hotkeys: SymbolicHotkeysReading = .absent
+    private var _uiSounds: RawSetting = RawSetting(nil)
     var savedLocation: Any? {
         get { lock.withLock { _location.value } }
         set { lock.withLock { _location = RawSetting(newValue) } }
@@ -141,8 +153,22 @@ final class FakePreferences: CapturePreferences, @unchecked Sendable {
         get { lock.withLock { _hotkeys } }
         set { lock.withLock { _hotkeys = newValue } }
     }
+    /// `com.apple.sound.uiaudio.enabled`: absent, 0, 1 or anything a file can hold.
+    var uiAudio: Any? {
+        get { lock.withLock { _uiSounds.value } }
+        set { lock.withLock { _uiSounds = RawSetting(newValue) } }
+    }
+    func uiSounds() -> RawSetting { lock.withLock { _uiSounds } }
     func location() -> RawSetting { lock.withLock { _location } }
     func symbolicHotkeys() -> SymbolicHotkeysReading { lock.withLock { _hotkeys } }
+}
+
+/// Counts the shutters it was asked to play, and plays nothing.
+final class FakeShutter: ShutterPlaying, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _plays = 0
+    var plays: Int { lock.withLock { _plays } }
+    func play() { lock.withLock { _plays += 1 } }
 }
 
 /// Everything a capture needs, every port named at the construction — a
@@ -153,6 +179,7 @@ struct Rig {
     let writer = FakeWriter()
     let pasteboard = FakePasteboard()
     let preferences = FakePreferences()
+    let shutter = FakeShutter()
     let home: URL
     let desktop: URL
     var settings: ScreenshotsSettings = .defaults
@@ -164,7 +191,7 @@ struct Rig {
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
         session = CaptureSession(
-            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences,
+            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences, shutter: shutter,
             settings: { settings }, naming: { .english }, now: { fixed },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
     }

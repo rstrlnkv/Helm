@@ -48,9 +48,13 @@ public protocol ScreenCapturing: Sendable {
     /// never appears in the Screen Recording list at all.
     func requestAccess()
     /// Every display at native scale, and the window list in front-to-back
-    /// order, in one go. Helm's own windows are not in either.
-    func freeze() async -> FreezeOutcome
-    func window(_ id: UInt32) async -> WindowShot
+    /// order, in one go. Helm's own windows are not in either. With `cursor`
+    /// the display the pointer is on also comes back a second time with the
+    /// pointer drawn in (`FrozenDisplay.withCursor`); without it that costs nothing.
+    func freeze(cursor: Bool) async -> FreezeOutcome
+    /// One window with its shadow, over a transparent ground, so larger than
+    /// the window's frame.
+    func window(_ id: UInt32, cursor: Bool) async -> WindowShot
 }
 
 /// Why a picture was not written.
@@ -74,11 +78,11 @@ public enum ShotWrite: Sendable, Equatable {
 
 /// Writing one picture into a folder without ever replacing a file.
 ///
-/// `base` is the name without an extension; the port finds the first free one
-/// with `ShotNames.candidate`, and **a name taken is not an error**. The
+/// `base` is the name without an extension and `pathExtension` the one the bytes
+/// are in ("png", "jpg"); the port finds the first free one with `ShotNames.candidate`, and **a name taken is not an error**. The
 /// answer is the file actually written, because the name asked for may not be it.
 public protocol ShotWriting: Sendable {
-    func write(_ png: Data, into folder: URL, base: String) -> ShotWrite
+    func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite
 }
 
 public enum PasteOutcome: Sendable, Equatable {
@@ -97,11 +101,11 @@ public struct RawSetting: @unchecked Sendable {
     public init(_ value: Any?) { self.value = value }
 }
 
-/// What macOS says about itself in two preference domains Helm only **reads**.
+/// What macOS says about itself in three preference reads Helm only **reads**.
 ///
-/// Neither is ever written: `com.apple.screencapture` is where macOS keeps the
-/// save folder, and `com.apple.symbolichotkeys` is where it keeps which of its
-/// own shortcuts are ticked. Changing a system shortcut is the person's act in
+/// None is ever written: `com.apple.screencapture` is where macOS keeps the
+/// save folder, `com.apple.symbolichotkeys` is where it keeps which of its
+/// own shortcuts are ticked, and the global domain holds the interface-sound switch. Changing a system shortcut is the person's act in
 /// System Settings; Helm opens the pane and says what to untick.
 public protocol CapturePreferences: Sendable {
     /// `location`, raw. **Every reason it may be empty is `nil`:** the key is
@@ -110,4 +114,16 @@ public protocol CapturePreferences: Sendable {
     /// Desktop", and neither is worth a log line.
     func location() -> RawSetting
     func symbolicHotkeys() -> SymbolicHotkeysReading
+    /// `com.apple.sound.uiaudio.enabled` in the global domain, raw. **Every
+    /// reason it may be empty is `nil`:** the key is absent, which is the
+    /// ordinary state and means on, and nothing tells that from a domain that
+    /// could not be read — `ShutterRule` reads both as on.
+    func uiSounds() -> RawSetting
+}
+
+/// The shutter. Fire and forget: it returns at once and says nothing, because a
+/// sound that could not be played is not worth a refusal toast. Whether to play
+/// is the session's decision (`CaptureSession.shutter`) and when is the caller's.
+public protocol ShutterPlaying: Sendable {
+    func play()
 }
