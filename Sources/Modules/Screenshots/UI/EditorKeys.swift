@@ -12,11 +12,19 @@ enum EditorExit: Equatable {
     case save
 }
 
-/// What a key means to the editor.
+/// What a key or a click on a bar means to the editor: **one vocabulary**, so that a
+/// tool key and the tool's button cannot do two different things. The keys name only
+/// some of these; the rest are the bars'.
 enum EditorAction: Equatable {
     case tool(AnnotationTool)
+    /// The next object's colour, thickness and, for the boxes, fill.
+    case color(AnnotationColor)
+    case thickness(AnnotationThickness)
+    case toggleFill
     case undo, redo
     case exit(EditorExit)
+    /// The bar's Close: Esc's own rule, which asks first when there are layers.
+    case close
 }
 
 /// **Keys by physical key code, never by character.** The owner types Russian: the

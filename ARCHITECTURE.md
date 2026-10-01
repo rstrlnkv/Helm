@@ -1313,7 +1313,7 @@ After a drag is released the overlay does not finish: it becomes the inline edit
 that area, a second phase of the same panel, and the picture under the layers is never
 touched. The layers are values in `Sources/Modules/Screenshots/Engine/Logic/Annotation.swift`
 and `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift` (undo, redo, the Esc
-rule with the clock passed in), in points of the display they were drawn on; the keys are
+rule, which reads no clock), in points of the display they were drawn on; the keys are
 read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
@@ -1323,6 +1323,20 @@ export's context both read; the pencil and the highlighter are freehand through 
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
 in the file. ⇧ is read from the flags of each event and never kept from the press.
+
+The editor has two bars, a vertical tool bar to the right of the selection and an action row below
+it, both views of the overlay's own panel (`Sources/Modules/Screenshots/UI/EditorBars.swift`) and not
+windows of their own. Where they stand is a pure function of the selection, the display's size and the
+two measured bar sizes (`EditorChrome` in `Sources/Modules/Screenshots/Engine/Logic/EditorChrome.swift`):
+outside the selection when there is room, inward against the same edge when there is not, and held on the
+display last, on the edited display only; they are gone while an object is drawn or an area dragged and
+back on the release. A press on a bar is the bar's and never reaches the picture. A key and a bar button
+are one vocabulary, `EditorAction`, performed by `CaptureOverlay.perform`, so a tool has one meaning
+however it was asked for. What the next object is drawn with — one of eight fixed sRGB colours, one of
+three thicknesses that set the outline, the arrow's shaft and the marker's width together, and fill for the
+boxes — is an `AnnotationStyle` the object is begun with; a colour never picked leaves each tool its own
+(red, and yellow for the marker), and the last tool and style are read once, at the first release of a
+capture, and written at each pick by `EditorMemory`, with every stored value bounded.
 
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`

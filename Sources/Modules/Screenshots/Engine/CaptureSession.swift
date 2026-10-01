@@ -216,13 +216,13 @@ public final class CaptureSession: @unchecked Sendable {
                     context.addPath(layer.outline)
                     if let stroke = layer.stroke {
                         context.setLineWidth(stroke.width)
-                        context.setLineCap(stroke.rounded ? .round : .butt)
-                        context.setLineJoin(stroke.rounded ? .round : .miter)
+                        context.setLineCap(stroke.cap)
+                        context.setLineJoin(stroke.join)
                         context.setStrokeColor(stroke.color)
                         if stroke.multiplies { context.setBlendMode(.multiply) }
                         context.strokePath()
                     } else {
-                        context.setFillColor(Annotation.ink)
+                        context.setFillColor(layer.fillColor)
                         context.fillPath()
                     }
                     context.restoreGState()

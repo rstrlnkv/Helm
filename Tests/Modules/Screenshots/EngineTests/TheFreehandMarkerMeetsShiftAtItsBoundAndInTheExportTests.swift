@@ -70,7 +70,7 @@ final class TheFreehandMarkerMeetsShiftAtItsBoundAndInTheExportTests: XCTestCase
     }
 
     func testAFreehandMarkerIsMultipliedAndSixteenPointsTimesTheScaleWide() async throws {
-        // A bent stroke: along y = 40 from x = 10 to 50, then up to y = 30 at x = 50, so a column at x = 30 crosses one flat part.
+        // A straight run of four points along y = 40 from x = 10 to 70: a column at x = 30 crosses it once.
         let points = [CGPoint(x: 10, y: 40), CGPoint(x: 30, y: 40), CGPoint(x: 50, y: 40), CGPoint(x: 70, y: 40)]
         let layer = Annotation(tool: .highlighter, start: points[0], end: points[3], points: points)
         for scale in [CGFloat(1), 2] {
@@ -85,12 +85,20 @@ final class TheFreehandMarkerMeetsShiftAtItsBoundAndInTheExportTests: XCTestCase
             XCTAssertEqual(column[Int(40 * scale)][2], 117, accuracy: 6, "\(scale)x: over white")
             XCTAssertEqual(rows(out, x: Int(30 * scale))[0], [0, 0, 0], "\(scale)x: the black band outside the stroke is untouched")
         }
-        // The same stroke over a black band must stay black: the multiply, not a plain paint.
+        // A freehand stroke over a black band must stay black: the multiply, not a plain paint.
         let band = Annotation(tool: .highlighter, start: CGPoint(x: 10, y: 5), end: CGPoint(x: 70, y: 5),
                               points: [CGPoint(x: 10, y: 5), CGPoint(x: 40, y: 5), CGPoint(x: 70, y: 5)])
         let rig = Rig(home: scratchDirectory("shots-freehand-marker-black"))
         let drawn = await rig.session.annotated(freeze(scale: 2), display: DisplayID(1),
                                                 local: CGRect(x: 0, y: 0, width: 100, height: 60), layers: [band])
         XCTAssertEqual(rows(try XCTUnwrap(drawn), x: 80)[10], [0, 0, 0], "a marker over black must stay black")
+    }
+
+    /// A freehand marker turns corners: a mitre spikes out of every sharp turn of the stroke,
+    /// so its join is round in the value the export and the overlay both read.
+    func testTheMarkerStrokeJoinsRound() throws {
+        let points = [CGPoint(x: 10, y: 10), CGPoint(x: 50, y: 12), CGPoint(x: 12, y: 14)]
+        let marker = Annotation(tool: .highlighter, start: points[0], end: points[2], points: points)
+        XCTAssertEqual(try XCTUnwrap(marker.stroke).join, .round, "the marker's corners are not round")
     }
 }

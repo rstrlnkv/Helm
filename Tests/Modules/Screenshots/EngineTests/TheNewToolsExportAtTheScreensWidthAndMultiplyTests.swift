@@ -60,7 +60,8 @@ final class TheNewToolsExportAtTheScreensWidthAndMultiplyTests: XCTestCase {
     }
 
     func testTheMarkerMultipliesADarkPixelStaysDarkAndAWhiteOneTakesTheTint() async throws {
-        let marker = Annotation(tool: .highlighter, start: CGPoint(x: 10, y: 30), end: CGPoint(x: 90, y: 30))
+        let marker = Annotation(tool: .highlighter, start: CGPoint(x: 10, y: 30), end: CGPoint(x: 90, y: 30),
+                                points: [CGPoint(x: 10, y: 30), CGPoint(x: 50, y: 30), CGPoint(x: 90, y: 30)])
         for scale in [CGFloat(1), 2] {
             let out = try await export(marker, scale: scale, name: "shots-marker-\(Int(scale))")
             let row = Int(30 * scale)

@@ -49,14 +49,16 @@ public struct AnnotationEditing: Sendable {
                        y: min(max(point.y, bounds.minY), bounds.maxY))
     }
 
-    public mutating func begin(_ tool: AnnotationTool, at point: CGPoint) {
+    /// `style` is what the object is drawn with from now to the end of it: a colour picked
+    /// during the drag belongs to the next object.
+    public mutating func begin(_ tool: AnnotationTool, at point: CGPoint, style: AnnotationStyle = .standard) {
         disarm()
         guard let point = clamp(point) else { return }
         pointer = point
         gap = Annotation.pencilGap
         let freehand = tool == .pencil || tool == .highlighter
         trail = freehand ? [point] : []
-        draft = Annotation(tool: tool, start: point, end: point, points: trail)
+        draft = Annotation(tool: tool, start: point, end: point, points: trail, style: style)
     }
 
     /// `shift` is the flag of **this** event, never one kept from the press: no release
@@ -83,14 +85,17 @@ public struct AnnotationEditing: Sendable {
             if points.last != pointer { points.append(pointer) }
             if shift, current.tool == .highlighter {
                 let end = fit(Annotation.constrained(.highlighter, from: current.start, to: pointer, shift: true), from: current.start)
-                draft = Annotation(tool: .highlighter, start: current.start, end: end, points: [current.start, end])
+                draft = Annotation(tool: .highlighter, start: current.start, end: end, points: [current.start, end],
+                                   style: current.style)
             } else {
-                draft = Annotation(tool: current.tool, start: current.start, end: pointer, points: points)
+                draft = Annotation(tool: current.tool, start: current.start, end: pointer, points: points,
+                                   style: current.style)
             }
             return
         }
         let wanted = Annotation.constrained(current.tool, from: current.start, to: pointer, shift: shift, within: bounds)
-        draft = Annotation(tool: current.tool, start: current.start, end: fit(wanted, from: current.start))
+        draft = Annotation(tool: current.tool, start: current.start, end: fit(wanted, from: current.start),
+                               style: current.style)
     }
 
     /// Keeps `point` in the trail when it is a full spacing from the last kept one. At

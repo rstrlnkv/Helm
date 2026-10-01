@@ -55,6 +55,14 @@ enum OverlayResult {
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
+    /// What the next object is drawn with; picked on the tool bar, read from the store when
+    /// the first area is released, and kept across the areas of one capture.
+    private var style = AnnotationStyle.standard
+    /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
+    /// remembers nothing.
+    private let store: NamespacedStore?
+    /// What the two bars show; their buttons come back through `perform`.
+    let bars = EditorBarModel()
 
     /// What the overlay opened on, for a test that must know the bar's Area mode
     /// handed it the remembered selection and no other press did.
@@ -68,11 +76,13 @@ enum OverlayResult {
     }
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         onFinish: @escaping (OverlayResult) -> Void) {
+         store: NamespacedStore? = nil, onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
+        self.store = store
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
         self.onFinish = onFinish
+        bars.perform = { [weak self] in self?.perform($0) }
     }
 
     // MARK: - Lifecycle
@@ -166,6 +176,12 @@ enum OverlayResult {
 
     func mouseDown(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        // A press on a bar is the bar's: never a draft, never a new area. Its background is an
+        // input like any other, so it withdraws Esc's question as a button does.
+        if chrome(on: display)?.covers(local) == true {
+            if var current = edit, drag == nil { current.layers.disarm(); edit = current; render() }
+            return
+        }
         if var current = edit, drag == nil {
             current.layers.disarm()
             // A tool draws on the edited display only; no tool and no layers is
@@ -174,7 +190,7 @@ enum OverlayResult {
             if let tool = current.tool {
                 // The disarm above is the click's own effect, kept whichever display it was on.
                 guard display == current.display else { edit = current; render(); return }
-                current.layers.begin(tool, at: local)
+                current.layers.begin(tool, at: local, style: style)
                 edit = current
                 render()
                 return
@@ -250,7 +266,14 @@ enum OverlayResult {
         drag = nil
         preselected = nil
         spaceHeld = false
-        edit = (display, rect, AnnotationEditing(bounds: rect), edit?.tool)
+        // The first area of a capture opens on what was used last; the next ones keep what was picked since.
+        var tool = edit?.tool
+        if edit == nil, let store {
+            let remembered = EditorMemory.read(store)
+            tool = remembered.tool
+            style = remembered.style
+        }
+        edit = (display, rect, AnnotationEditing(bounds: rect), tool)
         render()
     }
 
@@ -308,24 +331,43 @@ enum OverlayResult {
     /// A key while an area is being edited, read by its physical code: Space and
     /// every key the editor has no use for only withdraw a question asked by Esc.
     private func editorKey(_ event: NSEvent) {
-        guard var current = edit else { return }
+        perform(EditorKeys.action(keyCode: event.keyCode, flags: event.modifierFlags), isRepeat: event.isARepeat)
+    }
+
+    /// The one door of the editor: a key and a click on a bar both come here, so a tool has
+    /// one meaning however it was asked for. Nil is an input with no action, which only
+    /// withdraws Esc's question.
+    func perform(_ action: EditorAction?, isRepeat: Bool = false) {
+        guard var current = edit, drag == nil else { return }
+        // Close is Esc's own door and carries Esc's question with it: disarming first would ask again for ever.
+        if action == .close { escapeAsked(); return }
         current.layers.disarm()
         defer { edit = current; render() }
-        switch EditorKeys.action(keyCode: event.keyCode, flags: event.modifierFlags) {
+        switch action {
         case .tool(let tool)?:
             // The same key again puts the tool down, which is how a drag selects again;
             // a held key's repeats are not that second press.
-            guard !event.isARepeat else { return }
+            guard !isRepeat else { return }
             current.tool = current.tool == tool ? nil : tool
+            if let store { EditorMemory.remember(tool: current.tool, in: store) }
+        case .color(let color)?:
+            style.color = color
+            if let store { EditorMemory.remember(style: style, in: store) }
+        case .thickness(let step)?:
+            style.thickness = step
+            if let store { EditorMemory.remember(style: style, in: store) }
+        case .toggleFill?:
+            style.filled.toggle()
+            if let store { EditorMemory.remember(style: style, in: store) }
         case .undo?: current.layers.undo()
         case .redo?: current.layers.redo()
         case .exit(let how)?:
-            guard !event.isARepeat else { return }
+            guard !isRepeat else { return }
             // What the screen shows is what is delivered: a stroke still under the
             // pointer becomes a layer now, and an unusable one is dropped by `end`.
             current.layers.end()
             finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
-        case nil: break
+        case .close?, nil: break
         }
     }
 
@@ -345,7 +387,18 @@ enum OverlayResult {
         CGPoint(x: mouse.x - panel.frame.minX, y: height - (mouse.y - panel.frame.minY))
     }
 
+    /// Where the bars stand on `display`: nil when it is not the edited one, and nil while an
+    /// object is being drawn — a bar under the pointer would be drawn into — or a new area is
+    /// being dragged. They are back on the release.
+    func chrome(on display: DisplayID) -> EditorChrome? {
+        guard let edit, drag == nil, edit.layers.draft == nil, edit.display == display,
+              let view = panels[display]?.view else { return nil }
+        let sizes = view.barSizes
+        return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, tools: sizes.tools, actions: sizes.actions)
+    }
+
     private func render() {
+        if let edit { bars.show(tool: edit.tool, style: style, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo) }
         for (id, entry) in panels {
             var scene = OverlayScene()
             scene.windowMode = mode == .window
@@ -354,6 +407,7 @@ enum OverlayResult {
             else if let edit, edit.display == id {
                 scene.selection = edit.rect
                 scene.editing = drag == nil
+                scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 if edit.layers.isArmed {
                     scene.plate = ScStr.confirmClose
@@ -380,6 +434,8 @@ struct OverlayScene {
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
+    /// Where the two bars stand; nil is none on this display, or none while drawing.
+    var chrome: EditorChrome?
     /// What Esc asked, while it is waiting for its second press.
     var plate: String?
     /// Where the pointer is while the plate is up, in display-top-left points; the
@@ -427,12 +483,36 @@ final class OverlayView: NSView {
     private let dimLayer = CAShapeLayer()
     private let highlightLayer = CAShapeLayer()
     private let selectionLayer = CAShapeLayer()
-    /// The editor's layers, clipped to the selection: one shape layer each, in a
-    /// layer that is the selection's own size so that the clip is its bounds.
-    private let layersClip = CALayer()
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
+    /// The editor's two bars, made when this display first has an area to edit and never
+    /// on another: a display with nothing selected builds no SwiftUI at all.
+    private lazy var toolsHost = EditorBarHostingView(rootView: EditorToolBar(model: overlay!.bars))
+    private lazy var actionsHost = EditorBarHostingView(rootView: EditorActionRow(model: overlay!.bars))
+    private var barsMade = false
+    private lazy var measuredBars: (tools: CGSize, actions: CGSize) = {
+        barsMade = true
+        addSubview(toolsHost)
+        addSubview(actionsHost)
+        toolsHost.isHidden = true
+        actionsHost.isHidden = true
+        return (toolsHost.fittingSize, actionsHost.fittingSize)
+    }()
+
+    /// What the bars measure in the language the overlay opened in; measured once, since the
+    /// language cannot change under a capture that is up.
+    var barSizes: (tools: CGSize, actions: CGSize) { measuredBars }
+
+    /// Whether the bars are on screen, for a test.
+    var barsAreShown: Bool { barsMade && !toolsHost.isHidden && !actionsHost.isHidden }
+    /// The view a click at a display-local point would reach, for a test that asks whether it is a bar.
+    func clickTarget(at local: CGPoint) -> NSView? { hitTest(CGPoint(x: local.x, y: bounds.height - local.y)) }
+    /// Whether a view is one of the bars or inside one.
+    func isBar(_ view: NSView?) -> Bool {
+        guard barsMade, let view else { return false }
+        return view.isDescendant(of: toolsHost) || view.isDescendant(of: actionsHost)
+    }
 
     var drawnPicture: CGImage? {
         guard let contents = imageLayer.contents, CFGetTypeID(contents as CFTypeRef) == CGImage.typeID
@@ -470,12 +550,10 @@ final class OverlayView: NSView {
         crosshairLayer.shadowRadius = 0
         crosshairLayer.shadowOffset = .zero
 
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, layersClip, crosshairLayer,
+        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
-        layersClip.masksToBounds = true
-        layersClip.isHidden = true
         imageLayer.frame = bounds
         dimLayer.frame = bounds
         for label in [coordinateLabel, sizeLabel] { label.isHidden = true }
@@ -570,6 +648,16 @@ final class OverlayView: NSView {
         selectionLayer.path = scene.selection.map { CGPath(rect: layerRect($0), transform: nil) }
 
         drawLayers(scene)
+        if let chrome = scene.chrome {
+            _ = measuredBars
+            toolsHost.frame = layerRect(chrome.tools)
+            actionsHost.frame = layerRect(chrome.actions)
+            toolsHost.isHidden = false
+            actionsHost.isHidden = false
+        } else if barsMade {
+            toolsHost.isHidden = true
+            actionsHost.isHidden = true
+        }
 
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
         if let at, !scene.windowMode {
@@ -616,38 +704,46 @@ final class OverlayView: NSView {
         }
     }
 
-    /// One shape layer per annotation, in the clip's own bottom-left points: the
-    /// path is the annotation's top-left one turned over inside the selection.
+    /// One shape layer per annotation, each a **direct child of the view's layer**, between the picture
+    /// and the dim, in the annotations' own order. Not inside a clipping parent: a layer's
+    /// `compositingFilter` blends with what is beneath it in the same parent only, so a marker nested in
+    /// a clip came out olive over black text where the export multiplies to black. The selection is the
+    /// clip all the same, by geometry — the outline of the stroke, intersected with the selection's
+    /// rectangle, filled — and the dim's hole is what leaves it undimmed.
     private func drawLayers(_ scene: OverlayScene) {
-        layersClip.sublayers = nil
-        guard scene.editing, let selection = scene.selection else { layersClip.isHidden = true; return }
-        layersClip.isHidden = false
-        layersClip.frame = layerRect(selection)
-        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: -selection.minX, ty: selection.maxY)
+        for shape in drawnShapes { shape.removeFromSuperlayer() }
+        drawnShapes = []
+        guard scene.editing, let selection = scene.selection else { return }
+        let box = CGPath(rect: layerRect(selection), transform: nil)
+        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
         for annotation in scene.layers {
             let shape = CAShapeLayer()
             shape.contentsScale = frozen.scale
-            shape.frame = layersClip.bounds
-            shape.path = annotation.outline.copy(using: &turn)
-            if let stroke = annotation.stroke {
-                shape.fillColor = nil
-                shape.strokeColor = stroke.color
-                shape.lineWidth = stroke.width
-                shape.lineCap = stroke.rounded ? .round : .butt
-                shape.lineJoin = stroke.rounded ? .round : .miter
+            shape.frame = bounds
+            let path = annotation.outline.copy(using: &turn)
+            if let stroke = annotation.stroke, let path {
+                let line = path.copy(strokingWithWidth: stroke.width, lineCap: stroke.cap, lineJoin: stroke.join,
+                                     miterLimit: 10)
+                shape.path = line.intersection(box)
+                shape.fillColor = stroke.color
                 // The export's `.multiply` blend; a layer composites with the picture
                 // beneath it by this filter name.
                 if stroke.multiplies { shape.compositingFilter = "multiplyBlendMode" }
             } else {
-                shape.fillColor = Annotation.ink
-                shape.strokeColor = nil
+                shape.path = path?.intersection(box)
+                shape.fillColor = annotation.fillColor
             }
-            layersClip.addSublayer(shape)
+            shape.strokeColor = nil
+            layer?.insertSublayer(shape, below: dimLayer)
+            drawnShapes.append(shape)
         }
     }
 
     /// The layers on screen, for a test that must see the editor drew what it holds.
-    var drawnLayerCount: Int { layersClip.isHidden ? 0 : layersClip.sublayers?.count ?? 0 }
+    var drawnLayerCount: Int { drawnShapes.count }
+
+    /// The layers of the editor, for a test that reads what a layer is made of.
+    private(set) var drawnShapes: [CAShapeLayer] = []
 
     /// The plates on screen, so a test can ask how many there are and where.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }

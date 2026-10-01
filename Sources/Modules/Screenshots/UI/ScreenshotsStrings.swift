@@ -121,6 +121,52 @@ enum ScStr {
         L("That folder cannot be used, so Helm saves to the Desktop.")
     }
 
+    // MARK: - The editor's bars
+
+    /// The tools, in the words of macOS's own Preview markup menu; the ellipse is
+    /// «Oval» there, and «Highlight» is its marker.
+    static func tool(_ tool: AnnotationTool) -> String {
+        switch tool {
+        case .arrow: L("Arrow")
+        case .rectangle: L("Rectangle")
+        case .ellipse: L("Oval")
+        case .line: L("Line")
+        case .pencil: L("Pencil")
+        case .highlighter: L("Highlight")
+        }
+    }
+
+    /// The colours: the six Helm's palette already names, and «Black» from AppKit's colour panel.
+    static func ink(_ color: AnnotationColor) -> String {
+        switch color {
+        case .red: L("Red")
+        case .orange: L("Orange")
+        case .yellow: L("Yellow")
+        case .green: L("Green")
+        case .blue: L("Blue")
+        case .purple: L("Purple")
+        case .black: L("Black")
+        case .white: L("White")
+        }
+    }
+
+    static func thickness(_ step: AnnotationThickness) -> String {
+        switch step {
+        case .thin: L("Thin")
+        case .medium: L("Medium")
+        case .thick: L("Thick")
+        }
+    }
+
+    static var fill: String { L("Filled") }
+    /// Preview's «Undo» and «Redo».
+    static var undo: String { L("Undo") }
+    static var redo: String { L("Redo") }
+    static var copy: String { L("Copy") }
+    /// Preview's «Save».
+    static var save: String { L("Save") }
+    static var closeEditor: String { L("Close") }
+
     // MARK: - The toast
 
     /// The word in a file name and on a thumbnail. One key, macOS's own word.

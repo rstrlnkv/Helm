@@ -158,7 +158,7 @@ final class TheNewToolsMeetInputsNobodyFedThemTests: XCTestCase {
         XCTAssertEqual(editing.escape(), .armed)
         editing.modifiersChanged(shift: true)
         XCTAssertNil(editing.draft)
-        XCTAssertTrue(editing.isArmed, "a modifier alone is not an input that withdraws the question (see report)")
+        XCTAssertTrue(editing.isArmed, "a modifier alone is not an input that withdraws the question")
         XCTAssertEqual(editing.escape(), .close)
     }
 
@@ -184,8 +184,10 @@ final class TheNewToolsMeetInputsNobodyFedThemTests: XCTestCase {
     }
 
     func testTwoMarkersOverOneAnotherMultiplyTwiceAtBothScales() async throws {
-        let first = Annotation(tool: .highlighter, start: CGPoint(x: 10, y: 30), end: CGPoint(x: 60, y: 30))
-        let second = Annotation(tool: .highlighter, start: CGPoint(x: 40, y: 30), end: CGPoint(x: 90, y: 30))
+        let first = Annotation(tool: .highlighter, start: CGPoint(x: 10, y: 30), end: CGPoint(x: 60, y: 30),
+                               points: [CGPoint(x: 10, y: 30), CGPoint(x: 35, y: 30), CGPoint(x: 60, y: 30)])
+        let second = Annotation(tool: .highlighter, start: CGPoint(x: 40, y: 30), end: CGPoint(x: 90, y: 30),
+                                points: [CGPoint(x: 40, y: 30), CGPoint(x: 65, y: 30), CGPoint(x: 90, y: 30)])
         for scale in [CGFloat(1), 2] {
             let rig = Rig(home: scratchDirectory("shots-two-markers-\(Int(scale))"))
             let drawn = await rig.session.annotated(freeze(scale: scale), display: DisplayID(1),

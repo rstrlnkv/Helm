@@ -184,7 +184,7 @@ struct CapturedShot {
             // option is on.
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
-            let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection) { [weak self] result in
+            let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store) { [weak self] result in
                 self?.overlayFinished(result, freeze: freeze)
             }
             self.overlay = overlay

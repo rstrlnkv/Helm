@@ -114,6 +114,11 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let timer = "timer"
         public static let rememberSelection = "rememberSelection"
         public static let panelMode = "panelMode"
+        /// The editor's memory, read by `EditorMemory` and not by `ScreenshotsSettings`.
+        public static let editorTool = "editorTool"
+        public static let editorColor = "editorColor"
+        public static let editorThickness = "editorThickness"
+        public static let editorFill = "editorFill"
     }
 }
 
