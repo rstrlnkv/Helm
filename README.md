@@ -52,8 +52,8 @@ bundle a release ships is arm64 only. There is no Intel build and no back-deploy
 
 Permissions are asked for where they are turned on, not at first launch: Accessibility
 for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modules that
-read protected folders. Because the build is signed ad-hoc, macOS ties a grant to the
-exact binary — every reinstall costs both toggles again.
+read protected folders, Screen & System Audio Recording for Screenshots. Because the build is signed ad-hoc, macOS ties a grant to the
+exact binary — every reinstall costs every toggle again.
 
 Three hosts Helm reaches over the network: `api.github.com` for update checks,
 `cloudflare.com/cdn-cgi/trace` when VPN resolves a region, and

@@ -109,7 +109,8 @@ struct SidebarComposerSheet: View {
     /// **A resized window can still be shorter than the sheet, and this does
     /// not know.** `contentMinSize` is 540 and the frame is autosaved, so on a
     /// window somebody has made small the sheet hangs below the parent's bottom
-    /// edge — 160 pt at worst, where it was 120 before. The fix is a cap that
+    /// edge — 220 pt at worst (760 against the 540 minimum), where it was
+    /// 160 at 700 and 120 before that. The fix is a cap that
     /// follows the *presenting* window rather than the default size, which is a
     /// larger change than a constant and is written down as its own piece of
     /// work rather than half-done here.

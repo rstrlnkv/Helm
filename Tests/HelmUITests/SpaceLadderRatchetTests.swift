@@ -121,7 +121,7 @@ final class SpaceLadderRatchetTests: XCTestCase {
     func testTheScanReadsEveryModuleAndTheDesignSystem() throws {
         let files = try UISources.files()
         let modules = try UISources.moduleNames()
-        XCTAssertEqual(modules.count, 10, "the manifest lists \(modules): \(modules.count) modules")
+        XCTAssertEqual(modules.count, 11, "the manifest lists \(modules): \(modules.count) modules")
         for module in modules {
             XCTAssertTrue(files.contains { $0.hasPrefix("Sources/Modules/\(module)/UI") },
                           "\(module) is in the manifest and not in the scan")

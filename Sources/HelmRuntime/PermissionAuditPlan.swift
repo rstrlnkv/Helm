@@ -11,11 +11,14 @@ public enum PermissionAuditPlan {
     /// Nil when there is nothing to say — which is most launches.
     public static func missing(fullDisk: PermissionState,
                                accessibility: PermissionState,
+                               screenRecording: PermissionState,
                                needsFullDisk: Bool,
-                               needsAccessibility: Bool) -> [PermissionNeed] {
+                               needsAccessibility: Bool,
+                               needsScreenRecording: Bool) -> [PermissionNeed] {
         var out: [PermissionNeed] = []
         if needsFullDisk, fullDisk == .denied { out.append(.fullDiskAccess) }
         if needsAccessibility, accessibility == .denied { out.append(.accessibility) }
+        if needsScreenRecording, screenRecording == .denied { out.append(.screenRecording) }
         return out
     }
 

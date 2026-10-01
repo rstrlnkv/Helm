@@ -11,20 +11,43 @@ import XCTest
 final class PermissionAuditPlanTests: XCTestCase {
     func testOnlyWhatIsBothNeededAndMissingIsReported() {
         XCTAssertEqual(PermissionAuditPlan.missing(fullDisk: .denied, accessibility: .denied,
-                                                   needsFullDisk: true, needsAccessibility: true),
+                                                   screenRecording: .denied,
+                                                   needsFullDisk: true, needsAccessibility: true,
+                                                   needsScreenRecording: false),
                        [.fullDiskAccess, .accessibility])
         XCTAssertEqual(PermissionAuditPlan.missing(fullDisk: .denied, accessibility: .denied,
-                                                   needsFullDisk: false, needsAccessibility: true),
+                                                   screenRecording: .denied,
+                                                   needsFullDisk: false, needsAccessibility: true,
+                                                   needsScreenRecording: false),
                        [.accessibility])
+    }
+
+    /// A lapsed Screen Recording is named only when a module uses it, and never
+    /// instead of the others.
+    func testAScreenRecordingThatLapsedIsNamedOnlyWhenAModuleUsesIt() {
+        XCTAssertEqual(PermissionAuditPlan.missing(fullDisk: .granted, accessibility: .granted,
+                                                   screenRecording: .denied,
+                                                   needsFullDisk: false, needsAccessibility: false,
+                                                   needsScreenRecording: true),
+                       [.screenRecording])
+        XCTAssertTrue(PermissionAuditPlan.missing(fullDisk: .granted, accessibility: .granted,
+                                                  screenRecording: .denied,
+                                                  needsFullDisk: false, needsAccessibility: false,
+                                                  needsScreenRecording: false).isEmpty,
+                      "a grant nobody uses was reported as lapsed")
     }
 
     /// Nothing to say is the common case, and saying nothing is what it means.
     func testGrantedPermissionsAreSilent() {
         XCTAssertTrue(PermissionAuditPlan.missing(fullDisk: .granted, accessibility: .granted,
-                                                  needsFullDisk: true, needsAccessibility: true)
+                                                  screenRecording: .granted,
+                                                  needsFullDisk: true, needsAccessibility: true,
+                                                  needsScreenRecording: true)
                         .isEmpty)
         XCTAssertTrue(PermissionAuditPlan.missing(fullDisk: .denied, accessibility: .denied,
-                                                  needsFullDisk: false, needsAccessibility: false)
+                                                  screenRecording: .denied,
+                                                  needsFullDisk: false, needsAccessibility: false,
+                                                  needsScreenRecording: false)
                         .isEmpty)
     }
 

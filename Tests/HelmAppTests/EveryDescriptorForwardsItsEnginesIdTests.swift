@@ -17,6 +17,8 @@ import Module_Layout_Engine
 import Module_Layout_UI
 import Module_Leftovers_Engine
 import Module_Leftovers_UI
+import Module_Screenshots_Engine
+import Module_Screenshots_UI
 import Module_Uninstaller_Engine
 import Module_Uninstaller_UI
 import Module_VPN_Engine
@@ -48,6 +50,7 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
         (KeepAwakeDescriptor.self, KeepAwakeEngine.moduleID),
         (LayoutDescriptor.self, LayoutEngine.moduleID),
         (LeftoversDescriptor.self, LeftoversEngine.moduleID),
+        (ScreenshotsDescriptor.self, ScreenshotsEngine.moduleID),
         (UninstallerDescriptor.self, UninstallerEngine.moduleID),
         (VPNDescriptor.self, VPNEngine.moduleID),
     ]

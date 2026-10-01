@@ -86,6 +86,7 @@ struct HelmPanelContent: View {
     @State private var draftName = ""
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
+    @State private var screenRecording: PermissionState = .granted
 
     /// What a widget is made of.
     ///
@@ -198,12 +199,13 @@ struct HelmPanelContent: View {
     /// deleted again the moment somebody presses Grant — and deciding, on
     /// every read, whether an absent one was removed or never added.
     ///
-    /// «Leaves with it» is true because the two grants are re-read on every
+    /// «Leaves with it» is true because the grants are re-read on every
     /// opening. It was not: the probes ran from `onAppear`, this view is
     /// mounted once for the life of the app, and a notice that had been
     /// answered stayed pinned to the top of the panel until the next launch.
     private var permissionsWidget: Widget? {
-        let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
+        let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess,
+                                                 screenRecording: screenRecording)
         guard !missing.isEmpty else { return nil }
         return Widget(id: Self.permissionsWidget,
                       content: .module(AnyView(PermissionsWidget(withheld: missing))),
@@ -918,6 +920,7 @@ struct HelmPanelContent: View {
         // report the grants Helm held when it started.
         .helmTracksFullDiskAccess($diskAccess, alsoOn: .helmPanelDidShow)
         .helmTracksAccessibility($accessibility, alsoOn: .helmPanelDidShow)
+        .helmTracksScreenRecording($screenRecording, alsoOn: .helmPanelDidShow)
         // Liquid Glass, and no border of our own: glass supplies its specular
         // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
         // rather than 20 so the radius is concentric with the 14 pt tile cards

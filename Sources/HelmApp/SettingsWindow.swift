@@ -41,9 +41,15 @@ import HelmUI
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
     /// a sheet is drawn inside this window and the window's own content is the
-    /// ceiling. Two literal 700s in one target, with a comment claiming they
+    /// ceiling. Two literal heights in one target, with a comment claiming they
     /// were the same number, is a comment.
-    nonisolated static let defaultSize = NSSize(width: 1060, height: 700)
+    ///
+    /// The height is 760 by the owner's decision, up from 700: the eleventh
+    /// module (Screenshots, in Utilities) makes the shipped composer measure 723,
+    /// which 700 could not hold. 760 holds the eleven with 37 pt to spare, which
+    /// is less than the 40 pt row a twelfth module adds, so a twelfth wants the
+    /// window raised again.
+    nonisolated static let defaultSize = NSSize(width: 1060, height: 760)
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
@@ -511,6 +517,7 @@ private struct SettingsSidebar: View {
     /// Settings, which means this window is behind while it happens.
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
+    @State private var screenRecording: PermissionState = .granted
 
     /// Whether a module has declared it can do nothing without a permission
     /// macOS is currently withholding.
@@ -534,12 +541,15 @@ private struct SettingsSidebar: View {
             switch need {
             case .fullDisk: return diskAccess == .denied
             case .accessibility: return accessibility == .denied
-            // Not probeable, and not withheld in the same sense: screen
-            // recording is asked for by the system at the moment it is needed,
-            // and the admin helper is a password prompt, not a grant that can
-            // silently go missing. A warning we cannot verify is worse than
-            // none.
-            case .screenRecording, .adminHelper: return false
+            // `CGPreflightScreenCaptureAccess` answers from the process's own
+            // grant and raises no dialog, so this one is probeable — the comment
+            // that stood here said it was not, and it was written before
+            // anything declared it inert without it.
+            case .screenRecording: return screenRecording == .denied
+            // Not withheld in the same sense: the admin helper is a password
+            // prompt, not a grant that can silently go missing. A warning we
+            // cannot verify is worse than none.
+            case .adminHelper: return false
             }
         }
     }
@@ -619,6 +629,7 @@ private struct SettingsSidebar: View {
         // the app.
         .helmTracksFullDiskAccess($diskAccess)
         .helmTracksAccessibility($accessibility)
+        .helmTracksScreenRecording($screenRecording)
     }
 
     /// The arrangement the person composed. Read rather than cached: it is

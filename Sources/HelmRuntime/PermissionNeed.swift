@@ -7,7 +7,7 @@ import Foundation
 /// and each feature asks here what it needs before letting the user believe an
 /// option is doing something.
 public enum PermissionNeed: String, CaseIterable, Sendable {
-    case fullDiskAccess, accessibility
+    case fullDiskAccess, accessibility, screenRecording
 
     /// Things Helm does that the system gates. Named after the user-visible
     /// capability, not the API behind it.
@@ -19,12 +19,14 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         case vpnControl            // needs nothing
         case homebrew              // needs nothing
         case layoutSwitch          // Layout reads keystrokes and types corrections
+        case screenCapture         // Screenshots freezes the screen and cuts pictures from it
     }
 
     public static func of(_ feature: Feature) -> PermissionNeed? {
         switch feature {
         case .pointerNudge, .layoutSwitch: .accessibility
         case .appContainers, .leftoverRemoval, .wholeDiskScan: .fullDiskAccess
+        case .screenCapture: .screenRecording
         case .vpnControl, .homebrew: nil
         }
     }
@@ -42,13 +44,16 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         switch self {
         case .fullDiskAccess: "fullDisk"
         case .accessibility: "accessibility"
+        case .screenRecording: "screenRecording"
         }
     }
 
-    public func state(accessibility: PermissionState, fullDisk: PermissionState) -> PermissionState {
+    public func state(accessibility: PermissionState, fullDisk: PermissionState,
+                      screenRecording: PermissionState) -> PermissionState {
         switch self {
         case .accessibility: accessibility
         case .fullDiskAccess: fullDisk
+        case .screenRecording: screenRecording
         }
     }
 
@@ -56,6 +61,7 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         switch self {
         case .accessibility: PermissionCheck.openAccessibilitySettings()
         case .fullDiskAccess: PermissionCheck.openFullDiskAccessSettings()
+        case .screenRecording: PermissionCheck.openScreenRecordingSettings()
         }
     }
 
@@ -67,6 +73,7 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         switch self {
         case .fullDiskAccess: "Full Disk Access"
         case .accessibility: "Accessibility"
+        case .screenRecording: "Screen & System Audio Recording"
         }
     }
 
@@ -79,6 +86,11 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
             // Keyboard module read every keystroke in every application, and
             // the sentence a person weighs must say the larger half.
             "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer."
+        case .screenRecording:
+            // Said plainly, because the name is misleading: Helm records nothing.
+            // The grant is what lets it read the pixels of the screen at all, and
+            // macOS has one switch for reading and for recording.
+            "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording."
         }
     }
 }

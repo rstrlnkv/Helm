@@ -15,7 +15,7 @@ import AppKit
 /// close, one class of colour over: the system palette is tuned for a dark
 /// background and fails on a light one.
 ///
-/// So the values below are **solved, not chosen**. Each is the system colour
+/// So the values below are **solved, not chosen**. Each but two is the system colour
 /// blended toward black by the smallest fraction that lets white clear 3:1,
 /// per appearance — the same shape `HelmSignal` uses — and then checked pairwise
 /// so no two are closer than 0,15 in sRGB. `ModuleTintTests` measures both and
@@ -28,12 +28,12 @@ import AppKit
 /// solved set against a higher floor, and `HelmContrast` explains why the switch
 /// has to be read as a flag rather than asked of the appearance.
 ///
-/// Keyboard is the one that is not a system colour at all. `.pink` sits 0,107
+/// Keyboard is not a system colour at all, and neither is Screenshots' olive. `.pink` sits 0,107
 /// from `.red`, which Uninstaller keeps because red on the tool that deletes
 /// things is worth more than red anywhere else. Magenta at 320° is 0,237 away
 /// and reads at 4,33:1.
 public enum ModuleTint: String, CaseIterable, Sendable {
-    case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard, hosts
+    case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard, hosts, screenshots
 
     public var colour: Color { colour(increased: HelmContrast.increased) }
 
@@ -62,6 +62,12 @@ public enum ModuleTint: String, CaseIterable, Sendable {
         case .leftovers:   return (light: (0.675, 0.498, 0.369), dark: (0.718, 0.541, 0.400))
         case .keyboard:    return (light: (0.850, 0.150, 0.650), dark: (0.850, 0.150, 0.650))
         case .hosts:       return (light: (0.180, 0.412, 0.573), dark: (0.212, 0.463, 0.639))
+        // Olive, the one hue the ten left open: 0,34 from the nearest of them in
+        // sRGB, where the floor is 0,15, and white reads 4,86:1 on it — past the
+        // higher floor as well, so the two sets and the two appearances share one
+        // value. Found by a search over the hue wheel for the largest distance
+        // at a contrast of at least 4,55:1; `ModuleTintTests` is what measures it.
+        case .screenshots: return (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000))
         }
     }
 
@@ -98,6 +104,7 @@ public enum ModuleTint: String, CaseIterable, Sendable {
         case .leftovers:   return (light: (0.587, 0.433, 0.321), dark: (0.579, 0.436, 0.322))
         case .keyboard:    return (light: (0.838, 0.148, 0.641), dark: (0.838, 0.148, 0.641))
         case .hosts:       return (light: (0.180, 0.412, 0.573), dark: (0.212, 0.463, 0.639))
+        case .screenshots: return (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000))
         }
     }
 

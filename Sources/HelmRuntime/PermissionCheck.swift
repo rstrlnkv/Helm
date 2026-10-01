@@ -125,10 +125,32 @@ public enum PermissionCheck {
 }
 
 public extension PermissionCheck {
+    /// Screen Recording, read without asking.
+    ///
+    /// `CGPreflightScreenCaptureAccess` answers from the process's own grant and
+    /// raises no dialog, which is what a settings page that reads a status must
+    /// do. It is not the request: a process that has been refused is not shown
+    /// the system prompt again (`CGWindow.h`), so asking is a separate act, made
+    /// once by the capture port, and the person is sent to the pane from then on.
+    static func currentScreenRecording() -> PermissionState {
+        CGPreflightScreenCaptureAccess() ? .granted : .denied
+    }
+
     /// Opens the exact pane the user needs; deep links are the documented way
     /// to send someone to a privacy setting.
     static func openFullDiskAccessSettings() {
         open("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles")
+    }
+
+    /// System Settings → Keyboard, where Keyboard Shortcuts → Screenshots holds the
+    /// boxes Helm asks a person to untick. The pane is the extension's own
+    /// identifier; nothing deeper is addressable.
+    static func openKeyboardSettings() {
+        open("x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+    }
+
+    static func openScreenRecordingSettings() {
+        open("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
     }
 
     static func openAccessibilitySettings() {

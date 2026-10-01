@@ -235,15 +235,26 @@ enum AppStr {
         switch need {
         case .fullDiskAccess: return fullDiskAccess
         case .accessibility: return accessibility
+        case .screenRecording: return screenRecording
         }
     }
     static func permissionWhy(_ need: PermissionNeed) -> String {
         switch need {
         case .fullDiskAccess: return fullDiskAccessWhy
         case .accessibility: return accessibilityWhy
+        case .screenRecording: return screenRecordingWhy
         }
     }
     static var accessibility: String { L("Accessibility") }
+    /// The pane's own name on this macOS (`SCREENANDAUDIOCAPTURE` in the Security &
+    /// Privacy extension's table), which replaced «Screen Recording» — a person is
+    /// looking for this word in a list, and the old one is not in it.
+    static var screenRecording: String { L("Screen & System Audio Recording") }
+    /// Says what the grant is *for*, and that Helm records nothing: the name is
+    /// macOS's and it reads as a camera, which is what a person weighs the ask by.
+    static var screenRecordingWhy: String {
+        L("Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording.")
+    }
     /// Names both things the grant buys, because one of them is that Helm can
     /// see every keystroke in every application. The lapsed-grant alert
     /// (`permissionReason`) already said so; this is the caption a person reads
@@ -389,6 +400,8 @@ enum AppStr {
             return L("Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind.")
         case .accessibility:
             return L("Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing.")
+        case .screenRecording:
+            return L("Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing.")
         }
     }
 
@@ -396,6 +409,7 @@ enum AppStr {
         switch need {
         case .fullDiskAccess: return openDiskAccessPane
         case .accessibility: return openAccessibilityPane
+        case .screenRecording: return openScreenRecordingPane
         }
     }
 
@@ -405,6 +419,7 @@ enum AppStr {
     /// One key each, naming the pane the way System Settings does.
     static var openDiskAccessPane: String { L("Open Full Disk Access…") }
     static var openAccessibilityPane: String { L("Open Accessibility…") }
+    static var openScreenRecordingPane: String { L("Open Screen & System Audio Recording…") }
     static var retry: String { L("Try again") }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.

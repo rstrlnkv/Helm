@@ -449,7 +449,7 @@ block it.
 `NSHostingController` feeds SwiftUI's ideal size into auto layout, and a pane whose
 ideal height is unbounded grows the window to the full screen. With sizing options
 off, panes fill whatever the window gives them, and not the reverse. One size
-serves every page — `defaultSize` 1060×700 (`:30`), `minSize` 860×540 (`:32`) —
+serves every page — `defaultSize` 1060×760 (`:30`), `minSize` 860×540 (`:32`) —
 because the Disk screen needs an 810 pt detail pane, and because a window that
 resized per page would move under the cursor. The shared detail frame is pinned
 `.topLeading` (`:494`, `:560`), since centring on the horizontal axis as well is
@@ -1256,6 +1256,56 @@ to a request nobody answered — said once, whichever of the two went unanswered
 because a transport request answers nil both for a throw and for a reply that would
 not decode.
 
+### Screenshots
+
+`Sources/Modules/Screenshots/` freezes each display, lets a person pick an area, a
+window or the whole screen out of the frozen frame, and saves or copies the picture.
+It needs a grant no other module does — Screen & System Audio Recording, the third
+`PermissionNeed` — and it is the one module whose work does **not** go through the
+transport. A 5K display's frozen frame is some sixty megabytes and the wire is `Data` in both
+directions, so a capture that crossed it would be copied at least twice for nothing:
+the host's shortcut action calls `ScreenshotsCapture.begin`
+(`Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`) directly, and that
+builds a `CaptureSession` (`Sources/Modules/Screenshots/Engine/CaptureSession.swift`)
+out of the engine's own ports. The engine's wire carries what the settings page
+cannot read for itself — the validated save folder and which of the system's own
+screenshot shortcuts are still ticked — as `ScreenshotsState`.
+
+Everything the session asks of the machine is a port with a fake
+(`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the
+clipboard, and two preference domains macOS owns. Both domains are **read and never
+written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
+for the boxes — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
+`Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` are what judge them:
+an absent box is one macOS still holds, and an unreadable reading is unknown rather
+than free. Changing a system shortcut is the person's act in System Settings; Helm
+opens the pane and says which boxes to untick.
+
+The overlay (`Sources/Modules/Screenshots/UI/CaptureOverlay.swift`) is one
+non-activating key panel per display, so it reads the keyboard and the pointer itself
+and needs no Accessibility. Its rules are functions of the pointer and the modifiers
+in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`, and the three
+coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
+own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
+and nowhere else. The window list in a freeze is a reading: a click asks the system
+for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
+
+A picture is written to a temporary name and moved into place with RENAME_EXCL
+(`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a
+name taken is one more number to try and nothing is ever overwritten. The capture is
+deliberately not a phase in the activity registry and logs nothing when it works: the
+log holds refusals — no grant, a refused write, a refused folder — with paths through
+`Redact`.
+
+`CaptureController.handOff` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
+is where every pick from the overlay arrives, and it is the one place the inline
+editor replaces; until then it copies, saves and shows the thumbnail.
+
+The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
+that applies only while the store holds no key at all, so a cleared shortcut stays
+cleared, and `HotkeyManager` asks whether the module is live at every reload: a
+switched-off module holds no combination.
+
 ### Uninstaller
 
 `Sources/Modules/Uninstaller/` removes an application and the files it left behind,
@@ -1447,7 +1497,7 @@ bundle carries no Team ID and macOS ties a granted permission to the exact binar
 cdhash is a hash of contents, so every rebuild is a different program to TCC while the
 checkbox in System Settings stays ticked. A grant therefore survives relaunch and
 reboot — the installed binary's cdhash changes only when it is replaced — and every
-reinstall costs both toggles again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
+reinstall costs every toggle again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
 is where the app asks what copy of itself it is: `shortVersion` (`:25`) returns an
 optional and picks no default, because the fallbacks that had been written by hand
 were not interchangeable; `codeFingerprint` (`:56`) is the identity the permission
@@ -1455,6 +1505,13 @@ audit compares, and `PermissionAuditPlan.shouldSpeak`
 (`Sources/HelmRuntime/PermissionAuditPlan.swift:45`) treats an unknown identity as
 "cannot tell". `isDev` (`Sources/HelmRuntime/AppBuild.swift:84`) reads the build's own
 version string rather than the update channel, which is a picker anybody can move.
+
+Screen & System Audio Recording is the third grant, and like Accessibility it is read without
+touching a file: `PermissionCheck.currentScreenRecording` asks CGPreflightScreenCaptureAccess,
+which never prompts. A process that has been refused is not shown the system's own
+prompt again, so the capture port asks once per installation and Helm sends the person
+to the pane from the first refusal. It is tied to the cdhash like the others, and it
+does not survive an ad-hoc rebuild either.
 
 A stable signing identity is the only real fix, and the same purchase is what
 `NEVPNManager`, an `SMAppService` helper and notarization each need.

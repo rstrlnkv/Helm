@@ -4,6 +4,7 @@ import HelmRuntime
 import HelmUI
 import Module_KeepAwake_UI
 import Module_Layout_UI
+import Module_Screenshots_UI
 import Module_Uninstaller_UI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -85,6 +86,24 @@ import Module_Uninstaller_UI
             store: NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard),
             prefix: LayoutHotkey.storePrefix,
             action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
+        // The screenshot shortcuts. Not through the transport: a capture is tens
+        // of megabytes of frame, and the action lands in the module's own UI
+        // target, which holds the overlay. `isLive` is what makes a switched-off
+        // module hold no key at all, and `fallback` is what makes a switched-on
+        // one work before anybody has recorded anything.
+        let screenshotsID = ScreenshotsDescriptor.id.rawValue
+        for hotkey in ScreenshotsHotkey.allCases {
+            HotkeyManager.shared.register(
+                hotkey.slot,
+                store: NamespacedStore(namespace: screenshotsID, backing: UserDefaults.standard),
+                prefix: hotkey.storePrefix,
+                fallback: hotkey.fallback,
+                isLive: { [weak host] in host?.liveModule(screenshotsID) != nil },
+                action: { [weak host] in
+                    guard let live = host?.liveModule(screenshotsID) else { return }
+                    ScreenshotsCapture.begin(hotkey, vm: live.vm, store: live.store)
+                })
+        }
         // Keeps the frontmost-app snapshot current, so every thread that asks
         // reads a value rather than reaching into AppKit for it.
         FrontmostApp.shared.startObserving()

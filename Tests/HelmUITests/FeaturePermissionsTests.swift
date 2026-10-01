@@ -26,6 +26,7 @@ final class FeaturePermissionsTests: XCTestCase {
         .vpnControl: "VPN",
         .homebrew: "Homebrew",
         .layoutSwitch: "Layout",
+        .screenCapture: "Screenshots",
     ]
 
     private var sourcesRoot: URL {

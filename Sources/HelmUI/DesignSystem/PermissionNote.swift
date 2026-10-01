@@ -106,6 +106,21 @@ public extension View {
                                   alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmFullDiskTracker(state: state, extra: extra))
     }
+
+    /// Keeps `state` on whether Screen Recording has been granted: once as the
+    /// page appears, and again every time Helm comes back to the front — which is
+    /// how it hears about a grant made in System Settings, where the person
+    /// went to make it.
+    ///
+    /// Synchronous like Accessibility's, for the same reason: the probe is
+    /// `CGPreflightScreenCaptureAccess`, one non-blocking call that answers from
+    /// the process's own grant and raises no dialog. A reading in the environment
+    /// goes in front of it, so a page that draws a different screen per grant
+    /// can be measured without the measuring process's own grant deciding.
+    func helmTracksScreenRecording(_ state: Binding<PermissionState>,
+                                   alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmScreenRecordingTracker(state: state, extra: extra))
+    }
 }
 
 /// What a reading of a page says about the grants it was taken under, or nil for
@@ -117,10 +132,13 @@ public extension View {
 public struct HelmGrants: Sendable, Equatable {
     public var accessibility: PermissionState?
     public var fullDisk: PermissionState?
+    public var screenRecording: PermissionState?
 
-    public init(accessibility: PermissionState? = nil, fullDisk: PermissionState? = nil) {
+    public init(accessibility: PermissionState? = nil, fullDisk: PermissionState? = nil,
+                screenRecording: PermissionState? = nil) {
         self.accessibility = accessibility
         self.fullDisk = fullDisk
+        self.screenRecording = screenRecording
     }
 }
 
@@ -150,6 +168,23 @@ private struct HelmAccessibilityTracker: ViewModifier {
 
     private var answer: PermissionState {
         grants.accessibility ?? PermissionCheck.currentAccessibility()
+    }
+}
+
+private struct HelmScreenRecordingTracker: ViewModifier {
+    @Environment(\.helmGrants) private var grants
+    let state: Binding<PermissionState>
+    let extra: Notification.Name?
+
+    func body(content: Content) -> some View {
+        content
+            .task { state.wrappedValue = answer }
+            .helmOnAppActive { state.wrappedValue = answer }
+            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in state.wrappedValue = answer }
+    }
+
+    private var answer: PermissionState {
+        grants.screenRecording ?? PermissionCheck.currentScreenRecording()
     }
 }
 

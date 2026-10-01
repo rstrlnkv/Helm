@@ -116,7 +116,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// settings being left behind.
     private static let shippedIDs: Set<String> = [
         "autopilot", "disk", "duplicates", "homebrew", "hosts", "keep-awake",
-        "layout", "leftovers", "uninstaller", "vpn",
+        "layout", "leftovers", "screenshots", "uninstaller", "vpn",
     ]
 
     @MainActor func testNoModuleIdChangesUnderneathItsStoredSettings() {

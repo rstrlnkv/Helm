@@ -51,7 +51,7 @@ final class ModuleTintTests: XCTestCase {
 
     /// One case per module, so a module added later cannot quietly share.
     func testThereIsOneTintPerModule() {
-        XCTAssertEqual(ModuleTint.allCases.count, 10)
+        XCTAssertEqual(ModuleTint.allCases.count, 11)
     }
 
     // MARK: - And the same two questions under Increase Contrast

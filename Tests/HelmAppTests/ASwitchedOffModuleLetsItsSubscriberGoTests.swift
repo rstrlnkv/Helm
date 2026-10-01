@@ -9,6 +9,7 @@ import Module_Homebrew_UI
 import Module_KeepAwake_UI
 import Module_Layout_UI
 import Module_Leftovers_UI
+import Module_Screenshots_UI
 import Module_Uninstaller_UI
 // `@testable` for the same reason VPN needs it below, one line down from the
 // same door: `HostsViewModel` and its `shared(vm:)` are internal to the
@@ -99,6 +100,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             },
             Cached(module: "Layout", id: LayoutDescriptor.id.rawValue) {
                 _ = LayoutViewModel.shared(vm: $0)
+            },
+            Cached(module: "Screenshots", id: ScreenshotsDescriptor.id.rawValue) {
+                _ = ScreenshotsPageModel.shared(vm: $0)
             },
             Cached(module: "VPN", id: VPNDescriptor.id.rawValue) { [vpn] in
                 _ = vpn.viewModel($0)
