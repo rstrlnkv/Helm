@@ -177,14 +177,72 @@ public final class CaptureSession: @unchecked Sendable {
         return .image(image)
     }
 
+    /// A selection cut like `crop`, with the editor's layers drawn over it **at the
+    /// pixels' own resolution**: the points of the layers are multiplied by the
+    /// scale of the display they were drawn on — that display's `FrozenDisplay.scale`
+    /// and no screen's — so a stroke is as thick in the file as on the screen, and
+    /// the cut's pixel offset is the one `crop` uses, so the layers land on the
+    /// same pixels the overlay showed them over. No layers: the crop itself.
+    public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
+                          layers: [Annotation]) async -> CGImage? {
+        guard let frame = freeze.frames.first(where: { $0.id == display }),
+              let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
+                                              imageWidth: frame.image.width, imageHeight: frame.image.height),
+              let cut = frame.shot.cropping(to: pixels)
+        else { return nil }
+        guard !layers.isEmpty else { return cut }
+        let scale = frame.scale
+        return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale) }
+    }
+
+    /// The pool is inside the call, as in `encode`: a 5K cut is one iteration of the caller's work.
+    static func draw(_ layers: [Annotation], over cut: CGImage, at origin: CGPoint, scale: CGFloat) -> CGImage? {
+        autoreleasepool {
+            var spaces = [CGColorSpace(name: CGColorSpace.sRGB)!]
+            if let own = cut.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
+            for space in spaces {
+                guard let context = CGContext(data: nil, width: cut.width, height: cut.height,
+                                              bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                else { continue }
+                context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
+                // Display-local points, top-left, to this bitmap's pixels, bottom-left.
+                context.translateBy(x: 0, y: CGFloat(cut.height))
+                context.scaleBy(x: scale, y: -scale)
+                context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                context.setAllowsAntialiasing(true)
+                context.setLineWidth(Annotation.lineWidth)
+                context.setLineJoin(.miter)
+                for layer in layers {
+                    context.addPath(layer.outline)
+                    if layer.isFilled {
+                        context.setFillColor(Annotation.ink)
+                        context.fillPath()
+                    } else {
+                        context.setStrokeColor(Annotation.ink)
+                        context.strokePath()
+                    }
+                }
+                return context.makeImage()
+            }
+            return nil
+        }
+    }
+
     // MARK: - Delivering
 
-    /// Copies and saves one picture. The area and window captures do both until
-    /// the editor takes their place: the editor's own buttons decide then.
-    public func deliver(_ image: CGImage, saves: Bool, copies: Bool) async -> Delivery {
+    /// Copies and saves one picture; the editor's exits and the window and display
+    /// picks say which of the two they want.
+    ///
+    /// `fileEvenFromClipboard` is the editor's ⌘S: a person who pressed Save wants a
+    /// file whatever "after a capture" says, and under the clipboard target the
+    /// folder is the one the `.macOS` choice names.
+    public func deliver(_ image: CGImage, saves: Bool, copies: Bool,
+                        fileEvenFromClipboard: Bool = false) async -> Delivery {
         var delivery = Delivery()
         delivery.image = image
-        await deliver(image, saves: saves, copies: copies, into: &delivery)
+        await deliver(image, saves: saves, copies: copies, fileEvenFromClipboard: fileEvenFromClipboard,
+                      into: &delivery)
         return delivery
     }
 
@@ -192,9 +250,10 @@ public final class CaptureSession: @unchecked Sendable {
     /// clipboard target no file is made, and `copies` is what puts the picture
     /// on the board. The file is in the setting's format and the clipboard's copy
     /// is always PNG; a PNG is encoded once when both want one.
-    private func deliver(_ image: CGImage, saves: Bool, copies: Bool,
+    private func deliver(_ image: CGImage, saves: Bool, copies: Bool, fileEvenFromClipboard: Bool = false,
                          into delivery: inout Delivery) async {
-        let current = settings()
+        var current = settings()
+        if fileEvenFromClipboard, current.saveTarget == .clipboard { current.saveTarget = .macOS }
         let toFile = saves && current.saveTarget.savesAFile
         let format = current.format
         let png: Data?
@@ -208,6 +267,9 @@ public final class CaptureSession: @unchecked Sendable {
         } else {
             png = nil
         }
+        // Asked after every wait and right before each act: a delivery cancelled
+        // while it was encoding or finding the folder reaches neither the clipboard nor the disk.
+        guard !Task.isCancelled else { return }
         if copies, let png {
             switch pasteboard.copy(png: png) {
             case .accepted: delivery.copied = true
@@ -227,7 +289,7 @@ public final class CaptureSession: @unchecked Sendable {
             delivery.refusals.append(.encoding)
             return
         }
-        guard let folder = await resolvedFolder(for: current) else { return }
+        guard let folder = await resolvedFolder(for: current), !Task.isCancelled else { return }
         let base = ShotNames.base(date: now(), naming: naming())
         let writer = writer
         let outcome = await offTheCooperativePool {

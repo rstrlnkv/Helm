@@ -93,6 +93,13 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         overlay.mouseDown(on: display, at: CGPoint(x: 100, y: 100), flags: [])
         overlay.mouseDragged(on: display, at: CGPoint(x: 300, y: 250), flags: [])
         overlay.mouseUp(on: display)
+        overlay.keyDown(returnKey)
+    }
+
+    private var returnKey: NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
+                         context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
+                         isARepeat: false, keyCode: 36)!
     }
 
     func testAConfirmedAreaIsKeptWhileTheOptionIsOnAndNotWhenItIsOff() async throws {
@@ -153,7 +160,8 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         for box in [bar, off, shortcut, window, foreign] { box.controller.cancel() }
     }
 
-    /// Return takes the remembered selection as it stands, and a new drag replaces it.
+    /// Return takes the remembered selection into the editor as it stands, the next Return takes it,
+    /// and a new drag replaces it.
     func testReturnTakesTheRememberedAreaAndADragReplacesIt() throws {
         let (freeze, first) = try freeze(uuid: "AAAA-1111")
         let rect = CGRect(x: 50, y: 60, width: 400, height: 300)
@@ -165,7 +173,9 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
                                    context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
                                    isARepeat: false, keyCode: 36)!
         overlay.keyDown(key)
-        guard case .area(let display, let local)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertTrue(results.isEmpty, "Return on the remembered selection finished before the editor had it")
+        overlay.keyDown(key)
+        guard case .edited(let display, let local, _, _)? = results.first else { return XCTFail("\(results)") }
         XCTAssertEqual(display, first)
         XCTAssertEqual(local, rect)
 
@@ -200,6 +210,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
                                    context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
                                    isARepeat: false, keyCode: 36)!
         overlay.keyDown(key)
+        overlay.keyDown(key)
         await waitUntil("the press ended") { !box.controller.isBusy }
         XCTAssertNil(RememberedSelection.read(box.store), "the confirm after the switch went off wrote the area back")
         for key in [RememberedSelection.Key.display, RememberedSelection.Key.x, RememberedSelection.Key.y,
@@ -220,6 +231,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         overlay.mouseDown(on: box.first, at: CGPoint(x: 50, y: 60), flags: [])
         overlay.mouseDragged(on: box.first, at: CGPoint(x: 450, y: 360), flags: [])
         overlay.mouseUp(on: box.first)
+        overlay.keyDown(returnKey)
         await waitUntil("the press ended") { !box.controller.isBusy }
         XCTAssertEqual(RememberedSelection.read(box.store), saved)
     }

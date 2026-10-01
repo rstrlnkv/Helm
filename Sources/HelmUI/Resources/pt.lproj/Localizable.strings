@@ -1309,6 +1309,7 @@
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "A pasta indicada pelo macOS não pode ser usada, então o Helm salva na Mesa.";
 "Copied to the clipboard" = "Copiado para a área de transferência";
 "Saved and copied" = "Salvo e copiado";
+"Press Esc again to close without saving" = "Pressione Esc novamente para fechar sem salvar";
 "Open Settings" = "Abrir ajustes";
 "Helm cannot read the screen" = "O Helm não consegue ler a tela";
 "Allow Helm under Screen & System Audio Recording, then press the shortcut again." = "Permita o Helm em Gravação do Áudio do Sistema e da Tela e pressione o atalho novamente.";

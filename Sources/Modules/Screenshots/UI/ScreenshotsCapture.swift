@@ -58,6 +58,9 @@ struct CapturedShot {
     /// The press in flight, held so `cancel` can reach it: the freeze is the one
     /// long wait and the module's switch can be turned inside it.
     private var pressTask: Task<Void, Never>?
+    /// The delivery after an exit, held for the same reason: the module's switch
+    /// can be turned between the exit and the file.
+    private var deliveryTask: Task<Void, Never>?
     /// Puts the overlay on the screens. A seam for a test, which must see whether
     /// the area shortcut reached it without putting panels on the screen of whoever runs the suite.
     private let presentOverlay: (CaptureOverlay) -> Bool
@@ -147,6 +150,8 @@ struct CapturedShot {
     func cancel() {
         pressTask?.cancel()
         pressTask = nil
+        deliveryTask?.cancel()
+        deliveryTask = nil
         bar.close()
         overlay?.close()
         overlay = nil
@@ -195,14 +200,20 @@ struct CapturedShot {
     private func overlayFinished(_ result: OverlayResult, freeze: Freeze) {
         overlay?.close()
         overlay = nil
-        Task {
+        deliveryTask = Task {
+            // Asked at the start and after every wait: a delivery cancelled by the
+            // module's switch must reach neither the disk nor the clipboard.
+            guard !Task.isCancelled else { return }
             switch result {
             case .cancelled:
                 break
-            case .area(let display, let local):
+            case .edited(let display, let local, let layers, let exit):
                 remember(display: display, local: local, in: freeze)
-                if let image = session.crop(freeze, display: display, local: local) {
-                    await handOff(CapturedShot(image: image, kind: .area))
+                if let image = await session.annotated(freeze, display: display, local: local, layers: layers),
+                   !Task.isCancelled {
+                    await handOff(CapturedShot(image: image, kind: .area),
+                                  saves: exit != .copy, copies: exit != .save,
+                                  fileEvenFromClipboard: exit == .save)
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
@@ -211,12 +222,16 @@ struct CapturedShot {
                     await handOff(CapturedShot(image: image, kind: .display))
                 }
             case .window(let id):
-                switch await session.window(id, in: freeze) {
+                let picked = await session.window(id, in: freeze)
+                guard !Task.isCancelled else { return }
+                switch picked {
                 case .image(let image): await handOff(CapturedShot(image: image, kind: .window))
                 case .refused(let reason): toast.showRefusal(reason)
                 }
             }
-            busy = false
+            // A cancelled delivery leaves `busy` to `cancel`, which has already cleared it:
+            // a press begun since is not this one's to release.
+            if !Task.isCancelled { busy = false }
         }
     }
 
@@ -231,17 +246,22 @@ struct CapturedShot {
 
     // MARK: - The seam
 
-    /// **Part 2 replaces the body of this and nothing else.** Every area, window
-    /// and whole-display pick from the overlay arrives here — mouse up, Return,
-    /// a click on a window — and the full-screen shortcut does not, because it never had an editor to
-    /// open. Until the inline editor exists the picture is copied and saved,
-    /// and the thumbnail says so.
-    func handOff(_ shot: CapturedShot) async {
+    /// Where a finished picture is delivered: copied and/or saved, the shutter, the
+    /// thumbnail. A window or a whole display arrives here straight from the overlay
+    /// and does both; an area is **not** picked here any more — its seam is
+    /// `OverlayResult.edited`, which composes the editor's layers over the crop and
+    /// then calls this with the two things its exit asked for (Return asks for both
+    /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The
+    /// full-screen shortcut never came through here: it has no editor.
+    func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
+                 fileEvenFromClipboard: Bool = false) async {
+        guard !Task.isCancelled else { return }
         let settings = ScreenshotsSettings.read(store)
         session.shutter()
         if settings.thumbnail { toast.showWorking(shot.image) }
-        let delivery = await session.deliver(shot.image, saves: true, copies: true)
-        present(delivery)
+        let delivery = await session.deliver(shot.image, saves: saves, copies: copies,
+                                             fileEvenFromClipboard: fileEvenFromClipboard)
+        if !Task.isCancelled { present(delivery) }
     }
 
     // MARK: - What the person is told

@@ -1309,6 +1309,7 @@
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "Папку, которую указывает macOS, использовать нельзя, поэтому Helm сохраняет на рабочий стол.";
 "Copied to the clipboard" = "Скопировано в буфер обмена";
 "Saved and copied" = "Сохранено и скопировано";
+"Press Esc again to close without saving" = "Нажмите Esc ещё раз, чтобы закрыть без сохранения";
 "Open Settings" = "Открыть настройки";
 "Helm cannot read the screen" = "Helm не может прочитать экран";
 "Allow Helm under Screen & System Audio Recording, then press the shortcut again." = "Разрешите Helm в разделе «Запись экрана и\U00A0системного звука» и нажмите сочетание ещё раз.";

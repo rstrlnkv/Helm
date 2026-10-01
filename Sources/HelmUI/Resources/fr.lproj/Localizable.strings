@@ -1309,6 +1309,7 @@
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "Le dossier indiqué par macOS est inutilisable. Helm enregistre donc sur le bureau.";
 "Copied to the clipboard" = "Copié dans le presse-papiers";
 "Saved and copied" = "Enregistré et copié";
+"Press Esc again to close without saving" = "Appuyez de nouveau sur Esc pour fermer sans enregistrer";
 "Open Settings" = "Ouvrir les réglages";
 "Helm cannot read the screen" = "Helm ne peut pas lire l’écran";
 "Allow Helm under Screen & System Audio Recording, then press the shortcut again." = "Autorisez Helm dans Enregistrement de l’écran et des sons du système, puis appuyez de nouveau sur le raccourci.";

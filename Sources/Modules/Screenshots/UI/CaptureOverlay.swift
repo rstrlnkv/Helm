@@ -6,8 +6,10 @@ import Module_Screenshots_Engine
 
 /// What the person decided on the overlay.
 enum OverlayResult {
-    /// A selection on one display, in that display's own top-left points.
-    case area(display: DisplayID, local: CGRect)
+    /// An area on one display, in that display's own top-left points, with the
+    /// layers drawn over it and the way the person left. Every area arrives this
+    /// way — with no layers, as a plain crop.
+    case edited(display: DisplayID, local: CGRect, layers: [Annotation], exit: EditorExit)
     case window(UInt32)
     case wholeDisplay(DisplayID)
     case cancelled
@@ -27,6 +29,11 @@ enum OverlayResult {
 /// a key is pressed on whichever panel is key, so the pieces that decide what
 /// the selection is — mode, drag, space — cannot belong to one panel's view.
 /// Views report what happened to them and draw what this says.
+///
+/// **Two phases, one panel.** Selecting is the drag; once an area is released the
+/// overlay stays and edits it: `edit` is non-nil, the crosshair and the size plate
+/// are gone, and the keys mean tools, undo and the exits. The picture under the
+/// layers is never touched, so every layer is a value that can be undone.
 @MainActor final class CaptureOverlay {
     /// What the overlay opens in: the area crosshair, or the camera over windows.
     enum Mode { case area, window }
@@ -43,6 +50,8 @@ enum OverlayResult {
     /// the display as it is now by `RememberedSelection.landing`.
     private var preselected: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
+    /// The area being edited, set once a selection is released; nil while selecting.
+    private var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
@@ -157,6 +166,22 @@ enum OverlayResult {
 
     func mouseDown(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        if var current = edit, drag == nil {
+            current.layers.disarm()
+            // A tool draws on the edited display only; no tool and no layers is
+            // the old gesture, a new drag, which replaces the area only when it
+            // turns out to be one; no tool over layers does nothing yet.
+            if let tool = current.tool {
+                // The disarm above is the click's own effect, kept whichever display it was on.
+                guard display == current.display else { edit = current; render(); return }
+                current.layers.begin(tool, at: local)
+                edit = current
+                render()
+                return
+            }
+            guard current.layers.layers.isEmpty else { edit = current; render(); return }
+            edit = current
+        }
         switch mode {
         case .window:
             if let hovered { finish(.window(hovered.id)) }
@@ -171,6 +196,12 @@ enum OverlayResult {
 
     func mouseDragged(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        if var current = edit, drag == nil {
+            current.layers.drag(to: local)
+            edit = current
+            render()
+            return
+        }
         guard var current = drag, current.display == display else { return }
         current.drag.move(to: local, shift: flags.contains(.shift), option: flags.contains(.option),
                           space: spaceHeld)
@@ -181,17 +212,46 @@ enum OverlayResult {
     /// A right click leaves. Esc is the documented way out and it depends on the
     /// panel being key; a full-screen overlay with no way out that needs no key
     /// is the one failure here that strands a person.
-    func rightMouseDown() { finish(.cancelled) }
+    func rightMouseDown() { escapeAsked() }
+
+    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`:
+    /// at once with nothing to lose, and with layers a second press, whenever
+    /// it comes. A drag in progress is not an edit and leaves at once.
+    private func escapeAsked() {
+        guard var current = edit, drag == nil else { finish(.cancelled); return }
+        let outcome = current.layers.escape()
+        edit = current
+        switch outcome {
+        case .close: finish(.cancelled)
+        case .armed: render()
+        }
+    }
 
     /// The view for a display, so a test can send it a real event.
     func view(for display: DisplayID) -> OverlayView? { panels[display]?.view }
 
     func mouseUp(on display: DisplayID) {
+        if var current = edit, drag == nil {
+            current.layers.end()
+            edit = current
+            render()
+            return
+        }
         guard let current = drag, current.display == display else { return }
         // A click that never moved is not a selection: the drag ends and the
-        // overlay waits for a real one.
+        // overlay waits for a real one — or goes on editing the one it had.
         guard current.drag.isUsable else { drag = nil; render(); return }
-        finish(.area(display: display, local: current.drag.rect))
+        startEditing(display: display, rect: current.drag.rect)
+    }
+
+    /// The released area becomes the editor's: a new area starts a fresh set of
+    /// layers, and the tool picked so far stays picked.
+    private func startEditing(display: DisplayID, rect: CGRect) {
+        drag = nil
+        preselected = nil
+        spaceHeld = false
+        edit = (display, rect, AnnotationEditing(bounds: rect), edit?.tool)
+        render()
     }
 
     func flagsChanged(_ flags: NSEvent.ModifierFlags) {
@@ -204,13 +264,17 @@ enum OverlayResult {
     }
 
     func keyDown(_ event: NSEvent) {
+        // A held Esc repeats, and a repeat is not the second press the question waits for.
+        if event.keyCode == 53 { if !event.isARepeat { escapeAsked() }; return }
+        if edit != nil, drag == nil { editorKey(event); return }
         switch event.keyCode {
-        case 53: // escape
-            finish(.cancelled)
         case 36, 76: // return, enter
-            // The remembered selection stands for a selection made: Return takes it.
+            // A held Return repeats, and a repeat is not a press that asked for anything.
+            guard !event.isARepeat else { return }
+            // The remembered selection stands for a selection made: Return takes it
+            // into the editor, where the next Return takes the picture.
             if drag == nil, mode == .area, let preselected {
-                finish(.area(display: preselected.display, local: preselected.rect))
+                startEditing(display: preselected.display, rect: preselected.rect)
                 return
             }
             // Nothing selected: the whole display the pointer is on, as macOS does.
@@ -234,6 +298,30 @@ enum OverlayResult {
         }
     }
 
+    /// A key while an area is being edited, read by its physical code: Space and
+    /// every key the editor has no use for only withdraw a question asked by Esc.
+    private func editorKey(_ event: NSEvent) {
+        guard var current = edit else { return }
+        current.layers.disarm()
+        defer { edit = current; render() }
+        switch EditorKeys.action(keyCode: event.keyCode, flags: event.modifierFlags) {
+        case .tool(let tool)?:
+            // The same key again puts the tool down, which is how a drag selects again;
+            // a held key's repeats are not that second press.
+            guard !event.isARepeat else { return }
+            current.tool = current.tool == tool ? nil : tool
+        case .undo?: current.layers.undo()
+        case .redo?: current.layers.redo()
+        case .exit(let how)?:
+            guard !event.isARepeat else { return }
+            // What the screen shows is what is delivered: a stroke still under the
+            // pointer becomes a layer now, and an unusable one is dropped by `end`.
+            current.layers.end()
+            finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
+        case nil: break
+        }
+    }
+
     func keyUp(_ event: NSEvent) {
         if event.keyCode == 49 { spaceHeld = false }
     }
@@ -254,9 +342,17 @@ enum OverlayResult {
         for (id, entry) in panels {
             var scene = OverlayScene()
             scene.windowMode = mode == .window
-            if let pointer, pointer.display == id { scene.pointer = pointer.point }
+            if let pointer, pointer.display == id, edit == nil || drag != nil { scene.pointer = pointer.point }
             if let drag, drag.display == id { scene.selection = drag.drag.rect }
-            else if mode == .area, let preselected, preselected.display == id { scene.selection = preselected.rect }
+            else if let edit, edit.display == id {
+                scene.selection = edit.rect
+                scene.editing = drag == nil
+                scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
+                if edit.layers.isArmed {
+                    scene.plate = ScStr.confirmClose
+                    if let pointer, pointer.display == id { scene.plateAt = pointer.point }
+                }
+            } else if mode == .area, let preselected, preselected.display == id { scene.selection = preselected.rect }
             if mode == .window, let hovered, let frame = freeze.frames.first(where: { $0.id == id }) {
                 let part = ScreenSpace.local(hovered.frame, in: frame.frame)
                     .intersection(CGRect(origin: .zero, size: frame.frame.size))
@@ -273,6 +369,15 @@ struct OverlayScene {
     var pointer: CGPoint?
     var selection: CGRect?
     var highlight: CGRect?
+    /// The area is being edited: no crosshair, no size plate.
+    var editing = false
+    /// Layers over the selection, the one being drawn last.
+    var layers: [Annotation] = []
+    /// What Esc asked, while it is waiting for its second press.
+    var plate: String?
+    /// Where the pointer is while the plate is up, in display-top-left points; the
+    /// crosshair stays off while editing, so this is not `pointer`.
+    var plateAt: CGPoint?
 }
 
 // MARK: - The panel
@@ -315,6 +420,9 @@ final class OverlayView: NSView {
     private let dimLayer = CAShapeLayer()
     private let highlightLayer = CAShapeLayer()
     private let selectionLayer = CAShapeLayer()
+    /// The editor's layers, clipped to the selection: one shape layer each, in a
+    /// layer that is the selection's own size so that the clip is its bounds.
+    private let layersClip = CALayer()
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
@@ -355,10 +463,12 @@ final class OverlayView: NSView {
         crosshairLayer.shadowRadius = 0
         crosshairLayer.shadowOffset = .zero
 
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, crosshairLayer,
+        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, layersClip, crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
+        layersClip.masksToBounds = true
+        layersClip.isHidden = true
         imageLayer.frame = bounds
         dimLayer.frame = bounds
         for label in [coordinateLabel, sizeLabel] { label.isHidden = true }
@@ -452,6 +562,8 @@ final class OverlayView: NSView {
         highlightLayer.path = scene.highlight.map { CGPath(rect: layerRect($0), transform: nil) }
         selectionLayer.path = scene.selection.map { CGPath(rect: layerRect($0), transform: nil) }
 
+        drawLayers(scene)
+
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
         if let at, !scene.windowMode {
             let lines = CGMutablePath()
@@ -466,7 +578,19 @@ final class OverlayView: NSView {
         // is; while one is open it says how large the selection is, in the same
         // place — the size *replaces* the coordinates, as macOS's own ⌘⇧4 does.
         // Two plates at the pointer's offset lay one over the other.
-        if let selection = scene.selection {
+        if scene.editing {
+            // Editing has no crosshair and no size plate; only the Esc question.
+            coordinateLabel.isHidden = true
+            sizeLabel.isHidden = true
+            if let plate = scene.plate, let selection = scene.selection {
+                let box = layerRect(selection)
+                // The pointer's offset, as the other plates; the selection's corner
+                // is the fallback for a scene with no pointer.
+                let anchor = scene.plateAt.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
+                    ?? CGPoint(x: box.maxX, y: box.minY + 26)
+                sizeLabel.show(plate, near: CGPoint(x: anchor.x + 14, y: anchor.y - 26), within: bounds)
+            }
+        } else if let selection = scene.selection {
             let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
             let box = layerRect(selection)
             // The pointer is where the eye is; the corner is the fallback for a
@@ -484,6 +608,35 @@ final class OverlayView: NSView {
             sizeLabel.isHidden = true
         }
     }
+
+    /// One shape layer per annotation, in the clip's own bottom-left points: the
+    /// path is the annotation's top-left one turned over inside the selection.
+    private func drawLayers(_ scene: OverlayScene) {
+        layersClip.sublayers = nil
+        guard scene.editing, let selection = scene.selection else { layersClip.isHidden = true; return }
+        layersClip.isHidden = false
+        layersClip.frame = layerRect(selection)
+        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: -selection.minX, ty: selection.maxY)
+        for annotation in scene.layers {
+            let shape = CAShapeLayer()
+            shape.contentsScale = frozen.scale
+            shape.frame = layersClip.bounds
+            shape.path = annotation.outline.copy(using: &turn)
+            shape.lineJoin = .miter
+            if annotation.isFilled {
+                shape.fillColor = Annotation.ink
+                shape.strokeColor = nil
+            } else {
+                shape.fillColor = nil
+                shape.strokeColor = Annotation.ink
+                shape.lineWidth = Annotation.lineWidth
+            }
+            layersClip.addSublayer(shape)
+        }
+    }
+
+    /// The layers on screen, for a test that must see the editor drew what it holds.
+    var drawnLayerCount: Int { layersClip.isHidden ? 0 : layersClip.sublayers?.count ?? 0 }
 
     /// The plates on screen, so a test can ask how many there are and where.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }

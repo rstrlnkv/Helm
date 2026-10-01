@@ -1309,6 +1309,7 @@
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "The folder macOS names cannot be used, so Helm saves to the Desktop.";
 "Copied to the clipboard" = "Copied to the clipboard";
 "Saved and copied" = "Saved and copied";
+"Press Esc again to close without saving" = "Press Esc again to close without saving";
 "Open Settings" = "Open Settings";
 "Helm cannot read the screen" = "Helm cannot read the screen";
 "Allow Helm under Screen & System Audio Recording, then press the shortcut again." = "Allow Helm under Screen & System Audio Recording, then press the shortcut again.";

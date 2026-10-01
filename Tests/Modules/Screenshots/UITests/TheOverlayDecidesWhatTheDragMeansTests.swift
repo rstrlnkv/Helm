@@ -67,6 +67,9 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
                          isARepeat: repeats, keyCode: code)!
     }
 
+    /// A released area is the editor's now, and Return takes it.
+    private func confirm() { overlay?.keyDown(key(36)) }
+
     private func finishedOnce(file: StaticString = #filePath, line: UInt = #line) -> OverlayResult? {
         XCTAssertEqual(results.count, 1, "the overlay did not finish exactly once: \(results)", file: file, line: line)
         return results.first
@@ -77,7 +80,9 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.mouseDown(on: id, at: CGPoint(x: 100, y: 100), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 300, y: 250), flags: [])
         overlay?.mouseUp(on: id)
-        guard case .area(let display, let local)? = finishedOnce() else { return XCTFail("\(results)") }
+        XCTAssertEqual(results.count, 0, "the release finished the press")
+        confirm()
+        guard case .edited(let display, let local, _, _)? = finishedOnce() else { return XCTFail("\(results)") }
         XCTAssertEqual(display, id)
         XCTAssertEqual(local, CGRect(x: 100, y: 100, width: 200, height: 150))
     }
@@ -90,7 +95,8 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.mouseDown(on: id, at: CGPoint(x: 10, y: 10), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 60, y: 40), flags: [])
         overlay?.mouseUp(on: id)
-        guard case .area? = finishedOnce() else { return XCTFail("\(results)") }
+        confirm()
+        guard case .edited? = finishedOnce() else { return XCTFail("\(results)") }
     }
 
     /// Through the view, with a real event: the wiring from the mouse to the
@@ -174,7 +180,8 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.mouseDown(on: id, at: CGPoint(x: 100, y: 100), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 200, y: 200), flags: [])
         overlay?.mouseUp(on: id)
-        guard case .area? = finishedOnce() else { return XCTFail("a second Space did not go back to areas: \(results)") }
+        confirm()
+        guard case .edited? = finishedOnce() else { return XCTFail("a second Space did not go back to areas: \(results)") }
     }
 
     func testSpaceWhileDraggingMovesTheSelectionAndKeepsItsSize() throws {
@@ -185,7 +192,8 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.mouseDragged(on: id, at: CGPoint(x: 260, y: 200), flags: [])
         overlay?.keyUp(key(49, down: false))
         overlay?.mouseUp(on: id)
-        guard case .area(_, let local)? = finishedOnce() else { return XCTFail("\(results)") }
+        confirm()
+        guard case .edited(_, let local, _, _)? = finishedOnce() else { return XCTFail("\(results)") }
         XCTAssertEqual(local, CGRect(x: 160, y: 140, width: 100, height: 60))
     }
 
@@ -194,7 +202,8 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.mouseDown(on: id, at: CGPoint(x: 500, y: 300), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 600, y: 340), flags: [.option])
         overlay?.mouseUp(on: id)
-        guard case .area(_, let local)? = finishedOnce() else { return XCTFail("\(results)") }
+        confirm()
+        guard case .edited(_, let local, _, _)? = finishedOnce() else { return XCTFail("\(results)") }
         XCTAssertEqual(local, CGRect(x: 400, y: 260, width: 200, height: 80))
     }
 

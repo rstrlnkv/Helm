@@ -1309,9 +1309,25 @@ deliberately not a phase in the activity registry and logs nothing when it works
 log holds refusals — no grant, a refused write, a refused folder — with paths through
 `Redact`.
 
-`CaptureController.handOff` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
-is where every pick from the overlay arrives, and it is the one place the inline
-editor replaces; until then it copies, saves and shows the thumbnail.
+After a drag is released the overlay does not finish: it becomes the inline editor of
+that area, a second phase of the same panel, and the picture under the layers is never
+touched. The layers are values in `Sources/Modules/Screenshots/Engine/Logic/Annotation.swift`
+and `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift` (undo, redo, the Esc
+rule with the clock passed in), in points of the display they were drawn on; the keys are
+read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
+character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
+the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
+so the file and the screen share one geometry.
+
+The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
+`CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
+composes it and calls `CaptureController.handOff` with what the exit asked for: Return
+copies and saves by the save target as it always did, the copy key only copies, and the
+save key only saves — to the macOS folder when the target is the clipboard. A window or a
+whole display still arrives at `handOff` directly and does both, and the full-screen
+shortcut never comes through it. Esc and a right click are one door: with no layers they
+close at once, with layers the first press shows a plate and a second closes however
+late, and any other input withdraws the question; no clock is read.
 
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays

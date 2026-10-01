@@ -128,6 +128,8 @@ enum ScStr {
     static var saved: String { L("Saved") }
     static var copied: String { L("Copied to the clipboard") }
     static var savedAndCopied: String { L("Saved and copied") }
+    /// The plate over an edited picture after a first Esc.
+    static var confirmClose: String { L("Press Esc again to close without saving") }
     static var dismissToast: String { L("Close") }
     static var openSettings: String { L("Open Settings") }
     static var noPermissionTitle: String { L("Helm cannot read the screen") }

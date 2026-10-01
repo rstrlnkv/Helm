@@ -1309,6 +1309,7 @@
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "无法使用 macOS 指定的文件夹，因此 Helm 会保存到桌面。";
 "Copied to the clipboard" = "已拷贝到剪贴板";
 "Saved and copied" = "已保存并拷贝";
+"Press Esc again to close without saving" = "再按一次 Esc 可不保存直接关闭";
 "Open Settings" = "打开设置";
 "Helm cannot read the screen" = "Helm 无法读取屏幕";
 "Allow Helm under Screen & System Audio Recording, then press the shortcut again." = "请在录屏与系统录音中允许 Helm，然后再次按下快捷键。";
