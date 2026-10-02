@@ -33,11 +33,11 @@ struct CapturedShot {
     /// switched off would be a window nothing owns.
     private static func shared(vm: ModuleViewModel, store: NamespacedStore) -> CaptureController {
         if let controller, controller.owner === vm { return controller }
-        controller?.cancel()
+        controller?.teardown()
         let created = CaptureController(owner: vm, store: store)
         controller = created
         ModuleUICache.dropWhenDisabled(ScreenshotsDescriptor.id.rawValue) {
-            controller?.cancel()
+            controller?.teardown()
             controller = nil
         }
         return created
@@ -49,6 +49,9 @@ struct CapturedShot {
     private let store: NamespacedStore
     private let session: CaptureSession
     private let toast = ShotToast()
+    /// Not private: a test reads what is pinned through it. The pins outlive a capture and
+    /// the module's switch ends them (`teardown`); `cancel` leaves them be.
+    let pins: PinBoard
     /// Not private: a test reads what the bar says through it, and puts no window on a screen.
     let bar: CapturePanel
     private var overlay: CaptureOverlay?
@@ -70,18 +73,20 @@ struct CapturedShot {
     /// and the running app sleeps.
     private let tick: (Duration) async throws -> Void
 
-    /// `session`, `presentOverlay`, `presentBar` and `tick` are seams for a test,
+    /// `session`, `presentOverlay`, `presentBar`, `pins` and `tick` are seams for a test,
     /// which builds a session over fake ports, counts the presentations and holds
     /// the countdown still; the running app passes nothing and gets the real ones.
     init(owner: ModuleViewModel, store: NamespacedStore, session: CaptureSession? = nil,
          presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
          presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
+         pins: PinBoard = PinBoard(),
          tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.owner = owner
         self.store = store
         self.presentOverlay = presentOverlay
         self.presentBar = presentBar
         self.tick = tick
+        self.pins = pins
         self.bar = CapturePanel(store: store)
         self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
@@ -159,6 +164,13 @@ struct CapturedShot {
         busy = false
     }
 
+    /// The module is going: everything `cancel` ends, and the pins too. A pin is a window the
+    /// person asked to keep, so only the module's own end closes it, never an Esc on the bar.
+    func teardown() {
+        cancel()
+        pins.closeAll()
+    }
+
     // MARK: - The full-screen shortcut
 
     private func fullScreen() async {
@@ -184,7 +196,8 @@ struct CapturedShot {
             // option is on.
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
-            let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store) { [weak self] result in
+            let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store,
+                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false }) { [weak self] result in
                 self?.overlayFinished(result, freeze: freeze)
             }
             self.overlay = overlay
@@ -209,11 +222,18 @@ struct CapturedShot {
                 break
             case .edited(let display, let local, let layers, let exit):
                 remember(display: display, local: local, in: freeze)
-                if let image = await session.annotated(freeze, display: display, local: local, layers: layers),
+                if let image = await session.annotated(freeze, display: display, local: local, layers: layers,
+                                                       detached: exit == .pin),
                    !Task.isCancelled {
-                    await handOff(CapturedShot(image: image, kind: .area),
-                                  saves: exit != .copy, copies: exit != .save,
-                                  fileEvenFromClipboard: exit == .save)
+                    // No `default:`: a new exit must say here what it does, or it would be a save.
+                    switch exit {
+                    case .confirm, .copy, .save:
+                        await handOff(CapturedShot(image: image, kind: .area),
+                                      saves: exit != .copy, copies: exit != .save,
+                                      fileEvenFromClipboard: exit == .save)
+                    case .pin:
+                        pin(image, display: display, local: local, in: freeze)
+                    }
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
@@ -233,6 +253,15 @@ struct CapturedShot {
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
         }
+    }
+
+    /// The picture as a window on the selection's own place: no file, no clipboard, no shutter, no toast.
+    private func pin(_ image: CGImage, display: DisplayID, local: CGRect, in freeze: Freeze) {
+        guard let frame = freeze.frames.first(where: { $0.id == display }),
+              let primary = NSScreen.screens.first else { return }
+        pins.open(image, frame: PinGeometry.opening(local: local, scale: frame.scale, imageWidth: frame.image.width,
+                                                    imageHeight: frame.image.height, display: frame.frame,
+                                                    primaryHeight: primary.frame.height))
     }
 
     /// Written for every confirmed area while the option is on, whichever door it

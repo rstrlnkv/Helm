@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "Copiado para a área de transferência";
 "Saved and copied" = "Salvo e copiado";
 "Press Esc again to close without saving" = "Pressione Esc novamente para fechar sem salvar";
+"Pin" = "Fixar";
+"Too many pins are open — close one first" = "Há capturas fixadas demais — feche uma primeiro";
+"Pinned screenshot" = "Captura de tela fixada";
 "Arrow" = "Seta";
 "Rectangle" = "Retângulo";
 "Oval" = "Oval";

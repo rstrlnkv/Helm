@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "クリップボードにコピーしました";
 "Saved and copied" = "保存してコピーしました";
 "Press Esc again to close without saving" = "もう一度 Esc を押すと、保存せずに閉じます";
+"Pin" = "ピン留め";
+"Too many pins are open — close one first" = "ピン留めしたスクリーンショットが多すぎます。先にどれか閉じてください";
+"Pinned screenshot" = "ピン留めされたスクリーンショット";
 "Arrow" = "矢印";
 "Rectangle" = "長方形";
 "Oval" = "楕円";

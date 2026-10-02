@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "In die Zwischenablage kopiert";
 "Saved and copied" = "Gesichert und kopiert";
 "Press Esc again to close without saving" = "Esc erneut drücken, um ohne Sichern zu schließen";
+"Pin" = "Anpinnen";
+"Too many pins are open — close one first" = "Zu viele angepinnte Bildschirmfotos — schließe zuerst eines";
+"Pinned screenshot" = "Angepinntes Bildschirmfoto";
 "Arrow" = "Pfeil";
 "Rectangle" = "Rechteck";
 "Oval" = "Oval";

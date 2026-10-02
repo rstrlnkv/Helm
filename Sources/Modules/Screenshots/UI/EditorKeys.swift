@@ -10,6 +10,8 @@ enum EditorExit: Equatable {
     case copy
     /// ⌘S: a file only.
     case save
+    /// The Pin button: the picture stays on the screen as a window. No key.
+    case pin
 }
 
 /// What a key or a click on a bar means to the editor: **one vocabulary**, so that a

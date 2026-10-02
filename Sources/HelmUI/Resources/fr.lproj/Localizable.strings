@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "Copié dans le presse-papiers";
 "Saved and copied" = "Enregistré et copié";
 "Press Esc again to close without saving" = "Appuyez de nouveau sur Esc pour fermer sans enregistrer";
+"Pin" = "Épingler";
+"Too many pins are open — close one first" = "Trop de captures épinglées sont ouvertes — fermez-en une d’abord";
+"Pinned screenshot" = "Capture d’écran épinglée";
 "Arrow" = "Flèche";
 "Rectangle" = "Rectangle";
 "Oval" = "Ovale";

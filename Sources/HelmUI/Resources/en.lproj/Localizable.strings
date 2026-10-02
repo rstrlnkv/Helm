@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "Copied to the clipboard";
 "Saved and copied" = "Saved and copied";
 "Press Esc again to close without saving" = "Press Esc again to close without saving";
+"Pin" = "Pin";
+"Too many pins are open — close one first" = "Too many pins are open — close one first";
+"Pinned screenshot" = "Pinned screenshot";
 "Arrow" = "Arrow";
 "Rectangle" = "Rectangle";
 "Oval" = "Oval";

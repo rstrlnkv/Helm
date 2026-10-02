@@ -1310,6 +1310,9 @@
 "Copied to the clipboard" = "已拷贝到剪贴板";
 "Saved and copied" = "已保存并拷贝";
 "Press Esc again to close without saving" = "再按一次 Esc 可不保存直接关闭";
+"Pin" = "置顶";
+"Too many pins are open — close one first" = "已置顶的截屏过多，请先关闭部分";
+"Pinned screenshot" = "已置顶的截屏";
 "Arrow" = "箭头";
 "Rectangle" = "矩形";
 "Oval" = "椭圆形";

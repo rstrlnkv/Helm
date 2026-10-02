@@ -44,10 +44,12 @@ enum OverlayRig {
     }
 
     /// An overlay over every real screen, each 1000×800 points at `scale`, an `area` released on the first.
-    static func overlay(scale: CGFloat, area: CGRect, onResult: @escaping (OverlayResult) -> Void) throws
+    /// `pinRoom` is the answer the overlay is given to "may another pin open" (task 12).
+    static func overlay(scale: CGFloat, area: CGRect, pinRoom: @escaping () -> Bool = { true },
+                        onResult: @escaping (OverlayResult) -> Void) throws
         -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
         let frames = try frames(scale: scale)
-        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, onFinish: onResult)
+        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, pinRoom: pinRoom, onFinish: onResult)
         XCTAssertTrue(built.build())
         let display = try XCTUnwrap(frames.first?.id)
         built.mouseDown(on: display, at: area.origin, flags: [])

@@ -78,9 +78,17 @@ enum OverlayResult {
         panels.compactMapValues { $0.view.drawnPicture }
     }
 
+    /// Whether another pin may open: asked at the Pin button and nowhere else, so the other exits
+    /// leave at the limit as ever.
+    private let pinRoom: () -> Bool
+    /// The Pin button was refused for want of room, and the plate says so until the next input.
+    private var pinRefused = false
+
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         store: NamespacedStore? = nil, onFinish: @escaping (OverlayResult) -> Void) {
+         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
+        self.pinRoom = pinRoom
         self.store = store
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
@@ -179,6 +187,7 @@ enum OverlayResult {
 
     func mouseDown(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        pinRefused = false
         // No release is guaranteed: a press that finds a reshape open ends it where it was.
         reshaping = nil
         // A press on a bar is the bar's: never a draft, never a new area. Its background is an
@@ -260,6 +269,7 @@ enum OverlayResult {
     /// at once with nothing to lose, and with layers a second press, whenever
     /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
+        pinRefused = false
         // A reshape under the pointer is cancelled, the area back as the press took it: Esc is the
         // way out of what is being done, and that press does only that.
         if let held = reshaping, var current = edit {
@@ -383,6 +393,7 @@ enum OverlayResult {
     /// withdraws Esc's question and ends a run of arrows (`AnnotationEditing.disarm`).
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
         guard var current = edit, drag == nil, reshaping == nil else { return }
+        pinRefused = false
         // An arrow press moves the selected object, or the area when none is selected, by pixels of
         // this display. It is not routed through the `disarm` below: that is what ends a run of
         // presses, and a run of arrows is one undo step. A held key repeats on purpose.
@@ -431,6 +442,9 @@ enum OverlayResult {
         case .redo?: current.layers.redo()
         case .exit(let how)?:
             guard !isRepeat else { return }
+            // No room for a pin: the editor stays, with the picture in it, and says why on the plate
+            // (the toast lies below the overlay and could not be seen).
+            if how == .pin, !pinRoom() { pinRefused = true; return }
             // What the screen shows is what is delivered: a stroke still under the
             // pointer becomes a layer now, and an unusable one is dropped by `end`.
             current.layers.end()
@@ -490,7 +504,11 @@ enum OverlayResult {
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
-                if edit.layers.isArmed {
+                if pinRefused {
+                    // By the row the Pin button is in, not by the pointer, which is on the glass the plate would lie under.
+                    scene.plate = ScStr.pinLimit
+                    scene.plateByActions = true
+                } else if edit.layers.isArmed {
                     scene.plate = ScStr.confirmClose
                     if let pointer, pointer.display == id { scene.plateAt = pointer.point }
                 }
@@ -524,6 +542,8 @@ struct OverlayScene {
     /// Where the pointer is while the plate is up, in display-top-left points; the
     /// crosshair stays off while editing, so this is not `pointer`.
     var plateAt: CGPoint?
+    /// The plate is the Pin refusal: it goes above the action row, or below it with no room above, not by the pointer.
+    var plateByActions = false
     /// The area is being reshaped and the pointer is here: its size in pixels is on a plate by it.
     var sizingAt: CGPoint?
 }
@@ -793,9 +813,16 @@ final class OverlayView: NSView {
                 let box = layerRect(selection)
                 // The pointer's offset, as the other plates; the selection's corner
                 // is the fallback for a scene with no pointer.
-                let anchor = scene.plateAt.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
-                    ?? CGPoint(x: box.maxX, y: box.minY + 26)
-                sizeLabel.show(plate, near: CGPoint(x: anchor.x + 14, y: anchor.y - 26), within: bounds)
+                if scene.plateByActions, let row = scene.chrome.map({ layerRect($0.actions) }) {
+                    let height = LabelLayer.size(of: plate).height
+                    let above = row.maxY + HelmSpace.s2
+                    let y = above + height + 4 <= bounds.maxY ? above : row.minY - HelmSpace.s2 - height
+                    sizeLabel.show(plate, near: CGPoint(x: row.minX, y: y), within: bounds)
+                } else {
+                    let anchor = scene.plateAt.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
+                        ?? CGPoint(x: box.maxX, y: box.minY + 26)
+                    sizeLabel.show(plate, near: CGPoint(x: anchor.x + 14, y: anchor.y - 26), within: bounds)
+                }
             }
         } else if let selection = scene.selection {
             let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
@@ -974,12 +1001,18 @@ final class LabelLayer: CALayer {
 
     var string: String? { text.string as? String }
 
+    /// The plate's size for a string: what `show` lays out, for a caller that places it by its height.
+    static func size(of string: String) -> CGSize {
+        let font = plateFont
+        let measured = (string as NSString).size(withAttributes: [.font: font])
+        return CGSize(width: ceil(measured.width) + 14, height: ceil(font.capHeight + 10))
+    }
+
     func show(_ string: String, near point: CGPoint, within bounds: CGRect) {
         text.string = string
         let font = Self.plateFont
-        let measured = (string as NSString).size(withAttributes: [.font: font])
-        let line = ceil(measured.height)
-        let size = CGSize(width: ceil(measured.width) + 14, height: ceil(font.capHeight + 10))
+        let line = ceil((string as NSString).size(withAttributes: [.font: font]).height)
+        let size = Self.size(of: string)
         // The digits' top edge is `ascender - capHeight` under the line's top
         // and their foot is the baseline, `ascender` under it; the gap above
         // them and below them is the same `(height - capHeight) / 2`.

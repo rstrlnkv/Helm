@@ -107,6 +107,22 @@ shortcut never comes through it. Esc and a right click are one door: with no lay
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
+A third exit, Pin, keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
+same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
+size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
+pixel cut; nothing is written, copied, played or toasted, and `CaptureController` is free again as after any
+other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out: the
+capture bar and the toast are `.statusBar` and the overlay `.screenSaver`, so a new capture lies over
+every pin, and the toast, which would be below the overlay, is why the limit of `PinGeometry.limit` open pins is
+said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the Pin button and stays open when
+there is none). A pin is key only once clicked, so Esc closes exactly the pin last touched and no other
+window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by
+⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
+with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
+goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
+closes no pin; only `CaptureController.teardown`, called when the module is switched off or its view model is
+replaced, does. Nothing about a pin is stored.
+
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays
 cleared, and `HotkeyManager` asks whether the module is live at every reload: a

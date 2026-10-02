@@ -182,15 +182,17 @@ public final class CaptureSession: @unchecked Sendable {
     /// scale of the display they were drawn on — that display's `FrozenDisplay.scale`
     /// and no screen's — so a stroke is as thick in the file as on the screen, and
     /// the cut's pixel offset is the one `crop` uses, so the layers land on the
-    /// same pixels the overlay showed them over. No layers: the crop itself.
+    /// same pixels the overlay showed them over. No layers: the crop itself, which keeps its
+    /// parent's pixels alive — unless `detached`, which draws the cut into a bitmap of its own so
+    /// that what holds it (a pin) holds the selection and not the whole frozen display.
     public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
-                          layers: [Annotation]) async -> CGImage? {
+                          layers: [Annotation], detached: Bool = false) async -> CGImage? {
         guard let frame = freeze.frames.first(where: { $0.id == display }),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
                                               imageWidth: frame.image.width, imageHeight: frame.image.height),
               let cut = frame.shot.cropping(to: pixels)
         else { return nil }
-        guard !layers.isEmpty else { return cut }
+        guard !layers.isEmpty || detached else { return cut }
         let scale = frame.scale
         return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale) }
     }

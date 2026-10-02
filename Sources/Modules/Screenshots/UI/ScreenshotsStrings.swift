@@ -166,6 +166,12 @@ enum ScStr {
     /// Preview's «Save».
     static var save: String { L("Save") }
     static var closeEditor: String { L("Close") }
+    /// The editor's button that keeps the picture on the screen as a window.
+    static var pin: String { L("Pin") }
+    /// The plate at the limit of open pins; no number, so no table.
+    static var pinLimit: String { L("Too many pins are open — close one first") }
+    /// What a screen reader calls a pin.
+    static var pinnedScreenshot: String { L("Pinned screenshot") }
 
     // MARK: - The toast
 
