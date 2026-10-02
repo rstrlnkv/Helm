@@ -63,9 +63,8 @@ public protocol LeftoversFilePort: Sendable {
     /// `EACCES`. The one thing between a live login item and `.orphaned` is
     /// whether its `Program` is there, so a refused read made a working job point
     /// at nothing — an orange «Leftover» badge, a tick from «Select all», and a
-    /// «Turn off» that really does switch off working software. It bites hardest
-    /// with Full Disk Access denied, which is 23 of 42 launches on the machine
-    /// ARCHITECTURE.md records.
+    /// «Turn off» that really does switch off working software. Any refusal
+    /// does it — a mode, an ACL, somebody else's folder, a missing TCC grant.
     ///
     /// The same fold, one file over, that commit `6de0a337` closed for the plist
     /// read: `nil` is «I could not tell», and the scan answers `.undetermined`

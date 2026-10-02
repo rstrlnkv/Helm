@@ -18,8 +18,8 @@ import XCTest
 /// `targetAlive` is the only thing between a live job and `.orphaned`, so a login
 /// item that runs at every login wears the orange «Leftover» badge, claims «Points
 /// at a missing file», is ticked by «Select all» and offers a «Turn off» that really
-/// does stop working software. It bites hardest with Full Disk Access denied, which
-/// ARCHITECTURE.md records as 23 of 42 launches.
+/// does stop working software. Any refusal does it — a
+/// mode, an ACL, somebody else's folder, a missing TCC grant.
 ///
 /// This is the fold commit `6de0a337` closed for the plist read and left open one
 /// line below it, so the repair is the module's own: the port answers three ways,

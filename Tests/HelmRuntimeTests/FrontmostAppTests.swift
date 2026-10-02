@@ -4,11 +4,12 @@ import XCTest
 /// The frontmost application, readable from any thread.
 ///
 /// `NSWorkspace` is main-thread-only, and reading it elsewhere does not return
-/// stale data — it takes the process down. That is written into ARCHITECTURE.md
-/// because the VPN engine did it for four releases. The Keyboard module then did
-/// it again: `frontmostBundleID` read `NSWorkspace.shared.frontmostApplication`
-/// wherever it was called, and the gesture that fixes selected text was moved
-/// onto a background queue, which made every use of it a coin toss.
+/// stale data — it takes the process down (ARCHITECTURE.md § Running
+/// applications; the doc comment of `RunningApps` holds the stack trace from the
+/// VPN engine's crash). The Layout module (shown as Keyboard) then did it again:
+/// `frontmostBundleID` read `NSWorkspace.shared.frontmostApplication` wherever it
+/// was called, and the gesture that fixes selected text was moved onto a
+/// background queue, so the first use with text selected took the process down.
 ///
 /// Same answer as `RunningApps`: refresh on main, read the snapshot anywhere.
 ///

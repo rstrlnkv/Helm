@@ -593,8 +593,7 @@ struct LeftoversSettingsPage: View {
     ///
     /// One member rather than the same three modifiers under both: they are the
     /// *same* row, and a page whose two statements drifted apart by a padding is
-    /// the shape this file already pays for once above (`PanelGrid`'s constants,
-    /// ARCHITECTURE.md).
+    /// the drift a shared member prevents.
     private func statement(_ view: some View) -> some View {
         view
             .frame(maxWidth: .infinity, alignment: .leading)

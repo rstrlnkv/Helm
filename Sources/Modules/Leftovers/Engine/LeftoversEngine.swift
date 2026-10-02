@@ -170,10 +170,11 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 }
                 let claimants = LaunchClaims.claimants(of: request.label, in: reading)
                 // **And a folder that did not open is not a folder with nothing
-                // in it.** Both agent folders are ordinary candidates for going
-                // unread — root's is not Helm's to read, and the person's own is
-                // behind a TCC grant — and either one going unread turns «two
-                // files claim this switch» into «one does», on the safe-direction
+                // in it.** Either agent folder can refuse a listing —
+                // `LaunchClaims.Reading` names the reasons, and that listing
+                // `/Library/LaunchAgents` is open to everyone on the Mac this
+                // was written on — and either one going unread turns «two files
+                // claim this switch» into «one does», on the safe-direction
                 // side of a guard whose whole subject is the unsafe direction.
                 guard reading.everyFolderOpened else {
                     HelmLog.shared.warn(Self.moduleID,

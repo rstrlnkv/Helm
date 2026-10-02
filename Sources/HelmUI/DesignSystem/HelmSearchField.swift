@@ -2,16 +2,17 @@ import AppKit
 import SwiftUI
 
 /// The system search field, in a page. **Nothing mounts this any more** — both
-/// search bars became one toolbar control on 2026-09-20 (`helmSearchable`), and
-/// what happens to this type is not a decision taken on the way past.
+/// search bars became one toolbar control (commit `306acb5a`, 2026-09-21), and what
+/// happens to this type is not a decision taken on the way past.
 ///
 /// The sentence that used to open this file said `.searchable` needs a toolbar
-/// this window doesn't have. The window has one: every settings page declares a
-/// toolbar and `SettingsSplitViewController` bridges it out of the pane
-/// (`sceneBridgingOptions`), and measured on macOS 27 the bridge carries the
-/// prompt whole. What is still true, and is the reason a reader might come back
-/// here, is the other half: **on macOS SwiftUI cannot ask for the collapsed
-/// magnifier at all** — `SearchToolbarBehavior.minimize` is
+/// this window doesn't have. The window has one, owned by `SettingsWindow`, and
+/// a page declares its search through `HelmToolbarSearch` in `helmWindowToolbar`.
+/// (The control first reached the bar through a SwiftUI bridge,
+/// `sceneBridgingOptions`; the app's own window no longer sets it, and
+/// `SettingsWindow` says why.) What is still true, and is the reason a reader
+/// might come back here, is the other half: **on macOS SwiftUI cannot ask for
+/// the collapsed magnifier at all** — `SearchToolbarBehavior.minimize` is
 /// `@available(macOS, unavailable)` — so the shape of the toolbar control is
 /// AppKit's alone, decided from the width the toolbar has left over. A
 /// hand-rolled `TextField` was never the alternative either: the rounded well,
@@ -25,8 +26,8 @@ import SwiftUI
 /// `NSSearchField` (2026-09-16), `accessibilityLabel()` is nil with the field
 /// empty and still nil with a word in it — AppKit promotes neither the
 /// placeholder nor anything else. `HelmA11y.searchField` is what it says now,
-/// and it is set here rather than at the two call sites because the defect
-/// belongs to the control: Homebrew's search and the Uninstaller's app filter
+/// and it was set here rather than at the two call sites because the defect
+/// belonged to the control: Homebrew's search and the Uninstaller's app filter
 /// were the same omission twice, and the third one would have been too.
 ///
 /// `NamedControlsTests` cannot see this and is not the guard for it — it scans

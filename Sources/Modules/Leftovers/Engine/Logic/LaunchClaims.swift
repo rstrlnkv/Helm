@@ -93,10 +93,11 @@ enum LaunchClaims {
     /// open hands back nothing, and nothing is what a folder with no rival in it
     /// hands back too — so a count taken without it is the strongest claim this
     /// module makes («no second file registers this label, the switch may go
-    /// through») resting on a read that never happened. Both folders are ordinary
-    /// candidates for it: `/Library/LaunchAgents` is root's and Helm is not root,
-    /// and `~/Library/LaunchAgents` sits behind a TCC grant that is denied on 23 of
-    /// the 42 launches ARCHITECTURE.md records.
+    /// through») resting on a read that never happened. Either folder can
+    /// refuse: `DirectoryListing.Contents.refused` names the reasons — a mode, an
+    /// ACL, a folder belonging to somebody else, or a TCC grant. (Listing
+    /// `/Library/LaunchAgents` is open to everyone on the Mac this was written on,
+    /// `drwxr-xr-x root wheel`; what is root's is writing there.)
     struct Reading: Equatable, Sendable {
         /// What the folders that opened hold.
         let claims: [Claim]
