@@ -171,7 +171,7 @@ public struct Annotation: Sendable, Equatable {
     private static let freeReach: CGFloat = 1e6
 
     /// The object moved by `delta`, the movement shortened per axis until the geometry's box
-    /// is inside `bounds`: an object is never taken out of the selection. A clamp only ever
+    /// is inside `bounds`: a wall the box is inside of is never crossed. A clamp only ever
     /// shortens a move, never reverses it or makes it longer: on a side where the box already
     /// lies beyond the wall (the area was pulled in past it) that wall has nothing to push
     /// against, so the move passes as asked and the opposite wall alone limits it, itself held

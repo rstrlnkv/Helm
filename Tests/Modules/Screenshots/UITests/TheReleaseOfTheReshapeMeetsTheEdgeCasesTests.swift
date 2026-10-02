@@ -8,9 +8,9 @@ import XCTest
 @testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **The release of a reshape at the edge:** an object touching the area, a lost release, a tiny area grown mid-drag, a nudge off an object. Was: an object left outside a shrunk area,
-/// an arrow while a draft, a move or Esc's question stands, a held arrow at the wall, the area walked onto a
-/// display's edge at 2x by ten-pixel steps, a handle that a bar covers, and Esc mid-reshape with the drag going on.
+/// **The release of a reshape at the edge:** an object touching the area, a lost release, a tiny area grown mid-drag, the arrow with an object selected. And two
+/// ends of a stranded selection: an arrow that carries an object wholly outside, and a lost release met by a press on
+/// a bar; and an area too small for a dot reporting none drawn.
 @MainActor
 final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
     private var overlay: CaptureOverlay?
@@ -25,25 +25,10 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
     }
 
     private func build(scale: CGFloat = 1, area: CGRect = CGRect(x: 100, y: 100, width: 400, height: 300)) throws -> OverlayView {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: Int(1000 * scale), height: Int(800 * scale), bitsPerComponent: 8,
-                                                  bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: scale, image: try XCTUnwrap(context.makeImage())))
-        }
-        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil) { [weak self] in
-            self?.results.append($0)
-        }
-        XCTAssertTrue(built.build())
-        overlay = built
-        display = try XCTUnwrap(frames.first?.id)
-        built.mouseDown(on: display, at: area.origin, flags: [])
-        built.mouseDragged(on: display, at: CGPoint(x: area.maxX, y: area.maxY), flags: [])
-        built.mouseUp(on: display)
-        return try XCTUnwrap(built.view(for: display))
+        let rig = try OverlayRig.overlay(scale: scale, area: area) { [weak self] in self?.results.append($0) }
+        overlay = rig.overlay
+        display = rig.display
+        return rig.view
     }
 
     private func key(_ code: UInt16, flags: NSEvent.ModifierFlags = []) -> NSEvent {
@@ -62,15 +47,7 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
     }
 
     /// One rectangle (200,200)-(300,260) drawn and selected by a click on its left edge.
-    private func drawAndSelect() {
-        overlay?.perform(.tool(.rectangle))
-        overlay?.mouseDown(on: display, at: CGPoint(x: 200, y: 200), flags: [])
-        overlay?.mouseDragged(on: display, at: CGPoint(x: 300, y: 260), flags: [])
-        overlay?.mouseUp(on: display)
-        overlay?.perform(.tool(.rectangle))
-        overlay?.mouseDown(on: display, at: CGPoint(x: 200, y: 230), flags: [])
-        overlay?.mouseUp(on: display)
-    }
+    private func drawAndSelect() { OverlayRig.drawAndSelect(in: overlay, on: display) }
 
     private func pull(_ view: OverlayView, to x: CGFloat, release: Bool = true) throws {
         let at = try XCTUnwrap(view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .right)!])
@@ -98,7 +75,7 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
         XCTAssertTrue(view.drawnHandles.isEmpty)
     }
 
-    func testALostReleaseEndedByTheNextPressOnABarOrOnNothingLeavesNoStrandedSelection() throws {
+    func testALostReleaseEndedByTheNextPressOnNothingLeavesNoStrandedSelection() throws {
         let view = try build()
         drawAndSelect()
         try pull(view, to: 150, release: false)
@@ -129,8 +106,8 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
         XCTAssertEqual(AreaFrame.offered(on: CGRect(x: 0, y: 0, width: 26.9, height: 27)).count, 4)
     }
 
-    /// The owner's rule is "an area resize" lets go of an object that is wholly outside. A nudge moves the area too.
-    func testAnArrowNudgeThatCarriesTheAreaOffTheSelectedObjectKeepsItSelectedBecauseTheArrowMovesTheObject() throws {
+    /// The owner's rule is "an area resize" lets go of an object that is wholly outside. With an object selected the arrow moves the object, never the area.
+    func testWithAnObjectSelectedTheArrowMovesTheObjectAndNeverTheArea() throws {
         let view = try build()
         drawAndSelect()
         overlay?.keyDown(key(right))
@@ -138,5 +115,44 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
         let (local, _) = try confirmed()
         XCTAssertEqual(local, CGRect(x: 100, y: 100, width: 400, height: 300))
         XCTAssertEqual(view.drawnHandles.count, 4)
+    }
+
+    /// (a) Through the key path: pulled to x = 201 the object straddles the wall; one Shift+Right (10 px at 1x) carries it
+    /// wholly outside. Total failure of the subject (the arrow never judges) prints the handle count and the frame, still at 210.
+    func testAnArrowNudgeThatCarriesTheObjectWhollyOutsideTheAreaLetsGoOfIt() throws {
+        let view = try build()
+        drawAndSelect()
+        try pull(view, to: 201)
+        XCTAssertEqual(view.drawnHandles.count, 4, "the subject: it straddles the wall and is still selected")
+        overlay?.keyDown(key(right, flags: [.shift]))
+        let (_, layers) = try confirmed()
+        XCTAssertEqual(layers.first?.frame.minX ?? 0, 210, accuracy: 0.001, "the subject: the arrow moved the object outward")
+        XCTAssertTrue(view.drawnHandles.isEmpty, "a nudge left the object wholly outside the area and it stayed selected: \(view.drawnHandles.count) handles, frame \(String(describing: layers.first?.frame))")
+    }
+
+    /// (b) A lost release, then a press on a bar. The bar is found with the bar's own frame, found by scanning the display for a point the bar covers.
+    func testALostReleaseEndedByTheNextPressOnABarLeavesNoStrandedSelection() throws {
+        let view = try build()
+        drawAndSelect()
+        try pull(view, to: 150, release: false)
+        // Mid-reshape the overlay hides its bars; the press ends the reshape, so place them for the area as pulled (100...150).
+        let sizes = view.barSizes
+        let chrome = EditorChrome.place(selection: CGRect(x: 100, y: 100, width: 50, height: 300), in: CGSize(width: 1000, height: 800),
+                                        tools: sizes.tools, actions: sizes.actions)
+        var found: CGPoint?
+        for x in stride(from: CGFloat(0), to: 1000, by: 5) {
+            for y in stride(from: CGFloat(0), to: 800, by: 5) where found == nil && chrome.covers(CGPoint(x: x, y: y)) { found = CGPoint(x: x, y: y) }
+        }
+        let bar = try XCTUnwrap(found, "no point of the display is under a bar")
+        overlay?.mouseDown(on: display, at: bar, flags: [])
+        overlay?.mouseUp(on: display)
+        XCTAssertTrue(view.drawnHandles.isEmpty, "an object wholly outside the area stayed selected after a lost release and a press on a bar")
+    }
+
+    /// (c) An area two points short is drawn with no dot, so none may be reported as drawn.
+    func testAnAreaTooSmallForADotReportsNoDrawnHandle() throws {
+        let view = try build(area: CGRect(x: 100, y: 100, width: 40, height: 2))
+        XCTAssertEqual(AreaFrame.reach(on: CGRect(x: 100, y: 100, width: 40, height: 2)) < 1, true, "the subject: the dot would be under a point")
+        XCTAssertTrue(view.drawnAreaHandles.isEmpty, "nothing is drawn, yet \(view.drawnAreaHandles.count) handles are reported as drawn")
     }
 }

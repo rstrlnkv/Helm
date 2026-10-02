@@ -248,3 +248,15 @@ final class FakeDockBounds: DockBounds, @unchecked Sendable {
         lock.withLock { _asked.append(pid); return _reading }
     }
 }
+
+/// One rectangle (200,200)-(300,260) drawn in `bounds` and selected by a click on its left edge.
+func drawnAndSelectedRectangle(in bounds: CGRect) -> AnnotationEditing {
+    var editing = AnnotationEditing(bounds: bounds)
+    editing.begin(.rectangle, at: CGPoint(x: 200, y: 200), style: .standard)
+    editing.drag(to: CGPoint(x: 300, y: 260), shift: false)
+    editing.end()
+    XCTAssertTrue(editing.press(at: CGPoint(x: 200, y: 230), tool: nil))
+    editing.end()
+    XCTAssertNotNil(editing.selected, "nothing was selected, so every edit below is of nothing")
+    return editing
+}

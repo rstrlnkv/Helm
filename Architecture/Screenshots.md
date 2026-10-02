@@ -91,9 +91,9 @@ a dark edge where an object's are squares on the accent colour drawn over the ar
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,
 and the display bounds it; an object left wholly outside the area when the handle is let go is deselected (`AnnotationEditing.releaseIfOutside`). The area is not a layer: reshaping it is no undo step, the layers keep their
 display-local coordinates, and what falls outside is cut by the clip the screen and the export already use,
-while the export crop, the bars and the remembered selection take whatever rectangle `OverlayResult.edited`
-carries. The arrows are read by key code (`EditorAction.nudge`) and are one pixel of the display, ten with ⇧,
-the step cut at the display's edge; with an object selected they move it, held inside the area, and a run of
+while the bars follow the area as it stands and the export crop and the remembered selection take whatever
+rectangle `OverlayResult.edited` carries. The arrows are read by key code (`EditorAction.nudge`) and are one pixel of the display, ten with ⇧,
+the step cut at the display's edge; with an object selected they move it, held by the walls it is still inside of (one already past a wall may be carried further out, and is let go of when none of it is left inside), and a run of
 presses is one undo step until any other input (`AnnotationEditing.nudgeSelected`), with none selected they
 move the area. Esc while a handle is held puts the area back and closes nothing.
 

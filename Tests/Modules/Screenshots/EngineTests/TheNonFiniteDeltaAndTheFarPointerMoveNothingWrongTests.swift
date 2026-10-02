@@ -9,24 +9,15 @@ final class TheNonFiniteDeltaAndTheFarPointerMoveNothingWrongTests: XCTestCase {
 
     private let area = CGRect(x: 100, y: 100, width: 400, height: 300)
 
-    private func selectedRectangle() -> AnnotationEditing {
-        var editing = AnnotationEditing(bounds: area)
-        editing.begin(.rectangle, at: CGPoint(x: 200, y: 200), style: .standard)
-        editing.drag(to: CGPoint(x: 300, y: 260), shift: false)
-        editing.end()
-        XCTAssertTrue(editing.press(at: CGPoint(x: 200, y: 230), tool: nil))
-        editing.end()
-        XCTAssertNotNil(editing.selected)
-        return editing
-    }
+    private func selectedRectangle() -> AnnotationEditing { drawnAndSelectedRectangle(in: area) }
 
     private let bad: [CGPoint] = [
         CGPoint(x: CGFloat.infinity, y: 0), CGPoint(x: 0, y: -CGFloat.infinity), CGPoint(x: CGFloat.nan, y: 0),
         CGPoint(x: 0, y: CGFloat.nan), CGPoint(x: CGFloat.infinity, y: -CGFloat.infinity),
     ]
 
-    /// An object inside the area: with the guard gone, `freeReach` would turn infinity into a 1e6 move
-    /// on a free side, so only the guard keeps the frame where it was.
+    /// An object inside the area: with the guard gone, infinity would carry it to the wall (an object
+    /// inside the area has no free side), so only the guard keeps the frame where it was.
     func testANonFiniteDeltaMovesNothingAtAll() {
         for delta in bad {
             var editing = selectedRectangle()

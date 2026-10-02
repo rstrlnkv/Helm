@@ -52,16 +52,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
     /// One 1000×800-point frame at 1× per real screen, in screen order.
     private func freeze(windows: [FrozenWindow] = []) throws -> (Freeze, [DisplayID]) {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: 1000, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
-                                                  space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            frames.append(FrozenDisplay(id: DisplayID(number),
-                                        frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: 1, image: try XCTUnwrap(context.makeImage())))
-        }
+        let frames = try OverlayRig.frames()
         return (Freeze(displays: frames.map { .image($0) }, windows: windows), frames.map(\.id))
     }
 

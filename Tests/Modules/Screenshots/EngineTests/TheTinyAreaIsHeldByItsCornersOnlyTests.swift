@@ -2,8 +2,9 @@ import CoreGraphics
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **What an area too small for eight dots offers.** The screen draws four corner dots on it, so the
-/// press must offer the same four and not a middle the person cannot see.
+/// **What an area too small for eight dots offers.** Under three points the screen draws no dot,
+/// and above it four corner dots; the press offers the same four corners and not a middle the person
+/// cannot see, and still takes a corner within the reach where no dot is drawn.
 final class TheTinyAreaIsHeldByItsCornersOnlyTests: XCTestCase {
 
     func testUnderThreeDotDiametersOnlyTheCornersAreOffered() {

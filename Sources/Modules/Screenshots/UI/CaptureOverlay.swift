@@ -31,8 +31,8 @@ enum OverlayResult {
 /// Views report what happened to them and draw what this says.
 ///
 /// **Two phases, one panel.** Selecting is the drag; once an area is released the
-/// overlay stays and edits it: `edit` is non-nil, the crosshair and the size plate
-/// are gone, and the keys mean tools, undo and the exits. The picture under the
+/// overlay stays and edits it: `edit` is non-nil, the crosshair is gone and the size
+/// plate shows only while an area handle is held, and the keys mean tools, undo and the exits. The picture under the
 /// layers is never touched, so every layer is a value that can be undone.
 @MainActor final class CaptureOverlay {
     /// What the overlay opens in: the area crosshair, or the camera over windows.
@@ -182,9 +182,10 @@ enum OverlayResult {
         // No release is guaranteed: a press that finds a reshape open ends it where it was.
         reshaping = nil
         // A press on a bar is the bar's: never a draft, never a new area. Its background is an
-        // input like any other, so it withdraws Esc's question as a button does.
+        // input like any other, so it withdraws Esc's question as a button does; and the reshape it ended
+        // never having been released, it judges the selection as that release would.
         if chrome(on: display)?.covers(local) == true {
-            if var current = edit, drag == nil { current.layers.disarm(); edit = current; render() }
+            if var current = edit, drag == nil { current.layers.disarm(); current.layers.releaseIfOutside(); edit = current; render() }
             return
         }
         if var current = edit, drag == nil {
@@ -255,7 +256,7 @@ enum OverlayResult {
     /// is the one failure here that strands a person.
     func rightMouseDown() { escapeAsked() }
 
-    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`:
+    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`; a press while an area handle is held only puts the area back and does nothing else:
     /// at once with nothing to lose, and with layers a second press, whenever
     /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
@@ -372,14 +373,14 @@ enum OverlayResult {
     }
 
     /// A key while an area is being edited, read by its physical code: Space and
-    /// every key the editor has no use for only withdraw a question asked by Esc.
+    /// every key the editor has no use for only withdraw a question asked by Esc and end a run of arrows.
     private func editorKey(_ event: NSEvent) {
         perform(EditorKeys.action(keyCode: event.keyCode, flags: event.modifierFlags), isRepeat: event.isARepeat)
     }
 
     /// The one door of the editor: a key and a click on a bar both come here, so a tool has
     /// one meaning however it was asked for. Nil is an input with no action, which only
-    /// withdraws Esc's question.
+    /// withdraws Esc's question and ends a run of arrows (`AnnotationEditing.disarm`).
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
         guard var current = edit, drag == nil, reshaping == nil else { return }
         // An arrow press moves the selected object, or the area when none is selected, by pixels of
@@ -510,13 +511,13 @@ struct OverlayScene {
     var pointer: CGPoint?
     var selection: CGRect?
     var highlight: CGRect?
-    /// The area is being edited: no crosshair, no size plate.
+    /// The area is being edited: no crosshair; the size plate only while an area handle is held (`sizingAt`).
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
     /// The selected layer, held by its handles; nil while one is being drawn.
     var selected: Annotation?
-    /// Where the two bars stand; nil is none on this display, or none while drawing.
+    /// Where the two bars stand; nil is none on this display, or none while drawing, moving, resizing or reshaping.
     var chrome: EditorChrome?
     /// What Esc asked, while it is waiting for its second press.
     var plate: String?
@@ -572,7 +573,7 @@ final class OverlayView: NSView {
     /// box and the handles under a white fill painted the box white, over the very object it frames.
     private let frameLayer = CAShapeLayer()
     private let handleLayer = CAShapeLayer()
-    /// The area's own eight handles: round and white on a dark edge, where an object's are squares
+    /// The area's own handles, eight or four on a small area (`AreaFrame.offered`): round and white on a dark edge, where an object's are squares
     /// on the accent colour, so the two are not taken for each other.
     private let areaHandleLayer = CAShapeLayer()
     private let crosshairLayer = CAShapeLayer()
@@ -823,7 +824,7 @@ final class OverlayView: NSView {
     /// rectangle, filled — and the dim's hole is what leaves it undimmed.
     ///
     /// **A layer is built once and kept while its annotation is equal to the one it was built from.**
-    /// Stroking and intersecting a 1024-point path is expected to cost milliseconds (an estimate, not a
+    /// Stroking and intersecting an `Annotation.maxPoints` path is expected to cost milliseconds (an estimate, not a
     /// measurement) and the scene is applied on every pointer event, so only what changed is rebuilt: the draft, the object being moved or resized, the
     /// one recoloured. The cache is by `Annotation.id` and is dropped with the selection's rectangle.
     private func drawLayers(_ scene: OverlayScene) {
@@ -908,9 +909,9 @@ final class OverlayView: NSView {
     /// takes it, so an area too small for eight reaches is not drawn eight dots wide.
     private func drawAreaHandles(_ area: CGRect?) {
         guard let area else { areaHandleLayer.path = nil; drawnAreaHandles = []; return }
-        drawnAreaHandles = AreaFrame.offered(on: area).map(\.point)
         let radius = min(AreaFrame.dotRadius, AreaFrame.reach(on: area))
-        guard radius >= 1 else { areaHandleLayer.path = nil; return }
+        guard radius >= 1 else { areaHandleLayer.path = nil; drawnAreaHandles = []; return }
+        drawnAreaHandles = AreaFrame.offered(on: area).map(\.point)
         let path = CGMutablePath()
         for point in drawnAreaHandles {
             path.addEllipse(in: layerRect(CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)))
@@ -918,7 +919,8 @@ final class OverlayView: NSView {
         areaHandleLayer.path = path
     }
 
-    /// Where the area's handles are drawn, in display-local points; none for none.
+    /// Where the area's handles are drawn, in display-local points; none for none, and none while the
+    /// reach is under a point and no dot is drawn.
     private(set) var drawnAreaHandles: [CGPoint] = []
 
     /// The layers on screen: `drawLayers` keeps what it has put in the view here to compare the next

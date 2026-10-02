@@ -10,16 +10,7 @@ final class TheStrandedObjectMeetsTheWallsItLeftBehindTests: XCTestCase {
 
     private let area = CGRect(x: 100, y: 100, width: 400, height: 300)
 
-    private func selectedRectangle() -> AnnotationEditing {
-        var editing = AnnotationEditing(bounds: area)
-        editing.begin(.rectangle, at: CGPoint(x: 200, y: 200), style: .standard)
-        editing.drag(to: CGPoint(x: 300, y: 260), shift: false)
-        editing.end()
-        XCTAssertTrue(editing.press(at: CGPoint(x: 200, y: 230), tool: nil))
-        editing.end()
-        XCTAssertNotNil(editing.selected)
-        return editing
-    }
+    private func selectedRectangle() -> AnnotationEditing { drawnAndSelectedRectangle(in: area) }
 
     func testAnObjectStraddlingTheEdgeMovesAsAskedOutwardAndInward() {
         var editing = selectedRectangle() // x 200...300, y 200...260
@@ -51,7 +42,7 @@ final class TheStrandedObjectMeetsTheWallsItLeftBehindTests: XCTestCase {
         var editing = selectedRectangle()
         editing.reshape(bounds: CGRect(x: 100, y: 100, width: 50, height: 50)) // beyond on both axes
         for _ in 0..<5 { _ = editing.nudgeSelected(by: CGPoint(x: 1e308, y: 1e308)) }
-        let box = editing.selected!.frame
+        let box = editing.layers.first!.frame // a nudge outward lets go of the selection
         XCTAssertTrue(box.minX.isFinite && box.maxX.isFinite && box.minY.isFinite && box.maxY.isFinite,
                       "an object walked outward went to \(box)")
     }
@@ -60,7 +51,7 @@ final class TheStrandedObjectMeetsTheWallsItLeftBehindTests: XCTestCase {
         var editing = selectedRectangle()
         editing.reshape(bounds: CGRect(x: 100, y: 100, width: 50, height: 50))
         _ = editing.nudgeSelected(by: CGPoint(x: CGFloat.infinity, y: -CGFloat.infinity))
-        let box = editing.selected!.frame
+        let box = editing.layers.first!.frame // a nudge outward lets go of the selection
         XCTAssertTrue(box.minX.isFinite && box.maxX.isFinite && box.minY.isFinite && box.maxY.isFinite, "\(box)")
     }
 
@@ -71,5 +62,24 @@ final class TheStrandedObjectMeetsTheWallsItLeftBehindTests: XCTestCase {
         editing.drag(to: CGPoint(x: 150, y: 230), shift: false) // the pointer goes left, away from the area
         editing.end()
         XCTAssertLessThanOrEqual(editing.selected!.frame.minX, 200, "dragged left, the object went to \(editing.selected!.frame)")
+    }
+
+    /// A nudge ends like a drag's release: an object it leaves wholly outside the area is let go of.
+    /// Total failure of the subject (nudge never judges) prints the message "stayed selected" with the selected annotation.
+    func testANudgeThatLeavesTheObjectWhollyOutsideLetsGoOfIt() {
+        var editing = selectedRectangle() // x 200...300
+        editing.reshape(bounds: CGRect(x: 100, y: 100, width: 101, height: 300)) // right wall at 201: straddling
+        XCTAssertNotNil(editing.selected)
+        XCTAssertTrue(editing.nudgeSelected(by: CGPoint(x: 10, y: 0)))
+        XCTAssertEqual(editing.layers.first!.frame.minX, 210, accuracy: 0.001, "the subject: the object went outward")
+        XCTAssertNil(editing.selected, "a nudge left the object wholly outside the area and it stayed selected")
+    }
+
+    /// The other side of the same check: a nudge that leaves a part inside keeps the selection.
+    func testANudgeThatKeepsAPartOfTheObjectInsideKeepsItSelected() {
+        var editing = selectedRectangle()
+        editing.reshape(bounds: CGRect(x: 100, y: 100, width: 150, height: 300)) // right wall at 250
+        XCTAssertTrue(editing.nudgeSelected(by: CGPoint(x: 10, y: 0)))
+        XCTAssertNotNil(editing.selected, "210...310 still meets 100...250")
     }
 }

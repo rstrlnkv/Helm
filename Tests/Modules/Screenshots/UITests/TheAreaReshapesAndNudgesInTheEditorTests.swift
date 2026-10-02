@@ -29,25 +29,10 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
 
     /// 1000×800 points per real screen at `scale`, an area of 400×300 at (100, 100) selected.
     private func build(scale: CGFloat = 1, area: CGRect = CGRect(x: 100, y: 100, width: 400, height: 300)) throws -> OverlayView {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: Int(1000 * scale), height: Int(800 * scale), bitsPerComponent: 8,
-                                                  bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: scale, image: try XCTUnwrap(context.makeImage())))
-        }
-        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil) { [weak self] in
-            self?.results.append($0)
-        }
-        XCTAssertTrue(built.build())
-        overlay = built
-        display = try XCTUnwrap(frames.first?.id)
-        built.mouseDown(on: display, at: area.origin, flags: [])
-        built.mouseDragged(on: display, at: CGPoint(x: area.maxX, y: area.maxY), flags: [])
-        built.mouseUp(on: display)
-        return try XCTUnwrap(built.view(for: display))
+        let rig = try OverlayRig.overlay(scale: scale, area: area) { [weak self] in self?.results.append($0) }
+        overlay = rig.overlay
+        display = rig.display
+        return rig.view
     }
 
     private func key(_ code: UInt16, _ characters: String = "", flags: NSEvent.ModifierFlags = [], repeating: Bool = false) -> NSEvent {

@@ -24,16 +24,7 @@ final class TheEscPlateAtTheScreensEdgesTests: XCTestCase {
     }
 
     private func build() throws -> DisplayID {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: 1000, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
-                                                  space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            frames.append(FrozenDisplay(id: DisplayID(number),
-                                        frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: 1, image: try XCTUnwrap(context.makeImage())))
-        }
+        let frames = try OverlayRig.frames()
         let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: [])) { [weak self] in
             self?.results.append($0)
         }

@@ -52,7 +52,7 @@ final class TheHitTestingNamesWhatIsUnderThePointerTests: XCTestCase {
         let arrow = shape(.arrow, CGPoint(x: 100, y: 100), CGPoint(x: 300, y: 100), thickness: .thick)
         XCTAssertTrue(hits(arrow, 250, 100), "the head")
         XCTAssertTrue(hits(arrow, 150, 100), "the shaft")
-        XCTAssertTrue(hits(arrow, 150, 103), "beside the tail, within the tolerance of a tail about 7 points wide")
+        XCTAssertTrue(hits(arrow, 150, 103), "inside the tail, about 7 points wide there")
         XCTAssertFalse(hits(arrow, 150, 120))
     }
 

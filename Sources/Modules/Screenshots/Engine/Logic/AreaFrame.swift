@@ -21,7 +21,7 @@ public enum AreaFrame {
 
     /// The reach on `rect`: the full reach, or a third of its shorter side when that is less, so the
     /// middle of a small area is still the area's and a press there is a drawing and not a grab. A
-    /// very small one is reshaped with the arrow keys or begun again.
+    /// very small one is moved with the arrow keys, or begun again where there is no tool and no layer.
     public static func reach(on rect: CGRect) -> CGFloat {
         min(reach, max(0, min(rect.width, rect.height) / 3))
     }
@@ -30,12 +30,12 @@ public enum AreaFrame {
     public static let dotRadius: CGFloat = 4.5
 
     /// Whether `rect` is wide and tall enough, three dot diameters each way, to offer the middle of
-    /// its edges as well as its corners. A smaller one is held by its four corners only, on the screen and under the press alike.
+    /// its edges as well as its corners. A smaller one is held by its four corners only, under the press; the screen draws no dot on one under three points (`dotRadius` against `reach(on:)`), though the press still takes it within the reach.
     public static func offersMidpoints(on rect: CGRect) -> Bool {
         min(rect.width, rect.height) >= 6 * dotRadius
     }
 
-    /// The handles drawn and taken on `rect`: all eight, or the four corners of a tiny area.
+    /// The handles taken on `rect` (the screen draws them when the reach is at least a point): all eight, or the four corners of a tiny area.
     public static func offered(on rect: CGRect) -> [(handle: AreaHandle, point: CGPoint)] {
         let corners: Set<AreaHandle> = [.topLeft, .topRight, .bottomRight, .bottomLeft]
         return handles(of: rect).filter { offersMidpoints(on: rect) || corners.contains($0.handle) }

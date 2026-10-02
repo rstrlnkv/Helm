@@ -294,11 +294,13 @@ public struct AnnotationEditing: Sendable {
         }
     }
 
-    /// The selected object moved by `delta` points, held inside the selection. **One undo step
-    /// for a run of presses**: the first records the list before it, and each press after it
+    /// The selected object moved by `delta` points, shortened by the walls it is still inside of; a
+    /// wall it already lies beyond (the area was pulled in past it) does not hold it, see
+    /// `Annotation.translated`. **One undo step for a run of presses**: the first records the list before it, and each press after it
     /// (nothing but another arrow press in between — every other input calls `disarm`) moves the
     /// object further in that same step. A press that moves nothing, against a wall, is none.
-    /// False when no object is selected, for the caller to move the area instead.
+    /// A press ends like a drag's release: an object it leaves wholly outside the area is let go of
+    /// (`releaseIfOutside`). False when no object is selected, for the caller to move the area instead.
     public mutating func nudgeSelected(by delta: CGPoint) -> Bool {
         armed = false
         guard gesture == nil, let current = selected, let index = layers.firstIndex(of: current) else { return false }
@@ -307,6 +309,7 @@ public struct AnnotationEditing: Sendable {
         if !nudging { record(layers) }
         nudging = true
         layers[index] = changed
+        releaseIfOutside()
         return true
     }
 

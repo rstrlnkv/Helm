@@ -123,16 +123,7 @@ final class TheAreaIsHeldByEightHandlesAndMovedByArrowsTests: XCTestCase {
     // MARK: The object under the arrows, and the undo
 
     /// One rectangle, selected by a click on its edge.
-    private func selectedRectangle() -> AnnotationEditing {
-        var editing = AnnotationEditing(bounds: area)
-        editing.begin(.rectangle, at: CGPoint(x: 200, y: 200), style: .standard)
-        editing.drag(to: CGPoint(x: 300, y: 260), shift: false)
-        editing.end()
-        XCTAssertTrue(editing.press(at: CGPoint(x: 200, y: 230), tool: nil))
-        editing.end()
-        XCTAssertNotNil(editing.selected, "nothing was selected, so a nudge below is of nothing")
-        return editing
-    }
+    private func selectedRectangle() -> AnnotationEditing { drawnAndSelectedRectangle(in: area) }
 
     func testAHeldArrowIsOneUndoStepAndTheLeftoverIsTheDrawingItself() {
         var editing = selectedRectangle()
