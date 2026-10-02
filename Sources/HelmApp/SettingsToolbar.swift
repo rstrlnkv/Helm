@@ -1341,9 +1341,18 @@ import HelmUI
         case window
         /// From *inside* AppKit's own layout pass (M2's frame-change
         /// observer fires synchronously while AppKit is already laying the
-        /// toolbar out): only lays the switcher's own host out, since asking
-        /// the window to lay itself out again from inside its own pass is
-        /// redundant at best.
+        /// toolbar out): lays the switcher's own host out now, and tells the
+        /// toolbar its new width one turn later, outside that pass: the
+        /// host's `invalidateIntrinsicContentSize()`. A window layout alone in
+        /// the hop found nothing to lay out (the item's frame stayed at 310
+        /// pt), and the invalidation made inside the pass did not help; the
+        /// invalidation in the hop does. Measured on this Mac (macOS 27.2, ru
+        /// at a 646-pt pane, `beginSearchInteraction()` called directly): the
+        /// tabs item's frame stayed at the full 310 pt for tens of
+        /// milliseconds after its own min/max size read 136 pt, the field grew
+        /// beside it in that time and AppKit sometimes evicted
+        /// `helm.actions`; with the hop, no run did. The measuring code is not
+        /// kept in the tree.
         case hostOnly
     }
 
@@ -1370,7 +1379,10 @@ import HelmUI
         }
         switch layout {
         case .window: window?.layoutIfNeeded()
-        case .hostOnly: break
+        case .hostOnly:
+            DispatchQueue.main.async { [weak bar] in
+                bar?.tabsSwitcherHost?.invalidateIntrinsicContentSize()
+            }
         }
     }
 
