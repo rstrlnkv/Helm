@@ -10,8 +10,8 @@ import Module_Screenshots_Engine
 
 /// **The edited area taken by its handles and moved by the arrows, on the overlay itself.** Events go in
 /// as the views send them and the answer is read from what the overlay would hand on (`.edited`), what the
-/// bars do and what the view draws: every handle reshapes, an object's handle beats an area's, Esc
-/// cancels, the bars and the plate follow the area, and the arrows move by pixels of a 1x and a 2x
+/// palette does and what the view draws: every handle reshapes, an object's handle beats an area's, Esc
+/// cancels, the palette and the plate follow the area, and the arrows move by pixels of a 1x and a 2x
 /// display, by key code. Panels are built and never ordered in.
 @MainActor
 final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
@@ -194,17 +194,17 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
 
     // MARK: What follows the area
 
-    func testTheBarsGoWhileTheHandleIsHeldAndStandBesideTheNewAreaAfterwards() throws {
+    func testThePaletteGoesWhileTheHandleIsHeldAndStandsBesideTheNewAreaAfterwards() throws {
         let view = try build()
-        let sizes = view.barSizes
+        let size = view.paletteSize
         XCTAssertNotNil(overlay?.chrome(on: display))
         try pull(view, .right, by: CGPoint(x: 60, y: 0), release: false)
-        XCTAssertNil(overlay?.chrome(on: display), "the bars stayed up under the pointer")
+        XCTAssertNil(overlay?.chrome(on: display), "the palette stayed up under the pointer")
         overlay?.mouseUp(on: display)
         let moved = CGRect(x: 100, y: 100, width: 460, height: 300)
         XCTAssertEqual(overlay?.chrome(on: display), EditorChrome.place(selection: moved, in: CGSize(width: 1000, height: 800),
-                                                                         tools: sizes.tools, actions: sizes.actions))
-        XCTAssertGreaterThan(try XCTUnwrap(overlay?.chrome(on: display)).tools.minX, moved.maxX, "the tool bar is not beside the new edge")
+                                                                         palette: size))
+        XCTAssertEqual(try XCTUnwrap(overlay?.chrome(on: display)).palette.midX, moved.midX, accuracy: 0.001, "the palette is not centred on the new area")
     }
 
     func testTheSizePlateShowsPixelsWhileReshapingOnA2xDisplayAndNoCrosshairOrPlateAfter() throws {

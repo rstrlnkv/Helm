@@ -10,7 +10,7 @@ import XCTest
 
 /// **The area handles and the arrows, fed what the task never named:** an object left outside a shrunk area,
 /// an arrow while a draft, a move or Esc's question stands, a held arrow at the wall, the area walked onto a
-/// display's edge at 2x by ten-pixel steps, a handle that a bar covers, and Esc mid-reshape with the drag going on.
+/// display's edge at 2x by ten-pixel steps, a handle that the palette covers, and Esc mid-reshape with the drag going on.
 @MainActor
 final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     private var overlay: CaptureOverlay?
@@ -184,43 +184,38 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(try confirmed().local, CGRect(x: 0, y: 0, width: 400, height: 300))
     }
 
-    // MARK: A handle under a bar
+    // MARK: A handle under the palette
 
-    func testAHandleTheBarCoversIsTheBarsAndTheAreaStaysWhole() throws {
-        // Find, by the same placement the overlay uses, an area whose bar sits on one of its own handles.
-        var found: (area: CGRect, points: [CGPoint])?
-        let probe = try build()
-        let sizes = probe.barSizes
+    /// The palette stands 14 points from the area and a handle takes a press within 7, so on a display as tall as
+    /// this one no placement puts the palette on a handle: the press order "palette first" has no input to meet.
+    /// (The tool bar of the old two-bar layout did stand on handles, and this was a press on one.) This is
+    /// that fact, asked over every area on a grid; a palette that comes to stand on a handle turns it red, and
+    /// the press on it then needs the test it had.
+    func testNoPlacementOfThePaletteStandsOnAHandleOfItsArea() throws {
+        let paletteSize = try build().paletteSize
         let size = CGSize(width: 1000, height: 800)
-        let candidates = [CGRect(x: 0, y: 0, width: 1000, height: 800), CGRect(x: 0, y: 0, width: 1000, height: 40),
-                          CGRect(x: 0, y: 760, width: 1000, height: 40), CGRect(x: 0, y: 0, width: 40, height: 800),
-                          CGRect(x: 960, y: 0, width: 40, height: 800), CGRect(x: 20, y: 20, width: 960, height: 760),
-                          CGRect(x: 400, y: 300, width: 200, height: 200)]
-        for area in candidates {
-            let chrome = EditorChrome.place(selection: area, in: size, tools: sizes.tools, actions: sizes.actions)
-            // A press within a handle's reach that a bar covers: the handle's centre may well be clear of the bar.
-            var points: [CGPoint] = []
-            for handle in AreaFrame.handles(of: area).map(\.point) {
-                for dx in stride(from: CGFloat(-6), through: 6, by: 2) {
-                    for dy in stride(from: CGFloat(-6), through: 6, by: 2) {
-                        let at = CGPoint(x: handle.x + dx, y: handle.y + dy)
-                        if chrome.covers(at), AreaFrame.handle(of: area, at: at) != nil, size.width > at.x, at.x >= 0, at.y >= 0 { points.append(at) }
+        let edges: [CGFloat] = [0, 1, 60, 300, 640, 930, 999, 1000]
+        let tops: [CGFloat] = [0, 1, 40, 390, 700, 770, 799, 800]
+        var areas = 0, pressed = 0
+        for x0 in edges { for x1 in edges where x1 > x0 + 8 {
+            for y0 in tops { for y1 in tops where y1 > y0 + 8 {
+                let area = CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+                let chrome = EditorChrome.place(selection: area, in: size, palette: paletteSize)
+                areas += 1
+                for handle in AreaFrame.handles(of: area).map(\.point) {
+                    for dx in stride(from: CGFloat(-6), through: 6, by: 2) {
+                        for dy in stride(from: CGFloat(-6), through: 6, by: 2) {
+                            let at = CGPoint(x: handle.x + dx, y: handle.y + dy)
+                            guard AreaFrame.handle(of: area, at: at) != nil else { continue }
+                            pressed += 1
+                            XCTAssertFalse(chrome.covers(at), "the palette \(chrome.palette) stands on a handle press \(at) of \(area)")
+                        }
                     }
                 }
-            }
-            if !points.isEmpty { found = (area, points); break }
-        }
-        let hit = try XCTUnwrap(found, "no bar covers a handle of any candidate area: the press order bar-first has no input to meet")
-        results = []
-        overlay?.close()
-        _ = try build(area: hit.area)
-        XCTAssertEqual(overlay?.chrome(on: display)?.covers(hit.points[0]), true, "the subject: the bar is up over the handle")
-        for point in hit.points {
-            overlay?.mouseDown(on: display, at: point, flags: [])
-            overlay?.mouseDragged(on: display, at: CGPoint(x: point.x + 3, y: point.y - 3), flags: [])
-            overlay?.mouseUp(on: display)
-        }
-        XCTAssertEqual(try confirmed().local, hit.area, "a press under a bar reshaped the area")
+            } }
+        } }
+        XCTAssertGreaterThan(areas, 300, "the sweep did not run: \(areas) areas")
+        XCTAssertGreaterThan(pressed, 10_000, "the sweep asked of \(pressed) presses")
     }
 
     // MARK: Esc mid-reshape, the drag goes on

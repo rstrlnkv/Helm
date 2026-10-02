@@ -10,13 +10,13 @@ enum EditorExit: Equatable {
     case copy
     /// ⌘S: a file only.
     case save
-    /// The Pin button, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
+    /// The palette's Pin cell, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
     case pin
 }
 
-/// What a key or a click on a bar means to the editor: **one vocabulary**, so that a
-/// tool key and the tool's button cannot do two different things. The keys name only
-/// some of these; the rest are the bars'.
+/// What a key or a click on the palette means to the editor: **one vocabulary**, so that a
+/// tool key and the tool's cell cannot do two different things. The keys name only
+/// some of these; the rest are the palette's.
 enum EditorAction: Equatable {
     case tool(AnnotationTool)
     /// The next object's colour, thickness and, for the boxes, fill.
@@ -30,7 +30,7 @@ enum EditorAction: Equatable {
     /// An arrow: `pixels` of the display's own pixels along a direction, each component -1, 0 or 1.
     /// The selected object moves, or the area when none is selected.
     case nudge(dx: Int, dy: Int, pixels: Int)
-    /// The bar's Close: Esc's own rule, which asks first when there are layers.
+    /// The palette's ✕: Esc's own rule, which asks first when there are layers.
     case close
 }
 

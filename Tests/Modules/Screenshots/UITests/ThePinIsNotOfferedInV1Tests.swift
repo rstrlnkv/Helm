@@ -10,17 +10,22 @@ import Module_Screenshots_Engine
 
 /// **The pin is in the tree and out of v1: nothing a person can press says "Pin".** The owner's
 /// decision of 2026-10-02 keeps the pin's code and hides every way in. This asks what is *offered*,
-/// not the switch that hides it: the editor's bars and the shot-toast capsule are drawn, and the
-/// words on them are read back off the picture (text recognition); none is `ScStr.pin`.
+/// not the switch that hides it. The shot-toast capsule is drawn and the words on it are read back off the
+/// picture (text recognition); none is `ScStr.pin`. **The palette's Pin cell is an icon with a name and no printed
+/// word**, so the picture cannot see it (measured: `EditorPalette` at `isOffered = true` is 451 pt wide in a hosting
+/// view and 419 pt at `false`, and the word read passed at `true`). The palette is therefore asked by presses:
+/// one is sent at every second point across its mounted width in a window ordered in, and no press may come out
+/// as `.exit(.pin)`; the same sweep must also produce Done's `.exit(.confirm)` and the pencil, so an empty
+/// sweep fails in its own words instead of passing (`testNoPressAcrossTheEditorsPaletteSendsPin`).
 ///
 /// **Why the picture and not the accessibility tree.** A hosting view that was never ordered in
 /// answers the tree with nothing, and an invisible window ordered in far off every screen answers
 /// nothing either (measured: the tree was `[]` for both). An empty tree has no "Pin" in it, so a
 /// check on it passes for ever. The picture cannot be empty by accident: each read first demands what is
 /// certainly drawn on that very view, and a read that does not find it fails in its own words instead of
-/// passing. Where the view has words, they are the demand (Copy and Save on the action row; the caption on a
-/// toast that has one). The tool bar is icons only, and a toast still working has an invisible caption: for
-/// those two the demand is that something was inked on the white, since no word is drawn there to ask for.
+/// passing. Where the view has words, they are the demand (the caption on a toast that has one). The palette
+/// is icons only, and a toast still working has an invisible caption: for those two the demand is that
+/// something was inked on the white, since no word is drawn there to ask for.
 ///
 /// **What this does not reach.** The "⋯" menu is an `NSMenu` and is read by its item titles; it does
 /// not exist yet, and its half joins this file when it does.
@@ -75,18 +80,21 @@ final class ThePinIsNotOfferedInV1Tests: XCTestCase {
         return mount
     }
 
-    func testNoControlOnTheEditorsBarsIsLabelledPin() throws {
+    func testNoControlOnTheEditorsPaletteIsLabelledPin() throws {
         AppLanguage.override = .en
-        let model = EditorBarModel()
-        let row = try words(on: mounted(EditorActionRow(model: model), width: 900, height: 80))
-        for known in [ScStr.copy, ScStr.save] {
-            XCTAssertTrue(row.joined(separator: " | ").contains(known.lowercased()),
-                          "the action row's read found no «\(known)» — the picture read empty, so «no Pin» means nothing: \(row)")
+        let palette = mounted(EditorPalette(model: EditorBarModel()), width: 700, height: EditorPalette.height)
+        XCTAssertGreaterThan(try inkedPixels(palette), 0, "the palette drew nothing on white, so «no Pin» on it means nothing")
+        let drawn = try words(on: palette)
+        XCTAssertFalse(drawn.contains { $0.contains(ScStr.pin.lowercased()) }, "the palette offers «\(ScStr.pin)»: \(drawn)")
+    }
+
+    func testNoPressAcrossTheEditorsPaletteSendsPin() throws {
+        for language in AppLanguage.allCases {
+            let sent = try actionsAcrossThePalette(language: language)
+            XCTAssertTrue(sent.contains { $0.action == .exit(.confirm) }, "\(language): no press reached Done, so «no Pin» on the palette means nothing: \(sent.count) presses")
+            XCTAssertTrue(sent.contains { $0.action == .tool(.pencil) }, "\(language): no press reached the pencil, so the sweep did not cover the palette")
+            XCTAssertFalse(sent.contains { $0.action == .exit(.pin) }, "\(language): a press on the palette sent the pin exit")
         }
-        let tools = mounted(EditorToolBar(model: model), width: 200, height: 400)
-        XCTAssertGreaterThan(try inkedPixels(tools), 0, "the tool bar drew nothing on white, so «no Pin» on it means nothing")
-        let drawn = row + (try words(on: tools))
-        XCTAssertFalse(drawn.contains { $0.contains(ScStr.pin.lowercased()) }, "the bars offer «\(ScStr.pin)»: \(drawn)")
     }
 
     private func picture() throws -> CGImage {

@@ -195,18 +195,9 @@ struct CapturePanelView: View {
     }
 
     private func modeControl(_ mode: PanelMode, symbol: String, name: String) -> some View {
-        let selected = model.mode == mode
-        return Button { model.choose(mode) } label: {
-            Image(systemName: symbol)
-                .font(HelmText.rowTitle)
-                .frame(width: HelmSpace.s7 + HelmSpace.s4, height: HelmSpace.s7)
-                .background(Color.primary.opacity(selected ? 0.14 : 0), in: .rect(cornerRadius: HelmRadius.ctl))
-                .contentShape(Rectangle())
+        GlassCell(symbol: symbol, name: name, selected: model.mode == mode, width: HelmSpace.s7 + HelmSpace.s4) {
+            model.choose(mode)
         }
-        .buttonStyle(.plain)
-        .help(name)
-        .accessibilityLabel(name)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var optionsMenu: some View {

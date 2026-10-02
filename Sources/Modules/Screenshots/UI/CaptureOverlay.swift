@@ -58,16 +58,16 @@ enum OverlayResult {
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
-    /// What the next object is drawn with; picked on the tool bar, read from the store when
+    /// What the next object is drawn with; picked on the palette, read from the store when
     /// the first area is released, and kept across the areas of one capture.
     private var style = AnnotationStyle.standard
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
-    /// What the two bars show; their buttons come back through `perform`.
+    /// What the palette shows; its cells come back through `perform`.
     let bars = EditorBarModel()
 
-    /// What the overlay opened on, for a test that must know the bar's Area mode
+    /// What the overlay opened on, for a test that must know the capture panel's Area mode
     /// handed it the remembered selection and no other press did.
     var preselection: (display: DisplayID, rect: CGRect)? { preselected }
 
@@ -78,13 +78,13 @@ enum OverlayResult {
         panels.compactMapValues { $0.view.drawnPicture }
     }
 
-    /// Whether another pin may open: asked at the Pin button and nowhere else, so the other exits
-    /// leave at the limit as ever.
+    /// Whether another pin may open: asked at the palette's Pin cell (`.exit(.pin)`) and nowhere else, so the
+    /// other exits leave at the limit as ever. The cell is built only while `PinEntry.isOffered`.
     private let pinRoom: () -> Bool
-    /// The Pin button was refused for want of room, and the plate says so until the next input.
+    /// The Pin cell was refused for want of room, and the plate says so until the next input.
     private var pinRefused = false
     /// A nudge let go of the selected object and the arrow key that did it is still down: its repeats
-    /// move nothing. Any key or bar click that reaches `perform` while no drag or reshape is under way
+    /// move nothing. Any key or palette click that reaches `perform` while no drag or reshape is under way
     /// clears it, a fresh arrow press (not `isARepeat`) included, so a key-up the overlay never sees cannot
     /// leave the arrows dead; only a repeat can find it set. Mouse input, a modifier change, Esc and
     /// a right click do not go through `perform` and leave it as it was.
@@ -196,7 +196,7 @@ enum OverlayResult {
         pinRefused = false
         // No release is guaranteed: a press that finds a reshape open ends it where it was.
         reshaping = nil
-        // A press on a bar is the bar's: never a draft, never a new area. Its background is an
+        // A press on the palette is the palette's: never a draft, never a new area. Its background is an
         // input like any other, so it withdraws Esc's question as a button does; and the reshape it ended
         // never having been released, it judges the selection as that release would.
         if chrome(on: display)?.covers(local) == true {
@@ -394,7 +394,7 @@ enum OverlayResult {
         perform(EditorKeys.action(keyCode: event.keyCode, flags: event.modifierFlags), isRepeat: event.isARepeat)
     }
 
-    /// The one door of the editor: a key and a click on a bar both come here, so a tool has
+    /// The one door of the editor: a key and a click on the palette both come here, so a tool has
     /// one meaning however it was asked for. Nil is an input with no action, which only
     /// withdraws Esc's question and ends a run of arrows (`AnnotationEditing.disarm`).
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
@@ -487,15 +487,14 @@ enum OverlayResult {
         freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
     }
 
-    /// Where the bars stand on `display`: nil when it is not the edited one, and nil while an
-    /// object is being drawn, moved or resized — a bar under the pointer would be drawn into — or
-    /// the area is being reshaped or a new one dragged. They are back on the release, and on the
+    /// Where the palette stands on `display`: nil when it is not the edited one, and nil while an
+    /// object is being drawn, moved or resized — a palette under the pointer would be drawn into — or
+    /// the area is being reshaped or a new one dragged. It is back on the release, and on the
     /// Esc that drops a drawing or cancels a move, a resize or a reshape.
     func chrome(on display: DisplayID) -> EditorChrome? {
         guard let edit, drag == nil, reshaping == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
-        let sizes = view.barSizes
-        return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, tools: sizes.tools, actions: sizes.actions)
+        return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, palette: view.paletteSize)
     }
 
     private func render() {
@@ -519,7 +518,7 @@ enum OverlayResult {
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
                 if pinRefused {
-                    // By the row the Pin button is in, not by the pointer, which is on the glass the plate would lie under.
+                    // By the palette the Pin cell is in, not by the pointer, which is on the glass the plate would lie under.
                     scene.plate = ScStr.pinLimit
                     scene.plateByActions = true
                 } else if edit.layers.isArmed {
@@ -549,14 +548,14 @@ struct OverlayScene {
     var layers: [Annotation] = []
     /// The selected layer, held by its handles; nil while one is being drawn.
     var selected: Annotation?
-    /// Where the two bars stand; nil is none on this display, or none while drawing, moving, resizing or reshaping.
+    /// Where the palette stands; nil is none on this display, or none while drawing, moving, resizing or reshaping.
     var chrome: EditorChrome?
     /// What Esc asked, while it is waiting for its second press.
     var plate: String?
     /// Where the pointer is while the plate is up, in display-top-left points; the
     /// crosshair stays off while editing, so this is not `pointer`.
     var plateAt: CGPoint?
-    /// The plate is the Pin refusal: it goes above the action row, or below it with no room above, not by the pointer.
+    /// The plate is the Pin refusal: it goes above the palette, or below it with no room above, not by the pointer.
     var plateByActions = false
     /// The area is being reshaped and the pointer is here: its size in pixels is on a plate by it.
     var sizingAt: CGPoint?
@@ -572,7 +571,7 @@ struct OverlayScene {
 /// with it open, a `keyEquivalent` "a" fired in the US layout and not in the Russian one. Tooltips (`.help`) were not
 /// shown on the bar cells, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
 /// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
-/// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The bars are hosted by `EditorBarHostingView`.
+/// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The palette is hosted by `EditorBarHostingView`.
 final class OverlayPanel: NSPanel {
     init(screen: NSScreen, view: NSView) {
         super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
@@ -622,32 +621,29 @@ final class OverlayView: NSView {
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
-    /// The editor's two bars, made when this display first has an area to edit and never
+    /// The editor's palette, made when this display first has an area to edit and never
     /// on another: a display with nothing selected builds no SwiftUI at all.
-    private lazy var toolsHost = EditorBarHostingView(rootView: EditorToolBar(model: overlay!.bars))
-    private lazy var actionsHost = EditorBarHostingView(rootView: EditorActionRow(model: overlay!.bars))
+    private lazy var paletteHost = EditorBarHostingView(rootView: EditorPalette(model: overlay!.bars))
     private var barsMade = false
-    private lazy var measuredBars: (tools: CGSize, actions: CGSize) = {
+    private lazy var measuredPalette: CGSize = {
         barsMade = true
-        addSubview(toolsHost)
-        addSubview(actionsHost)
-        toolsHost.isHidden = true
-        actionsHost.isHidden = true
-        return (toolsHost.fittingSize, actionsHost.fittingSize)
+        addSubview(paletteHost)
+        paletteHost.isHidden = true
+        return paletteHost.fittingSize
     }()
 
-    /// What the bars measure in the language the overlay opened in; measured once, since the
+    /// What the palette measures in the language the overlay opened in; measured once, since the
     /// language cannot change under a capture that is up.
-    var barSizes: (tools: CGSize, actions: CGSize) { measuredBars }
+    var paletteSize: CGSize { measuredPalette }
 
-    /// Whether the bars are on screen, for a test.
-    var barsAreShown: Bool { barsMade && !toolsHost.isHidden && !actionsHost.isHidden }
-    /// The view a click at a display-local point would reach, for a test that asks whether it is a bar.
+    /// Whether the palette is on screen, for a test.
+    var barsAreShown: Bool { barsMade && !paletteHost.isHidden }
+    /// The view a click at a display-local point would reach, for a test that asks whether it is the palette.
     func clickTarget(at local: CGPoint) -> NSView? { hitTest(CGPoint(x: local.x, y: bounds.height - local.y)) }
-    /// Whether a view is one of the bars or inside one.
+    /// Whether a view is the palette or inside it.
     func isBar(_ view: NSView?) -> Bool {
         guard barsMade, let view else { return false }
-        return view.isDescendant(of: toolsHost) || view.isDescendant(of: actionsHost)
+        return view.isDescendant(of: paletteHost)
     }
 
     var drawnPicture: CGImage? {
@@ -799,14 +795,11 @@ final class OverlayView: NSView {
         drawLayers(scene)
         drawAreaHandles(scene.editing ? scene.selection : nil)
         if let chrome = scene.chrome {
-            _ = measuredBars
-            toolsHost.frame = layerRect(chrome.tools)
-            actionsHost.frame = layerRect(chrome.actions)
-            toolsHost.isHidden = false
-            actionsHost.isHidden = false
+            _ = measuredPalette
+            paletteHost.frame = layerRect(chrome.palette)
+            paletteHost.isHidden = false
         } else if barsMade {
-            toolsHost.isHidden = true
-            actionsHost.isHidden = true
+            paletteHost.isHidden = true
         }
 
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
@@ -836,11 +829,11 @@ final class OverlayView: NSView {
                 let box = layerRect(selection)
                 // The pointer's offset, as the other plates; the selection's corner
                 // is the fallback for a scene with no pointer.
-                if scene.plateByActions, let row = scene.chrome.map({ layerRect($0.actions) }) {
+                if scene.plateByActions, let palette = scene.chrome.map({ layerRect($0.palette) }) {
                     let height = LabelLayer.size(of: plate).height
-                    let above = row.maxY + HelmSpace.s2
-                    let y = above + height + 4 <= bounds.maxY ? above : row.minY - HelmSpace.s2 - height
-                    sizeLabel.show(plate, near: CGPoint(x: row.minX, y: y), within: bounds)
+                    let above = palette.maxY + HelmSpace.s2
+                    let y = above + height + 4 <= bounds.maxY ? above : palette.minY - HelmSpace.s2 - height
+                    sizeLabel.show(plate, near: CGPoint(x: palette.minX, y: y), within: bounds)
                 } else {
                     let anchor = scene.plateAt.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
                         ?? CGPoint(x: box.maxX, y: box.minY + 26)

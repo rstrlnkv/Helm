@@ -150,6 +150,8 @@ enum ScStr {
         }
     }
 
+    /// Thickness, Fill, Copy and Save have no cell on the palette: the next task's ⋯ menu takes them, and these
+    /// names are kept for it. Pin is read by the palette's Pin cell while `PinEntry.isOffered`.
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {
         case .thin: L("Thin")
@@ -166,7 +168,9 @@ enum ScStr {
     /// Preview's «Save».
     static var save: String { L("Save") }
     static var closeEditor: String { L("Close") }
-    /// The editor's button that keeps the picture on the screen as a window.
+    /// The editor's checkmark: what Return does.
+    static var done: String { L("Done") }
+    /// The editor's Pin cell, which keeps the picture on the screen as a window.
     static var pin: String { L("Pin") }
     /// The plate at the limit of open pins; no number, so no table.
     static var pinLimit: String { L("Too many pins are open — close one first") }

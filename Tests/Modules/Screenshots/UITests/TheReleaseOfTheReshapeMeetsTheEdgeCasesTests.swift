@@ -10,7 +10,7 @@ import XCTest
 
 /// **The release of a reshape at the edge:** an object touching the area, a lost release, a tiny area grown mid-drag, the arrow with an object selected. And two
 /// ends of a stranded selection: an arrow that carries an object wholly outside, and a lost release met by a press on
-/// a bar; and an area too small for a dot reporting none drawn.
+/// the palette; and an area too small for a dot reporting none drawn.
 @MainActor
 final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
     private var overlay: CaptureOverlay?
@@ -130,23 +130,23 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
         XCTAssertTrue(view.drawnHandles.isEmpty, "a nudge left the object wholly outside the area and it stayed selected: \(view.drawnHandles.count) handles, frame \(String(describing: layers.first?.frame))")
     }
 
-    /// (b) A lost release, then a press on a bar. The bar is found with the bar's own frame, found by scanning the display for a point the bar covers.
-    func testALostReleaseEndedByTheNextPressOnABarLeavesNoStrandedSelection() throws {
+    /// (b) A lost release, then a press on the palette. The palette is found by scanning the display for a point it covers.
+    func testALostReleaseEndedByTheNextPressOnThePaletteLeavesNoStrandedSelection() throws {
         let view = try build()
         drawAndSelect()
         try pull(view, to: 150, release: false)
-        // Mid-reshape the overlay hides its bars; the press ends the reshape, so place them for the area as pulled (100...150).
-        let sizes = view.barSizes
+        // Mid-reshape the overlay hides the palette; the press ends the reshape, so place it for the area as pulled (100...150).
+        let paletteSize = view.paletteSize
         let chrome = EditorChrome.place(selection: CGRect(x: 100, y: 100, width: 50, height: 300), in: CGSize(width: 1000, height: 800),
-                                        tools: sizes.tools, actions: sizes.actions)
+                                        palette: paletteSize)
         var found: CGPoint?
         for x in stride(from: CGFloat(0), to: 1000, by: 5) {
             for y in stride(from: CGFloat(0), to: 800, by: 5) where found == nil && chrome.covers(CGPoint(x: x, y: y)) { found = CGPoint(x: x, y: y) }
         }
-        let bar = try XCTUnwrap(found, "no point of the display is under a bar")
-        overlay?.mouseDown(on: display, at: bar, flags: [])
+        let onPalette = try XCTUnwrap(found, "no point of the display is under the palette")
+        overlay?.mouseDown(on: display, at: onPalette, flags: [])
         overlay?.mouseUp(on: display)
-        XCTAssertTrue(view.drawnHandles.isEmpty, "an object wholly outside the area stayed selected after a lost release and a press on a bar")
+        XCTAssertTrue(view.drawnHandles.isEmpty, "an object wholly outside the area stayed selected after a lost release and a press on the palette")
     }
 
     /// (c) An area two points short is drawn with no dot, so none may be reported as drawn.

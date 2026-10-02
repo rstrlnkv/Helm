@@ -86,7 +86,10 @@ final class TheBarDrawsInEveryLanguageTests: XCTestCase {
     /// must each carry an `.accessibilityLabel`, and a button with a title of its
     /// own is named by it.
     func testEveryControlOnTheBarIsNamedWhereItIsDeclared() throws {
-        let source = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/CapturePanel.swift")
+        // The mode controls are `GlassCell`, whose button sits in its own file.
+        let source = try ["CapturePanel.swift", "GlassCell.swift"].map {
+            try RepoSource.text(of: "Sources/Modules/Screenshots/UI/\($0)")
+        }.joined(separator: "\n")
         let lines = source.components(separatedBy: "\n")
         var seen = 0
         for (index, line) in lines.enumerated() {

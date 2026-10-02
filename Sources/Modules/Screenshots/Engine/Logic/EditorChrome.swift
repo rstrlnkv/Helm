@@ -1,62 +1,48 @@
 import CoreGraphics
 import HelmRuntime
 
-/// Where the editor's two bars stand: the tool bar to the right of the selection and
-/// the action row below it, in the display's top-left points.
+/// Where the editor's palette stands: one capsule, in the display's top-left points.
 ///
-/// A function of the selection, the screen and the two bars' sizes and nothing else, so every
-/// edge and corner of the screen is a case that can be asked. **Outside the selection when there is room, and inward
-/// when there is not**: a bar that would cross the screen's edge is put inside the
-/// selection against the same edge, and whatever is left over is held on the screen,
-/// so a bar is never off it. The two never overlap each other: the row steps left of
-/// the tool bar when the two would meet, right of it when there is no room on the left, and under or
-/// over it when there is none on either side; only a screen too small for both leaves them meeting.
+/// A function of the selection, the screen and the palette's measured size and nothing else, so every
+/// edge and corner of the screen is a case that can be asked. **Below the area when there is room,
+/// above it when below is short, inside it, against its bottom edge, when neither side has room**; held
+/// on the screen last, so the palette is never off it. A side has room when the palette's height, the
+/// gap and the margin fit on it.
 public struct EditorChrome: Equatable, Sendable {
-    public let tools: CGRect
-    public let actions: CGRect
+    public let palette: CGRect
 
-    /// Whether a point is on either bar.
-    public func covers(_ point: CGPoint) -> Bool { tools.contains(point) || actions.contains(point) }
+    /// Whether a point is on the palette.
+    public func covers(_ point: CGPoint) -> Bool { palette.contains(point) }
 
-    /// Between a bar and the selection, and between the two bars.
-    public static let gap: CGFloat = 8
-    /// The nearest a bar comes to the screen's edge.
-    public static let margin: CGFloat = 4
+    /// Between the palette and the area, and inside the area from its bottom edge.
+    public static let gap: CGFloat = 14
+    /// The nearest the palette comes to the screen's edge, and the room kept free beyond it.
+    public static let margin: CGFloat = 16
 
     /// `selection` is in the display's own points and `screen` is that display's size:
-    /// the bars belong to the display the selection is on, and no other.
-    public static func place(selection: CGRect, in screen: CGSize, tools: CGSize, actions: CGSize) -> EditorChrome {
-        // Outside the selection on the far side, or inside against it when the far side
-        // runs out; then held on the screen. A bar longer than the screen is put at its start.
+    /// the palette belongs to the display the selection is on, and no other.
+    public static func place(selection: CGRect, in screen: CGSize, palette: CGSize) -> EditorChrome {
+        // A size that is not a number is none; an infinite one is the largest there is, held at the
+        // screen's start like any palette longer than the screen.
+        let width = palette.width.clamped(to: 0...CGFloat.greatestFiniteMagnitude, whenNotANumber: 0)
+        let height = palette.height.clamped(to: 0...CGFloat.greatestFiniteMagnitude, whenNotANumber: 0)
+
         func along(_ start: CGFloat, _ length: CGFloat, within limit: CGFloat) -> CGFloat {
             let low = margin, high = max(margin, limit - length - margin)
             return start.clamped(to: low...high, whenNotANumber: low)
         }
-        func beyond(_ edge: CGFloat, _ length: CGFloat, within limit: CGFloat) -> CGFloat {
-            let outside = edge + gap
-            return along(outside + length + margin <= limit ? outside : edge - gap - length, length, within: limit)
-        }
 
-        let right = beyond(selection.maxX, tools.width, within: screen.width)
-        let toolBar = CGRect(x: right, y: along(selection.minY, tools.height, within: screen.height),
-                             width: tools.width, height: tools.height)
-
-        let below = beyond(selection.maxY, actions.height, within: screen.height)
-        var row = CGRect(x: along(selection.maxX - actions.width, actions.width, within: screen.width), y: below,
-                         width: actions.width, height: actions.height)
-        func meets() -> Bool { row.insetBy(dx: -gap / 2, dy: -gap / 2).intersects(toolBar) }
-        if meets() {
-            row.origin.x = along(toolBar.minX - gap - actions.width, actions.width, within: screen.width)
-            // No room to the left of the tool bar (it is near the screen's left edge): the right.
-            if meets() { row.origin.x = along(toolBar.maxX + gap, actions.width, within: screen.width) }
-            // Neither side holds the row (a small screen, a tall tool bar): it goes under the tool
-            // bar, or over it. Only a screen that cannot hold the two bars at all leaves them meeting,
-            // and then the row yields to the screen's edge, not the tool bar to the row.
-            if meets() {
-                row.origin.y = along(toolBar.maxY + gap, actions.height, within: screen.height)
-                if meets() { row.origin.y = along(toolBar.minY - gap - actions.height, actions.height, within: screen.height) }
-            }
+        let below = selection.maxY + gap
+        let above = selection.minY - gap - height
+        let y: CGFloat
+        if below + height + margin <= screen.height {
+            y = below
+        } else if above >= margin {
+            y = above
+        } else {
+            y = selection.maxY - gap - height
         }
-        return EditorChrome(tools: toolBar, actions: row)
+        return EditorChrome(palette: CGRect(x: along(selection.midX - width / 2, width, within: screen.width),
+                                            y: along(y, height, within: screen.height), width: width, height: height))
     }
 }

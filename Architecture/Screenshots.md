@@ -69,13 +69,13 @@ points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter on
 in the file. The overlay's view keeps one shape layer per annotation, built again only when its
 annotation is no longer equal to the one it was built from. ⇧ is read from the flags of each event and never kept from the press.
 
-The editor has two bars, a vertical tool bar to the right of the selection and an action row below
-it, both views of the overlay's own panel (`Sources/Modules/Screenshots/UI/EditorBars.swift`) and not
-windows of their own. Where they stand is a pure function of the selection, the display's size and the
-two measured bar sizes (`EditorChrome` in `Sources/Modules/Screenshots/Engine/Logic/EditorChrome.swift`):
-outside the selection when there is room, inward against the same edge when there is not, and held on the
-display last, on the edited display only; they are gone while an object is drawn or an area dragged and
-back on the release. A press on a bar is the bar's and never reaches the picture. A key and a bar button
+The editor has one palette, a capsule below the selection, a view of the overlay's own panel
+(`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure
+function of the selection, the display's size and the palette's measured size (`EditorChrome` in
+`Sources/Modules/Screenshots/Engine/Logic/EditorChrome.swift`): below the selection when there is room, above it
+when below is short, inside it against its bottom edge when neither has room, and held on the display last,
+on the edited display only; it is gone while an object is drawn or an area dragged and
+back on the release. A press on the palette is its own and never reaches the picture. A key and a palette button
 are one vocabulary, `EditorAction`, performed by `CaptureOverlay.perform`, so a tool has one meaning
 however it was asked for. What the next object is drawn with — one of eight fixed sRGB colours, one of
 three thicknesses that set the outline, the arrow's shaft and the marker's width together, and fill for the
@@ -85,13 +85,13 @@ capture, and written at each pick by `EditorMemory`, with every stored value bou
 
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
-read in one order by `CaptureOverlay.mouseDown`: a bar, then an area handle — unless the selected object has a
+read in one order by `CaptureOverlay.mouseDown`: the palette, then an area handle — unless the selected object has a
 handle at that point, which is the object's — then the object and the tool. The area handles are round dots on
 a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,
 and the display bounds it; an object left wholly outside the area when the handle is let go is deselected (`AnnotationEditing.releaseIfOutside`). The area is not a layer: reshaping it is no undo step, the layers keep their
 display-local coordinates, and what falls outside is cut by the clip the screen and the export already use,
-while the bars follow the area as it stands and the export crop and the remembered selection take whatever
+while the palette follows the area as it stands and the export crop and the remembered selection take whatever
 rectangle `OverlayResult.edited` carries. The arrows are read by key code (`EditorAction.nudge`) and are one pixel of the display, ten with ⇧,
 the step cut at the display's edge; with an object selected they move it, held by the walls it is still inside of (one already past a wall may be carried further out, and is let go of when none of it is left inside), and a run of
 presses is one undo step until any other input (`AnnotationEditing.nudgeSelected`), with none selected they
@@ -114,7 +114,7 @@ pixel cut; nothing is written, copied, played or toasted, and `CaptureController
 other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out: the
 capture bar and the toast are `.statusBar` and the overlay `.screenSaver`, so a new capture lies over
 every pin, and the toast, which would be below the overlay, is why the limit of `PinGeometry.limit` open pins is
-said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the Pin button and stays open when
+said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the palette's Pin cell, built only while `PinEntry.isOffered`, and stays open when
 there is none). A pin is key only once clicked, so Esc closes exactly the pin last touched and no other
 window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed

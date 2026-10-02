@@ -9,10 +9,10 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **The tool bar and the action row are part of the overlay:** they stand on the display
-/// being edited and nowhere else, inside it in every language, they go while an object is
-/// drawn and come back on the release, a press on one starts no object and selects no new
-/// area, a bar and a key are one meaning, and what was picked is the next object's and the
+/// **The palette is part of the overlay:** it stands on the display
+/// being edited and nowhere else, inside it in every language, it goes while an object is
+/// drawn and comes back on the release, a press on it starts no object and selects no new
+/// area, a cell and a key are one meaning, and what was picked is the next object's and the
 /// next capture's. The panels are built and never ordered in; each test asserts that the
 /// overlay finished before it asserts what it finished with.
 @MainActor
@@ -91,7 +91,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
 
     // MARK: where they stand
 
-    func testBothBarsStandInsideTheEditedDisplayAndOnNoOtherInEveryLanguage() throws {
+    func testThePaletteStandsInsideTheEditedDisplayAndOnNoOtherInEveryLanguage() throws {
         let selections = [area, CGRect(x: 940, y: 740, width: 60, height: 60), CGRect(x: 0, y: 0, width: 1000, height: 800),
                           CGRect(x: 5, y: 700, width: 12, height: 12)]
         AppLanguage.each { current in
@@ -99,77 +99,72 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             do { for selection in selections {
                 let (first, others) = try build()
                 select(first, selection)
-                let chrome = try XCTUnwrap(overlay?.chrome(on: first), "\(language) \(selection): no bars on the edited display")
+                let chrome = try XCTUnwrap(overlay?.chrome(on: first), "\(language) \(selection): no palette on the edited display")
                 let bounds = CGRect(x: 0, y: 0, width: 1000, height: 800)
-                XCTAssertTrue(bounds.contains(chrome.tools), "\(language) \(selection): the tool bar \(chrome.tools) is off the display")
-                XCTAssertTrue(bounds.contains(chrome.actions), "\(language) \(selection): the row \(chrome.actions) is off the display")
-                XCTAssertFalse(chrome.tools.intersects(chrome.actions), "\(language) \(selection): the bars meet")
-                XCTAssertTrue((40...120).contains(chrome.tools.width) && chrome.tools.height > 150 && chrome.tools.height < 600,
-                              "\(language): the tool bar measured \(chrome.tools.size)")
-                XCTAssertTrue(chrome.actions.width > 100 && chrome.actions.width < 500 && chrome.actions.height > 20,
-                              "\(language): the row measured \(chrome.actions.size)")
-                XCTAssertTrue(try XCTUnwrap(overlay?.view(for: first)).barsAreShown, "\(language): the bars are not on screen")
+                XCTAssertTrue(bounds.contains(chrome.palette), "\(language) \(selection): the palette \(chrome.palette) is off the display")
+                XCTAssertTrue((300...700).contains(chrome.palette.width) && abs(chrome.palette.height - EditorPalette.height) < 1,
+                              "\(language): the palette measured \(chrome.palette.size)")
+                XCTAssertTrue(try XCTUnwrap(overlay?.view(for: first)).barsAreShown, "\(language): the palette is not on screen")
                 for other in others {
-                    XCTAssertNil(overlay?.chrome(on: other), "\(language): bars on a display that is not the edited one")
+                    XCTAssertNil(overlay?.chrome(on: other), "\(language): the palette on a display that is not the edited one")
                     XCTAssertFalse(try XCTUnwrap(overlay?.view(for: other)).barsAreShown)
                 }
             } } catch { XCTFail("\(language): \(error)") }
         }
     }
 
-    func testNoBarsBeforeAnAreaExistsOrWhileANewOneIsDragged() throws {
+    func testNoPaletteBeforeAnAreaExistsOrWhileANewOneIsDragged() throws {
         let (first, _) = try build()
         XCTAssertNil(overlay?.chrome(on: first))
         overlay?.mouseDown(on: first, at: CGPoint(x: 100, y: 100), flags: [])
         overlay?.mouseDragged(on: first, at: CGPoint(x: 300, y: 300), flags: [])
-        XCTAssertNil(overlay?.chrome(on: first), "bars over a selection still being dragged")
+        XCTAssertNil(overlay?.chrome(on: first), "the palette over a selection still being dragged")
         overlay?.mouseUp(on: first)
         XCTAssertNotNil(overlay?.chrome(on: first))
     }
 
     // MARK: while an object is drawn
 
-    func testTheBarsGoWhileAnObjectIsDrawnAndAreBackOnTheRelease() throws {
+    func testThePaletteGoesWhileAnObjectIsDrawnAndIsBackOnTheRelease() throws {
         let (first, _) = try build()
         select(first)
         overlay?.perform(.tool(.rectangle))
         let view = try XCTUnwrap(overlay?.view(for: first))
         XCTAssertTrue(view.barsAreShown)
         overlay?.mouseDown(on: first, at: CGPoint(x: 150, y: 150), flags: [])
-        XCTAssertNil(overlay?.chrome(on: first), "the bars stayed up under a press")
+        XCTAssertNil(overlay?.chrome(on: first), "the palette stayed up under a press")
         XCTAssertFalse(view.barsAreShown)
         overlay?.mouseDragged(on: first, at: CGPoint(x: 400, y: 350), flags: [])
-        XCTAssertNil(overlay?.chrome(on: first), "the bars stayed up under the drag")
+        XCTAssertNil(overlay?.chrome(on: first), "the palette stayed up under the drag")
         XCTAssertFalse(view.barsAreShown)
         XCTAssertEqual(view.drawnShapes.count, 1, "nothing was being drawn, so the test saw nothing")
         overlay?.mouseUp(on: first)
-        XCTAssertNotNil(overlay?.chrome(on: first), "the bars did not come back on the release")
+        XCTAssertNotNil(overlay?.chrome(on: first), "the palette did not come back on the release")
         XCTAssertTrue(view.barsAreShown)
     }
 
-    // MARK: a click on a bar
+    // MARK: a click on the palette
 
-    func testAPressOnABarStartsNoObjectAndSelectsNoNewArea() throws {
+    func testAPressOnThePaletteStartsNoObjectAndSelectsNoNewArea() throws {
         let (first, _) = try build()
         select(first)
         overlay?.perform(.tool(.pencil))
         let chrome = try XCTUnwrap(overlay?.chrome(on: first))
         let view = try XCTUnwrap(overlay?.view(for: first))
-        for bar in [chrome.tools, chrome.actions] {
-            XCTAssertTrue(view.isBar(view.clickTarget(at: centre(bar))), "a click in the middle of a bar reaches the picture")
-            // The gap between two buttons is on the bar and not on the picture either.
-            overlay?.mouseDown(on: first, at: CGPoint(x: bar.minX + 1, y: bar.minY + 1), flags: [])
-            overlay?.mouseDragged(on: first, at: CGPoint(x: bar.minX + 30, y: bar.minY + 30), flags: [])
-            overlay?.mouseUp(on: first)
-        }
-        XCTAssertEqual(view.drawnShapes.count, 0, "a press on a bar drew something")
+        let palette = chrome.palette
+        XCTAssertTrue(view.isBar(view.clickTarget(at: centre(palette))), "a click in the middle of the palette reaches the picture")
+        // The gap between two cells is on the palette and not on the picture either.
+        overlay?.mouseDown(on: first, at: CGPoint(x: palette.minX + 1, y: palette.minY + 1), flags: [])
+        overlay?.mouseDragged(on: first, at: CGPoint(x: palette.minX + 30, y: palette.minY + 30), flags: [])
+        overlay?.mouseUp(on: first)
+        XCTAssertEqual(view.drawnShapes.count, 0, "a press on the palette drew something")
         overlay?.perform(.exit(.confirm))
         let done = try XCTUnwrap(edited())
-        XCTAssertTrue(done.layers.isEmpty, "a press on a bar became a layer: \(done.layers)")
-        XCTAssertEqual(done.local, area, "a press on a bar moved the area")
+        XCTAssertTrue(done.layers.isEmpty, "a press on the palette became a layer: \(done.layers)")
+        XCTAssertEqual(done.local, area, "a press on the palette moved the area")
     }
 
-    func testThePictureBesideABarStillDrawsSoTheTestAboveCanSeeADraft() throws {
+    func testThePictureBesideThePaletteStillDrawsSoTheTestAboveCanSeeADraft() throws {
         let (first, _) = try build()
         select(first)
         overlay?.perform(.tool(.pencil))
@@ -178,7 +173,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(edited()).layers.count, 1)
     }
 
-    func testAPressOnABarsBackgroundWithdrawsEscsQuestion() throws {
+    func testAPressOnThePalettesBackgroundWithdrawsEscsQuestion() throws {
         let (first, _) = try build()
         select(first)
         overlay?.perform(.tool(.pencil))
@@ -186,21 +181,21 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         let chrome = try XCTUnwrap(overlay?.chrome(on: first))
         overlay?.keyDown(key(53))
         XCTAssertTrue(results.isEmpty, "Esc with layers closed at once: \(results)")
-        // The corner of the bar is background, not a button.
-        overlay?.mouseDown(on: first, at: CGPoint(x: chrome.tools.minX + 1, y: chrome.tools.minY + 1), flags: [])
+        // The corner of the palette is background, not a button.
+        overlay?.mouseDown(on: first, at: CGPoint(x: chrome.palette.minX + 1, y: chrome.palette.minY + 1), flags: [])
         overlay?.mouseUp(on: first)
         overlay?.keyDown(key(53))
-        XCTAssertTrue(results.isEmpty, "the press on the bar did not withdraw the question: \(results)")
+        XCTAssertTrue(results.isEmpty, "the press on the palette did not withdraw the question: \(results)")
         overlay?.keyDown(key(53))
         guard case .cancelled? = results.first, results.count == 1 else { return XCTFail("\(results)") }
     }
 
-    func testAPressOnABarWithNoToolDoesNotReplaceTheArea() throws {
+    func testAPressOnThePaletteWithNoToolDoesNotReplaceTheArea() throws {
         let (first, _) = try build()
         select(first)
         let chrome = try XCTUnwrap(overlay?.chrome(on: first))
-        // No tool, no layers: a press elsewhere starts a new area; a press on a bar must not.
-        overlay?.mouseDown(on: first, at: centre(chrome.tools), flags: [])
+        // No tool, no layers: a press elsewhere starts a new area; a press on the palette must not.
+        overlay?.mouseDown(on: first, at: centre(chrome.palette), flags: [])
         overlay?.mouseDragged(on: first, at: CGPoint(x: 700, y: 700), flags: [])
         overlay?.mouseUp(on: first)
         overlay?.perform(.exit(.confirm))
@@ -254,11 +249,11 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         guard case .cancelled? = results.first, results.count == 1 else { return XCTFail("\(results)") }
     }
 
-    // MARK: a bar and a key
+    // MARK: the palette and a key
 
-    func testEveryToolIsOnABarAndOnAKeyAndTheTwoAgree() throws {
+    func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
         let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4]
-        XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the bar has a button for it")
+        XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(EditorKeys.action(keyCode: codes[tool]!, flags: []), .tool(tool), "\(tool): the key means another tool")
             var drawn: [AnnotationTool] = []
@@ -266,7 +261,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 let (first, _) = try build()
                 select(first)
                 if viaKey { overlay?.keyDown(key(codes[tool]!)) } else { overlay?.bars.perform(.tool(tool)) }
-                XCTAssertEqual(overlay?.bars.tool, tool, "\(tool) viaKey=\(viaKey): the bars do not show the tool")
+                XCTAssertEqual(overlay?.bars.tool, tool, "\(tool) viaKey=\(viaKey): the palette does not show the tool")
                 stroke(first)
                 overlay?.perform(.exit(.confirm))
                 drawn += try XCTUnwrap(edited()).layers.map(\.tool)
@@ -314,7 +309,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         guard case .cancelled? = results.first else { return XCTFail("the second Close did not close: \(results)") }
     }
 
-    func testUndoAndRedoOnTheBarAreTheKeysAndTheirButtonsKnowWhenTheyCannot() throws {
+    func testUndoAndRedoOnThePaletteAreTheKeysAndTheirCellsKnowWhenTheyCannot() throws {
         let (first, _) = try build()
         select(first)
         XCTAssertFalse(overlay?.bars.canUndo ?? true)
@@ -434,32 +429,35 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
 
     // MARK: names
 
-    func testEveryNameOnTheBarsIsThereAndDistinctInEveryLanguage() {
+    func testEveryNameOnThePaletteIsThereAndDistinctInEveryLanguage() {
         AppLanguage.each { language in
             let groups: [(String, [String])] = [
                 ("tools", AnnotationTool.allCases.map(ScStr.tool)),
                 ("colours", AnnotationColor.allCases.map(ScStr.ink)),
                 ("thicknesses", AnnotationThickness.allCases.map(ScStr.thickness)),
-                ("the rest", [ScStr.fill, ScStr.undo, ScStr.redo, ScStr.copy, ScStr.save, ScStr.closeEditor]),
+                ("the rest", [ScStr.fill, ScStr.undo, ScStr.redo, ScStr.copy, ScStr.save, ScStr.closeEditor, ScStr.done, HelmA11y.moreActions]),
             ]
             for (name, words) in groups {
                 XCTAssertFalse(words.contains(where: \.isEmpty), "\(language) \(name)")
                 XCTAssertEqual(Set(words).count, words.count, "\(language): two controls share a name among \(name): \(words)")
             }
-            XCTAssertEqual(Set(groups.flatMap(\.1)).count, groups.flatMap(\.1).count, "\(language): two controls on the bars share a name")
+            XCTAssertEqual(Set(groups.flatMap(\.1)).count, groups.flatMap(\.1).count, "\(language): two controls on the palette share a name")
         }
     }
 
-    func testEveryButtonOnTheBarsIsNamedWhereItIsDeclared() throws {
-        let lines = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorBars.swift").components(separatedBy: "\n")
+    func testEveryButtonOnThePaletteIsNamedWhereItIsDeclared() throws {
         var seen = 0
-        for (index, line) in lines.enumerated() {
-            let body = line.trimmingCharacters(in: .whitespaces)
-            guard body.contains("Button(action:") || body.contains("Button {") else { continue }
-            seen += 1
-            let after = lines.dropFirst(index + 1).prefix(14).joined(separator: "\n")
-            XCTAssertTrue(after.contains(".accessibilityLabel("), "the button at line \(index + 1) of EditorBars.swift has no accessibility label")
+        // The cells are `GlassCell`, which cannot be built without a name; the swatch is the palette's own button.
+        for file in ["EditorPalette.swift", "GlassCell.swift"] {
+            let lines = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/\(file)").components(separatedBy: "\n")
+            for (index, line) in lines.enumerated() {
+                let body = line.trimmingCharacters(in: .whitespaces)
+                guard body.contains("Button(action:") || body.contains("Button {") else { continue }
+                seen += 1
+                let after = lines.dropFirst(index + 1).prefix(14).joined(separator: "\n")
+                XCTAssertTrue(after.contains(".accessibilityLabel("), "the button at line \(index + 1) of \(file) has no accessibility label")
+            }
         }
-        XCTAssertGreaterThanOrEqual(seen, 4, "the scan found \(seen) buttons: cell, swatch, thickness and the row's are four")
+        XCTAssertGreaterThanOrEqual(seen, 2, "the scan found \(seen) buttons: the cell and the swatch are two")
     }
 }
