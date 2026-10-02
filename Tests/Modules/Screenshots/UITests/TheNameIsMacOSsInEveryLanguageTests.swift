@@ -233,6 +233,21 @@ final class TheNameIsMacOSsInEveryLanguageTests: XCTestCase {
         XCTAssertEqual(checked, AppLanguage.allCases.count)
     }
 
+    /// The ink names Black and White are the system colour list's own words in every language
+    /// (`Apple.clr`); Japanese says ブラック and ホワイト there, not 黒 and 白.
+    func testBlackAndWhiteAreTheSystemColourListsWordsInEveryLanguage() throws {
+        let colours = try table("/System/Library/Colors/Apple.clr/Apple.loctable")
+        var compared = 0
+        AppLanguage.each { language in
+            for (color, key) in [(AnnotationColor.black, "Black"), (.white, "White")] {
+                guard let word = colours[system(language)]?[key] else { return XCTFail("\(language): macOS has no \(key)") }
+                XCTAssertEqual(ScStr.ink(color), word, "\(language): \(key)")
+                compared += 1
+            }
+        }
+        XCTAssertEqual(compared, 2 * AppLanguage.allCases.count)
+    }
+
     /// The save-screen box and the copy-area clipboard box carry macOS's Russian names, spelled out here
     /// rather than read from the table.
     func testTheSaveScreenAndCopyAreaBoxesAreNamedInRussian() {

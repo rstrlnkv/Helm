@@ -136,7 +136,7 @@ enum ScStr {
         }
     }
 
-    /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are Helm's own spellings (黒, 白), not the system's (ブラック, ホワイト).
+    /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are the system colour list's words (ブラック, ホワイト).
     static func ink(_ color: AnnotationColor) -> String {
         switch color {
         case .red: L("Red")

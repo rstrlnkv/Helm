@@ -633,7 +633,7 @@
 "When a rule fires" = "ルールが動作したとき";
 "When a tunnel goes down" = "トンネルが切断されたとき";
 "Which conditions must match" = "一致が必要な条件";
-"White" = "白";
+"White" = "ホワイト";
 "Window" = "ウインドウ";
 "With an external display" = "外部ディスプレイ接続時";
 "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "フルディスクアクセスがないとすべての項目を確認できず、残存物が少ないのか無いのか区別できません。";
@@ -1319,7 +1319,7 @@
 "Line" = "線";
 "Pencil" = "鉛筆";
 "Highlight" = "ハイライト";
-"Black" = "黒";
+"Black" = "ブラック";
 "Thin" = "細";
 "Medium" = "中";
 "Thick" = "太";
