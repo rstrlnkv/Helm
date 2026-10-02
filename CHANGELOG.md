@@ -165,6 +165,12 @@ only once it has no known problems left.
 - **NEW** Uninstaller has “Sort By” in the toolbar — “Sort by Name”, “Sort by Size”, “Sort by Date Last Opened” — and each app shows when it was last opened, or “No record of opening”.
 - **FIX** Disk reports free space the way Finder does, counting what macOS can free by itself, so the figure on the page and in the panel’s tile matches Finder’s.
 - **FIX** Helm’s log and Autopilot’s history no longer record the names of apps you remove, or of protected files a rule was kept away from.
+- **NEW** Screenshots, a new module: capture the whole screen, a window or an area from a panel with “Capture entire screen”, “Capture selected window”, “Capture selected portion” and a “5 seconds” or “10 seconds” timer. A window or an area is saved to a file and copied to the clipboard, the whole screen is saved to a file per display, and with “Save to” set to “Clipboard” each is only copied — of several displays, only the main one. With “Show floating thumbnail” on, a thumbnail follows each capture that is saved or copied; Helm asks for Screen & System Audio Recording, the one grant it needs.
+- **NEW** Screenshots can take over ⇧⌘3, ⇧⌘4 and ⇧⌘5 from macOS: its page shows which of macOS’s own screenshot shortcuts are still on, opens System Settings to untick them, and then offers “Use ⇧⌘3 and ⇧⌘4”, or “Use ⇧⌘3, ⇧⌘4 and ⇧⌘5” once that box is unticked too — Helm only reads that setting and never changes it.
+- **NEW** After you drag an area, draw on it before it is saved: “Pencil”, “Line”, “Arrow”, “Rectangle”, “Oval” and “Highlight”, in eight colours, three thicknesses and “Filled” for the boxes, with “Undo” and “Redo”. Click a drawing to move it, resize it, recolour it or delete it.
+- **NEW** The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧.
+- **NEW** “Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it.
+- **FIX** A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged.
 
 ## 0.10.0 — 2026-08-09
 
