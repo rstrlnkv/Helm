@@ -32,7 +32,7 @@ final class TheSelectionFrameLeavesTheObjectVisibleTests: XCTestCase {
         let (w, h) = (Int(screen.frame.width), Int(screen.frame.height))
         let frozen = FrozenDisplay(id: id, frame: CGRect(x: 0, y: 0, width: w, height: h), scale: 1,
                                    image: try CompositedPixels.halfBlackPicture(width: w, height: h))
-        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)], windows: []), store: nil) { _ in }
+        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)] + TheOtherScreens.blankFrames(besides: id), windows: []), store: nil) { _ in }
         XCTAssertTrue(built.build())
         overlay = built
         let view = try XCTUnwrap(built.view(for: id))

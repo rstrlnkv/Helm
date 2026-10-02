@@ -25,6 +25,9 @@ enum EditorAction: Equatable {
     /// ⌫ and ⌦: the selected object goes; with none selected it asks nothing.
     case delete
     case exit(EditorExit)
+    /// An arrow: `pixels` of the display's own pixels along a direction, each component -1, 0 or 1.
+    /// The selected object moves, or the area when none is selected.
+    case nudge(dx: Int, dy: Int, pixels: Int)
     /// The bar's Close: Esc's own rule, which asks first when there are layers.
     case close
 }
@@ -36,6 +39,18 @@ enum EditorAction: Equatable {
 enum EditorKeys {
     static func action(keyCode: UInt16, flags: NSEvent.ModifierFlags) -> EditorAction? {
         let flags = flags.intersection([.command, .shift, .option, .control])
+        // The arrows carry the numeric-pad and function flags of their own, which the intersection
+        // drops; ⇧ makes the step ten pixels, and any other modifier is not a nudge.
+        if flags.isSubset(of: .shift) {
+            let pixels = flags.contains(.shift) ? 10 : 1
+            switch Int(keyCode) {
+            case kVK_LeftArrow: return .nudge(dx: -1, dy: 0, pixels: pixels)
+            case kVK_RightArrow: return .nudge(dx: 1, dy: 0, pixels: pixels)
+            case kVK_UpArrow: return .nudge(dx: 0, dy: -1, pixels: pixels)
+            case kVK_DownArrow: return .nudge(dx: 0, dy: 1, pixels: pixels)
+            default: break
+            }
+        }
         switch (Int(keyCode), flags) {
         case (kVK_ANSI_A, []): return .tool(.arrow)
         case (kVK_ANSI_R, []): return .tool(.rectangle)

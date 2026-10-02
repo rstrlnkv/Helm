@@ -11,7 +11,7 @@ import Module_Screenshots_Engine
 
 /// **The box round the selected object leaves with the selection, and never hides a thin object.** Read
 /// off the composited pixels: the box's edge is not the object's colour while the object is selected and is
-/// exactly it (or the picture) once it is not, by every way a selection ends; and on a hairline and a
+/// exactly it (or the picture) once it is not, by every way a selection ends; and on a thin line and a
 /// freehand stroke the colour of the object is what shows at the box's centre.
 @MainActor
 final class TheSelectionFrameComesAndGoesWithTheSelectionTests: XCTestCase {
@@ -42,7 +42,7 @@ final class TheSelectionFrameComesAndGoesWithTheSelectionTests: XCTestCase {
         let (w, h) = (Int(screen.frame.width), Int(screen.frame.height))
         let frozen = FrozenDisplay(id: id, frame: CGRect(x: 0, y: 0, width: w, height: h), scale: scale,
                                    image: try CompositedPixels.halfBlackPicture(width: w, height: h))
-        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)], windows: []), store: nil) { _ in }
+        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)] + TheOtherScreens.blankFrames(besides: id), windows: []), store: nil) { _ in }
         XCTAssertTrue(built.build())
         overlay = built
         let view = try XCTUnwrap(built.view(for: id))
@@ -76,7 +76,7 @@ final class TheSelectionFrameComesAndGoesWithTheSelectionTests: XCTestCase {
     func testTheFrameLeavesWithTheSelectionByEveryDoorAndTheSubjectWasThere() throws {
         let red = AnnotationColor.red.cgColor.components!.map { UInt8(($0 * 255).rounded()) }
         let doors: [(String, (Rig) -> Void, [UInt8])] = [
-            ("Esc", { $0.overlay.rightMouseDown() }, red),
+            ("the right click", { $0.overlay.rightMouseDown() }, red),
             ("a click on empty", { $0.overlay.mouseDown(on: $0.id, at: CGPoint(x: 80, y: 80), flags: []); $0.overlay.mouseUp(on: $0.id) }, red),
             ("delete", { $0.overlay.perform(.delete) }, [0, 0, 0]),
             ("undo", { $0.overlay.perform(.undo) }, [0, 0, 0]),

@@ -8,14 +8,14 @@ import CoreGraphics
 /// hit. An unfilled rectangle is its edge and not its inside — a click in the middle of
 /// one is a click on the picture under it — and the arrow, which is always a solid, is its
 /// whole body.
-public enum AnnotationHit {
+enum AnnotationHit {
     /// How far from a stroke's edge a press still lands on it, in points.
-    public static let tolerance: CGFloat = 4
+    static let tolerance: CGFloat = 4
     /// How far from a handle's centre a press still takes it, in points.
-    public static let handleRadius: CGFloat = 7
+    static let handleRadius: CGFloat = 7
 
     /// Whether `point` is on `annotation`.
-    public static func hits(_ annotation: Annotation, at point: CGPoint, tolerance: CGFloat = tolerance) -> Bool {
+    static func hits(_ annotation: Annotation, at point: CGPoint, tolerance: CGFloat = tolerance) -> Bool {
         guard point.x.isFinite, point.y.isFinite, annotation.isUsable else { return false }
         let stroke = annotation.stroke
         // The band the tolerance adds is on both sides of the line, so half of it each.
@@ -28,12 +28,12 @@ public enum AnnotationHit {
     }
 
     /// The id of the topmost layer under `point`: the list is in drawing order, so the last one wins.
-    public static func topmost(in layers: [Annotation], at point: CGPoint, tolerance: CGFloat = tolerance) -> Annotation.ID? {
-        layers.last { hits($0, at: point, tolerance: tolerance) }?.id
+    static func topmost(in layers: [Annotation], at point: CGPoint) -> Annotation.ID? {
+        layers.last { hits($0, at: point) }?.id
     }
 
     /// The handle of `annotation` nearest to `point`, within `handleRadius`.
-    public static func handle(of annotation: Annotation, at point: CGPoint) -> AnnotationHandle? {
+    static func handle(of annotation: Annotation, at point: CGPoint) -> AnnotationHandle? {
         annotation.handles
             .map { (handle: $0.handle, distance: hypot($0.point.x - point.x, $0.point.y - point.y)) }
             .filter { $0.distance <= handleRadius }

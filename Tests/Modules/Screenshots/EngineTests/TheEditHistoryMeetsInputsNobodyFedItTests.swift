@@ -160,7 +160,7 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
 
     // MARK: Hidden handles, Esc chain
 
-    func testAPressOnTheHandleOfAnObjectHiddenUnderAnotherTakesTheHandleOfTheSelectedOne() {
+    func testAPressOnTheBodyOfTheSelectedObjectOverAnotherOnesCornerMovesTheSelectedOneAndNotTheOneUnderIt() {
         var editing = AnnotationEditing(bounds: area)
         editing.begin(.rectangle, at: CGPoint(x: 150, y: 150), style: .standard)
         editing.drag(to: CGPoint(x: 250, y: 250), shift: false)
@@ -169,12 +169,10 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
         editing.drag(to: CGPoint(x: 300, y: 300), shift: false)
         editing.end()
         let lower = editing.layers[0], upper = editing.layers[1]
-        // Select the lower one by its edge outside the upper filled box: the left edge x=150, y in 150...250 is inside upper. Use the
-        // handle spot through the selection path of the engine instead: click the upper, then the lower where only it lives.
         XCTAssertTrue(editing.press(at: CGPoint(x: 142, y: 142), tool: nil)) // only the upper reaches there
         editing.end()
         XCTAssertEqual(editing.selectedID, upper.id)
-        XCTAssertTrue(editing.press(at: CGPoint(x: 150, y: 150), tool: nil)) // the lower's corner, under the upper's body
+        XCTAssertTrue(editing.press(at: CGPoint(x: 150, y: 150), tool: nil)) // the lower's corner, under the upper's body and no handle of the upper
         XCTAssertTrue(editing.isBusy)
         editing.drag(to: CGPoint(x: 260, y: 260), shift: false)
         editing.end()

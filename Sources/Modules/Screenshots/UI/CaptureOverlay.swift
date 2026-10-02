@@ -52,6 +52,9 @@ enum OverlayResult {
     private var spaceHeld = false
     /// The area being edited, set once a selection is released; nil while selecting.
     private var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
+    /// An area handle under the pointer: which one, the area as the press took it and where the
+    /// press landed. Not an edit of the layers, so no undo step: the area is not a layer.
+    private var reshaping: (display: DisplayID, handle: AreaHandle, base: CGRect, press: CGPoint)?
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
@@ -176,6 +179,8 @@ enum OverlayResult {
 
     func mouseDown(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        // No release is guaranteed: a press that finds a reshape open ends it where it was.
+        reshaping = nil
         // A press on a bar is the bar's: never a draft, never a new area. Its background is an
         // input like any other, so it withdraws Esc's question as a button does.
         if chrome(on: display)?.covers(local) == true {
@@ -184,11 +189,20 @@ enum OverlayResult {
         }
         if var current = edit, drag == nil {
             current.layers.disarm()
-            // The editor reads the press on the edited display only: a tool draws, a handle
+            // The editor reads the press on the edited display only: a handle of the area reshapes it
+            // (an object's own handle, where the two meet, is taken first), a tool draws, a handle
             // resizes, an object is taken to be moved, and a click selects or lets go. What is
             // left is no tool and no layers, the old gesture, a new drag, which replaces the
             // area only when it turns out to be one; on another display, with a tool or with
             // layers, a press does nothing. The disarm is the click's own effect, kept either way.
+            if display == current.display,
+               let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected) {
+                current.layers.end()
+                reshaping = (display, handle, current.rect, local)
+                edit = current
+                render()
+                return
+            }
             if display == current.display,
                current.layers.press(at: local, tool: current.tool, style: style) {
                 edit = current
@@ -212,6 +226,17 @@ enum OverlayResult {
 
     func mouseDragged(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
+        if let held = reshaping, var current = edit {
+            // A result with nothing to draw is not taken: the area keeps the last one that had.
+            if held.display == display, let bounds = displayBounds(display),
+               let rect = AreaFrame.resized(held.base, held.handle, from: held.press, to: local, within: bounds) {
+                current.rect = rect
+                current.layers.reshape(bounds: rect)
+                edit = current
+            }
+            render()
+            return
+        }
         if var current = edit, drag == nil {
             current.layers.drag(to: local, shift: flags.contains(.shift))
             edit = current
@@ -234,6 +259,16 @@ enum OverlayResult {
     /// at once with nothing to lose, and with layers a second press, whenever
     /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
+        // A reshape under the pointer is cancelled, the area back as the press took it: Esc is the
+        // way out of what is being done, and that press does only that.
+        if let held = reshaping, var current = edit {
+            reshaping = nil
+            current.rect = held.base
+            current.layers.reshape(bounds: held.base)
+            edit = current
+            render()
+            return
+        }
         guard var current = edit, drag == nil else { finish(.cancelled); return }
         let outcome = current.layers.escape()
         edit = current
@@ -247,6 +282,14 @@ enum OverlayResult {
     func view(for display: DisplayID) -> OverlayView? { panels[display]?.view }
 
     func mouseUp(on display: DisplayID) {
+        if reshaping != nil {
+            // Judged at the release and not along the drag: a drag back brings the object in again, and Esc
+            // gives the area back whole, so nothing is let go of that the person has not settled.
+            reshaping = nil
+            if var current = edit { current.layers.releaseIfOutside(); edit = current }
+            render()
+            return
+        }
         if var current = edit, drag == nil {
             current.layers.end()
             edit = current
@@ -338,7 +381,21 @@ enum OverlayResult {
     /// one meaning however it was asked for. Nil is an input with no action, which only
     /// withdraws Esc's question.
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
-        guard var current = edit, drag == nil else { return }
+        guard var current = edit, drag == nil, reshaping == nil else { return }
+        // An arrow press moves the selected object, or the area when none is selected, by pixels of
+        // this display. It is not routed through the `disarm` below: that is what ends a run of
+        // presses, and a run of arrows is one undo step. A held key repeats on purpose.
+        if case .nudge(let dx, let dy, let pixels)? = action {
+            guard !current.layers.isBusy, let frame = freeze.frames.first(where: { $0.id == current.display }) else { return }
+            let delta = AreaFrame.step(CGPoint(x: dx, y: dy), pixels: pixels, scale: frame.scale)
+            if !current.layers.nudgeSelected(by: delta) {
+                current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
+                current.layers.reshape(bounds: current.rect)
+            }
+            edit = current
+            render()
+            return
+        }
         // Close is Esc's own door and carries Esc's question with it: disarming first would ask again for ever.
         if action == .close { escapeAsked(); return }
         current.layers.disarm()
@@ -377,7 +434,7 @@ enum OverlayResult {
             // pointer becomes a layer now, and an unusable one is dropped by `end`.
             current.layers.end()
             finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
-        case .close?, nil: break
+        case .nudge?, .close?, nil: break
         }
     }
 
@@ -397,11 +454,16 @@ enum OverlayResult {
         CGPoint(x: mouse.x - panel.frame.minX, y: height - (mouse.y - panel.frame.minY))
     }
 
+    private func displayBounds(_ display: DisplayID) -> CGRect? {
+        freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
+    }
+
     /// Where the bars stand on `display`: nil when it is not the edited one, and nil while an
-    /// object is being drawn — a bar under the pointer would be drawn into — or a new area is
-    /// being dragged. They are back on the release.
+    /// object is being drawn, moved or resized — a bar under the pointer would be drawn into — or
+    /// the area is being reshaped or a new one dragged. They are back on the release, and on the
+    /// Esc that drops a drawing or cancels a move, a resize or a reshape.
     func chrome(on display: DisplayID) -> EditorChrome? {
-        guard let edit, drag == nil, !edit.layers.isBusy, edit.display == display,
+        guard let edit, drag == nil, reshaping == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
         let sizes = view.barSizes
         return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, tools: sizes.tools, actions: sizes.actions)
@@ -421,6 +483,9 @@ enum OverlayResult {
             else if let edit, edit.display == id {
                 scene.selection = edit.rect
                 scene.editing = drag == nil
+                if let reshaping, reshaping.display == id, let pointer, pointer.display == id {
+                    scene.sizingAt = pointer.point
+                }
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
@@ -458,6 +523,8 @@ struct OverlayScene {
     /// Where the pointer is while the plate is up, in display-top-left points; the
     /// crosshair stays off while editing, so this is not `pointer`.
     var plateAt: CGPoint?
+    /// The area is being reshaped and the pointer is here: its size in pixels is on a plate by it.
+    var sizingAt: CGPoint?
 }
 
 // MARK: - The panel
@@ -505,6 +572,9 @@ final class OverlayView: NSView {
     /// box and the handles under a white fill painted the box white, over the very object it frames.
     private let frameLayer = CAShapeLayer()
     private let handleLayer = CAShapeLayer()
+    /// The area's own eight handles: round and white on a dark edge, where an object's are squares
+    /// on the accent colour, so the two are not taken for each other.
+    private let areaHandleLayer = CAShapeLayer()
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
@@ -572,6 +642,10 @@ final class OverlayView: NSView {
         handleLayer.strokeColor = NSColor.controlAccentColor.cgColor
         handleLayer.lineWidth = 1.5
 
+        areaHandleLayer.fillColor = NSColor.white.cgColor
+        areaHandleLayer.strokeColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        areaHandleLayer.lineWidth = 1
+
         crosshairLayer.fillColor = nil
         crosshairLayer.strokeColor = NSColor.white.withAlphaComponent(0.85).cgColor
         crosshairLayer.lineWidth = 1
@@ -580,7 +654,8 @@ final class OverlayView: NSView {
         crosshairLayer.shadowRadius = 0
         crosshairLayer.shadowOffset = .zero
 
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, handleLayer, crosshairLayer,
+        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer,
+                         crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
@@ -678,6 +753,7 @@ final class OverlayView: NSView {
         selectionLayer.path = scene.selection.map { CGPath(rect: layerRect($0), transform: nil) }
 
         drawLayers(scene)
+        drawAreaHandles(scene.editing ? scene.selection : nil)
         if let chrome = scene.chrome {
             _ = measuredBars
             toolsHost.frame = layerRect(chrome.tools)
@@ -704,10 +780,15 @@ final class OverlayView: NSView {
         // place — the size *replaces* the coordinates, as macOS's own ⌘⇧4 does.
         // Two plates at the pointer's offset lay one over the other.
         if scene.editing {
-            // Editing has no crosshair and no size plate; only the Esc question.
+            // Editing has no crosshair and no size plate; only the Esc question, and the size of an
+            // area being reshaped, which is the drag's own plate.
             coordinateLabel.isHidden = true
             sizeLabel.isHidden = true
-            if let plate = scene.plate, let selection = scene.selection {
+            if let at = scene.sizingAt, let selection = scene.selection {
+                let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
+                sizeLabel.show("\(pixels.width) × \(pixels.height)",
+                               near: CGPoint(x: at.x + 14, y: bounds.height - at.y - 26), within: bounds)
+            } else if let plate = scene.plate, let selection = scene.selection {
                 let box = layerRect(selection)
                 // The pointer's offset, as the other plates; the selection's corner
                 // is the fallback for a scene with no pointer.
@@ -742,8 +823,8 @@ final class OverlayView: NSView {
     /// rectangle, filled — and the dim's hole is what leaves it undimmed.
     ///
     /// **A layer is built once and kept while its annotation is equal to the one it was built from.**
-    /// Stroking and intersecting a 1024-point path costs milliseconds and the scene is applied on every
-    /// pointer event, so only what changed is rebuilt: the draft, the object being moved or resized, the
+    /// Stroking and intersecting a 1024-point path is expected to cost milliseconds (an estimate, not a
+    /// measurement) and the scene is applied on every pointer event, so only what changed is rebuilt: the draft, the object being moved or resized, the
     /// one recoloured. The cache is by `Annotation.id` and is dropped with the selection's rectangle.
     private func drawLayers(_ scene: OverlayScene) {
         guard scene.editing, let selection = scene.selection else {
@@ -823,7 +904,25 @@ final class OverlayView: NSView {
 
     private static let handleSide: CGFloat = 8
 
-    /// The layers on screen, for a test that must see the editor drew what it holds and reads what a layer is made of.
+    /// A dot at each of the area's handles; none for none. A dot is never wider than the reach that
+    /// takes it, so an area too small for eight reaches is not drawn eight dots wide.
+    private func drawAreaHandles(_ area: CGRect?) {
+        guard let area else { areaHandleLayer.path = nil; drawnAreaHandles = []; return }
+        drawnAreaHandles = AreaFrame.offered(on: area).map(\.point)
+        let radius = min(AreaFrame.dotRadius, AreaFrame.reach(on: area))
+        guard radius >= 1 else { areaHandleLayer.path = nil; return }
+        let path = CGMutablePath()
+        for point in drawnAreaHandles {
+            path.addEllipse(in: layerRect(CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)))
+        }
+        areaHandleLayer.path = path
+    }
+
+    /// Where the area's handles are drawn, in display-local points; none for none.
+    private(set) var drawnAreaHandles: [CGPoint] = []
+
+    /// The layers on screen: `drawLayers` keeps what it has put in the view here to compare the next
+    /// scene's against, and a test reads it to see the editor drew what it holds and what a layer is made of.
     private(set) var drawnShapes: [CAShapeLayer] = []
 
     /// How many shape layers were built since the view was made, for a test that counts the

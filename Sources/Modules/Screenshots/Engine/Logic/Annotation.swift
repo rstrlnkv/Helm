@@ -135,13 +135,13 @@ public struct Annotation: Sendable, Equatable {
 
     /// Whether the two are drawn the same: the ink as shown (an unset colour is the tool's own),
     /// the thickness and the fill, which is what a person can see and so what an edit may be a step for.
-    public func looksLike(_ other: Annotation) -> Bool {
+    func looksLike(_ other: Annotation) -> Bool {
         style.ink(for: tool) == other.style.ink(for: other.tool)
             && style.thickness == other.style.thickness && isFilled == other.isFilled
     }
 
     /// The same object in another style.
-    public func restyled(_ style: AnnotationStyle) -> Annotation {
+    func restyled(_ style: AnnotationStyle) -> Annotation {
         Annotation(tool: tool, start: start, end: end, points: points, style: style, id: id)
     }
 
@@ -166,14 +166,26 @@ public struct Annotation: Sendable, Equatable {
                 (.bottomLeft, CGPoint(x: box.minX, y: box.maxY)), (.bottomRight, CGPoint(x: box.maxX, y: box.maxY))]
     }
 
+    /// The farthest one move may carry an object on a side with no wall to stop it: far past any
+    /// display, and small enough that a run of moves stays among the finite numbers.
+    private static let freeReach: CGFloat = 1e6
+
     /// The object moved by `delta`, the movement shortened per axis until the geometry's box
-    /// is inside `bounds`: an object is never taken out of the selection.
-    public func translated(by delta: CGPoint, within bounds: CGRect) -> Annotation {
+    /// is inside `bounds`: an object is never taken out of the selection. A clamp only ever
+    /// shortens a move, never reverses it or makes it longer: on a side where the box already
+    /// lies beyond the wall (the area was pulled in past it) that wall has nothing to push
+    /// against, so the move passes as asked and the opposite wall alone limits it, itself held
+    /// to `freeReach` so no run of moves reaches the end of the finite numbers. A delta that
+    /// is not finite moves nothing.
+    func translated(by delta: CGPoint, within bounds: CGRect) -> Annotation {
+        guard delta.x.isFinite, delta.y.isFinite else { return self }
         let box = frame
-        let dx = delta.x.clamped(to: (bounds.minX - box.minX)...max(bounds.minX - box.minX, bounds.maxX - box.maxX),
-                                 whenNotANumber: 0)
-        let dy = delta.y.clamped(to: (bounds.minY - box.minY)...max(bounds.minY - box.minY, bounds.maxY - box.maxY),
-                                 whenNotANumber: 0)
+        func allowed(_ move: CGFloat, low: CGFloat, high: CGFloat) -> CGFloat {
+            let floor = low <= 0 ? low : -Self.freeReach, ceiling = high >= 0 ? high : Self.freeReach
+            return move.clamped(to: floor...ceiling, whenNotANumber: 0) // not a number: no move
+        }
+        let dx = allowed(delta.x, low: bounds.minX - box.minX, high: bounds.maxX - box.maxX)
+        let dy = allowed(delta.y, low: bounds.minY - box.minY, high: bounds.maxY - box.maxY)
         func move(_ point: CGPoint) -> CGPoint { CGPoint(x: point.x + dx, y: point.y + dy) }
         return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, id: id)
     }
@@ -183,7 +195,7 @@ public struct Annotation: Sendable, Equatable {
     /// opposite corner where it is and scales every point of the geometry by the same factor
     /// per axis, so a drag past the opposite corner mirrors it. The caller holds the pointer
     /// in the selection and drops a result that is not `isUsable`.
-    public func resized(_ handle: AnnotationHandle, to pointer: CGPoint) -> Annotation? {
+    func resized(_ handle: AnnotationHandle, to pointer: CGPoint) -> Annotation? {
         if isStraight {
             switch handle {
             case .start:

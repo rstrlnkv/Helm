@@ -22,19 +22,22 @@ public enum EscapeOutcome: Sendable, Equatable {
 /// only when it differs from the list after.
 public struct AnnotationEditing: Sendable {
     /// The travel, in points, under which a press that ends is a click and not a drawing.
-    public static let clickTravel: CGFloat = 3
+    static let clickTravel: CGFloat = 3
     /// How many steps undo (and redo) keep. A step is a whole list of layers, and a move of a
-    /// full pencil copies its points: at about 16 KB a pencil, 200 steps over a dozen of them stay
-    /// in the low megabytes, and nobody walks back further than that in one picture. The oldest goes.
-    public static let historyLimit = 200
+    /// full pencil copies its points: a pencil of `Annotation.maxPoints` points is 16 KB of `CGPoint`s
+    /// by arithmetic, so 200 steps over a dozen of them come to a few tens of megabytes at the very
+    /// most (an estimate, not a measurement), and nobody walks back further than that in one
+    /// picture. The oldest goes.
+    static let historyLimit = 200
 
-    /// Where a layer may be: the selection, in display-local points.
-    public let bounds: CGRect
+    /// Where a layer may be: the selection, in display-local points. It changes only through
+    /// `reshape(bounds:)`; the layers do not move with it.
+    public private(set) var bounds: CGRect
     public private(set) var layers: [Annotation] = []
     /// The layer under the pointer; not a layer until `end`.
     public private(set) var draft: Annotation?
     /// The object the edits are for, by id; nil is none.
-    public private(set) var selectedID: Annotation.ID?
+    private(set) var selectedID: Annotation.ID?
     /// The lists undo walks back to, oldest first, and the ones redo walks forward to, nearest last.
     private var past: [[Annotation]] = []
     private var future: [[Annotation]] = []
@@ -45,6 +48,9 @@ public struct AnnotationEditing: Sendable {
     private enum Gesture { case move(from: CGPoint), resize(AnnotationHandle) }
     /// Where the press that began the draft landed, as read, and how far the pointer has been from it.
     private var pressed: (point: CGPoint, travel: CGFloat)?
+    /// An arrow press has moved the selected object and no other input has come since: the next
+    /// press is the same step and not a new one, so a held key is one undo and not two hundred.
+    private var nudging = false
     /// Whether the first Esc has been pressed and nothing else has happened since.
     /// The question has no time limit: only another input withdraws it.
     private var armed = false
@@ -69,8 +75,9 @@ public struct AnnotationEditing: Sendable {
     /// Whether the plate should be up.
     public var isArmed: Bool { armed }
 
-    /// Any input that is not Esc: the question is withdrawn.
-    public mutating func disarm() { armed = false }
+    /// Any input that is not Esc: the question is withdrawn, and so is the open nudge, which only
+    /// another arrow press continues.
+    public mutating func disarm() { armed = false; nudging = false }
 
     /// A point that is not a number is dropped, and one outside the selection is
     /// taken to its edge. Nil for the first kind.
@@ -82,7 +89,7 @@ public struct AnnotationEditing: Sendable {
 
     /// `style` is what the object is drawn with from now to the end of it: a colour picked
     /// during the drag belongs to the next object.
-    public mutating func begin(_ tool: AnnotationTool, at point: CGPoint, style: AnnotationStyle = .standard) {
+    mutating func begin(_ tool: AnnotationTool, at point: CGPoint, style: AnnotationStyle = .standard) {
         disarm()
         guard let clamped = clamp(point) else { return }
         pointer = clamped
@@ -100,7 +107,8 @@ public struct AnnotationEditing: Sendable {
     /// under it (`end`); with none it takes the object under it, the selected one first, to
     /// move it, and a press on nothing lets go of the selection. False is a press that is
     /// none of these — no tool and nothing on the picture — for the caller to make its own.
-    /// A press outside the selection takes nothing and, with a tool, draws from the edge.
+    /// A press outside the selection takes nothing but an object's handle or edge that reaches
+    /// out to it and, with a tool, draws from the edge.
     public mutating func press(at point: CGPoint, tool: AnnotationTool?, style: AnnotationStyle = .standard) -> Bool {
         disarm()
         guard point.x.isFinite, point.y.isFinite else { return true }
@@ -124,14 +132,18 @@ public struct AnnotationEditing: Sendable {
 
     /// `shift` is the flag of **this** event, never one kept from the press: no release
     /// is guaranteed, so a kept flag could square every later shape.
-    public mutating func drag(to point: CGPoint, shift: Bool) {
-        guard let point = clamp(point) else { return }
+    public mutating func drag(to raw: CGPoint, shift: Bool) {
+        guard let point = clamp(raw) else { return }
         if let gesture {
             pointer = point
             let changed: Annotation?
             switch gesture.kind {
             case .move(let from):
-                changed = gesture.base.translated(by: CGPoint(x: point.x - from.x, y: point.y - from.y), within: bounds)
+                // The delta is the pointer as the person moved it, not as the area clamps it: a
+                // clamp may shorten a move, never reverse it, and an object the area was pulled
+                // in past would otherwise jump toward the area while the pointer goes away.
+                let moved = CGPoint(x: raw.x - from.x, y: raw.y - from.y)
+                changed = gesture.base.translated(by: moved, within: bounds)
             case .resize(let handle):
                 // A result with nothing to draw is not taken: the object keeps the last one that had.
                 changed = gesture.base.resized(handle, to: point).flatMap { $0.isUsable ? $0 : nil }
@@ -147,7 +159,7 @@ public struct AnnotationEditing: Sendable {
 
     /// ⇧ went down or up with the pointer where it was.
     public mutating func modifiersChanged(shift: Bool) {
-        guard let current = draft, let pointer else { return }
+        guard let current = draft, pointer != nil else { return }
         reshape(current, shift: shift)
     }
 
@@ -280,6 +292,38 @@ public struct AnnotationEditing: Sendable {
             guard $0.tool == .rectangle || $0.tool == .ellipse else { return $0 }
             var style = $0.style; style.filled = filled; return $0.restyled(style)
         }
+    }
+
+    /// The selected object moved by `delta` points, held inside the selection. **One undo step
+    /// for a run of presses**: the first records the list before it, and each press after it
+    /// (nothing but another arrow press in between — every other input calls `disarm`) moves the
+    /// object further in that same step. A press that moves nothing, against a wall, is none.
+    /// False when no object is selected, for the caller to move the area instead.
+    public mutating func nudgeSelected(by delta: CGPoint) -> Bool {
+        armed = false
+        guard gesture == nil, let current = selected, let index = layers.firstIndex(of: current) else { return false }
+        let changed = current.translated(by: delta, within: bounds)
+        guard changed != current else { return true }
+        if !nudging { record(layers) }
+        nudging = true
+        layers[index] = changed
+        return true
+    }
+
+    /// The area became `rect`. Not a step: the area is not a layer, and the layers stay where they
+    /// are, whatever of them is outside `rect` now being clipped by whoever draws them. It is an
+    /// input, so Esc's question and an open nudge end.
+    public mutating func reshape(bounds rect: CGRect) {
+        disarm()
+        bounds = rect
+    }
+
+    /// The selected object is let go of when none of it is inside the area any more: a frame and
+    /// handles left in the dim, under the bars, are something nobody can see to act on. One that is
+    /// partly inside stays selected; nothing is recorded, the object stays where it is.
+    public mutating func releaseIfOutside() {
+        guard let current = selected, bounds.intersection(current.frame).isNull else { return }
+        selectedID = nil
     }
 
     public mutating func deleteSelected() {

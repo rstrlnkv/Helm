@@ -83,6 +83,20 @@ boxes — is an `AnnotationStyle` the object is begun with; a colour never picke
 (red, and yellow for the marker), and the last tool and style are read once, at the first release of a
 capture, and written at each pick by `EditorMemory`, with every stored value bounded.
 
+The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
+arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
+read in one order by `CaptureOverlay.mouseDown`: a bar, then an area handle — unless the selected object has a
+handle at that point, which is the object's — then the object and the tool. The area handles are round dots on
+a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
+own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,
+and the display bounds it; an object left wholly outside the area when the handle is let go is deselected (`AnnotationEditing.releaseIfOutside`). The area is not a layer: reshaping it is no undo step, the layers keep their
+display-local coordinates, and what falls outside is cut by the clip the screen and the export already use,
+while the export crop, the bars and the remembered selection take whatever rectangle `OverlayResult.edited`
+carries. The arrows are read by key code (`EditorAction.nudge`) and are one pixel of the display, ten with ⇧,
+the step cut at the display's edge; with an object selected they move it, held inside the area, and a run of
+presses is one undo step until any other input (`AnnotationEditing.nudgeSelected`), with none selected they
+move the area. Esc while a handle is held puts the area back and closes nothing.
+
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for: Return

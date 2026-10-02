@@ -35,7 +35,7 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let frozen = FrozenDisplay(id: id, frame: CGRect(x: 0, y: 0, width: 1000, height: 800), scale: 1,
                                    image: try XCTUnwrap(context.makeImage()))
-        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)], windows: []), store: nil) { [weak self] in
+        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)] + TheOtherScreens.blankFrames(besides: id), windows: []), store: nil) { [weak self] in
             self?.results.append($0)
         }
         XCTAssertTrue(built.build())

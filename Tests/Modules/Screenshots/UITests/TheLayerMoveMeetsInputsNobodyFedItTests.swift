@@ -31,7 +31,7 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let frozen = FrozenDisplay(id: id, frame: CGRect(x: 0, y: 0, width: 1000, height: 800), scale: scale,
                                    image: try XCTUnwrap(context.makeImage()))
-        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)], windows: []), store: nil) { _ in }
+        let built = CaptureOverlay(freeze: Freeze(displays: [.image(frozen)] + TheOtherScreens.blankFrames(besides: id), windows: []), store: nil) { _ in }
         XCTAssertTrue(built.build())
         overlay = built
         built.mouseDown(on: id, at: CGPoint(x: 100, y: 100), flags: [])
