@@ -29,6 +29,13 @@ import AppKit
 /// true of the hand-picked palette they were written against, and not of
 /// `PaletteColor.offered` since, with nothing to make any of them go red. The
 /// list is the one place allowed to say how long it is.
+///
+/// **A `Picker`, not a `Menu`**, because it is visible to the probes. Both are
+/// one compact control, and this one is what the other settings pages use and
+/// draws its own selection; but a `Menu` whose label is a bare `Circle`
+/// photographed as nothing, offscreen and in a real window both, because AppKit
+/// draws it outside the layer `cacheDisplay` reads. Shipping a control nobody
+/// could photograph would have been shipping one nobody had seen.
 public struct HelmPaletteSwatches: View {
     // The row this replaced put every swatch on one line, beside the label
     // whose colour they set — and there was a 5×2 grid as well, which was the
@@ -60,14 +67,7 @@ public struct HelmPaletteSwatches: View {
     @State private var bridge = ColorPanelBridge()
 
     public var body: some View {
-        // A `Picker`, not a `Menu`. Both are one compact control; this one is
-        // what the rest of the settings pages already use, it draws its own
-        // selection, and — the reason it was chosen over the first attempt —
-        // it is **visible to the probes**. A `Menu` whose label is a bare
-        // `Circle` photographed as nothing at all, offscreen and in a real
-        // window both, because AppKit draws it outside the layer
-        // `cacheDisplay` reads. Shipping a control nobody could photograph
-        // would have been shipping one nobody had seen.
+        // A `Picker`, not a `Menu`: the reason is on the type's doc comment.
         Picker(name, selection: choice) {
             ForEach(PaletteColor.offered, id: \.rawValue) { palette in
                 Label {

@@ -11,8 +11,8 @@ import HelmRuntime
 /// be inventing an intention for somebody who picked a folder off the ring.
 ///
 /// The gate is untouched by any of this. `DiskEngine.trash` still runs
-/// `UserFileScope.partition` over whatever comes out of here, and `HelmTrash`
-/// still has the last word (ARCHITECTURE.md § The gates).
+/// `UserFileScope.partition` over whatever comes out of here (ARCHITECTURE.md § Removal), and
+/// `HelmTrash` still re-reads the path before each move (ARCHITECTURE.md § The gates).
 public enum DiskRemovalPlan {
 
     /// What the confirmation is about.

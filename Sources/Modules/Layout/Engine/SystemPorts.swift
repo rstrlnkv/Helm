@@ -81,6 +81,9 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// let go, which is the set that had nothing at all.
     deinit { stop() }
 
+    /// Starts the event tap, which is **listen-only**: it reports keys and can
+    /// neither delay nor swallow them, so nothing Helm does here can freeze
+    /// somebody's typing. False without Accessibility, asked without prompting.
     public func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                       onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                       died: @escaping @Sendable () -> Void) -> Bool {
@@ -97,8 +100,6 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         let mask = (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.leftMouseDown.rawValue)
             | (1 << CGEventType.flagsChanged.rawValue)
-        // Listen-only: the tap reports keys and can neither delay nor swallow
-        // them, so nothing Helm does here can freeze somebody's typing.
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap, place: .headInsertEventTap,
             options: .listenOnly, eventsOfInterest: CGEventMask(mask),

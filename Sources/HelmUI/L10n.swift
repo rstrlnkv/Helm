@@ -3,6 +3,10 @@ import HelmRuntime
 
 /// Supported UI languages. English is the base (source strings live at the call
 /// site); the others come from per-string tables.
+///
+/// The `.lproj` directories are named by the raw values (`zh`, `pt`), not by
+/// `zh-Hans` or `pt-BR`, because Helm picks the language itself rather than
+/// leaving it to the system's resolution.
 public enum AppLanguage: String, CaseIterable, Sendable {
     case en, zh, es, fr, de, ja, ru, pt
 

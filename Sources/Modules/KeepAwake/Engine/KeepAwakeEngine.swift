@@ -173,6 +173,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         lid.releaseOnModuleDisabled()
     }
 
+    /// The one place a session's record is left unwritten.
+    ///
+    /// `applicationWillTerminate` runs `host.shutdown()` (`AppDelegate`), which
+    /// calls this on every live engine (`ModuleHost.shutdown`), so recording
+    /// «off» here would erase the session on every quit, the updater's included —
+    /// the relaunch the stored record exists for. The record is written wherever the
+    /// person's intent changes. The cost, stated rather than
+    /// hidden: this cannot tell quitting from the module being switched off, so
+    /// switching Keep Awake off and on again resumes an unexpired session. Of the
+    /// two mistakes, forgetting what was asked for is the one that was reported.
     public func deactivate() {
         // Before anything else: the module can be switched off from Settings,
         // and what that drops is this engine and everything it owns. An
@@ -763,20 +773,8 @@ extension KeepAwakeEngine {
     }
 
     /// Written wherever the person's intent changes, and **not** in
-    /// `deactivate()`.
+    /// `deactivate()`; the reason and its cost are on that doc comment.
     ///
-    /// `deactivate()` looks like the place for it and is the one place it must not
-    /// go: `applicationWillTerminate` calls it on every live engine
-    /// (`HelmApp/AppDelegate.swift:237`), so recording "off" there would erase the
-    /// session on every quit — including the silent updater's, which is the
-    /// relaunch this whole thing exists for. It would have been a fix that
-    /// changed nothing.
-    ///
-    /// The cost of that choice, stated: `deactivate()` also runs when the module
-    /// is switched off in Settings, and it cannot tell the two callers apart. So
-    /// switching Keep Awake off and on again resumes a session that has not
-    /// expired. Of the two possible mistakes, forgetting what the person asked for
-    /// is the one that was reported.
     /// Stored against 2001 and not 1970, which is not a style choice: a `Date`
     /// *is* a `Double` of seconds since the reference date, so that round-trips
     /// exactly, while going through `timeIntervalSince1970` adds and then
@@ -798,6 +796,9 @@ extension KeepAwakeEngine {
         store.set(suppressed, for: SessionKey.suppressed)
     }
 
+    /// Brings back what `SessionRestore` found worth keeping, as a *deadline*
+    /// rather than a duration: scheduling the original minutes again would end
+    /// the session later on every restart, so what is scheduled is what is left.
     private func restoreSession() {
         // Before the switch below, because two of its branches write the record
         // back and would otherwise store a pause the flag has not been given

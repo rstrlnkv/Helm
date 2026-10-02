@@ -355,9 +355,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// preferences on exit, so the leftovers an uninstall just removed come
     /// back. Too long and everyone waits for an app that stopped in 50 ms.
     ///
-    /// **The deadline proceeds rather than refuses.** An app that ignores a
-    /// quit must not block a removal the person explicitly asked for; the
-    /// failures come back from `trashSync` and are shown.
+    /// **The deadline ends the wait, not the question.** An app that ignores a
+    /// quit does not make this fail or throw; `removeBatch` asks whether the app
+    /// still runs once this returns, and a batch still holding one moves nothing.
     public func waitUntilGone(bundleID: String,
                               deadline: TimeInterval = 5,
                               poll: TimeInterval = 0.05) async {
@@ -584,6 +584,12 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// names: a local flag standing in for a live external fact. The flag is not
     /// made fresher; the question is asked where the answer is used, and again
     /// after the quitting — which is itself long enough to have changed it.
+    ///
+    /// **The deadline ends the wait, not the question.** Inside the quit loop's
+    /// deadline per app, one comes back up while the batch quits the others — a
+    /// login item, a helper, a double click — or it ignores the quit and
+    /// `waitUntilGone` gives up. macOS moves a running app's bundle without a
+    /// word, so neither refuses anything of its own accord.
     private func removeBatch(_ paths: [String],
                              quittingRunningApps mayQuit: Bool) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
@@ -603,15 +609,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // model's business, decided there from the same stale flag.
                 await waitUntilGone(bundleID: app.bundleID)
             }
-            // **And the reading above is older than the move.** Two ordinary
-            // things happen inside a deadline per app: one comes back up while
-            // the batch quits the others — a login item, a helper, a double
-            // click — or it ignores the quit and the deadline proceeds. macOS
-            // moves a running app's bundle without a word, so neither refuses
-            // anything, and the process writes its preferences on exit and puts
-            // back the leftovers this batch has just taken. Asked again, then,
-            // where the answer is used; `mayQuit: false` because the quit has
-            // been spent, which is `verdict`'s existing rule at a later moment.
+            // `mayQuit: false` because the quit has been spent, which is
+            // `verdict`'s existing rule at a later moment.
             let stillUp = await offTheCooperativePool { self.runningApps(among: paths) }
             if case .refuse(let up) = UninstallPlan.verdict(running: stillUp, mayQuit: false) {
                 return held(up, because: "still up after the quit")

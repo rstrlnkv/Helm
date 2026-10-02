@@ -26,16 +26,16 @@ import XCTest
 /// because three surviving doc comments elsewhere in Layout went on writing the
 /// name. That is worse than an ordinary false negative here: this repository
 /// writes backticked names inside doc comments deliberately and at volume —
-/// `CLAUDE.md` § public says so, and warns in the same breath against answering
-/// "who uses this" with `grep`, which is exactly what the index was doing. So
+/// ARCHITECTURE.md § Why the commands are run says so, and warns in the same breath
+/// against answering "who uses this" with `grep`, which is exactly what the index was doing. So
 /// Swift arrives through `SwiftSource.uncommented`, and what the tree *has* is
 /// what it declares and what it writes in a literal, never what it says about
 /// itself in prose.
 ///
-/// **Only the four standing documents.** `docs/` holds plans, specs and design
-/// records — each is the record of a moment and is *supposed* to keep saying
-/// what was true then; `docs/design/current/README.md` says so in its own first
-/// line. Auditing those would demand they lie about their own dates.
+/// **Only the standing documents** (`StandingDocuments.all()`). A plan, a spec or a
+/// design record is the record of a moment and is *supposed* to keep saying what
+/// was true then; none lives in this tree, and auditing one would demand it lie
+/// about its own dates.
 final class DocumentsNameTheTreeTests: XCTestCase {
 
     /// Names macOS owns. They will never be in this tree and their absence says
@@ -50,64 +50,28 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // the checkout, the accident ended, and the guard said what had always
         // been true — the tree does not own this name.
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
-        // The appearance a Mac draws in with Increase Contrast on. The
-        // documents name it to record a measurement, not a call: `bestMatch`
-        // answers `NSAppearanceNameAqua` while this is the drawing appearance,
-        // which is why `HelmContrast` reads a workspace flag instead. The tree
-        // cannot own the name because it never asks for it — that is the finding.
-        "NSAppearanceNameAccessibilityAqua": "macOS's high-contrast appearance, named where the documents record that it cannot be detected from a colour",
         "NSVisualEffectView": "AppKit's material view, named where the documents say the settings sidebar deliberately draws none — `NSSplitViewController` supplies the glass and one of these would block it",
         // Lowercase, and only visible to this check since it stopped skipping
-        // that half of the namespace. Programs the documents name because a
-        // script runs them, and two AppKit/SwiftUI members named in passages
-        // about what they cannot do.
-        // The four names the 2026-08-12 privilege measurement needed. Two are
-        // IOKit's, and the point of that passage is precisely that neither is
-        // reachable from this tree: Swift exports neither symbol, which is why
-        // the probe had to go through the other two.
+        // that half of the namespace. A program the documents name because a
+        // script runs it, and a SwiftUI member named in a passage
+        // about what it cannot do.
         "dmgbuild": "the tool that lays out the disk image window",
-        "hdiutil": "the tool that makes and mounts it",
         "safeAreaInset": "SwiftUI's modifier, named where the documents say what it costs",
-        // The three errno values the launch measurement names, all POSIX's
-        // rather than Helm's — the passage names them to say which failures
-        // `NSTask` returns rather than raises. `E2BIG` sat outside this list
-        // under a note saying the tree already carried it; it carried it in a
-        // doc comment, which is the reading that stopped counting.
-
         // The pass that stopped the blob counting comments surfaced
-        // twenty-four of these at once on 2026-08-30 — the twenty-three below
-        // and `E2BIG` above. Nothing about the tree changed and no document was
+        // these on 2026-08-30. Nothing about the tree changed and no document was
         // stale: each is a name macOS, Swift or a tool owns, and each had been
         // answered by a doc comment explaining what this app deliberately does
         // *not* use.
         "NSTableView": "AppKit's table, named where the documents count what two animation systems in one list cost; its property and its method were already here",
-        "NSTextField": "AppKit's field, named where the documents say SwiftUI draws its own text instead",
-        "NSLocalizedString": "Foundation's lookup, named to say what `L` is not and why",
         "repeatForever": "SwiftUI's animation member, named where the documents say what it leaves a model holding",
-        "Hasher": "Swift's, named to say why the log's tags are FNV-1a instead",
         "totalFileAllocatedSize": "Foundation's resource value, named where the documents say what it answers for a directory",
-        "execve": "the syscall a written hosts line has to survive, named in the argument about how long one may be",
-        "XCTestConfigurationFilePath": "Xcode's environment variable, named because `swift test` does not set it",
         "NEVPNManager": "NetworkExtension's manager — one of the four things a Developer ID is blocking, and named for exactly that",
-        "endSearchInteraction": "NSSearchToolbarItem's own method, named where the documents say it ends editing the same way losing focus does",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a
     /// deliberate piece of history, not a debt: the sentence around each one is
     /// about its removal.
-    private static let knownAbsent: [String: String] = [
-        "DiskSafety": "the disk module's private gate before it became UserFileScope",
-        "HelmSurface.floatingEdge": "a token the documents claimed existed; grep found it only in the prose, and that paragraph is the correction",
-        "SidebarComposerTable": "the composer while it was an NSTableView; the passage is about what that cost and why it went back to a List",
-        "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
-
-        // Seven more, surfaced by the same 2026-08-30 pass. Each is Helm's own
-        // and each is genuinely gone; what had been answering for them was a
-        // comment somewhere else explaining the removal well.
-        "consumeRisingEdge": "Keep Awake's edge before the 2026-08-20 rename to `consumeEdge`, and the passage naming it is the account of the stale document this check failed to catch",
-        "VPNRules.unspokenFor": "the filter that kept a locked configuration out of the page-wide banner because a rule's own row already said it; deleted when the rules moved into a popover nobody had opened",
-        "FOLDERS": "one of the sixteen orphan translation keys the sweep deleted, named among the words that would otherwise have inherited another control's translations",
-    ]
+    private static let knownAbsent: [String: String] = [:]
 
     /// This check's own machinery, which the documents describe by name.
     ///
@@ -117,7 +81,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// in the tree for ever. The cost of that is that the check cannot see its
     /// own members either, and the documents name them when explaining how it
     /// works. Two entries, and they are the only ones: anything else declared
-    /// here is not something the prose should be pointing at.
+    /// here is not something the prose should be pointing at. Its own file name
+    /// stays in the tree.
     private static let ownMachinery: Set<String> = ["knownAbsent", "foreign"]
 
     // MARK: - What shape a span is
@@ -276,18 +241,6 @@ final class DocumentsNameTheTreeTests: XCTestCase {
 
     // MARK: - The documents
 
-    /// The four core documents of the standard, and nothing else. Each names
-    /// code by path or by type and is read by this check for exactly that
-    /// reason: `ARCHITECTURE.md` and `CLAUDE.md` for the reason this class has
-    /// carried since 2026-08-03, `README.md` since 2026-08-25, when an audit of
-    /// the rest found a public module table nine rows long over a registry of
-    /// ten and a digest rule naming one of the two scripts that print it, and
-    /// `CHANGELOG.md` from this pass — 39 KB of prose naming types and files
-    /// that this check had never read.
-    private static let standing = [
-        "ARCHITECTURE.md", "CLAUDE.md", "README.md", "CHANGELOG.md",
-    ]
-
     /// **A document that is named and absent is a failure, not a silent
     /// subtraction.** The `compactMap` here used to drop it and the skip only
     /// asked whether *all* of them were gone, so this class read three documents
@@ -302,7 +255,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     private func documents() throws -> [(name: String, lines: [String])] {
         var found: [(name: String, lines: [String])] = []
         var missing: [String] = []
-        for name in Self.standing {
+        for name in StandingDocuments.all() {
             guard let text = try? String(contentsOf: root.appendingPathComponent(name),
                                          encoding: .utf8) else {
                 missing.append(name)
@@ -530,9 +483,31 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// asking anything of it, so the live figure is there whether the run
     /// passes or fails — high enough that a reader emitting none, or almost
     /// none, of a kind still fails, and low enough that ordinary editing of
-    /// the four documents does not. `CHANGELOG.md` legitimately contributes
+    /// the standing documents does not. `CHANGELOG.md` legitimately contributes
     /// almost nothing to any of them, which is why the floors are asked of
-    /// the four documents together rather than one at a time.
+    /// the standing documents together rather than one at a time.
+    ///
+    /// **`fileLine` has no floor on the live documents, and that is a
+    /// decision, not an omission.** A trim of the documents removes a
+    /// `file:line` address wherever the symbol can be named, because line
+    /// numbers go stale, so each such pass lowers the live count (measured
+    /// 2026-10-02, below the 100 this floor used to be; the figures are the
+    /// ones printed on every run). A floor on that count is a quota on what
+    /// the documents are shedding: it goes red on the pass that does its job,
+    /// and even "at least 1" — the smallest number that proves the kind
+    /// occurred — goes red on the pass that removes the last one. Addresses
+    /// whose symbol cannot be named stay, so the count need not reach zero, but
+    /// no floor above zero is safe either way. The count is still printed.
+    ///
+    /// What the canary owes is proof that the reader *can* recognise the
+    /// kind, and that does not depend on what the documents happen to hold:
+    /// `testTheReaderRecognisesEveryFileLineShape` hands the same
+    /// `namesMentioned` a fixed set of lines carrying every line-number shape
+    /// this file accepts, next to one address of every other kind, and asks
+    /// for each one's kind back. The other three kinds keep their live
+    /// floors, because they are the documents' ordinary vocabulary and no
+    /// rule asks for them to go — they are what proves the live documents
+    /// are being read at all.
     func testTheReaderIsActuallyReadingTheDocuments() throws {
         let documents = try documents()
         var byKind: [Kind: Int] = [:]
@@ -541,18 +516,77 @@ final class DocumentsNameTheTreeTests: XCTestCase {
                 byKind[kind, default: 0] += 1
             }
         }
-        let floors: [(Kind, Int)] = [
-            (.file, 100), (.fileLine, 100), (.member, 40), (.bareName, 200),
-        ]
-        for (kind, _) in floors {
-            print("DocumentsNameTheTreeTests: \(byKind[kind, default: 0]) `\(kind.rawValue)` addresses across the four documents")
+        for kind in [Kind.file, .fileLine, .member, .bareName] {
+            print("DocumentsNameTheTreeTests: \(byKind[kind, default: 0]) `\(kind.rawValue)` addresses across the standing documents")
         }
+        let floors: [(Kind, Int)] = [
+            (.file, 100), (.member, 40), (.bareName, 200),
+        ]
         for (kind, floor) in floors {
             let found = byKind[kind, default: 0]
             XCTAssertGreaterThanOrEqual(found, floor, """
-                found \(found) `\(kind.rawValue)` addresses across the four documents, fewer than \
+                found \(found) `\(kind.rawValue)` addresses across the standing documents, fewer than \
                 the \(floor) this canary expects — a reader that stopped extracting this kind would \
                 look exactly like this and still pass every other test in this file.
+                """)
+        }
+    }
+
+    /// **The `fileLine` half of the canary, on a fixture rather than on the
+    /// documents** — the reason is on `testTheReaderIsActuallyReadingTheDocuments`.
+    ///
+    /// The fixture goes through `namesMentioned`, the same function the live
+    /// check calls, not a copy of its patterns: a copy would agree with
+    /// itself whatever the reader did. Every shape `classify` turns into a
+    /// `fileLine` is here — one line, a range, a list, a bare `.swift` name
+    /// with a line, and a `.swift` spec `pathShape` cannot parse (an en-dash
+    /// range) that must still count as a line address — and so is one
+    /// address of every other kind plus a git hash, so a reader that started
+    /// calling *everything* a `fileLine` fails here as surely as one that
+    /// stopped calling anything one. The whole list is compared, kinds and
+    /// line numbers, so a dropped or an extra span fails too.
+    ///
+    /// **The line-number check is exercised here as well.** With no line
+    /// numbers left in the documents, `fileIsThere`'s line branch would run
+    /// on nothing in the live check; this file's own path, against its own
+    /// line count read at run time, keeps an address one line past the end
+    /// failing and an address on the last line passing, for a single number,
+    /// a range and a list alike.
+    func testTheReaderRecognisesEveryFileLineShape() throws {
+        let fixture = [
+            "One line: `Sources/HelmRuntime/ScanRoot.swift:42`, a range `Sources/HelmRuntime/ScanRoot.swift:12-40`.",
+            "A list `Modules/Disk/UI/RingView.swift:12,34` and a bare name `ScanRoot.swift:7`.",
+            "Malformed but still a line address: `Sources/HelmRuntime/ScanRoot.swift:12\u{2013}40`.",
+            "The other kinds: `Sources/HelmRuntime/ScanRoot.swift`, `AppLanguage.each`, `RemovableScope`, `c69e17ab`.",
+        ]
+        let read = namesMentioned(in: fixture).map { "\($0.line) \($0.kind.rawValue) \($0.token)" }
+        let expected = [
+            "1 fileLine Sources/HelmRuntime/ScanRoot.swift:42",
+            "1 fileLine Sources/HelmRuntime/ScanRoot.swift:12-40",
+            "2 fileLine Modules/Disk/UI/RingView.swift:12,34",
+            "2 fileLine ScanRoot.swift:7",
+            "3 fileLine Sources/HelmRuntime/ScanRoot.swift:12\u{2013}40",
+            "4 file Sources/HelmRuntime/ScanRoot.swift",
+            "4 member AppLanguage.each",
+            "4 bareName RemovableScope",
+        ]
+        XCTAssertEqual(read, expected, """
+            the reader no longer sorts the fixture's addresses into the kinds it was written \
+            with — with the documents shedding their line numbers, this fixture is the only \
+            place a reader that stopped recognising `fileLine` can still be caught.
+            """)
+
+        let me = URL(fileURLWithPath: #filePath)
+        let path = String(me.path.dropFirst(root.path.count + 1))
+        let last = try XCTUnwrap(lineCount(of: me), "this file must be readable to stand as its own fixture")
+        let empty: [String: [URL]] = [:]
+        for (spec, there) in [("\(last)", true), ("\(last + 1)", false),
+                              ("1-\(last)", true), ("1-\(last + 1)", false),
+                              ("1,\(last)", true), ("\(last + 1),1", false)] {
+            let token = "\(path):\(spec)"
+            XCTAssertEqual(classify(token), .fileLine, "`\(token)` must read as a line address")
+            XCTAssertEqual(fileIsThere(token, byName: empty), there, """
+                `\(token)` against a file of \(last) lines must read as \(there ? "there" : "not there")
                 """)
         }
     }

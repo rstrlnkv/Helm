@@ -4,32 +4,30 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **«The question is asked where the answer is used» — and it is not.**
+/// **A reading of which applications are up is not good for the move.**
 ///
-/// `removeBatch` reads which applications are up **once**, at the top, and then
-/// spends the rest of the batch acting on that reading: a force quit and a
-/// `waitUntilGone` per app, five seconds apiece by default, before `trashSync`
-/// moves anything. Everything the module says about staleness applies to that
-/// gap as much as to the review screen's own flag —
-/// `TheAppIsAskedAgainAtRemovalTests` closed the gap between the *scan* and the
-/// press, and this is the gap between the press and the move.
+/// `removeBatch` quits the running applications of a batch one after another, a
+/// force quit and a `waitUntilGone` per app, five seconds apiece by default,
+/// before `trashSync` moves anything. After that loop it asks again, and
+/// `held()` returns what is still up as `stillRunning` instead of moving it.
+/// These tests hold that second asking; the first reading, taken at the top, is
+/// older than the move by the length of the loop.
 ///
 /// Two ways an application is up when its bundle moves, both of them ordinary:
 ///
 /// - it came back while the batch was quitting the *others* — a login item, a
 ///   helper that restarts its app, `open -a`, or the person double-clicking;
-/// - it ignored the quit, and the deadline let the batch proceed.
+/// - it ignored the quit, and the deadline ended the wait.
 ///
-/// The second is the one ARCHITECTURE.md § «Uninstaller» already
-/// decided: «the deadline **proceeds** rather than refuses… and `trashSync`
-/// reports what would not move». The first half is a decision; the second half
-/// is not true. macOS lets a running app's bundle be moved, so nothing refuses,
-/// nothing is reported, and the result is an unqualified success — `trashed`
-/// holding the bundle, `stillRunning` empty, `failures` empty. The process
-/// carries on out of the moved bundle and writes its preferences when it
-/// finally exits, so the leftovers this batch has just taken come back. That is
-/// the half-uninstall `waitUntilGone` exists to prevent, reported as a clean
-/// one.
+/// The second is the one already decided in ARCHITECTURE.md § Uninstaller:
+/// «the deadline ends the *wait* rather than the question».
+/// Without the second asking, nothing would answer either. macOS lets a running
+/// app's bundle be moved, so nothing would refuse, nothing would be reported,
+/// and the result would be an unqualified success — `trashed` holding the
+/// bundle, `stillRunning` empty, `failures` empty. The process carries on out
+/// of the moved bundle and writes its preferences when it finally exits, so the
+/// leftovers this batch has just taken come back. That is the half-uninstall
+/// `waitUntilGone` exists to prevent, reported as a clean one.
 ///
 /// These tests do not prescribe which way out is taken. Refusing the bundle,
 /// naming the app in `stillRunning`, or classifying it as a failure would each
@@ -109,10 +107,9 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
 
     /// **An app that ignored the force quit.**
     ///
-    /// The deadline proceeding is a decision (ARCHITECTURE.md § Uninstaller); the
-    /// sentence that justifies it — «`trashSync` reports what would
-    /// not move» — is what is missing. Nothing refuses to move, so the person is
-    /// told the uninstall worked.
+    /// The deadline ending the wait, not the question, is a decision
+    /// (ARCHITECTURE.md § Uninstaller); without the second asking nothing refuses
+    /// to move, so the person is told the uninstall worked.
     ///
     /// It costs the engine's own five-second deadline, which is the number that
     /// ships: `removeBatch` calls `waitUntilGone` with its defaults and there is

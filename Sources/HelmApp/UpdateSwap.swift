@@ -20,6 +20,9 @@ import HelmRuntime
 /// — left the person with no Helm at all. The downloaded zip is deleted before
 /// the handover (`Installer.installZip`) and the unzipped payload lives in a
 /// directory the script removes, so there was nothing anywhere to go back to.
+/// Copying first is not the fix by itself: a `ditto` into a live bundle merges
+/// into it, which is how a half-new, half-old Helm is made, so nothing is copied
+/// until the installed bundle has been moved out of the way.
 ///
 /// **What it can report, and what it cannot.** Nothing it writes can reach a
 /// screen: the report belongs to whichever Helm launches next, which is the new
@@ -62,9 +65,7 @@ enum UpdateSwap {
         STATUS=1
       fi
     else
-      # The bundle could not be moved out of the way, so nothing is copied over
-      # it: a ditto into a live bundle merges into it, which is how a half-new,
-      # half-old Helm gets made.
+      # Could not be moved out of the way, so nothing is copied over it.
       STATUS=1
     fi
     # Whichever bundle is there now — the new one, or the one put back.

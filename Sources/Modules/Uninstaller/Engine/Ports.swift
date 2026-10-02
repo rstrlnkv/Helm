@@ -133,6 +133,10 @@ public protocol RunningAppsPort: Sendable {
     func isRunning(bundleID: String) -> Bool
     /// `force` skips the app's save/confirm dialogs — needed when the user
     /// chose to remove an app that is still running.
+    ///
+    /// **By bundle identifier, so no location.** The call reaches every copy of
+    /// the app that is running. A fake can only record ids, so "the wrong copy
+    /// was quit" is a state no test can express while the port has this shape.
     func quit(bundleID: String, force: Bool)
 }
 

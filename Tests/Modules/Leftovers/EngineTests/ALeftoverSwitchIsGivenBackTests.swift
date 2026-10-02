@@ -8,8 +8,8 @@ import XCTest
 /// **Why this is a test.** The switch reaches outside both of Helm's folders —
 /// `launchctl disable` is a change to the user's own launchd domain that
 /// survives a reboot and survives deleting Helm — and for a year nothing put it
-/// back, while `ARCHITECTURE.md` described a reset that «hands back what is
-/// outside Helm». The give-back is one port call; what was missing was the
+/// back, while the reset's first step was `handBackWhatIsOutsideHelm`
+/// (`Sources/HelmRuntime/ResetPlan.swift:38`). The give-back is one port call; what was missing was the
 /// record of which labels were ours to give back.
 ///
 /// **Why the record and not the system's list.** `disabledLabels()` answers what

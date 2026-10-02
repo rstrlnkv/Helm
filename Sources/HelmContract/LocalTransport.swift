@@ -31,26 +31,26 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
 
     public init() {}
 
+    /// **The history goes out before the subscriber goes live, and both
+    /// happen under the one lock.** Registering first and yielding the
+    /// replay afterwards left a window: an `emit` landing in it reached
+    /// the new subscriber immediately, and the replay — older by
+    /// definition — followed it. The stream then carried the new state
+    /// and then the state it had replaced, and a view model that assigns
+    /// what it receives ends on the stale one. That is precisely the
+    /// defect this replay exists to prevent, produced by the replay
+    /// itself; measured at 26 rounds in 60 (`ReplayOrderTests`).
+    ///
+    /// Yielding while holding the lock is safe here and is the point: an
+    /// `emit` during the replay blocks until it is done and is delivered
+    /// after it, in order. `yield` appends to an unbounded buffer and
+    /// resumes the consumer on its own executor — it runs no consumer
+    /// code inline, and `onTermination` is not called from it, so there
+    /// is nothing to re-enter this lock.
     public var events: AsyncStream<EngineEvent> {
         AsyncStream { continuation in
             let id = UUID()
             lock.lock()
-            // **The history goes out before the subscriber goes live, and both
-            // happen under the one lock.** Registering first and yielding the
-            // replay afterwards left a window: an `emit` landing in it reached
-            // the new subscriber immediately, and the replay — older by
-            // definition — followed it. The stream then carried the new state
-            // and then the state it had replaced, and a view model that assigns
-            // what it receives ends on the stale one. That is precisely the
-            // defect this replay exists to prevent, produced by the replay
-            // itself; measured at 26 rounds in 60 (`ReplayOrderTests`).
-            //
-            // Yielding while holding the lock is safe here and is the point: an
-            // `emit` during the replay blocks until it is done and is delivered
-            // after it, in order. `yield` appends to an unbounded buffer and
-            // resumes the consumer on its own executor — it runs no consumer
-            // code inline, and `onTermination` is not called from it, so there
-            // is nothing to re-enter this lock.
             for name in eventOrder {
                 if let event = lastEvents[name] { continuation.yield(event) }
             }

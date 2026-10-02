@@ -18,6 +18,14 @@ import HelmUI
 /// was set to otherwise, and the next test file to read a string is then reading
 /// a language nobody chose — a failure that reports itself as somebody else's
 /// broken assertion three files away.
+///
+/// **The rule a new test follows**, not a description of every test already here:
+/// an assertion about what a visible string says takes its language from `each` or
+/// `only`. `AppLanguage.current` is read only where the subject is that a call with
+/// no language answers in the app's language, or inside a body that has already set
+/// `override`. Older tests do otherwise — many set `override` by hand, and some
+/// compare an accessor with `L(…, language: AppLanguage.current)` — and moving them
+/// here is welcome, not required.
 public extension AppLanguage {
 
     /// The body, once per language, with `override` set to it.

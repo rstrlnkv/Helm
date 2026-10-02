@@ -13,6 +13,10 @@ import HelmContract
 /// brew's own stdout. Verified against Homebrew 6.0.13: `brew search --formula
 /// -n` prints usage and never searches, while `brew search --formula -- -n`
 /// searches for `-n`.
+///
+/// **No gate of its own on a package reference.** The engine executes the name
+/// it is handed off the wire, which is sound only while the transport is
+/// in-process with one sender.
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -96,7 +100,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// translated.
     public static let installBrewLabel = "install Homebrew"
 
-    /// Seconds between two looks at whether Apple's tools have arrived.
+    /// Seconds between two looks at whether Apple's tools have arrived. The wait
+    /// has no deadline, because an install of Apple's tools may honestly take a
+    /// quarter of an hour.
     static let toolsTick: TimeInterval = 2
 
     private let locator: BrewLocator
@@ -152,6 +158,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// are serial because each one arms the next.
     private var waitReading = CommandLineTools.Wait()
 
+    /// Names `HEAD` rather than a pinned revision or a checksum: whatever the
+    /// branch holds the day the button is pressed is what runs.
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
@@ -509,6 +517,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// query that never ran, and a `brew` that is not on disk is the purest case
     /// of one — `FSBrewLocator` re-reads at every call, so it can go while this
     /// window is open.
+    ///
+    /// **No scoped phase, on purpose**, unlike the queries that hold a
+    /// `homebrew.*` phase: this is one `brew uses` over one name, and the
+    /// registry is phase-level and must not be told that a single sub-second tool
+    /// run is bulk work.
     public func dependents(name: String, isCask: Bool) -> [String]? {
         // Known rather than measured, which is why this one stays `[]`.
         guard !isCask else { return [] }
@@ -701,7 +714,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Long operations
 
-    /// One phase for all five long operations, opened and closed by the busy
+    /// One phase for all the long operations, opened and closed by the busy
     /// gate itself. An operation ends in a callback, so no scope can hold its
     /// phase — but a `begin` balanced by hand is what the scope rule exists to
     /// remove, so the balance rides the one this module already keeps: the
@@ -1120,7 +1133,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         prepareAndRun(label)
     }
 
-    /// The root step and the installer, once the tools are on the Mac.
+    /// The root step and the installer, once the tools are on the Mac. Neither the
+    /// tools port nor `runAdmin` is called under `lock` (`tick` says why for the
+    /// tools; the dialog parks this thread for as long as a person takes).
     private func prepareAndRun(_ label: String) {
         // A Stop that landed between the wait's end and here has nothing left to
         // take, and the dialog is not a thing to raise after it.

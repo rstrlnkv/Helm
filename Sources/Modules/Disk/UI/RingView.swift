@@ -179,14 +179,6 @@ struct RingView: View {
         }
     }
 
-    /// Opens a wedge: it widens until it is the whole ring, and only then does
-    /// the drill land — so the ring the user ends up looking at is the one they
-    /// watched grow, rather than a different ring that faded in.
-    /// Opens a wedge: it widens until it is the whole ring while the layout
-    /// underneath moves to where it will be, and only then does the drill land.
-    /// The ring the user ends up looking at is the one they watched grow — and
-    /// now it is that one exactly, arc for arc, rather than a transform of the
-    /// old one that the new layout then replaced in a single frame.
     /// Opens a wedge.
     ///
     /// The drill lands *first*, so the ring is already showing the layout it
