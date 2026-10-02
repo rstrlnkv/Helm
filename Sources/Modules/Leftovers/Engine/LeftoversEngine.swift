@@ -172,11 +172,10 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 // **And a folder that did not open is not a folder with nothing
                 // in it.** Either agent folder can refuse a listing —
                 // `LaunchClaims.Reading` names the reasons, and that listing
-                // `/Library/LaunchAgents` is open to everyone — and either one
-                // going unread turns
-                // «two files claim this switch» into «one does», on the
-                // safe-direction side of a guard whose whole subject is the
-                // unsafe direction.
+                // `/Library/LaunchAgents` is open to everyone on the Mac this
+                // was written on — and either one going unread turns «two files
+                // claim this switch» into «one does», on the safe-direction
+                // side of a guard whose whole subject is the unsafe direction.
                 guard reading.everyFolderOpened else {
                     HelmLog.shared.warn(Self.moduleID,
                                         "refused a switch: an agent folder would not open, so "

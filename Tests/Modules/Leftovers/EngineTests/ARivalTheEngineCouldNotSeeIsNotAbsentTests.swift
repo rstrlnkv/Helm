@@ -29,13 +29,13 @@ import XCTest
 /// added for this fold one layer up (`ASourceNobodyWalkedIsNotACleanMacTests`);
 /// this is the same fold left in place at the port that *acts*.
 ///
-/// **It is not a hypothetical folder.** Either agent folder can refuse
-/// a listing — `DirectoryListing.Contents.refused` names a mode, an ACL, a folder
+/// **It is not a hypothetical folder.** Either agent folder can refuse a
+/// listing — `DirectoryListing.Contents.refused` names a mode, an ACL, a folder
 /// belonging to somebody else, or a TCC grant (`/Library/LaunchAgents` lists
 /// openly on the Mac this was written on, `drwxr-xr-x root wheel`; what is root's
-/// is writing there). Either one going unread turns «two
-/// files claim this switch» into «one does», silently, on the safe-direction side
-/// of a guard whose whole subject is the unsafe direction.
+/// is writing there). Either one going unread turns «two files claim this
+/// switch» into «one does», silently, on the safe-direction side of a guard
+/// whose whole subject is the unsafe direction.
 ///
 /// The refusal the engine already has for a rival it *can* see was the shape of the
 /// repair, and it is what shipped: `LaunchClaims.onDisk` now reads `contents(of:)`
@@ -104,7 +104,9 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
             `LaunchClaims.onDisk` reported \(claimsSeen(files).count) claimant(s): \
             \(claimsSeen(files)). There are two files carrying that Label in this \
             fixture; the second is in the folder that did not open, and \
-            `LeftoversFilePort.children(of:)` hands a refusal back as an empty list.
+            `LaunchClaims.onDisk` reads that folder through \
+            `LeftoversFilePort.contents(of:)`, which answers `.refused`; a read \
+            that took only its `.entries` counted it as an empty list.
 
             So the guard that exists because Helm cannot read which of two \
             registrations launchd kept was passed by never counting the second one. A \
