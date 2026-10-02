@@ -827,9 +827,9 @@ import HelmUI
             // is always present here, whether or not the page currently on
             // screen has anything to say (drawing nothing when it does not,
             // `makeStatusItem`'s own header): the identifier list this bar
-            // carries must never depend on which of General, About, Log, Keep
-            // Awake, VPN or Keyboard happens to be selected, since all of them
-            // share this one cached `PageBar` (`obtainNameOnlyBar`) and a
+            // carries must never depend on which page is selected, since
+            // every page that declares no toolbar content shares this one
+            // cached `PageBar` (`obtainNameOnlyBar`) and a
             // list that changed shape between them would be exactly the
             // per-visit churn this class exists to rule out. Never under
             // `.windowTitle`, where the status stays the window's own
@@ -1008,7 +1008,7 @@ import HelmUI
     /// 2026-09-28: «Давай вернем его в правую часть». Always present in that
     /// bar's own identifier list (`identifiers()`'s own header), whether or
     /// not the page on screen right now has a status at all, so a page
-    /// switch among General, About, Log, Keep Awake, VPN and Keyboard —
+    /// switch among the pages that declare no toolbar content —
     /// which all share this one cached bar — never rewrites `itemIdentifiers`
     /// (this class's own header on why that churns). **Empty and out of
     /// VoiceOver when there is nothing to say** — `StatusZoneView`'s own
@@ -3874,8 +3874,8 @@ struct StatusZoneView: View {
         .padding(.trailing, trailingInset)
         .compositingGroup()
         .opacity(appearsActive ? 1 : inactiveOpacity)
-        // **Out of VoiceOver on every page with nothing to say** — General,
-        // About, Log and every module with no notion of running — since this
+        // **Out of VoiceOver on every page with nothing to say** — every
+        // page that declares no toolbar content, every module with no notion of running — since this
         // item is always in the bar's own identifier list, empty or not
         // (`makeStatusItem`'s own header): a placeholder is not a name, and
         // an unnamed control is worse than one that is simply not there.

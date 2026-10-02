@@ -134,7 +134,9 @@ be swapped in either.
 
 `CHANGELOG.md` at the root of the tree is the canonical English record and is not
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
-`Sources/HelmApp/ChangelogData.swift` is the same list inside the app. A version heading in
+`Sources/HelmApp/ChangelogData.swift` is the same list inside the app; the two have
+drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
+now holds them to the same releases and dates. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.

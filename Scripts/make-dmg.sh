@@ -1,14 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-# Builds a distributable .dmg from build/Helm.app. Run Scripts/package-app.sh first.
+# Builds a distributable .dmg from the signed Helm.app that Scripts/package-app.sh
+# stages in $TMPDIR/helm-package. Run package-app.sh first.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-# The SIGNED bundle, which package-app.sh leaves outside the repo: this checkout
-# is file-provider-synced, and a bundle copied back into it carries
-# com.apple.FinderInfo, which invalidates the signature. Never package build/.
+# The SIGNED bundle, which package-app.sh leaves outside the repo: the checkout
+# is meant to stay out from under a file provider (CLAUDE.md), but if one ever
+# syncs it, a bundle copied back in carries com.apple.FinderInfo, which
+# invalidates the signature. Never package a copy from build/.
 APP_DIR="${TMPDIR:-/tmp}/helm-package/Helm.app"
 [ -d "$APP_DIR" ] || { echo "signed Helm.app not found — run Scripts/package-app.sh first" >&2; exit 1; }
 codesign --verify --deep --strict "$APP_DIR" || {
@@ -27,7 +29,7 @@ printf '%s\n' "$SIGNATURE" | grep -x 'Signature=adhoc' >/dev/null || {
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
 DMG="$REPO_ROOT/build/Helm-$VERSION.dmg"
 # Outside the checkout, for the same reason package-app.sh signs there: a
-# bundle that passes through the synced folder comes out carrying
+# bundle that passes through a provider-synced folder comes out carrying
 # com.apple.FinderInfo, and the dmg would ship a bundle codesign rejects.
 STAGE="${TMPDIR:-/tmp}/helm-dmg-stage"
 
@@ -56,10 +58,7 @@ swift "$SCRIPT_DIR/design/make-dmg-background.swift" \
   "$BACKGROUND" "$STYLE" $DEV_FLAG >/dev/null
 
 # dmgbuild writes the .DS_Store itself instead of asking Finder to set the
-# window up. That is why it is here rather than an AppleScript: on macOS 26
-# Finder takes the view options, reports them back correctly, and draws its
-# default window anyway — confirmed against Homebrew's create-dmg, which does
-# the same dance and gets the same nothing.
+# window up; dmg-settings.py says why Finder is not asked.
 #
 # It lives in a virtual environment under build/ rather than in the system
 # Python, which Homebrew marks externally managed, and which is not this

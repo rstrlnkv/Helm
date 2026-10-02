@@ -19,6 +19,11 @@ because sorting, moving and tagging recognise a file already where the rule woul
 put it, and renaming tells "already done" from "do it again" by inspecting the name
 against `RenameShape.swift`.
 
+Which volumes cannot keep the stamp is not every removable one: a filesystem that
+refuses extended attributes, or an AppleDouble `._name` sidecar something drops,
+on the `/Volumes` that `WatchScope` admits. exFAT is not among them: on macOS 27.2 an
+`hdiutil create -fs ExFAT` image took `xattr -w` and kept it, in a `._name` sidecar.
+
 Three triggers reach the runner and none covers the others; each names itself
 while it runs:
 

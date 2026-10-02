@@ -4,10 +4,10 @@ import HelmRuntime
 
 /// What measuring every installed bundle costs the process.
 ///
-/// The open question from the 48 GB hunt (docs/superpowers/plans,
-/// 2026-07-28 and 2026-07-29): the app grew **+177 MB** around the Uninstaller
-/// page opening, and both hypotheses were falsified — the per-app icons cost
-/// 3.9 MB at the row's real 28×28, and "bundle sizing costs single-digit MB".
+/// The open question from the 48 GB hunt: the app grew **+177 MB** around the
+/// Uninstaller page opening, and both hypotheses were falsified — the per-app
+/// icons cost 3.9 MB at the row's real 28×28, and "bundle sizing costs
+/// single-digit MB".
 ///
 /// Reading the trace again puts the growth inside `appSizes` rather than before
 /// it. `HelmLog.memory` labels are written when an operation *ends*, so
@@ -18,6 +18,8 @@ import HelmRuntime
 ///
 /// says the idle sample landed six seconds before `appSizes` finished — while it
 /// was running. The command was not logged yet; it was not "not running".
+/// Commit 2d1eae5b's message holds this reading and what the measurement below
+/// found over 38 bundles.
 ///
 /// So this measures the real path — `WorkspaceAppLister.appSizes`, over this
 /// machine's real `/Applications` — rather than a synthetic tree, because the
@@ -61,7 +63,8 @@ final class AppSizesFootprintTests: XCTestCase {
         // Bundle sizing walks metadata, never contents: it should cost about what
         // a directory listing costs, not what the bundles weigh. The ceiling is
         // deliberately far above a healthy figure and far below the 177 MB this
-        // test exists to explain — see ARCHITECTURE.md § The memory trail.
+        // test exists to explain; commit 2d1eae5b says why that figure was not
+        // this call.
         XCTAssertLessThan(grewMB, 40,
                           "measuring \(apps.count) bundles grew the process by "
                           + String(format: "%.1f MB", grewMB)
@@ -113,7 +116,7 @@ final class AppSizesFootprintTests: XCTestCase {
         XCTAssertLessThan(perRound, 10, """
             Opening the page costs \(String(format: "%.1f", perRound)) MB every time it \
             is opened, which is the shape the +177 MB report describes. \
-            docs/superpowers/plans/2026-07-28-review-leftovers.md has the trace.
+            Commit 2d1eae5b's message has the trace.
             """)
     }
 }

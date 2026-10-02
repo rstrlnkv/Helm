@@ -7,17 +7,17 @@ import XCTest
 /// «The model refuses; the page dims. Both, or neither is reliable» —
 /// ARCHITECTURE.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
 /// (HelmAppTests) enforces it for every module by walking `Sources/Modules` for
-/// files whose **name contains `ViewModel`**, and this module has three doors to
-/// the Trash of which that finds one:
+/// files that **send a removal** (`Command.trash` or `uvm.trashPaths(`), and
+/// this module has three doors to the Trash, all of which that finds:
 ///
-/// - `UninstallerViewModel.removeSelection` — found, and it has the guard;
+/// - `UninstallerViewModel.removeSelection` — it has the guard;
 /// - `TrashedLeftoversModel.removeSelection` — the unprompted window's own
 ///   model, which sends the command itself and is not called a view model;
 ///   `TheTrashOfferSendsOneBatchTests` drives that one against a transport that
 ///   does not answer until it is told to, which is the better proof and is
 ///   available because the model is reachable;
 /// - `OrphansView.trashSelected` — this one, whose `busy` is a `@State` on the
-///   view. It is reachable by no test at all: a `@State` inside a `View` struct
+///   view. No behavioural test reaches it: a `@State` inside a `View` struct
 ///   has no seam, and the press that starts it comes out of a
 ///   `confirmationDialog`. Reading the source is what is left.
 ///
@@ -47,9 +47,9 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
         XCTAssertTrue(source.contains("guard !busy"), """
             the Leftovers tab can start a second removal while the first is still running: \
             `busy` is a `@State` the footer reads, and `trashSelected` sets it without ever \
-            asking. `OneRemovalAtATimeEverywhereTests` does not see this file — it matches \
-            on names containing «ViewModel» — and no behavioural test can reach it, because \
-            a `@State` in a `View` has no seam.
+            asking. `OneRemovalAtATimeEverywhereTests` looks for the same guard in this file \
+            too, but no behavioural test can reach it, because a `@State` in a `View` \
+            has no seam.
             """)
     }
 }

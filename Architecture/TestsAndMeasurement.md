@@ -21,16 +21,16 @@ duplicate path wins is a race, so a size assertion passes by luck, and it did on
 result found while more than one suite run was up is re-run alone at least three times
 before it is believed, because the build lock serialises building and not running, and
 two runs share the scratch directories, the Trash and Application Support. Any reading is
-taken more than once: a count taken while the suite was still building was off by ten
-where three consecutive runs agreed. A render names its appearance, because this machine
+taken more than once: a count taken while the suite was still building is not the
+count of the finished one. A render names its appearance, because this machine
 switches by the sun and an unnamed reading is a reading of the hour; a suite has gone red
 between two runs with nothing committed between them.
 
 A mutated file is restored from a copy and never with `git checkout` on its path, which
-restores to HEAD and discards every uncommitted edit in the file; three separate pieces
-of work were destroyed that way in one afternoon. Committing before mutating is better
+restores to HEAD and discards every uncommitted edit in the file, and has destroyed work that
+way. Committing before mutating is better
 still, and the mutant is read back out of the file before its outcome is believed,
-because three separate "0 failures" results in one pass were substitutions that had never
+because a "0 failures" result has more than once been a substitution that never
 applied.
 
 ## Fakes
@@ -72,15 +72,16 @@ attributes the ask to the responsible process.
 
 Motion is recorded with a screen recording and the recorder is never wrapped in a timeout:
 the file is written when the recording stops and the signal kills it first, which reads
-exactly like a permissions refusal. Stills arrive at about five a second and are for
+exactly like a permissions refusal. Stills arrive slowly and are for
 settled states, and a shot is taken by window number rather than display index, because
 that index is not the screen order and a full-screen capture photographs whatever else is
 open on somebody's machine. A pixel probe timestamps its sampling loop, because reading
-pixels costs enough per frame that twenty "20 ms" samples cover more than a second; it
+pixels costs enough per frame that a run of samples nominally "20 ms" apart
+covers far more time than that; it
 anchors on something that moves with what is measured, since a fixed rectangle over a
 growing page measures the page; it crops to the part that moves, because a whole-window
 difference is dominated by whatever else changed; it measures at the shipping duration,
-because at three seconds an instant snap reads as "it drew quickly at the start"; and it
+because at a longer duration an instant snap reads as "it drew quickly at the start"; and it
 ships the control with every ramp test, because without it the ramp passes on a machine
 that animates everything by default. Motion is never measured from a hosting view's
 fitting size, which answers with the ideal size and reads every ramp as a step.
@@ -88,11 +89,11 @@ fitting size, which answers with the ideal size and reads every ramp as a step.
 ## Why the commands are run
 
 The commands a session runs each have a reason that is not obvious from the command. A
-filtered run is seconds against minutes, which is what makes running a guard before the
+filtered run is far shorter than the suite, which is what makes running a guard before the
 suite cheap enough to actually do. A malformed
 `Localizable.strings` is silent and every string in it falls back to English with no error
 anywhere, which is why `plutil -lint` follows any hand edit, and the three string guards
-finish in seconds. The visual harness is env-gated and belongs in the working tree only while it is
+are cheap to run first. The visual harness is env-gated and belongs in the working tree only while it is
 being used, so `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
 
 "Who uses this" is answered from an index and never from `grep`: the tree writes backticked
@@ -105,11 +106,9 @@ token whose clearing is the cancellation, or a field a synthesized conformance r
 A cleanup is measured before it is believed: `du -sh "$TMPDIR"` first, then what under it
 is not `helm-*`, because the same folder holds other programs' files. `--scratch-path` is
 passed only when another suite run may be up, and one path is reused for the session,
-since a fresh directory per invocation is over a gigabyte that nothing sweeps while the
-machine stays up.
+since a fresh directory per invocation is a full build directory.
 
 The helper directories change faster than prose about them: `ls
 Sources/HelmRuntime`, `ls Sources/HelmUI/DesignSystem` and `ls Tests/Support` are read
-before a helper is written, because what they held was spelled out in prose twice and went
-stale both times, and the scratch directory, the repository-root walk and the progress box
-were each hand-rolled in dozens of files before they moved there.
+before a helper is written, because prose listing them falls behind the directories, and
+a helper written beside one that already exists is the duplicate this reading is for.

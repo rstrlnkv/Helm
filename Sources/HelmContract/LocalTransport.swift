@@ -39,7 +39,7 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
     /// and then the state it had replaced, and a view model that assigns
     /// what it receives ends on the stale one. That is precisely the
     /// defect this replay exists to prevent, produced by the replay
-    /// itself; measured at 26 rounds in 60 (`ReplayOrderTests`).
+    /// itself; `ReplayOrderTests` watched it fail before the fix.
     ///
     /// Yielding while holding the lock is safe here and is the point: an
     /// `emit` during the replay blocks until it is done and is delivered

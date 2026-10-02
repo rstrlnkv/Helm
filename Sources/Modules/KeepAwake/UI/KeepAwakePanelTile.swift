@@ -221,6 +221,13 @@ struct KeepAwakePanelTile: View {
             .contentShape(Capsule())
     }
 
+    /// Whether the slot under the presets has anything in it at all. Either
+    /// notice fills the same slot, so this is «there is something to say» rather
+    /// than «a rule is paused»: the battery guard sets no `suppressed` of its own,
+    /// and gating on that one would leave its banner collapsed to nothing. The
+    /// hero keeps the same pair.
+    private var hasNotice: Bool { vm.suppressed || vm.batteryStopped }
+
     /// A rule applies, and the Mac is asleep anyway.
     ///
     /// Stopping a session while a rule still holds silences that rule until it
@@ -242,13 +249,6 @@ struct KeepAwakePanelTile: View {
     /// hero and this copy simply outlived the extraction; the wrapping and the
     /// literal colours it needed are both already in there, for the same two
     /// reasons they were written here.
-    /// Whether the slot under the presets has anything in it at all. Either
-    /// notice fills the same slot, so this is «there is something to say» rather
-    /// than «a rule is paused»: the battery guard sets no `suppressed` of its own,
-    /// and gating on that one would leave its banner collapsed to nothing. The
-    /// hero keeps the same pair.
-    private var hasNotice: Bool { vm.suppressed || vm.batteryStopped }
-
     @ViewBuilder private var suppressedRow: some View {
         Group {
             // The battery wins. Both can be true — a rule is paused *and* the

@@ -17,10 +17,11 @@ grant with no revocation is `/opt/homebrew`'s ownership change
 `ClamshellCoordinator` is the one thing in the app that outlives its own process:
 `pmset disablesleep 1` is system-wide, reached through a NOPASSWD rule
 (`SudoersRule`) that ends with an argument-exact entry permitting only its own
-removal, so the grant carries its own revocation, which it has to because dragging
+removal, `/bin/rm -f` on the one literal path (`SudoersRule.removeArguments`), so the grant carries its own revocation, which it has to because dragging
 the application to the Trash runs no code. Who may *raise* the password prompt
 is a separate question from what the prompt runs: `ClamshellCoordinator.consumeEdge()`
-answers an `Edge`, and the engine reads it before its own active guard, so the
+answers an `Edge`, and the engine reads it before its own active guard, so an edge
+that happens while the module is idle is consumed rather than saved up, the
 rising edge installs, the falling edge withdraws, and neither is inferred from a
 value that stays true after a dialog was declined.
 

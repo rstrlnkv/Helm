@@ -62,10 +62,8 @@ final class ScanFootprintTests: XCTestCase {
         let root = scratchDirectory("disk-footprint")
         try deepTree(in: root)
 
-        // The allocator keeps its tools out — ARCHITECTURE.md § The memory trail measured
-        // the peak falling with every round and settling by the third — so the
-        // first walk pays for whatever Foundation warms up once, and the reading
-        // that answers the question is the second.
+        // The first walk pays for whatever Foundation warms up once, so the
+        // reading that answers the question is the second.
         _ = DiskScanner().scan(root: root.path)
 
         let box = ProgressBox()

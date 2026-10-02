@@ -17,7 +17,11 @@ writable by any process running as the user and an unsealed setting is somebody 
 borrowing Helm's Full Disk Access. The writer never refuses to *save* what a person
 asked for, since failing there is the wrong end to fail at. Nothing an initialiser reads
 is sealed, a SwiftUI state's initial value included: that is a keychain dialog in front
-of a window that has drawn nothing, on every install. What is read occasionally is
+of a window that has drawn nothing, on every install. The dialog is the ad-hoc
+signature's doing (§ Signing and grants on the Release page): a cdhash is a hash of contents, so every build
+is a different program to the keychain and no access list an earlier one wrote still
+names it, and any keychain read on the launch path, a verdict included, is that dialog
+(measured 2026-08-15, recorded on the doc comment of `SealKeyCache`). What is read occasionally is
 sealed, and first use is spent at the getter's early return so a planted value is never
 adopted before the guard is touched.
 

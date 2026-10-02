@@ -14,9 +14,11 @@
 /// So the rule is stated as what it is protecting: **the fewest rows among the
 /// column counts that leave at most one empty slot.** One empty slot at the end
 /// of a row reads as a list that finished; two reads as a layout that failed,
-/// which is what the photograph of four connections showed. A fourth column is
-/// not offered — 167 pt at the settings column, under the 190 pt minimum the
-/// card has always declared, and too narrow for a name beside a verb.
+/// which is what the photograph of four connections showed. Neither a third
+/// column nor a fourth is offered (`maxColumns`): a fourth would be 167 pt at
+/// the settings column, under the 190 pt minimum the card has always declared,
+/// and a third, though it clears that minimum, is too narrow for a name beside
+/// a verb.
 ///
 /// The count is asked of the **total**, never of what is on screen, so pressing
 /// «Show all» adds rows to the grid rather than re-sizing the cards already in
