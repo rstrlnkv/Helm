@@ -140,7 +140,7 @@ struct EditorToolBar: View {
     }
 }
 
-/// The row under the selection: Copy, Save, Pin and Close. Its width is its labels' own, so
+/// The row under the selection: Copy, Save, Pin (only while `PinEntry.isOffered`) and Close. Its width is its labels' own, so
 /// it is as wide as the widest language needs. Room is left in it for Save as and Share.
 struct EditorActionRow: View {
     @ObservedObject var model: EditorBarModel
@@ -149,7 +149,9 @@ struct EditorActionRow: View {
         HStack(spacing: HelmSpace.s2) {
             button(ScStr.copy, symbol: "doc.on.doc") { model.perform(.exit(.copy)) }
             button(ScStr.save, symbol: "square.and.arrow.down") { model.perform(.exit(.save)) }
-            button(ScStr.pin, symbol: "pin") { model.perform(.exit(.pin)) }
+            if PinEntry.isOffered {
+                button(ScStr.pin, symbol: "pin") { model.perform(.exit(.pin)) }
+            }
             button(ScStr.closeEditor, symbol: "xmark") { model.perform(.close) }
         }
         .padding(HelmSpace.s3)

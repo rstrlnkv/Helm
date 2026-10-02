@@ -10,7 +10,7 @@ enum EditorExit: Equatable {
     case copy
     /// ⌘S: a file only.
     case save
-    /// The Pin button: the picture stays on the screen as a window. No key.
+    /// The Pin button, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
     case pin
 }
 

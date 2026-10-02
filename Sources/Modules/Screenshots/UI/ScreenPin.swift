@@ -1,6 +1,13 @@
 import AppKit
 import Module_Screenshots_Engine
 
+/// Whether a person is offered a pin anywhere. The pin is outside v1 (owner's decision, 2026-10-02): every
+/// place that would let someone ask for one builds its entry only when this is true. To bring it back, set it to `true`
+/// and delete this paragraph.
+enum PinEntry {
+    static let isOffered = false
+}
+
 /// A pinned picture: a borderless panel that stays above ordinary windows, in every Space and
 /// beside full-screen apps, and **never takes the focus it is opened with**.
 ///
