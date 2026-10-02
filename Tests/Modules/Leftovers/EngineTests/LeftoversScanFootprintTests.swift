@@ -5,9 +5,9 @@ import XCTest
 
 /// What one login-items scan costs the process.
 ///
-/// This scan is exactly the shape ARCHITECTURE.md § Module pattern names — «any loop
-/// that reads file contents or asks Foundation for resource values in bulk needs
-/// a pool inside it» — and it had no pool anywhere. Three loops qualify:
+/// This scan has the shape ARCHITECTURE.md § Module pattern gives a pool inside
+/// the loop — a bulk read of file contents (`resourceValues` loops are the page's
+/// measured exception) — and it had no pool anywhere. Three loops are bulk:
 /// `~/Library/Preferences` is 542 plists on the machine this was written on and
 /// asks `FileWeight.allocated` for every one; `plugins()` reads an
 /// `Info.plist` per bundle *and* walks each bundle for its size; and
@@ -30,10 +30,8 @@ final class LeftoversScanFootprintTests: XCTestCase {
                                        apps: WorkspaceInstalledApps(),
                                        extensions: ActiveExtensions())
 
-        // The first scan pays for whatever Foundation warms up once — the
-        // allocator keeps its tools out, which ARCHITECTURE.md § The memory trail measured
-        // as a peak that falls to nothing by the third round. The reading that
-        // answers this question is the second.
+        // The first scan pays for whatever Foundation warms up once. The reading
+        // that answers this question is the second.
         _ = scanner.scan()
         let before = try XCTUnwrap(MemoryFootprint.current())
         let started = Date()

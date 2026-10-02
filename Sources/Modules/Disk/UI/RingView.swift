@@ -187,8 +187,8 @@ struct RingView: View {
     /// cannot be made seamless: folding into "other" is decided against the
     /// parent's total in one layout and the folder's own total in the other, so
     /// the last transformed frame held arcs the destination did not have, and
-    /// every boundary moved in the single frame between them. Measured before
-    /// and after: `last frame ring0` and `first frame ring0` in the log.
+    /// every boundary moved in the single frame between them. The measurement,
+    /// before the fix, is in `RingSeamTests`' doc comment.
     private func open(_ hit: RingSegment) {
         leaving = segments
         pivot = hit

@@ -383,9 +383,8 @@ public enum HelmLayout {
 /// to clear. The opacities are now solved for the target in the worse of the
 /// two appearances rather than chosen and described afterwards.
 ///
-/// **Four settings sizes, because the window had six.** Counted across the
-/// settings window and the block inside it: 10, 11, 12, 13 and 15 pt, in three
-/// weights, chosen a call site at a time. The ones under "The settings type
+/// **Four settings sizes, because the window had more.** Its text sizes and
+/// weights were chosen a call site at a time. The ones under "The settings type
 /// scale" are what macOS's own settings use for the same jobs, so a Helm page
 /// and a System Settings pane read at the same rhythm — and a size that is not
 /// there is a decision somebody has to argue for rather than type.

@@ -41,6 +41,13 @@ and scans the source per module for a command name its own engine has
 no `case` for, because a typo there is silence and silence already reads as
 "refused" here.
 
+**A payload is declared once, in the engine.** Both ends of the wire are in one
+build and the UI target imports its engine, so the UI only aliases the engine's type
+(`typealias` in `Sources/Modules/KeepAwake/UI/KeepAwakeViewModel.swift` and
+`Sources/Modules/VPN/UI/VPNViewModel.swift`) and no type decoded under
+Sources/Modules/<Name>/UI is declared there; the doc comment of
+`Sources/Modules/KeepAwake/Engine/KeepAwakeStatePayload.swift` says why.
+
 **A module's id is the engine's constant.**
 `command grep -rn 'public static let moduleID' Sources/Modules/*/Engine/` prints
 one line per engine; the descriptor forwards the id upward, in the same direction

@@ -31,8 +31,8 @@ let isDev = arguments.contains("--dev")
 // middle.
 let width = 640.0, height = 380.0, scale = 2.0
 
-// Where the two icons sit. Finder is told the same numbers by make-dmg.sh, so
-// they live here as the single statement of the layout.
+// Where the two icons sit. Finder is told the same numbers by `icon_locations`
+// in Scripts/dmg-settings.py, which spells them again: change one, change both.
 // Icons are drawn 128 pt square centred on these, with Finder's label below —
 // so anything drawn here has to clear a box roughly 128 wide and 170 tall.
 let appSlot = CGPoint(x: 168, y: 178)

@@ -13,7 +13,7 @@ import SwiftUI
 /// screen.
 ///
 /// **The window is `HostWindow`'s, which moved to `HelmUI` for this.** The other
-/// route was a new `ModuleDescriptor` member, and one module of ten
+/// route was a new `ModuleDescriptor` member, and one module alone
 /// implementing a contract member is what `headerAccessory` was — deleted the
 /// same morning this was built, for that reason.
 ///

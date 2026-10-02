@@ -10,7 +10,9 @@ between it and the raise. The reasons are on the doc comments of `HelmLaunchTask
 `Sources/HelmRuntime/HelmProcess.swift` is the one way to run a tool, and its doc
 comments hold the rules: output is read to the end before the wait; stderr is the null
 device where nobody parses it, never an undrained `Pipe`; `launchCeiling` bounds how many
-tools are out at once, and a caller that asks for more gets a queue.
+tools are out at once, and a caller that asks for more gets a queue. The ceiling
+exists because Homebrew's search once put every press of Return on its own
+unbounded `Task`; the doc comment of `launchCeiling` tells it.
 
 Output that gets *streamed* is a different port and keeps stderr on purpose, merged
 onto the one pipe (`stream` in `Sources/Modules/Homebrew/Engine/SystemPorts.swift`) — a

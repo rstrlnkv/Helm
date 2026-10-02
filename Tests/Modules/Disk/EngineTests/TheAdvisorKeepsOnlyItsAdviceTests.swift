@@ -6,13 +6,14 @@ import XCTest
 
 /// What the sweep at the end of a scan costs the process.
 ///
-/// ARCHITECTURE.md § Module pattern: **any loop that reads file contents or asks
-/// Foundation for resource values in bulk needs a pool inside it.**
-/// `DiskAdvisor.sweep` is such a loop and had no pool. It visits every file node
-/// in the finished tree and asks `UserFileScope.isRemovable` about each one —
-/// which is `NSString.standardizingPath`, a `FileManager.fileExists` walk up the
-/// parent chain and `URL.resolvingSymlinksInPath`, all of it Foundation handing
-/// back autoreleased objects. The sweep runs inside `offTheCooperativePool` on
+/// ARCHITECTURE.md § Module pattern puts a pool inside a bulk read of file
+/// contents and names `resourceValues` loops as the measured exception.
+/// `DiskAdvisor.sweep` is neither a read of file contents nor a `resourceValues`
+/// loop, yet it had no pool: it visits every file node in the finished tree and
+/// asks `UserFileScope.isRemovable` about each one — which is
+/// `NSString.standardizingPath`, a `FileManager.fileExists` walk up the parent
+/// chain and `URL.resolvingSymlinksInPath`, all of it Foundation handing back
+/// autoreleased objects. The sweep runs inside `offTheCooperativePool` on
 /// the scan's own thread, so the pool those objects belong to is the one that
 /// closes when the **whole scan** returns: everything the advisor ever looked at
 /// stays alive until then, on top of the tree it is looking at.

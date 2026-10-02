@@ -121,8 +121,6 @@ public final class NamespacedStore {
     /// actions, kept as JSON in one value rather than flattened into keys.
     public func data(_ key: String) -> Data? { backing.object(forKey: k(key)) as? Data }
 
-    /// A per-app decision table: bundle id →
-    /// yes/no, with absent meaning "no opinion".
     /// The raw value, for the one question the typed accessors cannot answer:
     /// **has this key ever been written?** They all take a default, so "never
     /// set" and "set to the default" arrive the same — and a list whose empty
@@ -141,6 +139,8 @@ public final class NamespacedStore {
         backing.object(forKey: k(key)) as? [String: Int] ?? [:]
     }
 
+    /// A per-app decision table: bundle id →
+    /// yes/no, with absent meaning "no opinion".
     public func boolTable(_ key: String) -> [String: Bool] {
         backing.object(forKey: k(key)) as? [String: Bool] ?? [:]
     }
@@ -148,8 +148,8 @@ public final class NamespacedStore {
     /// The fourth table shape, beside `doubleTable`, `intTable` and `boolTable`.
     ///
     /// Keyboard binds an application to an input source, which is a
-    /// `[String: String]`. Added here rather than in the module because the two
-    /// lines above it are the same three lines with a different value type, and
+    /// `[String: String]`. Added here rather than in the module because the three
+    /// functions above it are the same three lines with a different value type, and
     /// a module reaching for `backing.object(forKey:)` itself would be the
     /// fourth spelling of a cast this type exists to own.
     public func stringTable(_ key: String) -> [String: String] {

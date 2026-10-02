@@ -30,9 +30,11 @@ a folder of its own (`LogDestination.directory(home:temporary:underTest:)`), bec
 rollover, the purge latch and the salt all belong beside whatever file is real; whether
 this is a test runner is answered once, by `TestProcess.isRunning`.
 
-A line is logged for a refusal and never for an absence. "No cached credentials" is the
-ordinary state after every install of an ad-hoc signed build, and a warning on it sends an
-investigation after something that already happened. A line reporting on the state of the
+A line is logged for a refusal and never for an absence. A VPN credential cache that macOS
+will not hand to a new build is a refusal, logged with its status
+(`Sources/Modules/VPN/Engine/SystemPorts.swift`); "no cached credentials" had folded it
+with absence, and an investigation went looking for a purge that had run hours earlier.
+A line reporting on the state of the
 world is run against an ordinary machine and its silences counted before it ships; if the
 answer is "rarely", the design is wrong however good the filter is.
 
@@ -43,7 +45,7 @@ running *now*. `HelmActivity.phase(_:_:)` closes the phase on return, on throw a
 cancellation. `begin`/`end` is the pair for a body the closure cannot take. It is used
 only with a `defer` on the very next line, and only where the phase is the whole body of
 an asynchronous function, because a `defer` ends at the end of the function and so is the
-end of the phase only there; the balance-by-hand the phase call replaces caused three
+end of the phase only there; the balance-by-hand the phase call replaces caused
 cancel-path defects. The label goes on the shared path rather than at each call site, as
 `HelmTrash` does with `"\(module).trash"` (ARCHITECTURE.md § Removal), so every module
 deleting through `HelmTrash` carries the name and a new one cannot forget to.

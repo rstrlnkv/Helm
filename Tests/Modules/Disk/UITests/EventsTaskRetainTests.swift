@@ -16,8 +16,7 @@ import Module_Disk_Engine
 ///
 /// `DiskViewModel.shared(vm:)` and `ModuleUICache.dropWhenDisabled` only drop
 /// the CACHE's reference (ARCHITECTURE.md § State that outlives a page and
-/// ends with its module: "drops the cached instance, and the reclaim above
-/// hands the pages back"). If the view model is also kept alive by its own
+/// ends with its module: the cache is dropped by module id). If the view model is also kept alive by its own
 /// task, dropping the cache does not free it —
 /// the scan tree, `DiskNode` and all, stays reachable, and `LocalTransport`
 /// keeps a subscriber registered for a view model nothing else can reach.

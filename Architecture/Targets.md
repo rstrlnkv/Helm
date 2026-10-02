@@ -17,7 +17,7 @@ Each target and what it holds:
 - `Module_<X>_Engine` — a module's headless logic.
 - `Module_<X>_UI` — a module's descriptor, settings page, panel tile and view model.
 - `HelmTestSupport` — `Tests/Support`, below.
-- Test targets — `Module_<X>_EngineTests` and `Module_<X>_UITests` per module, and `HelmContractTests`, `HelmAppTests`, `HelmRuntimeTests`, `HelmUITests`; each depends on `HelmTestSupport`.
+- Test targets — `Module_<X>_EngineTests` and `Module_<X>_UITests` per module, and `HelmContractTests`, `HelmAppTests`, `HelmRuntimeTests`, `HelmUITests`; each depends on `HelmTestSupport`, and `HelmAppTests` holds the app-layer checks.
 - `HelmApp` — the executable.
 
 The declarations in the contract are what this prints:
@@ -33,14 +33,16 @@ wire plumbing that logs, and the log lives in `Sources/HelmRuntime`.
 `Sources/HelmRuntime` is the answer to "has this been written already", and
 `ls Sources/HelmRuntime` is the list; `ls Tests/Support` is the same list for
 test plumbing. A shared helper is no simpler than the thing it stands in for
-(the reason is on the doc comment of `Tests/Support/ScratchDirectory.swift`), and
+(the reason is on the doc comments of `Tests/Support/SealKeyProbe.swift` and
+`Tests/Support/ViewTree.swift`), and
 a local helper that does more keeps its own body and calls the shared one.
 
 `public` means "another target uses this" and nothing else. Every module is several
 targets (`Package.swift`'s first doc comment counts them), so `public` is the only way across a
 boundary and therefore the only honest declaration of where the boundaries are.
 The compiler is what demotes a declaration and a `grep` is not
-(ARCHITECTURE.md § Why the commands are run).
+(ARCHITECTURE.md § Why the commands are run). One demotion exposes the next, so
+expect several passes (commits 3ab499c6 and 18bfdf61 are the history).
 
 `Sources/HelmApp` carries a test target despite being an `executableTarget` with
 a `Sources/HelmApp/main.swift`: a test target depending on it with `@testable import HelmApp`

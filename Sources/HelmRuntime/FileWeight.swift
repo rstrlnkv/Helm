@@ -82,8 +82,8 @@ public enum FileWeight {
     ///
     /// **A clone shares its blocks with the file it was made from, and Finder's
     /// Duplicate command makes clones**, so this is the ordinary case rather than
-    /// an exotic one (ARCHITECTURE.md § Duplicates). Weighed a
-    /// name at a time, a folder of three duplicates reported three times the
+    /// an exotic one (`CloneShare.swift`). Weighed a name at a
+    /// time, a folder of three duplicates reported three times the
     /// blocks it holds, and the banner promised space the disk cannot give back.
     ///
     /// What this can*not* see is a member of the family that is **not** in the

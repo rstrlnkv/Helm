@@ -8,8 +8,8 @@ import SwiftUI
 ///
 /// **In `HelmUI`, not `HelmApp`, so a module can have one too.** It moved when
 /// Keyboard needed to put two growing lists somewhere other than its settings
-/// page: the alternative was a new `ModuleDescriptor` member for one module of
-/// ten, which is exactly what `headerAccessory` was and why it was deleted the
+/// page: the alternative was a new `ModuleDescriptor` member for one module
+/// alone, which is exactly what `headerAccessory` was and why it was deleted the
 /// same day. A shape three windows share belongs where they can all reach it —
 /// and this file names nothing from the app shell, only AppKit and SwiftUI.
 ///

@@ -49,15 +49,22 @@ final class FootprintTrackerTests: XCTestCase {
         XCTAssertNil(tracker.report("idle", bytes: 101 * mb))
     }
 
-    /// The threshold is measured from the last reported reading, not from the
-    /// last one that crossed it — otherwise a drift of 7 MB every quarter of an
-    /// hour is invisible forever, which is exactly the shape being hunted.
-    func testDriftAccumulatesUntilItCrosses() {
+    /// The baseline is the previous *reading*, reported or not: every silent
+    /// reading moves it. So the threshold bounds the step between two readings,
+    /// and a drift of 7 MB per reading never says a word however far it adds up
+    /// to. That is what the tracker does today; the 8 MB step at the end is the
+    /// boundary, and its delta is 8 against 114, not 22 against the 100 of the
+    /// first line. The inputs separate the two baselines: 114 is 14 above the
+    /// last reported reading and 7 above the last one read.
+    func testTheBaselineIsTheLastReadingNotTheLastReportedOne() throws {
         var tracker = FootprintTracker(threshold: 8 * mb)
         _ = tracker.report("idle", bytes: 100 * mb)
-        XCTAssertNil(tracker.report("idle", bytes: 107 * mb))
-        XCTAssertNotNil(tracker.report("idle", bytes: 115 * mb),
-                        "115 is 15 above the last reported 100")
+        XCTAssertNil(tracker.report("idle", bytes: 107 * mb), "7 above the last reading")
+        XCTAssertNil(tracker.report("idle", bytes: 114 * mb),
+                     "14 above the last reported reading, but only 7 above the last one read")
+        let report = try XCTUnwrap(tracker.report("idle", bytes: 122 * mb),
+                                   "exactly the threshold above the last reading is reported")
+        XCTAssertEqual(report.delta, 8 * mb, "a delta against the last reading, not against the first line")
     }
 
     func testTheRealFootprintIsReadable() throws {

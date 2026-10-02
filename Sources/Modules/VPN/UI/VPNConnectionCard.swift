@@ -257,7 +257,7 @@ struct VPNConnectionCard: View {
     /// offscreen bench cannot photograph one through the door. A bench that wants
     /// to look at this mounts it directly — the same view the door presents, not a
     /// copy of it, which is the difference between measuring the screen and
-    /// measuring a mock-up (ARCHITECTURE.md § VPN).
+    /// measuring a mock-up.
     var rulesPopover: some View {
         VStack(alignment: .leading, spacing: 0) {
             popoverTitle(VPNStr.rulesFor(connection.name))

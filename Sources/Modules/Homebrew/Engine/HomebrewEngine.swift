@@ -102,7 +102,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Seconds between two looks at whether Apple's tools have arrived. The wait
     /// has no deadline, because an install of Apple's tools may honestly take a
-    /// quarter of an hour.
+    /// long while.
     static let toolsTick: TimeInterval = 2
 
     private let locator: BrewLocator
@@ -347,9 +347,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// This used to close with two things that are no longer true, and both
     /// were reasons not to trust the reading. `MemoryReclaim.afterHeavyWork` was
     /// measured returning 0 MB in nine probes and removed on 2026-07-31, so
-    /// there is no reclaim for a phase to be missing; and `HelmLog.memory`
-    /// prints on every call now rather than above 8 MB, because a gate that
-    /// hides zero hides the answer (ARCHITECTURE.md § The memory trail).
+    /// there is no reclaim for a phase to be missing; and `HelmLog.memory` is
+    /// not silent below 8 MB for the first reading of a label, which it always
+    /// prints, though every later one still prints only on a change of 8 MB or
+    /// more (`FootprintTracker.report`; ARCHITECTURE.md § The memory trail).
     ///
     /// nil when brew did not answer in time — never an empty list, which reads
     /// as a clean machine.

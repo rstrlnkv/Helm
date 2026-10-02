@@ -73,14 +73,16 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// about its removal.
     private static let knownAbsent: [String: String] = [:]
 
-    /// This check's own machinery, which the documents describe by name.
+    /// This check's own machinery, which a document may describe by name.
     ///
     /// Its file's **contents** are deliberately kept out of the blob — reading
     /// them would make the tree contain precisely the names the two lists above
     /// say are missing, and `knownAbsent` would then report every entry as back
     /// in the tree for ever. The cost of that is that the check cannot see its
-    /// own members either, and the documents name them when explaining how it
-    /// works. Two entries, and they are the only ones: anything else declared
+    /// own members either, so a document that backticked them while explaining
+    /// how it works would be called stale. None does today (`CLAUDE.md` says
+    /// «known-absent list» in words), so these entries are an exemption held in
+    /// reserve, not one in use. Two entries, and they are the only ones: anything else declared
     /// here is not something the prose should be pointing at. Its own file name
     /// stays in the tree.
     private static let ownMachinery: Set<String> = ["knownAbsent", "foreign"]

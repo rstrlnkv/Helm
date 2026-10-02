@@ -44,8 +44,10 @@ still spells by hand and only ever goes down — landing a ladder is not adoptin
 `rowDetail`, `sectionHeading`, `groupLabel` — and a size outside these is a decision
 somebody argues for rather than types. They are named rather than numbered, so a Mac
 whose owner raised the interface text size gets a Helm window that follows. `HelmText.figureFont` is
-the one face for a figure — a byte size, a count, a version. SwiftUI draws its own text
-throughout. The reasons are on the doc comments of `HelmText` and its members
+the one face for a figure — a byte size, a count, a version. SwiftUI draws the text; `HelmText.rowDetailNSFont` is the same style as
+AppKit sees it, for the places that measure text with it instead; `command grep -rln rowDetailNSFont Sources`
+lists them (`LeftoverPathFloor` and `TabStripFit` among them). `HelmPickerWidth` measures the
+system font, not this one. The reasons are on the doc comments of `HelmText` and its members
 (`.headline` is not the heading, `rowDetailNSFont`, `figureFont`).
 
 ## Ink and contrast

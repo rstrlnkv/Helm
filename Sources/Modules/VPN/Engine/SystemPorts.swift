@@ -482,7 +482,12 @@ public final class DynamicStoreInterfaces: VPNInterfacePort {
 ///
 /// Chosen for its size and for answering without an API key. It is a third party
 /// nevertheless: it learns that this machine asked, and that is the cost the
-/// check has. It is made only when a tunnel comes up.
+/// check has. It is made only while a tunnel is up. A tunnel coming up asks whatever
+/// country is on record and skips the checks (`force`, `VPNEngine.checkExit`). Every
+/// other refresh asks only when no country is on record, no request is in flight and
+/// no attempt that came back empty was started in the last minute (`VPNExitAsk.quietPeriod`,
+/// `VPNExitAsk.should`). A default-route move clears the country, so it falls under
+/// that rule.
 public final class TraceExit: VPNExitPort {
 
     private let url: URL

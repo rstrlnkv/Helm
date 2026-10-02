@@ -573,7 +573,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Battery guard
 
-    /// True while the charge is under the floor the person set.
     /// What the screens read about the rules, whatever else this recompute
     /// decides. Same three expressions `stopSession` consults, built once.
     private func refreshTriggers() {
@@ -584,6 +583,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         if !holdingApps.isEmpty { triggeredConditions.insert(.app) }
     }
 
+    /// True while the charge is under the floor the person set.
     private func batteryVetoes() -> Bool {
         guard MacHardware.hasBattery else { return false }
         // No reading is two states and `isOnMains` tells them apart, the same

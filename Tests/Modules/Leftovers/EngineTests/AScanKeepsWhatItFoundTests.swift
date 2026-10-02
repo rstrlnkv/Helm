@@ -92,8 +92,7 @@ final class AScanKeepsWhatItFoundTests: XCTestCase {
                                        extensions: LeftoversFakeLoaded())
 
         // The first pass pays for whatever Foundation warms up once; the reading
-        // that answers the question is a later one (ARCHITECTURE.md § The memory trail —
-        // the allocator keeps its tools out, and the peak falls until it stops).
+        // that answers the question is a later one.
         for _ in 0..<2 { _ = autoreleasepool { scanner.scan() } }
 
         let before = AllocatorBooks.allocatedBytes()

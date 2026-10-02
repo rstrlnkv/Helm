@@ -12,11 +12,10 @@ import XCTest
 /// the operating system for no animation, and "reduce motion" is a medical
 /// setting rather than a preference.
 ///
-/// CLAUDE.md has said "animations come from `HelmMotion` tokens, never inline
-/// curves" since the tokens existed, and ARCHITECTURE.md § Design system carries three
-/// laws under it. The tree obeys all of it — measured while writing this, every
-/// one of the sixty-odd `.animation(…)` and `withAnimation(…)` arguments in
-/// `Sources` names a `HelmMotion` member, and all ten tokens consult the flag.
+/// CLAUDE.md says "Curves only from `HelmMotion.swift`", and ARCHITECTURE.md § Design system carries three
+/// laws under it. The tree obeys all of it — when this was written, every
+/// `.animation(…)` and `withAnimation(…)` argument in `Sources` named a
+/// `HelmMotion` member, and every token consulted the flag.
 /// Nothing checked either half, and the way this breaks is a diff that reads
 /// perfectly: `.animation(.easeInOut(duration: 0.3), value: x)` is what
 /// everybody's fingers type.
