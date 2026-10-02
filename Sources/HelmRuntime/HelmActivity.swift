@@ -16,8 +16,8 @@ import os
 ///
 /// Also emits `os_signpost` intervals, so the same boundaries land on the
 /// Instruments timeline beside the allocator's own. One call site, two readers;
-/// finer-grained signposts (per file, per chunk) stay direct calls and never
-/// enter this registry, which is phase-level only.
+/// a finer-grained signpost (per file, per chunk), if one is added, stays a
+/// direct call and does not enter this registry, which is phase-level only.
 public enum HelmActivity {
 
     public struct Running: Sendable, Equatable {

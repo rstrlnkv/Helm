@@ -26,7 +26,7 @@ private struct CardReadFailure: Error, CustomStringConvertible {
 /// at the narrowest pane the window allows: 76 / 94 / 94 / 81, so two of the four
 /// stand 13 pt proud of the card beside them and the first stands 5 pt short of
 /// all of them. A long configuration name — «NBCom VPN Office Frankfurt», which
-/// is ARCHITECTURE's own example of an ordinary one — breaks the family from the
+/// is an ordinary one — breaks the family from the
 /// other end, at every pane.
 ///
 /// The fix is one line of SwiftUI (`maxHeight: .infinity` on the card's own

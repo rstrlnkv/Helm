@@ -7,8 +7,9 @@ import HelmRuntime
 /// Returns Helm to the state it is in just after installation.
 ///
 /// The steps and their order are `ResetPlan.order`, and the first of them is not
-/// a deletion: **Helm changes one thing outside its own two folders**, and the
-/// only code that can take it back is the module that put it there. So the
+/// a deletion: Helm can change things outside its own two folders (the list is in
+/// ARCHITECTURE.md § Giving everything back), and some of them only the
+/// module that put them there can take back. So the
 /// engines are asked first, while their settings still exist and while there is
 /// somebody at the screen to answer what the asking can raise. Then the saved
 /// state on disk, then the diagnostics log, then every preference — the log is

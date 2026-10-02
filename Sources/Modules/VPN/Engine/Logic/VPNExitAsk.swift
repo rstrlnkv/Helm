@@ -23,7 +23,7 @@ import Foundation
 /// * a request is already in flight: `VPNExitPort` waits up to eight seconds,
 ///   and every refresh behind one connect would otherwise start another. The
 ///   poll re-reads up to 26 times (`VPNEngine.poll`).
-/// * the last attempt came back empty a moment ago: this is the app's one
+/// * the last attempt came back empty a moment ago: this is a
 ///   request to a server that is not the update feed, and a refresh loop over a
 ///   blocked host would turn it into traffic somebody could watch.
 ///

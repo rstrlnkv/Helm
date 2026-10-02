@@ -23,15 +23,13 @@ import HelmTestSupport
 /// What it printed was wrong. Half a million entries reported *zero* bytes
 /// each, because it read `phys_footprint` — resident pages — and tests run
 /// alphabetically inside a class, so `testCodec…` and `testCompaction…` had
-/// already built and freed caches of the same size. The third fill costs no new
-/// pages at all, which ARCHITECTURE.md § The memory trail measures directly ("the peak
-/// falls with each round and stops moving entirely from the third"). The figure
-/// answering this file's own first question was an artefact of test ordering,
+/// already built and freed caches of the same size.
+/// The figure answering this file's own first question was an artefact of test ordering,
 /// and nothing could have noticed, because nothing was asserted.
 ///
 /// `size_in_use` from `malloc_zone_statistics` is what malloc has handed out,
-/// and it rises whether or not the pages behind it are new — the same
-/// instrument ARCHITECTURE.md used to show that freed objects really are freed.
+/// and it rises whether or not the pages behind it are new — the
+/// instrument ARCHITECTURE.md § The memory trail reads a per-object cost from.
 /// Under it the three scales agree with each other and with the JSON figure,
 /// and they no longer depend on what ran first.
 ///

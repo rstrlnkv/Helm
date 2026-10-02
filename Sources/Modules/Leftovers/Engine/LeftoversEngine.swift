@@ -76,8 +76,8 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// One ambiguity stays and is written down rather than solved: a label the
     /// person disabled themselves *after* Helm did is indistinguishable from
-    /// Helm's own, so it is given back too. Describing it belongs in
-    /// `ARCHITECTURE.md` beside the launchd chapter.
+    /// Helm's own, so it is given back too. It is described in
+    /// ARCHITECTURE.md § Giving everything back.
     public func willDisable() {
         let recorded = store.stringArray(Self.recordKey)
         guard !recorded.isEmpty else { return }

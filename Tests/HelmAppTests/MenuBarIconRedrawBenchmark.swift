@@ -9,8 +9,8 @@ import HelmUI
 /// `refreshIcon` guards every call behind `StatusPlan.redrawKey`, comparing it
 /// to the previous one and returning unless it changed — so the ring is not
 /// redrawn on every tick merely because the tick happened. `redrawKey` also
-/// *buckets* `timerProgress` to whole percent (`ARCHITECTURE.md`'s reasoning:
-/// "a countdown moves by far less than a pixel per tick"), so a plain ring
+/// *buckets* `timerProgress` to whole percent (a countdown moves by far
+/// less than a pixel per tick), so a plain ring
 /// redraws roughly a hundred times over the life of a session, however long it
 /// runs — not 3600 times over an hour. **The countdown title is not bucketed**:
 /// `TimerProgress.label` changes every second, and `redrawKey` folds `title` in

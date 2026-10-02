@@ -13,8 +13,8 @@ import XCTest
 /// network or FUSE mount reporting an «unlimited» capacity) draws the tile from
 /// the list and the ring's wedge from the scan, and the two then disagree.
 ///
-/// **A documented gap (D4), skipped, not fixed.** ARCHITECTURE.md names
-/// `HELM_KNOWN_GAPS=1` as the way to run a known gap, so the case skips
+/// **A documented gap (D4), skipped, not fixed.** The way to run a known gap is
+/// `HELM_KNOWN_GAPS=1` (ARCHITECTURE.md § What makes a check), so the case skips
 /// unless it is set, with the id in the reason, and keeps its reproduction below
 /// the skip.
 /// If the ceiling on the wire is decided to be intended, delete the case.

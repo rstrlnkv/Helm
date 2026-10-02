@@ -260,7 +260,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // **An item that is there and unreadable is not an empty cache**, and the
         // two were one silent nil. `SecItemAdd` binds the access list to the code
         // identity that wrote it, and this bundle is ad-hoc signed — every install
-        // is a different identity to macOS (ARCHITECTURE.md § Permissions) — so
+        // is a different identity to macOS (ARCHITECTURE.md § Signing and grants) — so
         // this is the ordinary state of the cache after an update, not an exotic
         // one. Logged with the status, because «no cached credentials» sent the
         // last investigation looking for a purge that had run hours earlier.

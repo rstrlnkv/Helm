@@ -477,7 +477,11 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     /// first; a refusal that would take a copy anyway comes before it, because
     /// ten copies are kept and one taken for a write that never happens prunes
     /// the oldest real one; and a port that reports `done` over a file it did
-    /// not change — or emptied — is believed by nothing but the read-back.
+    /// not change — or emptied — is believed by nothing but the read-back. That
+    /// compares a digest rather than the strings because **the log carries no
+    /// names**: a hosts file is nothing but names, its digest is the one form of
+    /// it this app may write down, and `.notVerified` is the outcome that most
+    /// needs something to look at afterwards.
     func apply(_ text: String) async -> HostsOutcome {
         await HelmActivity.phase("hosts.apply") {
             emitOperation(HostsOperation(running: true))
@@ -515,11 +519,6 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 HelmLog.shared.warn(Self.moduleID, "the privileged write failed with \(status)")
                 return finish(.failed)
             case .done:
-                // The channel that says so — and a digest rather than a string
-                // compare because **the log carries no names**. A hosts file is
-                // nothing but names; its digest is the one form of it this app
-                // may write down, and `.notVerified` is the outcome that most
-                // needs something to look at afterwards.
                 let intended = HexDigest.string(of: text.utf8)
                 let written = file.read().map { HexDigest.string(of: $0.utf8) }
                 guard written == intended else {

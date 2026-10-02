@@ -13,7 +13,7 @@ import Module_Homebrew_Engine
 /// cache is dropped only when the module is switched off.
 ///
 /// The engine keeps stderr on purpose, because a console should show what the
-/// tool says, and ARCHITECTURE.md records a `brew` command passing 64 KB of
+/// tool says, and a `brew` command can pass 64 KB of
 /// deprecation warnings without trying. Each line also becomes a view — the
 /// page renders `ForEach` over the whole array and scrolls on every count
 /// change — so the cost is paid twice.

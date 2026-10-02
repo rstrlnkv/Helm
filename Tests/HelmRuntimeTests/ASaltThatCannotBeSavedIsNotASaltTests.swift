@@ -16,7 +16,7 @@ import XCTest
 /// the property the tag exists for. `app#1a2f` on Monday and `app#c40b` on
 /// Tuesday are the same application, and nobody reading the log can know it.
 ///
-/// It is the shape ARCHITECTURE.md keeps finding: a promise written in prose
+/// It is the shape of a promise written in prose
 /// with no test under it. This is the test.
 final class ASaltThatCannotBeSavedIsNotASaltTests: XCTestCase {
 

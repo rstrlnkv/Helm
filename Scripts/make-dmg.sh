@@ -63,7 +63,8 @@ swift "$SCRIPT_DIR/design/make-dmg-background.swift" \
 #
 # It lives in a virtual environment under build/ rather than in the system
 # Python, which Homebrew marks externally managed, and which is not this
-# project's to install into.
+# project's to install into. build/ is git-ignored, so a fresh clone pays for
+# the environment once.
 TOOLS="$REPO_ROOT/build/dmg-tools"
 # **The tool is asked to RUN, not to exist.** A venv records the absolute path of
 # its interpreter, so moving the repository leaves `bin/dmgbuild` executable and

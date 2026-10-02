@@ -13,9 +13,9 @@ import SwiftUI
 /// same day. A shape three windows share belongs where they can all reach it —
 /// and this file names nothing from the app shell, only AppKit and SwiftUI.
 ///
-/// ARCHITECTURE.md § «A window a module needs and the host owns» calls
-/// `TrashedLeftoversWindow` the pattern, and there were two hand-written copies
-/// of it — that one and `WelcomeWindow`. Both held an `NSWindow`, a closing
+/// The pattern is `TrashedLeftoversWindow` (ARCHITECTURE.md § A window a module
+/// needs and the host owns), and there were two hand-written copies of it —
+/// that one and `WelcomeWindow`. Both held an `NSWindow`, a closing
 /// callback and a `closed` flag; both put the window up the same way and took
 /// the activation policy back down in `windowWillClose`. The pattern is written
 /// once here, so «the pattern» is a type rather than a paragraph two files

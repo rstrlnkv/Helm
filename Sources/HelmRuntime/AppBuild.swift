@@ -41,13 +41,11 @@ public enum AppBuild {
     /// bundles carrying an identical `0.9.0` and an identical build `405`,
     /// differing by one byte of code: `72580c71…` against `62511e9b…`, while
     /// `CodeIdentity.of(bundleAt:)` read the same signing identifier and the same
-    /// absent team for both. ARCHITECTURE.md § Permissions has the other half —
-    /// three consecutive packaging runs at build 405 produced three different
-    /// cdhashes with no source change at all.
+    /// absent team for both.
     ///
     /// **A read, not a verification.** It says which build this is, not whether
     /// the signature is any good; `codesign --verify` answers that, and
-    /// ARCHITECTURE.md § Permissions records that passing it does not save a
+    /// ARCHITECTURE.md § Signing and grants records that passing it does not save a
     /// grant. Measured on the installed bundle at 0.409 ms, worst of five.
     ///
     /// Nil under anything that is not signed code — a test host is a plain

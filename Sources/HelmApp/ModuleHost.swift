@@ -43,7 +43,8 @@ import HelmUI
     /// still holding whatever it had registered, and each then freed with it
     /// still registered. For Layout that is a live `CGEvent` tap on the main
     /// run loop pointing at freed memory (`CGKeyTap`), which is a crash inside
-    /// whatever the person is typing. The `deinit`s are the backstop for the
+    /// whatever the person is typing; for Keep Awake it is power assertions held
+    /// until the process exits. The `deinit`s are the backstop for the
     /// routes nobody remembers; not building the orphan is the fix.
     func bootstrap() {
         AppSettings.migrateAndPurge(in: UserDefaults.standard)

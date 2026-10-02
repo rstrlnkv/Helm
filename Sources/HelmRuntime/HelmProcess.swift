@@ -108,6 +108,18 @@ public enum HelmProcess {
         runData(path, arguments, env: env, deadline: timeout)
     }
 
+    /// Stderr is discarded, not merged: a tool's diagnostics are not its output,
+    /// and every caller here parses what it gets.
+    ///
+    /// `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
+    /// and then blocks the child in `write(2)` — so it never exits, never
+    /// closes stdout, and the read below never returns. That is the same
+    /// deadlock this function reads-before-waiting to avoid on the stdout
+    /// side, reintroduced on the other one. A `brew` command with a
+    /// deprecation warning per formula reaches 64 KB easily, and the caller
+    /// is parked for the life of the process with an orphan child blocked
+    /// behind it. Discarding means sending it nowhere, not sending it
+    /// somewhere with no reader.
     private static func runData(_ path: String,
                                 _ arguments: [String],
                                 env: [String: String]?,
@@ -123,18 +135,7 @@ public enum HelmProcess {
 
         let out = Pipe()
         process.standardOutput = out
-        // Discarded, not merged: a tool's diagnostics are not its output, and
-        // every caller here parses what it gets.
-        //
-        // `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
-        // and then blocks the child in `write(2)` — so it never exits, never
-        // closes stdout, and the read below never returns. That is the same
-        // deadlock this function reads-before-waiting to avoid on the stdout
-        // side, reintroduced on the other one. A `brew` command with a
-        // deprecation warning per formula reaches 64 KB easily, and the caller
-        // is parked for the life of the process with an orphan child blocked
-        // behind it. Discarding means sending it nowhere, not sending it
-        // somewhere with no reader.
+        // Discarded: see the doc comment above.
         process.standardError = FileHandle.nullDevice
 
         let finished = DispatchSemaphore(value: 0)

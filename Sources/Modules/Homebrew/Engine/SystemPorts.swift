@@ -242,11 +242,10 @@ public struct ShellProcessRunner: ProcessRunner {
             }
             buffer.feed(d)
         }
-        // `HelmProcess.start`, never `try p.run()`. The five operations that
-        // reach this line are the ones that change the machine, and every one
-        // of them carries a package name parsed out of brew's own stdout: a
-        // launch `NSTask` *raises* on takes the whole app down, because the
-        // exception has no Swift frame to land on. `run` and `runData` moved
+        // `HelmProcess.start`, never `try p.run()`. The operations that reach
+        // this line are the ones that change the machine: a launch `NSTask`
+        // *raises* on takes the whole app down, because the exception has no
+        // Swift frame to land on. `run` and `runData` moved
         // behind that door when it was written and this one did not.
         guard HelmProcess.start(p, path: launchPath) else {
             // No child, so no EOF is ever coming — the page would keep its

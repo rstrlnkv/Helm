@@ -169,7 +169,7 @@ struct UninstallerSettingsPage: View {
         // under a page-wide `.animation(value: tab)` (removed since: it
         // cross-faded the two tabs) and still snapped, because that transaction is SwiftUI's and the
         // toolbar's own relayout is AppKit's, which no curve in this file
-        // reaches (`ARCHITECTURE.md`'s "The page header" section: the tabs
+        // reaches (ARCHITECTURE.md § The bar's zones: the tabs
         // and the actions both live in `NSToolbar`'s own layout, not
         // SwiftUI's, for the identical reason). Keeping the
         // field declared keeps the toolbar's item count constant, which is
