@@ -264,8 +264,8 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$BUILD_DIR"
 cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 
-# The ring artwork the icon is built from: the in-app mark draws the same
-# shape, so editing the icon in Icon Composer updates the app too.
+# The ring artwork the icon is built from; only the SVG is copied, the scale,
+# colours and slab in HelmAppMark.swift are copied from the icon by hand.
 cp "$REPO_ROOT/Resources/Icon/Helm.icon/Assets/helm-ring.svg" "$RESOURCES_DIR/helm-ring.svg"
 # SwiftPM resource bundles. A target that declares `resources:` gets its own
 # .bundle beside the binary, and `Bundle.module` looks for it next to the
