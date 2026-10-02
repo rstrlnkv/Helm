@@ -2,16 +2,22 @@ import AppKit
 import SwiftUI
 
 /// Helm's mark, built from the very artwork the app icon is built from:
-/// `helm-ring.svg` out of `Helm.icon`, drawn on the slab colour that variant
-/// uses. macOS 26 resolves `.icon` variants at the system level — the app can
-/// only ever read back the one matching the current appearance — so the mark
-/// is composed here from the same source instead, which also lets it sit in
-/// deliberate contrast to its window: the dark variant in light mode, the
-/// light variant in dark mode.
+/// `helm-ring.svg` out of `Helm.icon`, drawn on a slab that copies the system
+/// fill that variant uses. macOS 26 resolves `.icon` variants at the system
+/// level — the app can only ever read back the one matching the current
+/// appearance — so the mark is composed here from the same source instead,
+/// which also lets it sit in deliberate contrast to its window: the dark
+/// variant in light mode, the light variant in dark mode.
 ///
-/// Colours come from `icon.json`: the ring is black in the light variant and
-/// white in the dark one, at 80% opacity, scaled 1.11; the light slab is a
-/// near-white vertical gradient.
+/// The ring follows `icon.json`: the artwork, the layer scale 3.05, the colour
+/// (black in the light variant, white in the dark and tinted ones) carrying
+/// the alpha 0.8, the layer opacity 1. `icon.json` names only the slab's fill,
+/// not its colours; the slab copies the system fills `system-light` and
+/// `system-dark` as compiled into `Assets.car` (`xcrun assetutil --info`): a
+/// top-to-bottom gradient over the full height, gray gamma 2.2, 1.0 to 0.925
+/// and 0.192 to 0.078. Both are copied here by hand, as `Color(white:)`: on
+/// screen it matches the "gray gamma 22" of `Assets.car`, while
+/// `NSColor(calibratedWhite:)` did not (it rendered 0.192 as 62 instead of 48).
 public struct HelmAppMark: View {
     let size: CGFloat
     @Environment(\.colorScheme) private var scheme
@@ -20,6 +26,11 @@ public struct HelmAppMark: View {
 
     /// Inverted on purpose: light window → dark mark, dark window → light mark.
     private var darkVariant: Bool { scheme == .light }
+
+    /// The SVG is a 256 pt canvas the ring fills edge to edge; the layer is
+    /// scaled 3.05 on Icon Composer's 1024 pt canvas, so the ring spans
+    /// 256 * 3.05 / 1024 of the slab.
+    private static let ringScale: CGFloat = 256 * 3.05 / 1024
 
     private static let ring: NSImage? = {
         guard let url = Bundle.main.url(forResource: "helm-ring", withExtension: "svg"),
@@ -52,22 +63,20 @@ public struct HelmAppMark: View {
                 .renderingMode(.template)
                 .foregroundStyle(ringColor)
                 .opacity(0.8)
-                .frame(width: size * 1.11, height: size * 1.11)
+                .frame(width: size * Self.ringScale, height: size * Self.ringScale)
         } else {
-            // Same geometry as the SVG (r=300, stroke 96 on a 1024 canvas).
+            // Same geometry as the SVG (outer r 128, inner r 90 on a 256 canvas).
             Circle()
-                .strokeBorder(ringColor.opacity(0.8), lineWidth: size * 1.11 * (96.0 / 1024.0))
-                .frame(width: size * 1.11 * (600.0 / 1024.0), height: size * 1.11 * (600.0 / 1024.0))
+                .strokeBorder(ringColor.opacity(0.8), lineWidth: size * Self.ringScale * (38.0 / 256.0))
+                .frame(width: size * Self.ringScale, height: size * Self.ringScale)
         }
     }
 
     private var ringColor: Color { darkVariant ? .white : .black }
 
     private var slabFill: LinearGradient {
-        darkVariant
-            ? LinearGradient(colors: [Color(white: 0.16), Color(white: 0.06)],
-                             startPoint: .top, endPoint: .bottom)
-            : LinearGradient(colors: [Color(white: 1.0), Color(white: 0.985)],
-                             startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.7))
+        LinearGradient(colors: darkVariant ? [Color(white: 0.192), Color(white: 0.078)]
+                                           : [Color(white: 1.0), Color(white: 0.925)],
+                       startPoint: .top, endPoint: .bottom)
     }
 }
