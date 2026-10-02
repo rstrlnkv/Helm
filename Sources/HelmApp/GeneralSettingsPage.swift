@@ -32,6 +32,7 @@ struct MenuBarSettingsView: View {
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
+    @State private var screenRecording: PermissionState = .granted
     @State private var confirmingReset = false
     /// Read back after every write rather than kept as the answer given: a
     /// broken seal answers "every scan is off" whatever was just pressed, and a
@@ -56,7 +57,8 @@ struct MenuBarSettingsView: View {
 
     /// The needed permissions macOS is currently withholding.
     private var withheldPermissions: [PermissionNeed] {
-        PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
+        PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess,
+                                   screenRecording: screenRecording)
     }
 
     private var affectedModuleCount: Int {
@@ -427,7 +429,8 @@ struct MenuBarSettingsView: View {
                 // filters this way; the two disagreed.
                 ForEach(neededPermissions, id: \.self) { need in
                     let granted = need.state(accessibility: accessibility,
-                                             fullDisk: diskAccess) == .granted
+                                             fullDisk: diskAccess,
+                                             screenRecording: screenRecording) == .granted
                     permissionRow(AppStr.permissionTitle(need),
                                   // Both, never one instead of the other: the
                                   // ad-hoc caveat used to replace the sentence
@@ -481,7 +484,7 @@ struct MenuBarSettingsView: View {
             // remembers survives only while the system still agrees with it.
             launchAtLogin = LoginItem.current(refused: launchAtLogin == .refused)
         }
-        // The two grants through the trackers rather than through this page's own
+        // The grants through the trackers rather than through this page's own
         // `.task` and its `didBecomeActive`: the disk probe is four blocking file
         // reads, and both of those run on the thread that draws — the `.task`
         // continuation is drained by the very layout pass that builds the first
@@ -489,6 +492,7 @@ struct MenuBarSettingsView: View {
         // off the cooperative pool, and let a reading name the grants instead.
         .helmTracksFullDiskAccess($diskAccess)
         .helmTracksAccessibility($accessibility)
+        .helmTracksScreenRecording($screenRecording)
         .task {
             // Not in the state's initial value, and not awaited here either.
             // A `.task` continuation is drained by the very layout pass that

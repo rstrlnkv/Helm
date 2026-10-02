@@ -68,10 +68,21 @@ final class SidebarComposerHeightTests: XCTestCase {
     /// The arrangement Helm ships with still fits under the cap, which is the
     /// promise the cap was chosen for: the standard arrangement never scrolls.
     /// It is read from the registry, so a module gained is a row gained here —
-    /// the tenth module is what moved the cap from 660 to 700.
+    /// the tenth module is what moved the cap from 660 to 700, and the eleventh
+    /// (Screenshots, in Utilities, measuring 723) is why the owner raised the
+    /// window from 700 to 760.
     func testTheShippedArrangementFitsUnderTheCap() {
         let estimate = SidebarComposerList.estimatedHeight(of: shipped, editing: true)
-        XCTAssertLessThanOrEqual(estimate + SidebarComposerSheet.chromeHeight, 700)
+        XCTAssertLessThanOrEqual(estimate + SidebarComposerSheet.chromeHeight, 760)
+    }
+
+    /// The headroom the `SettingsWindow.defaultSize` comment states: less than
+    /// one more row, so a twelfth module is the next reason to raise the window.
+    func testTheHeadroomIsShortOfATwelfthRow() {
+        let wants = SidebarComposerList.estimatedHeight(of: shipped, editing: true)
+            + SidebarComposerSheet.chromeHeight
+        XCTAssertLessThan(760 - wants, SidebarComposerListRow.height,
+                          "the window now holds a twelfth row; the defaultSize comment is stale")
     }
 
     /// The note is measured, not guessed — twice in one afternoon a constant
@@ -98,7 +109,7 @@ final class SidebarComposerHeightTests: XCTestCase {
     func testTheSheetIsSizedToItsContentBetweenTheFloorAndTheCap() {
         XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 300, chrome: 129), 429)
         XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 10, chrome: 129), 360)
-        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 5_000, chrome: 129), 700)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 5_000, chrome: 129), 760)
     }
 
     /// A height that is not a number is a window AppKit cannot make, and
@@ -116,7 +127,7 @@ final class SidebarComposerHeightTests: XCTestCase {
     /// number line and the cap is the answer for a sheet taller than the
     /// window it sits in, which is the cap's whole job.
     func testAnInfiniteHeightOpensAtTheCap() {
-        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .infinity, chrome: 129), 700)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .infinity, chrome: 129), 760)
     }
 
     /// The control. Every assertion above passes on an estimator that returns

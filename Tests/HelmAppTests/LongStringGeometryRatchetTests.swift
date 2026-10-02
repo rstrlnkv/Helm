@@ -369,7 +369,19 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // the same change moved `ModulePageRender.floors["uninstaller"]` from
         // 30 to 20, where the fourteen missing layers are accounted for one by
         // one.
-        XCTAssertEqual(tally, ["AppKitSwitch": 14, "AppKitTextField": 1], """
+        // **And 15 switches from 2026-09-30.** The Screenshots page's «Show a
+        // thumbnail after a capture» is a plain `Toggle`, which this platform backs
+        // with an AppKit switch, and it is drawn whatever the wire answers — a
+        // page's own control and not the fixture's reach, so the count rising is
+        // the honest direction here. Nothing else moved: the text field is still
+        // the one, and no segmented control, pop-up or button appeared, which is
+        // what the message below warns about.
+        // **And 17 from 2026-10-01.** The same page's «Shutter sound» and «Show
+        // mouse pointer» are two more plain `Toggle`s, drawn the same way for the
+        // same reason; the pop-ups beside them — «Save to» and the format — are
+        // not among the controls this render can see, and the text field is
+        // still the one.
+        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 1], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

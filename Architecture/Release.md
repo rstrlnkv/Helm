@@ -106,9 +106,16 @@ bundle carries no Team ID and macOS ties a granted permission to the exact binar
 cdhash is a hash of contents, so every rebuild is a different program to TCC while the
 checkbox in System Settings stays ticked. A grant therefore survives relaunch and
 reboot — the installed binary's cdhash changes only when it is replaced — and every
-reinstall costs both toggles again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
+reinstall costs every toggle again. `AppBuild` (`Sources/HelmRuntime/AppBuild.swift`)
 is where the app asks what copy of itself it is; its doc comments say why a version
 string cannot answer what the cdhash answers.
+
+Screen & System Audio Recording is the third grant, and like Accessibility it is read without
+touching a file: `PermissionCheck.currentScreenRecording` asks CGPreflightScreenCaptureAccess,
+which never prompts. A process that has been refused is not shown the system's own
+prompt again, so the capture port asks once per installation and Helm sends the person
+to the pane from the first refusal. It is tied to the cdhash like the others, and it
+does not survive an ad-hoc rebuild either.
 
 A stable signing identity is the only real fix, and the same purchase is what
 `NEVPNManager`, an `SMAppService` helper and notarization each need.

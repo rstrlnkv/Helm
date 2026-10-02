@@ -18,7 +18,7 @@ import XCTest
 ///
 /// `pageBleeds` is declared by exactly eight things — seven module descriptors
 /// and `LogView` — and the eight pages that need the always-on band are exactly
-/// those same eight. On all thirteen pages the two answers coincide today, so
+/// those same eight. On all fourteen pages the two answers coincide today, so
 /// carrying the band on `bleeds` would pass every check anybody could write and
 /// still be wrong: `bleeds` is about the header's **width**, this is about the
 /// **species of the thing under it**. A field shared by coincidence fails
@@ -61,12 +61,12 @@ final class TheBandStandsOnWhatIsUnderItTests: XCTestCase {
         "Sources/Modules/Uninstaller/UI/UninstallerSettingsPage.swift",
     ]
 
-    /// **Five pages that open a `Form`, a `List` or a `ScrollView` directly
+    /// **Six pages that open a `Form`, a `List` or a `ScrollView` directly
     /// under the band**, where the scroll trigger the band already has is the
     /// right one and an always-on rule would be the hairline this app measured
     /// away (`ThePageHeaderCarriesNoRuleTests`) under a new name.
     ///
-    /// Keep Awake, VPN and General hand over a `Form`; Layout opens one
+    /// Keep Awake, Screenshots, VPN and General hand over a `Form`; Layout opens one
     /// inline; About is a sheet built on a `ScrollView` and keeps its own rule
     /// for the reason recorded beside it.
     private static let notDeclaring = [
@@ -74,6 +74,7 @@ final class TheBandStandsOnWhatIsUnderItTests: XCTestCase {
         "Sources/HelmApp/GeneralSettingsPage.swift",
         "Sources/Modules/KeepAwake/UI/KeepAwakeSettingsPage.swift",
         "Sources/Modules/Layout/UI/LayoutSettingsPage.swift",
+        "Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift",
         "Sources/Modules/VPN/UI/VPNSettingsPage.swift",
     ]
 
@@ -105,8 +106,8 @@ final class TheBandStandsOnWhatIsUnderItTests: XCTestCase {
             lights, or it opens a scroll view and the lists above are out of date — and \
             neither is decided by whichever the page happens to do today
             """)
-        XCTAssertEqual(pages.count, 10, """
-            \(pages.count) module settings pages, not the ten this split was taken over — the \
+        XCTAssertEqual(pages.count, 11, """
+            \(pages.count) module settings pages, not the eleven this split was taken over — the \
             lists above are a record of a decision per page and cannot grow by themselves
             """)
     }
@@ -142,7 +143,7 @@ final class TheBandStandsOnWhatIsUnderItTests: XCTestCase {
     /// the shape the trap actually takes. `standsOnStillContent: bleeds` is one
     /// character's worth of work, reads as a simplification, and passes every
     /// check in this file that only counts declarations, because the answer it
-    /// produces is correct on all thirteen pages.
+    /// produces is correct on all fourteen pages.
     ///
     /// So every value handed to the argument is read, and the only three
     /// allowed are the two literals and a plain forward of the same name.
@@ -188,7 +189,7 @@ final class TheBandStandsOnWhatIsUnderItTests: XCTestCase {
 
         XCTAssertFalse(body.contains("bleeds"), """
             `isLit` reads the header's width to decide whether the band is lit. The two answers \
-            agree on all thirteen pages today and are different questions: `bleeds` is where \
+            agree on all fourteen pages today and are different questions: `bleeds` is where \
             the header's frame ends, and this is whether anything can pass beneath it
             """)
         XCTAssertTrue(body.contains("standsOnStillContent"), """

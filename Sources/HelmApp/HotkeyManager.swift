@@ -21,6 +21,10 @@ import HelmUI
         let store: NamespacedStore
         let prefix: String
         let action: () -> Void
+        /// What the module ships with, for a store nothing was ever recorded into.
+        let fallback: HotkeyFallback?
+        /// Whether the module that owns the binding is running.
+        let isLive: () -> Bool
         var ref: EventHotKeyRef?
         var status: Status = .none
     }
@@ -33,20 +37,51 @@ import HelmUI
 
     /// Adds an action. `name` is how callers ask about it later; `prefix` is the
     /// key prefix inside the module's own store, matching `HelmHotkeyRecorder`.
+    ///
+    /// `fallback` is the combination a module ships with, used **only** while the
+    /// store holds no key for it at all: a cleared shortcut is stored as `-1` and
+    /// stays cleared. `isLive` is asked at every reload, and a binding whose
+    /// module is switched off holds nothing — a registered combination that does
+    /// nothing is a key taken from every other program for no reason, and it is
+    /// the one thing this manager can see that the module's own switch cannot.
     func register(_ name: String, store: NamespacedStore, prefix: String = "hotkey",
+                  fallback: HotkeyFallback? = nil, isLive: @escaping () -> Bool = { true },
                   action: @escaping () -> Void) {
         guard bindings[name] == nil else { return }
         bindings[name] = Binding(id: UInt32(order.count + 1), store: store,
-                                 prefix: prefix, action: action)
+                                 prefix: prefix, action: action, fallback: fallback, isLive: isLive)
         order.append(name)
+    }
+
+    /// The combination a binding should hold right now, or nil for none.
+    ///
+    /// Pure, so a test can ask it the four questions that matter without
+    /// registering anything with Carbon: a switched-off module holds nothing, an
+    /// absent key is the default, a cleared one is not, and a recorded one is
+    /// what was recorded.
+    static func combination(store: NamespacedStore, prefix: String,
+                            fallback: HotkeyFallback?, isLive: Bool) -> HotkeyCombination? {
+        guard isLive else { return nil }
+        // What a stored pair may be is Carbon's question, not this loop's:
+        // the guard that stood here converted it with `UInt32(_:)`, which
+        // traps. `HotkeyCombination` has the argument and the bounds.
+        if store.object("\(prefix)KeyCode") == nil, let fallback {
+            return HotkeyCombination(keyCode: fallback.keyCode, modifiers: fallback.modifiers)
+        }
+        let keyCode = store.int("\(prefix)KeyCode", default: -1)
+        let modifiers = store.int("\(prefix)Modifiers", default: 0)
+        return HotkeyCombination(keyCode: keyCode, modifiers: modifiers)
     }
 
     func start() {
         installHandler()
         reload()
-        NotificationCenter.default.addObserver(forName: .helmHotkeyChanged,
-                                               object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reload() }
+        // A module switched on or off changes which bindings are live, and the
+        // hotkey store did not change.
+        for name in [Notification.Name.helmHotkeyChanged, .helmModuleEnabled, .helmModuleDisabled] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.reload() }
+            }
         }
     }
 
@@ -76,12 +111,9 @@ import HelmUI
             guard var binding = bindings[name] else { continue }
             if let ref = binding.ref { UnregisterEventHotKey(ref); binding.ref = nil }
 
-            // What a stored pair may be is Carbon's question, not this loop's:
-            // the guard that stood here converted it with `UInt32(_:)`, which
-            // traps. `HotkeyCombination` has the argument and the bounds.
-            let keyCode = binding.store.int("\(binding.prefix)KeyCode", default: -1)
-            let modifiers = binding.store.int("\(binding.prefix)Modifiers", default: 0)
-            guard let combination = HotkeyCombination(keyCode: keyCode, modifiers: modifiers) else {
+            guard let combination = Self.combination(store: binding.store, prefix: binding.prefix,
+                                                     fallback: binding.fallback,
+                                                     isLive: binding.isLive()) else {
                 binding.status = .none
                 bindings[name] = binding
                 continue

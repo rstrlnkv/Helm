@@ -1,5 +1,6 @@
 import XCTest
 import HelmRuntime
+import Module_Screenshots_UI
 @testable import HelmApp
 @testable import HelmUI
 
@@ -80,5 +81,24 @@ final class SidebarLayoutStoreTests: XCTestCase {
         let placed = read.sections.flatMap(\.modules)
         XCTAssertEqual(placed.sorted(), ModuleRegistry.all.map(\.idRaw).sorted())
         XCTAssertEqual(Set(placed).count, placed.count)
+    }
+
+    /// A sidebar stored by the build before Screenshots existed — the shipped ten,
+    /// seeded and written — meets the eleventh module on its next read, and the
+    /// module lands inside the Utilities section beside what lives there: not in
+    /// a section of its own and not at the end of the sidebar.
+    func testScreenshotsJoinsAStoredSidebarInUtilities() throws {
+        let before = SidebarLayoutStore.registry().filter { $0.0 != ScreenshotsDescriptor.id.rawValue }
+        XCTAssertEqual(before.count, SidebarLayoutStore.registry().count - 1)
+        let s = store()
+        SidebarLayoutStore.write(SidebarLayout.seeded(from: before), to: s)
+        let stored = SidebarLayoutStore.read(from: s, registry: before)
+        XCTAssertFalse(stored.sections.flatMap(\.modules).contains(ScreenshotsDescriptor.id.rawValue))
+
+        let read = SidebarLayoutStore.read(from: s, registry: SidebarLayoutStore.registry())
+        let home = try XCTUnwrap(read.sections.first { $0.modules.contains(ScreenshotsDescriptor.id.rawValue) })
+        XCTAssertEqual(home.seed, "utilities")
+        XCTAssertGreaterThan(home.modules.count, 1, "Utilities must hold neighbours, not Screenshots alone")
+        XCTAssertEqual(read.sections.count, stored.sections.count, "no new section")
     }
 }

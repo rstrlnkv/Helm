@@ -81,6 +81,9 @@ final class HotkeyCombinationTests: XCTestCase {
     func testTheEdgeOfEachRangeIsInside() {
         XCTAssertNotNil(HotkeyCombination(keyCode: 0xFF, modifiers: cmdKey))
         XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: 0xFFFF))
-        XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: rightControlKey))
+        // The top bit of the mask, beside a modifier. On its own it is no
+        // shortcut (`HotkeyCombinationLabelTests`): it used to be pinned here as
+        // accepted, which was the bare-letter defect the owner decided to fix.
+        XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: cmdKey | rightControlKey))
     }
 }

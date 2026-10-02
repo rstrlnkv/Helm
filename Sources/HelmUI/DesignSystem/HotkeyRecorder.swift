@@ -21,10 +21,31 @@ public extension Notification.Name {
     private let prefix: String
     private var monitor: Any?
 
-    public init(store: NamespacedStore, prefix: String = "hotkey") {
+    /// `fallbackLabel` is the label of the shortcut the module ships with, for a
+    /// store in which **nothing has ever been recorded**. A key that is absent
+    /// and a key that was cleared are different answers — `clear()` writes `-1`,
+    /// an untouched store holds nothing — so a person who cleared the shortcut
+    /// keeps the empty row they asked for, and a person who never touched it
+    /// sees the one that is live. `HotkeyManager` makes the same distinction when
+    /// it registers, from the same `HotkeyFallback`.
+    public init(store: NamespacedStore, prefix: String = "hotkey", fallbackLabel: String? = nil) {
         self.store = store
         self.prefix = prefix
-        label = store.string("\(prefix)Label", default: "")
+        if store.object("\(prefix)KeyCode") == nil, let fallbackLabel {
+            label = fallbackLabel
+        } else if let held = HotkeyCombination(keyCode: store.int("\(prefix)KeyCode", default: -1),
+                                               modifiers: store.int("\(prefix)Modifiers", default: 0)) {
+            // A pair the manager holds is a shortcut that is live, and a row
+            // with no label beside it (absent, not a string, empty) would draw
+            // nothing over it: spell it from the pair instead.
+            let stored = store.string("\(prefix)Label", default: "")
+            label = stored.isEmpty ? held.label : stored
+        } else {
+            // `<prefix>Label` is a key of its own, and a label beside a pair
+            // Carbon cannot take is a row drawing a shortcut that was never
+            // registered: the manager reads the same pair through the same type.
+            label = ""
+        }
     }
 
     /// The recorder currently armed, anywhere in the app.
@@ -71,6 +92,21 @@ public extension Notification.Name {
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
 
+    /// Writes a combination without recording it: the three keys, and the
+    /// host told. The one door for a caller that **knows** the combination —
+    /// "Use ⇧⌘3 and ⇧⌘4" — because the recorder's own monitor is a *local* one, and a
+    /// combination macOS still holds is expected to be handled by the system
+    /// before it reaches a local monitor, so the very shortcut a person wants to
+    /// record would be the one they cannot press. Expected from how macOS treats
+    /// its own shortcuts; not measured here.
+    public func assign(keyCode: Int, carbonModifiers: Int, label: String) {
+        store.set(keyCode, for: "\(prefix)KeyCode")
+        store.set(carbonModifiers, for: "\(prefix)Modifiers")
+        store.set(label, for: "\(prefix)Label")
+        self.label = label
+        NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
+    }
+
     private func capture(_ event: NSEvent) {
         let flags = event.modifierFlags
         var carbon = 0
@@ -79,17 +115,14 @@ public extension Notification.Name {
         if flags.contains(.control) { carbon |= controlKey }
         if flags.contains(.shift) { carbon |= shiftKey }
         // At least one modifier, or the shortcut swallows an ordinary letter
-        // everywhere in the system.
-        guard carbon != 0 else { return }
+        // everywhere in the system — the predicate `HotkeyCombination` reads
+        // the store with.
+        guard HotkeyCombination.carriesAModifier(carbon) else { return }
 
         let key = (event.charactersIgnoringModifiers ?? "").uppercased()
         let text = Self.modifierSymbols(flags) + key
-        store.set(Int(event.keyCode), for: "\(prefix)KeyCode")
-        store.set(carbon, for: "\(prefix)Modifiers")
-        store.set(text, for: "\(prefix)Label")
-        label = text
+        assign(keyCode: Int(event.keyCode), carbonModifiers: carbon, label: text)
         stop()
-        NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
 
     private static func modifierSymbols(_ flags: NSEvent.ModifierFlags) -> String {
@@ -112,11 +145,18 @@ public struct HelmHotkeyRow: View {
     @ObservedObject private var recorder: HelmHotkeyRecorder
     private let title: String
     private let taken: Bool
+    private let note: String?
 
-    public init(_ title: String, recorder: HelmHotkeyRecorder, taken: Bool) {
+    /// `note` replaces the row's own «taken» sentence with a more exact one when
+    /// the caller knows *who* holds the combination: the registration answers
+    /// success for a combination macOS itself holds, so «another app uses this»
+    /// is not something the row could ever say about a system shortcut, and the
+    /// person needs the name of the box to untick.
+    public init(_ title: String, recorder: HelmHotkeyRecorder, taken: Bool, note: String? = nil) {
         self.title = title
         self.recorder = recorder
         self.taken = taken
+        self.note = note
     }
 
     public var body: some View {
@@ -151,7 +191,11 @@ public struct HelmHotkeyRow: View {
                     .controlSize(.small)
                     .disabled(recorder.label.isEmpty)
             }
-            if taken, !recorder.label.isEmpty {
+            if let note, !recorder.label.isEmpty {
+                Text(note)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if taken, !recorder.label.isEmpty {
                 Text(Self.takenNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
                     .fixedSize(horizontal: false, vertical: true)

@@ -32,12 +32,14 @@ import HelmRuntime
             // answers from a cache and touches no file.
             let fullDisk = await PermissionCheck.fullDiskAccess()
             let accessibility = PermissionCheck.currentAccessibility()
+            let screenRecording = PermissionCheck.currentScreenRecording()
             // Logged every launch, not only the first: "it was granted
             // yesterday and is denied today" is the shape of the ad-hoc
             // signing problem, and only a line per launch shows it.
             HelmLog.shared.info("permissions",
                                 "full disk access: \(fullDisk.rawValue), "
-                                + "accessibility: \(accessibility.rawValue)")
+                                + "accessibility: \(accessibility.rawValue), "
+                                + "screen recording: \(screenRecording.rawValue)")
 
             // The cdhash, not `AppBuild.shortVersion`: TCC ties an ad-hoc
             // grant to the bytes, and two builds of one version are two
@@ -68,8 +70,10 @@ import HelmRuntime
                 .flatMap { $0.currentPermissions() }
             let missing = PermissionAuditPlan.missing(
                 fullDisk: fullDisk, accessibility: accessibility,
+                screenRecording: screenRecording,
                 needsFullDisk: needs.contains(.fullDisk),
-                needsAccessibility: needs.contains(.accessibility))
+                needsAccessibility: needs.contains(.accessibility),
+                needsScreenRecording: needs.contains(.screenRecording))
 
             guard !missing.isEmpty else { return }
             present(missing)

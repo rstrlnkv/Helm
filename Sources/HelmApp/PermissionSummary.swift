@@ -18,12 +18,17 @@ enum PermissionSummary {
             switch need {
             case .fullDiskAccess: return declared.contains(.fullDisk)
             case .accessibility: return declared.contains(.accessibility)
+            case .screenRecording: return declared.contains(.screenRecording)
             }
         }
     }
 
-    static func withheld(accessibility: PermissionState, fullDisk: PermissionState) -> [PermissionNeed] {
-        needed().filter { $0.state(accessibility: accessibility, fullDisk: fullDisk) != .granted }
+    static func withheld(accessibility: PermissionState, fullDisk: PermissionState,
+                         screenRecording: PermissionState) -> [PermissionNeed] {
+        needed().filter {
+            $0.state(accessibility: accessibility, fullDisk: fullDisk,
+                     screenRecording: screenRecording) != .granted
+        }
     }
 
     /// Enabled modules that declared one of the withheld permissions.
@@ -39,6 +44,7 @@ enum PermissionSummary {
                         switch need {
                         case .fullDiskAccess: return declared == .fullDisk
                         case .accessibility: return declared == .accessibility
+                        case .screenRecording: return declared == .screenRecording
                         }
                     }
                 }

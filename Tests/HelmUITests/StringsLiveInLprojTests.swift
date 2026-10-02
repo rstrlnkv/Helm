@@ -118,6 +118,23 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Capsule": [.fr],
         "cask": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Cookies": [.ru, .es, .fr, .de, .pt],
+        // The two picture formats in the Screenshots format picker. macOS never
+        // transliterates a format name: CoreTypes.bundle says «PNG-Bild»,
+        // «Image PNG», «PNG画像» — the abbreviation stays in the script of
+        // English in every language here.
+        "PNG": [.de, .es, .fr, .ja, .pt, .ru, .zh],
+        "JPEG": [.de, .es, .fr, .ja, .pt, .ru, .zh],
+        // A markup shape's name, as Preview spells it: Localizable.loctable
+        // `Oval` / `PVOvalAnnotationType` is «Oval» in de and pt_BR, and
+        // `Rectangle` / `PVRectangleAnnotationType` is «Rectangle» in fr.
+        "Oval": [.de, .pt],
+        "Rectangle": [.fr],
+        // The folder as French Finder and screencaptureui show it:
+        // SystemFolderLocalizations fr says «Documents».
+        "Documents": [.fr],
+        // macOS's own screenshot panel button: screencaptureui.app `Options`
+        // is «Options» in French.
+        "Options": [.fr],
         // The four modifier-key names are macOS's own words, read from
         // AppKit's FunctionKeyNames.loctable rather than translated: ru and zh
         // keep all four in English there; ja keeps three («shift» differs by

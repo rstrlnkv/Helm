@@ -62,4 +62,25 @@ final class LogCategoriesAreModuleIdsTests: XCTestCase {
                       + "offer it as a second module beside the id — read `<Engine>.moduleID` "
                       + "instead:\n" + offenders.joined(separator: "\n"))
     }
+
+    /// The other way a literal gets in: a category held in a constant and passed
+    /// by name, which the call-site scan above cannot see. A `category` declared
+    /// from a string literal under `Sources/Modules` is the same second spelling
+    /// of the id, one hop away.
+    func testNoModuleHoldsALiteralCategoryInAConstant() throws {
+        var offenders: [String] = []
+        for file in try RepoSource.swiftFiles(under: "Sources/Modules") {
+            for (index, raw) in try RepoSource.lines(of: file).enumerated() {
+                let text = RepoSource.code(raw)
+                for keyword in ["let category", "var category"] {
+                    guard let start = text.range(of: keyword) else { continue }
+                    guard text[start.upperBound...].contains("= \"") else { continue }
+                    offenders.append("\(file):\(index + 1)")
+                }
+            }
+        }
+        XCTAssertTrue(offenders.isEmpty,
+                      "a module declares its log category as a literal; read `<Engine>.moduleID`:\n"
+                      + offenders.joined(separator: "\n"))
+    }
 }

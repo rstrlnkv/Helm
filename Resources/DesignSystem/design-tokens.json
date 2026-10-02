@@ -128,6 +128,10 @@
       "dark" : "#b78a66",
       "light" : "#ac7f5e"
     },
+    "tint-screenshots" : {
+      "dark" : "#627a00",
+      "light" : "#627a00"
+    },
     "tint-uninstaller" : {
       "dark" : "#ff4245",
       "light" : "#ff383c"
@@ -181,6 +185,10 @@
     "tint-leftovers" : {
       "dark" : "#946f52",
       "light" : "#966e52"
+    },
+    "tint-screenshots" : {
+      "dark" : "#627a00",
+      "light" : "#627a00"
     },
     "tint-uninstaller" : {
       "dark" : "#db393b",
