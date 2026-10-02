@@ -29,9 +29,11 @@ import XCTest
 /// added for this fold one layer up (`ASourceNobodyWalkedIsNotACleanMacTests`);
 /// this is the same fold left in place at the port that *acts*.
 ///
-/// **It is not a hypothetical folder.** `/Library/LaunchAgents` is root's and Helm
-/// is not root; `~/Library/LaunchAgents` is behind a TCC grant that is denied on 23
-/// of the 42 launches ARCHITECTURE.md records. Either one going unread turns «two
+/// **It is not a hypothetical folder.** Either agent folder can refuse
+/// a listing — `DirectoryListing.Contents.refused` names a mode, an ACL, a folder
+/// belonging to somebody else, or a TCC grant (`/Library/LaunchAgents` lists
+/// openly on the Mac this was written on, `drwxr-xr-x root wheel`; what is root's
+/// is writing there). Either one going unread turns «two
 /// files claim this switch» into «one does», silently, on the safe-direction side
 /// of a guard whose whole subject is the unsafe direction.
 ///
@@ -93,8 +95,10 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         try await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
-            `/Library/LaunchAgents` answered `.refused` — a folder Helm may not open, \
-            which is root's own and an ordinary answer for a process that is not root — \
+            `/Library/LaunchAgents` answered `.refused` — a folder that would not open \
+            (`DirectoryListing.Contents.refused`: a mode, an ACL, a folder belonging to \
+            somebody else, or a TCC grant; on the Mac this was written on it lists \
+            openly, `drwxr-xr-x root wheel`, so this is the fixture's refusal) — \
             and the engine sent `launchctl disable gui/<uid>/\(label)` anyway.
 
             `LaunchClaims.onDisk` reported \(claimsSeen(files).count) claimant(s): \
@@ -106,8 +110,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
             registrations launchd kept was passed by never counting the second one. A \
             press on the row badged «Leftover» stops whichever job launchd kept, \
             including the one the same scan reports «In use» — which is what happens \
-            with Full Disk Access denied, 23 launches out of the 42 ARCHITECTURE.md \
-            records.
+            with a folder that refuses to open.
             """)
     }
 
