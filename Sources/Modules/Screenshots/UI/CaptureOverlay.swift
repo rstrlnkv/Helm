@@ -184,18 +184,18 @@ enum OverlayResult {
         }
         if var current = edit, drag == nil {
             current.layers.disarm()
-            // A tool draws on the edited display only; no tool and no layers is
-            // the old gesture, a new drag, which replaces the area only when it
-            // turns out to be one; no tool over layers does nothing yet.
-            if let tool = current.tool {
-                // The disarm above is the click's own effect, kept whichever display it was on.
-                guard display == current.display else { edit = current; render(); return }
-                current.layers.begin(tool, at: local, style: style)
+            // The editor reads the press on the edited display only: a tool draws, a handle
+            // resizes, an object is taken to be moved, and a click selects or lets go. What is
+            // left is no tool and no layers, the old gesture, a new drag, which replaces the
+            // area only when it turns out to be one; on another display, with a tool or with
+            // layers, a press does nothing. The disarm is the click's own effect, kept either way.
+            if display == current.display,
+               current.layers.press(at: local, tool: current.tool, style: style) {
                 edit = current
                 render()
                 return
             }
-            guard current.layers.layers.isEmpty else { edit = current; render(); return }
+            guard current.tool == nil, current.layers.layers.isEmpty else { edit = current; render(); return }
             edit = current
         }
         switch mode {
@@ -232,14 +232,14 @@ enum OverlayResult {
 
     /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`:
     /// at once with nothing to lose, and with layers a second press, whenever
-    /// it comes. A drag in progress is not an edit and leaves at once.
+    /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
         guard var current = edit, drag == nil else { finish(.cancelled); return }
         let outcome = current.layers.escape()
         edit = current
         switch outcome {
         case .close: finish(.cancelled)
-        case .armed: render()
+        case .armed, .deselected, .dropped: render()
         }
     }
 
@@ -350,15 +350,25 @@ enum OverlayResult {
             guard !isRepeat else { return }
             current.tool = current.tool == tool ? nil : tool
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
+        // A pick is the next object's and, with one selected, that object's too.
         case .color(let color)?:
             style.color = color
+            current.layers.recolor(color)
             if let store { EditorMemory.remember(style: style, in: store) }
         case .thickness(let step)?:
             style.thickness = step
+            current.layers.setThickness(step)
             if let store { EditorMemory.remember(style: style, in: store) }
         case .toggleFill?:
-            style.filled.toggle()
+            // With a box selected the fill is flipped from that box's own state, and the pick follows it.
+            if let box = current.layers.selected, box.tool == .rectangle || box.tool == .ellipse {
+                style.filled = !box.style.filled
+                current.layers.setFilled(style.filled)
+            } else {
+                style.filled.toggle()
+            }
             if let store { EditorMemory.remember(style: style, in: store) }
+        case .delete?: current.layers.deleteSelected()
         case .undo?: current.layers.undo()
         case .redo?: current.layers.redo()
         case .exit(let how)?:
@@ -391,14 +401,18 @@ enum OverlayResult {
     /// object is being drawn — a bar under the pointer would be drawn into — or a new area is
     /// being dragged. They are back on the release.
     func chrome(on display: DisplayID) -> EditorChrome? {
-        guard let edit, drag == nil, edit.layers.draft == nil, edit.display == display,
+        guard let edit, drag == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
         let sizes = view.barSizes
         return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, tools: sizes.tools, actions: sizes.actions)
     }
 
     private func render() {
-        if let edit { bars.show(tool: edit.tool, style: style, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo) }
+        if let edit {
+            let held = edit.layers.selected
+            bars.show(tool: edit.tool, style: held?.style ?? style, selectedTool: held?.tool,
+                      canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
+        }
         for (id, entry) in panels {
             var scene = OverlayScene()
             scene.windowMode = mode == .window
@@ -409,6 +423,7 @@ enum OverlayResult {
                 scene.editing = drag == nil
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
+                scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
                 if edit.layers.isArmed {
                     scene.plate = ScStr.confirmClose
                     if let pointer, pointer.display == id { scene.plateAt = pointer.point }
@@ -434,6 +449,8 @@ struct OverlayScene {
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
+    /// The selected layer, held by its handles; nil while one is being drawn.
+    var selected: Annotation?
     /// Where the two bars stand; nil is none on this display, or none while drawing.
     var chrome: EditorChrome?
     /// What Esc asked, while it is waiting for its second press.
@@ -483,6 +500,11 @@ final class OverlayView: NSView {
     private let dimLayer = CAShapeLayer()
     private let highlightLayer = CAShapeLayer()
     private let selectionLayer = CAShapeLayer()
+    /// The selected object's box and handles: over the dim, since a handle on the selection's
+    /// edge is half outside its hole. The box is a layer of its own with no fill: one path holding the
+    /// box and the handles under a white fill painted the box white, over the very object it frames.
+    private let frameLayer = CAShapeLayer()
+    private let handleLayer = CAShapeLayer()
     private let crosshairLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
@@ -542,6 +564,14 @@ final class OverlayView: NSView {
         selectionLayer.strokeColor = NSColor.white.cgColor
         selectionLayer.lineWidth = 1
 
+        frameLayer.fillColor = nil
+        frameLayer.strokeColor = NSColor.controlAccentColor.cgColor
+        frameLayer.lineWidth = 1.5
+
+        handleLayer.fillColor = NSColor.white.cgColor
+        handleLayer.strokeColor = NSColor.controlAccentColor.cgColor
+        handleLayer.lineWidth = 1.5
+
         crosshairLayer.fillColor = nil
         crosshairLayer.strokeColor = NSColor.white.withAlphaComponent(0.85).cgColor
         crosshairLayer.lineWidth = 1
@@ -550,7 +580,7 @@ final class OverlayView: NSView {
         crosshairLayer.shadowRadius = 0
         crosshairLayer.shadowOffset = .zero
 
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, crosshairLayer,
+        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, handleLayer, crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
@@ -710,40 +740,100 @@ final class OverlayView: NSView {
     /// a clip came out olive over black text where the export multiplies to black. The selection is the
     /// clip all the same, by geometry — the outline of the stroke, intersected with the selection's
     /// rectangle, filled — and the dim's hole is what leaves it undimmed.
+    ///
+    /// **A layer is built once and kept while its annotation is equal to the one it was built from.**
+    /// Stroking and intersecting a 1024-point path costs milliseconds and the scene is applied on every
+    /// pointer event, so only what changed is rebuilt: the draft, the object being moved or resized, the
+    /// one recoloured. The cache is by `Annotation.id` and is dropped with the selection's rectangle.
     private func drawLayers(_ scene: OverlayScene) {
-        for shape in drawnShapes { shape.removeFromSuperlayer() }
-        drawnShapes = []
-        guard scene.editing, let selection = scene.selection else { return }
-        let box = CGPath(rect: layerRect(selection), transform: nil)
-        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
-        for annotation in scene.layers {
-            let shape = CAShapeLayer()
-            shape.contentsScale = frozen.scale
-            shape.frame = bounds
-            let path = annotation.outline.copy(using: &turn)
-            if let stroke = annotation.stroke, let path {
-                let line = path.copy(strokingWithWidth: stroke.width, lineCap: stroke.cap, lineJoin: stroke.join,
-                                     miterLimit: 10)
-                shape.path = line.intersection(box)
-                shape.fillColor = stroke.color
-                // The export's `.multiply` blend; a layer composites with the picture
-                // beneath it by this filter name.
-                if stroke.multiplies { shape.compositingFilter = "multiplyBlendMode" }
-            } else {
-                shape.path = path?.intersection(box)
-                shape.fillColor = annotation.fillColor
-            }
-            shape.strokeColor = nil
-            layer?.insertSublayer(shape, below: dimLayer)
-            drawnShapes.append(shape)
+        guard scene.editing, let selection = scene.selection else {
+            for shape in drawnShapes { shape.removeFromSuperlayer() }
+            drawnShapes = []
+            shapeCache = [:]
+            drawHandles(nil)
+            return
         }
+        let box = layerRect(selection)
+        if cachedBox != box {
+            for entry in shapeCache.values { entry.shape.removeFromSuperlayer() }
+            shapeCache = [:]
+            cachedBox = box
+        }
+        var kept: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer)] = [:]
+        for annotation in scene.layers {
+            if let entry = shapeCache[annotation.id], entry.annotation == annotation {
+                kept[annotation.id] = entry
+            } else {
+                shapeCache[annotation.id]?.shape.removeFromSuperlayer()
+                kept[annotation.id] = (annotation, makeShape(annotation, clippedTo: box))
+            }
+        }
+        for (id, entry) in shapeCache where kept[id]?.shape !== entry.shape { entry.shape.removeFromSuperlayer() }
+        shapeCache = kept
+        let ordered = scene.layers.compactMap { kept[$0.id]?.shape }
+        // Re-inserting each below the dim in turn is what puts the sequence in order.
+        if ordered.count != drawnShapes.count || !zip(ordered, drawnShapes).allSatisfy({ $0 === $1 }) {
+            for shape in ordered { layer?.insertSublayer(shape, below: dimLayer) }
+        }
+        drawnShapes = ordered
+        drawHandles(scene.selected)
     }
 
-    /// The layers on screen, for a test that must see the editor drew what it holds.
-    var drawnLayerCount: Int { drawnShapes.count }
+    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect) -> CAShapeLayer {
+        shapeBuilds += 1
+        let clip = CGPath(rect: box, transform: nil)
+        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
+        let shape = CAShapeLayer()
+        shape.contentsScale = frozen.scale
+        shape.frame = bounds
+        let path = annotation.outline.copy(using: &turn)
+        if let stroke = annotation.stroke, let path {
+            let line = path.copy(strokingWithWidth: stroke.width, lineCap: stroke.cap, lineJoin: stroke.join,
+                                 miterLimit: 10)
+            shape.path = line.intersection(clip)
+            shape.fillColor = stroke.color
+            // The export's `.multiply` blend; a layer composites with the picture
+            // beneath it by this filter name.
+            if stroke.multiplies { shape.compositingFilter = "multiplyBlendMode" }
+        } else {
+            shape.path = path?.intersection(clip)
+            shape.fillColor = annotation.fillColor
+        }
+        shape.strokeColor = nil
+        return shape
+    }
 
-    /// The layers of the editor, for a test that reads what a layer is made of.
+    /// The box round the selected object and a square at each of its handles; none for none.
+    private func drawHandles(_ annotation: Annotation?) {
+        guard let annotation else {
+            frameLayer.path = nil
+            handleLayer.path = nil
+            drawnHandles = []
+            return
+        }
+        let path = CGMutablePath()
+        frameLayer.path = CGPath(rect: layerRect(annotation.frame), transform: nil)
+        drawnHandles = annotation.handles.map(\.point)
+        for point in drawnHandles {
+            path.addRect(layerRect(CGRect(x: point.x - Self.handleSide / 2, y: point.y - Self.handleSide / 2,
+                                          width: Self.handleSide, height: Self.handleSide)))
+        }
+        handleLayer.path = path
+    }
+
+    private static let handleSide: CGFloat = 8
+
+    /// The layers on screen, for a test that must see the editor drew what it holds and reads what a layer is made of.
     private(set) var drawnShapes: [CAShapeLayer] = []
+
+    /// How many shape layers were built since the view was made, for a test that counts the
+    /// rebuilds a pointer event costs.
+    private(set) var shapeBuilds = 0
+    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer)] = [:]
+    private var cachedBox: CGRect?
+
+    /// Where the selected object's handles are drawn, in display-local points; none for none.
+    private(set) var drawnHandles: [CGPoint] = []
 
     /// The plates on screen, so a test can ask how many there are and where.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }

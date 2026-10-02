@@ -3,8 +3,8 @@ import XCTest
 @testable import Module_Screenshots_Engine
 
 /// **The two bars stand outside the selection where there is room and inward where there
-/// is not, and are never off the screen or on each other.** A pure function of three
-/// sizes, so each edge and each corner of the screen is a case; the sweep at the end asks
+/// is not, and are never off the screen or on each other.** A pure function of the selection, the
+/// screen and the two bars' sizes, so each edge and each corner of the screen is a case; the sweep at the end asks
 /// the same of every selection on a grid, the thin and the tiny ones included.
 final class TheEditorsBarsStayOnTheirScreenTests: XCTestCase {
 

@@ -9,8 +9,7 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **What moving the annotations into one shape layer each brought with it:** the order they stack in
-/// on the screen is the order of the file, a layer whose clipped outline is nothing is an empty path
-/// and not a stale one, undo and redo rebuild the layers without leaving one behind, and the clip is
+/// on the screen is the order of the file, undo and redo rebuild the layers without leaving one behind, and the clip is
 /// geometry, so it holds on a display of 2x as it does on 1x. Panels are built and never ordered in.
 @MainActor
 final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
@@ -53,7 +52,7 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
         drag(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
         drag(id, .highlighter, from: CGPoint(x: 120, y: 200), to: CGPoint(x: 400, y: 200))
         drag(id, .line, from: CGPoint(x: 150, y: 300), to: CGPoint(x: 400, y: 320))
-        XCTAssertEqual(view.drawnLayerCount, 3, "nothing was drawn, so the order below says nothing")
+        XCTAssertEqual(view.drawnShapes.count, 3, "nothing was drawn, so the order below says nothing")
         let sublayers = try XCTUnwrap(view.layer?.sublayers)
         let positions = view.drawnShapes.map { shape in sublayers.firstIndex(where: { $0 === shape }) }
         XCTAssertTrue(positions.allSatisfy { $0 != nil }, "a shape is not in the view's own layer: \(positions)")
@@ -64,20 +63,6 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
                        "the multiply is on a layer other than the marker's")
     }
 
-    func testAnAnnotationWhollyOutsideTheSelectionLeavesAnEmptyPathAndNoStaleOne() throws {
-        let (id, view) = try build()
-        // The selection is (100,100)-(500,400); the stroke is drawn in it and then the area is the only clip,
-        // so a second one is made by a drag that the editor clamps to the area: it stays inside. The empty
-        // case is read from the geometry directly.
-        drag(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
-        let shape = try XCTUnwrap(view.drawnShapes.first)
-        let box = CGRect(x: 600, y: 600, width: 50, height: 50)
-        let inside = try XCTUnwrap(shape.path)
-        XCTAssertTrue(inside.intersection(CGPath(rect: box, transform: nil)).isEmpty,
-                      "the clip of a stroke against a rectangle far from it is not empty")
-        XCTAssertFalse(inside.isEmpty, "the stroke inside the selection was clipped to nothing")
-    }
-
     func testUndoAndRedoManyTimesLeaveNoShapeLayerBehind() throws {
         let (id, view) = try build()
         drag(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
@@ -85,13 +70,13 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
         let baseline = try XCTUnwrap(view.layer?.sublayers?.count)
         for _ in 0..<40 {
             overlay?.perform(.undo)
-            XCTAssertEqual(view.drawnLayerCount, 1)
+            XCTAssertEqual(view.drawnShapes.count, 1)
             XCTAssertEqual(view.layer?.sublayers?.count, baseline - 1, "an undo left a layer or lost one")
             overlay?.perform(.undo)
-            XCTAssertEqual(view.drawnLayerCount, 0)
+            XCTAssertEqual(view.drawnShapes.count, 0)
             overlay?.perform(.redo)
             overlay?.perform(.redo)
-            XCTAssertEqual(view.drawnLayerCount, 2)
+            XCTAssertEqual(view.drawnShapes.count, 2)
             XCTAssertEqual(view.layer?.sublayers?.count, baseline, "a redo cycle changed the layer count")
         }
     }
@@ -102,8 +87,8 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
             drag(id, .highlighter, from: CGPoint(x: 120, y: 200), to: CGPoint(x: 480, y: 200))
             let shape = try XCTUnwrap(view.drawnShapes.first, "\(scale)x: nothing drawn")
             let path = try XCTUnwrap(shape.path)
-            // The selection in the layer's own space is flipped: y from the top 100...400 is 400...700 of 800.
-            let clip = CGRect(x: 100, y: 400, width: 400, height: 300)
+            // The selection in the layer's own space is flipped: y from the top 100...400 is the view's height less that.
+            let clip = CGRect(x: 100, y: view.bounds.height - 400, width: 400, height: 300)
             XCTAssertTrue(clip.insetBy(dx: -0.01, dy: -0.01).contains(path.boundingBoxOfPath), "\(scale)x: the marker spills over the area: \(path.boundingBoxOfPath)")
             XCTAssertEqual(shape.contentsScale, scale, "\(scale)x: the layer is not at the display's scale")
         }

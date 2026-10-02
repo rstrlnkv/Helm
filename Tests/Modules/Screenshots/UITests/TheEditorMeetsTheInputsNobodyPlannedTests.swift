@@ -112,7 +112,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         select(id)
         overlay?.keyDown(key(kA, "ф"))
         stroke(id)
-        XCTAssertEqual(overlay?.view(for: id)?.drawnLayerCount, 1, "no layer was drawn, so the rule below is another one")
+        XCTAssertEqual(overlay?.view(for: id)?.drawnShapes.count, 1, "no layer was drawn, so the rule below is another one")
     }
 
     private func onlyEdited(file: StaticString = #filePath, line: UInt = #line) -> [Annotation]? {
@@ -345,7 +345,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         overlay?.keyDown(key(kA, "ф"))
         overlay?.mouseDown(on: id, at: CGPoint(x: 150, y: 150), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 300, y: 250), flags: [])
-        let shown = try XCTUnwrap(overlay?.view(for: id)).drawnLayerCount
+        let shown = try XCTUnwrap(overlay?.view(for: id)).drawnShapes.count
         XCTAssertEqual(shown, 1, "the stroke under the pointer was not drawn, so the claim below is empty")
         overlay?.keyDown(key(kReturn, "\r"))
         XCTAssertEqual(onlyEdited()?.count, shown, "Return mid-stroke delivered less than the screen showed")

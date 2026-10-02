@@ -25,7 +25,7 @@ final class TheExportDrawsAtNativeResolutionTests: XCTestCase {
                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
         let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-        let inkGreen = Double(Annotation.ink.components![1]) * 255
+        let inkGreen = Double(AnnotationColor.red.cgColor.components![1]) * 255
         return (0..<image.height).map { row in
             (255 - Double(bytes[row * image.width * 4 + x * 4 + 1])) / (255 - inkGreen)
         }

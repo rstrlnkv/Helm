@@ -4,8 +4,8 @@ import HelmRuntime
 /// Where the editor's two bars stand: the tool bar to the right of the selection and
 /// the action row below it, in the display's top-left points.
 ///
-/// A function of three sizes and nothing else, so every edge and corner of the screen
-/// is a case that can be asked. **Outside the selection when there is room, and inward
+/// A function of the selection, the screen and the two bars' sizes and nothing else, so every
+/// edge and corner of the screen is a case that can be asked. **Outside the selection when there is room, and inward
 /// when there is not**: a bar that would cross the screen's edge is put inside the
 /// selection against the same edge, and whatever is left over is held on the screen,
 /// so a bar is never off it. The two never overlap each other: the row steps left of

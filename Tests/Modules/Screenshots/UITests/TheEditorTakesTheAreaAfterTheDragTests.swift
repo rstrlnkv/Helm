@@ -139,7 +139,7 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         stroke(id)
         overlay?.keyDown(key(kR, "к"))
         stroke(id, from: CGPoint(x: 200, y: 200), to: CGPoint(x: 350, y: 300))
-        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnLayerCount, 2, "the editor does not show what it holds")
+        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnShapes.count, 2, "the editor does not show what it holds")
         overlay?.keyDown(key(kReturn, "\r"))
         XCTAssertEqual(try XCTUnwrap(edited()).layers.map(\.tool), [.arrow, .rectangle])
     }
@@ -195,9 +195,9 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         overlay?.keyDown(key(kA, "ф"))
         stroke(id)
         overlay?.keyDown(key(kZ, "я", flags: .command))
-        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnLayerCount, 0, "⌘Z on a Russian layout did not undo")
+        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnShapes.count, 0, "⌘Z on a Russian layout did not undo")
         overlay?.keyDown(key(kZ, "я", flags: [.command, .shift]))
-        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnLayerCount, 1, "⇧⌘Z did not redo")
+        XCTAssertEqual(try XCTUnwrap(overlay?.view(for: id)).drawnShapes.count, 1, "⇧⌘Z did not redo")
         overlay?.keyDown(key(kReturn, "\r"))
         XCTAssertEqual(try XCTUnwrap(edited()).layers.count, 1)
     }
@@ -413,9 +413,9 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
                              charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code)!
         }
         window.sendEvent(chord(kZ, "я", .command))
-        XCTAssertEqual(view.drawnLayerCount, 0, "⌘Z sent to the panel did not undo")
+        XCTAssertEqual(view.drawnShapes.count, 0, "⌘Z sent to the panel did not undo")
         window.sendEvent(chord(kZ, "я", [.command, .shift]))
-        XCTAssertEqual(view.drawnLayerCount, 1, "⇧⌘Z sent to the panel did not redo")
+        XCTAssertEqual(view.drawnShapes.count, 1, "⇧⌘Z sent to the panel did not redo")
         XCTAssertEqual(results.count, 0)
         window.sendEvent(chord(kC, "с", .command))
         guard case .edited(_, _, let layers, .copy)? = results.first, results.count == 1 else {

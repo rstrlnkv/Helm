@@ -128,7 +128,7 @@ final class TheEditorsLayersAreValuesTests: XCTestCase {
         let box = arrow.outline.boundingBoxOfPath
         XCTAssertEqual(box.maxX, 100, accuracy: 0.001, "the tip is not at the end")
         XCTAssertEqual(box.minX, 0, accuracy: 0.001)
-        XCTAssertEqual(box.height, Annotation.shaft * 3, accuracy: 0.001, "the head is not three shafts wide")
+        XCTAssertEqual(box.height, AnnotationThickness.thin.shaft * 3, accuracy: 0.001, "the head is not three shafts wide")
         XCTAssertFalse(Annotation(tool: .rectangle, start: .zero, end: CGPoint(x: 9, y: 9)).isFilled)
     }
 }

@@ -52,4 +52,24 @@ final class TheMarkersCornerIsRoundInTheFileTests: XCTestCase {
             }
         }
     }
+
+    /// The turn above is a hairpin of under nine degrees, past the miter limit, where a mitre falls back to a bevel
+    /// by itself and so cannot be told from a round join. This one is thirty degrees: inside the limit, where a
+    /// mitre throws its tip nearly twice the width past the corner.
+    func testAThirtyDegreeTurnLeavesNoMitreTip() async throws {
+        let corner = CGPoint(x: 150, y: 60)
+        let far = CGPoint(x: corner.x - 100 * cos(CGFloat.pi / 6), y: corner.y + 100 * sin(CGFloat.pi / 6))
+        let points = [CGPoint(x: 50, y: 60), corner, corner, far]
+        for step in AnnotationThickness.allCases {
+            let layer = Annotation(tool: .highlighter, start: points[0], end: far, points: points,
+                                   style: AnnotationStyle(thickness: step))
+            let out = try await export(layer, scale: 1, name: "shots-corner30-\(step.rawValue)")
+            let width = step.marker
+            let round = layer.outline.copy(strokingWithWidth: width + 3, lineCap: .round, lineJoin: .round, miterLimit: 10)
+            let found = ink(out)
+            XCTAssertGreaterThan(found.count, Int(width * 50), "\(step): the marker left no ink, so the test saw nothing")
+            let spikes = found.filter { !round.contains(CGPoint(x: CGFloat($0.x) + 0.5, y: CGFloat($0.y) + 0.5)) }
+            XCTAssertTrue(spikes.isEmpty, "\(step): \(spikes.count) pixels of a mitre tip past the round join")
+        }
+    }
 }

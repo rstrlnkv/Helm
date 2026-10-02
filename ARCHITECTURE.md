@@ -1312,8 +1312,10 @@ log holds refusals — no grant, a refused write, a refused folder — with path
 After a drag is released the overlay does not finish: it becomes the inline editor of
 that area, a second phase of the same panel, and the picture under the layers is never
 touched. The layers are values in `Sources/Modules/Screenshots/Engine/Logic/Annotation.swift`
-and `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift` (undo, redo, the Esc
-rule, which reads no clock), in points of the display they were drawn on; the keys are
+and `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift` (undo and redo as snapshots
+of the layer list, so a move, resize, recolour or delete of the selected object is a step like a
+new layer, each layer keeping its `id`; the Esc rule, which reads no clock; what a press lands
+on is `AnnotationHit` in `Sources/Modules/Screenshots/Engine/Logic/AnnotationHit.swift`), in points of the display they were drawn on; the keys are
 read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
@@ -1322,7 +1324,8 @@ and highlighter; a stroked one is inked by `AnnotationStroke`, which the overlay
 export's context both read; the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
-in the file. ⇧ is read from the flags of each event and never kept from the press.
+in the file. The overlay's view keeps one shape layer per annotation, built again only when its
+annotation is no longer equal to the one it was built from. ⇧ is read from the flags of each event and never kept from the press.
 
 The editor has two bars, a vertical tool bar to the right of the selection and an action row below
 it, both views of the overlay's own panel (`Sources/Modules/Screenshots/UI/EditorBars.swift`) and not

@@ -8,22 +8,29 @@ import Module_Screenshots_Engine
 /// `EditorAction` the keys make.
 @MainActor final class EditorBarModel: ObservableObject {
     @Published private(set) var tool: AnnotationTool?
+    /// The tool of the selected object, nil with none: the style shown is then its, and what
+    /// the colour and the fill apply to is its tool and not the picked one.
+    @Published private(set) var selectedTool: AnnotationTool?
     @Published private(set) var style = AnnotationStyle.standard
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
     var perform: (EditorAction) -> Void = { _ in }
 
     /// A value the bars already show is not published again: the overlay renders on every pointer move.
-    func show(tool: AnnotationTool?, style: AnnotationStyle, canUndo: Bool, canRedo: Bool) {
+    func show(tool: AnnotationTool?, style: AnnotationStyle, selectedTool: AnnotationTool? = nil,
+              canUndo: Bool, canRedo: Bool) {
         if self.tool != tool { self.tool = tool }
+        if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.style != style { self.style = style }
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
     }
 
+    /// What the colour and the fill are about: the selected object's tool, or else the picked one.
+    private var subject: AnnotationTool? { selectedTool ?? tool }
     /// The swatch that is lit: the picked colour, or the one the tool draws in until one is picked.
-    var lit: AnnotationColor { style.ink(for: tool ?? .pencil) }
-    var fillApplies: Bool { tool == .rectangle || tool == .ellipse }
+    var lit: AnnotationColor { style.ink(for: subject ?? .pencil) }
+    var fillApplies: Bool { subject == .rectangle || subject == .ellipse }
 }
 
 /// A bar inside the overlay's view. **It takes the click** (a press on a bar is never a
@@ -38,7 +45,7 @@ final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
 
 /// The vertical bar: the tools, the colour, the thickness, the fill and undo and redo, two
 /// cells to a row so that it is as tall as a window can spare. Every cell is a control with a
-/// name; room is left in it for the tools the next part adds.
+/// name.
 struct EditorToolBar: View {
     @ObservedObject var model: EditorBarModel
 

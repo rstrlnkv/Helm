@@ -72,7 +72,7 @@ final class TheNewToolsExportAtTheScreensWidthAndMultiplyTests: XCTestCase {
             XCTAssertGreaterThan(white[1], 200, "\(scale)x: the tint is not the yellow: \(white)")
             // Thickness: the rows of the white half that took the tint.
             let tinted = column(out, x: Int(70 * scale)).filter { $0[2] < 250 }.count
-            XCTAssertEqual(Double(tinted), Double(Annotation.markerWidth * scale), accuracy: 2 * Double(scale),
+            XCTAssertEqual(Double(tinted), Double(AnnotationThickness.thin.marker * scale), accuracy: 2 * Double(scale),
                            "\(scale)x: the marker is not its width times the scale")
             // Outside the stroke nothing changed.
             XCTAssertEqual(column(out, x: Int(70 * scale))[0], [255, 255, 255, 255])

@@ -136,7 +136,7 @@ enum ScStr {
         }
     }
 
-    /// The colours: the six Helm's palette already names, and «Black» from AppKit's colour panel.
+    /// The colours: the six Helm's palette already names, and «Black» and «White» from AppKit's colour panel.
     static func ink(_ color: AnnotationColor) -> String {
         switch color {
         case .red: L("Red")

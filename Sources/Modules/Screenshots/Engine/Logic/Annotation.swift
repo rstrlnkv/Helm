@@ -1,8 +1,9 @@
 import CoreGraphics
+import HelmRuntime
 
-/// A tool of the inline editor. Part 3 adds more; each is a case here, and each says
-/// how it is drawn in `Annotation.stroke`, `isFilled`, `isUsable`, `outline` and
-/// `constrained` — the switches that the screen and the export both read.
+/// A tool of the inline editor. Each is a case here, and each says how it is drawn in
+/// `Annotation.stroke`, `isFilled`, `isUsable`, `outline` and `constrained`, and how it
+/// is picked up in `handles` — the switches that the screen and the export both read.
 ///
 /// **The raw value is stored data** (the last tool is remembered): a case is retired
 /// and never removed or renamed, and a stored value that is none of the cases reads
@@ -94,40 +95,122 @@ public struct AnnotationStyle: Sendable, Equatable {
     }
 }
 
+/// Where a selected annotation is held to resize it: the two ends of a straight one, the
+/// four corners of the box round any other. Corners are named in the display's top-left points.
+public enum AnnotationHandle: Sendable, Equatable {
+    case start, end
+    case topLeft, topRight, bottomLeft, bottomRight
+}
+
 /// One layer over the frozen picture, in display-local points like a selection.
 ///
 /// Stored in **points** and nowhere in pixels: the screen draws it in points and the
 /// export multiplies by the display's scale, so one geometry serves both and a
 /// stroke is as thick in the file as it was on the screen.
+///
+/// A value with an **identity**: `id` is given when the layer is begun and kept by every
+/// edit, so undo, redo and the screen's cache can tell "the same object, changed" from
+/// "another object". Two annotations are equal only when the id is too.
 public struct Annotation: Sendable, Equatable {
+    public typealias ID = Int
+
     public let tool: AnnotationTool
     public let start: CGPoint
     public let end: CGPoint
     /// The freehand path of the pencil and the highlighter, first point to last; empty for the other tools.
     public let points: [CGPoint]
     public let style: AnnotationStyle
+    /// Nothing outside `AnnotationEditing` gives one; 0 is the id of a value made by hand.
+    public let id: ID
 
     public init(tool: AnnotationTool, start: CGPoint, end: CGPoint, points: [CGPoint] = [],
-                style: AnnotationStyle = .standard) {
+                style: AnnotationStyle = .standard, id: ID = 0) {
         self.tool = tool
         self.start = start
         self.end = end
         self.points = points
         self.style = style
+        self.id = id
     }
 
-    /// The default ink, sRGB red: what a tool is drawn in until a colour is picked.
-    public static let ink = AnnotationColor.red.cgColor
-    /// The thinnest step's outline, in points: what an object has until a thickness is picked.
-    public static let lineWidth = AnnotationThickness.thin.line
-    /// The thinnest step's arrow shaft, in points.
-    static let shaft = AnnotationThickness.thin.shaft
-    /// The thinnest step's marker width, in points.
-    public static let markerWidth = AnnotationThickness.thin.marker
+    /// Whether the two are drawn the same: the ink as shown (an unset colour is the tool's own),
+    /// the thickness and the fill, which is what a person can see and so what an edit may be a step for.
+    public func looksLike(_ other: Annotation) -> Bool {
+        style.ink(for: tool) == other.style.ink(for: other.tool)
+            && style.thickness == other.style.thickness && isFilled == other.isFilled
+    }
+
+    /// The same object in another style.
+    public func restyled(_ style: AnnotationStyle) -> Annotation {
+        Annotation(tool: tool, start: start, end: end, points: points, style: style, id: id)
+    }
+
+    /// The box round the geometry's points, not round the stroke's width.
+    public var frame: CGRect {
+        let all = [start, end] + points
+        let xs = all.map(\.x), ys = all.map(\.y)
+        return CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
+    }
+
+    /// A straight stroke is held by its two ends and every other shape by the corners of its
+    /// box: the freehand ones are scaled inside it, which is how a drawing is made larger.
+    private var isStraight: Bool {
+        tool == .line || tool == .arrow || (tool == .highlighter && points.count == 2)
+    }
+
+    /// Where the handles stand, in the order `AnnotationHandle` names them.
+    public var handles: [(handle: AnnotationHandle, point: CGPoint)] {
+        if isStraight { return [(.start, start), (.end, end)] }
+        let box = frame
+        return [(.topLeft, CGPoint(x: box.minX, y: box.minY)), (.topRight, CGPoint(x: box.maxX, y: box.minY)),
+                (.bottomLeft, CGPoint(x: box.minX, y: box.maxY)), (.bottomRight, CGPoint(x: box.maxX, y: box.maxY))]
+    }
+
+    /// The object moved by `delta`, the movement shortened per axis until the geometry's box
+    /// is inside `bounds`: an object is never taken out of the selection.
+    public func translated(by delta: CGPoint, within bounds: CGRect) -> Annotation {
+        let box = frame
+        let dx = delta.x.clamped(to: (bounds.minX - box.minX)...max(bounds.minX - box.minX, bounds.maxX - box.maxX),
+                                 whenNotANumber: 0)
+        let dy = delta.y.clamped(to: (bounds.minY - box.minY)...max(bounds.minY - box.minY, bounds.maxY - box.maxY),
+                                 whenNotANumber: 0)
+        func move(_ point: CGPoint) -> CGPoint { CGPoint(x: point.x + dx, y: point.y + dy) }
+        return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, id: id)
+    }
+
+    /// The object with `handle` taken to `pointer`; nil when the object has no such handle.
+    /// A straight one moves that end. A box, and a freehand stroke inside its box, keeps the
+    /// opposite corner where it is and scales every point of the geometry by the same factor
+    /// per axis, so a drag past the opposite corner mirrors it. The caller holds the pointer
+    /// in the selection and drops a result that is not `isUsable`.
+    public func resized(_ handle: AnnotationHandle, to pointer: CGPoint) -> Annotation? {
+        if isStraight {
+            switch handle {
+            case .start:
+                return Annotation(tool: tool, start: pointer, end: end, points: points.isEmpty ? [] : [pointer, end],
+                                  style: style, id: id)
+            case .end:
+                return Annotation(tool: tool, start: start, end: pointer, points: points.isEmpty ? [] : [start, pointer],
+                                  style: style, id: id)
+            default: return nil
+            }
+        }
+        guard let moving = handles.first(where: { $0.handle == handle })?.point else { return nil }
+        let box = frame
+        // The corner across the box from the one held.
+        let fixed = CGPoint(x: moving.x == box.minX ? box.maxX : box.minX, y: moving.y == box.minY ? box.maxY : box.minY)
+        // A box with no width has nothing to scale: its points all fall on the held edge.
+        func scale(_ value: CGFloat, _ held: CGFloat, _ from: CGFloat, _ to: CGFloat) -> CGFloat {
+            from == held ? held : held + (value - held) / (from - held) * (to - held)
+        }
+        func map(_ point: CGPoint) -> CGPoint {
+            CGPoint(x: scale(point.x, fixed.x, moving.x, pointer.x), y: scale(point.y, fixed.y, moving.y, pointer.y))
+        }
+        return Annotation(tool: tool, start: map(start), end: map(end), points: points.map(map), style: style, id: id)
+    }
+
     /// How much of the ink the marker lets through: 60 %. The multiply is what keeps text readable.
     static let markerAlpha: CGFloat = 0.6
-    /// The marker's own tint, yellow at that alpha.
-    public static let markerInk = AnnotationColor.yellow.cgColor.copy(alpha: markerAlpha)!
     /// The most points a pencil stroke keeps; a longer drag is thinned, never grown.
     public static let maxPoints = 1024
     /// The nearest a new freehand point may come to the last kept one, in points; a

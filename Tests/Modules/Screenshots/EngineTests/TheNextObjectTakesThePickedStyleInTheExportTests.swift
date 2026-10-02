@@ -69,7 +69,7 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
         let blue = AnnotationStyle(color: .blue)
         for tool in AnnotationTool.allCases { XCTAssertEqual(blue.ink(for: tool), .blue, "\(tool)") }
         XCTAssertEqual(Annotation(tool: .highlighter, start: .zero, end: CGPoint(x: 9, y: 9)).stroke?.color,
-                       Annotation.markerInk, "the unpicked marker is not yesterday's yellow")
+                       AnnotationColor.yellow.cgColor.copy(alpha: Annotation.markerAlpha)!, "the unpicked marker is not yesterday's yellow")
     }
 
     func testThicknessScalesTheOutlineTheShaftAndTheMarkerTogether() {
@@ -81,8 +81,8 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
         }
         XCTAssertEqual(widths.map(\.0), [3, 5, 8])
         XCTAssertEqual(widths.map(\.1), [16, 24, 32], "the marker did not scale with its own step")
-        XCTAssertEqual(widths[0].0, Annotation.lineWidth)
-        XCTAssertEqual(widths[0].1, Annotation.markerWidth)
+        XCTAssertEqual(widths[0].0, AnnotationThickness.thin.line)
+        XCTAssertEqual(widths[0].1, AnnotationThickness.thin.marker)
         let heads = AnnotationThickness.allCases.map {
             Annotation(tool: .arrow, start: .zero, end: CGPoint(x: 200, y: 0), style: AnnotationStyle(thickness: $0)).outline.boundingBox.height
         }

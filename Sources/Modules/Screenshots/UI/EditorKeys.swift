@@ -22,6 +22,8 @@ enum EditorAction: Equatable {
     case thickness(AnnotationThickness)
     case toggleFill
     case undo, redo
+    /// ⌫ and ⌦: the selected object goes; with none selected it asks nothing.
+    case delete
     case exit(EditorExit)
     /// The bar's Close: Esc's own rule, which asks first when there are layers.
     case close
@@ -41,6 +43,7 @@ enum EditorKeys {
         case (kVK_ANSI_L, []): return .tool(.line)
         case (kVK_ANSI_P, []): return .tool(.pencil)
         case (kVK_ANSI_H, []): return .tool(.highlighter)
+        case (kVK_Delete, []), (kVK_ForwardDelete, []): return .delete
         case (kVK_ANSI_Z, .command): return .undo
         case (kVK_ANSI_Z, [.command, .shift]): return .redo
         case (kVK_ANSI_C, .command): return .exit(.copy)

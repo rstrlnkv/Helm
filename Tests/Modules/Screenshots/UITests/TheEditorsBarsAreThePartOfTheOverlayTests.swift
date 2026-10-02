@@ -141,7 +141,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         overlay?.mouseDragged(on: first, at: CGPoint(x: 400, y: 350), flags: [])
         XCTAssertNil(overlay?.chrome(on: first), "the bars stayed up under the drag")
         XCTAssertFalse(view.barsAreShown)
-        XCTAssertEqual(view.drawnLayerCount, 1, "nothing was being drawn, so the test saw nothing")
+        XCTAssertEqual(view.drawnShapes.count, 1, "nothing was being drawn, so the test saw nothing")
         overlay?.mouseUp(on: first)
         XCTAssertNotNil(overlay?.chrome(on: first), "the bars did not come back on the release")
         XCTAssertTrue(view.barsAreShown)
@@ -162,7 +162,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             overlay?.mouseDragged(on: first, at: CGPoint(x: bar.minX + 30, y: bar.minY + 30), flags: [])
             overlay?.mouseUp(on: first)
         }
-        XCTAssertEqual(view.drawnLayerCount, 0, "a press on a bar drew something")
+        XCTAssertEqual(view.drawnShapes.count, 0, "a press on a bar drew something")
         overlay?.perform(.exit(.confirm))
         let done = try XCTUnwrap(edited())
         XCTAssertTrue(done.layers.isEmpty, "a press on a bar became a layer: \(done.layers)")
@@ -218,7 +218,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             overlay?.mouseDown(on: first, at: CGPoint(x: 150, y: 150), flags: [])
             overlay?.mouseDragged(on: first, at: CGPoint(x: 250, y: 220), flags: [])
             let view = try XCTUnwrap(overlay?.view(for: first))
-            XCTAssertEqual(view.drawnLayerCount, 1, "viaKey=\(viaKey): no draft was on screen, so the picks below meet none")
+            XCTAssertEqual(view.drawnShapes.count, 1, "viaKey=\(viaKey): no draft was on screen, so the picks below meet none")
             if viaKey {
                 overlay?.keyDown(key(31))     // the ellipse's key
             } else {
