@@ -83,6 +83,12 @@ enum OverlayResult {
     private let pinRoom: () -> Bool
     /// The Pin button was refused for want of room, and the plate says so until the next input.
     private var pinRefused = false
+    /// A nudge let go of the selected object and the arrow key that did it is still down: its repeats
+    /// move nothing. Any key or bar click that reaches `perform` while no drag or reshape is under way
+    /// clears it, a fresh arrow press (not `isARepeat`) included, so a key-up the overlay never sees cannot
+    /// leave the arrows dead; only a repeat can find it set. Mouse input, a modifier change, Esc and
+    /// a right click do not go through `perform` and leave it as it was.
+    private var arrowReleasedObject = false
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
          store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
@@ -394,15 +400,23 @@ enum OverlayResult {
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
         guard var current = edit, drag == nil, reshaping == nil else { return }
         pinRefused = false
+        if case .nudge? = action {
+            // A repeat after the object was let go of is the held key going on, not a new input.
+            if isRepeat && arrowReleasedObject { return }
+        }
+        arrowReleasedObject = false
         // An arrow press moves the selected object, or the area when none is selected, by pixels of
         // this display. It is not routed through the `disarm` below: that is what ends a run of
         // presses, and a run of arrows is one undo step. A held key repeats on purpose.
         if case .nudge(let dx, let dy, let pixels)? = action {
             guard !current.layers.isBusy, let frame = freeze.frames.first(where: { $0.id == current.display }) else { return }
             let delta = AreaFrame.step(CGPoint(x: dx, y: dy), pixels: pixels, scale: frame.scale)
+            let hadSelection = current.layers.selected != nil
             if !current.layers.nudgeSelected(by: delta) {
                 current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
                 current.layers.reshape(bounds: current.rect)
+            } else if hadSelection, current.layers.selected == nil {
+                arrowReleasedObject = true
             }
             edit = current
             render()
@@ -550,6 +564,15 @@ struct OverlayScene {
 
 // MARK: - The panel
 
+/// The capture overlay's panel: borderless, non-activating, at the screen-saver level.
+///
+/// What was measured of a menu and tooltips over it (2026-10-02/03, Helm inactive, real keyboard): an `NSMenu`
+/// popped up from the editor's bar works: an item click and a submenu item click both land, and the
+/// checkmark is drawn. With the menu closed, `EditorKeys` selects tools by key code, in the US and the Russian layout alike (the two measured);
+/// with it open, a `keyEquivalent` "a" fired in the US layout and not in the Russian one. Tooltips (`.help`) were not
+/// shown on the bar cells, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
+/// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
+/// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The bars are hosted by `EditorBarHostingView`.
 final class OverlayPanel: NSPanel {
     init(screen: NSScreen, view: NSView) {
         super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
