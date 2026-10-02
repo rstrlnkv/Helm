@@ -11,10 +11,9 @@ import Module_Disk_Engine
 /// restored tree.
 ///
 /// `helmIdlesOffScreen()` unmounts a page's subtree while its window is not
-/// visible and rebuilds it on the next occlusion change — by design, and the
-/// rebuild was costed in *time* (32.5 ms cold, 7–9 ms warm, ARCHITECTURE.md
-/// § State that outlives a page and ends with its module, not billed). Its memory bill was never
-/// measured, and occlusion changes are not rare events: they arrive whenever
+/// visible and rebuilds it on the next occlusion change — by design, for the
+/// reasons on the doc comment of `OffScreenIdle.swift`. The memory bill of the
+/// rebuild was never measured, and occlusion changes are not rare events: they arrive whenever
 /// the person's other windows pass over Helm's. Every such rebuild re-creates
 /// the result screen over whatever tree the view model holds — 45 081 nodes in
 /// the owner's saved scan, 1.5 M files after a whole-volume scan.

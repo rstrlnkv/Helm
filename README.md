@@ -74,8 +74,7 @@ Helm removes goes to the Trash.
 
 Releases go to the **Dev** channel first and graduate to **Beta** once the count of
 known problems reaches zero; the switch is About Helm → Update channel. The channels,
-the version scheme and the shape of a tag are described in the Release section of
-[ARCHITECTURE.md](ARCHITECTURE.md).
+the version scheme and the shape of a tag are described in ARCHITECTURE.md § Release.
 
 ## Build from source
 

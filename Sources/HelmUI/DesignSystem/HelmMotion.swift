@@ -11,7 +11,7 @@ import HelmRuntime
 /// The exception is anything whose height is measured and clipped. A bouncy
 /// spring overshoots its target, and an overshooting height clips its own
 /// content for a frame or two — exactly the class of panel glitch
-/// ARCHITECTURE.md warns about. Those use `disclosure`, which is a spring with
+/// ARCHITECTURE.md § Motion warns about. Those use `disclosure`, which is a spring with
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that
@@ -35,7 +35,7 @@ public enum HelmMotion {
     }
 
     /// Small state changes: reordering rows, toggling a filter, moving a
-    /// selection. A touch of spring so it doesn't feel mechanical.
+    /// selection, switching a tab. A touch of spring so it doesn't feel mechanical.
     public static var interface: Animation {
         reduced ? instant : .snappy(duration: interfaceDuration)
     }
@@ -79,7 +79,8 @@ public enum HelmMotion {
     ///
     /// 0.12 s: long enough that the card does not appear to blink into
     /// existence, short enough that a panel opened to read one number is not
-    /// something you wait for.
+    /// something you wait for. Eased rather than sprung because a spring that
+    /// short is a spring nobody can see.
     public static var panelEntrance: Animation {
         reduced ? instant : .easeOut(duration: 0.12)
     }

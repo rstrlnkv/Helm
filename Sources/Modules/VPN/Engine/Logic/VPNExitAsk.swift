@@ -23,7 +23,7 @@ import Foundation
 /// * a request is already in flight: `VPNExitPort` waits up to eight seconds,
 ///   and every refresh behind one connect would otherwise start another. The
 ///   poll re-reads up to 26 times (`VPNEngine.poll`).
-/// * the last attempt came back empty a moment ago: this is the app's one
+/// * the last attempt came back empty a moment ago: this is a
 ///   request to a server that is not the update feed, and a refresh loop over a
 ///   blocked host would turn it into traffic somebody could watch.
 ///
@@ -32,7 +32,8 @@ import Foundation
 /// also starts a `Task`, which is where the original defect lived.
 enum VPNExitAsk {
 
-    /// How long an empty answer stands before the question may be asked again.
+    /// How long after the start of an attempt that came back empty the question
+    /// may not be asked again.
     ///
     /// A minute, and the number is chosen against what actually fails: the probe
     /// is refused in one go by a blocked host and takes its full eight-second
@@ -53,8 +54,8 @@ enum VPNExitAsk {
                               lastAsked: Date?, now: Date) -> Bool {
         guard tunnelIsUp, region == nil, !asking else { return false }
         guard let lastAsked else { return true }
-        // `>=` rather than `>`: the quiet period is how long the answer stands,
-        // and a period that has elapsed exactly has elapsed.
+        // `>=` rather than `>`: the quiet period runs from the start of the empty
+        // attempt, and a period that has elapsed exactly has elapsed.
         return now.timeIntervalSince(lastAsked) >= quietPeriod
     }
 

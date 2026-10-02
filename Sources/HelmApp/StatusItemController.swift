@@ -97,8 +97,9 @@ import HelmUI
     private func refreshIcon() {
         guard let button = statusItem.button else { return }
         let now = Date()
-        // One rule decides: a module whose spin is running borrows the icon,
-        // otherwise the first module that tints it.
+        // One rule decides, in four tiers (`StatusPlan.choose`): the first module
+        // with a countdown, else the newest running spin, else the first tint,
+        // else the first title.
         let appearance = StatusPlan.choose(
             host.enabledModules.map { $0.descriptor.statusAppearance($0.vm) }, now: now)
         let token = appearance.tintToken

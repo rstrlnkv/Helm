@@ -11,7 +11,7 @@ import HelmRuntime
 /// `TrashReasonText.sentence` to turn back into words. The engine built the real
 /// result and unpacked it field by field into that copy. Both ends of this wire
 /// are in one build and the UI target imports the engine, so one declaration can
-/// serve both — the rule CLAUDE.md states as payload-declared-once.
+/// serve both — the rule ARCHITECTURE.md § The boundaries states as payload-declared-once.
 ///
 /// Asserting the *keys* rather than a size or a byte count: the point is which
 /// names are on the wire, and a length would pass for the wrong reasons.

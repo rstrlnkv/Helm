@@ -19,25 +19,18 @@ import XCTest
 /// all four of them; checking one module would pass while nine were wrong.
 final class TheMapNamesRealDirectoriesTests: XCTestCase {
 
-    private static let heading = "### Where things are"
+    private static let heading = "Where things are"
 
     /// The rows of the map, as the paths they name.
     ///
     /// Throws rather than returning nothing when the table is gone: an empty
     /// list would let every assertion below pass over no subject at all.
     private func mappedPaths() throws -> [String] {
-        let file = RepoSource.root.appendingPathComponent("ARCHITECTURE.md")
-        guard let text = try? String(contentsOf: file, encoding: .utf8) else {
-            throw XCTSkip("ARCHITECTURE.md is not in this checkout")
-        }
-        let lines = text.components(separatedBy: .newlines)
-        guard let start = lines.firstIndex(where: { $0 == Self.heading }) else {
+        let hub = try RepoSource.text(of: "ARCHITECTURE.md")
+        guard let table = StandingDocuments.section(Self.heading, in: hub) else {
             XCTFail("the map is gone from ARCHITECTURE.md — delete this test or put it back")
             return []
         }
-        let rest = lines[(start + 1)...]
-        let end = rest.firstIndex(where: { $0.hasPrefix("#") }) ?? rest.endIndex
-        let table = lines[(start + 1)..<end]
 
         let pattern = try NSRegularExpression(pattern: "`([^`]*/[^`]*)`")
         var paths: [String] = []

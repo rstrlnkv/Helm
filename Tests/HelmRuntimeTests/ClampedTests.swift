@@ -6,8 +6,8 @@ import XCTest
 /// `min(max(value, low), high)` — and `max(low, min(value, high))`, and
 /// `min(high, max(low, value))` — stood in five modules and three shared
 /// targets, three spellings of one rule. Four crashes of one family were then
-/// fixed by adding a sixteenth by hand, which is the argument CLAUDE.md makes
-/// for `HelmRuntime`.
+/// fixed by adding a sixteenth by hand, which is the argument ARCHITECTURE.md § Tests
+/// and measurement makes for reading `HelmRuntime` first.
 ///
 /// The floating-point half is the reason this has tests of its own rather than
 /// being a one-liner nobody argues with: a clamp built from `min`/`max`

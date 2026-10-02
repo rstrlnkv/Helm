@@ -159,8 +159,8 @@ final class FakeCreds: VPNCredentialsPort {
 ///
 /// **Six files in this target had written this out privately** — three epochs
 /// between them, one with no `advance` and one with no settable `now` — which
-/// is the shape CLAUDE.md records for every helper that ended up in
-/// `HelmRuntime`. It is here rather than in `HelmTestSupport` only because
+/// is the shape ARCHITECTURE.md § Tests and measurement records for every
+/// helper that ended up in `HelmRuntime`. It is here rather than in `HelmTestSupport` only because
 /// `Tests/Support` has another writer in it today; that is the move owed next.
 final class TestClock: @unchecked Sendable {
     private let lock = NSLock()

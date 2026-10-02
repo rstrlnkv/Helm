@@ -164,7 +164,7 @@ final class WorkspaceAppLister: AppLister {
     /// does with such a leaf, take the link or take the target, is a question this
     /// app has no answer to, and **both answers are defects**: one leaves the app
     /// installed with its containers gone under a banner saying it is in the
-    /// Trash, the other breaks "the leaf is left unresolved on purpose"
+    /// Trash, the other breaks "leaves the leaf alone"
     /// (ARCHITECTURE.md § The gates). So the offer is withdrawn rather than
     /// guessed at. Who has one: anyone whose apps arrive as links — nix-darwin,
     /// some cask layouts, hand-made links.

@@ -2,14 +2,15 @@ import Foundation
 
 /// The flat view of a layout, and the arithmetic of a drop into it.
 ///
-/// `NSTableView` speaks in row indices and knows nothing about sections;
+/// The sidebar's `List` (`SidebarComposerList`) speaks in row indices, through
+/// `.onMove`, and knows nothing about sections;
 /// `SidebarLayout` speaks in sections and knows nothing about rows. Everything
 /// that translates between the two lives here, so a drop landing in the wrong
-/// section is a failing test rather than something noticed later — the table
+/// section is a failing test rather than something noticed later — the list
 /// itself only reports *which row* and *which index*.
 public extension SidebarLayout {
 
-    /// One line of the table: a section's heading, or a module inside one.
+    /// One line of the list: a section's heading, or a module inside one.
     enum Row: Equatable, Identifiable, Sendable {
         case section(String)
         case module(String, in: String)
@@ -48,7 +49,7 @@ public extension SidebarLayout {
         let rows = flattened
         // Above the first heading there is no section. Clamping into the first
         // one beats refusing: the indicator was already drawn there, and a drop
-        // that does nothing where the table promised something is the table
+        // that does nothing where the list promised something is the list
         // lying about itself.
         let owner = sectionOwning(flatIndex, in: rows)
         guard let sectionID = owner ?? sections.first?.id else { return self }
@@ -56,7 +57,7 @@ public extension SidebarLayout {
         var before: String?
         if owner == nil {
             // Clamped from above the first heading. The indicator was at the
-            // very top of the table, so the module goes to the front of the
+            // very top of the list, so the module goes to the front of the
             // first section — appending it would drop it as far as possible
             // from where the person aimed.
             before = sections.first?.modules.first { $0 != module }
@@ -64,7 +65,7 @@ public extension SidebarLayout {
                   case .module(let next, let itsSection) = rows[flatIndex],
                   itsSection == sectionID, next != module {
             // What it lands in front of, but only when that row is a module of
-            // the same section. A heading or the end of the table both mean the
+            // the same section. A heading or the end of the list both mean the
             // end of this section.
             before = next
         }

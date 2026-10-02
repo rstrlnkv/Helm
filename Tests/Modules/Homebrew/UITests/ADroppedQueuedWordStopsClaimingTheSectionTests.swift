@@ -111,7 +111,8 @@ final class ADroppedQueuedWordStopsClaimingTheSectionTests: XCTestCase {
     }
 
     /// A real deadline, never an exact sleep and never a bare `Task.yield`
-    /// (CLAUDE.md: a yield buys a turn on the pool and no wall-clock time).
+    /// (ARCHITECTURE.md § Tests and measurement: a yield buys a turn on the pool
+    /// and no wall-clock time).
     private func waitUntil(_ deadline: Duration = .milliseconds(800),
                            _ condition: @escaping () -> Bool) async {
         let start = ContinuousClock.now

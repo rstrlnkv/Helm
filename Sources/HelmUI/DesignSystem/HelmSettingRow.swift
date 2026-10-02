@@ -1,19 +1,5 @@
 import SwiftUI
 
-/// One row of a settings card, in the shape v3 gives every module.
-///
-/// **The row answers two questions at once**, and that is the whole idea of the
-/// third redesign. The mark on the left says what is happening right now — a
-/// fact from the engine. The control on the right says what is configured — a
-/// value from the store. The second edition put those two in different columns,
-/// 268 pt apart, so a person reading the page top to bottom saw that a rule was
-/// holding the Mac and could not see what to change about it. One row, two
-/// jobs, and nothing between them.
-///
-/// The mark is drawn only when there is something happening. A rule that is
-/// switched off has no mark at all: the mark reports the world, not the
-/// position of the switch beside it, and a grey dot for «off» would be the row
-/// saying the same thing twice in two alphabets.
 /// What the left of the row says about right now.
 public enum HelmRowMark: Equatable, Sendable {
     /// Nothing to report, and nothing to line up with either — for a card
@@ -64,6 +50,24 @@ public enum HelmRowMark: Equatable, Sendable {
     }
 }
 
+/// One row of a settings card, in the shape v3 gives every module.
+///
+/// **The row answers two questions at once**, and that is the whole idea of the
+/// third redesign. The mark on the left says what is happening right now — a
+/// fact from the engine. The control on the right says what is configured — a
+/// value from the store. The second edition put those two in different columns,
+/// 268 pt apart, so a person reading the page top to bottom saw that a rule was
+/// holding the Mac and could not see what to change about it. One row, two
+/// jobs, and nothing between them.
+///
+/// The mark is drawn only when there is something happening. A rule that is
+/// switched off has no mark at all: the mark reports the world, not the
+/// position of the switch beside it, and a grey dot for «off» would be the row
+/// saying the same thing twice in two alphabets.
+///
+/// Title and note are one VoiceOver stop (`.accessibilityLabel(spoken)` on the
+/// title, not `.combine` on the stack, which would fold the ⓘ in too); the
+/// trailing control stays its own, because that is the part a person navigates to.
 public struct HelmSettingRow<Trailing: View>: View {
 
     private let title: String
@@ -98,18 +102,7 @@ public struct HelmSettingRow<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s2) {
                     Text(title)
-                        // Title and note are one thought, and VoiceOver stopped
-                        // on each of them separately: «External display» — next
-                        // — «Applies right now» — next — the switch. Three stops
-                        // for one row, over a page of them.
-                        //
-                        // Said here rather than with
-                        // `.accessibilityElement(children: .combine)` on the
-                        // stack, which is what this was: `.combine` folds *every*
-                        // child in, and the ⓘ beside the name is a control a
-                        // person navigates **to**. The sentence is one element
-                        // and the button is its own — the same reason the row's
-                        // trailing control was left outside the combine.
+                        // One stop for title and note: see the type's doc comment.
                         .accessibilityLabel(spoken)
                     if let explainer { HelmExplainer(explainer) }
                 }

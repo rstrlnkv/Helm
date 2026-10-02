@@ -3,16 +3,16 @@ import AppKit
 /// Which application is in front, readable from any thread.
 ///
 /// `NSWorkspace` is main-thread-only. Reading it from anywhere else does not
-/// give stale data — it takes the process down, and ARCHITECTURE.md § Running
-/// applications carries the stack trace from the four releases where the VPN
-/// engine proved it.
+/// give stale data — it takes the process down (ARCHITECTURE.md § Running
+/// applications); the doc comment of `RunningApps` carries the stack trace of the
+/// VPN engine's crash.
 ///
-/// The Keyboard module then proved it a second time. `frontmostBundleID` read
+/// Layout's fix gesture then proved it a second time. `frontmostBundleID` read
 /// `NSWorkspace.shared.frontmostApplication` on whatever thread asked, which was
 /// survivable while the callers were the tap's own main-thread callback — and
 /// stopped being survivable the moment the gesture moved to a background queue
 /// to keep a slow accessibility call off the main run loop. Eight call sites
-/// went with it.
+/// went with it, and the first use with text selected took the process down.
 ///
 /// So the same answer `RunningApps` already gives: AppKit is read on the main
 /// thread, from the workspace notification that arrives there anyway, and every

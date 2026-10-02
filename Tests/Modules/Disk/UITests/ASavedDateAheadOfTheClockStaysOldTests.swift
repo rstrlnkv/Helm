@@ -16,8 +16,8 @@ import XCTest
 /// opening for as long as the clock stays behind the file, and the day-long
 /// cache lifetime never starts counting.
 ///
-/// **A documented gap (D3), skipped, not fixed.** ARCHITECTURE.md names
-/// `HELM_KNOWN_GAPS=1` as the way to run a known gap, so the case skips
+/// **A documented gap (D3), skipped, not fixed.** The way to run a known gap is
+/// `HELM_KNOWN_GAPS=1` (ARCHITECTURE.md § What makes a check), so the case skips
 /// unless it is set, with the id in the reason, and keeps its reproduction below
 /// the skip.
 /// Either honest answer passes it — a restore that refuses such a file, or one

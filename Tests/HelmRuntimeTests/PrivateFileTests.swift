@@ -72,8 +72,8 @@ final class PrivateFileTests: XCTestCase {
     /// A file this app appends to rather than rewrites never passes through
     /// `write`, so its mode is whatever the umask gave it on the day it was
     /// created — `~/Library/Logs/Helm/helm.log` is 0644 on the machine this was
-    /// measured on, in a 0700 folder that ARCHITECTURE.md describes as the whole
-    /// protection. Tightening it is a separate call because it is a separate
+    /// measured on, in a 0700 folder
+    /// (ARCHITECTURE.md § Diagnostics log). Tightening it is a separate call because it is a separate
     /// moment: once at launch, not once a line.
     func testAnExistingLooseFileIsTightened() throws {
         let url = directory.appendingPathComponent("appended.log")

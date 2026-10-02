@@ -18,6 +18,9 @@ import Foundation
 /// Pure, because every branch here is a judgement rather than arithmetic: what a
 /// stale deadline means, whether "until I say stop" survives a restart, and what
 /// to believe when the clock has moved. `SessionRestoreTests` argues each one.
+///
+/// What it cannot repair, and does not pretend to: the assertion died with the
+/// process, so the Mac genuinely could have slept in the gap.
 enum SessionRestore {
 
     enum Decision: Equatable {

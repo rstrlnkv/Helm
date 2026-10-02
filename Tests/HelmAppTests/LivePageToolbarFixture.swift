@@ -17,9 +17,9 @@ import HelmUI
 /// reach support") — so a module's own `UITests` target has no way to build
 /// one; only `HelmAppTests`, which already depends on `HelmApp` directly, can.
 /// That is why these tests live here now rather than in
-/// `Tests/Modules/Homebrew/UITests`, per `CLAUDE.md`'s own "put a check for
-/// the app layer in `Tests/HelmAppTests`, since the host does take a test
-/// target and there is no reason to move code out of it to reach one."
+/// `Tests/Modules/Homebrew/UITests`, per `CLAUDE.md`'s "app-layer checks in
+/// `Tests/HelmAppTests`" and ARCHITECTURE.md § Targets, where the host does take
+/// a test target.
 ///
 /// `selection` is set before the toolbar is even constructed — `SettingsToolbar`
 /// refreshes from `model.selection` the moment its `window` is assigned

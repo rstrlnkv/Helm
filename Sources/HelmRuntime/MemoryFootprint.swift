@@ -47,7 +47,9 @@ public struct FootprintTracker: Sendable {
     ///
     /// The first reading for a label is always worth it — that is the baseline
     /// every later delta is measured from, and without it the first line in the
-    /// log would be a delta against nothing.
+    /// log would be a delta against nothing. Every reading, reported or silent,
+    /// becomes the baseline of the next, so a climb made of steps under the
+    /// threshold never reports.
     public mutating func report(_ label: String, bytes: Int) -> Report? {
         defer { last[label] = bytes }
         guard let previous = last[label] else {

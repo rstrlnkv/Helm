@@ -17,9 +17,9 @@ import XCTest
 /// said anything at all, so the spike had no phase name against it.
 ///
 /// (Those operations also called `MemoryReclaim.afterHeavyWork`, which was
-/// removed 2026-07-31 after four probes and five live operations measured it
-/// returning 0 MB every time — ARCHITECTURE.md § The memory trail.)
-/// docs/superpowers/plans/2026-07-29-third-pass.md has the trail and the vmmap.
+/// removed 2026-07-31 because it returned 0 MB in everything measured; the
+/// message of commit 47fc2155 holds the probes.) The message of commit 2d1eae5b
+/// holds the trail and the vmmap of that spike.
 ///
 /// This is a coverage test, not a measurement: it asserts the labels exist in the
 /// source, so removing one is visible. It cannot tell whether a label sits in the
@@ -59,7 +59,7 @@ final class MemoryTrailCoverageTests: XCTestCase {
         // two network-bound calls — both ran unnamed while the trail was read.
         ("homebrew.descriptions", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("homebrew.search", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
-        // One label for all five long operations: the busy gate makes them
+        // One label for all the long operations: the busy gate makes them
         // serial, and the [homebrew] info line beside it names the verb. Two
         // package operations that changed the machine used to log 0 lines; a
         // 226 MB sample on 2026-08-16 could say only "no phases running".
@@ -84,7 +84,7 @@ final class MemoryTrailCoverageTests: XCTestCase {
         XCTAssertEqual(missing, [], """
             An operation that does bulk work and does not name itself cannot be \
             blamed by the memory trail — which is the position the +177 MB report \
-            was stuck in for two days:
+            (commit 2d1eae5b) was stuck in for two days:
             \(missing.joined(separator: "\n"))
             """)
     }

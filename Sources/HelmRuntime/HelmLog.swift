@@ -382,13 +382,15 @@ public final class HelmLog: @unchecked Sendable {
     /// decides that memory is worth a category of its own, because "which of
     /// these two hundred lines is about memory" is the question being asked
     /// when someone opens the log for this.
+    ///
+    /// `sample` and `launch` are the two labels that ask about everything, so
+    /// they are the only ones not excluded from their own description; any other
+    /// phase asks about everything *else*.
     public func memory(_ label: String) {
         guard let bytes = MemoryFootprint.current() else { return }
         // Captured here, not on the queue: by the time the write happens the
         // phase may be over, and a figure is worth having only beside what was
         // running when it was taken.
-        // The timer sample asks about everything; a phase asks about everything
-        // *else*, because it is the one thing it already knows.
         let isSample = label == "sample" || label == "launch"
         let doing = HelmActivity.describe(HelmActivity.running,
                                           excluding: isSample ? nil : label)

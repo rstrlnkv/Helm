@@ -6,11 +6,11 @@ import AppKit
 
 /// `PaletteColor.offered` and a colour of your own, as one compact control.
 /// One of these, no local variants: it was a private method inside
-/// `KeepAwakeSettingsPage` until VPN needed the same control, and CLAUDE.md's
-/// list of things written twice before they moved exists to stop the second
-/// copy.
+/// `KeepAwakeSettingsPage` until VPN needed the same control, and the list of
+/// things written twice before they moved, in ARCHITECTURE.md § Tests and
+/// measurement, exists to stop the second copy.
 ///
-/// **A menu, not a row of swatches.** Two of these in one card — the active
+/// **A pop-up, not a row of swatches.** Two of these in one card — the active
 /// colour and the countdown colour — were two rainbows 270 pt wide, and a
 /// settings card is a list of rows with a control at the end of each. The
 /// control is a 12 pt dot now — `PaletteColor.swatchImage` and `swatch(of:)`
@@ -22,13 +22,20 @@ import AppKit
 /// row had to be `Button`s specifically so Full Keyboard Access could reach
 /// them — as `onTapGesture`s none entered the key-view loop, Tab skipped every
 /// swatch, and the colour could not be chosen without a mouse while VoiceOver
-/// worked, which is what hid it. A `Menu` is one stop that opens a list the
-/// keyboard already knows how to walk.
+/// worked, which is what hid it. A pop-up (the `Picker` below, in its menu
+/// style) is one stop that opens a list the keyboard already knows how to walk.
 ///
 /// No count in any of that, deliberately. Every sentence above said «ten» —
 /// true of the hand-picked palette they were written against, and not of
 /// `PaletteColor.offered` since, with nothing to make any of them go red. The
 /// list is the one place allowed to say how long it is.
+///
+/// **A `Picker`, not a `Menu`**, because it is visible to the probes. Both are
+/// one compact control, and this one is what the other settings pages use and
+/// draws its own selection; but a `Menu` whose label is a bare `Circle`
+/// photographed as nothing, offscreen and in a real window both, because AppKit
+/// draws it outside the layer `cacheDisplay` reads. Shipping a control nobody
+/// could photograph would have been shipping one nobody had seen.
 public struct HelmPaletteSwatches: View {
     // The row this replaced put every swatch on one line, beside the label
     // whose colour they set — and there was a 5×2 grid as well, which was the
@@ -51,7 +58,7 @@ public struct HelmPaletteSwatches: View {
         self.pick = pick
     }
 
-    /// Which item the menu has selected: one of the eight, or the free choice.
+    /// Which item the menu has selected: one of `PaletteColor.offered`, or the free choice.
     private enum Choice: Hashable { case palette(PaletteColor), custom }
 
     /// Kept alive by the view, because `NSColorPanel` holds its target
@@ -60,14 +67,7 @@ public struct HelmPaletteSwatches: View {
     @State private var bridge = ColorPanelBridge()
 
     public var body: some View {
-        // A `Picker`, not a `Menu`. Both are one compact control; this one is
-        // what the rest of the settings pages already use, it draws its own
-        // selection, and — the reason it was chosen over the first attempt —
-        // it is **visible to the probes**. A `Menu` whose label is a bare
-        // `Circle` photographed as nothing at all, offscreen and in a real
-        // window both, because AppKit draws it outside the layer
-        // `cacheDisplay` reads. Shipping a control nobody could photograph
-        // would have been shipping one nobody had seen.
+        // A `Picker`, not a `Menu`: the reason is on the type's doc comment.
         Picker(name, selection: choice) {
             ForEach(PaletteColor.offered, id: \.rawValue) { palette in
                 Label {

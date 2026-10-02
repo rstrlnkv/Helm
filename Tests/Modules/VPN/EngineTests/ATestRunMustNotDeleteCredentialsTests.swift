@@ -16,7 +16,7 @@ import HelmRuntime
 ///
 /// That is verbatim the lesson ARCHITECTURE.md § Diagnostics log records after a
 /// per-process latch let a test target wipe the real `helm.log`: **a latch belongs
-/// to the file it guards, not to whichever process asks.** Both halves are fixed
+/// to what it guards, not to whoever asks.** Both halves are fixed
 /// here — the latch is a file beside Helm's own state, and the purge asks first
 /// whether this process is the app at all.
 final class ATestRunMustNotDeleteCredentialsTests: XCTestCase {

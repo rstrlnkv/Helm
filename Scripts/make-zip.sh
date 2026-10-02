@@ -1,16 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# Builds a distributable .zip of build/Helm.app for the in-app updater (self-
-# downloaded zips carry no com.apple.quarantine, so no Gatekeeper prompt).
-# Run Scripts/package-app.sh first.
+# Builds a distributable .zip of the signed Helm.app that Scripts/package-app.sh
+# stages in $TMPDIR/helm-package, for the in-app updater (self-downloaded zips
+# carry no com.apple.quarantine, so no Gatekeeper prompt). Run package-app.sh first.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-# The SIGNED bundle, which package-app.sh leaves outside the repo: this checkout
-# is file-provider-synced, and a bundle copied back into it carries
-# com.apple.FinderInfo, which invalidates the signature. Never package build/.
+# The SIGNED bundle, which package-app.sh leaves outside the repo: the checkout
+# is meant to stay out from under a file provider (CLAUDE.md), but if one ever
+# syncs it, a bundle copied back in carries com.apple.FinderInfo, which
+# invalidates the signature. Never package a copy from build/.
 APP_DIR="${TMPDIR:-/tmp}/helm-package/Helm.app"
 [ -d "$APP_DIR" ] || { echo "signed Helm.app not found — run Scripts/package-app.sh first" >&2; exit 1; }
 codesign --verify --deep --strict "$APP_DIR" || {

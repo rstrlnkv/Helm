@@ -7,8 +7,8 @@
 /// (`grep -rn 'min(.*max(' Sources/` is what counts them). A family of crashes
 /// — a plist holding `<integer>9223372036854775807</integer>`, then
 /// `<real>1e300</real>`, reaching arithmetic that traps — was fixed each time by
-/// writing one more by hand, which is the argument CLAUDE.md makes for
-/// `HelmRuntime`.
+/// writing one more by hand, which is the argument ARCHITECTURE.md § Tests and
+/// measurement makes for reading `HelmRuntime` first.
 ///
 /// **The range does the arguing about bounds.** `ClosedRange` traps on its own
 /// initialiser when the upper bound is below the lower one, so a call site whose

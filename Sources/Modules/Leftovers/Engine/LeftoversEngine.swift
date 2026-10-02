@@ -76,8 +76,8 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// One ambiguity stays and is written down rather than solved: a label the
     /// person disabled themselves *after* Helm did is indistinguishable from
-    /// Helm's own, so it is given back too. Describing it belongs in
-    /// `ARCHITECTURE.md` beside the launchd chapter.
+    /// Helm's own, so it is given back too. It is described in
+    /// ARCHITECTURE.md § Giving everything back.
     public func willDisable() {
         let recorded = store.stringArray(Self.recordKey)
         guard !recorded.isEmpty else { return }
@@ -170,10 +170,11 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 }
                 let claimants = LaunchClaims.claimants(of: request.label, in: reading)
                 // **And a folder that did not open is not a folder with nothing
-                // in it.** Both agent folders are ordinary candidates for going
-                // unread — root's is not Helm's to read, and the person's own is
-                // behind a TCC grant — and either one going unread turns «two
-                // files claim this switch» into «one does», on the safe-direction
+                // in it.** Either agent folder can refuse a listing —
+                // `LaunchClaims.Reading` names the reasons, and that listing
+                // `/Library/LaunchAgents` is open to everyone on the Mac this
+                // was written on — and either one going unread turns «two files
+                // claim this switch» into «one does», on the safe-direction
                 // side of a guard whose whole subject is the unsafe direction.
                 guard reading.everyFolderOpened else {
                     HelmLog.shared.warn(Self.moduleID,

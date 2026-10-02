@@ -105,14 +105,10 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
             in: afterConcat, range: NSRange(afterConcat.startIndex..., in: afterConcat), withTemplate: " ")
     }
 
-    /// A document's headings, lowercased and longest first. Longest first is
-    /// what lets a short heading that is also a prefix of a longer one never
-    /// win a match the longer heading deserved.
+    /// A document's headings, lowercased, longest first (the shared reader
+    /// orders them; lowercasing keeps the order).
     private func headings(of document: String) throws -> [String] {
-        try RepoSource.lines(of: document)
-            .filter { $0.hasPrefix("#") }
-            .map { $0.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces).lowercased() }
-            .sorted { $0.count > $1.count }
+        try StandingDocuments.headings(of: document).map { $0.lowercased() }
     }
 
     /// Every `.swift` file of the package, source and test alike.
@@ -131,8 +127,8 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
     /// of the document it names.
     private func pointers() throws -> [Found] {
         let headingsByDocument: [String: [String]] = [
-            "ARCHITECTURE": try headings(of: "ARCHITECTURE.md"),
-            "CLAUDE": try headings(of: "CLAUDE.md"),
+            "ARCHITECTURE": try headings(of: "ARCHITECTURE"),
+            "CLAUDE": try headings(of: "CLAUDE"),
         ]
         var out: [Found] = []
         for relative in try swiftFiles() {
@@ -177,10 +173,10 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
         XCTAssertGreaterThan(files.count, 200,
             "only \(files.count) Swift files — the walk found nothing and every verdict below is over no text")
 
-        let architecture = try headings(of: "ARCHITECTURE.md")
+        let architecture = try headings(of: "ARCHITECTURE")
         XCTAssertGreaterThan(architecture.count, 20,
-            "only \(architecture.count) ARCHITECTURE.md headings — the document was not read")
-        let claude = try headings(of: "CLAUDE.md")
+            "only \(architecture.count) ARCHITECTURE.md headings — the hub's and its pages' headings were not read")
+        let claude = try headings(of: "CLAUDE")
         XCTAssertGreaterThan(claude.count, 3,
             "only \(claude.count) CLAUDE.md headings — the document was not read")
 

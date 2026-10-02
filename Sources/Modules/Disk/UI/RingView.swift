@@ -179,14 +179,6 @@ struct RingView: View {
         }
     }
 
-    /// Opens a wedge: it widens until it is the whole ring, and only then does
-    /// the drill land — so the ring the user ends up looking at is the one they
-    /// watched grow, rather than a different ring that faded in.
-    /// Opens a wedge: it widens until it is the whole ring while the layout
-    /// underneath moves to where it will be, and only then does the drill land.
-    /// The ring the user ends up looking at is the one they watched grow — and
-    /// now it is that one exactly, arc for arc, rather than a transform of the
-    /// old one that the new layout then replaced in a single frame.
     /// Opens a wedge.
     ///
     /// The drill lands *first*, so the ring is already showing the layout it
@@ -195,8 +187,8 @@ struct RingView: View {
     /// cannot be made seamless: folding into "other" is decided against the
     /// parent's total in one layout and the folder's own total in the other, so
     /// the last transformed frame held arcs the destination did not have, and
-    /// every boundary moved in the single frame between them. Measured before
-    /// and after: `last frame ring0` and `first frame ring0` in the log.
+    /// every boundary moved in the single frame between them. The measurement,
+    /// before the fix, is in `RingSeamTests`' doc comment.
     private func open(_ hit: RingSegment) {
         leaving = segments
         pivot = hit

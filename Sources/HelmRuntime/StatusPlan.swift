@@ -9,7 +9,8 @@ import HelmContract
 /// It lived in `HelmContract` under a note saying `HelmRuntime` does not depend
 /// on `HelmContract`, which is the edge the other way round: `HelmRuntime` has
 /// depended on the contract since `EngineReply` needed to log, and
-/// `ARCHITECTURE.md` § Targets calls that "that one edge, never the other way".
+/// ARCHITECTURE.md § Targets records as one edge from `HelmRuntime` to `HelmContract`
+/// and none the other way.
 /// Nothing here is a wire type. It is four decisions the *host* makes about the
 /// menu bar out of what modules reported, which is the plumbing `HelmRuntime`
 /// is for — and every consumer already imports it. What it cost while it sat on

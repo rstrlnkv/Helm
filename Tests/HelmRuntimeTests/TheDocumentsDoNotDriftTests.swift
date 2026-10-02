@@ -11,11 +11,8 @@ import XCTest
 /// twice. Nothing in the tree could see that: `DocumentsNameTheTreeTests` reads
 /// *names*, and a copy that drifts keeps every name it started with.
 ///
-/// **The threshold is measured, not chosen.** Over the four core documents —
-/// `CLAUDE.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `README.md` — 70 block pairs
-/// share any six-word run at all, none of them byte-identical, and the loudest
-/// is `ARCHITECTURE.md` ↔ `README.md` at Jaccard 0.048, three times under
-/// `floor`. The bimodal distribution this comment once described — a cluster
+/// **The threshold is measured, not chosen.** Over the standing documents the
+/// run prints the loudest pair and its Jaccard, and `floor` sits above it. The bimodal distribution this comment once described — a cluster
 /// at 1.00 and then nothing until 0.28 — belonged to a corpus that also read
 /// eight crew briefs sharing one read-only paragraph byte for byte; the briefs
 /// moved to a sibling repository on 2026-09-06 and took that cluster with
@@ -27,7 +24,7 @@ import XCTest
 /// real case». `known` records today's pairs with the reason each is allowed,
 /// and it is checked in both directions: a pair that is not recorded fails, and
 /// a recorded pair that has gone fails too, so the list cannot fill with
-/// ghosts — even though, over these four documents, `known` is empty.
+/// ghosts — even though, over the standing documents, `known` is empty.
 final class TheDocumentsDoNotDriftTests: XCTestCase {
 
     /// Every prose block of this length or longer is compared. Below it a block
@@ -41,15 +38,6 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     /// Below this, the pair is two people writing about one subject. Above it,
     /// in this corpus, the pair has always been one paragraph written twice.
     private static let floor = 0.15
-
-    /// The four core documents of the standard, and nothing else. The crew's
-    /// briefs are **not** here and cannot be: they live in a sibling repository
-    /// behind the `.claude/agents` link, which is not a repo-relative path, and
-    /// which today points at a directory holding one `.gitkeep`. Reading them
-    /// from here was the defect this list carried, not a feature it lost.
-    private static let documents: [String] = [
-        "CLAUDE.md", "ARCHITECTURE.md", "CHANGELOG.md", "README.md",
-    ]
 
     /// The least of its own characters the reader must keep of each document.
     ///
@@ -66,8 +54,8 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     /// a crew that moved to a sibling repository, and the other recorded a
     /// resemblance between `ARCHITECTURE.md` and `CLAUDE.md` that the standard
     /// then removed on purpose, by writing one as description and the other as
-    /// command. Over the four core documents, 70 pairs share any six-word run
-    /// at all and the loudest is 0.048 — three times under `floor`.
+    /// command. Over the standing documents the run prints the
+    /// loudest pair, and `floor` sits above it.
     ///
     /// It is checked in both directions and stays that way: an unrecorded pair
     /// fails, and a recorded pair that has gone fails too, so the list cannot
@@ -99,7 +87,7 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
 
     private func corpus() throws -> [Block] {
         let root = RepoSource.root
-        let present = Self.documents.filter {
+        let present = StandingDocuments.all().filter {
             FileManager.default.fileExists(atPath: root.appendingPathComponent($0).path)
         }
         // **None of them is a question about the checkout; some of them is a
@@ -108,11 +96,11 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         // `VERSIONING.md` sat here named and absent while `CHANGELOG.md` went
         // unread.
         try XCTSkipIf(present.isEmpty, "the standing documents are not in this checkout")
-        for name in Self.documents where !present.contains(name) {
+        for name in StandingDocuments.all() where !present.contains(name) {
             XCTFail("""
-                `\(name)` is on this guard's list and not beside `Package.swift`. Either it \
-                moved and the list is stale, or it was deleted and the list is a claim about a \
-                document that no longer exists — both were true here.
+                `\(name)` is a standing document (core, or linked from the hub) and not beside \
+                `Package.swift`. Either it moved and the list is stale, or it was deleted and the \
+                list is a claim about a document that no longer exists — both were true here.
                 """)
         }
 
@@ -173,9 +161,9 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
         XCTAssertGreaterThan(blocks.count, 150,
                              "only \(blocks.count) prose blocks — the reader stopped seeing most of the documents")
 
-        // The total cannot ask whether each file was read: ARCHITECTURE.md is
-        // most of it, so the other three could vanish and the floor would hold.
-        for name in Self.documents {
+        // The total cannot ask whether each file was read: a document could
+        // vanish and the floor would hold.
+        for name in StandingDocuments.all() {
             guard let text = try? String(
                 contentsOf: RepoSource.root.appendingPathComponent(name), encoding: .utf8)
             else { continue }   // absence and unreadability already failed in `corpus()`
@@ -194,8 +182,12 @@ final class TheDocumentsDoNotDriftTests: XCTestCase {
     }
 
     func testNoDocumentHasQuietlyBecomeACopyOfAnother() throws {
-        let found = pairs(in: try corpus())
-            .filter { $0.similarity >= Self.floor }
+        let all = pairs(in: try corpus())
+        if let loudest = all.max(by: { $0.similarity < $1.similarity }) {
+            print("TheDocumentsDoNotDriftTests: loudest pair \(loudest.key.described) at "
+                  + String(format: "%.3f", loudest.similarity) + ", floor \(Self.floor)")
+        }
+        let found = all.filter { $0.similarity >= Self.floor }
 
         var counted: [Pair: Int] = [:]
         for pair in found { counted[pair.key, default: 0] += 1 }

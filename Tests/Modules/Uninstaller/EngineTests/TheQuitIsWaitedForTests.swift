@@ -46,7 +46,8 @@ final class TheQuitIsWaitedForTests: XCTestCase {
     }
 
     /// An app that ignores the request must not hold the removal for ever: the
-    /// person asked for this, and `trashSync` reports what would not move.
+    /// person asked for this, so the deadline ends the wait, and a batch still
+    /// holding the live app moves nothing and names it in `stillRunning`.
     func testAnAppThatWillNotQuitStopsAtTheDeadline() async {
         let (engine, apps) = engine(running: ["com.acme.stubborn"],
                                     stubborn: ["com.acme.stubborn"])

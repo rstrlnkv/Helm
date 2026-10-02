@@ -4,7 +4,9 @@
 # whole reason it is here: on macOS 26 Finder accepts the window's view options
 # over AppleScript, reports them back correctly when asked, and then draws the
 # default window anyway — checked twice, once with a hand-written script and
-# once with Homebrew's create-dmg, which does the same dance.
+# once with Homebrew's create-dmg, which does the same dance. Both got 48 pt
+# icons in a grid and no background, so it is the OS rather than any one script.
+# Only the window's bounds still take.
 #
 # The numbers here and the ones in Scripts/design/make-dmg-background.swift are
 # the same layout seen from two sides; change one and change the other.
@@ -38,7 +40,9 @@ show_sidebar = False
 icon_size = 128
 # Finder has no way to turn the names off, so they are shrunk to the smallest
 # value the .DS_Store will carry. Whether Finder honours it or clamps it back
-# is checked on the mounted image, not assumed.
+# is checked on the mounted image, not assumed. There is a floor: a smaller value
+# is written happily by dmgbuild and then rejected wholesale by Finder — no
+# background, no positions, no complaint.
 text_size = 10.0
 # Centres, matching the two slots the background frames.
 icon_locations = {app_name: (168, 178), "Applications": (472, 178)}

@@ -9,7 +9,7 @@ import HelmTestSupport
 /// gained a lifetime: a binding travels down and an action travels up.
 ///
 /// **SwiftUI identity is what the third drag architecture was bought with**
-/// (ARCHITECTURE.md § The menu-bar panel). The second architecture hung the
+/// (the doc comment of `gridDrag` in `HelmPanel.swift`). The second architecture hung the
 /// gesture on the cell, a repack rebuilt the cells, the gesture died under the
 /// pointer, `onEnded` never came, and the widget hung in the air. The cure was
 /// putting every piece of drag state in the panel and the gesture on the grid

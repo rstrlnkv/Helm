@@ -168,9 +168,8 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
 
     /// The bundle cannot be moved aside at all — a `/Applications` that is not
     /// writable, which `isWritableFile` answered "yes" about a second earlier.
-    /// Nothing may be copied over the installed app in that state: a `ditto`
-    /// into a live bundle merges into it, which is how a half-new, half-old
-    /// Helm gets made.
+    /// Nothing may be copied over the installed app in that state, for the
+    /// reason the `UpdateSwap` doc gives.
     func testABundleThatCannotBeMovedAsideIsNotCopiedOver() throws {
         let scratch = scratchDirectory("swap-stuck")
         let applications = scratch.appendingPathComponent("Applications")

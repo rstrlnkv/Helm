@@ -382,6 +382,12 @@ public enum HelmLayout {
 /// 2.69:1 rather than 3.35:1 — the second one below the threshold it claimed
 /// to clear. The opacities are now solved for the target in the worse of the
 /// two appearances rather than chosen and described afterwards.
+///
+/// **Four settings sizes, because the window had more.** Its text sizes and
+/// weights were chosen a call site at a time. The ones under "The settings type
+/// scale" are what macOS's own settings use for the same jobs, so a Helm page
+/// and a System Settings pane read at the same rhythm — and a size that is not
+/// there is a decision somebody has to argue for rather than type.
 public enum HelmText {
     /// Secondary copy inside cards and rows: body text that happens to be
     /// quieter, so it answers to the body threshold. 4.92:1 light, 6.06:1 dark
@@ -489,13 +495,6 @@ public enum HelmText {
     public static let heroFigureFont = heroFont.monospacedDigit()
 
     // MARK: - The settings type scale
-    //
-    // **Four sizes, because the window had six.** Counted across the settings
-    // window and the block inside it: 10, 11, 12, 13 and 15 pt, in three
-    // weights, chosen a call site at a time. The ones below are what macOS's
-    // own settings use for the same jobs, so a Helm page and a System Settings
-    // pane read at the same rhythm — and a size that is not here is a decision
-    // somebody has to argue for rather than type.
 
     /// A row's own name: the thing the row is about. macOS's settings rows.
     ///
@@ -523,8 +522,8 @@ public enum HelmText {
     /// The line under a row's name, and the note under a group: secondary copy
     /// that a reader takes in after the thing it describes.
     public static let rowDetail = Font.subheadline
-    /// `rowDetail` as AppKit sees it, for the one place that measures text
-    /// rather than drawing it (`LeftoverPathFloor`).
+    /// `rowDetail` as AppKit sees it, for the two places that measure text
+    /// rather than draw it (`LeftoverPathFloor`, `TabStripFit`).
     ///
     /// A font rather than the number it used to be. The two sides have to agree
     /// about the *same* text style now: a bare 11 would keep measuring 11 while

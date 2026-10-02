@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Wraps `swift test`, logging the whole output and reading it the way
-# CLAUDE.md's Commands section says a run must be read: the exit status on
-# its own line, never through a pipe, and the whole log rather than its
-# tail. It also closes a gap that reading alone does not: `swift test
+# Wraps `swift test`, logging the whole output and reading it the way this
+# header says a run must be read: the exit status on its own line, never
+# through a pipe, and the whole log rather than its tail. It also closes a
+# gap that reading alone does not: `swift test
 # --filter 'A|B|C'` where every alternative matches nothing prints `warning:
 # No matching test cases were run` and this script fails on that too — but
 # where only SOME alternatives match, it exits 0 with no warning at all
@@ -14,6 +14,21 @@ set -euo pipefail
 # the alternative, on Gradle's `failOnNoMatchingTests` model. `swift test`
 # itself ORs a repeated `--filter`, so every occurrence is read here too, in
 # both the `--filter X` and `--filter=X` forms, and joined the same way.
+#
+# Reading a run: this script prints its own verdict last. The closing "Test
+# Suite 'All tests' passed" speaks for the last bundle and the very last
+# line, "✔ Test run with 0 tests in 0 suites passed", for Swift Testing's
+# empty run — neither speaks for the suite. A summary line that also carries
+# a skip count reads as zero failures under a shorter pattern, and a
+# `--filter` whose alternatives match nothing, or match only in part, still
+# exits 0; the runner counts each alternative against the cases that
+# actually ran and fails, naming the one that ran none. Where a bare `swift
+# test` log has to be read, take the status on its own line —
+#   swift test > log 2>&1; echo "EXIT=$?"
+# — and count
+#   command grep -cE 'with ([0-9]+ tests? skipped and )?[1-9][0-9]* failures?' log
+#   command grep -c 'warning: No matching test cases were run' log
+# A filter that matches in part is invisible to both counts.
 #
 # Usage: Scripts/test.sh [swift test arguments...]
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under
@@ -360,7 +375,7 @@ if [ "$STATUS" -ne 0 ]; then
   FAIL=$STATUS
 fi
 if [ "$FAILURE_COUNT" -gt 0 ]; then
-  echo "!! log carries a failure line the CLAUDE.md pattern finds ($FAILURE_COUNT)" >&2
+  echo "!! log carries a failure line the pattern in this header finds ($FAILURE_COUNT)" >&2
   [ "$FAIL" -eq 0 ] && FAIL=1
 fi
 if [ "$NOMATCH_COUNT" -gt 0 ]; then
@@ -392,7 +407,7 @@ fi
 # The last line printed has to carry this runner's own verdict, not just
 # swift test's exit status — swift test can exit 0 while an unmatched
 # --filter alternative still fails the run (or exit non-zero itself), and a
-# reader taking only the tail (CLAUDE.md warns against it, but it happens)
+# reader taking only the tail (the header warns against it, but it happens)
 # must not read that as green.
 if [ "$FAIL" -eq 0 ]; then
   VERDICT=PASS

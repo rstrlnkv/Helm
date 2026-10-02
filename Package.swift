@@ -109,7 +109,7 @@ let foundation: [Target] = [
 /// The harness, which belongs to every test target and to no product.
 ///
 /// A plain target rather than a test target: a test target cannot be depended
-/// on, and this has to reach nine of them. It is under `Tests/` because that is
+/// on, and this has to reach every one of them. It is under `Tests/` because that is
 /// what it is — nothing in `Sources/` may import it, and nothing can, since no
 /// product lists it.
 ///

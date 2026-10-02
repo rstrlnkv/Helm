@@ -14,10 +14,11 @@ import XCTest
 /// `Redact.app` exists for: ARCHITECTURE.md § Diagnostics log says a bundle id
 /// names a person's habits.
 ///
-/// And these lines are not the exceptional case. A refusal by Full Disk Access is an
-/// ordinary outcome for this module — ARCHITECTURE.md records 23 of 42 launches with
-/// it denied — so «trash refused …» is what a person's log fills up with, in the file
-/// they attach to a bug report.
+/// And these lines are not the exceptional case. A refusal by Full Disk Access is a
+/// designed state of this module (`LeftoversDescriptor` declares `.fullDisk`, the
+/// page draws a `HelmPermissionNote` while it is missing), so «trash refused …»
+/// is a line a person's log can fill up with, in the file they attach to a bug
+/// report.
 ///
 /// **Nothing here is trashed.** One path is outside the scope, so the engine refuses
 /// it before anything is attempted; the other is inside a temporary home and does not

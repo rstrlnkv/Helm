@@ -18,8 +18,8 @@ import Module_Uninstaller_Engine
 ///     why. Nothing else in the app can produce it a second time.
 ///
 /// The view model was already cached per host view model, which is half of a
-/// cache: ARCHITECTURE.md — "a cached view model feeding a list the page throws
-/// away is not a cache".
+/// cache (ARCHITECTURE.md § State that outlives a page and ends with its module):
+/// a cached view model feeding a list the page throws away is not a cache.
 @MainActor
 final class StateOutlivesThePageTests: XCTestCase {
 

@@ -91,12 +91,13 @@ public struct VPNSettings {
         store.set(authorized, for: "bannerAuthorized")
     }
 
-    /// The per-connection overrides. One key, one JSON document, the way the
-    /// rules are stored — and, like them, keyed by something stable: a
-    /// configuration's `scutil` id rather than its name.
+    /// The per-connection overrides. One key (`noticeBook`), one JSON document,
+    /// the way the rules are stored (`vpnAppRules`) — keyed by something stable,
+    /// which for these is a configuration's `scutil` id rather than its name,
+    /// where the rules are keyed by bundle id.
     ///
-    /// The three settings above stay exactly where they are and keep meaning
-    /// what they mean: whatever the book has no entry for inherits them
+    /// The global settings above (the two notices, the spin and its colours)
+    /// stay exactly where they are and keep meaning what they mean: whatever the book has no entry for inherits them
     /// (`VPNNoticeBook`). So an installed build that has never opened the new
     /// popover behaves as it did, and there is no migration to run twice.
     public var noticeBook: VPNNoticeBook {
