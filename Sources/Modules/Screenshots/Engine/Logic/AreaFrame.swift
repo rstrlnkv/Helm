@@ -16,8 +16,9 @@ public enum AreaHandle: CaseIterable, Sendable, Equatable {
 /// coordinates while the area changes under them, and what falls outside is clipped by the
 /// geometry the screen and the export already clip with.
 public enum AreaFrame {
-    /// How far from a handle's centre a press still takes it, in points.
-    public static let reach: CGFloat = 7
+    /// How far from a handle's centre a press still takes it, in points: a round target of 20 points across,
+    /// shrunk on a small area by `reach(on:)`.
+    public static let reach: CGFloat = 10
 
     /// The reach on `rect`: the full reach, or a third of its shorter side when that is less, so the
     /// middle of a small area is still the area's and a press there is a drawing and not a grab. A

@@ -30,7 +30,7 @@ final class ScreenshotsLiveJPEGBenchmark: XCTestCase {
         }
         let window = try XCTUnwrap(freeze.windows.first(where: { $0.layer == 0 && $0.frame.width > 100 }),
                                    "no ordinary window on screen, so no window was encoded")
-        guard case .image(let image) = await capture.window(window.id, cursor: false) else { return XCTFail("no window picture") }
+        guard case .image(let image) = await capture.window(window.id, cursor: false, shadow: true) else { return XCTFail("no window picture") }
         let space = image.colorSpace.flatMap { $0.name as String? } ?? "\(String(describing: image.colorSpace))"
         print("window: \(space), \(image.bitsPerComponent) bpc, info \(image.bitmapInfo.rawValue)")
         XCTAssertNotNil(CaptureSession.encode(image, as: .jpeg), "the window (\(space)) is no JPEG")

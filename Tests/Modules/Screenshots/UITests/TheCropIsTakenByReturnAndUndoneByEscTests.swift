@@ -281,20 +281,23 @@ final class TheCropIsTakenByReturnAndUndoneByEscTests: XCTestCase {
         XCTAssertEqual(EditorMenu.keyEquivalent(of: .crop), "", "Crop has no key in the menu")
     }
 
-    func testTheSizePlateStandsAtTheTopLeftCornerWhileCropIsOn() throws {
+    /// The size plate stands over the area's corner with Crop off (the capture track's rule, which Crop's own plate became) and
+    /// stays there with it on, following the corner a handle pulls.
+    func testTheSizePlateStandsAtTheTopLeftCornerWhileCropIsOnAsWithItOff() throws {
         let view = try marked()
-        XCTAssertTrue(view.visiblePlates.isEmpty)
+        XCTAssertEqual(view.areaSizePlate?.string, "400 × 300", "the subject: the plate stands with Crop off")
         overlay?.perform(.crop)
-        var plate = try XCTUnwrap(view.visiblePlates.first)
+        var plate = try XCTUnwrap(view.areaSizePlate)
         XCTAssertEqual(plate.string, "400 × 300")
         XCTAssertEqual(plate.frame.minX, area.minX + 14, accuracy: 0.5)
         XCTAssertEqual(plate.frame.minY, view.bounds.height - area.minY + 12, accuracy: 0.5, "the plate is not 12 points above the top edge")
         try pull(view, .topLeft, by: CGPoint(x: 30, y: 20))
-        plate = try XCTUnwrap(view.visiblePlates.first)
+        plate = try XCTUnwrap(view.areaSizePlate)
         XCTAssertEqual(plate.string, "370 × 280")
         XCTAssertEqual(plate.frame.minX, area.minX + 30 + 14, accuracy: 0.5, "the plate did not follow the corner")
         overlay?.rightMouseDown()
-        XCTAssertTrue(view.visiblePlates.isEmpty, "the plate outlived the mode")
+        XCTAssertFalse(overlay?.isCropping == true, "the subject: the mode ended")
+        XCTAssertNotNil(view.areaSizePlate, "the plate left with the mode")
     }
 
     // MARK: The same inputs from another side

@@ -22,8 +22,8 @@ final class TheAreaIsHeldByEightHandlesAndMovedByArrowsTests: XCTestCase {
             XCTAssertEqual(AreaFrame.handle(of: area, at: place.point), place.handle, "\(place.handle) on its centre")
             let near = CGPoint(x: place.point.x + 3, y: place.point.y - 4) // distance 5
             XCTAssertEqual(AreaFrame.handle(of: area, at: near), place.handle, "\(place.handle) 5 points off")
-            let far = CGPoint(x: place.point.x + 6, y: place.point.y + 6) // distance 8.5, past the reach
-            XCTAssertNil(AreaFrame.handle(of: area, at: far), "\(place.handle) taken from 8.5 points")
+            let far = CGPoint(x: place.point.x + 8, y: place.point.y + 8) // distance 11.3, past the reach of 10
+            XCTAssertNil(AreaFrame.handle(of: area, at: far), "\(place.handle) taken from 11.3 points")
         }
         XCTAssertNil(AreaFrame.handle(of: area, at: CGPoint(x: 300, y: 250)), "the middle of the area is the area's")
         XCTAssertNil(AreaFrame.handle(of: area, at: CGPoint(x: CGFloat.nan, y: 100)))

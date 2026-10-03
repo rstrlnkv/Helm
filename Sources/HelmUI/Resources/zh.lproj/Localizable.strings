@@ -1394,3 +1394,8 @@
 "Tools in the palette" = "工具条中的工具";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "隐藏的工具会移到“⋯”菜单，并仍可用各自的快捷键调用。";
 "Lower right. Shots taken one after another stack up." = "显示在右下角。连续截取的屏幕截图会堆叠在一起。";
+
+/* Capture track */
+"30 seconds" = "30秒";
+"Timer: %@" = "计时器：%@";
+"Put the Panel Back" = "将面板放回原处";

@@ -1394,3 +1394,8 @@
 "Tools in the palette" = "Инструменты в палитре";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Скрытые инструменты уходят в меню «⋯» и по-прежнему отвечают на свои клавиши.";
 "Lower right. Shots taken one after another stack up." = "Справа внизу. Несколько снимков подряд складываются в стопку.";
+
+/* Capture track */
+"30 seconds" = "30\U00A0секунд";
+"Timer: %@" = "Таймер: %@";
+"Put the Panel Back" = "Вернуть панель на место";

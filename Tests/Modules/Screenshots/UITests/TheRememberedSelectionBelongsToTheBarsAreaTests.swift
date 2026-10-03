@@ -22,7 +22,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         func access() -> CaptureAccess { .granted }
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
     private struct Disk: ShotWriting {
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {

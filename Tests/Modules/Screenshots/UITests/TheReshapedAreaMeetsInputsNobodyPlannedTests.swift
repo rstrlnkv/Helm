@@ -189,7 +189,7 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
 
     // MARK: A handle under the palette
 
-    /// The palette stands 14 points from the area and a handle takes a press within 7, so on a display as tall as
+    /// The palette stands 14 points from the area and a handle takes a press within `AreaFrame.reach`, so on a display as tall as
     /// this one no placement puts the palette on a handle: the press order "palette first" has no input to meet.
     /// (The tool bar of the old two-bar layout did stand on handles, and this was a press on one.) This is
     /// that fact, asked over every area on a grid; a palette that comes to stand on a handle turns it red, and

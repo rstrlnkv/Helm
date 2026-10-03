@@ -1394,3 +1394,8 @@
 "Tools in the palette" = "Tools in the palette";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Hidden tools move to the ⋯ menu and still answer to their keys.";
 "Lower right. Shots taken one after another stack up." = "Lower right. Shots taken one after another stack up.";
+
+/* Capture track */
+"30 seconds" = "30 seconds";
+"Timer: %@" = "Timer: %@";
+"Put the Panel Back" = "Put the Panel Back";

@@ -36,7 +36,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         func access() -> CaptureAccess { .granted }
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
@@ -302,7 +302,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         let id = try build(mode: .window, windows: [window])
         overlay?.mouseMoved(on: id, at: CGPoint(x: 150, y: 150))
         overlay?.mouseDown(on: id, at: CGPoint(x: 150, y: 150), flags: [])
-        guard case .window(7)? = results.first, results.count == 1 else { return XCTFail("\(results)") }
+        guard case .window(7, _)? = results.first, results.count == 1 else { return XCTFail("\(results)") }
         overlay?.close(); results = []
 
         let display = try build()

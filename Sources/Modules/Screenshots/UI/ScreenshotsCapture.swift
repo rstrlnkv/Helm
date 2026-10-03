@@ -55,14 +55,26 @@ struct CapturedShot {
     /// Not private: a test reads what the bar says through it, and puts no window on a screen.
     let bar: CapturePanel
     private var overlay: CaptureOverlay?
+    /// The overlay that has delivered its result and is in its flash: the panels are up and deaf for up to a
+    /// flash's length, and the module's end closes them at once (`cancel`). Kept after the flash until the next
+    /// result or `cancel`; by then the overlay has closed itself and holds no panels.
+    private var flashing: CaptureOverlay?
     /// One flag for the bar, its countdown and the overlay: they are one
     /// capture in three stages, and a second press at any of them is dropped.
     private var busy = false
-    /// The press in flight, held so `cancel` can reach it: the freeze is the one
-    /// long wait and the module's switch can be turned inside it.
+    /// The press in flight, held so `cancel` can reach it: the screen's countdown and its freeze, the one long wait,
+    /// and the module's switch can be turned inside either.
     private var pressTask: Task<Void, Never>?
-    /// The delivery after an exit, held for the same reason: the module's switch
-    /// can be turned between the exit and the file.
+    /// The freeze the panel's overlay is waiting on, held so the module's end can cancel it. A mode that puts the overlay
+    /// away leaves it be: what the panel shows when the freeze returns says whether an overlay opens (`area`).
+    private var selectionTask: Task<Void, Never>?
+    /// The freeze for the panel's overlay is being taken: a second mode press is dropped, and the overlay that opens is
+    /// the one the panel's mode asks for when the freeze returns.
+    private var freezing = false
+    /// The overlay now open is the panel's, where the person picks and presses Capture, and not a shortcut's.
+    private var picking = false
+    /// The delivery after an exit, held for the same reason: the module's switch can be turned between the exit and the
+    /// file. With a timer, a window or an area picked on the panel is held here from the pick: the countdown, then the shot.
     private var deliveryTask: Task<Void, Never>?
     /// Puts the overlay on the screens. A seam for a test, which must see whether
     /// the area shortcut reached it without putting panels on the screen of whoever runs the suite.
@@ -91,6 +103,7 @@ struct CapturedShot {
         self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
         bar.model.cancel = { [weak self] in self?.cancel() }
+        bar.model.modeChosen = { [weak self] in self?.pick(in: $0) }
     }
 
     /// Whether a press is in progress at any stage. A test waits on it.
@@ -104,6 +117,7 @@ struct CapturedShot {
             // A press that finished leaves its task behind; the bar's own Capture
             // starts a new one and asks that none is in flight.
             pressTask = nil
+            selectionTask = nil
             presentBar(bar)
         case .area:
             pressTask = Task { await self.area() }
@@ -114,10 +128,16 @@ struct CapturedShot {
 
     // MARK: - The panel
 
-    /// Capture pressed on the bar: the countdown if there is one, then the mode
-    /// the bar was on. A second press while one is running is dropped.
+    /// Capture pressed on the bar. **The whole screen**: the countdown if there is one, then the shot. **A window or an
+    /// area**: the target the panel's overlay holds, taken as a click or Return on that overlay would take it
+    /// (`overlayFinished` does the countdown, which for these comes after the pick); with no overlay open yet the press
+    /// opens one and has nothing to take. A second press while one is running is dropped.
     func capture(from mode: PanelMode) {
-        guard busy, pressTask == nil else { return }
+        guard busy, pressTask == nil, !bar.model.counting else { return }
+        guard mode == .screen else {
+            if let overlay, picking { overlay.takeTarget() } else { pick(in: mode) }
+            return
+        }
         pressTask = Task {
             let seconds = ScreenshotsSettings.read(store).timer.seconds
             // The bar is where the countdown shows, so it stays up through it and
@@ -128,18 +148,46 @@ struct CapturedShot {
             }
             guard !Task.isCancelled else { return }
             bar.close()
-            switch mode {
-            case .screen: await fullScreen()
-            case .window: await area(mode: .window)
-            case .area: await area(mode: .area, remembered: true)
-            }
+            await fullScreen()
         }
+    }
+
+    /// A mode was pressed on the panel, the shown one too. **Window and Area** pick on a frozen screen at once: the
+    /// freeze and the overlay open in selection-only mode with the panel above them, or — with that overlay already open —
+    /// it picks in the new mode on the same freeze; while the freeze is still out the press is dropped and the overlay
+    /// opens in the mode the panel shows when it returns. **Screen** has nothing to pick, so the overlay goes and Capture
+    /// is the whole screen's. Not while a countdown or a shot is running.
+    func pick(in mode: PanelMode) {
+        guard busy, pressTask == nil, !bar.model.counting else { return }
+        switch mode {
+        case .screen:
+            endPicking()
+        case .window, .area:
+            if let overlay, picking {
+                overlay.select(mode == .window ? .window : .area)
+                return
+            }
+            guard !freezing else { return }
+            selectionTask = Task { await area(mode: mode == .window ? .window : .area, remembered: mode == .area, picking: true) }
+        }
+    }
+
+    /// The panel's overlay is put away, the panel stays: no result is delivered. A freeze still out is not cancelled:
+    /// when it returns, `area` opens nothing if the panel shows Screen and an overlay in the mode it shows otherwise.
+    private func endPicking() {
+        guard picking else { return }
+        overlay?.close()
+        overlay = nil
+        picking = false
+        bar.selecting = false
+        bar.model.hasTarget = false
     }
 
     /// Counts down on the bar, and **asks after every wait whether it was
     /// cancelled**: a wait that ends normally is not evidence that nobody
     /// pressed Esc during it.
     private func countdown(_ seconds: Int) async throws {
+        bar.model.countdownLength = seconds
         for remaining in stride(from: seconds, to: 0, by: -1) {
             bar.model.countdown = remaining
             try await tick(.seconds(1))
@@ -157,9 +205,15 @@ struct CapturedShot {
         pressTask = nil
         deliveryTask?.cancel()
         deliveryTask = nil
+        selectionTask?.cancel()
+        selectionTask = nil
+        freezing = false
+        picking = false
         bar.close()
         overlay?.close()
         overlay = nil
+        flashing?.close()
+        flashing = nil
         toast.dismiss()
         busy = false
     }
@@ -182,13 +236,30 @@ struct CapturedShot {
 
     // MARK: - The area shortcut
 
-    private func area(mode: CaptureOverlay.Mode = .area, remembered: Bool = false) async {
+    /// `picking` is the panel's: the overlay only picks (`CaptureOverlay.selectionOnly`), the panel stands above it and
+    /// the mode is the panel's as it is when the freeze arrives, which the person may have changed meanwhile (Screen: no
+    /// overlay).
+    private func area(mode: CaptureOverlay.Mode = .area, remembered: Bool = false, picking panel: Bool = false) async {
+        freezing = panel
+        let modeAtPress = bar.model.mode
         let began = await session.begin()
+        // A cancelled freeze returning is not the one `freezing` stands for now: `cancel` cleared the flag, and a panel
+        // opened since may have a freeze of its own out.
+        if !Task.isCancelled { freezing = false }
         // The module went off during the freeze: no overlay for a module that is off.
         guard !Task.isCancelled else { return }
+        var mode = mode, remembered = remembered
+        if panel, bar.model.mode != modeAtPress {
+            switch bar.model.mode {
+            case .screen: return
+            case .window: mode = .window; remembered = false
+            case .area: mode = .area; remembered = true
+            }
+        }
         switch began {
         case .refused(let reason):
             toast.showRefusal(reason)
+            if panel { bar.close() }
             busy = false
         case .ready(let freeze):
             // Read after the freeze, against the displays it found: only the
@@ -197,21 +268,55 @@ struct CapturedShot {
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
             let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store,
-                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false }) { [weak self] result in
-                self?.overlayFinished(result, freeze: freeze)
+                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
+                                    selectionOnly: panel) { [weak self] result in
+                self?.overlayFinished(result, freeze: freeze, picked: panel)
             }
             self.overlay = overlay
+            if panel {
+                picking = true
+                bar.selecting = true
+                bar.model.hasTarget = overlay.hasTarget
+                overlay.targetChanged = { [weak self] in self?.bar.model.hasTarget = $0 }
+            }
             // Nothing to show when a display in the freeze has no screen any
             // more: the capture ends rather than covering half the desk.
             if !presentOverlay(overlay) {
                 self.overlay = nil
+                if panel { picking = false; bar.close() }
                 busy = false
             }
         }
     }
 
-    private func overlayFinished(_ result: OverlayResult, freeze: Freeze) {
-        overlay?.close()
+    /// `picked`: the overlay was the panel's. With no timer the panel closes at the pick and the shot is delivered as the
+    /// overlay's result says (an area is cut from its freeze, a window is asked for by its id and cut from the freeze
+    /// only where the system gives none). With a timer the overlay goes at once and the panel stays with its ring until
+    /// the last second, when it closes and the shot is taken from the screen as it is then (`timedShot`).
+    private func overlayFinished(_ result: OverlayResult, freeze: Freeze, picked: Bool = false) {
+        if picked {
+            picking = false
+            bar.selecting = false
+            bar.model.hasTarget = false
+            let seconds = ScreenshotsSettings.read(store).timer.seconds
+            if seconds > 0, let wait = timedShot(of: result, freeze: freeze) {
+                overlay?.close()
+                overlay = nil
+                deliveryTask = Task {
+                    do { try await countdown(seconds) } catch { return }
+                    guard !Task.isCancelled else { return }
+                    bar.close()
+                    await wait()
+                    if !Task.isCancelled { busy = false }
+                }
+                return
+            }
+            bar.close()
+        }
+        // The panels stay for the flash of a shot that is taken (and close at once for the rest); the delivery
+        // below does not wait for them, since its picture is the freeze's or the window's own.
+        overlay?.close(after: result)
+        flashing = overlay?.leaving == true ? overlay : nil
         overlay = nil
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
@@ -241,8 +346,8 @@ struct CapturedShot {
                                             local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
                     await handOff(CapturedShot(image: image, kind: .display))
                 }
-            case .window(let id):
-                let picked = await session.window(id, in: freeze)
+            case .window(let id, let shadow):
+                let picked = await session.window(id, in: freeze, shadow: shadow)
                 guard !Task.isCancelled else { return }
                 switch picked {
                 case .image(let image): await handOff(CapturedShot(image: image, kind: .window))
@@ -252,6 +357,47 @@ struct CapturedShot {
             // A cancelled delivery leaves `busy` to `cancel`, which has already cleared it:
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
+        }
+    }
+
+    /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target.
+    /// A window is asked for again by its id, as at a click; the freeze of the pick stays for the cut a window that has
+    /// gone is saved from (a window closed during the wait is saved as it looked at the pick). An area is a rectangle of
+    /// one display, so the screen is frozen again and the same rectangle is cut from the same display, found by its UUID
+    /// as `RememberedSelection` does (by id where the system gave none). **A display that is gone, or no longer holds the
+    /// whole rectangle, is a refusal (`displayGone`), never a smaller picture than was drawn.** The old freeze is not
+    /// held through the wait.
+    private func timedShot(of result: OverlayResult, freeze: Freeze) -> (() async -> Void)? {
+        switch result {
+        case .window(let id, let shadow):
+            return { [self] in
+                let picked = await session.window(id, in: freeze, shadow: shadow)
+                guard !Task.isCancelled else { return }
+                switch picked {
+                case .image(let image): await handOff(CapturedShot(image: image, kind: .window))
+                case .refused(let reason): toast.showRefusal(reason)
+                }
+            }
+        case .edited(let display, let local, _, _):
+            remember(display: display, local: local, in: freeze)
+            let uuid = freeze.frames.first(where: { $0.id == display })?.uuid
+            return { [self] in
+                let began = await session.begin()
+                guard !Task.isCancelled else { return }
+                switch began {
+                case .refused(let reason): toast.showRefusal(reason)
+                case .ready(let fresh):
+                    let frame = fresh.frames.first { uuid != nil ? $0.uuid == uuid : $0.id == display }
+                    if let frame, CGRect(origin: .zero, size: frame.frame.size).contains(local),
+                       let image = session.crop(fresh, display: frame.id, local: local) {
+                        await handOff(CapturedShot(image: image, kind: .area))
+                    } else {
+                        toast.showRefusal(.displayGone)
+                    }
+                }
+            }
+        case .wholeDisplay, .cancelled:
+            return nil
         }
     }
 

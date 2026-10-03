@@ -8,8 +8,8 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **The bar's Options menu and the settings page write the same keys, so
-/// neither may go on showing an answer the other has replaced.** The bar is a
+/// **The panel's gear menu and the settings page write some of the same keys (where it is saved, the thumbnail, the
+/// cursor), so neither may go on showing an answer the other has replaced.** The bar is a
 /// non-activating panel at status-bar level and the settings window is an
 /// ordinary one: both are on screen at once whenever somebody tries the bar
 /// with Settings still open. A switch the bar turned on that the page still

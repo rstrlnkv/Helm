@@ -27,7 +27,8 @@ struct GlassCell<Icon: View>: View {
     /// the cell's circle stays as it was. Nil leaves the glyph as it inherits it.
     var ink: Color?
     /// The cell is drawn pressed: a grey circle is filled with `paletteInk`, and the glyph is the caller's `ink`
-    /// (`pressedInk`). ⋯ while its menu is open.
+    /// (`pressedInk`). ⋯ while its menu is open. A plain cell is filled as a selected one is, without the selected
+    /// trait: the panel's gear while its menu is open.
     var pressed = false
     /// The width and height of the cell's layout and of the part that takes a press, the circle centred in it; nil is the
     /// cell's own size. SwiftUI takes no press outside a view's layout, so the caller makes room for it.
@@ -113,7 +114,7 @@ struct GlassCell<Icon: View>: View {
 
     @ViewBuilder private var fill: some View {
         switch look {
-        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected ? 0.14 : 0))
+        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected || pressed ? 0.14 : 0))
         case .greyCircle: Circle().fill(pressed ? AnyShapeStyle(Self.paletteInk) : AnyShapeStyle(HelmSurface.onPanelFill))
         case .accent: Circle().fill(Color.accentColor)
         case .bare: Color.clear

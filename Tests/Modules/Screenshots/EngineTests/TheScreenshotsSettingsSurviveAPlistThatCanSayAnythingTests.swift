@@ -69,9 +69,52 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
     }
 
     func testATimerThatIsNotAChoiceIsNoCountdown() {
-        for seconds in [1, 7, 60, 3600, Int.max] {
+        // 30 is a choice since the panel's timer menu offers it.
+        XCTAssertEqual(ScreenshotsSettings.read(store([ScreenshotsSettings.Key.timer: 30])).timer, .thirty)
+        for seconds in [1, 7, 15, 31, 60, 3600, Int.max] {
             XCTAssertEqual(ScreenshotsSettings.read(store([ScreenshotsSettings.Key.timer: seconds])).timer, .none, "\(seconds)")
         }
+    }
+
+    func testTheTimerLengthAndThePanelsPlaceReadAsTheDefaultsFromAnythingAPlistCanHold() {
+        let garbage: [Any] = [Data([1]), ["file"], "FILE", "", "5", 1e300, -1e300, Int.max, Int.min, -1, 0, 2, 7,
+                              Double.nan, Double.infinity, -Double.infinity, true]
+        for value in garbage {
+            let read = ScreenshotsSettings.read(store([
+                ScreenshotsSettings.Key.timer: 10, ScreenshotsSettings.Key.timerLength: value,
+                ScreenshotsSettings.Key.panelOffsetX: value, ScreenshotsSettings.Key.panelOffsetY: value]))
+            XCTAssertEqual(read.timerLength, .five, "a length of \(value) was not read as five, and with a timer of ten stored: a damaged key is not a missing one")
+            XCTAssertEqual(read.timer, .ten, "\(value): the length key moved the timer")
+            XCTAssertTrue(read.panelOffset.dx.isFinite && read.panelOffset.dy.isFinite, "a place of \(value) reached the panel as \(read.panelOffset)")
+            XCTAssertLessThanOrEqual(abs(read.panelOffset.dx), PanelOffset.ceiling, "\(value)")
+            XCTAssertLessThanOrEqual(abs(read.panelOffset.dy), PanelOffset.ceiling, "\(value)")
+        }
+    }
+
+    func testAPlaceThatIsNoNumberIsNoMoveAndTheAxesAreJudgedAlone() {
+        for value in [Double.nan, 0] {
+            XCTAssertEqual(ScreenshotsSettings.read(store([ScreenshotsSettings.Key.panelOffsetX: value])).panelOffset, .zero, "\(value)")
+        }
+        for value: Any in ["x", true, Data([1]), ["a"], [1.0]] {
+            XCTAssertEqual(ScreenshotsSettings.read(store([ScreenshotsSettings.Key.panelOffsetX: value,
+                                                           ScreenshotsSettings.Key.panelOffsetY: value])).panelOffset, .zero, "\(value)")
+        }
+        let half = ScreenshotsSettings.read(store([ScreenshotsSettings.Key.panelOffsetX: Double.nan,
+                                                   ScreenshotsSettings.Key.panelOffsetY: 40.5])).panelOffset
+        XCTAssertEqual(half, PanelOffset(dx: 0, dy: 40.5), "a bad axis took the good one with it")
+        let far = ScreenshotsSettings.read(store([ScreenshotsSettings.Key.panelOffsetX: 1e300,
+                                                  ScreenshotsSettings.Key.panelOffsetY: -Double.infinity])).panelOffset
+        XCTAssertEqual(far, PanelOffset(dx: PanelOffset.ceiling, dy: -PanelOffset.ceiling), "a number that is only large is held at the ceiling")
+        XCTAssertEqual(ScreenshotsSettings.read(store([ScreenshotsSettings.Key.panelOffsetX: 12, ScreenshotsSettings.Key.panelOffsetY: -7])).panelOffset,
+                       PanelOffset(dx: 12, dy: -7), "an integer is a number too")
+    }
+
+    func testTheReaderWritesNothingBackFromADamagedTimerLengthOrPlace() {
+        let kept = store([ScreenshotsSettings.Key.timerLength: "x", ScreenshotsSettings.Key.panelOffsetX: 1e300])
+        _ = ScreenshotsSettings.read(kept)
+        XCTAssertEqual(kept.object(ScreenshotsSettings.Key.timerLength) as? String, "x")
+        XCTAssertEqual(kept.object(ScreenshotsSettings.Key.panelOffsetX) as? Double, 1e300)
+        XCTAssertNil(kept.object(ScreenshotsSettings.Key.panelOffsetY))
     }
 
     func testAFolderLongerThanAnyPathIsNone() {

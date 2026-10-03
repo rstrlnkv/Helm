@@ -161,7 +161,7 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         overlay?.keyDown(key(49))
         overlay?.mouseMoved(on: id, at: CGPoint(x: 160, y: 160))
         overlay?.mouseDown(on: id, at: CGPoint(x: 160, y: 160), flags: [])
-        guard case .window(let window)? = finishedOnce() else { return XCTFail("\(results)") }
+        guard case .window(let window, _)? = finishedOnce() else { return XCTFail("\(results)") }
         XCTAssertEqual(window, 11, "the window behind was captured")
     }
 

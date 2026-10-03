@@ -11,7 +11,8 @@ enum OverlayResult {
     /// layers drawn over it and the way the person left. Every area arrives this
     /// way — with no layers, as a plain crop.
     case edited(display: DisplayID, local: CGRect, layers: [Annotation], exit: EditorExit)
-    case window(UInt32)
+    /// A window, by id, and whether its shadow is in the picture: it is, unless the click was an option-click.
+    case window(UInt32, shadow: Bool)
     case wholeDisplay(DisplayID)
     case cancelled
 }
@@ -33,8 +34,13 @@ enum OverlayResult {
 ///
 /// **Two phases, one panel.** Selecting is the drag; once an area is released the
 /// overlay stays and edits it: `edit` is non-nil, the crosshair is gone and the size
-/// plate shows only while an area handle is held and all the while Crop is on, and the keys mean tools, undo and the exits. The picture under the
+/// plate stays over the area's top-left corner, with a loupe on the pixel while an area handle is held, and the keys mean tools, undo and the exits. The picture under the
 /// layers is never touched, so every layer is a value that can be undone.
+///
+/// **Nothing is dimmed until there is a selection** (a drag that has moved, an edit, a remembered area), and a
+/// window pick is never dimmed: the window under the pointer is filled with the accent instead. The lines across
+/// the screen are drawn only while ⌥ is held. A shot that is taken ends in a flash and the overlay closes after it,
+/// unless Reduce Motion is on, when it closes at once (`close(after:)`).
 @MainActor final class CaptureOverlay {
     /// What the overlay opens in: the area crosshair, or the camera over windows.
     enum Mode { case area, window }
@@ -50,7 +56,21 @@ enum OverlayResult {
     /// that Return confirms and any new drag replaces. A reading, already cut to
     /// the display as it is now by `RememberedSelection.landing`.
     private var preselected: (display: DisplayID, rect: CGRect)?
+    /// The panel's overlay: the area that was drawn when a new drag began, and comes back if that drag is not usable.
+    private var replacedByDrag: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
+    /// ⌥ is down, as the last `flagsChanged` said: the lines across the screen are drawn only then.
+    private var optionHeld = false
+    /// The flash is on and the overlay is waiting to close: no input reaches it (`OverlayView` is deaf), and it
+    /// finds nobody to deliver to, since `finish` has already run.
+    private(set) var leaving = false
+    /// What was lit by the flash, by display, in that display's top-left points; empty with no flash. Only a test
+    /// reads it, and `close()` leaves it as it was.
+    private(set) var flashed: [DisplayID: CGRect] = [:]
+    /// Whether Reduce Motion is on, read at the moment of the shot. A test sets it: the setting is the machine's.
+    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
+    /// The panels are up: false before `build` and after `close`.
+    var isOpen: Bool { !panels.isEmpty }
     /// The area being edited, set once a selection is released; nil while selecting.
     private var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
     /// The eraser is on: a drag takes away the layers it meets (`AnnotationEditing.beginErase`) and `edit.tool` stays what it
@@ -138,10 +158,19 @@ enum OverlayResult {
     /// a right click do not go through `perform` and leave it as it was.
     private var arrowReleasedObject = false
 
+    /// The capture panel's overlay: the person only picks here — a window under the pointer, or an area that stays as
+    /// drawn until a new drag replaces it — and the panel's Capture (or Return) takes it. **The palette never appears and
+    /// `startEditing` is never called**, so there is no editor and no layer, and an area leaves as a plain crop.
+    let selectionOnly: Bool
+    /// Whether there is something for Capture to take (`hasTarget`), told at every change; the panel shows its button by it.
+    var targetChanged: (Bool) -> Void = { _ in }
+    private var reportedTarget = false
+
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true }, selectionOnly: Bool = false,
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
+        self.selectionOnly = selectionOnly
         self.pinRoom = pinRoom
         self.store = store
         self.mode = mode
@@ -196,13 +225,14 @@ enum OverlayResult {
             MainActor.assumeIsolated { self?.finish(.cancelled) }
         }
 
-        // The pointer where it already is, so the crosshair is there at once.
+        // The pointer where it already is, so the coordinates plate is there at once.
         let mouse = NSEvent.mouseLocation
         for (id, entry) in panels where entry.panel.frame.contains(mouse) {
             pointer = (id, local(mouse, in: entry.panel, frame: entry.view.frozen.frame.height))
         }
-        // Opened in window mode, the window under the pointer is lit at once.
-        if mode == .window, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
+        // Opened in window mode, the window under the pointer is lit at once; not for the panel's overlay, where the
+        // pointer is over the panel that was pressed and the window beneath it is no choice.
+        if mode == .window, !selectionOnly, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
         render()
         return true
     }
@@ -223,6 +253,7 @@ enum OverlayResult {
         edit = nil
         popover = nil
         typing = nil
+        leaving = false
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
         for entry in panels.values {
@@ -231,6 +262,39 @@ enum OverlayResult {
         }
         panels.removeAll()
         NSCursor.arrow.set()
+    }
+
+    /// Closes as `close` does, after the flash of a shot that was taken: the selection's or the window's shape
+    /// goes white and fades for `HelmMotion.interfaceDuration`, and the panels leave when it has. Under Reduce
+    /// Motion, with nothing to flash (a cancel, a whole display, a pin) or with no display to flash on, it is
+    /// `close()` at once. The picture is already taken from the freeze (the window's own comes from the system,
+    /// of that window alone), so nothing the overlay draws in the meantime is in it.
+    func close(after result: OverlayResult) {
+        guard isOpen, let shot = flashShapes(of: result), !shot.rects.isEmpty,
+              HelmMotion.flashes(reduceMotion: reducesMotion()) else { close(); return }
+        for (display, rect) in shot.rects { panels[display]?.view.flash(over: rect, window: shot.window) }
+        flashed = shot.rects
+        leaving = true
+        // Held by the timer on purpose: the panels must outlive the flash whoever else lets go of the overlay. A
+        // `close` that came first has cleared `leaving`, and there is nothing left to do.
+        DispatchQueue.main.asyncAfter(deadline: .now() + HelmMotion.interfaceDuration) { [self] in
+            MainActor.assumeIsolated { if leaving { close() } }
+        }
+    }
+
+    /// What `result` is a shot of, by display: an area's rectangle and a window's parts. Nil where there is no flash.
+    private func flashShapes(of result: OverlayResult) -> (rects: [DisplayID: CGRect], window: Bool)? {
+        switch result {
+        case .edited(let display, let local, _, let exit):
+            return exit == .pin ? nil : ([display: local], false)
+        case .window(let id, _):
+            guard let hovered, hovered.id == id else { return nil }
+            var parts: [DisplayID: CGRect] = [:]
+            for frame in freeze.frames { if let part = windowPart(hovered, on: frame.id) { parts[frame.id] = part } }
+            return (parts, true)
+        case .wholeDisplay, .cancelled:
+            return nil
+        }
     }
 
     /// Once. Every route out lands here, and the second arrival — a click and a
@@ -333,10 +397,13 @@ enum OverlayResult {
         }
         switch mode {
         case .window:
-            if let hovered { finish(.window(hovered.id)) }
+            // The default is the shadow, as macOS's; an option-click asks for the window alone.
+            if let hovered { finish(.window(hovered.id, shadow: !flags.contains(.option))) }
         case .area:
             guard let frame = freeze.frames.first(where: { $0.id == display }) else { return }
             let bounds = CGRect(origin: .zero, size: frame.frame.size)
+            // The panel's overlay keeps the area that was drawn until a drag that is usable replaces it (`mouseUp`).
+            replacedByDrag = selectionOnly ? (preselected ?? replacedByDrag) : nil
             preselected = nil
             drag = (display, SelectionDrag(start: local, bounds: bounds))
             render()
@@ -445,8 +512,44 @@ enum OverlayResult {
         guard let current = drag, current.display == display else { return }
         // A click that never moved is not a selection: the drag ends and the
         // overlay waits for a real one — or goes on editing the one it had.
-        guard current.drag.isUsable else { drag = nil; render(); return }
+        guard current.drag.isUsable else { drag = nil; preselected = replacedByDrag; replacedByDrag = nil; render(); return }
+        replacedByDrag = nil
+        if selectionOnly {
+            drag = nil
+            spaceHeld = false
+            preselected = (display, current.drag.rect)
+            render()
+            return
+        }
         startEditing(display: display, rect: current.drag.rect)
+    }
+
+    // MARK: - The panel's overlay
+
+    /// What Capture would take now: the window last under the pointer, or the area as drawn (or remembered).
+    var hasTarget: Bool { selectionOnly && (mode == .window ? hovered != nil : preselected != nil) }
+
+    /// The panel's Capture and Return: the target leaves as the click or the exit of the editor would have sent it.
+    /// False, and nothing sent, where there is none.
+    @discardableResult func takeTarget() -> Bool {
+        guard hasTarget else { return false }
+        if mode == .window, let hovered {
+            finish(.window(hovered.id, shadow: true))
+        } else if let preselected {
+            finish(.edited(display: preselected.display, local: preselected.rect, layers: [], exit: .confirm))
+        }
+        return true
+    }
+
+    /// The panel's mode cell was pressed on an overlay that is already open: the same frozen screen picks again, and what
+    /// the other mode had chosen is dropped.
+    func select(_ next: Mode) {
+        guard selectionOnly, next != mode else { return }
+        drag = nil
+        replacedByDrag = nil
+        hovered = nil
+        preselected = nil
+        mode = next
     }
 
     /// The released area becomes the editor's: a new area starts a fresh set of
@@ -473,6 +576,8 @@ enum OverlayResult {
     }
 
     func flagsChanged(_ flags: NSEvent.ModifierFlags) {
+        optionHeld = flags.contains(.option)
+        render()
         // Shift and option change the selection without the pointer moving, and ⇧
         // reshapes the stroke under the pointer the same way.
         if var current = edit, drag == nil {
@@ -498,6 +603,7 @@ enum OverlayResult {
         case 36, 76: // return, enter
             // A held Return repeats, and a repeat is not a press that asked for anything.
             guard !event.isARepeat else { return }
+            if selectionOnly { takeTarget(); return }
             // The remembered selection stands for a selection made: Return takes it
             // into the editor, where the next Return takes the picture.
             if drag == nil, mode == .area, let preselected {
@@ -511,7 +617,7 @@ enum OverlayResult {
             guard !event.isARepeat else { return }
             if drag != nil {
                 spaceHeld = true
-            } else {
+            } else if !selectionOnly {
                 mode = mode == .area ? .window : .area
                 if mode == .window, let pointer {
                     hovered = windowUnder(display: pointer.display, local: pointer.point)
@@ -785,19 +891,24 @@ enum OverlayResult {
         for (id, entry) in panels {
             var scene = OverlayScene()
             scene.windowMode = mode == .window
+            scene.linesAcross = optionHeld
             if let pointer, pointer.display == id, edit == nil || drag != nil { scene.pointer = pointer.point }
-            if let drag, drag.display == id { scene.selection = drag.drag.rect }
+            if let drag, drag.display == id {
+                // A press that has not moved is not a new area yet: the area being edited is still the selection.
+                let old = edit.flatMap { $0.display == id ? $0.rect : nil }
+                scene.selection = drag.drag.hasMoved ? drag.drag.rect : old ?? drag.drag.rect
+                scene.dimsWhenEmpty = drag.drag.hasMoved
+            }
             else if let edit, edit.display == id {
                 scene.selection = edit.rect
                 scene.editing = drag == nil
                 if let reshaping, reshaping.display == id, let pointer, pointer.display == id {
-                    scene.sizingAt = pointer.point
+                    scene.loupeAt = pointer.point
                 }
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.draftID = edit.layers.draft?.id
                 scene.erasing = erasing
-                scene.cropping = crop != nil
                 scene.handlesOffered = AreaFrame.offersHandles(layersExist: !edit.layers.layers.isEmpty, cropping: crop != nil)
                 scene.ruler = ruler
                 scene.fading = edit.layers.erased
@@ -811,13 +922,18 @@ enum OverlayResult {
                     if let pointer, pointer.display == id { scene.plateAt = pointer.point }
                 }
             } else if mode == .area, let preselected, preselected.display == id { scene.selection = preselected.rect }
-            if mode == .window, let hovered, let frame = freeze.frames.first(where: { $0.id == id }) {
-                let part = ScreenSpace.local(hovered.frame, in: frame.frame)
-                    .intersection(CGRect(origin: .zero, size: frame.frame.size))
-                if !part.isNull, part.width > 0, part.height > 0 { scene.highlight = part }
-            }
+            if mode == .window, let hovered { scene.highlight = windowPart(hovered, on: id) }
             entry.view.apply(scene)
         }
+        if hasTarget != reportedTarget { reportedTarget = hasTarget; targetChanged(reportedTarget) }
+    }
+
+    /// The part of `window` that lies on `display`, in that display's top-left points; nil where it has none.
+    private func windowPart(_ window: FrozenWindow, on display: DisplayID) -> CGRect? {
+        guard let frame = freeze.frames.first(where: { $0.id == display }) else { return nil }
+        let part = ScreenSpace.local(window.frame, in: frame.frame)
+            .intersection(CGRect(origin: .zero, size: frame.frame.size))
+        return !part.isNull && part.width > 0 && part.height > 0 ? part : nil
     }
 }
 
@@ -827,7 +943,8 @@ struct OverlayScene {
     var pointer: CGPoint?
     var selection: CGRect?
     var highlight: CGRect?
-    /// The area is being edited: no crosshair; the size plate only while an area handle is held (`sizingAt`) and all the while Crop is on (`cropping`).
+    /// The area is being edited: no lines across the screen; the size plate over the area's top-left corner all the
+    /// while, Crop's included (`LabelLayer.cornerPlace`), and the loupe only while an area handle is held (`loupeAt`).
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
@@ -835,8 +952,6 @@ struct OverlayScene {
     var draftID: Annotation.ID?
     /// The eraser is on: the cursor is its circle.
     var erasing = false
-    /// Crop is on: the size plate stands at the area's top-left corner.
-    var cropping = false
     /// The area's handles are drawn: no layer on the picture, or Crop on (`AreaFrame.offersHandles`).
     var handlesOffered = true
     /// The layers the eraser's drag has met: drawn at `OverlayView.fadedOpacity` until the release takes them.
@@ -852,10 +967,14 @@ struct OverlayScene {
     /// Where the pointer is while the plate is up, in display-top-left points; the
     /// crosshair stays off while editing, so this is not `pointer`.
     var plateAt: CGPoint?
-    /// The plate is the Pin refusal: it goes above the palette, or below it with no room above, not by the pointer.
+    /// The plate is the Pin refusal: it stands over the palette, or under it with no room above (`plateByActions`).
     var plateByActions = false
-    /// The area is being reshaped and the pointer is here: its size in pixels is on a plate by it.
-    var sizingAt: CGPoint?
+    /// The area is being reshaped and the pointer is here, in display-top-left points: the loupe reads the pixel under it.
+    var loupeAt: CGPoint?
+    /// ⌥ is held: the lines run across the screen through the pointer.
+    var linesAcross = false
+    /// The selection is dimmed around even with no width and no height: a drag that has moved and come back to its press.
+    var dimsWhenEmpty = false
 }
 
 // MARK: - The panel
@@ -928,8 +1047,15 @@ final class OverlayView: NSView {
     private let crosshairLayer = CAShapeLayer()
     /// The ruler, over the layers and the dim's hole and under the palette's host, which is a subview.
     let rulerLayer = RulerLayer()
+    /// The lines' dark edge, under them and a half point wider each side, so they read on a white page as on a black one.
+    private let crosshairEdgeLayer = CAShapeLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
+    /// The area's size over its top-left corner while it is edited: a plate of its own, since `sizeLabel` is the
+    /// one by the pointer that the Esc question uses; the Pin refusal stands over the palette.
+    private let cornerLabel = LabelLayer()
+    private let loupeLayer = LoupeLayer()
+    private let flashLayer = FlashLayer()
     /// The editor's palette, made when this display first has an area to edit and never
     /// on another: a display with nothing selected builds no SwiftUI at all.
     private lazy var paletteHost = EditorBarHostingView(rootView: EditorPalette(model: overlay!.palette))
@@ -1015,9 +1141,9 @@ final class OverlayView: NSView {
         spotlightLayer.fillColor = Spotlights.color
         dimLayer.fillColor = NSColor.black.withAlphaComponent(0.45).cgColor
 
+        // The window under the pointer is only filled, 28 % of the accent, and has no outline.
         highlightLayer.fillColor = NSColor.controlAccentColor.withAlphaComponent(0.28).cgColor
-        highlightLayer.strokeColor = NSColor.controlAccentColor.cgColor
-        highlightLayer.lineWidth = 2
+        highlightLayer.strokeColor = nil
 
         selectionLayer.fillColor = nil
         selectionLayer.strokeColor = NSColor.white.cgColor
@@ -1038,21 +1164,21 @@ final class OverlayView: NSView {
         crosshairLayer.fillColor = nil
         crosshairLayer.strokeColor = NSColor.white.withAlphaComponent(0.85).cgColor
         crosshairLayer.lineWidth = 1
-        crosshairLayer.shadowColor = NSColor.black.cgColor
-        crosshairLayer.shadowOpacity = 0.6
-        crosshairLayer.shadowRadius = 0
-        crosshairLayer.shadowOffset = .zero
+        crosshairEdgeLayer.fillColor = nil
+        crosshairEdgeLayer.strokeColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        crosshairEdgeLayer.lineWidth = 2
 
         rulerLayer.isHidden = true
         for sublayer in [imageLayer, spotlightLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
-                         crosshairLayer,
-                         coordinateLabel, sizeLabel] as [CALayer] {
+                         crosshairEdgeLayer, crosshairLayer, flashLayer,
+                         coordinateLabel, sizeLabel, cornerLabel, loupeLayer] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
         imageLayer.frame = bounds
         dimLayer.frame = bounds
         spotlightLayer.frame = bounds
-        for label in [coordinateLabel, sizeLabel] { label.isHidden = true }
+        flashLayer.frame = bounds
+        for label in [coordinateLabel, sizeLabel, cornerLabel] { label.isHidden = true }
 
         addTrackingArea(NSTrackingArea(
             rect: .zero,
@@ -1112,29 +1238,32 @@ final class OverlayView: NSView {
 
     // MARK: Events
 
+    /// The overlay while it takes input: nil during the flash that closes it, when every event is dropped.
+    private var live: CaptureOverlay? { overlay?.leaving == true ? nil : overlay }
+
     override func mouseMoved(with event: NSEvent) {
         setCursor()
-        overlay?.mouseMoved(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)))
+        live?.mouseMoved(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)))
     }
     override func mouseEntered(with event: NSEvent) { setCursor() }
     override func cursorUpdate(with event: NSEvent) { setCursor() }
 
     override func mouseDown(with event: NSEvent) {
-        overlay?.mouseDown(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)),
+        live?.mouseDown(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)),
                            flags: event.modifierFlags)
     }
     override func mouseDragged(with event: NSEvent) {
-        overlay?.mouseDragged(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)),
+        live?.mouseDragged(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)),
                               flags: event.modifierFlags)
     }
-    override func mouseUp(with event: NSEvent) { overlay?.mouseUp(on: frozen.id) }
+    override func mouseUp(with event: NSEvent) { live?.mouseUp(on: frozen.id) }
     /// The trackpad's rotate gesture: forwarded to `rotateRuler`, which turns the ruler when one is on the picture. Whether the
     /// non-activating panel is sent the gesture was not tried.
-    override func rotate(with event: NSEvent) { overlay?.rotateRuler(by: CGFloat(event.rotation), phase: event.phase) }
-    override func rightMouseDown(with event: NSEvent) { overlay?.rightMouseDown() }
-    override func flagsChanged(with event: NSEvent) { overlay?.flagsChanged(event.modifierFlags) }
-    override func keyDown(with event: NSEvent) { overlay?.keyDown(event) }
-    override func keyUp(with event: NSEvent) { overlay?.keyUp(event) }
+    override func rotate(with event: NSEvent) { live?.rotateRuler(by: CGFloat(event.rotation), phase: event.phase) }
+    override func rightMouseDown(with event: NSEvent) { live?.rightMouseDown() }
+    override func flagsChanged(with event: NSEvent) { live?.flagsChanged(event.modifierFlags) }
+    override func keyDown(with event: NSEvent) { live?.keyDown(event) }
+    override func keyUp(with event: NSEvent) { live?.keyUp(event) }
 
     /// Set on every move as well as in `cursorUpdate`: Helm is not the active
     /// application, and the system is free to put the arrow back under a
@@ -1196,14 +1325,19 @@ final class OverlayView: NSView {
             erasing = scene.erasing
             setCursor()
         }
-        let all = bounds
-        let hole = scene.selection.map(layerRect) ?? scene.highlight.map(layerRect)
-        let dim = CGMutablePath()
-        dim.addRect(all)
-        if let hole { dim.addRect(hole) }
-        dimLayer.path = dim
+        // The dim goes on with the first point a drag has moved over and stays until the shot or Esc, so a selection with
+        // any size dims, and an empty one only when its drag has moved (`dimsWhenEmpty`); never over a window pick.
+        if let selection = scene.selection, !scene.windowMode,
+           selection.width > 0 || selection.height > 0 || scene.dimsWhenEmpty {
+            let dim = CGMutablePath()
+            dim.addRect(bounds)
+            dim.addRect(layerRect(selection))
+            dimLayer.path = dim
+        } else {
+            dimLayer.path = nil
+        }
 
-        highlightLayer.path = scene.highlight.map { CGPath(rect: layerRect($0), transform: nil) }
+        highlightLayer.path = scene.highlight.map { WindowShape.path(for: layerRect($0)) }
         selectionLayer.path = scene.selection.map { CGPath(rect: layerRect($0), transform: nil) }
 
         drawLayers(scene)
@@ -1231,36 +1365,48 @@ final class OverlayView: NSView {
             if coloursMade { coloursHost.isHidden = true }
         }
 
+        // The loupe, only while a handle is held: the pixels of the frame without the pointer, round the pointer.
+        if let held = scene.loupeAt, let reading = PixelLoupe.around(held, in: frozen) {
+            loupeLayer.show(reading, at: CGPoint(x: held.x, y: bounds.height - held.y), within: bounds)
+        } else {
+            loupeLayer.isHidden = true
+        }
+
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
-        if let at, !scene.windowMode {
+        if let at, !scene.windowMode, scene.linesAcross {
             let lines = CGMutablePath()
             lines.move(to: CGPoint(x: 0, y: at.y)); lines.addLine(to: CGPoint(x: bounds.width, y: at.y))
             lines.move(to: CGPoint(x: at.x, y: 0)); lines.addLine(to: CGPoint(x: at.x, y: bounds.height))
             crosshairLayer.path = lines
+            crosshairEdgeLayer.path = lines
         } else {
             crosshairLayer.path = nil
+            crosshairEdgeLayer.path = nil
         }
 
-        // **One plate, by the pointer.** Before a drag it says where the pointer
+        // **One plate by the pointer while selecting.** Before a drag it says where the pointer
         // is; while one is open it says how large the selection is, in the same
         // place — the size *replaces* the coordinates, as macOS's own ⌘⇧4 does.
-        // Two plates at the pointer's offset lay one over the other.
+        // Two plates at the pointer's offset lay one over the other. Once the area is edited the plate
+        // stands over its corner instead.
+        if !scene.editing { cornerLabel.isHidden = true }
         if scene.editing {
-            // Editing has no crosshair and no size plate; only the Esc question, the size of an
-            // area being reshaped, which is the drag's own plate, and Crop's plate, which stands all the while the mode is on.
+            // Editing has no lines across the screen and no plate by the pointer but the Esc question and, while a
+            // handle is held, the loupe's; the area's size stands over its top-left corner, at the place
+            // `cornerPlace` picks, with Crop on as with it off.
             coordinateLabel.isHidden = true
             sizeLabel.isHidden = true
-            if scene.cropping, scene.plate == nil, let selection = scene.selection {
-                // Crop's plate stands at the area's top-left corner, 14 points to the right of it and 12 above, whatever is held;
-                // a sentence for the plate (the refused pin's) takes its place.
+            if let selection = scene.selection {
                 let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
-                let box = layerRect(selection)
-                sizeLabel.show("\(pixels.width) × \(pixels.height)", near: CGPoint(x: box.minX + 14, y: box.maxY + 12), within: bounds)
-            } else if let at = scene.sizingAt, let selection = scene.selection {
-                let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
-                sizeLabel.show("\(pixels.width) × \(pixels.height)",
-                               near: CGPoint(x: at.x + 14, y: bounds.height - at.y - 26), within: bounds)
-            } else if let plate = scene.plate, let selection = scene.selection {
+                let text = "\(pixels.width) × \(pixels.height)"
+                let at = LabelLayer.cornerPlace(of: LabelLayer.size(of: text), over: selection, within: bounds,
+                                                clearOf: scene.chrome.map { [$0.palette] } ?? [])
+                cornerLabel.show(text, near: CGPoint(x: at.x, y: bounds.height - at.y - LabelLayer.size(of: text).height),
+                                 within: bounds)
+            } else {
+                cornerLabel.isHidden = true
+            }
+            if let plate = scene.plate, let selection = scene.selection {
                 let box = layerRect(selection)
                 // The pointer's offset, as the other plates; the selection's corner
                 // is the fallback for a scene with no pointer.
@@ -1502,8 +1648,35 @@ final class OverlayView: NSView {
     /// Where the selected object's handles are drawn, in display-local points; none for none.
     private(set) var drawnHandles: [CGPoint] = []
 
-    /// The plates on screen, so a test can ask how many there are and where.
+    /// The plates on screen apart from the area's size over its corner (`areaSizePlate`), so a test can ask how many
+    /// there are and where: the coordinates, the size of a drag, the Esc question, and the Pin refusal, which
+    /// stands over the palette and not by the pointer.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }
+
+    /// The size plate over the edited area's top-left corner; nil while none is shown.
+    var areaSizePlate: LabelLayer? { cornerLabel.isHidden ? nil : cornerLabel }
+
+    /// The loupe's plate text, and where its window stands; both nil while the loupe is hidden.
+    var loupeReading: String? { loupeLayer.reading }
+    var loupeDisc: CGRect? { loupeLayer.isHidden ? nil : loupeLayer.disc }
+
+    /// Whether the lines across the screen are drawn.
+    var linesAreDrawn: Bool { crosshairLayer.path != nil }
+    /// Whether the dim over the picture is drawn, and whether the window fill is, and over what.
+    var dimIsDrawn: Bool { dimLayer.path != nil }
+    var windowFill: CGRect? { highlightLayer.path?.boundingBoxOfPath }
+    /// What the flash lit, in display-local top-left points; nil when it has not flashed.
+    var flashedRect: CGRect? { flashLayer.lit.map { CGRect(x: $0.minX, y: bounds.height - $0.maxY, width: $0.width, height: $0.height) } }
+
+    /// Lights `rect` (display-local, top-left points) white and fades it, in a window's outline for a window; the palette
+    /// goes, since it is not part of the shot, and the overlay is deaf until it closes.
+    func flash(over rect: CGRect, window: Bool) {
+        if paletteMade { paletteHost.isHidden = true }
+        if popoverMade { popoverHost.isHidden = true }
+        if coloursMade { coloursHost.isHidden = true }
+        let box = layerRect(rect)
+        flashLayer.play(over: box, shape: window ? WindowShape.path(for: box) : CGPath(rect: box, transform: nil))
+    }
 }
 
 /// A small text plate: white digits on a dark rounded ground, sized to its text.
@@ -1545,6 +1718,32 @@ final class LabelLayer: CALayer {
         let font = plateFont
         let measured = (string as NSString).size(withAttributes: [.font: font])
         return CGSize(width: ceil(measured.width) + 14, height: ceil(font.capHeight + 10))
+    }
+
+    /// Where the area's size plate stands, as a top-left origin in display points: 14 right of the area's top-left
+    /// corner and 12 above it. Where that is not clear of every handle target of `area` once the display's edge has
+    /// pushed it in (an area against the top wall, or too narrow to leave the top handle alone), or overlaps one of
+    /// `clearOf` (the palette, in the same points), the first of under the area, inside its corner, right of it and
+    /// left of it that is clear. With none clear the first place is kept: a plate is never left out.
+    static func cornerPlace(of size: CGSize, over area: CGRect, within bounds: CGRect,
+                            clearOf others: [CGRect] = []) -> CGPoint {
+        let margin: CGFloat = 4
+        let candidates = [CGPoint(x: area.minX + 14, y: area.minY - 12 - size.height),
+                          CGPoint(x: area.minX + 14, y: area.maxY + 12),
+                          CGPoint(x: area.minX + 14, y: area.minY + 14),
+                          CGPoint(x: area.maxX + 14, y: area.minY),
+                          CGPoint(x: area.minX - 14 - size.width, y: area.minY)].map { origin in
+            CGPoint(x: min(max(origin.x, bounds.minX + margin), bounds.maxX - size.width - margin),
+                    y: min(max(origin.y, bounds.minY + margin), bounds.maxY - size.height - margin))
+        }
+        let reach = AreaFrame.reach(on: area)
+        return candidates.first { origin in
+            let plate = CGRect(origin: origin, size: size)
+            return !others.contains { $0.intersects(plate) } && AreaFrame.offered(on: area).allSatisfy { handle in
+                hypot(handle.point.x - min(max(handle.point.x, plate.minX), plate.maxX),
+                      handle.point.y - min(max(handle.point.y, plate.minY), plate.maxY)) > reach
+            }
+        } ?? candidates[0]
     }
 
     func show(_ string: String, near point: CGPoint, within bounds: CGRect) {

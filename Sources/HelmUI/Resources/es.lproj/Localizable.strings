@@ -1394,3 +1394,8 @@
 "Tools in the palette" = "Herramientas de la paleta";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Las herramientas ocultas pasan al menú “⋯” y siguen respondiendo a sus teclas.";
 "Lower right. Shots taken one after another stack up." = "Abajo a la derecha. Varias capturas seguidas se apilan.";
+
+/* Capture track */
+"30 seconds" = "30\U00A0segundos";
+"Timer: %@" = "Temporizador: %@";
+"Put the Panel Back" = "Devolver el panel a su sitio";

@@ -51,7 +51,7 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     private var _freeze: FreezeOutcome = .failed
     private var _windows: [UInt32: WindowShot] = [:]
     private var _freezeCalls = 0, _requestCalls = 0, _windowCalls = 0
-    private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = []
+    private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = [], _windowShadows: [Bool] = []
 
     var grant: CaptureAccess {
         get { lock.withLock { _access } }
@@ -72,14 +72,19 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     /// reads from the setting and hands the port.
     var freezeCursors: [Bool] { lock.withLock { _freezeCursors } }
     var windowCursors: [Bool] { lock.withLock { _windowCursors } }
+    /// Whether each window call asked for the shadow, in order.
+    var windowShadows: [Bool] { lock.withLock { _windowShadows } }
 
     func access() -> CaptureAccess { lock.withLock { _access } }
     func requestAccess() { lock.withLock { _requestCalls += 1 } }
     func freeze(cursor: Bool) async -> FreezeOutcome {
         lock.withLock { _freezeCalls += 1; _freezeCursors.append(cursor); return _freeze }
     }
-    func window(_ id: UInt32, cursor: Bool) async -> WindowShot {
-        lock.withLock { _windowCalls += 1; _windowCursors.append(cursor); return _windows[id] ?? .gone }
+    func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot {
+        lock.withLock {
+            _windowCalls += 1; _windowCursors.append(cursor); _windowShadows.append(shadow)
+            return _windows[id] ?? .gone
+        }
     }
 }
 
