@@ -17,6 +17,8 @@ import Module_Screenshots_Engine
     @Published private(set) var picked = AnnotationStyle.standard
     /// The thickness and opacity pop-over is open, for the pop-over's own reveal.
     @Published private(set) var popoverOpen = false
+    /// The colours pop-over is open, for its own reveal.
+    @Published private(set) var coloursOpen = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
     /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
@@ -27,6 +29,8 @@ import Module_Screenshots_Engine
     /// ⋯'s layout frame (its press zone) in the palette's own top-left points, which the overlay anchors the menu to;
     /// written by the palette's layout, not a state anything draws.
     var moreFrame = CGRect.zero
+    /// The colour wheel's cell, the same way; read as `wheelFrame` (`EditorColoursPopover.swift`).
+    var colourCell = CGRect.zero
     /// Where each row object's centre is along the palette, in its own points: what a second click on it opens the
     /// pop-over at. Written by the palette's layout.
     var cellMidX: [AnnotationTool: CGFloat] = [:]
@@ -34,12 +38,13 @@ import Module_Screenshots_Engine
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
     func show(tool: AnnotationTool?, style: AnnotationStyle, picked: AnnotationStyle? = nil, selectedTool: AnnotationTool? = nil,
-              popoverOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
+              popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
         if self.tool != tool { self.tool = tool }
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.style != style { self.style = style }
         if self.picked != (picked ?? style) { self.picked = picked ?? style }
         if self.popoverOpen != popoverOpen { self.popoverOpen = popoverOpen }
+        if self.coloursOpen != coloursOpen { self.coloursOpen = coloursOpen }
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
     }
@@ -70,10 +75,6 @@ final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
 /// as a badge.
 struct EditorPalette: View {
     @ObservedObject var model: EditorBarModel
-    @Environment(\.colorScheme) private var scheme
-
-    /// The lit swatch's ring, outer edge to outer edge: 24 + 2 × (2.5 gap + 2 ring). No step of the ladder has it.
-    private static let ringDiameter: CGFloat = 33
 
     /// What ⋯ takes a press on, around its 28 pt circle, and how far that reaches past the circle on each side.
     private static let moreZone: CGFloat = 36
@@ -195,17 +196,57 @@ struct EditorPalette: View {
     }
 
     private func swatch(_ color: AnnotationColor) -> some View {
-        let selected = model.lit == color
+        EditorSwatch(color: color, selected: model.lit == color) { model.perform(.color(color)) }
+    }
+
+    /// The colour wheel's cell, which opens the pop-over of all eight inks under it. While the colour is one the grid has
+    /// no swatch for, its centre shows it, and the grid has no ring: the colour is seen in the one place that is lit.
+    private var wheel: some View {
+        let apart = Self.colours.contains(model.lit) ? nil : model.lit
+        return Button { model.perform(.colours(anchorX: model.wheelFrame.midX)) } label: { wheelFace(showing: apart) }
+            .buttonStyle(.plain)
+            .help(ScStr.allColours)
+            .accessibilityLabel(ScStr.allColours)
+            .accessibilityValue(apart.map(ScStr.ink) ?? "")
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.colourCell = $0 }
+    }
+
+    private func wheelFace(showing apart: AnnotationColor?) -> some View {
+        Circle()
+            .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
+            .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
+            .overlay {
+                if let apart {
+                    Circle()
+                        .fill(Color(cgColor: apart.cgColor))
+                        .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 0.5))
+                        .frame(width: HelmSpace.s5, height: HelmSpace.s5)
+                }
+            }
+    }
+}
+
+/// One ink's swatch: a 24 pt circle, ringed in its own colour while it is the lit one. The palette's grid and the colours
+/// pop-over draw it the same way.
+struct EditorSwatch: View {
+    let color: AnnotationColor
+    let selected: Bool
+    let press: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    /// The lit swatch's ring, outer edge to outer edge: 24 + 2 × (2.5 gap + 2 ring). No step of the ladder has it.
+    static let ringDiameter: CGFloat = 33
+
+    var body: some View {
         // Black is the one ink with no edge of its own on dark glass (1.57:1 without it), so it keeps the
-        // 1 pt edge there; no other swatch has one.
-        let edged = color == .black && scheme == .dark
-        return Button { model.perform(.color(color)) } label: {
+        // 1 pt edge there; white has none on light glass, and keeps it there. No other swatch has one.
+        let edged = (color == .black && scheme == .dark) || (color == .white && scheme == .light)
+        Button(action: press) {
             Circle()
                 .fill(Color(cgColor: color.cgColor))
                 .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
                 .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: edged ? 1 : 0))
-                // The lit swatch is ringed in its own colour, 2.5 pt clear of it. An overlay, so the ring takes
-                // no room: the grid's pitch is the swatch and the gap.
+                // An overlay, so the ring takes no room: the grid's pitch is the swatch and the gap.
                 .overlay(Circle().strokeBorder(Color(cgColor: color.cgColor), lineWidth: selected ? 2 : 0)
                     .frame(width: Self.ringDiameter, height: Self.ringDiameter))
         }
@@ -213,15 +254,5 @@ struct EditorPalette: View {
         .help(ScStr.ink(color))
         .accessibilityLabel(ScStr.ink(color))
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    /// The colour wheel's cell: drawn and off until the colour panel behind it exists, and with no
-    /// name until it has a press to name.
-    private var wheel: some View {
-        Circle()
-            .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
-            .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
-            .opacity(0.4)
-            .accessibilityHidden(true)
     }
 }

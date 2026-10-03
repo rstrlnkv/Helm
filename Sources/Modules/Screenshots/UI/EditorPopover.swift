@@ -6,26 +6,16 @@ import Module_Screenshots_Engine
 ///
 /// **Thickness** snaps to the three steps of the chosen tool and says the step's points (`AnnotationThickness.points(for:)`);
 /// **Opacity** runs 0.1…1 and says a whole percent. Both edit `EditorBarModel.picked`, the next object's style, through
-/// the editor's one door, so a pick is remembered for the chosen tool alone like any other.
-///
-/// **It appears by a clipped, measured height**, the reveal of `HelmAccordion.swift` written out here and **not** its
-/// `helmAccordion`: that modifier measures the height itself and keeps it in the view's own state, and this card's height is
-/// needed by the AppKit host before the view exists (to size the panel's window), so the host measures it and passes it in
-/// as `height`. The card is laid out whole, and the frame grows between 0 and that number inside
-/// `HelmMotion.disclosure`, which is instant under Reduce Motion. The glass is applied outside the clip, so it is
-/// the revealed height that is glass. Inside it the ink is `ink`, a literal primary colour with an opacity,
-/// because a hierarchical style resolves differently while the clip's layer exists.
+/// the editor's one door, so a pick is remembered for the chosen tool alone like any other. Its card, glass and reveal are
+/// `popoverCard`, which the colours pop-over wears too.
 struct EditorPopover: View {
     @ObservedObject var model: EditorBarModel
     /// The card's measured height, which the frame grows to; nil lays the card out whole, which is how it is measured.
     let height: CGFloat?
-    /// What is drawn, against what the model says: written only in a transaction of its own, so the first open plays
-    /// the reveal and a later one does too.
-    @State private var shown = false
 
     static let width: CGFloat = 232
 
-    /// The number's ink, a literal primary colour with an opacity, for the reason the card gives. Measured by designer, by
+    /// The number's ink, a literal primary colour with an opacity, for the reason `PopoverCard` gives. Measured by designer, by
     /// window capture of a test window, at opacity 0.70: 4.44:1 and 4.49:1 on light glass over a dark backdrop (the
     /// darkest ones), 4.88:1 on the r9 glass, 6.6:1 on dark glass; 4.5:1 is what a 13 pt figure answers to. 0.76 is
     /// **predicted, not re-measured**: taking the 4.44:1 fill as a neutral grey and the ink as black at that opacity, it
@@ -36,18 +26,7 @@ struct EditorPopover: View {
     /// instant after that tool was put down, while the card is still on its way out.
     private var tool: AnnotationTool { model.tool ?? .pen }
 
-    var body: some View {
-        card
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(height: height.map { shown ? $0 : 0 }, alignment: .top)
-            .clipped()
-            .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.frame))
-            .allowsHitTesting(shown)
-            .accessibilityHidden(!shown)
-            .frame(maxHeight: height == nil ? nil : .infinity, alignment: .top)
-            .onAppear { withAnimation(HelmMotion.disclosure) { shown = model.popoverOpen } }
-            .onChange(of: model.popoverOpen) { _, open in withAnimation(HelmMotion.disclosure) { shown = open } }
-    }
+    var body: some View { card.popoverCard(height: height, open: model.popoverOpen) }
 
     private var card: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
@@ -118,4 +97,36 @@ struct EditorPopover: View {
     static func opacityText(_ value: Double) -> String {
         value.formatted(.percent.precision(.fractionLength(0)).locale(locale))
     }
+}
+
+/// **A pop-over's card appears by a clipped, measured height**, the reveal of `HelmAccordion.swift` written out here and **not** its
+/// `helmAccordion`: that modifier measures the height itself and keeps it in the view's own state, and this card's height is
+/// needed by the AppKit host before the view exists (to size the panel's window), so the host measures it and passes it in
+/// as `height`. The card is laid out whole, and the frame grows between 0 and that number inside
+/// `HelmMotion.disclosure`, which is instant under Reduce Motion. The glass is applied outside the clip, so it is
+/// the revealed height that is glass. Inside it the ink must be a literal primary colour with an opacity,
+/// because a hierarchical style resolves differently while the clip's layer exists.
+private struct PopoverCard: ViewModifier {
+    let height: CGFloat?
+    let open: Bool
+    /// What is drawn, against what the model says: written only in a transaction of its own, so the first open plays
+    /// the reveal and a later one does too.
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: height.map { shown ? $0 : 0 }, alignment: .top)
+            .clipped()
+            .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.frame))
+            .allowsHitTesting(shown || height == nil)
+            .accessibilityHidden(!(shown || height == nil))
+            .frame(maxHeight: height == nil ? nil : .infinity, alignment: .top)
+            .onAppear { withAnimation(HelmMotion.disclosure) { shown = open } }
+            .onChange(of: open) { _, open in withAnimation(HelmMotion.disclosure) { shown = open } }
+    }
+}
+
+extension View {
+    func popoverCard(height: CGFloat?, open: Bool) -> some View { modifier(PopoverCard(height: height, open: open)) }
 }

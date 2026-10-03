@@ -113,6 +113,15 @@ and do nothing else, as does a click outside it, which draws and moves nothing; 
 appears by a clipped, measured height under `HelmMotion.disclosure`. With an object selected a thickness pick also
 re-weights it, as before; whether it should is an open question of the owner's (the one line is in `CaptureOverlay.perform`).
 
+The palette's colour grid holds five inks (red, yellow, blue, green, black); the sixth cell is the colour wheel, named
+`ScStr.allColours`, and its press (`EditorAction.colours`, at `EditorBarModel.wheelFrame`'s centre) opens the colours
+pop-over (`Sources/Modules/Screenshots/UI/EditorColoursPopover.swift`): all eight inks, `EditorColoursPopover.inks`, in
+the order `AnnotationColor` lists them, which no mockup draws and the owner may change in that one line. It is placed,
+closed and revealed as the thickness one is, through the one `popoverCard` card and `CaptureOverlay`'s one `popover`, so
+only one is open at a time; unlike it, it opens with no tool chosen, since the colour is every tool's. A swatch sends
+`EditorAction.color` and the pick closes it. While the colour is orange, purple or white, which the grid has no swatch
+for, the wheel's centre shows it and no grid swatch is ringed.
+
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
 read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then an area handle — unless the selected object has a

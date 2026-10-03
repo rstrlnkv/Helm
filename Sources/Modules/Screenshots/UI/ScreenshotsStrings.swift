@@ -163,6 +163,11 @@ enum ScStr {
     /// language's «and», with the ellipsis of an item that opens something.
     static var thicknessAndOpacity: String { L("Thickness and Opacity…") }
 
+    /// The colour wheel's name. No table has the phrase («All Colors» is in none of AppKit's colour loctables, nor
+    /// PaperKit's): it is «all» before the word the colour panel uses, `Colors` of `NSColorPanelExtras.loctable` (Farben,
+    /// Colores, Couleurs, カラー, Цвета, 颜色, Cores), so Japanese keeps the panel's カラー and Chinese its 颜色.
+    static var allColours: String { L("All Colours") }
+
     /// The name of a thickness step. No control calls it yet: it is kept for the pop-over's slider, which would show these
     /// words instead of the step's points if the owner picks the frame's word over the plan's number (a parked question).
     static func thickness(_ step: AnnotationThickness) -> String {

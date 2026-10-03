@@ -9,7 +9,7 @@ import HelmRuntime
 /// on the screen last, so the palette is never off it. A side has room when the palette's height, the
 /// gap and the margin fit on it.
 ///
-/// **The thickness and opacity pop-over** stands centred on the cell that opened it, `popoverGap` under the
+/// **The pop-over, thickness and opacity or colours,** stands centred on the cell that opened it, `popoverGap` under the
 /// palette when its height, the gap and the margin fit under it, else `popoverGap` above it, and is held on the
 /// screen like the palette. It never moves the palette. A press on it is a press on the chrome; the gap between
 /// the two is the picture's.

@@ -29,6 +29,9 @@ enum EditorAction: Equatable {
     /// Opens the thickness and opacity pop-over under the palette (above it when there is no room), centred at `anchorX` in the palette's own
     /// points (the cell that asked); opening one that is open closes it, and with no tool chosen nothing opens.
     case thicknessAndOpacity(anchorX: CGFloat)
+    /// Opens the colours pop-over, all eight inks, the same way under the colour wheel's cell: the one at a time with
+    /// the thickness pop-over, and open with no tool chosen too, since the colour is every tool's.
+    case colours(anchorX: CGFloat)
     case toggleFill
     case undo, redo
     /// ⌫ and ⌦: the selected object goes; with none selected it asks nothing.
