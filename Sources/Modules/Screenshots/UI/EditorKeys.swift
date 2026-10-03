@@ -32,6 +32,9 @@ enum EditorAction: Equatable {
     case crop
     /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
     case select
+    /// A cell of the emoji grid: the emoji the Emoji tool places on the next click on the picture. Nothing happens unless that tool is chosen
+    /// and the string is one grapheme that leaves ink (`EmojiSet.isOne`).
+    case pickEmoji(String)
     /// The next object's colour, thickness and, for the boxes, fill.
     case color(AnnotationColor)
     case thickness(AnnotationThickness)

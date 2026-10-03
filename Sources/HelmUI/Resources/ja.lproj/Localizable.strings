@@ -1404,3 +1404,7 @@
 "30 seconds" = "30秒";
 "Timer: %@" = "タイマー：%@";
 "Put the Panel Back" = "パネルを元の位置に戻す";
+
+/* Screenshots — stage12 track */
+"Magnifier" = "ルーペ";
+"Emoji" = "絵文字";

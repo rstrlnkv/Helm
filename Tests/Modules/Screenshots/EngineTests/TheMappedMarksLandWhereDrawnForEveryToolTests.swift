@@ -115,7 +115,7 @@ final class TheMappedMarksLandWhereDrawnForEveryToolTests: XCTestCase {
             // Collinear points: the smoothing leaves a straight run, so the ink is a stroke of a known box.
             let points = (0...4).map { at(f.x1 + (f.x2 - f.x1) * Double($0) / 4, f.y1 + (f.y2 - f.y1) * Double($0) / 4) }
             return Annotation(tool: tool, start: a, end: b, points: points, style: style)
-        case .blur, .text, .step, .spotlight:
+        case .blur, .text, .step, .spotlight, .magnifier, .emoji:
             preconditionFailure("\(tool) draws no stroke; `testMappingKeepsEveryFieldOfEveryTool` is its check")
         }
     }
@@ -126,7 +126,7 @@ final class TheMappedMarksLandWhereDrawnForEveryToolTests: XCTestCase {
         switch tool {
         case .line, .pen, .rectangle, .ellipse: true
         case .arrow, .pencil, .highlighter: false
-        case .blur, .text, .step, .spotlight: false
+        case .blur, .text, .step, .spotlight, .magnifier, .emoji: false
         }
     }
 
@@ -150,7 +150,7 @@ final class TheMappedMarksLandWhereDrawnForEveryToolTests: XCTestCase {
             XCTAssertEqual(moved.text, "words", "\(tool): the text a layer holds is not dropped by the mapping")
             XCTAssertEqual(moved.id, 7, "\(tool)")
             switch tool {  // no `default:`: a tool added to the list is named here
-            case .arrow, .rectangle, .ellipse, .line, .pen, .pencil, .highlighter, .blur, .text, .step, .spotlight: break
+            case .arrow, .rectangle, .ellipse, .line, .pen, .pencil, .highlighter, .blur, .text, .step, .spotlight, .magnifier, .emoji: break
             }
         }
     }

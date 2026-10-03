@@ -48,7 +48,7 @@ struct PaletteObject: View {
             case .highlighter: "marker"
             case .pencil: "pencil"
             case .spotlight: "spotlight"
-            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step: nil
+            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step, .magnifier, .emoji: nil
             }
         }
     }
@@ -63,7 +63,7 @@ struct PaletteObject: View {
             case .highlighter: 22
             case .pencil: 22
             case .spotlight: 22
-            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step: 0
+            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step, .magnifier, .emoji: 0
             }
         }
     }

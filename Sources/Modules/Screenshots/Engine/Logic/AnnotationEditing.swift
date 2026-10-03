@@ -148,7 +148,7 @@ public struct AnnotationEditing: Sendable {
     }
 
     /// Whether a press at `point` lands on something already there: a handle of the selected object, or a layer. The
-    /// text tool asks it, since a press on one of those is the editor's own and only a press on bare picture starts a text.
+    /// text and Emoji tools ask it, since a press on one of those is the editor's own and only a press on bare picture starts a text.
     public func takes(at point: CGPoint) -> Bool {
         if let current = selected, AnnotationHit.handle(of: current, at: point) != nil { return true }
         return AnnotationHit.topmost(in: layers, at: point) != nil
@@ -194,6 +194,25 @@ public struct AnnotationEditing: Sendable {
         return true
     }
 
+    /// An emoji put on the picture with its middle at `point`, the frame held inside the selection: one undo step. Only one grapheme
+    /// that leaves ink (`EmojiSet.isOne`) makes a layer; anything else, a point that is not a number and an edit still under the pointer leave none and no step.
+    /// True when a layer was added.
+    @discardableResult
+    public mutating func place(emoji: String, at point: CGPoint, style: AnnotationStyle = .standard) -> Bool {
+        disarm()
+        guard !held, draft == nil, point.x.isFinite, point.y.isFinite, EmojiSet.isOne(emoji) else { return false }
+        let size = AnnotationText.size(of: Annotation(tool: .emoji, start: .zero, end: .zero, style: style, text: emoji))
+        let origin = CGPoint(x: min(max(point.x - size.width / 2, bounds.minX), max(bounds.minX, bounds.maxX - size.width)),
+                             y: min(max(point.y - size.height / 2, bounds.minY), max(bounds.minY, bounds.maxY - size.height)))
+        let placed = Annotation(tool: .emoji, start: origin, end: origin, style: style, text: emoji, id: nextID)
+        guard placed.isUsable else { return false }
+        nextID += 1
+        record(layers)
+        layers.append(placed)
+        selectedID = nil
+        return true
+    }
+
     /// `shift` is the flag of **this** event, never one kept from the press: no release
     /// is guaranteed, so a kept flag could square every later shape.
     public mutating func drag(to raw: CGPoint, shift: Bool) {
@@ -211,7 +230,10 @@ public struct AnnotationEditing: Sendable {
                 changed = gesture.base.translated(by: moved, within: bounds)
             case .resize(let handle):
                 // A result with nothing to draw is not taken: the object keeps the last one that had.
-                changed = gesture.base.resized(handle, to: point).flatMap { $0.isUsable ? $0 : nil }
+                // A lens stays a circle inside the selection: its far corner is shortened along its own direction, as a drag's is.
+                changed = gesture.base.resized(handle, to: point).map {
+                    $0.tool == .magnifier ? Annotation(tool: .magnifier, start: $0.start, end: fit($0.end, from: $0.start), style: $0.style, id: $0.id) : $0
+                }.flatMap { $0.isUsable ? $0 : nil }
             }
             if let changed, let index = layers.firstIndex(where: { $0.id == changed.id }) { layers[index] = changed }
             return

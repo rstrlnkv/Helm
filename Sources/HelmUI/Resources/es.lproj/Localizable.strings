@@ -1404,3 +1404,7 @@
 "30 seconds" = "30\U00A0segundos";
 "Timer: %@" = "Temporizador: %@";
 "Put the Panel Back" = "Devolver el panel a su sitio";
+
+/* Screenshots — stage12 track */
+"Magnifier" = "Lupa";
+"Emoji" = "Emoji";

@@ -27,7 +27,9 @@ enum ScreenAndFile {
 
     /// The first screen's size in points, a uniform grey picture of it at `scale`, and an overlay over it whose area is the
     /// screen less 50 points each side, released.
-    static func rig(scale: CGFloat) throws -> Rig {
+    /// `paint`, where given, draws over the grey picture in the display's top-left points before it is frozen: a picture with features in it,
+    /// for a layer that magnifies it.
+    static func rig(scale: CGFloat, paint: ((CGContext) -> Void)? = nil) throws -> Rig {
         let screen = try XCTUnwrap(NSScreen.screens.first)
         let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
         let id = DisplayID(number)
@@ -36,6 +38,13 @@ enum ScreenAndFile {
                                               bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.setFillColor(CGColor(srgbRed: 0.8, green: 0.8, blue: 0.8, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: CGFloat(pw) * scale, height: CGFloat(ph) * scale))
+        if let paint {
+            context.saveGState()
+            context.translateBy(x: 0, y: CGFloat(ph) * scale)
+            context.scaleBy(x: scale, y: -scale)
+            paint(context)
+            context.restoreGState()
+        }
         let ground = try XCTUnwrap(context.makeImage())
         let frozen = FrozenDisplay(id: id, frame: CGRect(x: 0, y: 0, width: pw, height: ph), scale: scale, image: ground)
         let box = ResultBox()

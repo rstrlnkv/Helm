@@ -1404,3 +1404,7 @@
 "30 seconds" = "30\U00A0Sekunden";
 "Timer: %@" = "Timer: %@";
 "Put the Panel Back" = "Panel wieder an seinen Platz setzen";
+
+/* Screenshots — stage12 track */
+"Magnifier" = "Lupe";
+"Emoji" = "Emoji";

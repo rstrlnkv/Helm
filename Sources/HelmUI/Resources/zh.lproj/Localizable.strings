@@ -1404,3 +1404,7 @@
 "30 seconds" = "30秒";
 "Timer: %@" = "计时器：%@";
 "Put the Panel Back" = "将面板放回原处";
+
+/* Screenshots — stage12 track */
+"Magnifier" = "放大镜";
+"Emoji" = "表情符号";

@@ -1404,3 +1404,7 @@
 "30 seconds" = "30\U00A0секунд";
 "Timer: %@" = "Таймер: %@";
 "Put the Panel Back" = "Вернуть панель на место";
+
+/* Screenshots — stage12 track */
+"Magnifier" = "Лупа";
+"Emoji" = "Эмодзи";

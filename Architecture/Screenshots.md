@@ -130,14 +130,14 @@ read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, 
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
 so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pen, pencil,
-highlighter, blur, text, step and spotlight; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
+highlighter, blur, text, step, spotlight, magnifier and emoji; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
 export's context both read; the pen, the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
 in the file. The pen is solid; the pencil is grainy, and the grain is one mask: `PencilGrain`
 (`Sources/Modules/Screenshots/Engine/Logic/PencilGrain.swift`) hashes each image pixel's offset from the pixel its first
 point lands on, with no chance and no clock, so the export clips the stroke to it in the picture's own pixels and the
-overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur, the text and a step a layer with a picture as its contents; a spotlight has none, see below), built again only when its
+overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur, the text, an emoji, a lens and a step a layer with a picture as its contents; a spotlight has none, see below), built again only when its
 annotation is no longer equal to the one it was built from, and for a step only while its number is the one it was built with. ⇧ is read from the flags of each event and never kept from the press.
 
 The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
@@ -182,6 +182,24 @@ spotlight is, as **one** even-odd path, the area and the union of every spotligh
 `Sources/Modules/Screenshots/Engine/Logic/Spotlights.swift`), so two spotlights that meet leave the dim the same between them as everywhere. The export fills it
 before every other layer (`CaptureSession.draw`) and the overlay lays it as one layer, `OverlayView.drawnSpotlightDim`, between the picture and the annotations' layers; a spotlight is in
 no entry of the layer cache. The dim is under every other annotation in the list, a blur's mosaic included, which is made from the display's own pixels and is not dimmed.
+
+The magnifier (`AnnotationTool.magnifier`) is a circle that shows the picture under it twice as large, with a ring in the layer's ink. It is begun by a drag from one
+corner of the circle's square and is always a circle, ⇧ or not (`Annotation.constrained`), and its four corner handles keep it one (`Annotation.resized`): they move
+and resize it and never change the magnification, which is one for every lens (`Magnifier.factor`). A circle narrower than `Magnifier.minimumDiameter` is not a layer. It is taken by its area,
+and its thickness step is the ring's width (2, 3 or 5 pt, inside the circle) and its opacity the ring's. **It magnifies the frame and not the layers above it**, as the blur's mosaic is made of the
+display's pixels and of nothing else (`Pixelate`): a mark or a blur under the lens is not seen through it. The picture is made once, by `Magnifier.tile(of:over:scale:)`
+(`Sources/Modules/Screenshots/Engine/Logic/Magnifier.swift`), as a bitmap of whole display pixels in the display picture's own colour space; the overlay lays it as a layer's contents and
+`CaptureSession.draw` places the same bitmap on the cut's pixels, so the file holds the lens the screen showed. A lens with no pixel to show is not drawn, on the screen and in the file alike.
+
+The emoji (`AnnotationTool.emoji`) is a text layer of **one grapheme** on the layout of `AnnotationText`, in the size of the thickness step (24, 32 or 48 pt) and the opacity of the pick, in its own colours; the
+ink is not read. `AnnotationEditing.place(emoji:at:style:)` is the one entry: it keeps the layer only if `EmojiSet.isOne` says the string is one grapheme that leaves ink as an emoji layer, puts its
+middle at the press and holds its frame inside the area, in one undo step. It has no handles and is taken by its area. The choice is made in a grid of a short set (`EmojiSet.all`) that stands inside the overlay's panel
+and not in the system's character palette, which does not open from Helm (`Sources/Modules/Layout/UI/EmojiPalette.swift`): `EmojiGrid` (`Sources/Modules/Screenshots/UI/EmojiGrid.swift`) is hosted by
+`EditorBarHostingView`, so it takes the very first click, and it stands above the palette, or below it where a pop-over stands above the palette or there is no room above (`OverlayView.placeEmojiGrid`), while the tool is chosen. A cell
+sends `EditorAction.pickEmoji`, which the overlay keeps (`CaptureOverlay.perform`) for the lifetime of the overlay and nothing more; a press on bare picture inside the area, with the tool chosen, places it (a press on a layer or a handle
+is the editor's own, as for the text tool), and with none picked it only lets go of the selection. The cells are named by the emoji themselves, which is what VoiceOver reads.
+Both tools are items of the ⋯ menu after Select and before Thickness and Opacity…, with a check mark when chosen and their symbol as ⋯'s badge, from `EditorPalette.afterSelect`, a list of their own: they have no
+cell on the palette, no place in `EditorPalette.objects` and no key.
 
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
 (`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure
@@ -239,11 +257,11 @@ Every other tool, Select, Filled, Save, Share… and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
-carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps and Crop show none, Steps having no key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
+carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects` and `EditorPalette.afterSelect`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps, Crop, Magnifier and Emoji show none, none of the five having a key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
 
 A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
 (`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands
-right after Select and is enabled while a tool is chosen, the spotlight excepted, so it reaches a tool with no cell on the row
+right after Select, Magnifier and Emoji and is enabled while a tool is chosen, the spotlight excepted, so it reaches a tool with no cell on the row
 (`EditorPalette.action(forClickOn:chosen:anchorX:)`, `EditorAction.thicknessAndOpacity`). It is another view of the
 overlay's panel, placed by `EditorChrome` with the palette: centred on the cell that opened it, `EditorChrome.popoverGap` under the palette
 or above it when under is short, held on the display, and part of `EditorChrome.covers` so that a press on it is never
