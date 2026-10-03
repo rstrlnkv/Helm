@@ -21,20 +21,18 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheHandOffCopiesAndSavesTests: XCTestCase {
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
 
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
 
@@ -56,13 +54,6 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .failed }
     }
 
-    private func picture() throws -> CGImage {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        return try XCTUnwrap(context.makeImage())
-    }
-
     private func controller(saving target: SaveTarget) -> (CaptureController, Board, Disk) {
         let board = Board(), disk = Disk()
         let backing = InMemoryKeyValueStore()
@@ -70,7 +61,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: NeverAsked(), writer: disk, pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(),
+        let session = CaptureSession(capture: NeverAsked(), writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
@@ -81,7 +72,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
     func testEveryKindOfPickIsCopiedAndSaved() async throws {
         for kind in [CapturedShot.Kind.area, .window, .display] {
             let (controller, board, disk) = controller(saving: .desktop)
-            await controller.handOff(CapturedShot(image: try picture(), kind: kind))
+            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: kind))
             XCTAssertEqual(board.copies, 1, "\(kind): the picture was not copied")
             XCTAssertEqual(disk.written, 1, "\(kind): the picture was not saved")
         }
@@ -93,7 +84,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
     func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
         for target in SaveTarget.allCases {
             let (controller, board, disk) = controller(saving: target)
-            await controller.handOff(CapturedShot(image: try picture(), kind: .area))
+            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: .area))
             XCTAssertEqual(board.copies, 1, "target \(target): an area was not copied")
             XCTAssertEqual(disk.written, target == .clipboard ? 0 : 1,
                            "target \(target): an area was \(target == .clipboard ? "saved as a file though the target is the clipboard" : "not saved")")

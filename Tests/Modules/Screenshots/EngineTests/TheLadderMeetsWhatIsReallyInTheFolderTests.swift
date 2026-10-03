@@ -35,7 +35,7 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
 
         let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base, pathExtension: "png")
 
-        XCTAssertEqual(result, .written(folder.appendingPathComponent(name(3))))
+        XCTAssertEqual(result.url, folder.appendingPathComponent(name(3)))
         XCTAssertEqual(try Data(contentsOf: precious), bytes, "a link's target was written through")
         XCTAssertFalse(manager.fileExists(atPath: nowhere.path), "a dangling link was followed and its target created")
         var isDirectory: ObjCBool = false
@@ -77,7 +77,7 @@ final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
         let results = outcomes.byIndex
         var claimed: Set<String> = []
         for index in 0..<count {
-            guard case .written(let url)? = results[index] else { return XCTFail("capture \(index): \(String(describing: results[index]))") }
+            guard let url = results[index]?.url else { return XCTFail("capture \(index): \(String(describing: results[index]))") }
             XCTAssertTrue(claimed.insert(url.lastPathComponent).inserted, "two captures were given \(url.lastPathComponent)")
             XCTAssertEqual(try Data(contentsOf: url), Data("capture \(index)".utf8),
                            "\(url.lastPathComponent) holds another capture's bytes")

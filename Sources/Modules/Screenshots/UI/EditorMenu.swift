@@ -16,8 +16,8 @@ enum EditorMenuItem: Equatable {
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
 /// Order: the row objects taken off the row (`EditorPalette.rowKinds`), then the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Thickness and Opacity… (enabled while a
-/// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, and Pin only while
-/// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
+/// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, Pin only while
+/// `PinEntry.isOffered`, and Share…, which does what Done does and opens the system's sheet at the thumbnail. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
 /// `NSMenuItem` sends nothing even when its action is performed.
 /// **Shapes** is checked while a shape is the tool. A click on the chosen tool sends what choosing it sent: the
@@ -82,6 +82,7 @@ enum EditorMenu {
                              isEnabled: model.tool != nil && model.tool != .spotlight && !model.erasing, isOn: false))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]
         if pinOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
+        items.append(.action(title: ScStr.share, action: .exit(.share), isEnabled: true, isOn: false))
         return items
     }
 

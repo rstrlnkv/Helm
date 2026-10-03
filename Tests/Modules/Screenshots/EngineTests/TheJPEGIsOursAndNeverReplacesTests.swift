@@ -28,7 +28,7 @@ final class TheJPEGIsOursAndNeverReplacesTests: XCTestCase {
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = fixed
-        let session = CaptureSession(capture: capture, writer: FileShotWriter(), pasteboard: board,
+        let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: FakeTrash(folder: FakeWriter()), pasteboard: board,
                                      preferences: FakePreferences(), shutter: FakeShutter(),
                                      settings: { settings }, naming: { .english }, now: { fixed },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))

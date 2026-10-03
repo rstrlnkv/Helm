@@ -59,12 +59,18 @@ enum PanelRig {
         private var data: Data?
         var written: Int { lock.withLock { count } }
         var last: Data? { lock.withLock { data } }
+        // A disk that keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1; self.data = data }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
-    struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    struct Board: ShotPasteboard {
+        func copy(png: Data) -> PasteOutcome { .accepted }
+        func copy(pngs: [Data]) -> PasteOutcome { .accepted }
+    }
     struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -139,7 +145,7 @@ enum PanelRig {
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
         for (key, value) in values { store.set(value, for: key) }
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: screen, writer: disk, pasteboard: Board(), preferences: NoPreferences(),
+        let session = CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
                                      shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,

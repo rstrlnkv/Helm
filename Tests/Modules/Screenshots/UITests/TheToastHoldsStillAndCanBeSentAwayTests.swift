@@ -5,12 +5,13 @@ import SwiftUI
 import XCTest
 @testable import Module_Screenshots_UI
 
-/// **The thumbnail does not move when its caption arrives, and there is a way
-/// off the screen that does not open the file.** The toast is pinned by its
-/// bottom edge, so a caption line that appeared after the picture lifted the
-/// picture by its own height a moment after it was shown. And the whole plate
-/// was one target that opens the file, for six seconds over whatever was
-/// beneath it: a click meant for that opened the shot.
+/// **The thumbnail's window does not move or resize when the write's result arrives, and the capsule over it has a
+/// ✕.** The panel is pinned by its bottom edge, so a size that changed between the working thumbnail and the finished
+/// one (a caption line laid out under the picture was how it once did) would lift the picture a moment after it was
+/// shown. The caption is not laid out any more; the check stays on what is true now, the fitting size of the view,
+/// for the same picture working and done, with the pointer over it or not. A working thumbnail has no ✕ and leaves
+/// by its lifetime; a finished one is sent away by the capsule's ✕, which is a control of its own beside the
+/// picture, a drag source and a click target of AppKit's.
 @MainActor
 final class TheToastHoldsStillAndCanBeSentAwayTests: XCTestCase {
 
@@ -19,55 +20,44 @@ final class TheToastHoldsStillAndCanBeSentAwayTests: XCTestCase {
         super.tearDown()
     }
 
-    private func picture() throws -> CGImage {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 520, height: 300, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        return try XCTUnwrap(context.makeImage())
-    }
-
-    private func height(of content: ShotToastModel.Content) -> CGFloat {
+    /// The size the panel is given for this content (`place` sets the content size to this).
+    private func size(of content: ShotToastModel.Content, hovering: Bool) -> CGSize {
         let model = ShotToastModel()
         model.content = content
         model.shown = true
+        model.hovering = hovering
         let host = NSHostingView(rootView: ShotToastView(model: model))
         host.frame = NSRect(x: 0, y: 0, width: ShotToast.width, height: 400)
-        return host.fittingSize.height
+        return host.fittingSize
     }
 
-    func testTheHeightIsTheSameBeforeAndAfterTheCaptionArrives() throws {
-        let image = try picture()
+    func testTheSizeIsTheSameBeforeAndAfterTheResultArrives() throws {
         var compared = 0
-        AppLanguage.each { language in
-            for caption in [ScStr.saved, ScStr.copied, ScStr.savedAndCopied] {
-                let working = height(of: .picture(image, caption: nil, file: nil))
-                let done = height(of: .picture(image, caption: caption, file: nil))
-                XCTAssertGreaterThan(working, 0, "\(language): nothing was laid out")
-                XCTAssertEqual(working, done, accuracy: 0.5,
-                               "\(language): the toast was \(working) pt before «\(caption)» and \(done) pt after")
-                compared += 1
+        for (width, height) in [(520, 300), (1200, 300), (300, 1200), (40, 30)] {
+            let image = try ShotToastRig.picture(width: width, height: height)
+            for hovering in [false, true] {
+                for (caption, file) in [(ScStr.saved, nil), (ScStr.copied, nil), (ScStr.savedAndCopied, try ShotToastRig.realFile(self))] as [(String, URL?)] {
+                    let working = size(of: .picture(image, caption: nil, file: nil), hovering: hovering)
+                    let done = size(of: .picture(image, caption: caption, file: file), hovering: hovering)
+                    XCTAssertGreaterThan(working.height, 0, "\(width)×\(height): nothing was laid out")
+                    XCTAssertEqual(working.width, done.width, accuracy: 0.5, "\(width)×\(height), pointer \(hovering): the width changed when «\(caption)» arrived")
+                    XCTAssertEqual(working.height, done.height, accuracy: 0.5, "\(width)×\(height), pointer \(hovering): the height changed when «\(caption)» arrived")
+                    compared += 1
+                }
             }
         }
-        XCTAssertEqual(compared, AppLanguage.allCases.count * 3)
+        XCTAssertEqual(compared, 4 * 2 * 3)
     }
 
-    /// Counted off the rendered tree, where a control drawn by SwiftUI is a focus-ring view.
-    private func controls(_ content: ShotToastModel.Content) -> Int {
-        let model = ShotToastModel()
-        model.content = content
-        model.shown = true
-        let mount = MountedRender(ShotToastView(model: model), width: ShotToast.width, height: 300, appearance: .aqua)
-        mount.settle(20)
-        return mount.host.everyView(named: "_FocusRingView").count
-    }
-
-    func testAPictureToastHasACloseControlBesideTheOpenTarget() throws {
-        let image = try picture()
-        let file = URL(fileURLWithPath: "/tmp/not-opened.png")
-        XCTAssertEqual(controls(.picture(image, caption: "x", file: file)), 2,
-                       "the open target and a way away from it")
-        XCTAssertEqual(controls(.picture(image, caption: nil, file: nil)), 1,
-                       "a picture with no file yet still has the way away")
+    func testAFinishedPictureHasACloseControlInTheCapsuleAndAWorkingOneNone() throws {
+        let image = try ShotToastRig.picture()
+        let file = try ShotToastRig.realFile(self)
+        let cells = ShotCapsule.cells(hasFile: true)
+        XCTAssertTrue(cells.contains(.close), "the capsule has no way away")
+        XCTAssertEqual(ShotToastRig.controls(.picture(image, caption: "x", file: file)), cells.count,
+                       "the capsule's cells, the way away among them: the picture itself is a drag source and a click target of AppKit's, not a SwiftUI control")
+        XCTAssertEqual(ShotToastRig.controls(.picture(image, caption: nil, file: nil)), 0,
+                       "a picture whose result is not in has no capsule yet: its Copy and Show in Finder need what was written")
     }
 
     /// Its name is `NamedControlsTests`' to check — the accessibility tree of a
@@ -88,7 +78,7 @@ final class TheToastHoldsStillAndCanBeSentAwayTests: XCTestCase {
     /// (see the note on the refusal toast's twin).
     func testDismissingTheModelTakesThePictureDown() throws {
         let toast = ShotToast()
-        toast.model.content = .picture(try picture(), caption: "x", file: nil)
+        toast.model.content = .picture(try ShotToastRig.picture(), caption: "x", file: nil)
         toast.model.shown = true
         toast.model.dismiss()
         XCTAssertNil(toast.model.content, "dismiss() left the picture up")

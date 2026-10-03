@@ -5,7 +5,7 @@ import HelmTestSupport
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **Every toast has a way off the screen, the refusal included.** The finding
+/// **A refusal has a way off the screen: its ✕. A thumbnail leaves by its lifetime or by the capsule's ✕.** The finding
 /// the close control answered was "the toast has no way to dismiss" — picture
 /// 6 s + 5 s, refusal 9 s, in the corner where the next click goes — and the
 /// control went onto the picture only. A refusal without a missing grant draws
@@ -18,12 +18,7 @@ import Module_Screenshots_Engine
 final class TheRefusalToastCanBeSentAwayTests: XCTestCase {
 
     private func controls(_ content: ShotToastModel.Content) -> Int {
-        let model = ShotToastModel()
-        model.content = content
-        model.shown = true
-        let mount = MountedRender(ShotToastView(model: model), width: ShotToast.width, height: 300, appearance: .aqua)
-        mount.settle(20)
-        return mount.host.everyView(named: "_FocusRingView").count
+        ShotToastRig.controls(content, hovering: false)
     }
 
     func testARefusalToastHasAWayAway() {

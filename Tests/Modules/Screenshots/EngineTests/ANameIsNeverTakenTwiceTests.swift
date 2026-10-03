@@ -18,9 +18,9 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
         let second = writer.write(Data("two".utf8), into: folder, base: base, pathExtension: "png")
         let third = writer.write(Data("three".utf8), into: folder, base: base, pathExtension: "png")
 
-        XCTAssertEqual(first, .written(folder.appendingPathComponent("\(base).png")))
-        XCTAssertEqual(second, .written(folder.appendingPathComponent("\(base) (1).png")))
-        XCTAssertEqual(third, .written(folder.appendingPathComponent("\(base) (2).png")))
+        XCTAssertEqual(first.url, folder.appendingPathComponent("\(base).png"))
+        XCTAssertEqual(second.url, folder.appendingPathComponent("\(base) (1).png"))
+        XCTAssertEqual(third.url, folder.appendingPathComponent("\(base) (2).png"))
     }
 
     func testAPreExistingFileKeepsEveryByte() throws {
@@ -32,7 +32,7 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
         let result = FileShotWriter().write(Data("the new one".utf8), into: folder, base: base, pathExtension: "png")
 
         XCTAssertEqual(try Data(contentsOf: original), precious, "the writer replaced a file that was there")
-        XCTAssertEqual(result, .written(folder.appendingPathComponent("\(base) (1).png")))
+        XCTAssertEqual(result.url, folder.appendingPathComponent("\(base) (1).png"))
         XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent("\(base) (1).png")),
                        Data("the new one".utf8))
     }
@@ -69,7 +69,7 @@ final class ANameIsNeverTakenTwiceTests: XCTestCase {
         XCTAssertEqual(ShotNames.candidate(base: base, pathExtension: "png", attempt: 12), "\(base) (12).png")
         let writer = FakeWriter()
         writer.taken = ["\(base).png"]
-        XCTAssertEqual(writer.write(Data(), into: URL(fileURLWithPath: "/x"), base: base, pathExtension: "png"),
-                       .written(URL(fileURLWithPath: "/x/\(base) (1).png")))
+        XCTAssertEqual(writer.write(Data(), into: URL(fileURLWithPath: "/x"), base: base, pathExtension: "png").url,
+                       URL(fileURLWithPath: "/x/\(base) (1).png"))
     }
 }

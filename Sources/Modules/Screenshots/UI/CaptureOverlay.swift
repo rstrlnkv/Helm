@@ -58,6 +58,9 @@ enum OverlayResult {
     private var preselected: (display: DisplayID, rect: CGRect)?
     /// The panel's overlay: the area that was drawn when a new drag began, and comes back if that drag is not usable.
     private var replacedByDrag: (display: DisplayID, rect: CGRect)?
+    /// A finished picture the overlay was opened on (`PictureOnScreen`): the editor is up at once on its rectangle,
+    /// and that rectangle is the bounds of the area, so the area is never more than the picture.
+    private let picture: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
     /// ⌥ is down, as the last `flagsChanged` said: the lines across the screen are drawn only then.
     private var optionHeld = false
@@ -167,7 +170,8 @@ enum OverlayResult {
     private var reportedTarget = false
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true }, selectionOnly: Bool = false,
+         picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         selectionOnly: Bool = false,
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.selectionOnly = selectionOnly
@@ -175,6 +179,7 @@ enum OverlayResult {
         self.store = store
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
+        self.picture = picture
         self.onFinish = onFinish
         palette.perform = { [weak self] in self?.perform($0) }
         palette.openMenu = { [weak self] in self?.openMoreMenu() }
@@ -233,6 +238,7 @@ enum OverlayResult {
         // Opened in window mode, the window under the pointer is lit at once; not for the panel's overlay, where the
         // pointer is over the panel that was pressed and the window beneath it is no choice.
         if mode == .window, !selectionOnly, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
+        if let picture { startEditing(display: picture.display, rect: picture.rect) }
         render()
         return true
     }
@@ -400,8 +406,7 @@ enum OverlayResult {
             // The default is the shadow, as macOS's; an option-click asks for the window alone.
             if let hovered { finish(.window(hovered.id, shadow: !flags.contains(.option))) }
         case .area:
-            guard let frame = freeze.frames.first(where: { $0.id == display }) else { return }
-            let bounds = CGRect(origin: .zero, size: frame.frame.size)
+            guard picture == nil || picture?.display == display, let bounds = displayBounds(display) else { return }
             // The panel's overlay keeps the area that was drawn until a drag that is usable replaces it (`mouseUp`).
             replacedByDrag = selectionOnly ? (preselected ?? replacedByDrag) : nil
             preselected = nil
@@ -662,7 +667,7 @@ enum OverlayResult {
             let delta = AreaFrame.step(CGPoint(x: dx, y: dy), pixels: pixels, scale: frame.scale)
             let hadSelection = current.layers.selected != nil
             if !current.layers.nudgeSelected(by: delta) {
-                current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
+                current.rect = AreaFrame.nudged(current.rect, by: delta, within: displayBounds(current.display) ?? current.rect)
                 current.layers.reshape(bounds: current.rect)
                 if crop == nil { ruler?.keep(within: current.rect) }
             } else if hadSelection, current.layers.selected == nil {
@@ -853,8 +858,10 @@ enum OverlayResult {
         CGPoint(x: mouse.x - panel.frame.minX, y: height - (mouse.y - panel.frame.minY))
     }
 
+    /// What an area on `display` stays inside: the display, or the picture the overlay was opened on.
     private func displayBounds(_ display: DisplayID) -> CGRect? {
-        freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
+        if let picture, picture.display == display { return picture.rect }
+        return freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
     }
 
     /// Where the palette stands on `display`, under the area (under the base area while Crop is on): nil when it is not the edited one, and nil while an

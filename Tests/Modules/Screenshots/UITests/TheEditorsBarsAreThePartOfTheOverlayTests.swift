@@ -507,7 +507,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 }
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
-            XCTAssertEqual(menu.count, 14, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Thickness and Opacity, Save, Pin: \(menu)")
+            XCTAssertEqual(menu.count, 15, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Thickness and Opacity, Save, Pin, Share: \(menu)")
             let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")

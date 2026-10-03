@@ -26,19 +26,17 @@ import Module_Screenshots_Engine
 @MainActor
 final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
     private final class Shutter: ShutterPlaying, @unchecked Sendable {
@@ -98,7 +96,7 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("pin-exit")
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, pasteboard: clipboard,
+        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: clipboard,
                                      preferences: NoPreferences(), shutter: shutter,
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))

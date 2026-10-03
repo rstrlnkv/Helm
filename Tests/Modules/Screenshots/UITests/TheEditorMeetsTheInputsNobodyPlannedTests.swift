@@ -16,19 +16,17 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
     private struct Frames: ScreenCapturing {
@@ -352,7 +350,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, pasteboard: board,
+        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: board,
                                      preferences: NoPreferences(), shutter: shutter,
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))

@@ -20,7 +20,8 @@ public enum UserFileScope {
         // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
         // is the home directory however it is written, and every check below
         // is a string test — RemovableScope standardizes for exactly this
-        // reason, and this gate is the last word on deletion for Disk, Duplicates and Autopilot.
+        // reason, and this gate is the last word on deletion for Disk, Duplicates and Autopilot, and on the
+        // one file Screenshots replaces.
         //
         // The absolute-path guard comes FIRST, before any resolution: every
         // resolver here builds a `URL(fileURLWithPath:)`, which resolves a

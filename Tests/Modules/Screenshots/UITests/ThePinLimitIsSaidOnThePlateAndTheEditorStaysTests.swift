@@ -18,7 +18,7 @@ import Module_Screenshots_Engine
 /// the next action), a limit that stays after the room is back, and a cell or a sentence that is missing,
 /// empty, numeric, or the same as another control's in some language.
 ///
-/// Assumed (the plan's): `CaptureOverlay.init(freeze:mode:preselection:store:pinRoom:onFinish:)` with
+/// Assumed (the plan's): `CaptureOverlay.init(freeze:mode:preselection:picture:store:pinRoom:onFinish:)` with
 /// `pinRoom: () -> Bool = { true }`, `EditorExit.pin`, `ScStr.pinLimit`; mine: `ScStr.pin` for the cell and
 /// `ScStr.pinnedScreenshot` for the accessibility label.
 @MainActor

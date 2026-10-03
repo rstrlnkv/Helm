@@ -2,11 +2,11 @@ import Foundation
 
 /// Moving paths to the Trash, in one place, with the reason kept.
 ///
-/// Four modules wrote this loop: take the allowed paths, ask `FileManager` to
+/// Several modules wrote this loop: take the allowed paths, ask `FileManager` to
 /// trash each one, total the bytes freed, and collect what refused. Byte for
 /// byte the same in Disk and Duplicates, near enough in Autopilot and
-/// Leftovers — and only one of the four did anything with `TrashFailure`.
-/// The other three put the path on a `failed` list and dropped the error, so
+/// Leftovers — and only one of them did anything with `TrashFailure`.
+/// The others put the path on a `failed` list and dropped the error, so
 /// the person who had just been refused by Full Disk Access was told a number
 /// and nothing else. Which reason it was is the only part of that sentence
 /// worth reading.
@@ -17,9 +17,8 @@ import Foundation
 ///
 /// Every batch removal in the app comes through here — `grep -rn
 /// 'HelmTrash.remove' Sources` says which, and a number written down in this
-/// paragraph would not. The last one in was the uninstaller, through `trashing`:
-/// the move itself, which that module takes as a port so its tests can run
-/// without a filesystem. The seam was declined once, on the grounds that it
+/// paragraph would not. Some pass `trashing`: the move itself, which the
+/// uninstaller takes as a port so its tests can run without a filesystem. The seam was declined once, on the grounds that it
 /// changed this for every caller to serve one; what the copy it left in place
 /// then cost was three rules stated in the comments below and missing there — a
 /// child taken with its parent reported as neither moved nor refused, a hard
@@ -94,8 +93,8 @@ public enum HelmTrash {
     /// a copy whose blocks a survivor goes on holding is reported as the nothing
     /// it frees. The ledger cannot work this out for itself: there is no reverse
     /// lookup from a family to its members, so a family whose survivor is outside
-    /// the batch was charged in full. Three of the four callers leave it empty and
-    /// behave exactly as they did; Duplicates is the module where the survivor is
+    /// the batch was charged in full. Every caller but Duplicates leaves it empty and
+    /// behaves exactly as it did; Duplicates is the module where the survivor is
     /// by construction never in the batch, so for it that was every family.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
@@ -111,7 +110,7 @@ public enum HelmTrash {
                                                                     resultingItemURL: nil)
                               })
         -> Result {
-        // One phase for all four deleting modules, named per module: only Disk
+        // One phase for every deleting module, named per module: only Disk
         // wrapped its call, and Disk was not the outlier, it was the one that got
         // audited. Scope form, so the interval closes on every way out.
         let phase = "\(module).trash"

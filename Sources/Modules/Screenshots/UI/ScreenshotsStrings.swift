@@ -226,7 +226,7 @@ enum ScStr {
     }
 
     /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy has no control on the palette yet, and its name
-    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item while `PinEntry.isOffered`.
+    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
     static var fill: String { L("Filled") }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
@@ -255,9 +255,39 @@ enum ScStr {
 
     /// The word in a file name and on a thumbnail. One key, macOS's own word.
     static var thumbnailLabel: String { L("Screenshot") }
+    /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
+    static var edit: String { L("Edit") }
+    static var copy: String { L("Copy") }
+    static var showInFinder: String { L("Show in Finder") }
+    /// The pile's capsule, the label on the row's farthest whole shot, and what a screen reader calls the pile. The
+    /// count is interpolated, so the eight sentences are here and not in the `.lproj` tables; the nouns and the verb
+    /// are those tables' own (`Copy`, `Screenshots`). A pile is two shots or more; «N more» counts one as well, so
+    /// the counted forms are written so that none needs a plural: German's «weitere» is wrong for one, and «mehr»
+    /// is right for every count.
+    static func copyAll(_ count: Int) -> String {
+        L("Copy All (\(count))", [.ru: "Скопировать все (\(count))", .es: "Copiar todo (\(count))",
+                                  .fr: "Tout copier (\(count))", .de: "Alle kopieren (\(count))",
+                                  .ja: "すべてをコピー（\(count)）", .zh: "全部复制（\(count)）",
+                                  .pt: "Copiar Tudo (\(count))"])
+    }
+    static func more(_ count: Int) -> String {
+        L("\(count) more", [.ru: "ещё \(count)", .es: "\(count) más", .fr: "\(count) de plus",
+                            .de: "\(count) mehr", .ja: "ほか \(count) 件", .zh: "还有 \(count) 张",
+                            .pt: "mais \(count)"])
+    }
+    static func screenshots(_ count: Int) -> String {
+        L("\(count) screenshots", [.ru: "Снимков экрана: \(count)", .es: "Capturas de pantalla: \(count)",
+                                   .fr: "Captures d’écran\u{00A0}: \(count)", .de: "Bildschirmfotos: \(count)",
+                                   .ja: "スクリーンショット：\(count)", .zh: "截屏：\(count)",
+                                   .pt: "Capturas de Tela: \(count)"])
+    }
+    /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
+    static var share: String { L("Share…") }
     static var saved: String { L("Saved") }
     static var copied: String { L("Copied to the clipboard") }
     static var savedAndCopied: String { L("Saved and copied") }
+    /// What a screen reader reads of a thumbnail whose edit took its original's place.
+    static var replaced: String { L("Replaced. The original is in the Trash.") }
     /// The plate over an edited picture after a first Esc.
     static var confirmClose: String { L("Press Esc again to close without saving") }
     static var dismissToast: String { L("Close") }
@@ -281,6 +311,15 @@ enum ScStr {
         case .write(.namesExhausted), .write(.failed): L("The screenshot could not be saved.")
         case .pasteboard: L("The clipboard did not take the picture.")
         case .encoding: L("The picture could not be made.")
+        case .notEditable:
+            L("The screenshot was moved or changed after it was taken, so it cannot be edited here.")
+        // The Trash's own two words for a file that is not where it was end by naming a «Scan again» control,
+        // which this module has none of: they are this module's sentence, and the one sentence also says it for a
+        // folder that took no write: the person is told that the edit is a separate file, not why.
+        case .notReplaced(.missing), .notReplaced(.changed), .notReplaced(.folderRefused),
+             .notReplaced(.trash(.missing)), .notReplaced(.trash(.changedSinceScan)):
+            L("The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.")
+        case .notReplaced(.trash(let reason)): TrashReasonText.sentence(reason.rawValue)
         }
     }
 
