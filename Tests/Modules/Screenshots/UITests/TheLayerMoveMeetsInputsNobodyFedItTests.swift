@@ -57,7 +57,10 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
         let positions = view.drawnShapes.map { shape in sublayers.firstIndex(where: { $0 === shape }) }
         XCTAssertTrue(positions.allSatisfy { $0 != nil }, "a shape is not in the view's own layer: \(positions)")
         XCTAssertEqual(positions.compactMap { $0 }, positions.compactMap { $0 }.sorted(), "the shapes are not in the annotations' order")
-        let dim = try XCTUnwrap(sublayers.firstIndex(where: { ($0 as? CAShapeLayer)?.fillRule == .evenOdd }))
+        // The area's dim: the even-odd layer that is not the spotlights', which stands under the shapes.
+        let dim = try XCTUnwrap(sublayers.firstIndex(where: { ($0 as? CAShapeLayer)?.fillRule == .evenOdd && $0 !== view.drawnSpotlightDim }))
+        let spotlights = try XCTUnwrap(sublayers.firstIndex { $0 === view.drawnSpotlightDim })
+        XCTAssertTrue(positions.compactMap { $0 }.allSatisfy { $0 > spotlights }, "a shape stands under the spotlights' dim")
         XCTAssertTrue(positions.compactMap { $0 }.allSatisfy { $0 < dim }, "a shape stands over the dim")
         XCTAssertEqual(view.drawnShapes.map { $0.compositingFilter != nil }, [false, true, false],
                        "the multiply is on a layer other than the marker's")

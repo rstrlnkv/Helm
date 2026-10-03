@@ -13,10 +13,10 @@ import Module_Screenshots_Engine
 /// `EditorMenu.make(for:)` is the `NSMenu`, whose delegate fills it from `items` in `menuNeedsUpdate`, so every opening
 /// reads the model again.
 ///
-/// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Select, Thickness and Opacity…
+/// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Text, Steps, Blur, Crop, Select, Thickness and Opacity…
 /// (always there, right after the tools), separator, Save, and
 /// Pin only while offered. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
-/// highlighter) is chosen none is. The tool is asked of every case of `AnnotationTool` and of none, so a tool added
+/// highlighter, the spotlight) is chosen none is. The tool is asked of every case of `AnnotationTool` and of none, so a tool added
 /// later has to be in the answer.
 @MainActor
 final class TheMenuChecksTheToolInUseTests: XCTestCase {
@@ -62,7 +62,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
     private func expectedOutline(pinOffered: Bool) -> [String] {
         ["tool:\(ScStr.tool(.arrow))",
          "submenu:\(ScStr.shapes)[tool:\(ScStr.tool(.rectangle)),tool:\(ScStr.tool(.ellipse)),tool:\(ScStr.tool(.line)),separator,action:\(ScStr.fill)]",
-         "tool:\(ScStr.tool(.text))", "tool:\(ScStr.tool(.blur))", "tool:\(ScStr.select)", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : [])
+         "tool:\(ScStr.tool(.text))", "tool:\(ScStr.tool(.step))", "tool:\(ScStr.tool(.blur))", "tool:\(ScStr.crop)", "tool:\(ScStr.select)", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : [])
     }
 
     func testTheOrderOfTheItemsAndTheSeparatorsIsTheListOfThisStage() {
@@ -83,10 +83,10 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             let context = "tool \(String(describing: tool))"
             switch tool {
             case nil: XCTAssertEqual(on.map(\.title), [ScStr.select], "\(context): Select is on when nothing is chosen")
-            case .arrow?, .text?, .blur?: XCTAssertEqual(on.map(\.title), [ScStr.tool(try XCTUnwrap(tool))], context)
+            case .arrow?, .text?, .step?, .blur?: XCTAssertEqual(on.map(\.title), [ScStr.tool(try XCTUnwrap(tool))], context)
             case .rectangle?, .ellipse?, .line?:
                 XCTAssertEqual(on.map(\.title), [ScStr.tool(try XCTUnwrap(tool))], context)
-            case .pen?, .pencil?, .highlighter?:
+            case .pen?, .pencil?, .highlighter?, .spotlight?:
                 XCTAssertTrue(on.isEmpty, "\(context): a row object is raised and the menu checks \(on.map(\.title))")
             }
             // The parent of the shapes is on exactly while a shape is the tool.
@@ -113,10 +113,10 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         let sent = tools(items).map { [$0.title: $0.action] }
         XCTAssertEqual(sent, [[ScStr.tool(.arrow): .tool(.arrow)], [ScStr.tool(.rectangle): .tool(.rectangle)],
                               [ScStr.tool(.ellipse): .tool(.ellipse)], [ScStr.tool(.line): .tool(.line)], [ScStr.tool(.text): .tool(.text)],
-                              [ScStr.tool(.blur): .tool(.blur)],
-                              [ScStr.select: .select]],
+                              [ScStr.tool(.step): .tool(.step)], [ScStr.tool(.blur): .tool(.blur)],
+                              [ScStr.crop: .crop], [ScStr.select: .select]],
                        "re-choosing the chosen tool sends what choosing it sent (Q3)")
-        XCTAssertEqual(tools(items).map(\.symbol), ["arrow.up.right", "rectangle", "circle", "line.diagonal", "textformat", "square.grid.3x3", "cursorarrow"])
+        XCTAssertEqual(tools(items).map(\.symbol), ["arrow.up.right", "rectangle", "circle", "line.diagonal", "textformat", "1.circle", "square.grid.3x3", "crop", "cursorarrow"])
         guard case .action(_, let save, let enabled, let saveOn)? = items.last else { return XCTFail("the last item is not Save: \(outline(items))") }
         XCTAssertEqual(save, .exit(.save))
         XCTAssertTrue(enabled)
@@ -135,8 +135,8 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
     }
 
     /// Always present and always in the same place: right after Select, before the separator and Save; the menu does
-    /// not change shape with the choice. Enabled for every tool that has thickness steps (all of `AnnotationTool`),
-    /// disabled for Select, which has none.
+    /// not change shape with the choice. Enabled for every tool that has thickness steps (all of `AnnotationTool` but the
+    /// spotlight), disabled for the spotlight and for Select, which have none.
     func testTheItemIsAlwaysRightAfterSelectAndEnabledExactlyWhereThereAreSteps() throws {
         AppLanguage.override = .en
         var seen: Set<Bool> = []
@@ -146,7 +146,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             let selectAt = try XCTUnwrap(items.firstIndex { if case .tool(let t, _, _, _) = $0 { t == ScStr.select } else { false } })
             XCTAssertEqual(found.index, selectAt + 1, "tool \(String(describing: tool)): not right after Select")
             XCTAssertEqual(items[found.index + 1], .separator, "tool \(String(describing: tool)): the separator comes after it")
-            XCTAssertEqual(found.isEnabled, tool != nil, "tool \(String(describing: tool)): enabled where there are steps and only there")
+            XCTAssertEqual(found.isEnabled, tool != nil && tool != .spotlight, "tool \(String(describing: tool)): enabled where there are steps and only there")
             XCTAssertFalse(found.isOn)
             seen.insert(found.isEnabled)
         }
@@ -165,11 +165,12 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             let menu = EditorMenu.make(for: m)
             menu.delegate?.menuNeedsUpdate?(menu)
             let item = try XCTUnwrap(flat(menu).first { $0.title == ScStr.thicknessAndOpacity }, "tool \(String(describing: tool))")
-            XCTAssertEqual(item.isEnabled, tool != nil, "tool \(String(describing: tool))")
-            XCTAssertEqual(menu.index(of: item), 5, "Arrow, Shapes, Text, Blur, Select, then the item")
+            let hasSteps = tool != nil && tool != .spotlight
+            XCTAssertEqual(item.isEnabled, hasSteps, "tool \(String(describing: tool))")
+            XCTAssertEqual(menu.index(of: item), 7, "Arrow, Shapes, Text, Steps, Blur, Crop, Select, then the item")
             let parent = try XCTUnwrap(item.menu)
             parent.performActionForItem(at: parent.index(of: item))
-            XCTAssertEqual(sent, tool == nil ? [] : [.thicknessAndOpacity(anchorX: m.moreFrame.midX)],
+            XCTAssertEqual(sent, !hasSteps ? [] : [.thicknessAndOpacity(anchorX: m.moreFrame.midX)],
                            "tool \(String(describing: tool)): a click opens the pop-over at ⋯, or does nothing when disabled")
         }
     }
@@ -201,8 +202,8 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             XCTAssertEqual(entries.first?.action, .tool(object.tool), "\(name): the item sends another action")
             XCTAssertEqual(EditorPalette.moreBadge(for: model(tool: object.tool)), object.symbol, "\(name): the badge is not its symbol")
         }
-        // Nothing else is in the menu as a tool but these and Select.
-        XCTAssertEqual(inMenu.count, outside.count + 1, "the menu has a tool the table does not know, or the reverse")
+        // Nothing else is in the menu as a tool but these, Crop and Select, which are no `AnnotationTool`.
+        XCTAssertEqual(inMenu.count, outside.count + 2, "the menu has a tool the table does not know, or the reverse")
     }
 
     func testThePinIsInTheMenuOnlyWhileOfferedAndAfterSave() {
@@ -266,7 +267,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         delegate.menuNeedsUpdate?(menu)
         XCTAssertEqual(checked(), [ScStr.select], "third opening, nothing chosen")
         // And the titles after rebuilding are still the whole list, not a growing one.
-        XCTAssertEqual(menu.items.count, 8)
+        XCTAssertEqual(menu.items.count, 10)
     }
 
     /// A click on an item is the action the builder names, through the model's one door.
@@ -321,6 +322,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         let expected: [(AnnotationTool?, String?)] = [
             (.arrow, "arrow.up.right"), (.rectangle, "rectangle"), (.ellipse, "circle"), (.line, "line.diagonal"),
             (nil, "cursorarrow"), (.pen, nil), (.pencil, nil), (.highlighter, nil), (.blur, "square.grid.3x3"), (.text, "textformat"),
+            (.step, "1.circle"), (.spotlight, nil),
         ]
         XCTAssertEqual(expected.count, Self.everyChoice.count, "a tool was added: say what its badge is")
         for (tool, symbol) in expected {

@@ -2,9 +2,9 @@ import SwiftUI
 import HelmUI
 import Module_Screenshots_Engine
 
-/// One object of the editor's palette — the pen, the marker, the pencil, the eraser or the ruler — drawn from the layers of
+/// One object of the editor's palette — the pen, the marker, the pencil, the eraser, the ruler or the spotlight — drawn from the layers of
 /// `PaletteObjects.xcassets`: the body, the tip's silhouette filled with the live ink colour (a template image, so the
-/// colour is the palette's and not a recoloured picture), and the tip's highlight over it; the eraser and the ruler have a body only. The artwork carries no
+/// colour is the palette's and not a recoloured picture), and the tip's highlight over it; the eraser, the ruler and the spotlight have a body only. The artwork carries no
 /// shadow, because macOS drops an SVG filter without a word; the two drop shadows of the source files (down 2 and 4 pt,
 /// blur σ 2 and 4) are two native `.shadow`s here.
 ///
@@ -47,7 +47,8 @@ struct PaletteObject: View {
             case .pen: "pen"
             case .highlighter: "marker"
             case .pencil: "pencil"
-            case .arrow, .rectangle, .ellipse, .line, .blur, .text: nil
+            case .spotlight: "spotlight"
+            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step: nil
             }
         }
     }
@@ -61,13 +62,14 @@ struct PaletteObject: View {
             case .pen: 16
             case .highlighter: 22
             case .pencil: 22
-            case .arrow, .rectangle, .ellipse, .line, .blur, .text: 0
+            case .spotlight: 22
+            case .arrow, .rectangle, .ellipse, .line, .blur, .text, .step: 0
             }
         }
     }
 
-    /// Whether the artwork has a tip to take the ink and a highlight over it: the pen, the marker and the pencil have, the eraser and the ruler have not.
-    private var hasTip: Bool { kind != .eraser && kind != .ruler }
+    /// Whether the artwork has a tip to take the ink and a highlight over it: the pen, the marker and the pencil have, the eraser, the ruler and the spotlight have not.
+    private var hasTip: Bool { kind != .eraser && kind != .ruler && kind != .tool(.spotlight) }
 
     /// Read fresh on each draw, as `HelmMotion` does.
     private var travel: Animation? {

@@ -51,10 +51,12 @@ final class AHeldArrowStopsAtTheReleaseTests: XCTestCase {
         overlay = rig.overlay
         display = rig.display
         OverlayRig.drawAndSelect(in: rig.overlay, on: rig.display)
+        rig.overlay.perform(.crop) // over a marked picture the area's handles are offered with Crop on only
         let handle = try XCTUnwrap(rig.view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .left)!])
         rig.overlay.mouseDown(on: rig.display, at: handle, flags: [])
         rig.overlay.mouseDragged(on: rig.display, at: CGPoint(x: handle.x + 150, y: handle.y), flags: [])
         rig.overlay.mouseUp(on: rig.display)
+        rig.overlay.perform(.exit(.confirm)) // Return takes the crop, and the arrows are the editor's again
         XCTAssertEqual(rig.view.drawnHandles.count, 4, "the subject: the object straddles the wall and is still selected")
         return rig.view
     }

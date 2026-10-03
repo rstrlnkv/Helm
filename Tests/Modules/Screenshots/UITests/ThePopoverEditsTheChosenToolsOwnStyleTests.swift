@@ -53,7 +53,7 @@ final class ThePopoverEditsTheChosenToolsOwnStyleTests: XCTestCase {
 
     func testASecondClickOnTheChosenRowObjectOpensThePopoverAndAFirstClickDoesNot() {
         let rowObjects = EditorPalette.objects.filter { $0.place == .row }.map(\.tool)
-        XCTAssertEqual(Set(rowObjects), [.pen, .highlighter, .pencil], "the control: the row is the three the plan names")
+        XCTAssertEqual(Set(rowObjects), [.pen, .highlighter, .pencil, .spotlight], "the control: the row is the three pens and the spotlight")
         for tool in rowObjects {
             XCTAssertEqual(EditorPalette.action(forClickOn: tool, chosen: tool, anchorX: 120), .thicknessAndOpacity(anchorX: 120),
                            "\(tool): the second click on the chosen one")

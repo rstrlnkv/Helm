@@ -129,6 +129,11 @@ enum ScStr {
     /// Marker: Marker, Marcador, Marqueur, マーカー, Marcador, Маркер, 马克笔); no table of Preview, Markup or AnnotationKit has the word.
     /// «Text» is the word of Preview's toolbar: key `TB_text` of `Preview.app`'s `Localizable.loctable` (Text, Text, Texto, Texte, テキスト,
     /// Texto, Текст, 文本), the same in `AnnotationKit.framework`'s `AKToolbarViewController.loctable` under `Text`.
+    /// «Spotlight» is the stage light's word in `PhotosFormats.framework`'s `scenetaxonomy.loctable`, key `spotlight` (Spotlight, Spotlight,
+    /// Foco, Projecteur, スポットライト, Holofote, Прожектор, 聚光灯), the same in `IMCore.framework`'s `IMCoreLocalizable.loctable`.
+    /// «Steps» has no such word for numbered marks: the system tables say it of footsteps (`Intents.framework`'s `Localizable.loctable`, key
+    /// `com.apple.intents.WorkoutNameIdentifier.Steps`: Schritte, Pasos, Pas, ステップ, Passos, Шаги, 步数), so the German, Spanish,
+    /// Japanese, Portuguese and Russian are that table's word and the French (Étapes) and the Chinese (步骤) are Helm's own.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
         case .arrow: L("Arrow")
@@ -140,6 +145,8 @@ enum ScStr {
         case .highlighter: L("Highlighter")
         case .blur: L("Blur")
         case .text: L("Text")
+        case .step: L("Steps")
+        case .spotlight: L("Spotlight")
         }
     }
 
@@ -197,6 +204,9 @@ enum ScStr {
     /// shapes are key `TB_USD_Shapes` of its `Localizable.loctable`.
     static var shapes: String { L("Shapes") }
     static var select: String { L("Select") }
+    /// The ⋯ menu's Crop, a mode of the editor and no tool: Preview's inspector toolbar item, key `PVInspectorCrop` of its
+    /// `Localizable.loctable` (Обрезка, Zuschneiden, Recortar, Recadrer, 切り取り, Recortar, 裁剪), the noun as Select is.
+    static var crop: String { L("Crop") }
     /// Preview's «Undo» and «Redo».
     static var undo: String { L("Undo") }
     static var redo: String { L("Redo") }

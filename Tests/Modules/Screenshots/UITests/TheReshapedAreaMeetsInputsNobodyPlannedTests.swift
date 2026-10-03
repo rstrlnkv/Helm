@@ -38,6 +38,8 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     private let left: UInt16 = 123, right: UInt16 = 124, down: UInt16 = 125, up: UInt16 = 126, esc: UInt16 = 53
 
     private func confirmed() throws -> (local: CGRect, layers: [Annotation]) {
+        // With Crop on, Return takes the crop and the next one is the exit.
+        if overlay?.isCropping == true { overlay?.perform(.exit(.confirm)) }
         overlay?.perform(.exit(.confirm))
         guard case .edited(_, let local, let layers, _)? = results.last else {
             XCTFail("not an edited area: \(results)")
@@ -54,6 +56,7 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     func testASelectedObjectLeftOutsideTheShrunkAreaIsLetGoOfAtTheReleaseAndStillHandedOn() throws {
         let view = try build()
         drawAndSelect()
+        overlay?.perform(.crop) // over a marked picture the area's handles are offered with Crop on only
         XCTAssertEqual(view.drawnHandles.count, 4, "the subject: an object is selected")
         // The area's right edge pulled in to x = 150: the object (200...300) is wholly outside.
         // The press is on the area's handle, and the object's own are further than its reach.
@@ -101,7 +104,7 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(local, CGRect(x: 100, y: 100, width: 400, height: 300), "an arrow moved the area under a draft")
         XCTAssertEqual(layers.count, 1)
         XCTAssertEqual(layers.first?.frame, CGRect(x: 200, y: 200, width: 100, height: 60))
-        XCTAssertEqual(view.drawnAreaHandles.count, 8)
+        XCTAssertTrue(view.drawnAreaHandles.isEmpty, "the handles of a marked picture are Crop's")
     }
 
     func testAnArrowDuringAMoveOfAnObjectChangesNothingAndTheMoveIsOneStep() throws {

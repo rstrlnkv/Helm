@@ -71,10 +71,17 @@ public enum AnnotationText {
 
     /// The system font, semibold, at the step's size (`AnnotationThickness.points(for:)`).
     public static func font(for thickness: AnnotationThickness) -> CTFont {
-        let size = thickness.points(for: .text)
+        font(size: thickness.points(for: .text), weight: semibold)
+    }
+
+    /// The weight trait of the semibold the text is set in; `AnnotationStep` sets its digit in a bold of its own.
+    static let semibold: CGFloat = 0.3
+
+    /// The system font at `size` and the weight trait `weight` (-1…1).
+    static func font(size: CGFloat, weight: CGFloat) -> CTFont {
         let base = CTFontCreateUIFontForLanguage(.system, size, nil) ?? CTFontCreateWithName("Helvetica" as CFString, size, nil)
-        let semibold = [kCTFontTraitsAttribute: [kCTFontWeightTrait: 0.3]] as CFDictionary
-        let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(base), semibold)
+        let traits = [kCTFontTraitsAttribute: [kCTFontWeightTrait: weight]] as CFDictionary
+        let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(base), traits)
         return CTFontCreateWithFontDescriptor(descriptor, size, nil)
     }
 
@@ -116,8 +123,16 @@ public enum AnnotationText {
     /// at `scale` pixels to a point; nil when there is no text, the origin is not a number, or the picture would
     /// be absurdly large.
     public static func tile(of annotation: Annotation, scale: CGFloat) -> Pixelate.Tile? {
-        guard annotation.isUsable, scale.isFinite, scale > 0 else { return nil }
-        let box = annotation.frame.insetBy(dx: -overhang, dy: -overhang)
+        guard annotation.isUsable else { return nil }
+        return tile(covering: annotation.frame, scale: scale) { draw(annotation, in: $0) }
+    }
+
+    /// What `tile(of:scale:)` makes, for any layer that is a picture of its own: `drawing` puts it in a context whose user
+    /// space is the display's top-left points, and the tile is that, with `overhang` of room round `frame`, at whole pixels of
+    /// the display. The overlay lays it as a layer's contents and the export draws the same `drawing` into the file.
+    static func tile(covering frame: CGRect, scale: CGFloat, drawing: (CGContext) -> Void) -> Pixelate.Tile? {
+        guard scale.isFinite, scale > 0 else { return nil }
+        let box = frame.insetBy(dx: -overhang, dy: -overhang)
         let x0 = (box.minX * scale).rounded(.down), y0 = (box.minY * scale).rounded(.down)
         let x1 = (box.maxX * scale).rounded(.up), y1 = (box.maxY * scale).rounded(.up)
         guard x1 > x0, y1 > y0, (x1 - x0) * (y1 - y0) < 1e8 else { return nil }
@@ -130,7 +145,7 @@ public enum AnnotationText {
         context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: scale, y: -scale)
         context.translateBy(x: -x0 / scale, y: -y0 / scale)
-        draw(annotation, in: context)
+        drawing(context)
         guard let image = context.makeImage() else { return nil }
         return Pixelate.Tile(image: image, pixels: CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0))
     }

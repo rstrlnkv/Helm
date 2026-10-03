@@ -52,8 +52,14 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
                 XCTAssertEqual(item.keyEquivalent, "", "\(item.title) is not a tool and shows a key")
             }
         }
-        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .text, .blur], "the menu's tools")
+        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .text, .step, .blur], "the menu's tools")
         for (tool, label) in shown {
+            // Steps has no letter: its item shows none and no key of the table means it.
+            if tool == .step {
+                XCTAssertEqual(label, "", "Steps shows a key")
+                XCTAssertNil(EditorKeys.toolKeys.first { $0.tool == tool }, "a key means Steps")
+                continue
+            }
             // The letter the label says, asked of the key that EditorKeys matches: the table and the matcher are one.
             let key = EditorKeys.toolKeys.first { $0.tool == tool }
             XCTAssertEqual(label, key?.letter.lowercased(), "\(tool)")

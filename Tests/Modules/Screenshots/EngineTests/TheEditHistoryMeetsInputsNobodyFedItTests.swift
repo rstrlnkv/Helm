@@ -111,8 +111,9 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
 
     func testARecolourThenUndoBringsTheOldInkBackExactly() {
         // The blur has no ink, so its recolour is no step at all (`TheBlurIsABoxTheEditorHoldsByItsAreaTests`).
-        // A text is no drag: its recolour is in `TheTextIsALineTheEditorHoldsByItsAreaTests`.
-        for tool in AnnotationTool.allCases where tool != .blur && tool != .text {
+        // A text is no drag: its recolour is in `TheTextIsALineTheEditorHoldsByItsAreaTests`. The spotlight has no ink either:
+        // its recolour is no step (`TheSpotlightsShareOneDimTests`).
+        for tool in AnnotationTool.allCases where tool != .blur && tool != .text && tool != .spotlight {
             var editing = make(tool)
             select(&editing)
             let before = editing.layers

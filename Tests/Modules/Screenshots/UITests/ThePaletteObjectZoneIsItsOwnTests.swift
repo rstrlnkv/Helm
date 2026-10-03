@@ -11,7 +11,7 @@ import Module_Screenshots_Engine
 final class ThePaletteObjectZoneIsItsOwnTests: XCTestCase {
     private let step: CGFloat = 1
     private let rows: [CGFloat] = [0.03, 0.5, 0.97]
-    private let objects: [EditorAction] = [.tool(.pen), .tool(.highlighter), .tool(.pencil), .erase, .toggleRuler]
+    private let objects: [EditorAction] = [.tool(.pen), .tool(.highlighter), .tool(.pencil), .erase, .toggleRuler, .tool(.spotlight)]
 
     @MainActor private func presses(tool: AnnotationTool?, row: CGFloat) throws -> [(x: CGFloat, action: EditorAction)] {
         try answersAcrossThePalette(language: .en, canUndoAndRedo: true, step: step, tool: tool, heightFraction: row).answers.compactMap {
@@ -32,6 +32,14 @@ final class ThePaletteObjectZoneIsItsOwnTests: XCTestCase {
         case .toggleRuler: .ruler
         default: .eraser
         }
+    }
+
+    /// The row reads pen, marker, pencil, eraser, ruler and, last, the spotlight: six objects, each answering somewhere.
+    @MainActor func testTheSixObjectsStandInTheOrderOfTheRowWithTheSpotlightAfterTheRuler() throws {
+        let sent = try presses(tool: nil, row: 0.5)
+        let firstX = objects.compactMap { object in sent.filter { $0.action == object }.map(\.x).min().map { (object, $0) } }
+        XCTAssertEqual(firstX.count, 6, "an object of the row answers nowhere: \(firstX.map(\.0))")
+        XCTAssertEqual(firstX.sorted { $0.1 < $1.1 }.map { label($0.0) }, objects.map(label), "the objects do not stand in the order of the row")
     }
 
     @MainActor func testEachObjectTakesOneRunOfItsOwnWidthAtEveryHeight() throws {

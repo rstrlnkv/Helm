@@ -32,7 +32,7 @@ final class ThePaletteObjectStandsTenPointsHigherTests: XCTestCase {
 
     @MainActor func testTheRaisedObjectStandsTenPointsAboveTheRestingOne() throws {
         for appearance in RenderedInk.bothAppearances {
-            for kind in [PaletteObject.Kind.tool(.pen), .tool(.highlighter), .tool(.pencil), .eraser, .ruler] {
+            for kind in [PaletteObject.Kind.tool(.pen), .tool(.highlighter), .tool(.pencil), .eraser, .ruler, .tool(.spotlight)] {
                 let resting = try topInkRow(kind: kind, raised: false, appearance: appearance)
                 let raised = try topInkRow(kind: kind, raised: true, appearance: appearance)
                 XCTAssertEqual(resting - raised, 10, accuracy: 1,

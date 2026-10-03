@@ -159,17 +159,19 @@ final class TheEraserMeetsInputsNobodyFedItTests: XCTestCase {
         XCTAssertEqual(rig.view.drawnShapes.count, 4)
     }
 
-    func testAHandleOfTheAreaStillResizesTheAreaUnderTheEraser() throws {
+    /// Over a marked picture the area's handles are Crop's, and Crop puts the eraser down, so under the eraser a press at the
+    /// area's corner is the eraser's and the area stays.
+    func testAHandleOfAMarkedPictureIsNotTakenUnderTheEraser() throws {
         let rig = try fourLines()
         rig.overlay.perform(.erase)
         rig.overlay.mouseDown(on: rig.display, at: CGPoint(x: area.maxX, y: area.maxY), flags: [])
         rig.overlay.mouseDragged(on: rig.display, at: CGPoint(x: area.maxX - 100, y: area.maxY - 100), flags: [])
         rig.overlay.mouseUp(on: rig.display)
-        XCTAssertEqual(rig.view.drawnShapes.count, 4, "a press on the area's handle erased")
+        XCTAssertEqual(rig.view.drawnShapes.count, 4, "the corner is bare picture: the eraser's drag from it met nothing")
         XCTAssertTrue(rig.overlay.isErasing)
         rig.overlay.perform(.exit(.confirm))
         guard case .edited(_, let local, _, _)? = results.last else { return XCTFail("nothing handed over: \(results)") }
-        XCTAssertEqual(local.size, CGSize(width: area.width - 100, height: area.height - 100))
+        XCTAssertEqual(local.size, area.size, "the area was reshaped by a handle that a marked picture does not offer")
     }
 
     func testAPressOutsideTheAreaUnderTheEraserTakesNothingAndLeavesTheAreaAlone() throws {

@@ -35,6 +35,13 @@ enum AnnotationHit {
         layers.last { hits($0, at: point) }?.id
     }
 
+    /// What a press with no tool takes: `topmost`, and where it finds nothing, the last spotlight whose box the point is inside. A spotlight is taken by its
+    /// edge like a rectangle and, here only, by its inside as well, **below** every other layer: a mark drawn over the bright part is taken first.
+    /// The eraser and a tool's press read `hits` alone.
+    static func selectable(in layers: [Annotation], at point: CGPoint) -> Annotation.ID? {
+        topmost(in: layers, at: point) ?? layers.last { $0.tool == .spotlight && $0.isUsable && $0.outline.contains(point) }?.id
+    }
+
     /// The ids of the layers an eraser's circle of `radius` meets along `path`, in the list's order: the rule is that of `hits`,
     /// the one a click selects by, with the radius as its tolerance, written again in `reached` so as to be built once per
     /// layer and not per sample; a test sweeps the two against each other, for layers wholly inside the area only, and a layer

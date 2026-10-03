@@ -41,7 +41,9 @@ final class TheEditsOfAnObjectAreOneStepEachTests: XCTestCase {
     // MARK: Click or drag
 
     func testAClickOnAnObjectSelectsItWithAnyToolAndAddsNothing() {
-        for tool in [nil] + AnnotationTool.allCases.map(Optional.some) {
+        // The steps tool is the one exception: its click places a step wherever it lands
+        // (`TheStepsAreNumberedByTheirOrderTests.testAClickOutsideTheAreaPlacesNothingAndAClickOnAnotherLayerStillPlaces`).
+        for tool in [nil] + AnnotationTool.allCases.filter({ $0 != .step }).map(Optional.some) {
             var editing = AnnotationEditing(bounds: area)
             draw(&editing)
             let id = editing.layers[0].id

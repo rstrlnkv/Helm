@@ -64,6 +64,23 @@ final class TheEscRuleHoldsAtItsEdgesTests: XCTestCase {
         XCTAssertFalse(editing.isArmed, "placing a text left the question up")
         XCTAssertEqual(editing.escape(), .armed)
     }
+
+    /// Crop's Esc gives the area back through `reshape(bounds:)` and never through `escape()`, so it cannot arm the rule: the value
+    /// is left as it was, and a question already asked is withdrawn by it like by any input. The overlay's side of this, that the Esc
+    /// after a crop is the first of the rule, is `TheCropIsTakenByReturnAndUndoneByEscTests`.
+    func testTheAreaGivenBackByCropLeavesTheRuleUnarmedAndWithdrawsAQuestionAsked() {
+        var editing = armed()
+        editing.reshape(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
+        XCTAssertFalse(editing.isArmed, "a reshape left the question up")
+        var fresh = AnnotationEditing(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
+        fresh.begin(.arrow, at: CGPoint(x: 10, y: 10))
+        fresh.drag(to: CGPoint(x: 100, y: 80), shift: false)
+        fresh.end()
+        fresh.reshape(bounds: CGRect(x: 0, y: 0, width: 200, height: 300))
+        fresh.reshape(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
+        XCTAssertFalse(fresh.isArmed, "the area going out and back armed the rule")
+        XCTAssertEqual(fresh.escape(), .armed, "the first press after a crop's Esc closed the picture")
+    }
 }
 
 /// The question has no clock in real time either: a pause long enough for any window to lapse.

@@ -33,7 +33,7 @@ enum OverlayResult {
 ///
 /// **Two phases, one panel.** Selecting is the drag; once an area is released the
 /// overlay stays and edits it: `edit` is non-nil, the crosshair is gone and the size
-/// plate shows only while an area handle is held, and the keys mean tools, undo and the exits. The picture under the
+/// plate shows only while an area handle is held and all the while Crop is on, and the keys mean tools, undo and the exits. The picture under the
 /// layers is never touched, so every layer is a value that can be undone.
 @MainActor final class CaptureOverlay {
     /// What the overlay opens in: the area crosshair, or the camera over windows.
@@ -71,6 +71,10 @@ enum OverlayResult {
     /// An area handle under the pointer: which one, the area as the press took it and where the
     /// press landed. Not an edit of the layers, so no undo step: the area is not a layer.
     private var reshaping: (display: DisplayID, handle: AreaHandle, base: CGRect, press: CGPoint)?
+    /// Crop is on: the area as it stood when the mode began, the base area. A mode of this overlay, like the eraser, and no `AnnotationTool`. The
+    /// area is reshaped live by its handles, as `reshaping` does, and Return takes what it has become, which is no undo step; Esc, Crop
+    /// asked again, a tool, the eraser and Select put this one back. Nothing of it is remembered.
+    private var crop: CGRect?
     /// The pointer on the display it is over, in that display's top-left points.
     private var pointer: (display: DisplayID, point: CGPoint)?
     private var hovered: FrozenWindow?
@@ -94,6 +98,10 @@ enum OverlayResult {
     /// overlay itself reads them to place, draw and close it.
     var popoverIsOpen: Bool { popover != nil }
     var thicknessIsOpen: Bool { popover?.kind == .thickness }
+    /// The layers the editor holds now, in the list's order, for a test that holds the screen against the file made from them.
+    var editedLayers: [Annotation] { edit?.layers.layers ?? [] }
+    /// The area the editor holds now, a crop still pending included, for a test that reads it without leaving.
+    var editedArea: CGRect? { edit?.rect }
     var coloursAreOpen: Bool { popover?.kind == .colours }
     /// The text being typed: the display whose field it is in and where the line starts, in that display's top-left
     /// points. The field itself is the view's (`OverlayView.textField`); this is the overlay's one record that an input
@@ -269,15 +277,16 @@ enum OverlayResult {
         }
         if var current = edit, drag == nil {
             current.layers.disarm()
-            // The editor reads the press on the edited display only: a handle of the area reshapes it
-            // (an object's own handle, where the two meet, is taken first), then, with the eraser on, the erase,
+            // The editor reads the press on the edited display only: a handle of the area reshapes it, where the area offers
+            // them (with no layers, or with Crop on; an object's own handle, where the two meet, is taken first), then, with the eraser on, the erase,
             // then the ruler's strip where the area shows it, and then a tool draws, a handle
             // resizes, an object is taken to be moved, and a click selects or lets go. What is
             // left is no tool and no layers, the old gesture, a new drag, which replaces the
             // area only when it turns out to be one; on another display, with a tool or with
             // layers, a press does nothing. The disarm is the click's own effect, kept either way.
             if display == current.display,
-               let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected) {
+               let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected,
+                                             layersExist: !current.layers.layers.isEmpty, cropping: crop != nil) {
                 current.layers.end()
                 reshaping = (display, handle, current.rect, local)
                 edit = current
@@ -342,7 +351,8 @@ enum OverlayResult {
                let rect = AreaFrame.resized(held.base, held.handle, from: held.press, to: local, within: bounds) {
                 current.rect = rect
                 current.layers.reshape(bounds: rect)
-                ruler?.keep(within: rect)
+                // While Crop is on the strip is kept inside at Return, so that Esc gives it back where it was.
+                if crop == nil { ruler?.keep(within: rect) }
                 edit = current
             }
             render()
@@ -375,9 +385,11 @@ enum OverlayResult {
     /// is the one failure here that strands a person.
     func rightMouseDown() { escapeAsked() }
 
-    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`; a press while an area handle is held only puts the area back and does nothing else:
-    /// at once with nothing to lose, and with layers a second press, whenever
-    /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
+    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`, and it is asked last. Before it, in this order, each press does
+    /// only its own thing and arms nothing: an open text input is ended, an open pop-over is closed, a held area handle puts the area back as the press
+    /// took it, and with Crop on the area goes back as the mode found it (a selected object stays selected). Then the rule: at once with nothing to
+    /// lose, and with layers a second press, whenever it comes; a selected object is let go of first, and that press asks nothing. A drag in
+    /// progress is not an edit and leaves at once.
     private func escapeAsked() {
         pinRefused = false
         // An open input takes this press and nothing else: it places a non-empty text and drops an empty one, and the
@@ -391,6 +403,13 @@ enum OverlayResult {
             reshaping = nil
             current.rect = held.base
             current.layers.reshape(bounds: held.base)
+            edit = current
+            render()
+            return
+        }
+        // Crop on: the area goes back as the mode found it. That press does only that and does not arm the rule below, which
+        // starts with the next press.
+        if var current = edit, drag == nil, dropCrop(&current) {
             edit = current
             render()
             return
@@ -445,6 +464,7 @@ enum OverlayResult {
             style = memory.style(for: styleTool)
         }
         edit = (display, rect, AnnotationEditing(bounds: rect), tool)
+        crop = nil
         // A strip on the picture goes with the area to the middle of the new one.
         if ruler != nil { ruler = .centred(in: rect) }
         rulerDrag = nil
@@ -537,7 +557,7 @@ enum OverlayResult {
             if !current.layers.nudgeSelected(by: delta) {
                 current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
                 current.layers.reshape(bounds: current.rect)
-                ruler?.keep(within: current.rect)
+                if crop == nil { ruler?.keep(within: current.rect) }
             } else if hadSelection, current.layers.selected == nil {
                 arrowReleasedObject = true
             }
@@ -558,6 +578,7 @@ enum OverlayResult {
             // The same key again puts the tool down, which is how a drag selects again;
             // a held key's repeats are not that second press.
             guard !isRepeat else { return }
+            dropCrop(&current)
             // Under the eraser a tool's key picks that tool, even the one chosen under it: the eraser is what puts down.
             current.tool = current.tool == tool && !erasing ? nil : tool
             erasing = false
@@ -568,6 +589,7 @@ enum OverlayResult {
         case .erase?:
             // The key again puts the eraser down, as a tool's does; the tool chosen under it is as it was, and the store is not asked.
             guard !isRepeat else { return }
+            dropCrop(&current)
             erasing.toggle()
             popover = nil
         case .toggleRuler?:
@@ -577,7 +599,18 @@ enum OverlayResult {
             rulerDrag = nil
             rulerTurn = nil
             popover = nil
+        case .crop?:
+            // Crop is a mode: it puts the eraser and the chosen tool down (the store is not asked, so the next capture opens on the tool
+            // it did), and the pop-over of a tool with them. Choosing it again is Esc's: the area back.
+            guard !isRepeat else { return }
+            if !dropCrop(&current) {
+                crop = current.rect
+                current.tool = nil
+                erasing = false
+                popover = nil
+            }
         case .select?:
+            dropCrop(&current)
             current.tool = nil
             erasing = false
             popover = nil
@@ -600,8 +633,8 @@ enum OverlayResult {
             style.opacity = value.clamped(to: 0.1...1, whenNotANumber: 1)
             remember()
         case .thicknessAndOpacity(let anchorX)?:
-            // A second request closes it; with no tool chosen, or the eraser on, there is nothing whose steps it could set.
-            popover = current.tool != nil && !erasing && !thicknessIsOpen ? (.thickness, anchorX) : nil
+            // A second request closes it; with no tool chosen, the spotlight, which has no steps, or the eraser on, there is nothing whose steps it could set.
+            popover = current.tool != nil && current.tool != .spotlight && !erasing && !thicknessIsOpen ? (.thickness, anchorX) : nil
         case .colours(let anchorX)?:
             // Opened with no tool chosen too: the colour is every tool's. The other pop-over gives way to it.
             popover = coloursAreOpen ? nil : (.colours, anchorX)
@@ -617,12 +650,20 @@ enum OverlayResult {
         case .delete?: current.layers.deleteSelected()
         case .undo?: current.layers.undo()
         case .redo?: current.layers.redo()
+        case .exit(.confirm)? where crop != nil:
+            // Return (and Done, which sends the same) takes the crop and leaves the editor open on the new area: the strip is
+            // brought inside it, and no step is recorded, as for any reshape of the area.
+            guard !isRepeat else { return }
+            crop = nil
+            ruler?.keep(within: current.rect)
         case .exit(let how)?:
             guard !isRepeat else { return }
             popover = nil
-            // No room for a pin: the editor stays, with the picture in it, and says why on the plate
+            // No room for a pin: the editor stays, with the picture in it, a pending crop still pending, and says why on the plate
             // (the toast lies below the overlay and could not be seen).
             if how == .pin, !pinRoom() { pinRefused = true; return }
+            // An exit that is no Return delivers the area as the screen shows it, a pending crop included.
+            crop = nil
             // What the screen shows is what is delivered: a stroke still under the
             // pointer becomes a layer now, and an unusable one is dropped by `end`.
             current.layers.end()
@@ -630,6 +671,20 @@ enum OverlayResult {
         case .nudge?, .close?, nil: break
         }
     }
+
+    /// Crop is put down with the area as the mode found it: true when it was on. Not a step, and the layers are told the bounds as a
+    /// reshape tells them.
+    @discardableResult
+    private func dropCrop(_ current: inout (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)) -> Bool {
+        guard let base = crop else { return false }
+        crop = nil
+        current.rect = base
+        current.layers.reshape(bounds: base)
+        return true
+    }
+
+    /// Whether Crop is on, for a test and for nobody else.
+    var isCropping: Bool { crop != nil }
 
     /// Whether the eraser is on, for a test and for nobody else.
     var isErasing: Bool { erasing }
@@ -695,7 +750,7 @@ enum OverlayResult {
         freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
     }
 
-    /// Where the palette stands on `display`: nil when it is not the edited one, and nil while an
+    /// Where the palette stands on `display`, under the area (under the base area while Crop is on): nil when it is not the edited one, and nil while an
     /// object is being drawn, moved or resized — a palette under the pointer would be drawn into — or
     /// the area is being reshaped or a new one dragged. It is back on the release, and on the
     /// Esc that drops a drawing or cancels a move, a resize or a reshape.
@@ -703,10 +758,13 @@ enum OverlayResult {
         guard let edit, drag == nil, reshaping == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
         let screen = view.frozen.frame.size
-        let bare = EditorChrome.place(selection: edit.rect, in: screen, palette: view.paletteSize)
+        // With Crop on the palette stands under the area as the mode found it, so it never covers the strip a handle is
+        // dragged back into; after Return it stands under the new one.
+        let area = crop ?? edit.rect
+        let bare = EditorChrome.place(selection: area, in: screen, palette: view.paletteSize)
         guard let open = popover else { return bare }
         // The pop-over's cell is in the palette's own points; the palette does not move for it.
-        return EditorChrome.place(selection: edit.rect, in: screen, palette: view.paletteSize,
+        return EditorChrome.place(selection: area, in: screen, palette: view.paletteSize,
                                   popover: open.kind == .colours ? view.coloursSize : view.popoverSize,
                                   anchorX: bare.palette.minX + open.anchorX)
     }
@@ -720,7 +778,7 @@ enum OverlayResult {
     private func render() {
         if let edit {
             let held = edit.layers.selected
-            palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
+            palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, cropping: crop != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
                       popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
         }
         for (id, entry) in panels {
@@ -738,6 +796,8 @@ enum OverlayResult {
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.draftID = edit.layers.draft?.id
                 scene.erasing = erasing
+                scene.cropping = crop != nil
+                scene.handlesOffered = AreaFrame.offersHandles(layersExist: !edit.layers.layers.isEmpty, cropping: crop != nil)
                 scene.ruler = ruler
                 scene.fading = edit.layers.erased
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
@@ -766,7 +826,7 @@ struct OverlayScene {
     var pointer: CGPoint?
     var selection: CGRect?
     var highlight: CGRect?
-    /// The area is being edited: no crosshair; the size plate only while an area handle is held (`sizingAt`).
+    /// The area is being edited: no crosshair; the size plate only while an area handle is held (`sizingAt`) and all the while Crop is on (`cropping`).
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
@@ -774,6 +834,10 @@ struct OverlayScene {
     var draftID: Annotation.ID?
     /// The eraser is on: the cursor is its circle.
     var erasing = false
+    /// Crop is on: the size plate stands at the area's top-left corner.
+    var cropping = false
+    /// The area's handles are drawn: no layer on the picture, or Crop on (`AreaFrame.offersHandles`).
+    var handlesOffered = true
     /// The layers the eraser's drag has met: drawn at `OverlayView.fadedOpacity` until the release takes them.
     var fading: Set<Annotation.ID> = []
     /// The ruler on the picture: drawn above the layers, clipped to the selection, and in no file.
@@ -847,6 +911,9 @@ final class OverlayView: NSView {
 
     private let imageLayer = CALayer()
     private let dimLayer = CAShapeLayer()
+    /// The spotlights' one dim (`Spotlights`): under every annotation's layer and over the picture, a layer of its own and
+    /// not one per spotlight, so the dim does not add up where two spotlights meet.
+    private let spotlightLayer = CAShapeLayer()
     private let highlightLayer = CAShapeLayer()
     private let selectionLayer = CAShapeLayer()
     /// The selected object's box and handles: over the dim, since a handle on the selection's
@@ -943,6 +1010,8 @@ final class OverlayView: NSView {
         imageLayer.contentsScale = frozen.scale
 
         dimLayer.fillRule = .evenOdd
+        spotlightLayer.fillRule = .evenOdd
+        spotlightLayer.fillColor = Spotlights.color
         dimLayer.fillColor = NSColor.black.withAlphaComponent(0.45).cgColor
 
         highlightLayer.fillColor = NSColor.controlAccentColor.withAlphaComponent(0.28).cgColor
@@ -974,13 +1043,14 @@ final class OverlayView: NSView {
         crosshairLayer.shadowOffset = .zero
 
         rulerLayer.isHidden = true
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
+        for sublayer in [imageLayer, spotlightLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
                          crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
         imageLayer.frame = bounds
         dimLayer.frame = bounds
+        spotlightLayer.frame = bounds
         for label in [coordinateLabel, sizeLabel] { label.isHidden = true }
 
         addTrackingArea(NSTrackingArea(
@@ -1138,7 +1208,7 @@ final class OverlayView: NSView {
         drawLayers(scene)
         rulerLayer.frame = bounds
         rulerLayer.show(scene.editing ? scene.ruler : nil, in: scene.selection ?? .zero, height: bounds.height, scale: frozen.scale)
-        drawAreaHandles(scene.editing ? scene.selection : nil)
+        drawAreaHandles(scene.editing && scene.handlesOffered ? scene.selection : nil)
         if let chrome = scene.chrome {
             _ = measuredPalette
             paletteHost.frame = layerRect(chrome.palette)
@@ -1175,11 +1245,17 @@ final class OverlayView: NSView {
         // place — the size *replaces* the coordinates, as macOS's own ⌘⇧4 does.
         // Two plates at the pointer's offset lay one over the other.
         if scene.editing {
-            // Editing has no crosshair and no size plate; only the Esc question, and the size of an
-            // area being reshaped, which is the drag's own plate.
+            // Editing has no crosshair and no size plate; only the Esc question, the size of an
+            // area being reshaped, which is the drag's own plate, and Crop's plate, which stands all the while the mode is on.
             coordinateLabel.isHidden = true
             sizeLabel.isHidden = true
-            if let at = scene.sizingAt, let selection = scene.selection {
+            if scene.cropping, scene.plate == nil, let selection = scene.selection {
+                // Crop's plate stands at the area's top-left corner, 14 points to the right of it and 12 above, whatever is held;
+                // a sentence for the plate (the refused pin's) takes its place.
+                let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
+                let box = layerRect(selection)
+                sizeLabel.show("\(pixels.width) × \(pixels.height)", near: CGPoint(x: box.minX + 14, y: box.maxY + 12), within: bounds)
+            } else if let at = scene.sizingAt, let selection = scene.selection {
                 let pixels = Selection.pixelSize(of: selection, scale: frozen.scale)
                 sizeLabel.show("\(pixels.width) × \(pixels.height)",
                                near: CGPoint(x: at.x + 14, y: bounds.height - at.y - 26), within: bounds)
@@ -1234,6 +1310,7 @@ final class OverlayView: NSView {
             drawnShapes = []
             shapeCache = [:]
             draftGrain = nil
+            spotlightLayer.path = nil
             drawHandles(nil)
             return
         }
@@ -1243,16 +1320,20 @@ final class OverlayView: NSView {
             shapeCache = [:]
             cachedBox = box
         }
-        var kept: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool)] = [:]
-        for annotation in scene.layers {
+        // The spotlights are one layer, laid here and not by `makeShape`: a layer of each would dim twice where two meet.
+        var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
+        spotlightLayer.path = Spotlights.dim(of: scene.layers, within: selection)?.copy(using: &turn)
+        var kept: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool, number: Int?)] = [:]
+        for (annotation, number) in zip(scene.layers, AnnotationStep.numbers(in: scene.layers)) where annotation.tool != .spotlight {
             let draft = annotation.id == scene.draftID
-            if let entry = shapeCache[annotation.id], entry.annotation == annotation {
+            // A step's picture holds its number, which another step's removal changes without touching the layer.
+            if let entry = shapeCache[annotation.id], entry.annotation == annotation, entry.number == number {
                 // The draft's grain covers the display; once it is released it is cut to the stroke's own box.
                 if entry.draft && !draft && annotation.tool.isGrainy { entry.shape.mask = grainMask(annotation, draft: false) }
-                kept[annotation.id] = (entry.annotation, entry.shape, draft)
+                kept[annotation.id] = (entry.annotation, entry.shape, draft, number)
             } else {
                 shapeCache[annotation.id]?.shape.removeFromSuperlayer()
-                kept[annotation.id] = (annotation, makeShape(annotation, clippedTo: box, draft: draft), draft)
+                kept[annotation.id] = (annotation, makeShape(annotation, number: number, clippedTo: box, draft: draft), draft, number)
             }
         }
         for (id, entry) in shapeCache where kept[id]?.shape !== entry.shape { entry.shape.removeFromSuperlayer() }
@@ -1299,10 +1380,11 @@ final class OverlayView: NSView {
         return layer
     }
 
-    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect, draft: Bool) -> CALayer {
+    private func makeShape(_ annotation: Annotation, number: Int?, clippedTo box: CGRect, draft: Bool) -> CALayer {
         shapeBuilds += 1
         if annotation.tool == .blur { return makeMosaic(annotation, clippedTo: box) }
         if annotation.tool == .text { return makeTiled(AnnotationText.tile(of: annotation, scale: frozen.scale), clippedTo: box) }
+        if let number { return makeTiled(AnnotationStep.tile(of: annotation, number: number, scale: frozen.scale), clippedTo: box) }
         let clip = CGPath(rect: box, transform: nil)
         var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
         let shape = CAShapeLayer()
@@ -1406,10 +1488,14 @@ final class OverlayView: NSView {
     /// scene's against, and a test reads it to see the editor drew what it holds and what a layer is made of.
     private(set) var drawnShapes: [CALayer] = []
 
+    /// The one layer the spotlights' dim is, which a test lays over the picture to see what the screen shows of them: it is none of
+    /// `drawnShapes`, and it stands under them.
+    var drawnSpotlightDim: CAShapeLayer { spotlightLayer }
+
     /// How many shape layers were built since the view was made, for a test that counts the
     /// rebuilds a pointer event costs.
     private(set) var shapeBuilds = 0
-    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool)] = [:]
+    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool, number: Int?)] = [:]
     private var cachedBox: CGRect?
 
     /// Where the selected object's handles are drawn, in display-local points; none for none.

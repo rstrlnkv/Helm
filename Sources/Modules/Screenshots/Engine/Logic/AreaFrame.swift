@@ -48,11 +48,19 @@ public enum AreaFrame {
          (.bottomLeft, CGPoint(x: rect.minX, y: rect.maxY)), (.left, CGPoint(x: rect.minX, y: rect.midY))]
     }
 
-    /// The handle of `rect` nearest to `point` within the reach; nil for none. **An object's handle
+    /// Whether the area is held by its handles at all: while the picture carries no layer, or while Crop is on. A stroke
+    /// that begins at the edge of a marked picture would otherwise meet a handle, so the handles go with the first mark
+    /// and Crop brings them back. The one predicate the press (`handle(of:at:yieldingTo:layersExist:cropping:)`) and the
+    /// screen's dots both read.
+    public static func offersHandles(layersExist: Bool, cropping: Bool) -> Bool { !layersExist || cropping }
+
+    /// The handle of `rect` nearest to `point` within the reach; nil for none, and for every point while
+    /// `offersHandles(layersExist:cropping:)` is false. **An object's handle
     /// wins an overlap**: when `object` has a handle within its own reach of `point`, the area has
     /// none there, because the press belongs to the thing the person has just selected.
-    public static func handle(of rect: CGRect, at point: CGPoint, yieldingTo object: Annotation? = nil) -> AreaHandle? {
-        guard point.x.isFinite, point.y.isFinite else { return nil }
+    public static func handle(of rect: CGRect, at point: CGPoint, yieldingTo object: Annotation? = nil,
+                              layersExist: Bool = false, cropping: Bool = false) -> AreaHandle? {
+        guard offersHandles(layersExist: layersExist, cropping: cropping), point.x.isFinite, point.y.isFinite else { return nil }
         if let object, AnnotationHit.handle(of: object, at: point) != nil { return nil }
         let within = reach(on: rect)
         return offered(on: rect)

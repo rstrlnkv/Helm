@@ -61,3 +61,7 @@ a community recreation of Apple's iPadOS 13 PencilKit picker.
   the Ruler are a body layer only),
   thickness labels removed, the shadow margin cropped, the dark Marker re-aligned to the
   light one's height.
+
+The Spotlight object in the same catalogue (`spotlight-light-body` and `spotlight-dark-body`): its shape was drawn for Helm; the body and band
+fills are the Pen's gradients from that file (the same stops as `pen-light-body` and `pen-dark-body`, the dark ones written with fewer digits), and
+the beam and lens gradients are Helm's. The SVG filter its source carried was removed, as for the others, since macOS drops filters.

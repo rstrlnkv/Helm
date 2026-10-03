@@ -38,6 +38,8 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
     private let left: UInt16 = 123, right: UInt16 = 124, down: UInt16 = 125, up: UInt16 = 126, esc: UInt16 = 53
 
     private func confirmed() throws -> (local: CGRect, layers: [Annotation]) {
+        // With Crop on, Return takes the crop and the next one is the exit.
+        if overlay?.isCropping == true { overlay?.perform(.exit(.confirm)) }
         overlay?.perform(.exit(.confirm))
         guard case .edited(_, let local, let layers, _)? = results.last else {
             XCTFail("not an edited area: \(results)")
@@ -46,8 +48,12 @@ final class TheReleaseOfTheReshapeMeetsTheEdgeCasesTests: XCTestCase {
         return (local, layers)
     }
 
-    /// One rectangle (200,200)-(300,260) drawn and selected by a click on its left edge.
-    private func drawAndSelect() { OverlayRig.drawAndSelect(in: overlay, on: display) }
+    /// One rectangle (200,200)-(300,260) drawn and selected by a click on its left edge, and Crop on: over a marked picture the
+    /// area's handles are offered with it only.
+    private func drawAndSelect() {
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        overlay?.perform(.crop)
+    }
 
     private func pull(_ view: OverlayView, to x: CGFloat, release: Bool = true) throws {
         let at = try XCTUnwrap(view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .right)!])

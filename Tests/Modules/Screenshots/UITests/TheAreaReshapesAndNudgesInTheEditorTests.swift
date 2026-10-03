@@ -51,6 +51,8 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
 
     /// What the overlay hands on if Return is pressed now.
     private func confirmed() throws -> (local: CGRect, layers: [Annotation]) {
+        // With Crop on, Return takes the crop and the next one is the exit.
+        if overlay?.isCropping == true { overlay?.perform(.exit(.confirm)) }
         overlay?.perform(.exit(.confirm))
         guard case .edited(_, let local, let layers, _)? = results.last else {
             XCTFail("not an edited area: \(results)")
@@ -87,7 +89,10 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         drawRectangle()
         selectRectangle()
         XCTAssertEqual(view.drawnHandles.count, 4, "the object's four corners")
-        XCTAssertEqual(view.drawnAreaHandles.count, 8, "the area's went when an object was selected")
+        XCTAssertTrue(view.drawnAreaHandles.isEmpty, "the area's handles stayed after the first mark")
+        overlay?.perform(.crop)
+        XCTAssertEqual(view.drawnAreaHandles.count, 8, "Crop did not bring the area's handles back")
+        XCTAssertEqual(view.drawnHandles.count, 4, "Crop let go of the selected object")
     }
 
     func testEveryHandleReshapesTheAreaAndTheFileCropAndTheRememberedAreaAreTheNewOne() throws {
@@ -130,6 +135,7 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
             overlay?.perform(.tool(.rectangle))
             selectRectangle(at: CGPoint(x: 160, y: 200))
             XCTAssertNotNil(view.drawnHandles.first { $0 == CGPoint(x: 104, y: 104) }, "the subject: the object is held by that corner")
+            overlay?.perform(.crop) // over a marked picture the area's handles are offered with Crop on only
             return view
         }
         // On the area's own centre, which is nearer to the area's handle than to the object's: still the object's.
@@ -157,6 +163,7 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         drawRectangle() // (200,200)-(300,260)
         selectRectangle()
         XCTAssertEqual(view.drawnHandles.count, 4, "the subject: the object is selected")
+        overlay?.perform(.crop)
         // Partly inside: the left edge to x = 250 cuts the object in two.
         try pull(view, .left, by: CGPoint(x: 150, y: 0))
         XCTAssertEqual(view.drawnHandles.count, 4, "an object partly inside the area was let go of")
@@ -174,6 +181,7 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         let view = try build()
         drawRectangle()
         selectRectangle()
+        overlay?.perform(.crop)
         try pull(view, .left, by: CGPoint(x: 250, y: 0), release: false)
         overlay?.rightMouseDown() // the other door of Esc
         overlay?.mouseUp(on: display)
@@ -236,7 +244,7 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         XCTAssertEqual(view.drawnShapes.count, 1)
         let before = try XCTUnwrap((view.drawnShapes[0] as? CAShapeLayer)?.path).boundingBoxOfPath
         XCTAssertEqual(before.maxX, 450 + 1.5, accuracy: 2, "the subject: the outline reaches x = 450 before the reshape")
-        overlay?.perform(.tool(.rectangle)) // tool down
+        overlay?.perform(.crop) // the handles of a marked picture are Crop's
         try pull(view, .right, by: CGPoint(x: -150, y: 0))
         XCTAssertEqual(view.drawnShapes.count, 1)
         let after = try XCTUnwrap((view.drawnShapes[0] as? CAShapeLayer)?.path).boundingBoxOfPath
@@ -253,6 +261,7 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
     func testTheLayersAreHandedOnWhereTheyWereDrawnWhateverTheNewAreaIs() throws {
         let view = try build()
         drawRectangle(from: CGPoint(x: 150, y: 150), to: CGPoint(x: 450, y: 250))
+        overlay?.perform(.crop)
         try pull(view, .topLeft, by: CGPoint(x: 200, y: 200)) // the area now starts at 300, 300
         let (local, layers) = try confirmed()
         XCTAssertEqual(local, CGRect(x: 300, y: 300, width: 200, height: 100))

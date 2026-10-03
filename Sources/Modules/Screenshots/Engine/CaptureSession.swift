@@ -212,7 +212,17 @@ public final class CaptureSession: @unchecked Sendable {
                 else { continue }
                 context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
                 context.setAllowsAntialiasing(true)
-                for layer in layers {
+                // The spotlights' one dim, under every other layer: a spotlight is no layer of its own here and draws nothing below.
+                context.saveGState()
+                context.translateBy(x: 0, y: CGFloat(cut.height))
+                context.scaleBy(x: scale, y: -scale)
+                context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                Spotlights.draw(layers, within: CGRect(x: origin.x / scale, y: origin.y / scale,
+                                                       width: CGFloat(cut.width) / scale, height: CGFloat(cut.height) / scale),
+                                in: context)
+                context.restoreGState()
+                for (layer, number) in zip(layers, AnnotationStep.numbers(in: layers)) {
+                    if layer.tool == .spotlight { continue }
                     if layer.tool == .blur {
                         // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
                         // A box with no pixel on the display is skipped; a box that has pixels and
@@ -246,6 +256,11 @@ public final class CaptureSession: @unchecked Sendable {
                     context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
                     if layer.tool == .text {
                         AnnotationText.draw(layer, in: context)
+                        context.restoreGState()
+                        continue
+                    }
+                    if let number {
+                        AnnotationStep.draw(layer, number: number, in: context)
                         context.restoreGState()
                         continue
                     }

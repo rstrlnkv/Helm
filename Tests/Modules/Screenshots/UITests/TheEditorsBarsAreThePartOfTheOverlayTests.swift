@@ -255,14 +255,20 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
 
     func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
         let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45, .blur: 11, .text: 17]
-        XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
+        // The steps (an item of the ⋯ menu) and the spotlight (a cell of the palette) have no letter, and the menu shows none for them.
+        let keyless: Set<AnnotationTool> = [.step, .spotlight]
+        XCTAssertEqual(Set(codes.keys).union(keyless), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
-            XCTAssertEqual(EditorKeys.action(keyCode: codes[tool]!, flags: []), .tool(tool), "\(tool): the key means another tool")
+            if let code = codes[tool] {
+                XCTAssertEqual(EditorKeys.action(keyCode: code, flags: []), .tool(tool), "\(tool): the key means another tool")
+            } else {
+                XCTAssertFalse(EditorKeys.toolKeys.contains { $0.tool == tool }, "\(tool): has a key the test does not know")
+            }
             var drawn: [AnnotationTool] = []
-            for viaKey in [true, false] {
+            for viaKey in codes[tool] == nil ? [false] : [true, false] {
                 let (first, _) = try build()
                 select(first)
-                if viaKey { overlay?.keyDown(key(codes[tool]!)) } else { overlay?.palette.perform(.tool(tool)) }
+                if viaKey, let code = codes[tool] { overlay?.keyDown(key(code)) } else { overlay?.palette.perform(.tool(tool)) }
                 XCTAssertEqual(overlay?.palette.tool, tool, "\(tool) viaKey=\(viaKey): the palette does not show the tool")
                 if tool == .text {
                     // A text is a press and a field and not a drag; it is placed by the exit.
@@ -275,7 +281,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 overlay?.perform(.exit(.confirm))
                 drawn += try XCTUnwrap(edited()).layers.map(\.tool)
             }
-            XCTAssertEqual(drawn, [tool, tool], "\(tool): the key and the button drew different things")
+            XCTAssertEqual(drawn, codes[tool] == nil ? [tool] : [tool, tool], "\(tool): the key and the button drew different things")
         }
     }
 
@@ -286,8 +292,8 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         XCTAssertNil(EditorKeys.action(keyCode: 45, flags: .command), "⌘N picked the pen")
         XCTAssertNil(EditorKeys.action(keyCode: 45, flags: [.control]), "⌃N picked the pen")
         XCTAssertEqual(EditorKeys.action(keyCode: 45, flags: .capsLock), .tool(.pen), "Caps Lock read as a chord")
-        XCTAssertEqual(EditorPalette.objects.filter { $0.place == .row }.map(\.tool), [.pen, .highlighter, .pencil],
-                       "the row is not Pen, Marker, Pencil")
+        XCTAssertEqual(EditorPalette.objects.filter { $0.place == .row }.map(\.tool), [.pen, .highlighter, .pencil, .spotlight],
+                       "the row is not Pen, Marker, Pencil (and the spotlight, which the palette stands after the eraser and the ruler)")
         XCTAssertEqual(Set(EditorPalette.objects.map(\.tool)), Set(AnnotationTool.allCases), "a tool has no cell")
     }
 
@@ -464,7 +470,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     func testEveryControlOnThePaletteIsNamedAndDistinctInEveryLanguage() {
         AppLanguage.each { language in
             let groups = paletteNames
-            XCTAssertEqual(groups[0].words.count, 5, "\(language): the row is Pen, Marker, Pencil, Eraser and Ruler")
+            XCTAssertEqual(groups[0].words.count, 6, "\(language): the row is Pen, Marker, Pencil, Eraser, Ruler and Spotlight")
             for (name, words) in groups {
                 XCTAssertFalse(words.contains(where: \.isEmpty), "\(language) \(name)")
                 XCTAssertEqual(Set(words).count, words.count, "\(language): two controls share a name among \(name): \(words)")
@@ -479,9 +485,9 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         let tokens = Set(try NSRegularExpression(pattern: #"(?:ScStr|HelmA11y)\.[A-Za-z]+"#)
             .matches(in: source, range: NSRange(source.startIndex..., in: source))
             .map { String(source[Range($0.range, in: source)!]) })
-        // `select` is the label that shows the chosen tool, not a control.
+        // `select` and `crop` are the labels that show the chosen tool or mode, not controls.
         let known: Set<String> = ["ScStr.tool", "ScStr.eraser", "ScStr.ruler", "ScStr.ink", "ScStr.allColours", "ScStr.undo", "ScStr.redo", "HelmA11y.moreActions",
-                                  "ScStr.done", "ScStr.closeEditor", "ScStr.select"]
+                                  "ScStr.done", "ScStr.closeEditor", "ScStr.select", "ScStr.crop"]
         XCTAssertEqual(tokens, known, "the palette names a control this test does not list, or lists one the palette lost")
     }
 
@@ -501,7 +507,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 }
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
-            XCTAssertEqual(menu.count, 12, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Blur, Select, Thickness and Opacity, Save, Pin: \(menu)")
+            XCTAssertEqual(menu.count, 14, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Thickness and Opacity, Save, Pin: \(menu)")
             let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")

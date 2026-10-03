@@ -25,6 +25,9 @@ enum EditorAction: Equatable {
     /// The ruler: a switch and no tool and no mode. It is put on the picture, in the middle of the area, or lowered; the tool chosen,
     /// or the eraser, is as it was.
     case toggleRuler
+    /// The ⋯ menu's Crop, a mode and no tool, with no key: while it is on the area's handles are offered, the pending area is what
+    /// the screen shows, Return takes it and Esc, a tool, the eraser or Select gives the area back. Choosing it again is Esc's.
+    case crop
     /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
     case select
     /// The next object's colour, thickness and, for the boxes, fill.

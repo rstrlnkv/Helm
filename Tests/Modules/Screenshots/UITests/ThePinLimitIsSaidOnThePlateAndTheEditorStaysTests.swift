@@ -49,6 +49,21 @@ final class ThePinLimitIsSaidOnThePlateAndTheEditorStaysTests: XCTestCase {
         XCTAssertEqual(view.visiblePlates.compactMap(\.string), [ScStr.pinLimit], "the limit was not said on the plate")
     }
 
+    /// A pin refused for want of room is no exit and takes nothing: a pending crop stays pending, with its area as the handles left it.
+    func testARefusedPinLeavesAPendingCropPending() throws {
+        let (overlay, display, view) = try build()
+        overlay.perform(.crop)
+        let at = try XCTUnwrap(view.drawnAreaHandles[AreaHandle.allCases.firstIndex(of: .right)!])
+        overlay.mouseDown(on: display, at: at, flags: [])
+        overlay.mouseDragged(on: display, at: CGPoint(x: at.x - 100, y: at.y), flags: [])
+        overlay.mouseUp(on: display)
+        XCTAssertEqual(overlay.editedArea, CGRect(x: 100, y: 100, width: 300, height: 300), "the subject: a handle cut the area")
+        overlay.perform(.exit(.pin))
+        XCTAssertEqual(view.visiblePlates.compactMap(\.string).filter { $0 == ScStr.pinLimit }, [ScStr.pinLimit], "the control: the pin was refused")
+        XCTAssertTrue(overlay.isCropping, "the refused pin took the pending crop")
+        XCTAssertTrue(results.isEmpty)
+    }
+
     /// The next action withdraws the sentence, and a press with room goes through as a pin.
     func testTheNextActionWithdrawsThePlateAndRoomLetsThePinThrough() throws {
         let (overlay, display, view) = try build()

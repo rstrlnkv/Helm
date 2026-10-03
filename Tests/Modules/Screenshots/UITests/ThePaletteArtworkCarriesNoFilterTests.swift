@@ -17,7 +17,7 @@ final class ThePaletteArtworkCarriesNoFilterTests: XCTestCase {
     /// The objects whose tip takes the ink: three layers each.
     static let tipped = ["pen", "marker", "pencil"]
     /// The objects with a body and nothing else.
-    static let bodyOnly = ["eraser", "ruler"]
+    static let bodyOnly = ["eraser", "ruler", "spotlight"]
     static var objects: [String] { tipped + bodyOnly }
     static let themes = ["light", "dark"]
     static let layers = ["body", "tip", "shade"]

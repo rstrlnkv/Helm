@@ -14,6 +14,8 @@ import Module_Screenshots_Engine
     @Published private(set) var erasing = false
     /// The ruler is on the picture: its object stands raised, whatever tool is chosen and with the eraser too.
     @Published private(set) var ruler = false
+    /// Crop is on, a mode of the editor: no tool is chosen under it, the ⋯ menu checks Crop and ⋯'s badge is its symbol.
+    @Published private(set) var cropping = false
     /// The tool of the selected object, nil with none: the style shown is then its, and what
     /// the colour and the fill apply to is its tool and not the picked one.
     @Published private(set) var selectedTool: AnnotationTool?
@@ -43,11 +45,12 @@ import Module_Screenshots_Engine
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
-    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil,
+    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, cropping: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil,
               selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
         if self.tool != tool { self.tool = tool }
         if self.erasing != erasing { self.erasing = erasing }
         if self.ruler != ruler { self.ruler = ruler }
+        if self.cropping != cropping { self.cropping = cropping }
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.style != style { self.style = style }
         if self.picked != (picked ?? style) { self.picked = picked ?? style }
@@ -101,8 +104,13 @@ struct EditorPalette: View {
     static let objects: [(tool: AnnotationTool, symbol: String?, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
         (.line, "line.diagonal", .shapes), (.pen, nil, .row), (.highlighter, nil, .row),
-        (.pencil, nil, .row), (.text, "textformat", .menu), (.blur, "square.grid.3x3", .menu),
+        (.pencil, nil, .row), (.text, "textformat", .menu), (.step, "1.circle", .menu), (.blur, "square.grid.3x3", .menu),
+        (.spotlight, nil, .row),
     ]
+
+    /// The row object that stands after the eraser and the ruler and not with the pens: the list's order is the order the ⋯ menu reads, the
+    /// palette's own is the pens, the eraser, the ruler and then this.
+    static let lastInTheRow = AnnotationTool.spotlight
 
     /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred
     /// at `anchorX`. Putting a tool down is the key's second press, as before the pop-over had a way to open.
@@ -119,6 +127,9 @@ struct EditorPalette: View {
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
     static let selectSymbol = "cursorarrow"
 
+    /// The symbol of Crop, which is no `AnnotationTool` either: the ⋯ menu's item and ⋯'s badge while the mode is on.
+    static let cropSymbol = "crop"
+
     /// How far ⋯'s badge and its ring reach below the circle.
     static var moreBadgeReach: CGFloat { GlassCell<Image>.badgeReach }
 
@@ -127,9 +138,10 @@ struct EditorPalette: View {
         CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
     }
 
-    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, nothing while the eraser is raised; the ruler raised changes neither the badge nor Select's symbol.
+    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, Crop's while it is on, nothing while the eraser is raised; the ruler raised changes neither the badge nor Select's symbol.
     static func moreBadge(for model: EditorBarModel) -> String? {
         guard !model.erasing else { return nil }
+        if model.cropping { return cropSymbol }
         guard let tool = model.tool else { return selectSymbol }
         return objects.first { $0.tool == tool && $0.place != .row }?.symbol
     }
@@ -137,11 +149,22 @@ struct EditorPalette: View {
     /// The name of what the badge shows, for VoiceOver.
     static func moreValue(for model: EditorBarModel) -> String? {
         guard moreBadge(for: model) != nil else { return nil }
-        return model.tool.map(ScStr.tool) ?? ScStr.select
+        return model.cropping ? ScStr.crop : model.tool.map(ScStr.tool) ?? ScStr.select
     }
 
     /// Three to a row: the order the palette is read in.
     private static let colours: [AnnotationColor] = [.red, .yellow, .blue, .green, .black]
+
+    /// A row object's cell: a click chooses the tool, a second one on the chosen opens its pop-over.
+    private func objectCell(_ tool: AnnotationTool) -> some View {
+        let chosen = model.tool == tool && !model.erasing
+        return GlassCell(name: ScStr.tool(tool), selected: chosen, look: .bare, width: PaletteObject.width(for: .tool(tool)), height: Self.height) {
+            model.perform(Self.action(forClickOn: tool, chosen: chosen ? tool : nil, anchorX: model.cellMidX[tool] ?? 0))
+        } icon: {
+            PaletteObject(tool: tool, ink: Color(cgColor: model.style.ink(for: tool).cgColor), raised: chosen)
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).midX } action: { model.cellMidX[tool] = $0 }
+    }
 
     var body: some View {
         // The gaps are the step (12) plus what the mockup adds, one by one, so ⋯'s layout can be its 36 pt zone: its two gaps
@@ -161,14 +184,8 @@ struct EditorPalette: View {
             // step, so the step stays the one the gap to Done is.
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
             HStack(spacing: 0) {
-                ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
-                    let chosen = model.tool == object.tool && !model.erasing
-                    GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width(for: .tool(object.tool)), height: Self.height) {
-                        model.perform(Self.action(forClickOn: object.tool, chosen: chosen ? object.tool : nil, anchorX: model.cellMidX[object.tool] ?? 0))
-                    } icon: {
-                        PaletteObject(tool: object.tool, ink: Color(cgColor: model.style.ink(for: object.tool).cgColor), raised: chosen)
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).midX } action: { model.cellMidX[object.tool] = $0 }
+                ForEach(Self.objects.filter { $0.place == .row && $0.tool != Self.lastInTheRow }, id: \.tool) { object in
+                    objectCell(object.tool)
                 }
                 GlassCell(name: ScStr.eraser, selected: model.erasing, look: .bare, width: PaletteObject.width(for: .eraser), height: Self.height) {
                     model.perform(Self.action(forClickOnEraser: model.erasing))
@@ -180,6 +197,7 @@ struct EditorPalette: View {
                 } icon: {
                     PaletteObject(kind: .ruler, ink: .clear, raised: model.ruler)
                 }
+                objectCell(Self.lastInTheRow)
             }
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)
             colourGrid

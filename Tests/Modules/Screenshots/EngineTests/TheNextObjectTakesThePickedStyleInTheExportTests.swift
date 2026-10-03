@@ -92,11 +92,12 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
     func testOnlyTheBoxesAreEverFilledAndOnlyWhenAsked() {
         for tool in AnnotationTool.allCases {
             let filled = Annotation(tool: tool, start: .zero, end: CGPoint(x: 9, y: 9), style: AnnotationStyle(filled: true))
-            XCTAssertEqual(filled.isFilled, [.arrow, .rectangle, .ellipse].contains(tool), "\(tool)")
-            // The blur and the text are neither: no stroke, and drawn as a picture (`Pixelate`) and as a line (`AnnotationText`).
-            XCTAssertEqual(filled.stroke == nil, filled.isFilled || tool == .blur || tool == .text, "\(tool): a filled shape is also stroked, or an unfilled one is not")
+            XCTAssertEqual(filled.isFilled, [.arrow, .rectangle, .ellipse, .step].contains(tool), "\(tool)")
+            // The blur, the text and the spotlight are neither: no stroke, and drawn as a picture (`Pixelate`), as a line (`AnnotationText`)
+            // and as a hole in the dim (`Spotlights`); the step is always a solid.
+            XCTAssertEqual(filled.stroke == nil, filled.isFilled || [.blur, .text, .spotlight].contains(tool), "\(tool): a filled shape is also stroked, or an unfilled one is not")
             let plain = Annotation(tool: tool, start: .zero, end: CGPoint(x: 9, y: 9))
-            XCTAssertEqual(plain.isFilled, tool == .arrow, "\(tool)")
+            XCTAssertEqual(plain.isFilled, tool == .arrow || tool == .step, "\(tool)")
         }
     }
 

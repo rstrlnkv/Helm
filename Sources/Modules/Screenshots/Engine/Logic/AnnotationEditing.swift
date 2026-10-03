@@ -135,12 +135,14 @@ public struct AnnotationEditing: Sendable {
             return true
         }
         if let tool {
+            // A step is placed by the click and a click outside the area is none: begun there it would land on the area's edge.
+            if tool == .step, !bounds.contains(point) { return true }
             begin(tool, at: point, style: style, ruler: ruler)
             return true
         }
         guard !layers.isEmpty else { return false }
         let own = selected.flatMap { AnnotationHit.hits($0, at: point) ? $0.id : nil }
-        selectedID = own ?? AnnotationHit.topmost(in: layers, at: point)
+        selectedID = own ?? AnnotationHit.selectable(in: layers, at: point)
         if let current = selected { gesture = (.move(from: point), current, layers) }
         return true
     }
@@ -252,6 +254,11 @@ public struct AnnotationEditing: Sendable {
             }
             return
         }
+        if current.tool == .step {
+            // The circle is under the pointer until the release, wherever the press was.
+            draft = Annotation(tool: .step, start: pointer, end: pointer, style: current.style, id: current.id)
+            return
+        }
         let wanted = Annotation.constrained(current.tool, from: current.start, to: pointer, shift: shift, within: bounds)
         draft = Annotation(tool: current.tool, start: current.start, end: fit(wanted, from: current.start),
                            style: current.style, id: current.id)
@@ -297,7 +304,7 @@ public struct AnnotationEditing: Sendable {
     /// Release. A move or a resize ends as one step if it changed anything. A draft that
     /// travelled `clickTravel` becomes a layer if there is anything in it, and a new layer
     /// clears what could have been redone; one that did not is a click, which takes the
-    /// layer under it or lets go of the selection and draws nothing.
+    /// layer under it or lets go of the selection and draws nothing; a step is placed by a click as well.
     public mutating func end() {
         if eraser != nil { endErase(); return }
         if let gesture {
@@ -307,7 +314,8 @@ public struct AnnotationEditing: Sendable {
         }
         defer { draft = nil; pressed = nil; guide = nil }
         guard let draft else { return }
-        guard let first = pressed, first.travel >= Self.clickTravel else {
+        // A step is the click itself: it is placed wherever the release is, and no travel makes it a drawing or a selection.
+        guard let first = pressed, first.travel >= Self.clickTravel || draft.tool == .step else {
             selectedID = pressed.flatMap { AnnotationHit.topmost(in: layers, at: $0.point) }
             return
         }
