@@ -18,8 +18,8 @@ public struct DisplayID: Hashable, Sendable {
 /// **`image` never has the pointer in it; `withCursor` does.** The overlay draws
 /// `image` under a live crosshair, and a pointer baked into that would be a
 /// second one beside it. The cut — `CaptureSession.crop` and the full-screen
-/// shot — takes `withCursor` when it exists, which is the same moment on the same
-/// display with the pointer macOS draws, in the size and colour Accessibility
+/// shot — takes `withCursor` when it exists, which is a second capture of the same
+/// display, taken just after `image`, with the pointer macOS draws, in the size and colour Accessibility
 /// gives it. It exists only when the setting asked for it, and only for the
 /// display the pointer was on: the others hold no pointer, and `shot` falls back
 /// to `image` for them.

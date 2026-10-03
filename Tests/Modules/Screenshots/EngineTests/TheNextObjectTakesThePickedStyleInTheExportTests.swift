@@ -93,7 +93,8 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
         for tool in AnnotationTool.allCases {
             let filled = Annotation(tool: tool, start: .zero, end: CGPoint(x: 9, y: 9), style: AnnotationStyle(filled: true))
             XCTAssertEqual(filled.isFilled, [.arrow, .rectangle, .ellipse].contains(tool), "\(tool)")
-            XCTAssertEqual(filled.stroke == nil, filled.isFilled, "\(tool): a filled shape is also stroked, or an unfilled one is not")
+            // The blur is neither: it has no ink, and is drawn as a picture (`Pixelate`).
+            XCTAssertEqual(filled.stroke == nil, filled.isFilled || tool == .blur, "\(tool): a filled shape is also stroked, or an unfilled one is not")
             let plain = Annotation(tool: tool, start: .zero, end: CGPoint(x: 9, y: 9))
             XCTAssertEqual(plain.isFilled, tool == .arrow, "\(tool)")
         }

@@ -25,6 +25,7 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
             (.pen, [1.5, 3, 6]), (.highlighter, [6, 12, 18]), (.pencil, [2, 3.5, 5]),
             (.arrow, [6, 10, 16]),
             (.rectangle, [3, 5, 8]), (.ellipse, [3, 5, 8]), (.line, [3, 5, 8]),
+            (.blur, [10, 16, 24]),
         ]
         XCTAssertEqual(Set(owners.map(\.0)), Set(AnnotationTool.allCases), "a tool has no row here: add its numbers")
         for (tool, points) in owners {

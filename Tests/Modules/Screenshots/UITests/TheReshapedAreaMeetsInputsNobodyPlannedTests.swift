@@ -76,14 +76,14 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let cut = try XCTUnwrap(context.makeImage())
         let outside = Annotation(tool: .rectangle, start: CGPoint(x: 400, y: 400), end: CGPoint(x: 500, y: 500), id: 1)
-        let drawn = try XCTUnwrap(CaptureSession.draw([outside], over: cut, at: .zero, scale: 1))
+        let drawn = try XCTUnwrap(CaptureSession.draw([outside], over: cut, at: .zero, scale: 1, display: cut))
         let before = try XCTUnwrap(cut.dataProvider?.data) as Data
         let after = try XCTUnwrap(drawn.dataProvider?.data) as Data
         let nonZero = after.contains { $0 != 0 }
         XCTAssertFalse(nonZero, "the subject is a blank cut; ink appeared from a layer outside it")
         XCTAssertEqual(before.count, after.count)
         let inside = Annotation(tool: .rectangle, start: CGPoint(x: 10, y: 10), end: CGPoint(x: 50, y: 50), id: 2)
-        let marked = try XCTUnwrap(CaptureSession.draw([inside], over: cut, at: .zero, scale: 1))
+        let marked = try XCTUnwrap(CaptureSession.draw([inside], over: cut, at: .zero, scale: 1, display: cut))
         XCTAssertTrue((try XCTUnwrap(marked.dataProvider?.data) as Data).contains { $0 != 0 }, "the control: a layer inside draws")
     }
 

@@ -7,12 +7,15 @@ import CoreGraphics
 /// points of tolerance: a line two points wide is not a target a pointer can be asked to
 /// hit. An unfilled rectangle is its edge and not its inside — a click in the middle of
 /// one is a click on the picture under it — and the arrow, which is always a solid, is its
-/// whole body.
+/// whole body. A blur has no outline to hit: it is a box of picture and is taken by its area.
 enum AnnotationHit {
     /// How far from a stroke's edge a press still lands on it, in points.
     static let tolerance: CGFloat = 4
     /// How far from a handle's centre a press still takes it, in points.
     static let handleRadius: CGFloat = 7
+
+    /// Whether a press inside the shape lands on it, and not only on its edge: a solid, and the blur, which draws a whole box.
+    static func takesByArea(_ annotation: Annotation) -> Bool { annotation.isFilled || annotation.tool == .blur }
 
     /// Whether `point` is on `annotation`.
     static func hits(_ annotation: Annotation, at point: CGPoint, tolerance: CGFloat = tolerance) -> Bool {
@@ -22,7 +25,7 @@ enum AnnotationHit {
         let reach = (stroke?.width ?? 0) / 2 + tolerance
         guard annotation.frame.insetBy(dx: -reach, dy: -reach).contains(point) else { return false }
         let outline = annotation.outline
-        if annotation.isFilled, outline.contains(point) { return true }
+        if takesByArea(annotation), outline.contains(point) { return true }
         return outline.copy(strokingWithWidth: reach * 2, lineCap: stroke?.cap ?? .round, lineJoin: .round,
                             miterLimit: 10).contains(point)
     }

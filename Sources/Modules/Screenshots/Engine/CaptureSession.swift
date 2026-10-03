@@ -194,15 +194,18 @@ public final class CaptureSession: @unchecked Sendable {
         else { return nil }
         guard !layers.isEmpty || detached else { return cut }
         let scale = frame.scale
-        return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale) }
+        let display = frame.shot
+        return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale, display: display) }
     }
 
     /// The pool is inside the call, as in `encode`: a 5K cut is one iteration of the caller's work.
-    static func draw(_ layers: [Annotation], over cut: CGImage, at origin: CGPoint, scale: CGFloat) -> CGImage? {
+    /// `display` is the whole picture the cut is part of, the cut at `origin` in it: a blur's blocks sit on the
+    /// display's pixels and a box that reaches past the cut still averages what is there, so the file holds the
+    /// blocks the screen drew.
+    static func draw(_ layers: [Annotation], over cut: CGImage, at origin: CGPoint, scale: CGFloat,
+                     display: CGImage) -> CGImage? {
         autoreleasepool {
-            var spaces = [CGColorSpace(name: CGColorSpace.sRGB)!]
-            if let own = cut.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
-            for space in spaces {
+            for space in Pixelate.spaces(for: cut) {
                 guard let context = CGContext(data: nil, width: cut.width, height: cut.height,
                                               bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
@@ -210,6 +213,23 @@ public final class CaptureSession: @unchecked Sendable {
                 context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
                 context.setAllowsAntialiasing(true)
                 for layer in layers {
+                    if layer.tool == .blur {
+                        // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
+                        // A box with no pixel on the display is skipped; a box that has pixels and
+                        // got no tile makes the file refused (nil), so it is never written with that box undrawn.
+                        guard Pixelate.pixels(of: layer.frame, scale: scale, width: display.width, height: display.height) != nil
+                        else { continue }
+                        guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)
+                        else { return nil }
+                        context.saveGState()
+                        context.setShouldAntialias(false)
+                        context.interpolationQuality = .none
+                        context.draw(tile.image, in: CGRect(x: tile.pixels.minX - origin.x,
+                                                            y: CGFloat(cut.height) - (tile.pixels.maxY - origin.y),
+                                                            width: tile.pixels.width, height: tile.pixels.height))
+                        context.restoreGState()
+                        continue
+                    }
                     context.saveGState()
                     // The pencil's grain is a clip in the bitmap's own pixels, so it goes in before the points' transform.
                     if layer.tool.isGrainy, let stroke = layer.stroke {
@@ -443,10 +463,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// space (a display's HDR or wide-gamut reading) cannot hold one, and a PNG
     /// of the same picture is fine, so the JPEG falls back rather than refuses.
     static func flattened(_ image: CGImage) -> CGImage? {
-        let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
-        var spaces = [srgb]
-        if let own = image.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
-        for space in spaces {
+        for space in Pixelate.spaces(for: image) {
             guard let context = CGContext(data: nil, width: image.width, height: image.height,
                                           bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                           bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)

@@ -254,7 +254,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     // MARK: the palette and a key
 
     func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
-        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45]
+        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45, .blur: 11]
         XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(EditorKeys.action(keyCode: codes[tool]!, flags: []), .tool(tool), "\(tool): the key means another tool")
@@ -494,7 +494,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 }
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
-            XCTAssertEqual(menu.count, 10, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Select, Thickness and Opacity, Save, Pin: \(menu)")
+            XCTAssertEqual(menu.count, 11, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Blur, Select, Thickness and Opacity, Save, Pin: \(menu)")
             let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")

@@ -123,7 +123,7 @@ final class TheScreensPencilGrainIsTheFilesTests: XCTestCase {
         }
         XCTAssertEqual(layers.count, 1)
         let cut = try white(width: w, height: h)
-        let drawn = try XCTUnwrap(CaptureSession.draw([layer], over: cut, at: .zero, scale: scale))
+        let drawn = try XCTUnwrap(CaptureSession.draw([layer], over: cut, at: .zero, scale: scale, display: cut))
         return (screen, try read(drawn), layer)
     }
 

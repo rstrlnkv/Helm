@@ -34,7 +34,7 @@ struct PaletteObject: View {
         case .pen: "pen"
         case .highlighter: "marker"
         case .pencil: "pencil"
-        case .arrow, .rectangle, .ellipse, .line: nil
+        case .arrow, .rectangle, .ellipse, .line, .blur: nil
         }
     }
 
@@ -44,7 +44,7 @@ struct PaletteObject: View {
         case .pen: 16
         case .highlighter: 22
         case .pencil: 22
-        case .arrow, .rectangle, .ellipse, .line: 0
+        case .arrow, .rectangle, .ellipse, .line, .blur: 0
         }
     }
 

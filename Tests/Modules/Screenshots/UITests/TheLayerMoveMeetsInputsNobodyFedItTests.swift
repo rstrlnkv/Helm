@@ -86,7 +86,7 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
             let (id, view) = try build(scale: scale)
             drag(id, .highlighter, from: CGPoint(x: 120, y: 200), to: CGPoint(x: 480, y: 200))
             let shape = try XCTUnwrap(view.drawnShapes.first, "\(scale)x: nothing drawn")
-            let path = try XCTUnwrap(shape.path)
+            let path = try XCTUnwrap((shape as? CAShapeLayer)?.path)
             // The selection in the layer's own space is flipped: y from the top 100...400 is the view's height less that.
             let clip = CGRect(x: 100, y: view.bounds.height - 400, width: 400, height: 300)
             XCTAssertTrue(clip.insetBy(dx: -0.01, dy: -0.01).contains(path.boundingBoxOfPath), "\(scale)x: the marker spills over the area: \(path.boundingBoxOfPath)")

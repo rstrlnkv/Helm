@@ -61,16 +61,26 @@ on is `AnnotationHit` in `Sources/Modules/Screenshots/Engine/Logic/AnnotationHit
 read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
-so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pen, pencil
-and highlighter; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
+so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pen, pencil,
+highlighter and blur; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
 export's context both read; the pen, the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
 in the file. The pen is solid; the pencil is grainy, and the grain is one mask: `PencilGrain`
 (`Sources/Modules/Screenshots/Engine/Logic/PencilGrain.swift`) hashes each image pixel's offset from the pixel its first
 point lands on, with no chance and no clock, so the export clips the stroke to it in the picture's own pixels and the
-overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one shape layer per annotation, built again only when its
+overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur a layer with a mosaic as its contents), built again only when its
 annotation is no longer equal to the one it was built from. ⇧ is read from the flags of each event and never kept from the press.
+
+The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
+area (`AnnotationHit.takesByArea`), whose step is the size of its block in points and whose colour is not one of its edits.
+It is drawn by `Pixelate` (`Sources/Modules/Screenshots/Engine/Logic/Pixelate.swift`), a mosaic whose every pixel is replaced by the mean of
+its block's bytes, and no block is drawn from fewer than two pixels; the grid starts at the display's own pixel (0, 0), so the cut of the
+file and the display on the screen share their blocks, a block the box's edge cuts takes the mean of its pixels inside the box, an end strip
+narrower than half a block joins the block beside it (`Pixelate.edges`), and the box is rounded outward to whole pixels and drawn opaque.
+A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil and the
+delivery is refused, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
+the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: the one layer of the view that is not a shape layer.
 
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
 (`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure

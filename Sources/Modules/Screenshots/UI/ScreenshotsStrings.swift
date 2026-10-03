@@ -136,6 +136,7 @@ enum ScStr {
         case .pen: L("Pen")
         case .pencil: L("Pencil")
         case .highlighter: L("Highlighter")
+        case .blur: L("Blur")
         }
     }
 

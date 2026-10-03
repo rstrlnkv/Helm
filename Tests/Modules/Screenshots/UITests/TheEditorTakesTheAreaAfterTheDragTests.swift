@@ -183,7 +183,7 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
     func testTheCharacterWithTheWrongKeyCodePicksNothing() throws {
         let id = try build()
         select(id)
-        overlay?.keyDown(key(11, "a")) // the B key, typing an "a": a character, not the A key
+        overlay?.keyDown(key(12, "a")) // the Q key, typing an "a": a character, not the A key
         stroke(id)
         overlay?.keyDown(key(kReturn, "\r"))
         XCTAssertTrue(try XCTUnwrap(edited()).layers.isEmpty, "a tool was picked by a character")

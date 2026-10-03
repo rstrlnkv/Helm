@@ -1021,12 +1021,12 @@ final class OverlayView: NSView {
             shapeCache = [:]
             cachedBox = box
         }
-        var kept: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer, draft: Bool)] = [:]
+        var kept: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool)] = [:]
         for annotation in scene.layers {
             let draft = annotation.id == scene.draftID
             if let entry = shapeCache[annotation.id], entry.annotation == annotation {
                 // The draft's grain covers the display; once it is released it is cut to the stroke's own box.
-                if entry.draft && !draft { entry.shape.mask = grainMask(annotation, draft: false) }
+                if entry.draft && !draft && annotation.tool.isGrainy { entry.shape.mask = grainMask(annotation, draft: false) }
                 kept[annotation.id] = (entry.annotation, entry.shape, draft)
             } else {
                 shapeCache[annotation.id]?.shape.removeFromSuperlayer()
@@ -1047,8 +1047,30 @@ final class OverlayView: NSView {
         drawHandles(scene.selected)
     }
 
-    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect, draft: Bool) -> CAShapeLayer {
+    /// The blur's layer: the export's own mosaic (`Pixelate.tile` over the same picture the file is cut from) as the
+    /// layer's contents, one image pixel to a screen pixel, the selection's rectangle its mask. A layer of its own
+    /// and not a path: the mosaic has no outline to fill.
+    private func makeMosaic(_ annotation: Annotation, clippedTo box: CGRect) -> CALayer {
+        let layer = CALayer()
+        guard let tile = Pixelate.tile(of: frozen.shot, rect: annotation.frame, blockPoints: annotation.blockPoints,
+                                       scale: frozen.scale) else { return layer }
+        let scale = frozen.scale
+        layer.frame = CGRect(x: tile.pixels.minX / scale, y: bounds.height - tile.pixels.maxY / scale,
+                             width: tile.pixels.width / scale, height: tile.pixels.height / scale)
+        layer.contents = tile.image
+        layer.contentsScale = scale
+        layer.magnificationFilter = .nearest
+        layer.minificationFilter = .nearest
+        let mask = CALayer()
+        mask.backgroundColor = NSColor.black.cgColor
+        mask.frame = box.offsetBy(dx: -layer.frame.minX, dy: -layer.frame.minY)
+        layer.mask = mask
+        return layer
+    }
+
+    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect, draft: Bool) -> CALayer {
         shapeBuilds += 1
+        if annotation.tool == .blur { return makeMosaic(annotation, clippedTo: box) }
         let clip = CGPath(rect: box, transform: nil)
         var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
         let shape = CAShapeLayer()
@@ -1150,12 +1172,12 @@ final class OverlayView: NSView {
 
     /// The layers on screen: `drawLayers` keeps what it has put in the view here to compare the next
     /// scene's against, and a test reads it to see the editor drew what it holds and what a layer is made of.
-    private(set) var drawnShapes: [CAShapeLayer] = []
+    private(set) var drawnShapes: [CALayer] = []
 
     /// How many shape layers were built since the view was made, for a test that counts the
     /// rebuilds a pointer event costs.
     private(set) var shapeBuilds = 0
-    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer, draft: Bool)] = [:]
+    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool)] = [:]
     private var cachedBox: CGRect?
 
     /// Where the selected object's handles are drawn, in display-local points; none for none.

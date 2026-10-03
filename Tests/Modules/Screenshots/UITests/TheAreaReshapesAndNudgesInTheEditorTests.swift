@@ -234,12 +234,12 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         drawRectangle(from: CGPoint(x: 150, y: 150), to: CGPoint(x: 450, y: 250))
         overlay?.perform(.tool(.rectangle)) // a tool again so the press cannot select
         XCTAssertEqual(view.drawnShapes.count, 1)
-        let before = try XCTUnwrap(view.drawnShapes[0].path).boundingBoxOfPath
+        let before = try XCTUnwrap((view.drawnShapes[0] as? CAShapeLayer)?.path).boundingBoxOfPath
         XCTAssertEqual(before.maxX, 450 + 1.5, accuracy: 2, "the subject: the outline reaches x = 450 before the reshape")
         overlay?.perform(.tool(.rectangle)) // tool down
         try pull(view, .right, by: CGPoint(x: -150, y: 0))
         XCTAssertEqual(view.drawnShapes.count, 1)
-        let after = try XCTUnwrap(view.drawnShapes[0].path).boundingBoxOfPath
+        let after = try XCTUnwrap((view.drawnShapes[0] as? CAShapeLayer)?.path).boundingBoxOfPath
         XCTAssertLessThanOrEqual(after.maxX, 350.001, "the outline spills over the new right edge: \(after)")
         XCTAssertEqual(after.minX, before.minX, accuracy: 0.001, "the layer moved with the area")
         // Undo takes the drawing, which is the one step there is; the reshape was none.

@@ -133,10 +133,10 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
     func testAMoveAndAResizeAreOnTheScreenAndInTheFile() throws {
         let (id, view) = try build()
         draw(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
-        let before = view.drawnShapes[0].path?.boundingBoxOfPath
+        let before = (view.drawnShapes[0] as? CAShapeLayer)?.path?.boundingBoxOfPath
         // No tool: a drag on the body of an object takes it.
         drag(id, from: CGPoint(x: 220, y: 150), through: [CGPoint(x: 250, y: 170), CGPoint(x: 280, y: 190)])
-        XCTAssertNotEqual(view.drawnShapes[0].path?.boundingBoxOfPath, before, "the object moved in the engine and not on the screen")
+        XCTAssertNotEqual((view.drawnShapes[0] as? CAShapeLayer)?.path?.boundingBoxOfPath, before, "the object moved in the engine and not on the screen")
         XCTAssertEqual(view.drawnHandles.count, 4)
         // Then a corner.
         drag(id, from: CGPoint(x: 360, y: 290), through: [CGPoint(x: 400, y: 330)])

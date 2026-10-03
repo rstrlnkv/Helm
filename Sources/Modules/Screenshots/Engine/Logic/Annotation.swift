@@ -25,6 +25,10 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     /// A wide translucent freehand stroke like the pencil's, a single straight run at 45°
     /// steps while ⇧ is held, multiplied into the picture.
     case highlighter
+    /// A box of the picture drawn as a mosaic (`Pixelate`), from the pixels under it and from nothing else: the
+    /// box is held by its four corners like a rectangle and has no ink, so its colour and opacity are not read.
+    /// The step is the mosaic's block, in points.
+    case blur
 
     /// Drawn through the points of a drag rather than from its two ends.
     public var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
@@ -75,7 +79,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
     case thin = 0, medium, thick
 
     /// The step's width in points under a tool: the stroke's width, and for the arrow the
-    /// shaft at its thickest, of which the head is three. The one table the screen and the export read.
+    /// shaft at its thickest, of which the head is three, and for the blur the block's side. The one table the screen and the export read.
     public func points(for tool: AnnotationTool) -> CGFloat {
         let steps: [CGFloat]
         switch tool {
@@ -84,6 +88,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
         case .pencil: steps = [2, 3.5, 5]
         case .arrow: steps = [6, 10, 16]
         case .rectangle, .ellipse, .line: steps = [3, 5, 8]
+        case .blur: steps = [10, 16, 24]
         }
         return steps[rawValue]
     }
@@ -156,10 +161,10 @@ public struct Annotation: Sendable, Equatable {
         self.id = id
     }
 
-    /// Whether the two are drawn the same: the ink as shown (an unset colour is the tool's own),
+    /// Whether the two are drawn the same: the ink as shown (an unset colour is the tool's own; a blur has none),
     /// the thickness and the fill, which is what a person can see and so what an edit may be a step for.
     func looksLike(_ other: Annotation) -> Bool {
-        style.ink(for: tool) == other.style.ink(for: other.tool)
+        (tool == .blur || style.ink(for: tool) == other.style.ink(for: other.tool))
             && style.thickness == other.style.thickness && isFilled == other.isFilled
     }
 
@@ -258,6 +263,9 @@ public struct Annotation: Sendable, Equatable {
         tool == .arrow || (style.filled && (tool == .rectangle || tool == .ellipse))
     }
 
+    /// The mosaic's block, in points: the thickness step read for the blur.
+    public var blockPoints: CGFloat { style.thickness.points(for: .blur) }
+
     /// The colour a filled shape is painted in; for a stroked one see `stroke`.
     public var fillColor: CGColor { inked(style.opacity) }
 
@@ -267,7 +275,7 @@ public struct Annotation: Sendable, Equatable {
         return ink.copy(alpha: CGFloat(alpha)) ?? ink
     }
 
-    /// The ink of a stroked annotation; nil for a filled shape.
+    /// The ink of a stroked annotation; nil for a filled shape and for the blur, which is no ink but a picture (`Pixelate`).
     ///
     /// **Caps and joins.** A shape has butt caps and mitred corners, the line and the
     /// pen and the pencil round both. The marker's caps stay butt, flat like a chisel nib, but its
@@ -277,7 +285,7 @@ public struct Annotation: Sendable, Equatable {
         guard !isFilled else { return nil }
         let width = style.thickness.points(for: tool)
         switch tool {
-        case .arrow: return nil
+        case .arrow, .blur: return nil
         case .rectangle, .ellipse:
             return AnnotationStroke(width: width, color: inked(style.opacity), multiplies: false, cap: .butt, join: .miter)
         case .line, .pen, .pencil:
@@ -298,7 +306,7 @@ public struct Annotation: Sendable, Equatable {
         guard shift else { return end }
         let dx = end.x - start.x, dy = end.y - start.y
         switch tool {
-        case .rectangle, .ellipse:
+        case .rectangle, .ellipse, .blur:
             let side = max(abs(dx), abs(dy))
             let left = dx == 0 ? bounds.map { start.x - $0.minX > $0.maxX - start.x } ?? false : dx < 0
             let up = dy == 0 ? bounds.map { start.y - $0.minY > $0.maxY - start.y } ?? false : dy < 0
@@ -321,7 +329,7 @@ public struct Annotation: Sendable, Equatable {
         else { return false }
         switch tool {
         case .arrow, .line: return hypot(end.x - start.x, end.y - start.y) >= 1
-        case .rectangle, .ellipse: return abs(end.x - start.x) >= 1 && abs(end.y - start.y) >= 1
+        case .rectangle, .ellipse, .blur: return abs(end.x - start.x) >= 1 && abs(end.y - start.y) >= 1
         case .pen, .pencil, .highlighter: return points.contains { hypot($0.x - start.x, $0.y - start.y) >= 1 }
         }
     }
@@ -352,7 +360,7 @@ public struct Annotation: Sendable, Equatable {
             }
             path.addLine(to: last)
             return path
-        case .rectangle:
+        case .rectangle, .blur:
             return CGPath(rect: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
                                        width: abs(end.x - start.x), height: abs(end.y - start.y)),
                           transform: nil)

@@ -15,7 +15,7 @@ enum EditorMenuItem: Equatable {
 /// the thin `NSMenu` over it. The tools come from `EditorPalette.objects`, the list the palette's row is drawn from, so a
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
-/// Order: Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Select, Thickness and Opacity… (enabled while a
+/// Order: the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Blur, then Select, Thickness and Opacity… (enabled while a
 /// tool is chosen), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
@@ -53,10 +53,19 @@ enum EditorMenu {
             return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool, action: .tool(object.tool))
         }
         let shapes = EditorPalette.objects.filter { $0.place == .shapes }
-        var items = EditorPalette.objects.filter { $0.place == .menu }.compactMap(tool)
-        items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool },
-                              children: shapes.compactMap(tool) + [.separator,
-                                  .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))
+        var items: [EditorMenuItem] = []
+        // The objects in the list's order, the Shapes submenu standing where its first shape does.
+        for object in EditorPalette.objects {
+            switch object.place {
+            case .row: break
+            case .menu: items += [tool(object)].compactMap { $0 }
+            case .shapes:
+                guard object.tool == shapes.first?.tool else { break }
+                items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool },
+                                      children: shapes.compactMap(tool) + [.separator,
+                                          .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))
+            }
+        }
         items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil, action: .select))
         // Every tool has steps and Select has none; the item stays in its place either way. It opens the pop-over at ⋯.
         items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),

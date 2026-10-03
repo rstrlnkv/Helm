@@ -109,7 +109,8 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
     // MARK: Recolour, delete
 
     func testARecolourThenUndoBringsTheOldInkBackExactly() {
-        for tool in AnnotationTool.allCases {
+        // The blur has no ink, so its recolour is no step at all (`TheBlurIsABoxTheEditorHoldsByItsAreaTests`).
+        for tool in AnnotationTool.allCases where tool != .blur {
             var editing = make(tool)
             select(&editing)
             let before = editing.layers
