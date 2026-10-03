@@ -20,7 +20,7 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     /// A freehand stroke through the drag's points, smoothed: round cap and join, drawn as it is.
     /// The clean line: one even width (1.5, 3 or 6 pt by the step), nothing added to the path.
     case pen
-    /// A freehand stroke through the drag's points, smoothed, like the pen's. Its grain is not drawn yet.
+    /// A freehand stroke through the drag's points, smoothed, like the pen's, with the grain of graphite (`PencilGrain`).
     case pencil
     /// A wide translucent freehand stroke like the pencil's, a single straight run at 45°
     /// steps while ⇧ is held, multiplied into the picture.

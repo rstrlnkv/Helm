@@ -85,12 +85,25 @@ final class ThePenAndThePencilLeaveTwoStrokesTests: XCTestCase {
             let share = pixels.map { pencil.at($0.x, $0.y) }
             let gaps = Double(share.filter { $0 < 0.9 }.count) / Double(pixels.count)
             let solid = Double(share.filter { $0 >= 0.98 }.count) / Double(pixels.count)
+            let bare = Double(share.filter { $0 <= 0.1 }.count) / Double(pixels.count)
             let mean = share.reduce(0, +) / Double(share.count)
-            // Bounds stated: between 8 % and 65 % of the body is gap; at least 25 % is fully inked; the mean ink is 30…90 %.
+            // The width the ink adds up to: every row of each body column, averaged over the columns, in points.
+            let columns = Set(pixels.map(\.x))
+            let mass = columns.reduce(0.0) { sum, x in sum + (0..<pencil.height).reduce(0.0) { $0 + pencil.at(x, $1) } }
+            let effective = mass / Double(columns.count) / Double(scale)
+            // The approved frame's graphite (palette-frames/f-strokes9.png, SVG `graphite9`: alpha = clamp(1.45 - 1.6 * noise)),
+            // read at 2x over 2, 3.5 and 5 pt, over the body (deeper than w/2 - 0.75 px), by thirds of each stroke: fully inked
+            // 3.6-6.1 %, nearly bare (<= 10 %) 0-0.3 %, mean ink 0.643-0.653, effective width 0.648-0.659 of the nominal.
+            // Ours is held to the same distribution with room for a 1x body of 286 pixels (a binomial's spread at 5 % is 1.29 points):
+            // at most 15 % fully inked (the old grain's hash, commit 2f1d9e2c, puts 50-57 % there: solid ink with holes), at most 2 % nearly bare
+            // (the old grain ~5 %), mean ink 0.66 +- 0.06 (the old grain 0.77-0.78), effective width 0.65 of the nominal +- 0.07 (the old grain 0.78).
+            // The pen is told apart by the gaps floor; no ceiling on gaps, since the reference's fine graphite is ~90 % under 0.9.
             XCTAssertGreaterThanOrEqual(gaps, 0.08, "pencil \(scale)x: gaps are \(gaps) of the body; a grain that is all on is the pen")
-            XCTAssertLessThanOrEqual(gaps, 0.65, "pencil \(scale)x: gaps are \(gaps) of the body; a grain that is all off draws nothing")
-            XCTAssertGreaterThanOrEqual(solid, 0.25, "pencil \(scale)x: only \(solid) of the body is solid")
-            XCTAssertEqual(mean, 0.6, accuracy: 0.3, "pencil \(scale)x: mean ink \(mean)")
+            XCTAssertLessThanOrEqual(solid, 0.15, "pencil \(scale)x: \(solid) of the body is fully inked; the reference's graphite has 4-6 %, a pencil of solid ink with holes has half")
+            XCTAssertLessThanOrEqual(bare, 0.02, "pencil \(scale)x: \(bare) of the body is nearly bare; the reference has none to speak of")
+            XCTAssertEqual(mean, 0.66, accuracy: 0.06, "pencil \(scale)x: mean ink \(mean); the reference's is 0.65, a grain all off draws nothing, all on is the pen")
+            XCTAssertEqual(effective, 0.65 * Double(Self.thick), accuracy: 0.07 * Double(Self.thick),
+                           "pencil \(scale)x: the ink adds up to \(effective) pt of the 5 pt stroke; the reference's is 0.65 of it")
             // The grain runs the length of the stroke: every 30-pixel band of columns has gaps, not one clump.
             let xs = pixels.map(\.x)
             let first = xs.min()!, last = xs.max()!
@@ -193,7 +206,7 @@ final class ThePenAndThePencilLeaveTwoStrokesTests: XCTestCase {
                 let onlyPencil = try await export(pencil, scale: scale, name: "beside-p-\(order)-\(Int(scale))")
                 let onlyLine = try await export(line, scale: scale, name: "beside-l-\(order)-\(Int(scale))")
                 XCTAssertGreaterThan(onlyLine.values.filter { $0 > 0.9 }.count, 100, "\(scale)x: the line left no ink to compare")
-                XCTAssertGreaterThan(onlyPencil.values.filter { $0 > 0.9 }.count, 100, "\(scale)x: the pencil left no ink to compare")
+                XCTAssertGreaterThan(onlyPencil.values.filter { $0 > 0.3 }.count, 100, "\(scale)x: the pencil left no ink to compare")  // 0.3, not 0.9: the grain is grey, only ~7 % of it is fully inked
                 let off = (0..<both.values.count).filter { abs(both.values[$0] - min(1, onlyPencil.values[$0] + onlyLine.values[$0])) > 0.02 }.count
                 XCTAssertEqual(off, 0, "\(scale)x \(order): \(off) pixels differ between both layers together and each alone")
             }
