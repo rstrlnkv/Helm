@@ -1380,3 +1380,5 @@
 /* Screenshots — editor track */
 "Blur" = "Размытие";
 "Text" = "Текст";
+"Eraser" = "Ластик";
+"Ruler" = "Линейка";

@@ -53,6 +53,21 @@ enum OverlayResult {
     private var spaceHeld = false
     /// The area being edited, set once a selection is released; nil while selecting.
     private var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
+    /// The eraser is on: a drag takes away the layers it meets (`AnnotationEditing.beginErase`) and `edit.tool` stays what it
+    /// was under it. A mode of this overlay and no `AnnotationTool`, so `EditorMemory` is never asked to keep it.
+    private var erasing = false
+    /// The radius of the eraser's circle, in points of the display: what a drag meets and what the cursor draws.
+    static let eraserRadius: CGFloat = 9
+    /// The ruler is on the picture, a switch of this overlay (`EditorAction.toggleRuler`) over whatever tool is chosen: not a layer, so
+    /// no undo step and no export sees it, and nothing of it is remembered. It lives while the overlay does.
+    private var ruler: Ruler?
+    /// A press on the ruler's strip that is still down: the display, and whether the drag takes the strip along or turns it. A move keeps
+    /// where the strip's centre was from the pointer; a turn keeps the angle the strip had and the direction the pointer pressed in.
+    private var rulerDrag: (display: DisplayID, kind: RulerDrag)?
+    private enum RulerDrag { case move(offset: CGPoint), turn(base: CGFloat, from: CGFloat) }
+    /// A rotate gesture of the trackpad in progress: the angle the strip had when it began and how far the fingers have turned,
+    /// clockwise; the strip's own angle sticks to 0°, 45° and 90° and so cannot be the sum.
+    private var rulerTurn: (base: CGFloat, sum: CGFloat)?
     /// An area handle under the pointer: which one, the area as the press took it and where the
     /// press landed. Not an edit of the layers, so no undo step: the area is not a layer.
     private var reshaping: (display: DisplayID, handle: AreaHandle, base: CGRect, press: CGPoint)?
@@ -255,7 +270,8 @@ enum OverlayResult {
         if var current = edit, drag == nil {
             current.layers.disarm()
             // The editor reads the press on the edited display only: a handle of the area reshapes it
-            // (an object's own handle, where the two meet, is taken first), a tool draws, a handle
+            // (an object's own handle, where the two meet, is taken first), then, with the eraser on, the erase,
+            // then the ruler's strip where the area shows it, and then a tool draws, a handle
             // resizes, an object is taken to be moved, and a click selects or lets go. What is
             // left is no tool and no layers, the old gesture, a new drag, which replaces the
             // area only when it turns out to be one; on another display, with a tool or with
@@ -264,6 +280,25 @@ enum OverlayResult {
                let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected) {
                 current.layers.end()
                 reshaping = (display, handle, current.rect, local)
+                edit = current
+                render()
+                return
+            }
+            // The eraser takes the press before any tool or selection does, even over a handle of the selected object: only
+            // a handle of the area, above, is before it.
+            if display == current.display, erasing {
+                current.layers.beginErase(at: local, radius: Self.eraserRadius)
+                edit = current
+                render()
+                return
+            }
+            // The ruler's strip takes the press with any tool, on the part of it the area shows: the strip is drawn above
+            // the layers, so what is under it is not what the pointer is over. With the eraser on, above, the strip is not taken: the eraser takes layers and the ruler is none.
+            if display == current.display, let strip = ruler, current.rect.contains(local), strip.contains(local) {
+                current.layers.end()
+                rulerDrag = (display, flags.contains(.option)
+                             ? .turn(base: strip.angle, from: strip.degrees(toward: local))
+                             : .move(offset: CGPoint(x: strip.center.x - local.x, y: strip.center.y - local.y)))
                 edit = current
                 render()
                 return
@@ -279,12 +314,12 @@ enum OverlayResult {
                 return
             }
             if display == current.display,
-               current.layers.press(at: local, tool: current.tool, style: style) {
+               current.layers.press(at: local, tool: current.tool, style: style, ruler: ruler) {
                 edit = current
                 render()
                 return
             }
-            guard current.tool == nil, current.layers.layers.isEmpty else { edit = current; render(); return }
+            guard current.tool == nil, !erasing, current.layers.layers.isEmpty else { edit = current; render(); return }
             edit = current
         }
         switch mode {
@@ -307,8 +342,18 @@ enum OverlayResult {
                let rect = AreaFrame.resized(held.base, held.handle, from: held.press, to: local, within: bounds) {
                 current.rect = rect
                 current.layers.reshape(bounds: rect)
+                ruler?.keep(within: rect)
                 edit = current
             }
+            render()
+            return
+        }
+        if let held = rulerDrag, held.display == display, var strip = ruler, let current = edit {
+            switch held.kind {
+            case .move(let offset): strip.move(to: CGPoint(x: local.x + offset.x, y: local.y + offset.y), within: current.rect)
+            case .turn(let base, let from): strip.rotate(to: base + strip.degrees(toward: local) - from)
+            }
+            ruler = strip
             render()
             return
         }
@@ -371,6 +416,7 @@ enum OverlayResult {
             render()
             return
         }
+        if rulerDrag != nil { rulerDrag = nil; render(); return }
         if var current = edit, drag == nil {
             current.layers.end()
             edit = current
@@ -399,6 +445,9 @@ enum OverlayResult {
             style = memory.style(for: styleTool)
         }
         edit = (display, rect, AnnotationEditing(bounds: rect), tool)
+        // A strip on the picture goes with the area to the middle of the new one.
+        if ruler != nil { ruler = .centred(in: rect) }
+        rulerDrag = nil
         render()
     }
 
@@ -488,6 +537,7 @@ enum OverlayResult {
             if !current.layers.nudgeSelected(by: delta) {
                 current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
                 current.layers.reshape(bounds: current.rect)
+                ruler?.keep(within: current.rect)
             } else if hadSelection, current.layers.selected == nil {
                 arrowReleasedObject = true
             }
@@ -508,13 +558,28 @@ enum OverlayResult {
             // The same key again puts the tool down, which is how a drag selects again;
             // a held key's repeats are not that second press.
             guard !isRepeat else { return }
-            current.tool = current.tool == tool ? nil : tool
+            // Under the eraser a tool's key picks that tool, even the one chosen under it: the eraser is what puts down.
+            current.tool = current.tool == tool && !erasing ? nil : tool
+            erasing = false
             popover = nil
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
             // Each tool is drawn with its own step and opacity, and every tool with the one colour and fill.
             if let picked = current.tool { styleTool = picked; style = memory.style(for: picked) }
+        case .erase?:
+            // The key again puts the eraser down, as a tool's does; the tool chosen under it is as it was, and the store is not asked.
+            guard !isRepeat else { return }
+            erasing.toggle()
+            popover = nil
+        case .toggleRuler?:
+            // A switch: the key again lowers it, and a click on the raised object does. The tool chosen and the eraser stay as they were.
+            guard !isRepeat else { return }
+            ruler = ruler == nil ? .centred(in: current.rect) : nil
+            rulerDrag = nil
+            rulerTurn = nil
+            popover = nil
         case .select?:
             current.tool = nil
+            erasing = false
             popover = nil
             if let store { EditorMemory.remember(tool: nil, in: store) }
         // A pick is the next object's and, with one selected, that object's too.
@@ -535,8 +600,8 @@ enum OverlayResult {
             style.opacity = value.clamped(to: 0.1...1, whenNotANumber: 1)
             remember()
         case .thicknessAndOpacity(let anchorX)?:
-            // A second request closes it; with no tool chosen there is nothing whose steps it could set.
-            popover = current.tool != nil && !thicknessIsOpen ? (.thickness, anchorX) : nil
+            // A second request closes it; with no tool chosen, or the eraser on, there is nothing whose steps it could set.
+            popover = current.tool != nil && !erasing && !thicknessIsOpen ? (.thickness, anchorX) : nil
         case .colours(let anchorX)?:
             // Opened with no tool chosen too: the colour is every tool's. The other pop-over gives way to it.
             popover = coloursAreOpen ? nil : (.colours, anchorX)
@@ -564,6 +629,28 @@ enum OverlayResult {
             finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
         case .nudge?, .close?, nil: break
         }
+    }
+
+    /// Whether the eraser is on, for a test and for nobody else.
+    var isErasing: Bool { erasing }
+
+    /// The ruler on the picture, for a test and for nobody else.
+    var rulerOnThePicture: Ruler? { ruler }
+
+    /// A turn of the trackpad's rotate gesture, in degrees, counter-clockwise as AppKit reports it, while the ruler is on the picture. Whether the
+    /// non-activating panel is sent the gesture at all is not known; the ⌥-drag turns the strip without it.
+    func rotateRuler(by degrees: CGFloat, phase: NSEvent.Phase) {
+        guard var strip = ruler, edit != nil else { return }
+        if phase.contains(.ended) || phase.contains(.cancelled) { rulerTurn = nil; return }
+        // A gesture whose end never came leaves its base and sum: a new one starts from the angle the strip has now.
+        if phase.contains(.began) || phase.contains(.mayBegin) { rulerTurn = nil }
+        let turn = rulerTurn ?? (strip.angle, 0)
+        guard degrees.isFinite else { return }
+        let sum = turn.sum - degrees
+        rulerTurn = (turn.base, sum)
+        strip.rotate(to: turn.base + sum)
+        ruler = strip
+        render()
     }
 
     /// The input ends: the field goes, and its text is placed where the line began in the style picked now (`AnnotationEditing.place`:
@@ -633,7 +720,7 @@ enum OverlayResult {
     private func render() {
         if let edit {
             let held = edit.layers.selected
-            palette.show(tool: edit.tool, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
+            palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
                       popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
         }
         for (id, entry) in panels {
@@ -650,6 +737,9 @@ enum OverlayResult {
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.draftID = edit.layers.draft?.id
+                scene.erasing = erasing
+                scene.ruler = ruler
+                scene.fading = edit.layers.erased
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
                 if pinRefused {
                     // By the palette, which the menu was opened from, so that the plate does not lie under the glass.
@@ -682,9 +772,15 @@ struct OverlayScene {
     var layers: [Annotation] = []
     /// Which of `layers` is still being drawn, if one is.
     var draftID: Annotation.ID?
+    /// The eraser is on: the cursor is its circle.
+    var erasing = false
+    /// The layers the eraser's drag has met: drawn at `OverlayView.fadedOpacity` until the release takes them.
+    var fading: Set<Annotation.ID> = []
+    /// The ruler on the picture: drawn above the layers, clipped to the selection, and in no file.
+    var ruler: Ruler?
     /// The selected layer, held by its handles; nil while one is being drawn.
     var selected: Annotation?
-    /// Where the palette stands; nil is none on this display, or none while drawing, moving, resizing or reshaping.
+    /// Where the palette stands; nil is none on this display, or none while drawing, moving, resizing, reshaping or erasing.
     var chrome: EditorChrome?
     /// What Esc asked, while it is waiting for its second press.
     var plate: String?
@@ -762,6 +858,8 @@ final class OverlayView: NSView {
     /// on the accent colour, so the two are not taken for each other.
     private let areaHandleLayer = CAShapeLayer()
     private let crosshairLayer = CAShapeLayer()
+    /// The ruler, over the layers and the dim's hole and under the palette's host, which is a subview.
+    let rulerLayer = RulerLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
     /// The editor's palette, made when this display first has an area to edit and never
@@ -875,7 +973,8 @@ final class OverlayView: NSView {
         crosshairLayer.shadowRadius = 0
         crosshairLayer.shadowOffset = .zero
 
-        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer,
+        rulerLayer.isHidden = true
+        for sublayer in [imageLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
                          crosshairLayer,
                          coordinateLabel, sizeLabel] as [CALayer] {
             layer?.addSublayer(sublayer)
@@ -958,6 +1057,9 @@ final class OverlayView: NSView {
                               flags: event.modifierFlags)
     }
     override func mouseUp(with event: NSEvent) { overlay?.mouseUp(on: frozen.id) }
+    /// The trackpad's rotate gesture: forwarded to `rotateRuler`, which turns the ruler when one is on the picture. Whether the
+    /// non-activating panel is sent the gesture was not tried.
+    override func rotate(with event: NSEvent) { overlay?.rotateRuler(by: CGFloat(event.rotation), phase: event.phase) }
     override func rightMouseDown(with event: NSEvent) { overlay?.rightMouseDown() }
     override func flagsChanged(with event: NSEvent) { overlay?.flagsChanged(event.modifierFlags) }
     override func keyDown(with event: NSEvent) { overlay?.keyDown(event) }
@@ -967,9 +1069,30 @@ final class OverlayView: NSView {
     /// application, and the system is free to put the arrow back under a
     /// non-activating panel between one update and the next.
     private var windowMode = false
+    /// The eraser is on (`OverlayScene.erasing`): the cursor is its circle.
+    private var erasing = false
     private func setCursor() {
-        (windowMode ? Self.cameraCursor : NSCursor.crosshair).set()
+        (windowMode ? Self.cameraCursor : erasing ? Self.eraserCursor : NSCursor.crosshair).set()
     }
+
+    /// The opacity of a layer the eraser's drag has met, until the release takes it.
+    static let fadedOpacity: Float = 0.3
+
+    /// A circle of the eraser's radius, a white fill at 55 % and a 1 pt black edge at 55 %, the hot spot at its centre.
+    static let eraserCursor: NSCursor = {
+        let radius = CaptureOverlay.eraserRadius
+        let size = NSSize(width: radius * 2 + 2, height: radius * 2 + 2)
+        let image = NSImage(size: size, flipped: false) { rect in
+            let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1))
+            NSColor.white.withAlphaComponent(0.55).setFill()
+            circle.fill()
+            NSColor.black.withAlphaComponent(0.55).setStroke()
+            circle.lineWidth = 1
+            circle.stroke()
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: size.width / 2, y: size.height / 2))
+    }()
 
     private static let cameraCursor: NSCursor = {
         let size = NSSize(width: 28, height: 24)
@@ -998,6 +1121,10 @@ final class OverlayView: NSView {
         defer { CATransaction.commit() }
 
         windowMode = scene.windowMode
+        if erasing != scene.erasing {
+            erasing = scene.erasing
+            setCursor()
+        }
         let all = bounds
         let hole = scene.selection.map(layerRect) ?? scene.highlight.map(layerRect)
         let dim = CGMutablePath()
@@ -1009,6 +1136,8 @@ final class OverlayView: NSView {
         selectionLayer.path = scene.selection.map { CGPath(rect: layerRect($0), transform: nil) }
 
         drawLayers(scene)
+        rulerLayer.frame = bounds
+        rulerLayer.show(scene.editing ? scene.ruler : nil, in: scene.selection ?? .zero, height: bounds.height, scale: frozen.scale)
         drawAreaHandles(scene.editing ? scene.selection : nil)
         if let chrome = scene.chrome {
             _ = measuredPalette
@@ -1128,6 +1257,9 @@ final class OverlayView: NSView {
         }
         for (id, entry) in shapeCache where kept[id]?.shape !== entry.shape { entry.shape.removeFromSuperlayer() }
         shapeCache = kept
+        for annotation in scene.layers {
+            kept[annotation.id]?.shape.opacity = scene.fading.contains(annotation.id) ? Self.fadedOpacity : 1
+        }
         // The draft's whole-display grain lives as long as the draft: a release has just cut it, a drop (Esc, right
         // click) leaves no draft among the layers, and either event ends here.
         if !kept.values.contains(where: \.draft) { draftGrain = nil }

@@ -1380,3 +1380,5 @@
 /* Screenshots — editor track */
 "Blur" = "Weichzeichner";
 "Text" = "Text";
+"Eraser" = "Radiergummi";
+"Ruler" = "Lineal";

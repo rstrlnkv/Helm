@@ -10,6 +10,10 @@ import Module_Screenshots_Engine
 /// The name stays from the plan, which calls the model `EditorBarModel`; the overlay's property for it is `palette`.
 @MainActor final class EditorBarModel: ObservableObject {
     @Published private(set) var tool: AnnotationTool?
+    /// The eraser is on: its object stands raised and no tool's does, though `tool` is still the one chosen under it.
+    @Published private(set) var erasing = false
+    /// The ruler is on the picture: its object stands raised, whatever tool is chosen and with the eraser too.
+    @Published private(set) var ruler = false
     /// The tool of the selected object, nil with none: the style shown is then its, and what
     /// the colour and the fill apply to is its tool and not the picked one.
     @Published private(set) var selectedTool: AnnotationTool?
@@ -39,9 +43,11 @@ import Module_Screenshots_Engine
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
-    func show(tool: AnnotationTool?, style: AnnotationStyle, picked: AnnotationStyle? = nil, selectedTool: AnnotationTool? = nil,
-              popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
+    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil,
+              selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
         if self.tool != tool { self.tool = tool }
+        if self.erasing != erasing { self.erasing = erasing }
+        if self.ruler != ruler { self.ruler = ruler }
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.style != style { self.style = style }
         if self.picked != (picked ?? style) { self.picked = picked ?? style }
@@ -104,6 +110,12 @@ struct EditorPalette: View {
         tool == chosen ? .thicknessAndOpacity(anchorX: anchorX) : .tool(tool)
     }
 
+    /// What a click on the eraser sends: the eraser, and from a second click on it the pop-over request, which the editor
+    /// refuses for the eraser, so that it opens nothing and the eraser stays raised; the click is still an input.
+    static func action(forClickOnEraser erasing: Bool) -> EditorAction {
+        erasing ? .thicknessAndOpacity(anchorX: 0) : .erase
+    }
+
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
     static let selectSymbol = "cursorarrow"
 
@@ -115,8 +127,9 @@ struct EditorPalette: View {
         CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
     }
 
-    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, nothing while a row object is raised.
+    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, nothing while the eraser is raised; the ruler raised changes neither the badge nor Select's symbol.
     static func moreBadge(for model: EditorBarModel) -> String? {
+        guard !model.erasing else { return nil }
         guard let tool = model.tool else { return selectSymbol }
         return objects.first { $0.tool == tool && $0.place != .row }?.symbol
     }
@@ -149,13 +162,23 @@ struct EditorPalette: View {
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
             HStack(spacing: 0) {
                 ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
-                    let chosen = model.tool == object.tool
-                    GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width, height: Self.height) {
-                        model.perform(Self.action(forClickOn: object.tool, chosen: model.tool, anchorX: model.cellMidX[object.tool] ?? 0))
+                    let chosen = model.tool == object.tool && !model.erasing
+                    GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width(for: .tool(object.tool)), height: Self.height) {
+                        model.perform(Self.action(forClickOn: object.tool, chosen: chosen ? object.tool : nil, anchorX: model.cellMidX[object.tool] ?? 0))
                     } icon: {
                         PaletteObject(tool: object.tool, ink: Color(cgColor: model.style.ink(for: object.tool).cgColor), raised: chosen)
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).midX } action: { model.cellMidX[object.tool] = $0 }
+                }
+                GlassCell(name: ScStr.eraser, selected: model.erasing, look: .bare, width: PaletteObject.width(for: .eraser), height: Self.height) {
+                    model.perform(Self.action(forClickOnEraser: model.erasing))
+                } icon: {
+                    PaletteObject(kind: .eraser, ink: .clear, raised: model.erasing)
+                }
+                GlassCell(name: ScStr.ruler, selected: model.ruler, look: .bare, width: PaletteObject.width(for: .ruler), height: Self.height) {
+                    model.perform(.toggleRuler)
+                } icon: {
+                    PaletteObject(kind: .ruler, ink: .clear, raised: model.ruler)
                 }
             }
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)

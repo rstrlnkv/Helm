@@ -1380,3 +1380,5 @@
 /* Screenshots — editor track */
 "Blur" = "ぼかし";
 "Text" = "テキスト";
+"Eraser" = "消しゴム";
+"Ruler" = "定規";

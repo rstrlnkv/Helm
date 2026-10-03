@@ -19,6 +19,12 @@ enum EditorExit: Equatable {
 /// some of these; the rest are the palette's and the ⋯ menu's.
 enum EditorAction: Equatable {
     case tool(AnnotationTool)
+    /// The eraser, a mode of the editor and no `AnnotationTool`: a drag takes away the layers it meets, and the chosen tool
+    /// stays chosen under it. The key again puts it down; choosing any tool, or Select, does too.
+    case erase
+    /// The ruler: a switch and no tool and no mode. It is put on the picture, in the middle of the area, or lowered; the tool chosen,
+    /// or the eraser, is as it was.
+    case toggleRuler
     /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
     case select
     /// The next object's colour, thickness and, for the boxes, fill.
@@ -57,6 +63,12 @@ enum EditorKeys {
         (.text, kVK_ANSI_T, "T"), (.blur, kVK_ANSI_B, "B"),
     ]
 
+    /// The eraser's key code (E on an English layout), which is no tool's: the eraser has no row in `toolKeys` and no item in the ⋯ menu.
+    static let eraserKeyCode = kVK_ANSI_E
+
+    /// The ruler's key code (U on an English layout), the same way: no row in `toolKeys` and no item in the ⋯ menu.
+    static let rulerKeyCode = kVK_ANSI_U
+
     static func action(keyCode: UInt16, flags: NSEvent.ModifierFlags) -> EditorAction? {
         let flags = flags.intersection([.command, .shift, .option, .control])
         // The arrows carry the numeric-pad and function flags of their own, which the intersection
@@ -72,6 +84,8 @@ enum EditorKeys {
             }
         }
         if flags.isEmpty, let key = toolKeys.first(where: { $0.code == Int(keyCode) }) { return .tool(key.tool) }
+        if flags.isEmpty, Int(keyCode) == eraserKeyCode { return .erase }
+        if flags.isEmpty, Int(keyCode) == rulerKeyCode { return .toggleRuler }
         switch (Int(keyCode), flags) {
         case (kVK_Delete, []), (kVK_ForwardDelete, []): return .delete
         case (kVK_ANSI_Z, .command): return .undo

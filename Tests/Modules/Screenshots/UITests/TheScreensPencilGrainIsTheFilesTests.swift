@@ -64,7 +64,7 @@ final class TheScreensPencilGrainIsTheFilesTests: XCTestCase {
     }
 
     /// The overlay's shape layer for a pencil stroke, rendered at `scale` over white, and the layer the file draws.
-    private func screenAndFile(scale: CGFloat, from: CGPoint, to: CGPoint, wobble: CGFloat = 0) throws
+    private func screenAndFile(scale: CGFloat, from: CGPoint, to: CGPoint, wobble: CGFloat = 0, ruler: Bool = false) throws
         -> (screen: Ink, file: Ink, layer: Annotation) {
         // The display as the controller freezes it: the screen's own size in points, its picture `scale` pixels to a point.
         let screen0 = try XCTUnwrap(NSScreen.screens.first)
@@ -82,6 +82,7 @@ final class TheScreensPencilGrainIsTheFilesTests: XCTestCase {
         built.mouseUp(on: id)
         let view = try XCTUnwrap(built.view(for: id))
         built.perform(.tool(.pencil))
+        if ruler { built.perform(.toggleRuler) }
         built.mouseDown(on: id, at: from, flags: [])
         let steps = 12
         for step in 1...steps {
@@ -161,6 +162,25 @@ final class TheScreensPencilGrainIsTheFilesTests: XCTestCase {
             // The check can tell: against a one-pixel shift the same comparison fails widely.
             let wrong = pixels.filter { abs(screen.at($0.x, $0.y) - file.at($0.x + 1, $0.y)) > 0.06 }.count
             XCTAssertGreaterThan(Double(wrong) / Double(pixels.count), 0.05, "\(scale)x: a one-pixel shift passes too: the grain is flat")
+        }
+    }
+
+    /// A pencil stroke made along the ruler is two points on a level line, and the grain on the screen is still the file's.
+    func testAStrokeAlongTheRulerHasTheSameGrainOnTheScreenAndInTheFile() throws {
+        let screen0 = try XCTUnwrap(NSScreen.screens.first)
+        let edge = screen0.frame.height / 2 - 17
+        for scale in [CGFloat(1), 2] {
+            let (screen, file, layer) = try screenAndFile(scale: scale, from: CGPoint(x: screen0.frame.width / 2 - 120.3, y: edge - 4.2),
+                                                          to: CGPoint(x: screen0.frame.width / 2 + 120.6, y: edge - 4.2), ruler: true)
+            overlay?.close(); overlay = nil; results = []
+            XCTAssertEqual(layer.points.count, 2, "\(scale)x: the stroke was not made along the ruler")
+            XCTAssertEqual(layer.start.y, edge, accuracy: 1e-6)
+            let pixels = try body(of: layer, scale: scale, wobble: 0)
+            XCTAssertGreaterThan(pixels.count, 400, "\(scale)x: the body probe is small")
+            let screenGaps = pixels.filter { screen.at($0.x, $0.y) < 0.9 }.count
+            XCTAssertGreaterThan(Double(screenGaps) / Double(pixels.count), 0.08, "\(scale)x: the screen's stroke along the ruler is solid")
+            let off = pixels.filter { abs(screen.at($0.x, $0.y) - file.at($0.x, $0.y)) > 0.06 }
+            XCTAssertEqual(off.count, 0, "\(scale)x: \(off.count) of \(pixels.count) pixels of a stroke along the ruler differ between the screen and the file")
         }
     }
 }

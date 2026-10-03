@@ -45,8 +45,8 @@ Later EmojiOne artwork is under JoyPixels' own licence and is not usable here.
 
 ## Palette objects — PencilKit for Figma
 
-`Sources/Modules/Screenshots/UI/PaletteObjects.xcassets` holds the Pen, Marker and
-Pencil drawn on the screenshot editor's palette, in a light and a dark variant each.
+`Sources/Modules/Screenshots/UI/PaletteObjects.xcassets` holds the Pen, Marker,
+Pencil, Eraser and Ruler drawn on the screenshot editor's palette, in a light and a dark variant each.
 They are taken from the Figma file **PencilKit for figma (Copy)**
 (<https://www.figma.com/design/33IGj6K24Gp1BJIpWmHZJs/PencilKit-for-figma--Copy->),
 a community recreation of Apple's iPadOS 13 PencilKit picker.
@@ -56,7 +56,8 @@ a community recreation of Apple's iPadOS 13 PencilKit picker.
 - Licence: (to be filled in by the owner)
 - Use in Helm: the owner checked the file's licence on 2026-10-02 and decided
   the objects may be used.
-- Modified for Helm: SVG filters removed (macOS drops them silently), each object
-  split into body, tip and tip highlight layers so the tip can take the ink colour,
+- Modified for Helm: SVG filters removed (macOS drops them silently), the Pen, Marker and
+  Pencil split into body, tip and tip highlight layers so the tip can take the ink colour (the Eraser and
+  the Ruler are a body layer only),
   thickness labels removed, the shadow margin cropped, the dark Marker re-aligned to the
   light one's height.

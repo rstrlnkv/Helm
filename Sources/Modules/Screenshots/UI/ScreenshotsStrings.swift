@@ -143,6 +143,14 @@ enum ScStr {
         }
     }
 
+    /// The eraser's name, which is no tool's: the word of `PaperKit.framework`'s `Localizable.loctable`, key `Eraser` (Eraser, Radiergummi,
+    /// Borrador, Gomme, 消しゴム, Borracha, Ластик, 橡皮擦); `PencilKit.framework`'s table has «Object Eraser» and «Pixel Eraser» and no bare `Eraser`.
+    static var eraser: String { L("Eraser") }
+
+    /// The ruler's name: key `Ruler` of `PencilKit.framework`'s `Localizable.loctable` (Ruler, Lineal, Regla, Règle, 定規, Régua, Линейка, 标尺); `PaperKit.framework`'s table
+    /// has no such key. The Portuguese is the table's `pt_BR`, which `pt_PT` repeats.
+    static var ruler: String { L("Ruler") }
+
     /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are the system colour list's words (ブラック, ホワイト).
     static func ink(_ color: AnnotationColor) -> String {
         switch color {

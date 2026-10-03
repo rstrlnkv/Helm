@@ -116,11 +116,28 @@ first release of a capture, and written at each pick by `EditorMemory`. The step
 keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
 step of the days before the tables is retired, neither read nor migrated.
 
-The palette carries the pen, the marker and the pencil as objects, each drawn by `PaletteObject`
+The palette carries the pen, the marker, the pencil, the eraser and the ruler as objects, each drawn by `PaletteObject`
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
-that is a template layer filled with the live ink colour, and the tip's highlight, with two native shadows; the picked
+that is a template layer filled with the live ink colour, and the tip's highlight (the eraser and the ruler have a body only), with two native shadows; the picked
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
 filter and no text, because macOS drops a filter without a word (`ThePaletteArtworkCarriesNoFilterTests`); its attribution is in `NOTICE.md`.
+The eraser is a mode of the editor and no `AnnotationTool` (`EditorAction.erase`, key E, `EditorKeys.eraserKeyCode`): the chosen tool stays chosen
+under it, `EditorMemory` is never asked to keep it, so the next capture opens with the last drawing tool, and choosing a tool or Select puts it down. A drag takes away whole layers:
+`AnnotationEditing.beginErase(at:radius:)` and the drags after it collect the layers the circle of `CaptureOverlay.eraserRadius` meets, by `AnnotationHit.touched(by:radius:in:within:)`,
+which repeats the rule a click selects by (`AnnotationHit.hits`) with the radius as its tolerance, once per layer instead of once per sample, and only over the part of the picture the area shows: a layer across the area's edge
+is cut to the area first by a rule of its own, and a circle that reaches only the part outside meets nothing. The copy is held to `hits` by `TheEraserTakesWholeObjectsInOneStepTests.testTheCircleAndAClickAgreeOnWhereAMarkIs`, for layers wholly inside the area and no more. Each layer's frame is read once per call, and a layer that the samples' box misses is not asked about. Those layers are
+drawn at `OverlayView.fadedOpacity` while the drag is open and go at the release in one undo step (`AnnotationEditing.remove(_:)`); Esc in the middle of the drag takes none and records none.
+A second click on the raised eraser opens no pop-over and ⋯'s Thickness and Opacity… is disabled for it.
+
+The ruler is a switch and neither a tool nor a mode (`EditorAction.toggleRuler`, key U, `EditorKeys.rulerKeyCode`): its object in the row is raised while the strip is on the picture,
+whatever tool is chosen, or with Select, and with the eraser too; a second click on it, or the key again, lowers it, and it has no pop-over. The strip is `Ruler`
+(`Sources/Modules/Screenshots/Engine/Logic/Ruler.swift`), a value the overlay holds and **no layer**: it is not in `Annotation`, in the undo steps, in the export (`CaptureSession.annotated` is given
+the picture and the layers alone) or in what `EditorMemory` keeps, and it comes up level in the middle of the area. It is drawn by `RulerLayer` above the annotations and clipped to the area, with its
+angle as a number from a format style of the UI target in the app's language. A press on the strip, on the part the area shows, takes the strip along — with ⌥ held at the press it turns it about its centre instead — and draws
+nothing, with any tool or none; with the eraser on, the press is the eraser's and the ruler stays where it is. The trackpad's rotate gesture (`OverlayView.rotate(with:)`, which forwards to `CaptureOverlay.rotateRuler(by:phase:)`) is meant to turn it too; only `rotateRuler` called directly is shown to, and whether the
+non-activating panel is sent that gesture was not tried, which is why the ⌥-drag is there. The angle sticks to 0°, 45° (and −45°) and 90° within 2°. A stroke of the pen, the pencil or the marker
+that **begins** within 12 pt of one of the two long edges (`Ruler.edge(near:)`, read once, at the press) is the straight run along that edge, cut at the strip's ends, and an ordinary layer of its
+pen once it is released (`AnnotationEditing.begin(_:at:style:ruler:)`); one that begins farther is free from start to end, and the arrow and the shapes never read the ruler.
 Every other tool, Select, Filled, Save and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
@@ -152,7 +169,7 @@ for, the wheel's centre shows it and no grid swatch is ringed.
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
 read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then an area handle — unless the selected object has a
-handle at that point, which is the object's — then the object and the tool. The area handles are round dots on
+handle at that point, which is the object's — then, with the eraser on, the erase, whatever lies under the pointer, then the ruler's strip, where the area shows it, and otherwise the object and the tool. The area handles are round dots on
 a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,
 and the display bounds it; an object left wholly outside the area when the handle is let go is deselected (`AnnotationEditing.releaseIfOutside`). The area is not a layer: reshaping it is no undo step, the layers keep their

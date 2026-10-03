@@ -72,6 +72,20 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
             else if case .tool = got { XCTFail("code \(code) became a tool key") }
         }
         XCTAssertEqual(Set(EditorKeys.toolKeys.map(\.code)), Set(expected.keys), "the table holds the nine keys and no more")
+        // E is the eraser, the one plain key that is a mode and no tool; it is in no row of the table and no item of the menu.
+        XCTAssertEqual(EditorKeys.action(keyCode: UInt16(kVK_ANSI_E), flags: []), .erase)
+        XCTAssertNil(EditorKeys.action(keyCode: UInt16(kVK_ANSI_E), flags: .command), "⌘E erased")
+        XCTAssertFalse(EditorKeys.toolKeys.contains { $0.code == kVK_ANSI_E }, "the eraser's key is in the tools' table")
+        for code in 0..<128 where code != kVK_ANSI_E {
+            XCTAssertNotEqual(EditorKeys.action(keyCode: UInt16(code), flags: []), .erase, "code \(code) became the eraser's key")
+        }
+        // U is the ruler's switch, on the same terms: no tool, no row of the table, no item of the menu, nothing with a modifier.
+        XCTAssertEqual(EditorKeys.action(keyCode: UInt16(kVK_ANSI_U), flags: []), .toggleRuler)
+        XCTAssertNil(EditorKeys.action(keyCode: UInt16(kVK_ANSI_U), flags: .command), "⌘U switched the ruler")
+        XCTAssertFalse(EditorKeys.toolKeys.contains { $0.code == kVK_ANSI_U }, "the ruler's key is in the tools' table")
+        for code in 0..<128 where code != kVK_ANSI_U {
+            XCTAssertNotEqual(EditorKeys.action(keyCode: UInt16(code), flags: []), .toggleRuler, "code \(code) became the ruler's key")
+        }
     }
 
     /// An action sent by a key while a menu is open is dropped; the same action sent by a click goes. With the event the

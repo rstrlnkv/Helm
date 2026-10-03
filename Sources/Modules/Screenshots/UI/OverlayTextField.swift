@@ -105,7 +105,9 @@ final class OverlayTextField: NSTextView {
         if let clip {
             let mask = (layer?.mask) ?? CALayer()
             mask.backgroundColor = NSColor.black.cgColor
-            mask.frame = clip.offsetBy(dx: -frame.minX, dy: -frame.minY)
+            // The clip is in the superview's bottom-up points and the mask in the field's own, which run down from its top
+            // (a text view is flipped): the clip's top edge lies `frame.maxY - clip.maxY` below the field's top.
+            mask.frame = CGRect(x: clip.minX - frame.minX, y: frame.maxY - clip.maxY, width: clip.width, height: clip.height)
             layer?.mask = mask
         } else {
             layer?.mask = nil

@@ -16,7 +16,7 @@ enum EditorMenuItem: Equatable {
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
 /// Order: the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Blur, then Select, Thickness and Opacity… (enabled while a
-/// tool is chosen), a separator, Save, and Pin only while
+/// tool is chosen and the eraser is not on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
 /// `NSMenuItem` sends nothing even when its action is performed.
@@ -50,7 +50,8 @@ enum EditorMenu {
     @MainActor static func items(for model: EditorBarModel, pinOffered: Bool = PinEntry.isOffered) -> [EditorMenuItem] {
         func tool(_ object: (tool: AnnotationTool, symbol: String?, place: EditorPalette.Place)) -> EditorMenuItem? {
             guard let symbol = object.symbol else { return nil }
-            return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool, action: .tool(object.tool))
+            return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool && !model.erasing,
+                         action: .tool(object.tool))
         }
         let shapes = EditorPalette.objects.filter { $0.place == .shapes }
         var items: [EditorMenuItem] = []
@@ -61,15 +62,15 @@ enum EditorMenu {
             case .menu: items += [tool(object)].compactMap { $0 }
             case .shapes:
                 guard object.tool == shapes.first?.tool else { break }
-                items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool },
+                items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool } && !model.erasing,
                                       children: shapes.compactMap(tool) + [.separator,
                                           .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))
             }
         }
-        items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil, action: .select))
-        // Every tool has steps and Select has none; the item stays in its place either way. It opens the pop-over at ⋯.
+        items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil && !model.erasing, action: .select))
+        // Every drawing tool has steps; Select and the eraser have none, and the item stays in its place either way. It opens the pop-over at ⋯.
         items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),
-                             isEnabled: model.tool != nil, isOn: false))
+                             isEnabled: model.tool != nil && !model.erasing, isOn: false))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]
         if pinOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
         return items

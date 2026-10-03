@@ -455,7 +455,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     /// the file, so a cell added there without a name here fails and the list cannot drift from the palette.
     private var paletteNames: [(group: String, words: [String])] {
         [
-            ("row tools", EditorPalette.objects.filter { $0.place == .row }.map { ScStr.tool($0.tool) }),
+            ("row tools", EditorPalette.objects.filter { $0.place == .row }.map { ScStr.tool($0.tool) } + [ScStr.eraser, ScStr.ruler]),
             ("inks", AnnotationColor.allCases.map(ScStr.ink) + [ScStr.allColours]),
             ("fixed cells", [ScStr.undo, ScStr.redo, HelmA11y.moreActions, ScStr.done, ScStr.closeEditor]),
         ]
@@ -464,7 +464,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     func testEveryControlOnThePaletteIsNamedAndDistinctInEveryLanguage() {
         AppLanguage.each { language in
             let groups = paletteNames
-            XCTAssertEqual(groups[0].words.count, 3, "\(language): the row is Pen, Marker and Pencil")
+            XCTAssertEqual(groups[0].words.count, 5, "\(language): the row is Pen, Marker, Pencil, Eraser and Ruler")
             for (name, words) in groups {
                 XCTAssertFalse(words.contains(where: \.isEmpty), "\(language) \(name)")
                 XCTAssertEqual(Set(words).count, words.count, "\(language): two controls share a name among \(name): \(words)")
@@ -480,7 +480,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             .matches(in: source, range: NSRange(source.startIndex..., in: source))
             .map { String(source[Range($0.range, in: source)!]) })
         // `select` is the label that shows the chosen tool, not a control.
-        let known: Set<String> = ["ScStr.tool", "ScStr.ink", "ScStr.allColours", "ScStr.undo", "ScStr.redo", "HelmA11y.moreActions",
+        let known: Set<String> = ["ScStr.tool", "ScStr.eraser", "ScStr.ruler", "ScStr.ink", "ScStr.allColours", "ScStr.undo", "ScStr.redo", "HelmA11y.moreActions",
                                   "ScStr.done", "ScStr.closeEditor", "ScStr.select"]
         XCTAssertEqual(tokens, known, "the palette names a control this test does not list, or lists one the palette lost")
     }

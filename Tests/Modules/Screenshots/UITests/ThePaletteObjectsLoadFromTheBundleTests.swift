@@ -18,7 +18,7 @@ final class ThePaletteObjectsLoadFromTheBundleTests: XCTestCase {
         let bundle = resourceBundle()
         for object in ThePaletteArtworkCarriesNoFilterTests.objects {
             for theme in ThePaletteArtworkCarriesNoFilterTests.themes {
-                for layer in ThePaletteArtworkCarriesNoFilterTests.layers {
+                for layer in ThePaletteArtworkCarriesNoFilterTests.layers(of: object) {
                     let name = "\(object)-\(theme)-\(layer)"
                     let image = try XCTUnwrap(bundle.image(forResource: NSImage.Name(name)), "\(name) not in the bundle")
                     XCTAssertTrue(isSVG(image), "\(name) has no SVG representation: \(image.representations)")
@@ -29,12 +29,25 @@ final class ThePaletteObjectsLoadFromTheBundleTests: XCTestCase {
 
     func testTheTipIsATemplateAndTheBodyIsNot() throws {
         let bundle = resourceBundle()
-        for object in ThePaletteArtworkCarriesNoFilterTests.objects {
+        for object in ThePaletteArtworkCarriesNoFilterTests.tipped {
             for theme in ThePaletteArtworkCarriesNoFilterTests.themes {
                 let tip = try XCTUnwrap(bundle.image(forResource: NSImage.Name("\(object)-\(theme)-tip")), "\(object) \(theme) tip")
                 let body = try XCTUnwrap(bundle.image(forResource: NSImage.Name("\(object)-\(theme)-body")), "\(object) \(theme) body")
                 XCTAssertTrue(tip.isTemplate, "\(object) \(theme) tip must be a template")
                 XCTAssertFalse(body.isTemplate, "\(object) \(theme) body must not be a template")
+            }
+        }
+    }
+
+    /// The eraser and the ruler are bodies and nothing more: the body is there, and no tip or highlight is.
+    func testTheEraserAndTheRulerHaveABodyAndNoTip() throws {
+        let bundle = resourceBundle()
+        for object in ThePaletteArtworkCarriesNoFilterTests.bodyOnly {
+            for theme in ThePaletteArtworkCarriesNoFilterTests.themes {
+                XCTAssertNotNil(bundle.image(forResource: NSImage.Name("\(object)-\(theme)-body")), "\(object) \(theme) body")
+                for layer in ["tip", "shade"] {
+                    XCTAssertNil(bundle.image(forResource: NSImage.Name("\(object)-\(theme)-\(layer)")), "\(object) \(theme) has a \(layer)")
+                }
             }
         }
     }

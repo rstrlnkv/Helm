@@ -46,6 +46,9 @@ public struct AnnotationEditing: Sendable {
     /// the step will go back to.
     private var gesture: (kind: Gesture, base: Annotation, before: [Annotation])?
     private enum Gesture { case move(from: CGPoint), resize(AnnotationHandle) }
+    /// An eraser's drag in progress: where the pointer was last, the radius of its circle, and the layers the circle has
+    /// met so far, by id. The layers are not touched until the release; the path is not kept, only what it met.
+    private var eraser: (last: CGPoint, radius: CGFloat, met: Set<Annotation.ID>)?
     /// Where the press that began the draft landed, as read, and how far the pointer has been from it.
     private var pressed: (point: CGPoint, travel: CGFloat)?
     /// An arrow press has moved the selected object and no other input has come since: the next
@@ -57,6 +60,8 @@ public struct AnnotationEditing: Sendable {
     /// The pointer as last read, inside the selection and before ⇧ shaped it, so a
     /// change of ⇧ with the pointer still can re-shape the draft.
     private var pointer: CGPoint?
+    /// The edge of the ruler that the freehand stroke under the pointer runs along; nil is a free stroke.
+    private var guide: Ruler.Edge?
     /// The freehand points kept so far, the press first; the pointer is the tip after them.
     private var trail: [CGPoint] = []
     /// The spacing a point must keep from the last kept one; it doubles each time the trail is thinned.
@@ -69,8 +74,12 @@ public struct AnnotationEditing: Sendable {
 
     public var selected: Annotation? { layers.first { $0.id == selectedID } }
 
-    /// A draft or a move or a resize is under the pointer.
-    public var isBusy: Bool { draft != nil || gesture != nil }
+    /// A draft or a move or a resize or an eraser's drag is under the pointer.
+    public var isBusy: Bool { draft != nil || gesture != nil || eraser != nil }
+
+    /// A move, a resize or an eraser's drag is open: the list is the one its step goes back to, so no other edit, undo or
+    /// redo touches it until the release or the Esc.
+    private var held: Bool { gesture != nil || eraser != nil }
 
     /// Whether the plate should be up.
     public var isArmed: Bool { armed }
@@ -89,15 +98,21 @@ public struct AnnotationEditing: Sendable {
 
     /// `style` is what the object is drawn with from now to the end of it: a colour picked
     /// during the drag belongs to the next object.
-    mutating func begin(_ tool: AnnotationTool, at point: CGPoint, style: AnnotationStyle = .standard) {
+    /// With a `ruler`, a stroke of the pen, the pencil or the marker that begins inside the selection and within
+    /// `Ruler.reach` of its edge runs along it; the arrow and the shapes do not read it.
+    mutating func begin(_ tool: AnnotationTool, at point: CGPoint, style: AnnotationStyle = .standard, ruler: Ruler? = nil) {
         disarm()
         guard let clamped = clamp(point) else { return }
         pointer = clamped
         pressed = (point, 0)
         gap = Annotation.freehandGap
         let freehand = tool.isFreehand
-        trail = freehand ? [clamped] : []
-        draft = Annotation(tool: tool, start: clamped, end: clamped, points: trail, style: style, id: nextID)
+        // An edge counts where the area shows it: a press outside the area is read as the free stroke it is clamped to.
+        let guided = freehand && bounds.contains(point) ? ruler : nil
+        guide = guided?.edge(near: point)
+        let start = guided?.snap(point).flatMap(clamp) ?? clamped
+        trail = freehand ? [start] : []
+        draft = Annotation(tool: tool, start: start, end: start, points: trail, style: style, id: nextID)
         nextID += 1
     }
 
@@ -109,7 +124,7 @@ public struct AnnotationEditing: Sendable {
     /// none of these — no tool and nothing on the picture — for the caller to make its own.
     /// A press outside the selection takes nothing but an object's handle or edge that reaches
     /// out to it and, with a tool, draws from the edge.
-    public mutating func press(at point: CGPoint, tool: AnnotationTool?, style: AnnotationStyle = .standard) -> Bool {
+    public mutating func press(at point: CGPoint, tool: AnnotationTool?, style: AnnotationStyle = .standard, ruler: Ruler? = nil) -> Bool {
         disarm()
         guard point.x.isFinite, point.y.isFinite else { return true }
         // No release is guaranteed: a press that finds an edit still open ends it as released at
@@ -120,7 +135,7 @@ public struct AnnotationEditing: Sendable {
             return true
         }
         if let tool {
-            begin(tool, at: point, style: style)
+            begin(tool, at: point, style: style, ruler: ruler)
             return true
         }
         guard !layers.isEmpty else { return false }
@@ -154,7 +169,7 @@ public struct AnnotationEditing: Sendable {
     @discardableResult
     public mutating func place(text: String, at point: CGPoint, style: AnnotationStyle = .standard) -> Bool {
         disarm()
-        guard gesture == nil, draft == nil, let clamped = clamp(point) else { return false }
+        guard !held, draft == nil, let clamped = clamp(point) else { return false }
         let scalars = AnnotationText.oneLine(text).unicodeScalars.filter { $0.properties.generalCategory != .control }
         let leading = String(String.UnicodeScalarView(scalars)).drop { AnnotationText.isInvisible($0) }.prefix(AnnotationText.maxLength)
         let trimmed = leading.reversed().drop { AnnotationText.isInvisible($0) }.reversed()
@@ -180,6 +195,7 @@ public struct AnnotationEditing: Sendable {
     /// `shift` is the flag of **this** event, never one kept from the press: no release
     /// is guaranteed, so a kept flag could square every later shape.
     public mutating func drag(to raw: CGPoint, shift: Bool) {
+        if eraser != nil { eraseDrag(to: raw); return }
         guard let point = clamp(raw) else { return }
         if let gesture {
             pointer = point
@@ -212,6 +228,14 @@ public struct AnnotationEditing: Sendable {
 
     private mutating func reshape(_ current: Annotation, shift: Bool) {
         guard let pointer else { return }
+        if current.tool.isFreehand, let guide {
+            // Along the ruler: the stroke is the straight run from where it began to the pointer's nearest point of the
+            // edge, held in the area along its own direction, as ⇧ holds the marker's.
+            let end = fit(guide.project(pointer), from: current.start)
+            draft = Annotation(tool: current.tool, start: current.start, end: end, points: [current.start, end],
+                               style: current.style, id: current.id)
+            return
+        }
         if current.tool.isFreehand {
             commit(pointer)
             // The tip is the pointer and is never kept as a point of the trail until it is
@@ -275,12 +299,13 @@ public struct AnnotationEditing: Sendable {
     /// clears what could have been redone; one that did not is a click, which takes the
     /// layer under it or lets go of the selection and draws nothing.
     public mutating func end() {
+        if eraser != nil { endErase(); return }
         if let gesture {
             self.gesture = nil
             if layers != gesture.before { record(gesture.before) }
             return
         }
-        defer { draft = nil; pressed = nil }
+        defer { draft = nil; pressed = nil; guide = nil }
         guard let draft else { return }
         guard let first = pressed, first.travel >= Self.clickTravel else {
             selectedID = pressed.flatMap { AnnotationHit.topmost(in: layers, at: $0.point) }
@@ -296,7 +321,7 @@ public struct AnnotationEditing: Sendable {
     /// only `record` adds to past and future together, so the ceiling holds without it here.
     public mutating func undo() {
         disarm()
-        guard gesture == nil, let previous = past.popLast() else { return }
+        guard !held, let previous = past.popLast() else { return }
         Self.keep(layers, in: &future)
         layers = previous
         keepSelection()
@@ -304,7 +329,7 @@ public struct AnnotationEditing: Sendable {
 
     public mutating func redo() {
         disarm()
-        guard gesture == nil, let next = future.popLast() else { return }
+        guard !held, let next = future.popLast() else { return }
         Self.keep(layers, in: &past)
         layers = next
         keepSelection()
@@ -318,7 +343,7 @@ public struct AnnotationEditing: Sendable {
     /// Edits of the selected object, each one step; one that changes nothing is none.
     private mutating func editSelected(_ change: (Annotation) -> Annotation) {
         disarm()
-        guard gesture == nil, let current = selected, let index = layers.firstIndex(of: current) else { return }
+        guard !held, let current = selected, let index = layers.firstIndex(of: current) else { return }
         let changed = change(current)
         guard !changed.looksLike(current) else { return }
         record(layers)
@@ -350,7 +375,7 @@ public struct AnnotationEditing: Sendable {
     /// (`releaseIfOutside`). False when no object is selected, for the caller to move the area instead.
     public mutating func nudgeSelected(by delta: CGPoint) -> Bool {
         armed = false
-        guard gesture == nil, let current = selected, let index = layers.firstIndex(of: current) else { return false }
+        guard !held, let current = selected, let index = layers.firstIndex(of: current) else { return false }
         let changed = current.translated(by: delta, within: bounds)
         guard changed != current else { return true }
         if !nudging { record(layers) }
@@ -378,10 +403,54 @@ public struct AnnotationEditing: Sendable {
 
     public mutating func deleteSelected() {
         disarm()
-        guard gesture == nil, let current = selected else { return }
+        guard !held, let current = selected else { return }
         record(layers)
         layers.removeAll { $0.id == current.id }
         selectedID = nil
+    }
+
+    /// Takes away the layers with these ids: **one undo step** however many go, and none when none of them is on the
+    /// picture. A selected one that goes is no longer selected; the area, the others and the selection of any other stay.
+    public mutating func remove(_ ids: Set<Annotation.ID>) {
+        disarm()
+        guard !held, layers.contains(where: { ids.contains($0.id) }) else { return }
+        record(layers)
+        layers.removeAll { ids.contains($0.id) }
+        keepSelection()
+    }
+
+    /// The eraser's circle of `radius` is put down at `point`: from here to `endErase` every layer it meets is `erased`
+    /// and goes in one step at the release. A point that is not a number, or a radius that is none, begins nothing.
+    /// A press that finds another edit open ends it first, as `press` does.
+    public mutating func beginErase(at point: CGPoint, radius: CGFloat) {
+        disarm()
+        guard point.x.isFinite, point.y.isFinite, radius.isFinite, radius > 0 else { return }
+        if isBusy { end() }
+        eraser = (point, radius, Set(meeting([point], radius: radius)))
+    }
+
+    /// The circle moves to `raw`; what it meets on the way is added to `erased`, wherever the segment crosses.
+    private mutating func eraseDrag(to raw: CGPoint) {
+        guard let current = eraser, raw.x.isFinite, raw.y.isFinite else { return }
+        eraser = (raw, current.radius, current.met.union(meeting([current.last, raw], radius: current.radius, besides: current.met)))
+    }
+
+    /// The layers the eraser's drag has met so far, for the screen to show them fading; empty while none is open.
+    public var erased: Set<Annotation.ID> { eraser?.met ?? [] }
+
+    /// The release: what was met goes, in one step.
+    private mutating func endErase() {
+        guard let current = eraser else { return }
+        eraser = nil
+        remove(current.met)
+    }
+
+    /// What the circle meets along `path`, by the rule a click selects by, and only the part of the picture the area shows: a
+    /// layer wholly outside the area is not on the screen, a point farther from the area than the radius reaches into it, and a
+    /// layer across the area's edge is met only where the area shows it.
+    /// The ids in `met` are not asked again.
+    private func meeting(_ path: [CGPoint], radius: CGFloat, besides met: Set<Annotation.ID> = []) -> [Annotation.ID] {
+        AnnotationHit.touched(by: path, radius: radius, in: layers.filter { !met.contains($0.id) }, within: bounds)
     }
 
     /// Esc and a right click, one door. A selected object is let go of first and nothing is
@@ -392,9 +461,11 @@ public struct AnnotationEditing: Sendable {
     /// A move or a resize still open is **cancelled** first, the object back as the press took it
     /// and no step recorded: Esc is the way out of what is being done, and nothing the person
     /// has not let go of is kept. A drawing still under the pointer is dropped the same way,
-    /// and that press does only that: it neither asks nor closes.
+    /// and that press does only that: it neither asks nor closes. So is an eraser's drag still open: nothing it has met
+    /// goes, and no step is recorded.
     public mutating func escape() -> EscapeOutcome {
-        if draft != nil { draft = nil; pressed = nil; return .dropped }
+        if eraser != nil { eraser = nil; return .dropped }
+        if draft != nil { draft = nil; pressed = nil; guide = nil; return .dropped }
         if let gesture { layers = gesture.before; self.gesture = nil }
         if selectedID != nil { selectedID = nil; return .deselected }
         if layers.isEmpty || armed { return .close }
