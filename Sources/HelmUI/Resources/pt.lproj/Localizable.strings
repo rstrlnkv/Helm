@@ -1385,3 +1385,12 @@
 "Steps" = "Passos";
 "Spotlight" = "Holofote";
 "Crop" = "Recortar";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "Captura";
+"Editor" = "Editor";
+"Default colour" = "Cor padrão";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Enquanto nenhuma cor for escolhida, cada ferramenta usa a sua: vermelho, e amarelo para o marcador.";
+"Tools in the palette" = "Ferramentas na paleta";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "As ferramentas ocultas vão para o menu “⋯” e continuam respondendo às suas teclas.";
+"Lower right. Shots taken one after another stack up." = "No canto inferior direito. Várias capturas seguidas ficam empilhadas.";

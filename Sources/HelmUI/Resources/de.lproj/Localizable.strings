@@ -1385,3 +1385,12 @@
 "Steps" = "Schritte";
 "Spotlight" = "Spotlight";
 "Crop" = "Zuschneiden";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "Aufnahme";
+"Editor" = "Editor";
+"Default colour" = "Standardfarbe";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Solange keine Farbe gewählt ist, hat jedes Werkzeug seine eigene: Rot, beim Marker Gelb.";
+"Tools in the palette" = "Werkzeuge in der Palette";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Ausgeblendete Werkzeuge wandern ins Menü „⋯“ und reagieren weiterhin auf ihre Tasten.";
+"Lower right. Shots taken one after another stack up." = "Unten rechts. Mehrere Aufnahmen hintereinander werden gestapelt.";

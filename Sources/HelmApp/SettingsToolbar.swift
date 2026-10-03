@@ -1120,7 +1120,10 @@ import HelmUI
     private func helmSwitcherView(_ tabs: [HelmToolbarTab], bar: PageBar) -> AnyView {
         AnyView(
             HelmToolbarSwitcher(HelmA11y.whatToShow, selection: tabsBinding(bar),
-                                segments: tabs.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
+                                segments: tabs.map {
+                                    HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol,
+                                                        needsAttention: $0.needsAttention, attentionNote: $0.attentionNote)
+                                },
                                 compact: bar.tabsFolded, menu: barMenu)
                 .environment(\.helmSwitcherStyle, AppSettings.toolbarSwitcherStyle)
                 // A frozen bar's tabs are disabled through `bar.isInteractive`
@@ -1186,9 +1189,11 @@ import HelmUI
         let ids: [String]
         let titles: [String]
         let symbols: [String]
+        /// A dot is drawn, not read back, so a page that raises or drops one under the same words must still rebuild.
+        let attention: [Bool]
         let style: ToolbarSwitcherStyle
         let isInteractive: Bool
-        /// The fifth field, added beside `isInteractive` rather than folded
+        /// This field was added beside `isInteractive` rather than folded
         /// into it: a page can freeze (return visit, module switched off)
         /// with its switcher still enabled, and can stay live while its own
         /// switcher is inapplicable (Uninstaller's review step) — two
@@ -1200,6 +1205,7 @@ import HelmUI
         init(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, isInteractive: Bool, tabsEnabled: Bool,
              compact: Bool, selectedID: String?) {
             ids = tabs.map(\.id); titles = tabs.map(\.title); symbols = tabs.map(\.symbol)
+            attention = tabs.map(\.needsAttention)
             self.style = style
             self.isInteractive = isInteractive
             self.tabsEnabled = tabsEnabled
@@ -1248,11 +1254,14 @@ import HelmUI
         let ids: [String]
         let titles: [String]
         let symbols: [String]
+        /// A dot widens its segment, so it is part of what the width was measured under.
+        let attention: [Bool]
         let style: ToolbarSwitcherStyle
         let language: AppLanguage
         let selectedID: String?
         init(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, language: AppLanguage, selectedID: String?) {
             ids = tabs.map(\.id); titles = tabs.map(\.title); symbols = tabs.map(\.symbol)
+            attention = tabs.map(\.needsAttention)
             self.style = style
             self.language = language
             self.selectedID = selectedID
@@ -1292,6 +1301,7 @@ import HelmUI
             menuItem.representedObject = tab.id
             menuItem.isEnabled = bar.isLive && content.tabsEnabled
             menuItem.state = tab.id == selected ? .on : .off
+            if tab.needsAttention { menuItem.badge = NSMenuItemBadge(string: tab.attentionNote ?? "•") }
             submenu.addItem(menuItem)
         }
         top.submenu = submenu
@@ -1717,7 +1727,10 @@ import HelmUI
     private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle,
                                selectedID: String?) -> CGFloat {
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(selectedID ?? ""),
-                                       segments: tabs.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
+                                       segments: tabs.map {
+                                    HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol,
+                                                        needsAttention: $0.needsAttention, attentionNote: $0.attentionNote)
+                                },
                                        compact: false)
             .environment(\.helmSwitcherStyle, style)
         return Self.measurementRig.measure(AnyView(view))

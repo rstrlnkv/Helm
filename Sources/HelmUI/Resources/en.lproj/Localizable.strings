@@ -1385,3 +1385,12 @@
 "Steps" = "Steps";
 "Spotlight" = "Spotlight";
 "Crop" = "Crop";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "Capturing";
+"Editor" = "Editor";
+"Default colour" = "Default colour";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Until a colour is picked, each tool has its own: red, and yellow for the highlighter.";
+"Tools in the palette" = "Tools in the palette";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Hidden tools move to the ⋯ menu and still answer to their keys.";
+"Lower right. Shots taken one after another stack up." = "Lower right. Shots taken one after another stack up.";

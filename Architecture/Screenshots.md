@@ -132,6 +132,19 @@ first release of a capture, and written at each pick by `EditorMemory`. The step
 keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
 step of the days before the tables is retired, neither read nor migrated.
 
+The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
+through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
+The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
+(`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once
+both are read as off). The Editor tab holds the default colour, the one `editorColor` key the palette writes too, and
+«Tools in the palette»: a list of the row's objects, `EditorPalette.rowKinds` (the pens, the eraser, the ruler and the spotlight), each a checkbox. What it writes is
+`paletteChoices`, a table from `PaletteItem`'s raw value to shown or hidden, only the person's own picks
+(`PaletteItems`, read per case, so an entry that is no Bool costs the others nothing): an item with no pick takes its default, so an object added later is shown for a person who had already
+chosen. Colours, Undo, Redo, ⋯, Done and ✕ are no `PaletteItem`, so no list can take them away. The overlay reads the
+hidden ones when the first area is released (`EditorBarModel.hide`), so the palette is measured with the row it has and
+`EditorChrome` places it by that width; a hidden object stands as an item of the ⋯ menu above the glyph tools with a symbol,
+its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:)`, a fallback symbol for a tool with none), and sends what its object sends: `EditorAction.tool` as the key does, `.erase` for the eraser, `.toggleRuler` for the ruler. With the eraser hidden and raised, ⋯'s badge is the eraser's symbol; the ruler raised changes no badge, hidden or not. `EditorKeys` never reads the list.
+
 The palette carries the pen, the marker, the pencil, the eraser, the ruler and the spotlight as objects, in that order, each drawn by `PaletteObject`
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
 that is a template layer filled with the live ink colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
@@ -158,7 +171,7 @@ Every other tool, Select, Filled, Save and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
-carries the symbol of a chosen menu tool as a badge. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps and Crop show none, Steps having no key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
+carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps and Crop show none, Steps having no key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
 
 A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
 (`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands

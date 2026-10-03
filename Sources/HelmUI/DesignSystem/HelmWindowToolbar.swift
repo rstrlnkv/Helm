@@ -33,11 +33,20 @@ public struct HelmToolbarTab {
     /// which has no language of its own to read one in.
     public let title: String
     public let symbol: String
+    /// **A dot on the segment: this tab has something to say that the page below it does not shout.** False for every
+    /// tab that has nothing, so the pages that never say it draw as before. The switcher draws the dot beside the word
+    /// (`HelmToolbarSwitcher`), and a folded switcher, which shows one segment, marks the tab in its menu. The page
+    /// switches it by the same reading its own rows say the thing from, or the dot and the tab say different things.
+    public let needsAttention: Bool
+    /// What the dot says, localised already, for VoiceOver and for the folded switcher's menu; nil is the dot alone.
+    public let attentionNote: String?
 
-    public init(id: String, title: String, symbol: String) {
+    public init(id: String, title: String, symbol: String, needsAttention: Bool = false, attentionNote: String? = nil) {
         self.id = id
         self.title = title
         self.symbol = symbol
+        self.needsAttention = needsAttention
+        self.attentionNote = attentionNote
     }
 }
 

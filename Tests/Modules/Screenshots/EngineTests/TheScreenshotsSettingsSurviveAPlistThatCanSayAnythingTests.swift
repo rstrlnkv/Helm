@@ -167,4 +167,106 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
         XCTAssertEqual(ShotFormat.png.pathExtension, "png")
         XCTAssertEqual(ShotFormat.jpeg.pathExtension, "jpg")
     }
+
+    // MARK: the palette's picks
+
+    /// A value for `paletteChoices` that is no table of picks reads as no picks: every item is on the palette, whatever
+    /// the file said, and nothing here crashes, hides an item or is written back.
+    func testAPaletteChoicesValueThatIsNoTableIsNoPicks() {
+        let notTables: [Any] = ["pen", "undo", "colours", "arrow", "", "true", 1e300, Double.nan, -1, 0, 1, Int.max, true, false,
+                                Data([1]), ["pen"], ["pen", "pencil", "colours"], [Bool](repeating: false, count: 1000),
+                                (0..<1000).map { "value-\($0)" }, [String: Any](), [[String: Bool]]()]
+        for value in notTables {
+            let read = store([Key.paletteChoices: value])
+            XCTAssertEqual(PaletteItems.visible(read), PaletteItem.allCases, "a paletteChoices of \(value) hid something")
+            XCTAssertTrue(PaletteItems.picks(read).isEmpty, "a paletteChoices of \(value) was read as picks")
+            XCTAssertEqual(ScreenshotsSettings.read(read), .defaults, "a paletteChoices of \(value) moved another setting")
+            XCTAssertEqual(EditorMemory.read(read), EditorMemory.read(store()), "a paletteChoices of \(value) moved the editor's memory")
+        }
+    }
+
+    /// The names that must never be read as an item, as a table of "hide it": the colours and the way out are not on the list,
+    /// and neither is a glyph tool, which stands in the ⋯ menu with nowhere to be taken from.
+    func testNoNameThatIsNoPaletteItemHidesAnythingAndTheNextWriteDropsIt() {
+        let names = ["colours", "colors", "colour", "undo", "redo", "more", "done", "close", "arrow", "rectangle", "ellipse", "line", "select"]
+        let hideEverything = Dictionary(uniqueKeysWithValues: names.map { ($0, false) })
+        let read = store([Key.paletteChoices: hideEverything])
+        XCTAssertEqual(PaletteItems.visible(read), PaletteItem.allCases, "a name that is no item hid the palette's row")
+        for name in names { XCTAssertNil(PaletteItem(rawValue: name), "\(name) became a case: it can now be hidden") }
+        PaletteItems.set(.pen, shown: false, in: read)
+        XCTAssertEqual(Set(read.boolTable(Key.paletteChoices).keys), [PaletteItem.pen.rawValue], "the write kept names that are no item")
+        XCTAssertEqual(read.boolTable(Key.paletteChoices).count, 1)
+    }
+
+    /// A thousand keys that no case answers to: not read, and no longer in the store after one write.
+    func testAThousandForeignKeysAreNotReadAndAreGoneAfterOneWrite() {
+        var table: [String: Bool] = [:]
+        for index in 0..<1000 { table["foreign-\(index)"] = false }
+        let read = store([Key.paletteChoices: table])
+        XCTAssertEqual(read.boolTable(Key.paletteChoices).count, 1000, "the subject: the table is in the store")
+        XCTAssertEqual(PaletteItems.visible(read), PaletteItem.allCases)
+        PaletteItems.set(.highlighter, shown: false, in: read)
+        XCTAssertEqual(read.boolTable(Key.paletteChoices), [PaletteItem.highlighter.rawValue: false])
+    }
+
+    /// A value that is no Bool does not hide the item it sits under: a string, a number other than a Bool, a list, a table.
+    func testAnItemWhoseValueIsNoBoolIsOnThePalette() {
+        let strangers: [Any] = ["false", "no", "hidden", 2, -1, 1e300, Double.nan, Data([0]), [false], ["shown": false], NSNull()]
+        for stranger in strangers {
+            for item in PaletteItem.allCases {
+                let read = store([Key.paletteChoices: [item.rawValue: stranger]])
+                XCTAssertTrue(PaletteItems.isShown(item, in: read), "\(item) = \(stranger) hid the item")
+            }
+        }
+    }
+
+    /// The palette's picks are not a sealed setting and nothing reads them unattended; the key is read and never written by a read.
+    func testReadingThePicksWritesNothingBack() {
+        let values: [String: Any] = [Key.paletteChoices: ["pen": false, "colours": false, "laser": true]]
+        let read = store(values)
+        _ = PaletteItems.visible(read)
+        _ = PaletteItems.picks(read)
+        _ = PaletteItems.isShown(.pen, in: read)
+        XCTAssertEqual(read.object(Key.paletteChoices) as? [String: Bool], ["pen": false, "colours": false, "laser": true],
+                       "a read rewrote the table")
+        XCTAssertEqual(PaletteItems.visible(read), PaletteItem.allCases.filter { $0 != .pen })
+    }
+
+    /// One value in the table that is no Bool costs the picks beside it nothing: the table is read case by case, as
+    /// `EditorMemory` reads its own (`testAnUnknownToolKeyIsNoToolAndAWrongKindInsideATableIsTheDefault`).
+    func testAPickBesideAValueThatIsNoBoolIsKept() {
+        let strangers: [Any] = [5, "laser", "false", 2.5, Data([0]), [true], ["x": false], NSNull(), 1e300]
+        for stranger in strangers {
+            let read = store([Key.paletteChoices: ["pen": false, "laser": stranger, "pencil": stranger, "highlighter": true] as [String: Any]])
+            XCTAssertFalse(PaletteItems.isShown(.pen, in: read), "the pen was picked hidden and \(stranger) beside it undid the pick")
+            XCTAssertEqual(PaletteItems.picks(read), [.pen: false, .highlighter: true], "\(stranger): the picks beside it are not as written")
+            XCTAssertTrue(PaletteItems.isShown(.pencil, in: read), "\(stranger) under pencil is no pick: the default decides")
+        }
+    }
+
+    /// A number in the table: what `as? Bool` makes of it. An `NSNumber` (what a property list hands back) and a Swift
+    /// integer boxed in `Any` alike read as a Bool when exactly 0 or 1 and as no pick otherwise.
+    /// Harm: none that matters. A hand-written `0` hides the item as `false` would, `1` is the default, and the next write
+    /// replaces the table with real Bools; no other item's pick is touched and nothing crashes.
+    func testANumberInTheTableIsAPickOnlyAsAnNSNumberOfZeroOrOne() {
+        let asNumbers: [(Any, Bool?)] = [(NSNumber(value: 0), false), (NSNumber(value: 1), true), (NSNumber(value: 0.0), false),
+                                         (NSNumber(value: 1.0), true), (NSNumber(value: 2), nil), (NSNumber(value: -1), nil),
+                                         (NSNumber(value: 0.5), nil), (NSNumber(value: Double.nan), nil),
+                                         (NSNumber(value: Int.max), nil)]
+        for (number, pick) in asNumbers {
+            let read = store([Key.paletteChoices: ["pen": number, "pencil": false] as [String: Any]])
+            XCTAssertEqual(PaletteItems.picks(read)[.pen], pick, "\(number) as a pick")
+            XCTAssertEqual(PaletteItems.picks(read)[.pencil], false, "\(number) beside it cost the pencil's pick")
+            XCTAssertEqual(PaletteItems.isShown(.pen, in: read), pick ?? PaletteItem.pen.shownByDefault)
+            PaletteItems.set(.highlighter, shown: false, in: read)
+            let after = read.boolTable(Key.paletteChoices)
+            XCTAssertEqual(after["highlighter"], false, "\(number): the write did not take")
+            XCTAssertEqual(after["pencil"], false, "\(number): the write lost a pick beside the number")
+            XCTAssertEqual(after["pen"], pick, "\(number): the write kept it as \(String(describing: pick))")
+        }
+        // Measured: a Swift integer boxed in `Any` bridges the same way, 0 and 1 and nothing else.
+        for (plain, pick) in [(0, false), (1, true), (2, nil), (-1, nil)] as [(Int, Bool?)] {
+            XCTAssertEqual(PaletteItems.picks(store([Key.paletteChoices: ["pen": plain] as [String: Any]]))[.pen], pick, "Int \(plain)")
+        }
+    }
 }

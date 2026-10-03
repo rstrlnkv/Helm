@@ -459,6 +459,7 @@ enum OverlayResult {
         var tool = edit?.tool
         if edit == nil, let store {
             memory = EditorMemory.read(store)
+            palette.hide(Set(PaletteItem.allCases).subtracting(PaletteItems.visible(store)))
             tool = memory.tool
             styleTool = tool ?? styleTool
             style = memory.style(for: styleTool)

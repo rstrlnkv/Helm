@@ -1385,3 +1385,12 @@
 "Steps" = "ステップ";
 "Spotlight" = "スポットライト";
 "Crop" = "切り取り";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "取り込み";
+"Editor" = "エディタ";
+"Default colour" = "デフォルトのカラー";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "カラーを選ぶまでは、ツールごとに決まった色を使います。赤、マーカーは黄色です。";
+"Tools in the palette" = "パレットのツール";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "非表示にしたツールは“⋯”メニューに移り、これまでどおりキーで使えます。";
+"Lower right. Shots taken one after another stack up." = "右下に表示されます。続けて撮影したスクリーンショットは重なって並びます。";

@@ -29,6 +29,9 @@ import Module_Screenshots_Engine
     @Published private(set) var coloursOpen = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    /// The objects the person took off the row (`PaletteItems`); they stand in the ⋯ menu instead. Read when the first
+    /// area is released, so the palette is measured with the row it will have.
+    @Published private(set) var hidden: Set<PaletteItem> = []
     /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
     @Published var morePressed = false
     var perform: (EditorAction) -> Void = { _ in }
@@ -59,6 +62,12 @@ import Module_Screenshots_Engine
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
     }
+
+    func hide(_ items: Set<PaletteItem>) { if hidden != items { hidden = items } }
+
+    /// Whether a row object is on the row: every one is, but the ones the person took off.
+    func isOnRow(_ tool: AnnotationTool) -> Bool { isOnRow(.tool(tool)) }
+    func isOnRow(_ kind: PaletteObject.Kind) -> Bool { EditorPalette.item(of: kind).map { !hidden.contains($0) } ?? true }
 
     /// What the colour and the fill are about: the selected object's tool, or else the picked one.
     private var subject: AnnotationTool? { selectedTool ?? tool }
@@ -100,7 +109,8 @@ struct EditorPalette: View {
 
     enum Place { case row, menu, shapes }
 
-    /// The symbol is what the ⋯ menu and its badge draw, so a `row` tool, which `PaletteObject` draws, has none.
+    /// The symbol is what the ⋯ menu and its badge draw for a tool `PaletteObject` does not; a `row` tool, which it draws, has
+    /// none here and takes its symbol from `menuSymbol(ofRowTool:)` for the times it is hidden.
     static let objects: [(tool: AnnotationTool, symbol: String?, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
         (.line, "line.diagonal", .shapes), (.pen, nil, .row), (.highlighter, nil, .row),
@@ -111,6 +121,46 @@ struct EditorPalette: View {
     /// The row object that stands after the eraser and the ruler and not with the pens: the list's order is the order the ⋯ menu reads, the
     /// palette's own is the pens, the eraser, the ruler and then this.
     static let lastInTheRow = AnnotationTool.spotlight
+
+    /// The tools the row is drawn from, in its order: what the settings page offers to take off and counts.
+    static var rowTools: [AnnotationTool] { objects.filter { $0.place == .row }.map(\.tool) }
+
+    /// The item a row object answers to in `PaletteItems`: the tool's raw value is the item's.
+    static func item(of tool: AnnotationTool) -> PaletteItem? { PaletteItem(rawValue: tool.rawValue) }
+
+    /// The row's objects in the order the palette draws them: the pens, the eraser, the ruler and then `lastInTheRow`. The
+    /// eraser and the ruler are no `AnnotationTool`, so `rowTools` does not hold them; what the settings page offers to take
+    /// off and the ⋯ menu stands in for is this list.
+    static var rowKinds: [PaletteObject.Kind] {
+        rowTools.filter { $0 != lastInTheRow }.map(PaletteObject.Kind.tool) + [.eraser, .ruler, .tool(lastInTheRow)]
+    }
+
+    /// The item a row object answers to in `PaletteItems`: a tool by its raw value, the eraser and the ruler by their own.
+    static func item(of kind: PaletteObject.Kind) -> PaletteItem? {
+        switch kind {
+        case .tool(let tool): item(of: tool)
+        case .eraser: .eraser
+        case .ruler: .ruler
+        }
+    }
+
+    /// What a row object is called, for the settings list and the ⋯ menu.
+    static func name(of kind: PaletteObject.Kind) -> String {
+        switch kind {
+        case .tool(let tool): ScStr.tool(tool)
+        case .eraser: ScStr.eraser
+        case .ruler: ScStr.ruler
+        }
+    }
+
+    /// The symbol a row object takes in the ⋯ menu and on ⋯'s badge while the person has taken it off the row.
+    static func menuSymbol(of kind: PaletteObject.Kind) -> String {
+        switch kind {
+        case .tool(let tool): menuSymbol(ofRowTool: tool)
+        case .eraser: "eraser"
+        case .ruler: "ruler"
+        }
+    }
 
     /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred
     /// at `anchorX`. Putting a tool down is the key's second press, as before the pop-over had a way to open.
@@ -138,17 +188,29 @@ struct EditorPalette: View {
         CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
     }
 
-    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, Crop's while it is on, nothing while the eraser is raised; the ruler raised changes neither the badge nor Select's symbol.
+    /// The symbol a row object takes in the ⋯ menu and on ⋯'s badge while the person has taken it off the row. A default
+    /// for the owner to change; an object with no entry here, one added to `objects` later, gets `fallbackRowSymbol`.
+    private static let rowSymbols: [AnnotationTool: String] = [.pen: "pencil.tip", .highlighter: "highlighter", .pencil: "pencil",
+                                                         .spotlight: "rectangle.inset.filled"]
+    private static let fallbackRowSymbol = "scribble"
+
+    static func menuSymbol(ofRowTool tool: AnnotationTool) -> String { rowSymbols[tool] ?? fallbackRowSymbol }
+
+    /// The symbol on ⋯'s lower right: the chosen menu tool's, a row object's while it stands in the menu, Select's with no
+    /// tool, Crop's while it is on, nothing while an object of the row is raised; the ruler raised changes neither the badge
+    /// nor Select's symbol, hidden or not: its mark in the menu is the check.
     static func moreBadge(for model: EditorBarModel) -> String? {
-        guard !model.erasing else { return nil }
+        guard !model.erasing else { return model.isOnRow(.eraser) ? nil : menuSymbol(of: .eraser) }
         if model.cropping { return cropSymbol }
         guard let tool = model.tool else { return selectSymbol }
+        if rowTools.contains(tool) { return model.isOnRow(tool) ? nil : menuSymbol(ofRowTool: tool) }
         return objects.first { $0.tool == tool && $0.place != .row }?.symbol
     }
 
     /// The name of what the badge shows, for VoiceOver.
     static func moreValue(for model: EditorBarModel) -> String? {
         guard moreBadge(for: model) != nil else { return nil }
+        if model.erasing { return ScStr.eraser }
         return model.cropping ? ScStr.crop : model.tool.map(ScStr.tool) ?? ScStr.select
     }
 
@@ -184,20 +246,26 @@ struct EditorPalette: View {
             // step, so the step stays the one the gap to Done is.
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
             HStack(spacing: 0) {
-                ForEach(Self.objects.filter { $0.place == .row && $0.tool != Self.lastInTheRow }, id: \.tool) { object in
+                ForEach(Self.objects.filter { $0.place == .row && $0.tool != Self.lastInTheRow && model.isOnRow($0.tool) }, id: \.tool) { object in
                     objectCell(object.tool)
                 }
-                GlassCell(name: ScStr.eraser, selected: model.erasing, look: .bare, width: PaletteObject.width(for: .eraser), height: Self.height) {
-                    model.perform(Self.action(forClickOnEraser: model.erasing))
-                } icon: {
-                    PaletteObject(kind: .eraser, ink: .clear, raised: model.erasing)
+                if model.isOnRow(.eraser) {
+                    GlassCell(name: ScStr.eraser, selected: model.erasing, look: .bare, width: PaletteObject.width(for: .eraser), height: Self.height) {
+                        model.perform(Self.action(forClickOnEraser: model.erasing))
+                    } icon: {
+                        PaletteObject(kind: .eraser, ink: .clear, raised: model.erasing)
+                    }
                 }
-                GlassCell(name: ScStr.ruler, selected: model.ruler, look: .bare, width: PaletteObject.width(for: .ruler), height: Self.height) {
-                    model.perform(.toggleRuler)
-                } icon: {
-                    PaletteObject(kind: .ruler, ink: .clear, raised: model.ruler)
+                if model.isOnRow(.ruler) {
+                    GlassCell(name: ScStr.ruler, selected: model.ruler, look: .bare, width: PaletteObject.width(for: .ruler), height: Self.height) {
+                        model.perform(.toggleRuler)
+                    } icon: {
+                        PaletteObject(kind: .ruler, ink: .clear, raised: model.ruler)
+                    }
                 }
-                objectCell(Self.lastInTheRow)
+                if model.isOnRow(Self.lastInTheRow) {
+                    objectCell(Self.lastInTheRow)
+                }
             }
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)
             colourGrid

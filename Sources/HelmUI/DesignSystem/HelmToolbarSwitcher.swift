@@ -54,11 +54,16 @@ public struct HelmSwitcherSegment<Value: Hashable> {
     public let value: Value
     public let label: String
     public let symbol: String
+    /// A dot on the segment, and what it says (`HelmToolbarTab.needsAttention`).
+    public let needsAttention: Bool
+    public let attentionNote: String?
 
-    public init(_ value: Value, _ label: String, symbol: String) {
+    public init(_ value: Value, _ label: String, symbol: String, needsAttention: Bool = false, attentionNote: String? = nil) {
         self.value = value
         self.label = label
         self.symbol = symbol
+        self.needsAttention = needsAttention
+        self.attentionNote = attentionNote
     }
 }
 
@@ -153,6 +158,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         context.coordinator.lastCompact = compact
         context.coordinator.lastNames = displaySegments.map(\.label)
         context.coordinator.lastSymbols = displaySegments.map(\.symbol)
+        context.coordinator.lastAttention = displaySegments.map(\.needsAttention)
         return control
     }
 
@@ -273,6 +279,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             context.coordinator.lastCompact = compact
             context.coordinator.lastNames = shown.map(\.label)
             context.coordinator.lastSymbols = shown.map(\.symbol)
+            context.coordinator.lastAttention = shown.map(\.needsAttention)
         } else {
             var labelsMatch = true
             let showsWord = style == .text || style == .iconsAndText
@@ -309,6 +316,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // `lastSymbols` tracks the segments' own glyphs the same way
             // `lastNames` tracks their words.
             let symbolsChanged = context.coordinator.lastSymbols != shown.map(\.symbol)
+            // **A dot is an image, and an image cannot be read back** (`symbolsChanged`'s own reason), so what was
+            // drawn is kept and compared.
+            let attentionChanged = context.coordinator.lastAttention != shown.map(\.needsAttention)
             let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? false
             // Nothing structural changed, so this is the cheap path: when the
             // words and the selection both already read right — the first
@@ -329,7 +339,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // app for whichever caller passes an index of its own next.
             // Measured 2026-09-20: with a second `setSelected` here that file
             // read "calls setSelected( 2 time(s)" and went red.
-            if !labelsMatch || selectionMoved || namesChanged || symbolsChanged {
+            if !labelsMatch || selectionMoved || namesChanged || symbolsChanged || attentionChanged {
                 NSAnimationContext.beginGrouping()
                 NSAnimationContext.current.allowsImplicitAnimation = false
                 Self.fill(control, segments: shown, style: style, selected: selectedIndex, compact: compact)
@@ -338,6 +348,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                 control.invalidateIntrinsicContentSize()
                 context.coordinator.lastNames = shown.map(\.label)
                 context.coordinator.lastSymbols = shown.map(\.symbol)
+                context.coordinator.lastAttention = shown.map(\.needsAttention)
             }
         }
 
@@ -380,9 +391,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             let showsGlyph = style != .text
             let showsWord = style == .text || style == .iconsAndText
             control.setLabel(showsWord ? segment.label : "", forSegment: index)
-            control.setImage(showsGlyph
-                ? NSImage(systemSymbolName: segment.symbol, accessibilityDescription: segment.label)
-                : nil, forSegment: index)
+            control.setImage(image(for: segment, showsGlyph: showsGlyph), forSegment: index)
             control.setImageScaling(.scaleProportionallyDown, forSegment: index)
             // The word, for a segment showing only its glyph — the pointer is
             // where a glyph-only control says what it is.
@@ -406,6 +415,41 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
     }
 
+    /// **The segment's image, and the dot in it.** AppKit draws a segment's label and its image together and puts the
+    /// image *before* the label (measured 2026-10-03 on a bare three-segment control in an offscreen window: a 6 pt
+    /// image on the third text segment drew, red pixels found left of the word, and the strip's fitting width went from
+    /// 310 to 318 pt; `NSSegmentedControl` has no image-position property); so a text segment's whole image is the dot. Where the style draws a glyph the dot is drawn into the
+    /// glyph's corner, since a segment has one image (the same drawing, run in the same offscreen way on an icon-only
+    /// strip, put the dot at the glyph's upper right with the glyph still drawn). How the glass lens treats the dot on a real screen, selected or
+    /// not, in the bar's metric, was not measured.
+    private static func image(for segment: HelmSwitcherSegment<Value>, showsGlyph: Bool) -> NSImage? {
+        let glyph = showsGlyph ? NSImage(systemSymbolName: segment.symbol, accessibilityDescription: segment.label) : nil
+        guard segment.needsAttention else { return glyph }
+        let dot: CGFloat = 6
+        guard let glyph else { return attentionDot(dot, note: segment.attentionNote ?? segment.label) }
+        let image = NSImage(size: glyph.size, flipped: false) { rect in
+            glyph.draw(in: rect)
+            NSColor.labelColor.set()
+            rect.fill(using: .sourceIn)
+            attentionDot(dot, note: nil).draw(in: NSRect(x: rect.maxX - dot, y: rect.maxY - dot, width: dot, height: dot))
+            return true
+        }
+        image.accessibilityDescription = segment.attentionNote ?? segment.label
+        return image
+    }
+
+    /// The warning ink as a round image, drawn each time it is shown so that it follows the appearance it lands in.
+    private static func attentionDot(_ side: CGFloat, note: String?) -> NSImage {
+        let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            NSColor(HelmSignal.warning).setFill()
+            NSBezierPath(ovalIn: rect).fill()
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = note
+        return image
+    }
+
     /// **The compact form's own menu**: every tab, full — never `displaySegments`
     /// — labelled and ticked, `representedObject` carrying the *full* index
     /// `pick(_:)` already expects. Built fresh in `updateNSView` rather than
@@ -427,6 +471,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             item.representedObject = index
             item.isEnabled = true
             item.state = index == selected ? .on : .off
+            // The folded strip shows one segment, so a dot on another tab is said here: in words when there is a note, else as «•».
+            if segment.needsAttention { item.badge = NSMenuItemBadge(string: segment.attentionNote ?? "•") }
             menu.addItem(item)
         }
         return menu
@@ -455,6 +501,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         /// name and selection moves nothing `labelsMatch` or `namesChanged`
         /// can see (`AGlyphSwitcherRedrawsAChangedGlyphTests`).
         var lastSymbols: [String]?
+        /// Which segments carried a dot as of the last fill, for the same reason.
+        var lastAttention: [Bool]?
         /// Whether the bar's metric has been written onto the control yet.
         /// Its own flag rather than a reading of the fill gating above,
         /// because the two answer different questions: that one asks whether

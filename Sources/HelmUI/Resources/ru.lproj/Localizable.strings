@@ -1385,3 +1385,12 @@
 "Steps" = "Шаги";
 "Spotlight" = "Прожектор";
 "Crop" = "Обрезка";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "Съёмка";
+"Editor" = "Редактор";
+"Default colour" = "Цвет";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Пока цвет не выбран, у каждого инструмента свой: красный, а у маркера жёлтый.";
+"Tools in the palette" = "Инструменты в палитре";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Скрытые инструменты уходят в меню «⋯» и по-прежнему отвечают на свои клавиши.";
+"Lower right. Shots taken one after another stack up." = "Справа внизу. Несколько снимков подряд складываются в стопку.";

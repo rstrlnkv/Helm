@@ -15,7 +15,7 @@ enum EditorMenuItem: Equatable {
 /// the thin `NSMenu` over it. The tools come from `EditorPalette.objects`, the list the palette's row is drawn from, so a
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
-/// Order: the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Thickness and Opacity… (enabled while a
+/// Order: the row objects taken off the row (`EditorPalette.rowKinds`), then the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Thickness and Opacity… (enabled while a
 /// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
@@ -54,7 +54,15 @@ enum EditorMenu {
                          action: .tool(object.tool))
         }
         let shapes = EditorPalette.objects.filter { $0.place == .shapes }
-        var items: [EditorMenuItem] = []
+        // A row object the person took off the row stands first, above the others, checked like them; a tool's key is shown.
+        var items: [EditorMenuItem] = EditorPalette.rowKinds.filter { !model.isOnRow($0) }.map { kind in
+            let (isOn, action): (Bool, EditorAction) = switch kind {
+            case .tool(let tool): (model.tool == tool && !model.erasing, .tool(tool))
+            case .eraser: (model.erasing, .erase)
+            case .ruler: (model.ruler, .toggleRuler)
+            }
+            return .tool(title: EditorPalette.name(of: kind), symbol: EditorPalette.menuSymbol(of: kind), isOn: isOn, action: action)
+        }
         // The objects in the list's order, the Shapes submenu standing where its first shape does.
         for object in EditorPalette.objects {
             switch object.place {
