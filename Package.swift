@@ -41,10 +41,13 @@ let modules: [Module] = [
     Module(name: "Disk"),
     Module(name: "Duplicates"),
     Module(name: "Autopilot"),
-    // EmojiOne v2.2.7 flag artwork, CC-BY 4.0 — see NOTICE.md.
+    // flag-icons flag artwork, MIT — see NOTICE.md.
     Module(name: "Layout", uiResources: [.copy("Flags")]),
     Module(name: "Hosts"),
-    Module(name: "Screenshots"),
+    // The editor palette's Pen, Marker and Pencil artwork, from a community recreation of Apple's PencilKit picker,
+    // modified for Helm — NOTICE.md records the source and the owner's decision; author and licence are placeholders there
+    // for the owner.
+    Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")]),
 ]
 
 extension Module {

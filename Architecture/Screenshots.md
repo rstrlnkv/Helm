@@ -86,7 +86,12 @@ first release of a capture, and written at each pick by `EditorMemory`. The step
 keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
 step of the days before the tables is retired, neither read nor migrated.
 
-The palette carries the pen, the marker and the pencil as objects; every other tool, Select, Filled, Save and, while
+The palette carries the pen, the marker and the pencil as objects, each drawn by `PaletteObject`
+(`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
+that is a template layer filled with the live ink colour, and the tip's highlight, with two native shadows; the picked
+object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
+filter and no text, because macOS drops a filter without a word (`ThePaletteArtworkCarriesNoFilterTests`); its attribution is in `NOTICE.md`.
+Every other tool, Select, Filled, Save and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and

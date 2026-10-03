@@ -75,12 +75,11 @@ struct EditorPalette: View {
 
     enum Place { case row, menu, shapes }
 
-    /// Drawn by the SF Symbols the bars used before, until the artwork replaces them; the pen's is
-    /// `pencil.tip`, an interim of its own.
-    static let objects: [(tool: AnnotationTool, symbol: String, place: Place)] = [
+    /// The symbol is what the ⋯ menu and its badge draw, so a `row` tool, which `PaletteObject` draws, has none.
+    static let objects: [(tool: AnnotationTool, symbol: String?, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
-        (.line, "line.diagonal", .shapes), (.pen, "pencil.tip", .row), (.highlighter, "highlighter", .row),
-        (.pencil, "pencil", .row),
+        (.line, "line.diagonal", .shapes), (.pen, nil, .row), (.highlighter, nil, .row),
+        (.pencil, nil, .row),
     ]
 
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
@@ -126,10 +125,14 @@ struct EditorPalette: View {
             // The mockup's gaps are 14, 16 and 14 where the ladder has 12: the 2 and the 4 are added to the
             // step, so the step stays the one the gap to Done is.
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
-            HStack(spacing: HelmSpace.s1) {
+            HStack(spacing: 0) {
                 ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
-                    GlassCell(symbol: object.symbol, name: ScStr.tool(object.tool), selected: model.tool == object.tool,
-                              width: HelmSpace.s8) { model.perform(.tool(object.tool)) }
+                    let chosen = model.tool == object.tool
+                    GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width, height: Self.height) {
+                        model.perform(.tool(object.tool))
+                    } icon: {
+                        PaletteObject(tool: object.tool, ink: Color(cgColor: model.style.ink(for: object.tool).cgColor), raised: chosen)
+                    }
                 }
             }
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)

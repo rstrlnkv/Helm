@@ -198,6 +198,19 @@ public enum HelmMotion {
     public static func morphs(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
+
+    /// Whether a chosen object may travel up to its raised place, rather than
+    /// standing there at once — the screenshot editor's palette lifts the picked
+    /// pen, marker or pencil 10 pt.
+    ///
+    /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:
+    /// a decision made of an argument can be asserted, one that reads
+    /// `NSWorkspace` can only be asserted about the machine it ran on. Under
+    /// Reduce Motion the object is still raised — that is how the palette shows
+    /// the choice — and only the travel is cut.
+    public static func travels(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
 }
 
 public extension View {

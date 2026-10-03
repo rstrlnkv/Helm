@@ -34,13 +34,14 @@ enum EditorMenu {
     }
 
     @MainActor static func items(for model: EditorBarModel, pinOffered: Bool = PinEntry.isOffered) -> [EditorMenuItem] {
-        func tool(_ object: (tool: AnnotationTool, symbol: String, place: EditorPalette.Place)) -> EditorMenuItem {
-            .tool(title: ScStr.tool(object.tool), symbol: object.symbol, isOn: model.tool == object.tool, action: .tool(object.tool))
+        func tool(_ object: (tool: AnnotationTool, symbol: String?, place: EditorPalette.Place)) -> EditorMenuItem? {
+            guard let symbol = object.symbol else { return nil }
+            return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool, action: .tool(object.tool))
         }
         let shapes = EditorPalette.objects.filter { $0.place == .shapes }
-        var items = EditorPalette.objects.filter { $0.place == .menu }.map(tool)
+        var items = EditorPalette.objects.filter { $0.place == .menu }.compactMap(tool)
         items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool },
-                              children: shapes.map(tool) + [.separator,
+                              children: shapes.compactMap(tool) + [.separator,
                                   .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))
         items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil, action: .select))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]

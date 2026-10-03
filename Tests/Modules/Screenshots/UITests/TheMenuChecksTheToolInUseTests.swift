@@ -120,6 +120,27 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         XCTAssertFalse(saveOn)
     }
 
+    /// **Every object the palette does not keep in its row has a symbol, is in the menu with it, and is the badge when chosen.**
+    /// Asked of `EditorPalette.objects` itself, not of a list written here: the menu is built with `compactMap`, so a
+    /// `.menu` or `.shapes` object whose symbol is nil would vanish from ⋯ and from its badge without a word.
+    func testEveryObjectOutsideTheRowHasASymbolAndIsInTheMenu() {
+        AppLanguage.override = .en
+        let outside = EditorPalette.objects.filter { $0.place != .row }
+        XCTAssertFalse(outside.isEmpty, "the control: no object is outside the row, so nothing is asked")
+        let inMenu = tools(EditorMenu.items(for: model(tool: nil)))
+        for object in outside {
+            let name = "\(object.tool)"
+            XCTAssertNotNil(object.symbol, "\(name) (\(object.place)) has no symbol, so the menu leaves it out")
+            let entries = inMenu.filter { $0.title == ScStr.tool(object.tool) }
+            XCTAssertEqual(entries.count, 1, "\(name) is not in the ⋯ menu exactly once: \(inMenu.map(\.title))")
+            XCTAssertEqual(entries.first?.symbol, object.symbol, "\(name): the menu draws another symbol than the palette's table")
+            XCTAssertEqual(entries.first?.action, .tool(object.tool), "\(name): the item sends another action")
+            XCTAssertEqual(EditorPalette.moreBadge(for: model(tool: object.tool)), object.symbol, "\(name): the badge is not its symbol")
+        }
+        // Nothing else is in the menu as a tool but these and Select.
+        XCTAssertEqual(inMenu.count, outside.count + 1, "the menu has a tool the table does not know, or the reverse")
+    }
+
     func testThePinIsInTheMenuOnlyWhileOfferedAndAfterSave() {
         AppLanguage.override = .en
         XCTAssertFalse(PinEntry.isOffered, "the control: this task is written for v1, where the pin is hidden")

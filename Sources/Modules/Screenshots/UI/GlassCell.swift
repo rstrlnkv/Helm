@@ -13,12 +13,16 @@ struct GlassCell<Icon: View>: View {
         case greyCircle
         /// A circle in the accent colour with a white icon: Done.
         case accent
+        /// Nothing behind the icon, selected or not: the editor's pen, marker and pencil, which show the choice by standing higher.
+        case bare
     }
 
     let name: String
     var selected = false
     var look = Look.plain
     var width = HelmSpace.s7
+    /// The cell's height, and its press zone's unless `hit` is set; the palette's objects are as tall as the palette.
+    var height = HelmSpace.s7
     /// The glyph's colour, where the cell's own is not the text colour; it greys when the cell is disabled and
     /// the cell's circle stays as it was. Nil leaves the glyph as it inherits it.
     var ink: Color?
@@ -40,10 +44,10 @@ struct GlassCell<Icon: View>: View {
             icon
                 .font(HelmText.rowTitle)
                 .foregroundStyle(ink.map { AnyShapeStyle(enabled ? $0 : Self.disabledInk) } ?? AnyShapeStyle(.primary))
-                .frame(width: width, height: HelmSpace.s7)
+                .frame(width: width, height: height)
                 .background(fill)
                 .overlay(alignment: .bottomTrailing) { badgeView }
-                .frame(width: hit ?? width, height: hit ?? HelmSpace.s7)
+                .frame(width: hit ?? width, height: hit ?? height)
                 .contentShape(Rectangle())
         }
         .modifier(Plain(unfaded: ink != nil))
@@ -112,6 +116,7 @@ struct GlassCell<Icon: View>: View {
         case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected ? 0.14 : 0))
         case .greyCircle: Circle().fill(pressed ? AnyShapeStyle(Self.paletteInk) : AnyShapeStyle(HelmSurface.onPanelFill))
         case .accent: Circle().fill(Color.accentColor)
+        case .bare: Color.clear
         }
     }
 }

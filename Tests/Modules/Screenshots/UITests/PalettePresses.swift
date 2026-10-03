@@ -22,9 +22,10 @@ enum PaletteAnswer: Equatable {
 }
 
 /// Every answer (an action, or ⋯ asking for its menu) to a press at each `step`-th x along the palette's middle,
-/// with the x it was sent at. Also reports what `model.morePressed` read once the sweep ended (`morePressedAfter`).
+/// with the x it was sent at, pressing `heightFraction` of the way up from the bottom edge. Also reports what `model.morePressed` read once the sweep ended (`morePressedAfter`).
 @MainActor func answersAcrossThePalette(language: AppLanguage, canUndoAndRedo: Bool = false, step: CGFloat = 2,
-                                        tool: AnnotationTool? = nil) throws -> (answers: [(x: CGFloat, answer: PaletteAnswer)], morePressedAfter: Bool) {
+                                        tool: AnnotationTool? = nil,
+                                        heightFraction: CGFloat = 0.5) throws -> (answers: [(x: CGFloat, answer: PaletteAnswer)], morePressedAfter: Bool) {
     AppLanguage.override = language
     let model = EditorBarModel()
     model.show(tool: tool, style: .standard, canUndo: canUndoAndRedo, canRedo: canUndoAndRedo)
@@ -49,7 +50,7 @@ enum PaletteAnswer: Equatable {
     for x in stride(from: step / 2, to: size.width, by: step) {
         at = x
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: CGPoint(x: x, y: size.height / 2),
+            let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: CGPoint(x: x, y: size.height * heightFraction),
                                                          modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
                                                          context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
             window.sendEvent(event)

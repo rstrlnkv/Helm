@@ -1,7 +1,7 @@
 # What is deliberately not here
 
 **No external dependency.** `Package.swift` declares no `dependencies:` array,
-and the one third-party artwork is vendored with its licence in `NOTICE.md`. A
+and the third-party artwork (the flags, the palette's objects) is vendored with its attribution in `NOTICE.md`. A
 utility that removes files and asks for Full Disk Access is read by the person
 installing it, and every dependency is a thing he has to be told about.
 
