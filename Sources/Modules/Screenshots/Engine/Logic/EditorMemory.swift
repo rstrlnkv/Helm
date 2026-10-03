@@ -1,43 +1,85 @@
 import Foundation
 import HelmRuntime
 
-/// What the editor opens with: the last tool, colour, thickness and fill.
+/// What the editor opens with: the last tool, the colour and fill every tool shares, and each
+/// tool's own thickness step and opacity.
 ///
 /// Read once, when the first area is released, and written at each pick. The store
 /// is a property list any process running as the user can write, so every field is
 /// read with its bound: a stored name that is none of the cases reads as the
-/// default, and a thickness is clamped to the steps there are. Not sealed — nothing
-/// unattended reads it.
+/// default, a step is clamped to the steps there are and an opacity to 0.1…1. The two
+/// per-tool tables are read by walking the tools there are and asking the table about each,
+/// never by walking the table, so a stranger's key is never read as a tool. A table is read whole, though
+/// (`[String: Int]`, `[String: Double]`): one entry of another type makes it read as no record for
+/// every tool, so each falls back to its default, bounded and without a crash.
+/// Not sealed — nothing unattended reads it.
 public struct EditorMemory: Equatable, Sendable {
     /// Nil is no tool, which is what a drag on the area means.
     public var tool: AnnotationTool?
-    public var style: AnnotationStyle
+    private var color: AnnotationColor?
+    private var filled: Bool
+    private var steps: [AnnotationTool: AnnotationThickness]
+    private var opacities: [AnnotationTool: Double]
 
-    public init(tool: AnnotationTool? = nil, style: AnnotationStyle = .standard) {
+    public init(tool: AnnotationTool? = nil, color: AnnotationColor? = nil, filled: Bool = false) {
         self.tool = tool
-        self.style = style
+        self.color = color
+        self.filled = filled
+        steps = [:]
+        opacities = [:]
+    }
+
+    /// What the next object of `tool` is drawn with: the shared colour and fill, that tool's own
+    /// step and opacity, and for a tool with no record the middle step at full ink.
+    public func style(for tool: AnnotationTool) -> AnnotationStyle {
+        AnnotationStyle(color: color, thickness: steps[tool] ?? .medium, filled: filled, opacity: opacities[tool] ?? 1)
+    }
+
+    /// A pick, as the reader would see it after the write: what the overlay keeps beside the store, which a test may not have.
+    public mutating func note(style: AnnotationStyle, for tool: AnnotationTool) {
+        color = style.color
+        filled = style.filled
+        steps[tool] = style.thickness
+        opacities[tool] = style.opacity
     }
 
     public static func read(_ store: NamespacedStore) -> EditorMemory {
         typealias Key = ScreenshotsSettings.Key
-        let steps = AnnotationThickness.allCases
-        let thickness = store.int(Key.editorThickness, default: 0)
-            .clamped(to: 0...(steps.count - 1))
-        return EditorMemory(
+        var memory = EditorMemory(
             tool: AnnotationTool(rawValue: store.string(Key.editorTool, default: "")),
-            style: AnnotationStyle(
-                color: AnnotationColor(rawValue: store.string(Key.editorColor, default: "")),
-                thickness: AnnotationThickness(rawValue: thickness) ?? .thin,
-                filled: store.bool(Key.editorFill, default: false)))
+            color: AnnotationColor(rawValue: store.string(Key.editorColor, default: "")),
+            filled: store.bool(Key.editorFill, default: false))
+        let stored = store.intTable(Key.editorThicknessByTool)
+        let opacities = store.doubleTable(Key.editorOpacityByTool)
+        for tool in AnnotationTool.allCases {
+            if let step = stored[tool.rawValue] {
+                memory.steps[tool] = AnnotationThickness(rawValue: step.clamped(to: 0...(AnnotationThickness.allCases.count - 1)))
+            }
+            // A stored opacity that is not a number is full ink: a stroke that vanishes for a garbled
+            // preference is worse than one that is solid, and the person sees it at once.
+            if let opacity = opacities[tool.rawValue] {
+                memory.opacities[tool] = opacity.clamped(to: 0.1...1, whenNotANumber: 1)
+            }
+        }
+        return memory
     }
 
     public static func remember(tool: AnnotationTool?, in store: NamespacedStore) {
         store.set(tool?.rawValue, for: ScreenshotsSettings.Key.editorTool)
     }
 
-    public static func remember(style: AnnotationStyle, in store: NamespacedStore) {
-        store.set(style.color?.rawValue, for: ScreenshotsSettings.Key.editorColor)
-        store.set(style.thickness.rawValue, for: ScreenshotsSettings.Key.editorThickness)
-        store.set(style.filled, for: ScreenshotsSettings.Key.editorFill)
+    /// The colour and fill are everybody's; the step and the opacity are written under `tool` alone,
+    /// and what the two tables hold under a name that is no tool is dropped with the write.
+    public static func remember(style: AnnotationStyle, for tool: AnnotationTool, in store: NamespacedStore) {
+        typealias Key = ScreenshotsSettings.Key
+        store.set(style.color?.rawValue, for: Key.editorColor)
+        store.set(style.filled, for: Key.editorFill)
+        let known = Set(AnnotationTool.allCases.map(\.rawValue))
+        var steps = store.intTable(Key.editorThicknessByTool).filter { known.contains($0.key) }
+        steps[tool.rawValue] = style.thickness.rawValue
+        store.set(steps, for: Key.editorThicknessByTool)
+        var opacities = store.doubleTable(Key.editorOpacityByTool).filter { known.contains($0.key) }
+        opacities[tool.rawValue] = style.opacity
+        store.set(opacities, for: Key.editorOpacityByTool)
     }
 }

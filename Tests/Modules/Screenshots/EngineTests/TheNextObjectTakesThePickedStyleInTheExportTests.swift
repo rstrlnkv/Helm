@@ -72,7 +72,7 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
                        AnnotationColor.yellow.cgColor.copy(alpha: Annotation.markerAlpha)!, "the unpicked marker is not yesterday's yellow")
     }
 
-    func testThicknessScalesTheOutlineTheShaftAndTheMarkerTogether() {
+    func testEachToolReadsItsOwnThreeStepsOfTheOneTable() {
         let widths = AnnotationThickness.allCases.map { step in
             AnnotationStyle(thickness: step)
         }.map { style in
@@ -80,13 +80,13 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
              Annotation(tool: .highlighter, start: .zero, end: CGPoint(x: 9, y: 9), points: [.zero, CGPoint(x: 9, y: 9)], style: style).stroke!.width)
         }
         XCTAssertEqual(widths.map(\.0), [3, 5, 8])
-        XCTAssertEqual(widths.map(\.1), [16, 24, 32], "the marker did not scale with its own step")
-        XCTAssertEqual(widths[0].0, AnnotationThickness.thin.line)
-        XCTAssertEqual(widths[0].1, AnnotationThickness.thin.marker)
+        XCTAssertEqual(widths.map(\.1), [6, 12, 18], "the marker did not scale with its own step")
+        XCTAssertEqual(widths[0].0, AnnotationThickness.thin.points(for: .line))
+        XCTAssertEqual(widths[0].1, AnnotationThickness.thin.points(for: .highlighter))
         let heads = AnnotationThickness.allCases.map {
             Annotation(tool: .arrow, start: .zero, end: CGPoint(x: 200, y: 0), style: AnnotationStyle(thickness: $0)).outline.boundingBox.height
         }
-        XCTAssertEqual(heads, AnnotationThickness.allCases.map { $0.shaft * 3 }, "the arrow's head did not follow its step")
+        XCTAssertEqual(heads, AnnotationThickness.allCases.map { $0.points(for: .arrow) * 3 }, "the arrow's head did not follow its step")
     }
 
     func testOnlyTheBoxesAreEverFilledAndOnlyWhenAsked() {
@@ -133,7 +133,7 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
                 let out = try await export([line], scale: scale, name: "shots-style-thick-\(step.rawValue)-\(Int(scale))")
                 var ink = 0
                 for y in 0..<out.height where pixel(out, x: Int(50 * scale), y: y)[1] < 128 { ink += 1 }
-                XCTAssertEqual(Double(ink), Double(step.line * scale), accuracy: 1.5, "\(step) at \(scale)x")
+                XCTAssertEqual(Double(ink), Double(step.points(for: .line) * scale), accuracy: 1.5, "\(step) at \(scale)x")
             }
         }
     }
@@ -155,7 +155,7 @@ final class TheNextObjectTakesThePickedStyleInTheExportTests: XCTestCase {
 
     func testTheMarkerHasRoundJoinsAndButtCapsAndEveryoneElsesAreUnchanged() {
         let marker = Annotation(tool: .highlighter, start: .zero, end: CGPoint(x: 9, y: 9), points: [.zero, CGPoint(x: 9, y: 9)]).stroke!
-        XCTAssertEqual(marker.join, .round, "a freehand 16 pt stroke is mitred and spikes at a sharp turn")
+        XCTAssertEqual(marker.join, .round, "a freehand 12 pt stroke is mitred and spikes at a sharp turn")
         XCTAssertEqual(marker.cap, .butt)
         let shapes = [AnnotationTool.rectangle, .ellipse].map { Annotation(tool: $0, start: .zero, end: CGPoint(x: 9, y: 9)).stroke! }
         XCTAssertTrue(shapes.allSatisfy { $0.cap == .butt && $0.join == .miter })

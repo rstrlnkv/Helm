@@ -17,11 +17,17 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     case ellipse
     /// A straight stroke from the press to the pointer.
     case line
-    /// A freehand stroke through the drag's points, smoothed.
+    /// A freehand stroke through the drag's points, smoothed: round cap and join, drawn as it is.
+    /// The clean line: one even width (1.5, 3 or 6 pt by the step), nothing added to the path.
+    case pen
+    /// A freehand stroke through the drag's points, smoothed, like the pen's. Its grain is not drawn yet.
     case pencil
     /// A wide translucent freehand stroke like the pencil's, a single straight run at 45°
     /// steps while ⇧ is held, multiplied into the picture.
     case highlighter
+
+    /// Drawn through the points of a drag rather than from its two ends.
+    public var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
 }
 
 /// How a stroked annotation is inked: one description that the screen's shape layer and
@@ -57,22 +63,29 @@ public enum AnnotationColor: String, CaseIterable, Sendable, Equatable {
     public var cgColor: CGColor { CGColor(srgbRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1) }
 }
 
-/// The three steps of thickness. One step sets the outline, the arrow's shaft and the
-/// marker's width together, so a person picks a weight and not three numbers.
-/// **The raw value is stored data**, and a stored number outside 0…2 is clamped to the
-/// nearest step by the reader (`EditorMemory`).
+/// The three steps of thickness. A person picks a weight and the tool says how many points
+/// it is (`points(for:)`): each tool has its own three, since a step that is right for the
+/// marker is a lump for the pen. **The raw value is stored data**, and a stored number outside
+/// 0…2 is clamped to the nearest step by the reader (`EditorMemory`).
 public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
     case thin = 0, medium, thick
 
-    /// The outline's stroke, in points.
-    public var line: CGFloat { [3, 5, 8][rawValue] }
-    /// The arrow's shaft at its thickest, in points.
-    public var shaft: CGFloat { [6, 10, 16][rawValue] }
-    /// The marker's width, in points; the thinnest is wide enough to cover a line of text.
-    public var marker: CGFloat { [16, 24, 32][rawValue] }
+    /// The step's width in points under a tool: the stroke's width, and for the arrow the
+    /// shaft at its thickest, of which the head is three. The one table the screen and the export read.
+    public func points(for tool: AnnotationTool) -> CGFloat {
+        let steps: [CGFloat]
+        switch tool {
+        case .pen: steps = [1.5, 3, 6]
+        case .highlighter: steps = [6, 12, 18]
+        case .pencil: steps = [2, 3.5, 5]
+        case .arrow: steps = [6, 10, 16]
+        case .rectangle, .ellipse, .line: steps = [3, 5, 8]
+        }
+        return steps[rawValue]
+    }
 }
 
-/// What the **next** object is drawn with: the colour, the thickness and, for the
+/// What the **next** object is drawn with: the colour, the thickness, the opacity and, for the
 /// boxes, whether they are filled. An object keeps the style it was begun with.
 public struct AnnotationStyle: Sendable, Equatable {
     /// Nil until a colour is picked: each tool then has its own — red, and yellow for
@@ -80,11 +93,17 @@ public struct AnnotationStyle: Sendable, Equatable {
     public var color: AnnotationColor?
     public var thickness: AnnotationThickness
     public var filled: Bool
+    /// How much of the ink shows, 0.1…1 once read from the store; the marker's own 0.6 is multiplied by it.
+    public var opacity: Double
 
-    public init(color: AnnotationColor? = nil, thickness: AnnotationThickness = .thin, filled: Bool = false) {
+    /// The default step is the middle one, which is what a tool nobody picked a step for reads
+    /// from the store (`EditorMemory`), so `standard` is that tool's style and not a second default.
+    public init(color: AnnotationColor? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
+                opacity: Double = 1) {
         self.color = color
         self.thickness = thickness
         self.filled = filled
+        self.opacity = opacity
     }
 
     public static let standard = AnnotationStyle()
@@ -117,7 +136,7 @@ public struct Annotation: Sendable, Equatable {
     public let tool: AnnotationTool
     public let start: CGPoint
     public let end: CGPoint
-    /// The freehand path of the pencil and the highlighter, first point to last; empty for the other tools.
+    /// The freehand path of the pen, the pencil and the highlighter, first point to last; empty for the other tools.
     public let points: [CGPoint]
     public let style: AnnotationStyle
     /// Nothing outside `AnnotationEditing` gives one; 0 is the id of a value made by hand.
@@ -223,11 +242,11 @@ public struct Annotation: Sendable, Equatable {
 
     /// How much of the ink the marker lets through: 60 %. The multiply is what keeps text readable.
     static let markerAlpha: CGFloat = 0.6
-    /// The most points a pencil stroke keeps; a longer drag is thinned, never grown.
+    /// The most points any freehand trail (pen, pencil or marker) keeps; a longer drag is thinned, never grown.
     public static let maxPoints = 1024
     /// The nearest a new freehand point may come to the last kept one, in points; a
     /// nearer pointer is only the tip of the stroke until it is this far.
-    static let pencilGap: CGFloat = 2
+    static let freehandGap: CGFloat = 2
 
     /// Painted as a solid shape rather than stroked: the arrow always, and a rectangle or
     /// an ellipse when the style says filled.
@@ -236,32 +255,38 @@ public struct Annotation: Sendable, Equatable {
     }
 
     /// The colour a filled shape is painted in; for a stroked one see `stroke`.
-    public var fillColor: CGColor { style.ink(for: tool).cgColor }
+    public var fillColor: CGColor { inked(style.opacity) }
+
+    /// The tool's ink at `alpha`.
+    private func inked(_ alpha: Double) -> CGColor {
+        let ink = style.ink(for: tool).cgColor
+        return ink.copy(alpha: CGFloat(alpha)) ?? ink
+    }
 
     /// The ink of a stroked annotation; nil for a filled shape.
     ///
     /// **Caps and joins.** A shape has butt caps and mitred corners, the line and the
-    /// pencil round both. The marker's caps stay butt, flat like a chisel nib, but its
-    /// joins are round: it is a freehand stroke 16 pt and more wide, and a mitre on a
+    /// pen and the pencil round both. The marker's caps stay butt, flat like a chisel nib, but its
+    /// joins are round: it is a freehand stroke 6 pt and more wide, and a mitre on a
     /// jagged path throws a spike far past the point it turns at.
     public var stroke: AnnotationStroke? {
         guard !isFilled else { return nil }
-        let ink = style.ink(for: tool).cgColor
+        let width = style.thickness.points(for: tool)
         switch tool {
         case .arrow: return nil
         case .rectangle, .ellipse:
-            return AnnotationStroke(width: style.thickness.line, color: ink, multiplies: false, cap: .butt, join: .miter)
-        case .line, .pencil:
-            return AnnotationStroke(width: style.thickness.line, color: ink, multiplies: false, cap: .round, join: .round)
+            return AnnotationStroke(width: width, color: inked(style.opacity), multiplies: false, cap: .butt, join: .miter)
+        case .line, .pen, .pencil:
+            return AnnotationStroke(width: width, color: inked(style.opacity), multiplies: false, cap: .round, join: .round)
         case .highlighter:
-            return AnnotationStroke(width: style.thickness.marker, color: ink.copy(alpha: Self.markerAlpha) ?? ink,
+            return AnnotationStroke(width: width, color: inked(Double(Self.markerAlpha) * style.opacity),
                                     multiplies: true, cap: .butt, join: .round)
         }
     }
 
     /// Where the pointer wants the far corner or end to be once ⇧ is read: a square or
     /// a circle for the box tools (the longer side wins, each axis keeps its sign) and
-    /// the nearest multiple of 45° for the straight ones, length kept. The pencil
+    /// the nearest multiple of 45° for the straight ones, length kept. The pen and the pencil
     /// ignores it. The caller passes the **live** flag of the event in hand. With `bounds`
     /// a box with no travel on an axis grows to the side that has more room there.
     public static func constrained(_ tool: AnnotationTool, from start: CGPoint, to end: CGPoint,
@@ -279,7 +304,7 @@ public struct Annotation: Sendable, Equatable {
             let angle = (atan2(dy, dx) / step).rounded() * step
             let length = hypot(dx, dy)
             return CGPoint(x: start.x + cos(angle) * length, y: start.y + sin(angle) * length)
-        case .arrow, .pencil:
+        case .arrow, .pen, .pencil:
             return end
         }
     }
@@ -293,13 +318,13 @@ public struct Annotation: Sendable, Equatable {
         switch tool {
         case .arrow, .line: return hypot(end.x - start.x, end.y - start.y) >= 1
         case .rectangle, .ellipse: return abs(end.x - start.x) >= 1 && abs(end.y - start.y) >= 1
-        case .pencil, .highlighter: return points.contains { hypot($0.x - start.x, $0.y - start.y) >= 1 }
+        case .pen, .pencil, .highlighter: return points.contains { hypot($0.x - start.x, $0.y - start.y) >= 1 }
         }
     }
 
     /// The shape, in the same top-left points: painted as `isFilled` says, otherwise
     /// stroked as `stroke` says. The one geometry the screen and the export both draw.
-    /// The pencil and the highlighter are smoothed as a quadratic curve through the midpoints of
+    /// The pen, the pencil and the highlighter are smoothed as a quadratic curve through the midpoints of
     /// their points, each point the control of the bend it makes, ending on the last; with no
     /// more than one point there is no path.
     public var outline: CGPath {
@@ -313,7 +338,7 @@ public struct Annotation: Sendable, Equatable {
             return CGPath(ellipseIn: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
                                             width: abs(end.x - start.x), height: abs(end.y - start.y)),
                           transform: nil)
-        case .pencil, .highlighter:
+        case .pen, .pencil, .highlighter:
             let path = CGMutablePath()
             guard let first = points.first, let last = points.last, points.count > 1 else { return path }
             path.move(to: first)
@@ -334,7 +359,7 @@ public struct Annotation: Sendable, Equatable {
             let across = CGVector(dx: -along.dy, dy: along.dx)
             // The head is at most as long as half the arrow, so a short one is still
             // an arrow and not a head with no shaft.
-            let shaft = style.thickness.shaft
+            let shaft = style.thickness.points(for: .arrow)
             let head = min(length * 0.5, shaft * 3)
             let base = CGPoint(x: end.x - along.dx * head, y: end.y - along.dy * head)
             func point(_ origin: CGPoint, _ side: CGFloat) -> CGPoint {

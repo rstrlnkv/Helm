@@ -69,10 +69,11 @@ final class TheFreehandMarkerMeetsShiftAtItsBoundAndInTheExportTests: XCTestCase
         return (0..<image.height).map { row in (0..<3).map { Int(bytes[row * image.width * 4 + x * 4 + $0]) } }
     }
 
-    func testAFreehandMarkerIsMultipliedAndSixteenPointsTimesTheScaleWide() async throws {
+    func testAFreehandMarkerIsMultipliedAndSixPointsTimesTheScaleWideAtItsThinStep() async throws {
         // A straight run of four points along y = 40 from x = 10 to 70: a column at x = 30 crosses it once.
         let points = [CGPoint(x: 10, y: 40), CGPoint(x: 30, y: 40), CGPoint(x: 50, y: 40), CGPoint(x: 70, y: 40)]
-        let layer = Annotation(tool: .highlighter, start: points[0], end: points[3], points: points)
+        let layer = Annotation(tool: .highlighter, start: points[0], end: points[3], points: points,
+                               style: AnnotationStyle(thickness: .thin))
         for scale in [CGFloat(1), 2] {
             let rig = Rig(home: scratchDirectory("shots-freehand-marker-\(Int(scale))"))
             let drawn = await rig.session.annotated(freeze(scale: scale), display: DisplayID(1),
@@ -80,7 +81,7 @@ final class TheFreehandMarkerMeetsShiftAtItsBoundAndInTheExportTests: XCTestCase
             let out = try XCTUnwrap(drawn)
             let column = rows(out, x: Int(30 * scale))
             let tinted = column.filter { $0 != [255, 255, 255] && $0 != [0, 0, 0] }.count
-            XCTAssertEqual(Double(tinted), Double(16 * scale), accuracy: Double(scale) * 2 + 1, "\(scale)x: marker width in pixels")
+            XCTAssertEqual(Double(tinted), Double(6 * scale), accuracy: Double(scale) * 2 + 1, "\(scale)x: marker width in pixels")
             // Multiply: over white the blue falls to the tint's, a black pixel would stay black.
             XCTAssertEqual(column[Int(40 * scale)][2], 117, accuracy: 6, "\(scale)x: over white")
             XCTAssertEqual(rows(out, x: Int(30 * scale))[0], [0, 0, 0], "\(scale)x: the black band outside the stroke is untouched")

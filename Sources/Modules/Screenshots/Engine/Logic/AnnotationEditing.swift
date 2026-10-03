@@ -60,7 +60,7 @@ public struct AnnotationEditing: Sendable {
     /// The freehand points kept so far, the press first; the pointer is the tip after them.
     private var trail: [CGPoint] = []
     /// The spacing a point must keep from the last kept one; it doubles each time the trail is thinned.
-    private var gap = Annotation.pencilGap
+    private var gap = Annotation.freehandGap
 
     public init(bounds: CGRect) { self.bounds = bounds }
 
@@ -94,8 +94,8 @@ public struct AnnotationEditing: Sendable {
         guard let clamped = clamp(point) else { return }
         pointer = clamped
         pressed = (point, 0)
-        gap = Annotation.pencilGap
-        let freehand = tool == .pencil || tool == .highlighter
+        gap = Annotation.freehandGap
+        let freehand = tool.isFreehand
         trail = freehand ? [clamped] : []
         draft = Annotation(tool: tool, start: clamped, end: clamped, points: trail, style: style, id: nextID)
         nextID += 1
@@ -165,7 +165,7 @@ public struct AnnotationEditing: Sendable {
 
     private mutating func reshape(_ current: Annotation, shift: Bool) {
         guard let pointer else { return }
-        if current.tool == .pencil || current.tool == .highlighter {
+        if current.tool.isFreehand {
             commit(pointer)
             // The tip is the pointer and is never kept as a point of the trail until it is
             // a full spacing from the last kept one, so a slow drag still adds points.

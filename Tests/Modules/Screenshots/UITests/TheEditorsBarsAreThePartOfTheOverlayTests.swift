@@ -252,7 +252,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     // MARK: the palette and a key
 
     func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
-        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4]
+        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45]
         XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(EditorKeys.action(keyCode: codes[tool]!, flags: []), .tool(tool), "\(tool): the key means another tool")
@@ -268,6 +268,18 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             }
             XCTAssertEqual(drawn, [tool, tool], "\(tool): the key and the button drew different things")
         }
+    }
+
+    /// N is the pen and P is still the pencil: two keys, two tools, by physical code (N is 45, P is 35).
+    func testNIsThePenAndPIsStillThePencilAndThePenStandsBeforeTheMarkerInTheRow() {
+        XCTAssertEqual(EditorKeys.action(keyCode: 45, flags: []), .tool(.pen))
+        XCTAssertEqual(EditorKeys.action(keyCode: 35, flags: []), .tool(.pencil))
+        XCTAssertNil(EditorKeys.action(keyCode: 45, flags: .command), "⌘N picked the pen")
+        XCTAssertNil(EditorKeys.action(keyCode: 45, flags: [.control]), "⌃N picked the pen")
+        XCTAssertEqual(EditorKeys.action(keyCode: 45, flags: .capsLock), .tool(.pen), "Caps Lock read as a chord")
+        XCTAssertEqual(EditorPalette.objects.filter { $0.place == .row }.map(\.tool), [.pen, .highlighter, .pencil],
+                       "the row is not Pen, Marker, Pencil")
+        XCTAssertEqual(Set(EditorPalette.objects.map(\.tool)), Set(AnnotationTool.allCases), "a tool has no cell")
     }
 
     func testTheSameToolAgainPutsItDownByKeyAndByButton() throws {
@@ -381,7 +393,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         let (next, _) = try build(store: kept)
         // The store is read when the area is released, not when the overlay is made.
         EditorMemory.remember(tool: .line, in: kept)
-        EditorMemory.remember(style: AnnotationStyle(color: .orange, thickness: .thick, filled: false), in: kept)
+        EditorMemory.remember(style: AnnotationStyle(color: .orange, thickness: .thick, filled: false), for: .line, in: kept)
         select(next)
         XCTAssertEqual(overlay?.bars.tool, .line, "the tool was read before the release")
         XCTAssertEqual(overlay?.bars.style, AnnotationStyle(color: .orange, thickness: .thick, filled: false))
@@ -410,7 +422,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
 
     func testAStoreThatSaysAnythingOpensTheEditorOnTheNearestThingItHas() throws {
         let kept = memory()
-        kept.set(Int.max, for: ScreenshotsSettings.Key.editorThickness)
+        kept.set(["pen": Int.max], for: ScreenshotsSettings.Key.editorThicknessByTool)
         kept.set("magenta", for: ScreenshotsSettings.Key.editorColor)
         kept.set("laser", for: ScreenshotsSettings.Key.editorTool)
         let (first, _) = try build(store: kept)

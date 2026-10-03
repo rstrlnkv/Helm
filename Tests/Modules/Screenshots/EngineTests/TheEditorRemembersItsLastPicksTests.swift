@@ -19,8 +19,11 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     private typealias Key = ScreenshotsSettings.Key
 
     func testAnEmptyStoreIsTheStandardEditor() {
-        XCTAssertEqual(EditorMemory.read(store()), EditorMemory(tool: nil, style: .standard))
-        XCTAssertNil(EditorMemory.read(store()).style.color, "no colour was ever picked, so each tool keeps its own")
+        XCTAssertEqual(EditorMemory.read(store()), EditorMemory())
+        for tool in AnnotationTool.allCases {
+            XCTAssertEqual(EditorMemory.read(store()).style(for: tool), .standard, "\(tool)")
+            XCTAssertNil(EditorMemory.read(store()).style(for: tool).color, "no colour was ever picked, so each tool keeps its own")
+        }
     }
 
     func testWhatWasPickedComesBackWholeForEveryCase() {
@@ -33,8 +36,8 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
             for step in AnnotationThickness.allCases {
                 let kept = store()
                 let style = AnnotationStyle(color: color, thickness: step, filled: step == .medium)
-                EditorMemory.remember(style: style, in: kept)
-                XCTAssertEqual(EditorMemory.read(kept).style, style, "\(color) \(step)")
+                EditorMemory.remember(style: style, for: .arrow, in: kept)
+                XCTAssertEqual(EditorMemory.read(kept).style(for: .arrow), style, "\(color) \(step)")
             }
         }
     }
@@ -50,35 +53,36 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     func testAThicknessOutOfRangeIsTheNearestStep() {
         for (stored, step) in [(Int.max, AnnotationThickness.thick), (3, .thick), (2, .thick), (1, .medium),
                                (0, .thin), (-1, .thin), (Int.min, .thin)] as [(Int, AnnotationThickness)] {
-            XCTAssertEqual(EditorMemory.read(store([Key.editorThickness: stored])).style.thickness, step, "\(stored)")
+            XCTAssertEqual(EditorMemory.read(store([Key.editorThicknessByTool: ["arrow": stored]])).style(for: .arrow).thickness,
+                           step, "\(stored)")
         }
     }
 
     func testAnythingElseInAKeyIsTheDefault() {
         let garbage: [String: Any] = [
             Key.editorTool: "laser", Key.editorColor: "magenta",
-            Key.editorThickness: "thick", Key.editorFill: "yes",
+            Key.editorThicknessByTool: "thick", Key.editorOpacityByTool: "half", Key.editorFill: "yes",
         ]
         XCTAssertEqual(EditorMemory.read(store(garbage)), EditorMemory())
         let wrongKinds: [String: Any] = [
-            Key.editorTool: 7, Key.editorColor: [1, 2], Key.editorThickness: 1e300, Key.editorFill: 3.5,
+            Key.editorTool: 7, Key.editorColor: [1, 2], Key.editorThicknessByTool: 1e300, Key.editorFill: 3.5,
         ]
-        XCTAssertEqual(EditorMemory.read(store(wrongKinds)).style.thickness, .thin, "a real number is not a step")
+        XCTAssertEqual(EditorMemory.read(store(wrongKinds)).style(for: .arrow).thickness, .medium, "a real number is not a table of steps")
         XCTAssertNil(EditorMemory.read(store(wrongKinds)).tool)
-        XCTAssertNil(EditorMemory.read(store(wrongKinds)).style.color)
-        XCTAssertFalse(EditorMemory.read(store(wrongKinds)).style.filled)
+        XCTAssertNil(EditorMemory.read(store(wrongKinds)).style(for: .arrow).color)
+        XCTAssertFalse(EditorMemory.read(store(wrongKinds)).style(for: .arrow).filled)
     }
 
     func testTheSettingsReaderIsNotMovedByTheEditorsKeys() {
         let kept = store()
         EditorMemory.remember(tool: .line, in: kept)
-        EditorMemory.remember(style: AnnotationStyle(color: .blue, thickness: .thick, filled: true), in: kept)
+        EditorMemory.remember(style: AnnotationStyle(color: .blue, thickness: .thick, filled: true), for: .line, in: kept)
         XCTAssertEqual(ScreenshotsSettings.read(kept), ScreenshotsSettings.defaults,
                        "the editor's memory changed what a capture does")
     }
 
     func testTheStoredNamesAreTheDeployedSpellings() {
-        XCTAssertEqual(AnnotationTool.allCases.map(\.rawValue), ["arrow", "rectangle", "ellipse", "line", "pencil", "highlighter"])
+        XCTAssertEqual(AnnotationTool.allCases.map(\.rawValue), ["arrow", "rectangle", "ellipse", "line", "pen", "pencil", "highlighter"])
         XCTAssertEqual(AnnotationColor.allCases.map(\.rawValue),
                        ["red", "orange", "yellow", "green", "blue", "purple", "black", "white"])
         XCTAssertEqual(AnnotationThickness.allCases.map(\.rawValue), [0, 1, 2])

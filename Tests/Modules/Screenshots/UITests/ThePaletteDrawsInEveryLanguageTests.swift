@@ -59,7 +59,7 @@ final class ThePaletteDrawsInEveryLanguageTests: XCTestCase {
     func testEveryCellHasANameAndNoTwoShareOne() {
         AppLanguage.each { language in
             let names: [(String, String)] = [("undo", ScStr.undo), ("redo", ScStr.redo),
-                                             ("pencil", ScStr.tool(.pencil)), ("highlighter", ScStr.tool(.highlighter)),
+                                             ("pen", ScStr.tool(.pen)), ("pencil", ScStr.tool(.pencil)), ("highlighter", ScStr.tool(.highlighter)),
                                              ("done", ScStr.done), ("close", ScStr.closeEditor), ("more", HelmA11y.moreActions)]
                 + AnnotationColor.allCases.map { ("ink \($0)", ScStr.ink($0)) }
             for (what, name) in names {

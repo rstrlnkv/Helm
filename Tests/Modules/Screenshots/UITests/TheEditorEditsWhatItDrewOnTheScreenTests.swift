@@ -161,8 +161,9 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
         overlay?.keyDown(key(36, "\r"))
         let layers = try delivered()
         XCTAssertEqual(layers[0].style, AnnotationStyle(color: .purple, thickness: .thick, filled: true), "the selected was not recoloured")
-        XCTAssertEqual(layers[1].style, AnnotationStyle(color: .purple, thickness: .thick, filled: true),
-                       "the pick did not carry to the next object")
+        // The colour and the fill are every tool's; the step is the rectangle's own, so the line opens on its middle one.
+        XCTAssertEqual(layers[1].style, AnnotationStyle(color: .purple, thickness: .medium, filled: true),
+                       "the pick did not carry to the next object, or the rectangle's step did")
     }
 
     func testTheBarsShowTheSelectedObjectsStyleAndGoBackToThePickOnLettingGo() throws {

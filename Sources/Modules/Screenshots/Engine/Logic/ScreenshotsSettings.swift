@@ -117,7 +117,11 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         /// The editor's memory, read by `EditorMemory` and not by `ScreenshotsSettings`.
         public static let editorTool = "editorTool"
         public static let editorColor = "editorColor"
+        /// Retired, not read: one step for every tool, before each tool had its own. Never reused.
         public static let editorThickness = "editorThickness"
+        /// Tool raw value → step 0…2, and tool raw value → opacity, each tool's own (`EditorMemory`).
+        public static let editorThicknessByTool = "editorThicknessByTool"
+        public static let editorOpacityByTool = "editorOpacityByTool"
         public static let editorFill = "editorFill"
     }
 }

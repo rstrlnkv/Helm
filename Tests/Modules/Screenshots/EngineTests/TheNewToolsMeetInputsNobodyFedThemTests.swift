@@ -132,7 +132,7 @@ final class TheNewToolsMeetInputsNobodyFedThemTests: XCTestCase {
         editing.redo(); editing.redo()
         XCTAssertEqual(editing.layers, [marker])
         XCTAssertEqual(editing.layers[0].stroke?.multiplies, true)
-        XCTAssertEqual(editing.layers[0].stroke?.width, AnnotationThickness.thin.marker)
+        XCTAssertEqual(editing.layers[0].stroke?.width, AnnotationThickness.medium.points(for: .highlighter))
         editing.undo()
         editing.begin(.line, at: CGPoint(x: 1, y: 1)); editing.drag(to: CGPoint(x: 50, y: 50), shift: false); editing.end()
         XCTAssertFalse(editing.canRedo, "a new layer kept the marker in the redo list")

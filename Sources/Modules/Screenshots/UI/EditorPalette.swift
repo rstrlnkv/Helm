@@ -36,7 +36,7 @@ import Module_Screenshots_Engine
     /// What the colour and the fill are about: the selected object's tool, or else the picked one.
     private var subject: AnnotationTool? { selectedTool ?? tool }
     /// The swatch that is lit: the picked colour, or the one the tool draws in until one is picked.
-    var lit: AnnotationColor { style.ink(for: subject ?? .pencil) }
+    var lit: AnnotationColor { style.ink(for: subject ?? .pen) }
     /// Whether a box is the subject, so that the fill changes what is drawn or selected now. Filled in the ⋯ menu is enabled by it.
     var fillApplies: Bool { subject == .rectangle || subject == .ellipse }
 }
@@ -75,10 +75,12 @@ struct EditorPalette: View {
 
     enum Place { case row, menu, shapes }
 
-    /// Drawn by the SF Symbols the bars used before, until the artwork replaces them.
+    /// Drawn by the SF Symbols the bars used before, until the artwork replaces them; the pen's is
+    /// `pencil.tip`, an interim of its own.
     static let objects: [(tool: AnnotationTool, symbol: String, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
-        (.line, "line.diagonal", .shapes), (.pencil, "pencil", .row), (.highlighter, "highlighter", .row),
+        (.line, "line.diagonal", .shapes), (.pen, "pencil.tip", .row), (.highlighter, "highlighter", .row),
+        (.pencil, "pencil", .row),
     ]
 
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.

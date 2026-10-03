@@ -41,7 +41,8 @@ final class TheExportLandsOnThePixelsTheOverlayShowedTests: XCTestCase {
         let freeze = Freeze(displays: [white(1, scale: 2)], windows: [])
         // 10.25 × 2 = 20.5 → the cut starts at pixel 20; 10.75 × 2 = 21.5 → at row 21.
         let selection = CGRect(x: 10.25, y: 10.75, width: 60, height: 40)
-        let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 50, y: 40))
+        let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 50, y: 40),
+                               style: AnnotationStyle(thickness: .thin))
         let outDrawn = await rig.session.annotated(freeze, display: DisplayID(1), local: selection,
                                                             layers: [layer])
         let out = try XCTUnwrap(outDrawn)
@@ -104,7 +105,8 @@ final class TheExportLandsOnThePixelsTheOverlayShowedTests: XCTestCase {
             let freeze = Freeze(displays: [white(1, scale: firstScale), white(2, scale: editedScale, origin: 100)],
                                 windows: [])
             let selection = CGRect(x: 0, y: 0, width: 60, height: 40)
-            let layer = Annotation(tool: .rectangle, start: CGPoint(x: 10, y: 10), end: CGPoint(x: 50, y: 30))
+            let layer = Annotation(tool: .rectangle, start: CGPoint(x: 10, y: 10), end: CGPoint(x: 50, y: 30),
+                                   style: AnnotationStyle(thickness: .thin))
             let outDrawn = await rig.session.annotated(freeze, display: DisplayID(2), local: selection,
                                                                 layers: [layer])
             let out = try XCTUnwrap(outDrawn)

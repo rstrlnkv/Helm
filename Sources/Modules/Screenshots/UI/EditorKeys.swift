@@ -60,6 +60,7 @@ enum EditorKeys {
         case (kVK_ANSI_R, []): return .tool(.rectangle)
         case (kVK_ANSI_O, []): return .tool(.ellipse)
         case (kVK_ANSI_L, []): return .tool(.line)
+        case (kVK_ANSI_N, []): return .tool(.pen)
         case (kVK_ANSI_P, []): return .tool(.pencil)
         case (kVK_ANSI_H, []): return .tool(.highlighter)
         case (kVK_Delete, []), (kVK_ForwardDelete, []): return .delete

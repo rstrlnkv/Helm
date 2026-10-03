@@ -61,9 +61,9 @@ on is `AnnotationHit` in `Sources/Modules/Screenshots/Engine/Logic/AnnotationHit
 read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, because the
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
-so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pencil
+so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pen, pencil
 and highlighter; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
-export's context both read; the pencil and the highlighter are freehand through the same trail of kept
+export's context both read; the pen, the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
 in the file. The overlay's view keeps one shape layer per annotation, built again only when its
@@ -77,13 +77,16 @@ when below is short, inside it against its bottom edge when neither has room, an
 on the edited display only; it is gone while an object is drawn or an area dragged and
 back on the release. A press on the palette is its own and never reaches the picture. A key and a palette button
 are one vocabulary, `EditorAction`, performed by `CaptureOverlay.perform`, so a tool has one meaning
-however it was asked for. What the next object is drawn with — one of eight fixed sRGB colours, one of
-three thicknesses that set the outline, the arrow's shaft and the marker's width together, and fill for the
-boxes — is an `AnnotationStyle` the object is begun with; a colour never picked leaves each tool its own
-(red, and yellow for the marker), and the last tool and style are read once, at the first release of a
-capture, and written at each pick by `EditorMemory`, with every stored value bounded.
+however it was asked for. What the next object is drawn with — one of eight fixed sRGB colours, fill for the
+boxes, and each tool's own one of three thicknesses and its opacity (the pen's steps are not the marker's: one table,
+`AnnotationThickness.points(for:)`, which the stroke and the arrow's head both read) — is an `AnnotationStyle` the
+object is begun with; a colour never picked leaves each tool its own (red, and yellow for the marker), the colour and
+fill are every tool's and the step and opacity are the tool's, and the last tool and style are read once, at the
+first release of a capture, and written at each pick by `EditorMemory`. The step and the opacity are two tables in the store,
+keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
+step of the days before the tables is retired, neither read nor migrated.
 
-The palette carries the pencil and the marker as objects; every other tool, Select, Filled, Save and, while
+The palette carries the pen, the marker and the pencil as objects; every other tool, Select, Filled, Save and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and

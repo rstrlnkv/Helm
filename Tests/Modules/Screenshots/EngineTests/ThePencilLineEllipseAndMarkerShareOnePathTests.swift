@@ -147,7 +147,7 @@ final class ThePencilLineEllipseAndMarkerShareOnePathTests: XCTestCase {
             ($0, Annotation(tool: $0, start: .zero, end: CGPoint(x: 5, y: 5)).stroke!)
         }
         XCTAssertEqual(styles.filter(\.1.multiplies).map(\.0), [.highlighter])
-        XCTAssertEqual(styles.map(\.1.width).max(), AnnotationThickness.thin.marker)
+        XCTAssertEqual(styles.map(\.1.width).max(), AnnotationThickness.medium.points(for: .highlighter))
         XCTAssertNil(Annotation(tool: .arrow, start: .zero, end: CGPoint(x: 5, y: 5)).stroke)
     }
 }

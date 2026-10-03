@@ -85,7 +85,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             case .arrow?: XCTAssertEqual(on.map(\.title), [ScStr.tool(.arrow)], context)
             case .rectangle?, .ellipse?, .line?:
                 XCTAssertEqual(on.map(\.title), [ScStr.tool(try XCTUnwrap(tool))], context)
-            case .pencil?, .highlighter?:
+            case .pen?, .pencil?, .highlighter?:
                 XCTAssertTrue(on.isEmpty, "\(context): a row object is raised and the menu checks \(on.map(\.title))")
             }
             // The parent of the shapes is on exactly while a shape is the tool.
@@ -233,7 +233,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
     func testTheBadgeIsTheSymbolOfTheChosenMenuToolAndNothingForARowObject() {
         let expected: [(AnnotationTool?, String?)] = [
             (.arrow, "arrow.up.right"), (.rectangle, "rectangle"), (.ellipse, "circle"), (.line, "line.diagonal"),
-            (nil, "cursorarrow"), (.pencil, nil), (.highlighter, nil),
+            (nil, "cursorarrow"), (.pen, nil), (.pencil, nil), (.highlighter, nil),
         ]
         XCTAssertEqual(expected.count, Self.everyChoice.count, "a tool was added: say what its badge is")
         for (tool, symbol) in expected {
@@ -247,6 +247,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         XCTAssertEqual(EditorPalette.moreValue(for: model(tool: .ellipse)), ScStr.tool(.ellipse))
         XCTAssertEqual(EditorPalette.moreValue(for: model(tool: .arrow)), ScStr.tool(.arrow))
         XCTAssertEqual(EditorPalette.moreValue(for: model(tool: nil)), ScStr.select)
+        XCTAssertNil(EditorPalette.moreValue(for: model(tool: .pen)))
         XCTAssertNil(EditorPalette.moreValue(for: model(tool: .pencil)))
         XCTAssertNil(EditorPalette.moreValue(for: model(tool: .highlighter)))
     }

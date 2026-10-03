@@ -57,7 +57,7 @@ final class TheClosedOverlayStaysClosedUnderTheMenuTests: XCTestCase {
             overlay.close()
             try choose(title, in: menu)
             XCTAssertNil(EditorMemory.read(store).tool, "«\(title)» chosen after the close wrote the tool to memory")
-            XCTAssertEqual(EditorMemory.read(store).style, .standard, "«\(title)» chosen after the close wrote the style to memory")
+            XCTAssertEqual(EditorMemory.read(store).style(for: .rectangle), .standard, "«\(title)» chosen after the close wrote the style to memory")
             XCTAssertTrue(results.isEmpty)
         }
         // Thickness and fill sent through the bars go through the same door.
@@ -66,7 +66,7 @@ final class TheClosedOverlayStaysClosedUnderTheMenuTests: XCTestCase {
         overlay.close()
         overlay.bars.perform(.thickness(.thick))
         overlay.bars.perform(.toggleFill)
-        XCTAssertEqual(EditorMemory.read(store).style, .standard, "a pick after the close was remembered")
+        XCTAssertEqual(EditorMemory.read(store).style(for: .rectangle), .standard, "a pick after the close was remembered")
     }
 
     /// `close()` clears the owner too: the doors that do not go through `edit` (Esc asks `escapeAsked`, Return takes the

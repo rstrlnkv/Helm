@@ -124,13 +124,16 @@ enum ScStr {
     // MARK: - The editor's bars
 
     /// The tools, in the words of macOS's own Preview markup menu; the ellipse is
-    /// «Oval» there, and «Highlight» is its marker.
+    /// «Oval» there, and «Highlight» is its marker. «Pen» is the one the system's PencilKit says:
+    /// key `Pen` of `PencilKit.framework`'s `Localizable.loctable` (Stift, Bolígrafo, Stylo, ペン, Caneta, Перо, 笔);
+    /// no table of Preview, Markup or AnnotationKit has the word.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
         case .arrow: L("Arrow")
         case .rectangle: L("Rectangle")
         case .ellipse: L("Oval")
         case .line: L("Line")
+        case .pen: L("Pen")
         case .pencil: L("Pencil")
         case .highlighter: L("Highlight")
         }

@@ -61,6 +61,11 @@ enum OverlayResult {
     /// What the next object is drawn with; picked on the palette, read from the store when
     /// the first area is released, and kept across the areas of one capture.
     private var style = AnnotationStyle.standard
+    /// The tool whose own step and opacity `style` carries: the last one picked, and the pen before any.
+    private var styleTool = AnnotationTool.pen
+    /// What the store holds, kept beside it so that a tool's own step and opacity come back
+    /// when the tool does, in a test with no store as well.
+    private var memory = EditorMemory()
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
@@ -340,9 +345,10 @@ enum OverlayResult {
         // The first area of a capture opens on what was used last; the next ones keep what was picked since.
         var tool = edit?.tool
         if edit == nil, let store {
-            let remembered = EditorMemory.read(store)
-            tool = remembered.tool
-            style = remembered.style
+            memory = EditorMemory.read(store)
+            tool = memory.tool
+            styleTool = tool ?? styleTool
+            style = memory.style(for: styleTool)
         }
         edit = (display, rect, AnnotationEditing(bounds: rect), tool)
         render()
@@ -444,6 +450,8 @@ enum OverlayResult {
             guard !isRepeat else { return }
             current.tool = current.tool == tool ? nil : tool
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
+            // Each tool is drawn with its own step and opacity, and every tool with the one colour and fill.
+            if let picked = current.tool { styleTool = picked; style = memory.style(for: picked) }
         case .select?:
             current.tool = nil
             if let store { EditorMemory.remember(tool: nil, in: store) }
@@ -451,11 +459,11 @@ enum OverlayResult {
         case .color(let color)?:
             style.color = color
             current.layers.recolor(color)
-            if let store { EditorMemory.remember(style: style, in: store) }
+            remember()
         case .thickness(let step)?:
             style.thickness = step
             current.layers.setThickness(step)
-            if let store { EditorMemory.remember(style: style, in: store) }
+            remember()
         case .toggleFill?:
             // With a box selected the fill is flipped from that box's own state, and the pick follows it.
             if let box = current.layers.selected, box.tool == .rectangle || box.tool == .ellipse {
@@ -464,7 +472,7 @@ enum OverlayResult {
             } else {
                 style.filled.toggle()
             }
-            if let store { EditorMemory.remember(style: style, in: store) }
+            remember()
         case .delete?: current.layers.deleteSelected()
         case .undo?: current.layers.undo()
         case .redo?: current.layers.redo()
@@ -518,6 +526,12 @@ enum OverlayResult {
         guard let edit, drag == nil, reshaping == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
         return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, palette: view.paletteSize)
+    }
+
+    /// `style` is the pick of `styleTool`: kept beside the store and written to it.
+    private func remember() {
+        memory.note(style: style, for: styleTool)
+        if let store { EditorMemory.remember(style: style, for: styleTool, in: store) }
     }
 
     private func render() {
