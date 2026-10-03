@@ -208,6 +208,28 @@ enum ScStr {
     static var edit: String { L("Edit") }
     static var copy: String { L("Copy") }
     static var showInFinder: String { L("Show in Finder") }
+    /// The pile's capsule, the label on the row's farthest whole shot, and what a screen reader calls the pile. The
+    /// count is interpolated, so the eight sentences are here and not in the `.lproj` tables; the nouns and the verb
+    /// are those tables' own (`Copy`, `Screenshots`). A pile is two shots or more; «N more» counts one as well, so
+    /// the counted forms are written so that none needs a plural: German's «weitere» is wrong for one, and «mehr»
+    /// is right for every count.
+    static func copyAll(_ count: Int) -> String {
+        L("Copy All (\(count))", [.ru: "Скопировать все (\(count))", .es: "Copiar todo (\(count))",
+                                  .fr: "Tout copier (\(count))", .de: "Alle kopieren (\(count))",
+                                  .ja: "すべてをコピー（\(count)）", .zh: "全部复制（\(count)）",
+                                  .pt: "Copiar Tudo (\(count))"])
+    }
+    static func more(_ count: Int) -> String {
+        L("\(count) more", [.ru: "ещё \(count)", .es: "\(count) más", .fr: "\(count) de plus",
+                            .de: "\(count) mehr", .ja: "ほか \(count) 件", .zh: "还有 \(count) 张",
+                            .pt: "mais \(count)"])
+    }
+    static func screenshots(_ count: Int) -> String {
+        L("\(count) screenshots", [.ru: "Снимков экрана: \(count)", .es: "Capturas de pantalla: \(count)",
+                                   .fr: "Captures d’écran\u{00A0}: \(count)", .de: "Bildschirmfotos: \(count)",
+                                   .ja: "スクリーンショット：\(count)", .zh: "截屏：\(count)",
+                                   .pt: "Capturas de Tela: \(count)"])
+    }
     /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
     static var share: String { L("Share…") }
     static var saved: String { L("Saved") }

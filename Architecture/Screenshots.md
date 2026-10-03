@@ -181,22 +181,40 @@ shortcut never comes through it. Esc and a right click are one door: with no lay
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
-The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) shows the shot as a bare picture
+The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
+first and never more than `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
+only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
+with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
+on whole shots, with «N more» on the farthest shot seen whole. Where each sheet of the pile and each slot of the row stands, what
+the label counts and where a scroll rests are `ShotShelf`'s (`Sources/Modules/Screenshots/Engine/Logic/ShotShelf.swift`), pure
+functions the view and the clock both ask. Over the pile the capsule acts on the group: Copy All puts every finished shot on the
+clipboard in one write (`CaptureSession.copyAll`, `ShotPasteboard.copy(pngs:)`), all of them or none, one pass at a time (a press while one reads, or the module going off, stops it at its next picture), Show in Finder selects every
+file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. In the row each shot is a single shot again, with its own capsule, click and
+drag, and ✕ closes that shot alone. The row folds back on Esc and once the pointer has been away from it for
+`ShotShelf.foldDelay`, asked of the pointer's place at every step of the clock and not of an exit; Esc reaches it because the
+click that unfolds the pile makes the panel key (`ShotPanel.takesKey`: only a click on the panel itself, only while the row is
+unfolded, Helm not activated), and folding gives the keys back. A refusal is drawn in the shots' place and does not end the list:
+the shot whose own write it refuses goes (a refusal of a Copy or an Edit leaves the shot that is still writing), the others are back when the plaque goes. Edit takes its shot out of the window, alone or
+out of its group, and what is left of a group does not spend its life under the overlay. Each shot shows as a bare picture
 in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/Engine/Logic/ShotThumbnail.swift`) from the
 reduced copy's pixels, so the view that takes the hover, the click and the drag, and the drag's frame
 are one size while the capsule is down; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
 the ring unchanged and at the window's trailing edge, which is the edge `ShotToast.place` stands from the screen's. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
 Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider;
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
-A click on the picture is Edit: `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
+A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
 `Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display, and the overlay opens in the editor on the picture's own
 rectangle, which is also the bounds of its area; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
 carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
-write is not done (`ShotToastModel.dragPayload`). The window's life is a clock that two holds stop, the pointer over the
-picture and the Share sheet; the pointer is also asked against the anchor view's rect, under a pointer-only hold and when
-the time is up, because an exit is not trusted. `dismiss` closes an open sheet. Not measured, and parked: a drag from
+write is not done (`ShotToastModel.drag(of:)`). The window's life is a clock that three holds stop, the pointer over the
+picture or the pile, the Share sheet, and the editor open on a shot taken from a group; it starts over with every new shot and is
+not counted at all while the row is unfolded, and the panel's frame is then the row's (`ShotToast.refit`). The pointer is also asked against the anchor view's rect, under a pointer-only hold and when
+the time is up, because an exit is not trusted. `dismiss` closes an open sheet and ends every shot on the list. Not measured, and parked: a drag from
 a panel that is never key, the hover tracking and the first click on it, how the pointer's events go while the Share
-sheet is up, and whether AppKit sends an exit or an enter when the hover's view changes size under a still pointer.
+sheet is up, whether AppKit sends an exit or an enter when the hover's view changes size under a still pointer, and of the
+group everything a real panel would show: the keys taken at the unfolding click and given back at the fold, a scroll over the
+row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel
+falls through to what lies under it.
 
 A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and

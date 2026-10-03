@@ -33,6 +33,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         var copies: Int { lock.withLock { count } }
         func refuse() { lock.withLock { outcome = .refused } }
         func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1; return outcome } }
+        func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
@@ -405,7 +406,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         var steps = 0
         while toast.model.shown, steps < 80 { await clock.step(self); steps += 1 }
         XCTAssertFalse(toast.model.shown, "the loop did not run after the sheet ended")
-        XCTAssertTrue((50...51).contains(steps), "\(steps) steps")
+        XCTAssertEqual(steps, 50, "five seconds in tenths end on the fiftieth step, not the fifty-first")
     }
 
     /// Cancel is the delegate with nothing chosen; a service chosen is the same end.

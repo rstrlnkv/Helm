@@ -106,13 +106,20 @@ final class TheShotLeavesByDragAsWhatItSavedTests: XCTestCase {
         XCTAssertNil(toast.model.dragPayload, "a dismissed toast still carries its shot")
     }
 
-    /// The shot after it: the next shot's payload is its own, and the previous clipboard picture is not held over.
-    func testTheNextShotDoesNotCarryTheLastShotsPicture() throws {
+    /// The shot after it: the next shot's payload is its own, and a working thumbnail has none. The earlier shot, a
+    /// copy, is not dropped: it leaves with the pile as the picture it held, beside the new shot's file.
+    func testTheNewestShotDragsAsItsOwnAndTheCopyBeforeItLeavesWithThePileAsAPicture() throws {
         let toast = made()
         toast.showDone(try ShotToastRig.picture(width: 1200, height: 700), caption: "Copied", file: nil)
         let file = try ShotToastRig.realFile(self, "e.png")
         toast.showDone(try ShotToastRig.picture(width: 800, height: 600), caption: "Saved", file: file)
         guard case .file? = toast.model.dragPayload else { return XCTFail("the second shot did not drag as its file") }
+        // A second shot is a second shot on the list, a pile: it is not the first one's replacement, and the first
+        // leaves with it as the picture it held, beside the file (`othersDragged`).
+        XCTAssertEqual(toast.model.shots.count, 2)
+        guard case .picture? = toast.model.othersDragged(with: try XCTUnwrap(toast.model.shots.last).id).first else {
+            return XCTFail("the first shot, a copy, is not carried with the pile as its picture")
+        }
         toast.showWorking(try ShotToastRig.picture())
         XCTAssertNil(toast.model.dragPayload, "the working thumbnail of the third shot dragged the second's picture")
     }

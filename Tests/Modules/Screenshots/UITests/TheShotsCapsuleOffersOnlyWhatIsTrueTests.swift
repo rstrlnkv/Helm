@@ -161,8 +161,16 @@ final class TheShotsCapsuleOffersOnlyWhatIsTrueTests: XCTestCase {
         let toast = made()
         toast.showDone(try ShotToastRig.picture(), caption: "Copied", file: nil)
         toast.showRefusal(.pasteboard)
-        XCTAssertNil(toast.fullPicture(), "a refusal kept the last shot's picture for a Copy")
+        XCTAssertNil(toast.fullPicture(), "a refusal left the picture of the shot under it to a Copy")
         XCTAssertNil(toast.model.full)
+        // The shot is not gone from the window, only covered (the list outlives a plaque): unreachable while the
+        // plaque is up, and the window's again when it goes.
+        XCTAssertEqual(toast.model.shots.count, 1, "the plaque took the shot it covers")
+        XCTAssertNil(toast.model.current)
+        XCTAssertNil(toast.model.dragPayload)
+        XCTAssertFalse(toast.advance(by: 8.5))
+        XCTAssertFalse(toast.advance(by: 0.5))
+        XCTAssertNotNil(toast.fullPicture(), "the shot did not come back for a Copy after the plaque")
     }
 
     // MARK: The Edit cell

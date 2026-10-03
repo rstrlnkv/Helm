@@ -56,7 +56,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         }
     }
 
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private typealias Board = CountingBoard
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }

@@ -156,6 +156,10 @@ public enum PasteOutcome: Sendable, Equatable {
 
 public protocol ShotPasteboard: Sendable {
     func copy(png: Data) -> PasteOutcome
+    /// Several pictures in **one write**, each an item of its own, in the order given. A group copied picture by
+    /// picture would be as many writes, each taking the board from the one before, and only the last would be
+    /// there to paste. A refusal leaves none of them promised: the board says yes or no to the write, not to an item.
+    func copy(pngs: [Data]) -> PasteOutcome
 }
 
 /// A preference value that could be anything at all, carried across a queue.

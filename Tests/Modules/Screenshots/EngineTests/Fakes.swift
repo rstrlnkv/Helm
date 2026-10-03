@@ -213,10 +213,20 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
         set { lock.withLock { _accepts = newValue } }
     }
     var copies: [Data] { lock.withLock { _copies } }
+    /// Every list that was written, one entry a write: a group copied in one write is one entry here.
+    private var _lists: [[Data]] = []
+    var lists: [[Data]] { lock.withLock { _lists } }
     func copy(png: Data) -> PasteOutcome {
         lock.withLock {
             guard _accepts else { return .refused }
             _copies.append(png)
+            return .accepted
+        }
+    }
+    func copy(pngs: [Data]) -> PasteOutcome {
+        lock.withLock {
+            guard _accepts else { return .refused }
+            _lists.append(pngs)
             return .accepted
         }
     }

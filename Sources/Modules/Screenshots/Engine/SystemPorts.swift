@@ -432,6 +432,22 @@ public struct SystemShotPasteboard: ShotPasteboard {
         _ = board.setData(Data(), forType: Self.transientType)
         return .accepted
     }
+
+    /// One item a picture, each with the two markers beside its data, in one `writeObjects`. An empty list is a
+    /// refusal and leaves the board as it was.
+    public func copy(pngs: [Data]) -> PasteOutcome {
+        guard !pngs.isEmpty else { return .refused }
+        let items = pngs.map { png in
+            let item = NSPasteboardItem()
+            item.setData(png, forType: .png)
+            item.setData(Data(), forType: Self.concealedType)
+            item.setData(Data(), forType: Self.transientType)
+            return item
+        }
+        let board = NSPasteboard(name: name)
+        board.clearContents()
+        return board.writeObjects(items) ? .accepted : .refused
+    }
 }
 
 // MARK: - macOS's own preferences

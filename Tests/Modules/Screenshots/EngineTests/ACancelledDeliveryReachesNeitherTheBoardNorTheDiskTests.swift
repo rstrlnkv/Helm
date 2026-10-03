@@ -17,6 +17,7 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         private let lock = NSLock()
         private var count = 0
         var copies: Int { lock.withLock { count } }
+        func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
         func copy(png: Data) -> PasteOutcome {
             lock.withLock { count += 1 }
             withUnsafeCurrentTask { $0?.cancel() }

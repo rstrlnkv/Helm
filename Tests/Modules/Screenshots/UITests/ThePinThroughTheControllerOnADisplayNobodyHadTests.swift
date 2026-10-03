@@ -26,6 +26,7 @@ final class ThePinThroughTheControllerOnADisplayNobodyHadTests: XCTestCase {
     private final class Board: ShotPasteboard, @unchecked Sendable {
         let count = Count()
         func copy(png: Data) -> PasteOutcome { count.bump(); return .accepted }
+        func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         let count = Count()

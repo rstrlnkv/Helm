@@ -97,6 +97,7 @@ struct CapturedShot {
         bar.model.cancel = { [weak self] in self?.cancel() }
         toast.onEdit = { [weak self] in self?.editFromThumbnail() }
         toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
+        toast.onCopyAll = { [weak self] in self?.copyAllFromPile() }
         toast.onPin = { [weak self] image, frame in self?.pins.open(image, frame: frame) }
     }
 
@@ -229,14 +230,16 @@ struct CapturedShot {
     }
 
     /// The thumbnail's click and the capsule's Edit: the palette round the finished picture. One capture at a time,
-    /// so a press while another is open or in flight is dropped, as a shortcut's is.
+    /// so a press while another is open or in flight is dropped, as a shortcut's is. **Which shot is read here, at
+    /// the press**: in a row it is the one the pointer is on, and by the time the screen is frozen the pointer may
+    /// be on another.
     func editFromThumbnail() {
-        guard !busy, let source = toast.model.editSource else { return }
+        guard !busy, let source = toast.model.editSource, let taken = toast.model.current?.id else { return }
         busy = true
-        pressTask = Task { await self.edit(source.shot, held: source.held) }
+        pressTask = Task { await self.edit(source.shot, held: source.held, taking: taken) }
     }
 
-    private func edit(_ shot: WrittenShot?, held: CGImage?) async {
+    private func edit(_ shot: WrittenShot?, held: CGImage?, taking taken: ShotToastModel.Shot.ID) async {
         let opened = await session.openEdit(of: shot, held: held, on: Self.displayUnderPointer())
         // The module went off while the file was read or the screen frozen: no overlay for a module that is off.
         guard !Task.isCancelled else { return }
@@ -253,7 +256,7 @@ struct CapturedShot {
             self.overlay = overlay
             if presentOverlay(overlay) {
                 // The picture is in the editor now, and the thumbnail would lie under the overlay.
-                toast.dismiss()
+                toast.takeForEditing(taken)
             } else {
                 self.overlay = nil
                 busy = false
@@ -270,6 +273,7 @@ struct CapturedShot {
     private func overlayFinished(_ result: OverlayResult, freeze: Freeze, editing: ShotEdit? = nil) {
         overlay?.close()
         overlay = nil
+        if editing != nil { toast.editorClosed() }
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
             // module's switch must reach neither the disk nor the clipboard.
@@ -377,12 +381,23 @@ struct CapturedShot {
         }
     }
 
+    /// The pile's Copy All: every finished shot of the group to the clipboard in one write.
+    private func copyAllFromPile() {
+        let shots = toast.sources()
+        guard !shots.isEmpty else { return }
+        copyTask?.cancel()
+        copyTask = Task {
+            let delivery = await session.copyAll(shots)
+            if !Task.isCancelled, let refusal = delivery.refusals.first { toast.showRefusal(refusal) }
+        }
+    }
+
     // MARK: - What the person is told
 
     /// `showing` is nil for a delivery that asks the setting itself, which is the full-screen shortcut's.
     private func present(_ delivery: Delivery, showing: Bool? = nil, sharing: Bool = false) {
         if let refusal = delivery.refusals.first {
-            toast.showRefusal(refusal)
+            toast.showRefusal(refusal, ofItsWrite: true)
             return
         }
         guard showing ?? ScreenshotsSettings.read(store).thumbnail, let image = delivery.image else { return }

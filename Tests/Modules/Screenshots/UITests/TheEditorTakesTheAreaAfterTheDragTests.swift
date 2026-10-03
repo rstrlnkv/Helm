@@ -15,12 +15,7 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0

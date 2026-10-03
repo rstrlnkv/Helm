@@ -1352,7 +1352,7 @@
 "Open Screen & System Audio Recording…" = "Abrir Grabación de pantalla y del audio del sistema…";
 /* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Compartir…";
-"Replaced. The original is in the Trash." = "Reemplazada. El original está en la Papelera.";
+"Replaced. The original is in the Trash." = "Reemplazada. El original está en la papelera.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "La captura se movió o se modificó después de hacerla. Tu edición se ha guardado como un archivo aparte.";
 "The screenshot was moved or changed after it was taken, so it cannot be edited here." = "La captura se movió o se modificó después de hacerla, así que no se puede editar aquí.";
 "Sort By" = "Ordenar por";

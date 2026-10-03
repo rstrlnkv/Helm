@@ -61,6 +61,13 @@ public struct Delivery: @unchecked Sendable {
     public init() {}
 }
 
+/// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its
+/// file for a saved one.
+public enum ShotSource: @unchecked Sendable {
+    case picture(CGImage)
+    case file(URL)
+}
+
 /// The result of asking for one window.
 public enum WindowResult: @unchecked Sendable {
     case image(CGImage)
@@ -75,6 +82,14 @@ public enum BeginResult: @unchecked Sendable {
 public enum EditOpening: @unchecked Sendable {
     case ready(PictureOnScreen)
     case refused(CaptureRefusal)
+}
+
+/// Whether one pass of `CaptureSession.copyAll` is to go on: read between two pictures, set from any thread.
+private final class GroupPass: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+    var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
+    func stop() { lock.lock(); stopped = true; lock.unlock() }
 }
 
 /// One capture, start to finish, from the ports and the logic.
@@ -104,6 +119,11 @@ public final class CaptureSession: @unchecked Sendable {
     private let now: () -> Date
     private let locations: ScreenshotsLocations
     private let category = ScreenshotsEngine.moduleID
+    /// The group's copy runs on one queue, so one pass at a time; `latestPass` is the token the next press stops.
+    /// The only state here besides the ports.
+    private let groupQueue = DispatchQueue(label: "helm.screenshots.copy-all", qos: .userInitiated)
+    private let passes = NSLock()
+    private var latestPass: GroupPass?
 
     public init(capture: ScreenCapturing, writer: ShotWriting, trash: ShotTrashing, pasteboard: ShotPasteboard,
                 preferences: CapturePreferences, shutter: ShutterPlaying,
@@ -361,6 +381,66 @@ public final class CaptureSession: @unchecked Sendable {
         await deliver(image, saves: saves, copies: copies, fileEvenFromClipboard: fileEvenFromClipboard,
                       replacing: saves ? original : nil, into: &delivery)
         return delivery
+    }
+
+    /// Every shot of a group on the clipboard in **one write** (`ShotPasteboard.copy(pngs:)`), in the order given.
+    /// A shot with a file is read back from it, as the single shot's Copy is. **All or none:** a shot that cannot
+    /// be read or encoded refuses the whole copy with `.encoding`, since a board holding fewer pictures than the
+    /// control counted would say nothing of the missing one.
+    ///
+    /// **One pass at a time, and a displaced one stops at its next picture.** A press while an earlier pass is still
+    /// reading stops that pass (`GroupPass`) and waits behind it on a queue of its own, so two never run side by
+    /// side. The task's cancellation stops it the same way, which the queue's block would not see. A pass that was
+    /// stopped refuses nothing and writes nothing.
+    ///
+    /// The pool is inside the loop: each picture decodes and encodes in its own, and a pool round the loop would
+    /// keep every one of them until the last.
+    public func copyAll(_ shots: [ShotSource]) async -> Delivery {
+        var delivery = Delivery()
+        let pass = GroupPass()
+        passes.withLock {
+            latestPass?.stop()
+            latestPass = pass
+        }
+        let pngs: [Data]? = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                groupQueue.async { continuation.resume(returning: Self.encodeAll(shots, until: pass)) }
+            }
+        } onCancel: { pass.stop() }
+        if pass.isStopped { return delivery }
+        guard let pngs, !pngs.isEmpty else {
+            HelmLog.shared.warn(category, "a group's picture could not be read or encoded")
+            delivery.refusals.append(.encoding)
+            return delivery
+        }
+        guard !Task.isCancelled else { return delivery }
+        switch pasteboard.copy(pngs: pngs) {
+        case .accepted: delivery.copied = true
+        case .refused:
+            HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
+            delivery.refusals.append(.pasteboard)
+        }
+        return delivery
+    }
+
+    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last.
+    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> [Data]? {
+        var all: [Data] = []
+        for shot in shots {
+            if pass.isStopped { return nil }
+            let png: Data? = autoreleasepool {
+                switch shot {
+                case .picture(let image): return encode(image, as: .png)
+                case .file(let url):
+                    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+                    return encode(image, as: .png)
+                }
+            }
+            guard let png else { return nil }
+            all.append(png)
+        }
+        return all
     }
 
     /// `saves` asks for a file and is answered by the setting: under the

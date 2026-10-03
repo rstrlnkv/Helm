@@ -163,8 +163,9 @@ final class TheHoverHoldsTheShotAndLeavingLetsItGoTests: XCTestCase {
         var steps = 0
         while toast.model.shown, steps < 80 { await clock.step(self); steps += 1 }
         XCTAssertFalse(toast.model.shown)
-        // Fifty tenths taken from five do not come to exactly nought in binary, so the fifty-first may be the one.
-        XCTAssertTrue((50...51).contains(steps), "the loop did not go on from five seconds in tenths (\(steps) steps)")
+        // Fifty tenths taken from five do not come to exactly nought in binary; `ShotShelf.isOver` takes the
+        // remainder for nought, so the fiftieth step is the one, never the fifty-first.
+        XCTAssertEqual(steps, 50, "the loop did not go on from five seconds in tenths (\(steps) steps)")
         // After the fade the content goes.
         XCTAssertNotNil(toast.model.content)
         XCTAssertTrue(clock.fire(), "the toast did not wait for its fade")
@@ -196,6 +197,7 @@ final class TheHoverHoldsTheShotAndLeavingLetsItGoTests: XCTestCase {
         toast.setHover(true)
         over = false
         toast.showDone(try ShotToastRig.picture(), caption: "Saved again", file: try ShotToastRig.realFile(self, "j.png"))
+        XCTAssertEqual(toast.model.shots.count, 2, "the second shot is a shot of the pile, not the first one's replacement")
         XCTAssertFalse(toast.advance(by: 1), "the first step finds the pointer gone")
         XCTAssertTrue(toast.holds.isEmpty)
         XCTAssertTrue(toast.advance(by: 4))

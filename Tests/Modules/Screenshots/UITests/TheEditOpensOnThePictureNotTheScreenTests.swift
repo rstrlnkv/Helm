@@ -24,43 +24,7 @@ import Module_Screenshots_Engine
 @MainActor
 final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
-
-    /// The Trash as a folder of the test's, which can hold a move at its door.
-    private final class AsideTrash: ShotTrashing, @unchecked Sendable {
-        let folder: URL
-        private let lock = NSLock()
-        private var _moved: [URL] = [], _asked: [URL] = []
-        private var _holding = false, _failure: NSError?, _after: ((URL) -> Void)?
-        private let gate = DispatchSemaphore(value: 0)
-        init(_ folder: URL) { self.folder = folder }
-        /// Run in the moment between the Trash and the claim, with the path that was moved.
-        var after: ((URL) -> Void)? {
-            get { lock.withLock { _after } }
-            set { lock.withLock { _after = newValue } }
-        }
-        var moved: [URL] { lock.withLock { _moved } }
-        var asked: [URL] { lock.withLock { _asked } }
-        var failure: NSError? {
-            get { lock.withLock { _failure } }
-            set { lock.withLock { _failure = newValue } }
-        }
-        func hold() { lock.withLock { _holding = true } }
-        func release() { lock.withLock { _holding = false }; gate.signal() }
-        func trash(_ url: URL) throws {
-            lock.withLock { _asked.append(url) }
-            if lock.withLock({ _holding }) { gate.wait() }
-            if let failure { throw failure }
-            try FileManager.default.moveItem(at: url, to: folder.appendingPathComponent(UUID().uuidString))
-            lock.withLock { _moved.append(url) }
-            after?(url)
-        }
-    }
+    private typealias Board = CountingBoard
 
     private final class Shutter: ShutterPlaying, @unchecked Sendable {
         private let lock = NSLock()
@@ -252,7 +216,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let freezesBefore = s.capture.freezes
 
         let overlay = try await openEditor(s)
+        // One shot in the window: it is the shot that left, and the window with it (from a group only that one leaves:
+        // `TheEditFromTheRowReplacesThatShotTests`).
         XCTAssertNil(s.toast.model.content, "the thumbnail stayed up under the editor")
+        XCTAssertTrue(s.toast.model.shots.isEmpty, "the shot that is in the editor is still on the list")
         XCTAssertEqual(s.capture.freezes, freezesBefore + 1, "the editor takes a fresh freeze of the screen, once")
         draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)

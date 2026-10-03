@@ -52,12 +52,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         }
     }
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
 
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }

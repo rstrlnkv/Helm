@@ -32,7 +32,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
             .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private typealias Board = CountingBoard
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
