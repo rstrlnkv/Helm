@@ -1376,3 +1376,8 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "拖出的区域有手柄用来调整形状（区域很小时只在四角），方向键可将它（或所选的绘制对象）每次移动一个像素，按住 ⇧ 则移动十个像素。";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“置顶”会把截取的区域作为与截取时同样大小的浮动图片保持在其他窗口上方：可拖移，滚动可调整大小，按住 ⌥ 滚动可使其更淡或更清晰，点按它并按 Esc 可关闭。";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Helm 以前没见过的模块，例如截屏，在 Helm 为该类模块创建的分区已不存在时，会加入边栏中已放有最多同类模块的分区，而不是在你排好的边栏底部另起一个分区。";
+
+/* Capture track */
+"30 seconds" = "30秒";
+"Timer: %@" = "计时器：%@";
+"Put the Panel Back" = "将面板放回原处";

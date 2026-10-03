@@ -56,6 +56,8 @@ enum OverlayResult {
     /// that Return confirms and any new drag replaces. A reading, already cut to
     /// the display as it is now by `RememberedSelection.landing`.
     private var preselected: (display: DisplayID, rect: CGRect)?
+    /// The panel's overlay: the area that was drawn when a new drag began, and comes back if that drag is not usable.
+    private var replacedByDrag: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
     /// ⌥ is down, as the last `flagsChanged` said: the lines across the screen are drawn only then.
     private var optionHeld = false
@@ -128,10 +130,19 @@ enum OverlayResult {
     /// a right click do not go through `perform` and leave it as it was.
     private var arrowReleasedObject = false
 
+    /// The capture panel's overlay: the person only picks here — a window under the pointer, or an area that stays as
+    /// drawn until a new drag replaces it — and the panel's Capture (or Return) takes it. **The palette never appears and
+    /// `startEditing` is never called**, so there is no editor and no layer, and an area leaves as a plain crop.
+    let selectionOnly: Bool
+    /// Whether there is something for Capture to take (`hasTarget`), told at every change; the panel shows its button by it.
+    var targetChanged: (Bool) -> Void = { _ in }
+    private var reportedTarget = false
+
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true }, selectionOnly: Bool = false,
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
+        self.selectionOnly = selectionOnly
         self.pinRoom = pinRoom
         self.store = store
         self.mode = mode
@@ -186,8 +197,9 @@ enum OverlayResult {
         for (id, entry) in panels where entry.panel.frame.contains(mouse) {
             pointer = (id, local(mouse, in: entry.panel, frame: entry.view.frozen.frame.height))
         }
-        // Opened in window mode, the window under the pointer is lit at once.
-        if mode == .window, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
+        // Opened in window mode, the window under the pointer is lit at once; not for the panel's overlay, where the
+        // pointer is over the panel that was pressed and the window beneath it is no choice.
+        if mode == .window, !selectionOnly, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
         render()
         return true
     }
@@ -323,6 +335,8 @@ enum OverlayResult {
         case .area:
             guard let frame = freeze.frames.first(where: { $0.id == display }) else { return }
             let bounds = CGRect(origin: .zero, size: frame.frame.size)
+            // The panel's overlay keeps the area that was drawn until a drag that is usable replaces it (`mouseUp`).
+            replacedByDrag = selectionOnly ? (preselected ?? replacedByDrag) : nil
             preselected = nil
             drag = (display, SelectionDrag(start: local, bounds: bounds))
             render()
@@ -407,8 +421,44 @@ enum OverlayResult {
         guard let current = drag, current.display == display else { return }
         // A click that never moved is not a selection: the drag ends and the
         // overlay waits for a real one — or goes on editing the one it had.
-        guard current.drag.isUsable else { drag = nil; render(); return }
+        guard current.drag.isUsable else { drag = nil; preselected = replacedByDrag; replacedByDrag = nil; render(); return }
+        replacedByDrag = nil
+        if selectionOnly {
+            drag = nil
+            spaceHeld = false
+            preselected = (display, current.drag.rect)
+            render()
+            return
+        }
         startEditing(display: display, rect: current.drag.rect)
+    }
+
+    // MARK: - The panel's overlay
+
+    /// What Capture would take now: the window last under the pointer, or the area as drawn (or remembered).
+    var hasTarget: Bool { selectionOnly && (mode == .window ? hovered != nil : preselected != nil) }
+
+    /// The panel's Capture and Return: the target leaves as the click or the exit of the editor would have sent it.
+    /// False, and nothing sent, where there is none.
+    @discardableResult func takeTarget() -> Bool {
+        guard hasTarget else { return false }
+        if mode == .window, let hovered {
+            finish(.window(hovered.id, shadow: true))
+        } else if let preselected {
+            finish(.edited(display: preselected.display, local: preselected.rect, layers: [], exit: .confirm))
+        }
+        return true
+    }
+
+    /// The panel's mode cell was pressed on an overlay that is already open: the same frozen screen picks again, and what
+    /// the other mode had chosen is dropped.
+    func select(_ next: Mode) {
+        guard selectionOnly, next != mode else { return }
+        drag = nil
+        replacedByDrag = nil
+        hovered = nil
+        preselected = nil
+        mode = next
     }
 
     /// The released area becomes the editor's: a new area starts a fresh set of
@@ -455,6 +505,7 @@ enum OverlayResult {
         case 36, 76: // return, enter
             // A held Return repeats, and a repeat is not a press that asked for anything.
             guard !event.isARepeat else { return }
+            if selectionOnly { takeTarget(); return }
             // The remembered selection stands for a selection made: Return takes it
             // into the editor, where the next Return takes the picture.
             if drag == nil, mode == .area, let preselected {
@@ -468,7 +519,7 @@ enum OverlayResult {
             guard !event.isARepeat else { return }
             if drag != nil {
                 spaceHeld = true
-            } else {
+            } else if !selectionOnly {
                 mode = mode == .area ? .window : .area
                 if mode == .window, let pointer {
                     hovered = windowUnder(display: pointer.display, local: pointer.point)
@@ -673,6 +724,7 @@ enum OverlayResult {
             if mode == .window, let hovered { scene.highlight = windowPart(hovered, on: id) }
             entry.view.apply(scene)
         }
+        if hasTarget != reportedTarget { reportedTarget = hasTarget; targetChanged(reportedTarget) }
     }
 
     /// The part of `window` that lies on `display`, in that display's top-left points; nil where it has none.

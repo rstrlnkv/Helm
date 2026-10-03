@@ -26,11 +26,11 @@ public enum ShotFormat: String, CaseIterable, Sendable {
     public static let jpegQuality: Double = 0.9
 }
 
-/// The countdown before a freeze. A stored number that is not one of the cases
+/// The countdown before a shot. A stored number that is not one of the cases
 /// reads as none: a plist can hold `1e300`, and a countdown of that is a press
 /// that never ends.
 public enum CaptureTimer: Int, CaseIterable, Sendable {
-    case none = 0, five = 5, ten = 10
+    case none = 0, five = 5, ten = 10, thirty = 30
 
     public var seconds: Int { rawValue }
 }
@@ -56,14 +56,19 @@ public struct ScreenshotsSettings: Equatable, Sendable {
     public var thumbnail: Bool
     public var shutterSound: Bool
     public var showCursor: Bool
+    /// Seconds now; `none` is off.
     public var timer: CaptureTimer
+    /// The length the panel's timer cell switches on with: the last one picked, never `none`.
+    public var timerLength: CaptureTimer
     public var rememberSelection: Bool
     public var panelMode: PanelMode
+    /// Where the panel stands, as a move from its place by default (`PanelPlace`).
+    public var panelOffset: PanelOffset
 
     public init(saveTarget: SaveTarget = .macOS, otherFolder: String? = nil,
                 format: ShotFormat = .png, thumbnail: Bool = true, shutterSound: Bool = true,
-                showCursor: Bool = false, timer: CaptureTimer = .none,
-                rememberSelection: Bool = false, panelMode: PanelMode = .area) {
+                showCursor: Bool = false, timer: CaptureTimer = .none, timerLength: CaptureTimer = .five,
+                rememberSelection: Bool = false, panelMode: PanelMode = .area, panelOffset: PanelOffset = .zero) {
         self.saveTarget = saveTarget
         self.otherFolder = otherFolder
         self.format = format
@@ -71,8 +76,10 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         self.shutterSound = shutterSound
         self.showCursor = showCursor
         self.timer = timer
+        self.timerLength = timerLength
         self.rememberSelection = rememberSelection
         self.panelMode = panelMode
+        self.panelOffset = panelOffset
     }
 
     public static let defaults = ScreenshotsSettings()
@@ -82,6 +89,7 @@ public struct ScreenshotsSettings: Equatable, Sendable {
 
     public static func read(_ store: NamespacedStore) -> ScreenshotsSettings {
         let folder = store.string(Key.otherFolder, default: "")
+        let timer = CaptureTimer(rawValue: store.int(Key.timer, default: 0)) ?? defaults.timer
         return ScreenshotsSettings(
             saveTarget: SaveTarget(rawValue: store.string(Key.saveTarget, default: "")) ?? defaults.saveTarget,
             otherFolder: folder.isEmpty || folder.count > longestFolder ? nil : folder,
@@ -89,9 +97,20 @@ public struct ScreenshotsSettings: Equatable, Sendable {
             thumbnail: store.bool(Key.thumbnail, default: defaults.thumbnail),
             shutterSound: store.bool(Key.shutterSound, default: defaults.shutterSound),
             showCursor: store.bool(Key.showCursor, default: defaults.showCursor),
-            timer: CaptureTimer(rawValue: store.int(Key.timer, default: 0)) ?? defaults.timer,
+            timer: timer,
+            timerLength: timerLength(store, timer: timer),
             rememberSelection: store.bool(Key.rememberSelection, default: defaults.rememberSelection),
-            panelMode: PanelMode(rawValue: store.string(Key.panelMode, default: "")) ?? defaults.panelMode)
+            panelMode: PanelMode(rawValue: store.string(Key.panelMode, default: "")) ?? defaults.panelMode,
+            panelOffset: PanelOffset.read(store))
+    }
+
+    /// **Only a missing key says "not yet migrated"**: then the length is what `timer` holds, if it holds one, else
+    /// five. A key that is there and is not a length (`none`, a string, `1e300`) is a damaged value and reads as five,
+    /// where the timer's own number would be a second answer to the same question.
+    private static func timerLength(_ store: NamespacedStore, timer: CaptureTimer) -> CaptureTimer {
+        guard store.object(Key.timerLength) != nil else { return timer == .none ? .five : timer }
+        let stored = CaptureTimer(rawValue: store.int(Key.timerLength, default: 0))
+        return stored.flatMap { $0 == .none ? nil : $0 } ?? .five
     }
 
     /// The one door for "Remember last selection". Switching it off **erases**
@@ -114,6 +133,11 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let timer = "timer"
         public static let rememberSelection = "rememberSelection"
         public static let panelMode = "panelMode"
+        /// The last length the timer was switched on with; `timer` stays "seconds now, 0 is off" and is not re-keyed.
+        public static let timerLength = "timerLength"
+        /// The panel's move from its place by default, one number per axis (`PanelOffset`).
+        public static let panelOffsetX = "panelOffsetX"
+        public static let panelOffsetY = "panelOffsetY"
         /// The editor's memory, read by `EditorMemory` and not by `ScreenshotsSettings`.
         public static let editorTool = "editorTool"
         public static let editorColor = "editorColor"

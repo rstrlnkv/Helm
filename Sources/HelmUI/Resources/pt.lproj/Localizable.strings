@@ -1376,3 +1376,8 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "A área que você arrastou tem alças para remodelá-la — só nos cantos quando é muito pequena — e as teclas de seta a movem, ou movem o desenho selecionado, um pixel por vez, dez com ⇧.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“Fixar” mantém uma área capturada acima das suas outras janelas como uma imagem flutuante do tamanho em que você a capturou: arraste-a, role para redimensionar, role com ⌥ para deixá-la mais transparente ou mais nítida, e clique nela e pressione Esc para fechá-la.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Um módulo que o Helm ainda não conhecia, como Capturas de Tela, entra na seção da barra lateral que já reúne a maioria dos módulos do seu tipo quando a seção que o Helm criou para esse tipo não existe mais, em vez de abrir uma seção própria no fim de uma barra lateral que você organizou.";
+
+/* Capture track */
+"30 seconds" = "30 segundos";
+"Timer: %@" = "Timer: %@";
+"Put the Panel Back" = "Recolocar o painel";

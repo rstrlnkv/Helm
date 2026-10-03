@@ -45,17 +45,38 @@ ends in a flash (`FlashLayer`) over the selection's or the window's shape, and t
 of the flash's length; the picture was cut from the freeze (a window's own comes from the system, of that window
 alone), so the flash is in neither. Under Reduce Motion there is no flash and the overlay closes at once.
 
-The panel (`Sources/Modules/Screenshots/UI/CapturePanel.swift`) is the bar the third
-shortcut opens: Whole screen, Window and Area, an Options menu that reads and writes the
-same settings the page does, and Capture. It is a non-activating key panel in every
-Space, and `CaptureController` holds one `busy` flag for the bar, its countdown and the
-overlay, so a second press at any stage is dropped. The countdown runs inside the press's
-own task, one `tick` at a time, and asks after every tick whether it was cancelled; the
-freeze comes only after it, so Esc, the close control and the module being switched off
-all end a press that has frozen nothing. The last confirmed area is kept by
-`Sources/Modules/Screenshots/Engine/Logic/RememberedSelection.swift` as a display's UUID
-and a rectangle in that display's points, read back through the same bounds as any
-stored number, and only the bar's Area mode opens the overlay on it.
+The panel (`Sources/Modules/Screenshots/UI/CapturePanel.swift`, its content in `CapturePanelView.swift`) is the bar the
+third shortcut opens, drawn as macOS's own: a close control, Whole screen, Window and Area, the timer, a gear and
+Capture. The cells are large glyphs between hairline dividers, each named by its tooltip and its VoiceOver label;
+Capture is a text button and names itself. A press on the timer cell with the timer off switches it on with the last
+length (`ScreenshotsSettings.timerLength`, beside `timer`, which stays the seconds now and 0 for off); with it on a press
+opens the lengths, and only «No timer» there switches it off. The gear opens `PanelMenus.swift`'s menu, which reads and
+writes the module's own settings: where it is saved, the thumbnail and the cursor are the page's too, while remembering
+the last selection and putting the panel back are on the panel alone. The panel is a non-activating key panel in every
+Space, dragged by its empty glass, and stands where it was left: one move from the place it opens in, two numbers, each
+read as a number or as no move (NaN is no move, an infinity is held at the ceiling of `StoredNumber`) and held inside the
+`visibleFrame` of the screen it appears on (`Sources/Modules/Screenshots/Engine/Logic/PanelPlace.swift`), with no memory
+per display; «Put the Panel Back» forgets the stored move and the one made since it opened. `CaptureController` holds one
+`busy` flag for the bar, its countdown and the overlay, so a second press at any stage is dropped.
+
+**Window and Area are picked on the frozen screen with the panel still up.** Pressing either mode freezes the screen at
+once and opens the overlay with `selectionOnly` set: the person only picks (a window under the pointer, or an area that
+stays drawn until a new drag replaces it, which a click that never moved does not), the palette never appears and
+`startEditing` is never called. Capture is drawn only when `CaptureOverlay.hasTarget` says there is something to take;
+Return on the panel does not ask, and takes the target there is, or with no overlay open yet opens one. The shot goes
+through the ordinary `handOff`, with no editor. With no timer the panel closes at the pick: an area is cut from that
+freeze, and a window's own picture comes from the system, with the freeze as the cut it falls back on. With a timer the
+overlay closes at the pick, the panel shows its ring in Capture's place with the other cells dimmed and ✕ at full
+strength, and after the last tick the shot is taken from the screen as it is then: the window by its id again (one that
+has closed meanwhile is saved from the freeze of the pick), the area by freezing again and cutting the same rectangle
+from the same display by its UUID; a display that is gone, or no longer holds the whole rectangle, is refused as a
+display that is gone is, and no smaller picture is saved. The whole screen's countdown runs in the press's own task
+(`pressTask`) and its freeze comes after it; a window's and an area's runs in `deliveryTask` with the shot after it.
+Each counts one `tick` at a time and asks after every tick whether it was cancelled, so Esc, the close control and the
+module being switched off end it with nothing taken. The last confirmed area is kept by
+`Sources/Modules/Screenshots/Engine/Logic/RememberedSelection.swift` as a display's UUID and a rectangle in that
+display's points, read back through the same ceiling (`StoredNumber`), where a value that is not finite makes the whole
+record no record, and only the panel's Area mode opens the overlay on it.
 
 A picture is written to a temporary name and moved into place with RENAME_EXCL
 (`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a
@@ -163,9 +184,11 @@ A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
 size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
 pixel cut; nothing is written, copied, played or toasted, and `CaptureController` is free again as after any
-other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out: the
-capture bar and the toast are `.statusBar` and the overlay `.screenSaver`, so a new capture lies over
-every pin, and the toast, which would be below the overlay, is why the limit of `PinGeometry.limit` open pins is
+other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out, from the
+bottom: the pin `.floating`, the toast and the capture panel `.statusBar`, the overlay `.screenSaver`, and the capture
+panel again while an overlay is open under it, one step above `.screenSaver` (`CapturePanel.level(selecting:)`),
+because its Capture is pressed on top of that overlay. A new capture lies over every pin, and the toast, which would be
+below the overlay, is why the limit of `PinGeometry.limit` open pins is
 said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the ⋯ menu's Pin item, built only while `PinEntry.isOffered`, and stays open when
 there is none). A pin is key only once clicked, so Esc closes exactly the pin last touched and no other
 window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by

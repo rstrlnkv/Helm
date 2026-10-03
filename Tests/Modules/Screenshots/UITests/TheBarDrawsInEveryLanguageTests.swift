@@ -86,8 +86,9 @@ final class TheBarDrawsInEveryLanguageTests: XCTestCase {
     /// must each carry an `.accessibilityLabel`, and a button with a title of its
     /// own is named by it.
     func testEveryControlOnTheBarIsNamedWhereItIsDeclared() throws {
-        // The mode controls are `GlassCell`, whose button sits in its own file.
-        let source = try ["CapturePanel.swift", "GlassCell.swift"].map {
+        // The close, mode, timer and gear controls are `GlassCell`, whose button sits in its own file and whose `name:` is
+        // its tooltip and its accessibility label; the bar's content is in `CapturePanelView.swift`.
+        let source = try ["CapturePanel.swift", "CapturePanelView.swift", "GlassCell.swift"].map {
             try RepoSource.text(of: "Sources/Modules/Screenshots/UI/\($0)")
         }.joined(separator: "\n")
         let lines = source.components(separatedBy: "\n")
@@ -95,10 +96,12 @@ final class TheBarDrawsInEveryLanguageTests: XCTestCase {
         for (index, line) in lines.enumerated() {
             let body = line.trimmingCharacters(in: .whitespaces)
             guard body.hasPrefix("Button {") || body.hasPrefix("Button(") || body.hasPrefix("Menu {")
-                    || body.hasPrefix("return Button {") else { continue }
+                    || body.hasPrefix("return Button {") || body.hasPrefix("GlassCell(")
+                    || body.hasPrefix("return GlassCell(") else { continue }
             seen += 1
-            // A button with a title of its own is named by it.
+            // A button with a title of its own is named by it, and a cell by its `name:`.
             if body.hasPrefix("Button(ScStr.") { continue }
+            if body.contains("GlassCell("), body.contains("name:") { continue }
             let indent = line.prefix { $0 == " " }.count
             var statement = line
             for next in lines.dropFirst(index + 1).prefix(60) {
@@ -109,7 +112,7 @@ final class TheBarDrawsInEveryLanguageTests: XCTestCase {
                 if ends { break }
             }
             XCTAssertTrue(statement.contains(".accessibilityLabel("),
-                          "the control declared at line \(index + 1) of CapturePanel.swift has no accessibility label:\n\(statement)")
+                          "the control declared at line \(index + 1) of the three files' joined source (CapturePanel, CapturePanelView, GlassCell) has no accessibility label:\n\(statement)")
         }
         XCTAssertGreaterThanOrEqual(seen, 4, "the scan found \(seen) controls — close, mode, Options, Capture are four at least")
     }

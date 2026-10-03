@@ -152,7 +152,7 @@ final class TheNameIsMacOSsInEveryLanguageTests: XCTestCase {
             let forms = entry?["seconds"] as? [String: Any]
             let form = language == .ru ? "many" : "other"
             guard let pattern = forms?[form] as? String else { return XCTFail("\(language): no \(form) form") }
-            for (key, number) in [("5 seconds", 5), ("10 seconds", 10)] {
+            for (key, number) in [("5 seconds", 5), ("10 seconds", 10), ("30 seconds", 30)] {
                 let expected = pattern.replacingOccurrences(of: "%2$@", with: String(number))
                 XCTAssertEqual(L(key, language: language), language == .en ? expected.lowercased() : expected,
                                "\(language): \(key)")

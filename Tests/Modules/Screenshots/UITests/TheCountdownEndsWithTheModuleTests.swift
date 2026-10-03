@@ -9,10 +9,10 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A countdown that was cancelled freezes nothing.** The timer's wait is a
-/// second of nothing, five or ten times, and the module can be switched off, the
-/// close control pressed or Esc typed inside any of them. What the press
-/// resumes into after the wait is a freeze of every screen and, on the area
-/// press, panels over all of them — for a capture nobody wants any more.
+/// second of nothing, as many times as the length is long, and the module can be
+/// switched off, the close control pressed or Esc typed inside any of them. What
+/// the press resumes into after the wait is a freeze of every screen, and then a
+/// file or the clipboard — for a capture nobody wants any more.
 ///
 /// The wait is the controller's `tick` seam, so a test holds it still: a gate
 /// the test opens *after* cancelling is the case that matters, because a wait

@@ -72,7 +72,7 @@ struct ScreenshotsSettingsPage: View {
         }
         .animation(HelmMotion.interface, value: screenRecording)
         .task(id: JudgedFolder(target: target, other: otherFolder)) { judge() }
-        // The bar's Options menu writes the same keys while this page may be up.
+        // The panel's gear menu writes some of the same keys while this page may be up.
         .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
             if Self.keys.contains(where: { store.changed(note, is: $0) }) { mirror() }
         }

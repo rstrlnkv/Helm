@@ -73,8 +73,13 @@ enum ScStr {
         case .none: L("No timer")
         case .five: L("5 seconds")
         case .ten: L("10 seconds")
+        case .thirty: L("30 seconds")
         }
     }
+    /// The timer cell's name while the timer is on: «Timer: 5 seconds». Off, the cell is named `timer`. The length is
+    /// the one argument, so the word order is the translator's and not a concatenation's.
+    static func timerOn(_ timer: CaptureTimer) -> String { String(format: L("Timer: %@"), Self.timer(timer)) }
+    static var putPanelBack: String { L("Put the Panel Back") }
     static var floatingThumbnail: String { L("Show floating thumbnail") }
     static var rememberSelection: String { L("Remember last selection") }
     static var closePanel: String { L("Close") }
