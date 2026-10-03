@@ -56,11 +56,15 @@ final class AHiddenObjectMovesToTheMenuTests: XCTestCase {
 
     private func flat(_ menu: NSMenu) -> [NSMenuItem] { menu.items.flatMap { [$0] + ($0.submenu.map(flat) ?? []) } }
 
-    /// The row objects that stand in the menu: `.tool` items sending a row tool's own action.
+    /// The row objects that stand in the menu: `.tool` items sending a row tool's own action, or the eraser's or the ruler's.
     private func hiddenItems(_ items: [EditorMenuItem]) -> [(title: String, symbol: String, action: EditorAction, isOn: Bool)] {
         items.compactMap {
-            if case .tool(let title, let symbol, let isOn, let action) = $0, case .tool(let tool) = action,
-               EditorPalette.rowTools.contains(tool) { (title, symbol, action, isOn) } else { nil }
+            guard case .tool(let title, let symbol, let isOn, let action) = $0 else { return nil }
+            switch action {
+            case .tool(let tool): return EditorPalette.rowTools.contains(tool) ? (title, symbol, action, isOn) : nil
+            case .erase, .toggleRuler: return (title, symbol, action, isOn)
+            default: return nil
+            }
         }
     }
 
@@ -118,11 +122,34 @@ final class AHiddenObjectMovesToTheMenuTests: XCTestCase {
             for hide in [true, false] {
                 let m = model(hiding: hide ? [item] : [])
                 let inMenu = Set(hiddenItems(EditorMenu.items(for: m)).map(\.title))
-                let expected = Set(EditorPalette.rowTools.filter { !m.isOnRow($0) }.map(ScStr.tool))
+                let expected = Set(EditorPalette.rowKinds.filter { !m.isOnRow($0) }.map(EditorPalette.name(of:)))
                 XCTAssertEqual(inMenu, expected, "\(item) hidden=\(hide): the menu and the row disagree")
                 XCTAssertEqual(expected.isEmpty, !hide)
             }
         }
+    }
+
+    /// The eraser and the ruler are no `AnnotationTool`, yet each can be taken off the row: it stands in the menu sending its
+    /// own action, checked while it is on, and a hidden eraser that is raised is ⋯'s badge. (The ruler raised changes no badge.)
+    func testAHiddenEraserAndRulerStandInTheMenuWithTheirOwnActions() {
+        AppLanguage.override = .en
+        let cases: [(PaletteItem, EditorAction, String)] = [(.eraser, .erase, ScStr.eraser), (.ruler, .toggleRuler, ScStr.ruler)]
+        for (item, action, name) in cases {
+            let off = model(hiding: [item])
+            XCTAssertEqual(hiddenItems(EditorMenu.items(for: off)).map(\.title), [name], "\(item) hidden")
+            XCTAssertEqual(hiddenItems(EditorMenu.items(for: off)).map(\.action), [action], "\(item) sends another action")
+            XCTAssertFalse(checked(EditorMenu.items(for: off)).contains(name), "\(item) is checked while it is not on")
+            let on = EditorBarModel()
+            on.show(tool: nil, erasing: item == .eraser, ruler: item == .ruler, style: AnnotationStyle(), canUndo: false, canRedo: false)
+            on.hide([item])
+            XCTAssertTrue(checked(EditorMenu.items(for: on)).contains(name), "\(item) is on and hidden, and not checked in the menu")
+        }
+        let erasing = EditorBarModel()
+        erasing.show(tool: nil, erasing: true, style: AnnotationStyle(), canUndo: false, canRedo: false)
+        XCTAssertNil(EditorPalette.moreBadge(for: erasing), "the eraser is on the row and raised: ⋯ shows nothing")
+        erasing.hide([.eraser])
+        XCTAssertEqual(EditorPalette.moreBadge(for: erasing), "eraser", "the eraser is hidden and raised: ⋯ shows its symbol")
+        XCTAssertEqual(EditorPalette.moreValue(for: erasing), ScStr.eraser)
     }
 
     // MARK: - The check mark
@@ -189,12 +216,15 @@ final class AHiddenObjectMovesToTheMenuTests: XCTestCase {
             let entry = try XCTUnwrap(menu.items.first, "\(tool)")
             XCTAssertEqual(entry.title, ScStr.tool(tool))
             XCTAssertTrue(entry.isEnabled, "\(tool): the item is disabled")
-            let key = try XCTUnwrap(EditorKeys.toolKeys.first { $0.tool == tool }, "\(tool) has no key")
-            XCTAssertEqual(entry.keyEquivalent, key.letter.lowercased(), "\(tool): the key is not shown beside the name")
+            // The spotlight has no key: its item shows none and is the only way to it from the menu.
+            let key = EditorKeys.toolKeys.first { $0.tool == tool }
+            XCTAssertEqual(entry.keyEquivalent, key?.letter.lowercased() ?? "", "\(tool): the key is not shown beside the name")
             XCTAssertEqual(entry.keyEquivalentModifierMask, [], "\(tool): the key is shown with a modifier")
             menu.performActionForItem(at: 0)
-            XCTAssertEqual(sent, [EditorKeys.action(keyCode: UInt16(key.code), flags: [])].compactMap { $0 },
-                           "\(tool): the item sent another action than its key")
+            if let key {
+                XCTAssertEqual(sent, [EditorKeys.action(keyCode: UInt16(key.code), flags: [])].compactMap { $0 },
+                               "\(tool): the item sent another action than its key")
+            }
             XCTAssertEqual(sent, [.tool(tool)])
         }
     }

@@ -66,10 +66,10 @@ enum EditorKeys {
         (.text, kVK_ANSI_T, "T"), (.blur, kVK_ANSI_B, "B"),
     ]
 
-    /// The eraser's key code (E on an English layout), which is no tool's: the eraser has no row in `toolKeys` and no item in the ⋯ menu.
+    /// The eraser's key code (E on an English layout), which is no tool's: the eraser has no row in `toolKeys`, and an item in the ⋯ menu only while it is taken off the palette's row.
     static let eraserKeyCode = kVK_ANSI_E
 
-    /// The ruler's key code (U on an English layout), the same way: no row in `toolKeys` and no item in the ⋯ menu.
+    /// The ruler's key code (U on an English layout), the same way: no row in `toolKeys`, and an item in the ⋯ menu only while it is taken off the palette's row.
     static let rulerKeyCode = kVK_ANSI_U
 
     static func action(keyCode: UInt16, flags: NSEvent.ModifierFlags) -> EditorAction? {

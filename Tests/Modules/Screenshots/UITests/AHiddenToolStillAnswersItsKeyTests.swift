@@ -24,14 +24,20 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
         super.tearDown()
     }
 
+    /// The row's tools that have a key: the spotlight has none (`EditorKeys.toolKeys`), so a hidden one is reached from the ⋯ menu
+    /// only, and what is asked of a key is asked of these.
+    private static var keyedRowTools: [AnnotationTool] {
+        EditorPalette.rowTools.filter { tool in EditorKeys.toolKeys.contains { $0.tool == tool } }
+    }
+
     private func code(of tool: AnnotationTool) throws -> Int {
         try XCTUnwrap(EditorKeys.toolKeys.first { $0.tool == tool }?.code, "\(tool) has no key")
     }
 
     /// The table of keys is the same whatever is hidden: it is a table and has no input.
     func testEveryRowToolHasAKeyAndTheKeyMeansItWhateverIsHidden() throws {
-        XCTAssertFalse(EditorPalette.rowTools.isEmpty, "the subject: the row has objects")
-        for tool in EditorPalette.rowTools {
+        XCTAssertFalse(Self.keyedRowTools.isEmpty, "the subject: the row has objects")
+        for tool in Self.keyedRowTools {
             let code = try code(of: tool)
             XCTAssertEqual(EditorKeys.action(keyCode: UInt16(code), flags: []), .tool(tool), "\(tool)")
             XCTAssertNil(EditorKeys.action(keyCode: UInt16(code), flags: .command), "⌘ + the key of \(tool) is not a tool")
@@ -48,7 +54,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
 
     /// Hidden, the tool is raised by its key, shown on the model, drawn with, and handed back as that tool's layer.
     func testTheKeyRaisesTheHiddenToolAndTheStrokeIsItsOwn() throws {
-        for tool in EditorPalette.rowTools {
+        for tool in Self.keyedRowTools {
             let item = try XCTUnwrap(EditorPalette.item(of: tool))
             try rig.build(store: HiddenPaletteRig.store(hiding: [item]))
             XCTAssertFalse(try XCTUnwrap(rig.overlay?.palette).isOnRow(tool), "the subject: \(tool) is off the row")
@@ -62,7 +68,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
 
     /// With every object hidden, every key still raises its tool.
     func testEveryKeyAnswersWithTheWholeRowHidden() throws {
-        for tool in EditorPalette.rowTools {
+        for tool in Self.keyedRowTools {
             try rig.build(store: HiddenPaletteRig.store(hiding: PaletteItem.allCases))
             rig.overlay?.keyDown(rig.key(try code(of: tool)))
             XCTAssertEqual(rig.overlay?.palette.tool, tool, "\(tool) with the row empty: its key did nothing")
@@ -71,7 +77,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
 
     /// The same key again puts the tool down, hidden or not: the second press is the editor's rule and not the cell's.
     func testASecondPressPutsAHiddenToolDown() throws {
-        for tool in EditorPalette.rowTools {
+        for tool in Self.keyedRowTools {
             let item = try XCTUnwrap(EditorPalette.item(of: tool))
             try rig.build(store: HiddenPaletteRig.store(hiding: [item]))
             rig.overlay?.keyDown(rig.key(try code(of: tool)))
@@ -83,7 +89,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
 
     /// Keys of the others still answer, and pressing one while a hidden tool is up replaces it.
     func testAnotherKeyReplacesTheHiddenTool() throws {
-        let rowTools = EditorPalette.rowTools
+        let rowTools = Self.keyedRowTools
         try XCTSkipIf(rowTools.count < 2, "one object on the row: there is no other")
         let hidden = rowTools[0], other = rowTools[1]
         try rig.build(store: HiddenPaletteRig.store(hiding: [try XCTUnwrap(EditorPalette.item(of: hidden))]))
@@ -97,7 +103,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
     /// The tool the last capture ended on is remembered whether or not it is on the row: the editor opens on it, and the menu
     /// is where it is checked. Nothing resets the person's tool because the object left the row.
     func testARememberedToolThatLeftTheRowStillOpensChosen() throws {
-        for tool in EditorPalette.rowTools {
+        for tool in Self.keyedRowTools {
             let item = try XCTUnwrap(EditorPalette.item(of: tool))
             let store = HiddenPaletteRig.store(hiding: [item])
             EditorMemory.remember(tool: tool, in: store)
@@ -110,7 +116,7 @@ final class AHiddenToolStillAnswersItsKeyTests: XCTestCase {
 
     /// Choosing by the key is remembered like choosing by a click, hidden or not.
     func testAHiddenToolPickedByKeyIsRememberedForTheNextCapture() throws {
-        let tool = try XCTUnwrap(EditorPalette.rowTools.first)
+        let tool = try XCTUnwrap(Self.keyedRowTools.first)
         let item = try XCTUnwrap(EditorPalette.item(of: tool))
         let store = HiddenPaletteRig.store(hiding: [item])
         try rig.build(store: store)
