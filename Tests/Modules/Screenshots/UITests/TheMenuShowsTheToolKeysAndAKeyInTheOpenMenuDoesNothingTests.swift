@@ -52,12 +52,12 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
                 XCTAssertEqual(item.keyEquivalent, "", "\(item.title) is not a tool and shows a key")
             }
         }
-        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .text, .step, .blur], "the menu's tools")
+        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .text, .step, .blur, .magnifier, .emoji], "the menu's tools")
         for (tool, label) in shown {
-            // Steps has no letter: its item shows none and no key of the table means it.
-            if tool == .step {
-                XCTAssertEqual(label, "", "Steps shows a key")
-                XCTAssertNil(EditorKeys.toolKeys.first { $0.tool == tool }, "a key means Steps")
+            // Steps, the magnifier and the emoji have no letter: their items show none and no key of the table means them.
+            if tool == .step || tool == .magnifier || tool == .emoji {
+                XCTAssertEqual(label, "", "\(tool) shows a key")
+                XCTAssertNil(EditorKeys.toolKeys.first { $0.tool == tool }, "a key means \(tool)")
                 continue
             }
             // The letter the label says, asked of the key that EditorKeys matches: the table and the matcher are one.
@@ -135,7 +135,7 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
     }
 
     func testTheItemSymbolsAreTemplateImages() throws {
-        for symbol in EditorPalette.objects.compactMap(\.symbol) + [EditorPalette.selectSymbol] {
+        for symbol in EditorPalette.objects.compactMap(\.symbol) + EditorPalette.afterSelect.map(\.symbol) + [EditorPalette.selectSymbol] {
             XCTAssertTrue(try XCTUnwrap(EditorMenu.image(symbol: symbol)).isTemplate, symbol)
         }
     }

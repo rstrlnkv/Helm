@@ -84,7 +84,7 @@ final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
 /// by two, ⋯, Done, a separator and ✕. Every cell is a control with a name.
 ///
 /// The objects come from one list that says where each stands: in the `row`, in the `menu` behind ⋯, or in the
-/// `shapes` submenu of it; the row and `EditorMenu` are both read from it. ⋯ shows the symbol of a chosen menu tool
+/// `shapes` submenu of it; the row and `EditorMenu` are both read from it, the menu also from `afterSelect`. ⋯ shows the symbol of a chosen menu tool
 /// as a badge.
 struct EditorPalette: View {
     @ObservedObject var model: EditorBarModel
@@ -124,6 +124,10 @@ struct EditorPalette: View {
         erasing ? .thicknessAndOpacity(anchorX: 0) : .erase
     }
 
+    /// The two tools that stand in the ⋯ menu after Select and in no row and no `Place` of `objects`: the lens and the emoji. The menu and ⋯'s
+    /// badge read them from here, so a tool is placed once.
+    static let afterSelect: [(tool: AnnotationTool, symbol: String)] = [(.magnifier, "plus.magnifyingglass"), (.emoji, "face.smiling")]
+
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
     static let selectSymbol = "cursorarrow"
 
@@ -143,7 +147,7 @@ struct EditorPalette: View {
         guard !model.erasing else { return nil }
         if model.cropping { return cropSymbol }
         guard let tool = model.tool else { return selectSymbol }
-        return objects.first { $0.tool == tool && $0.place != .row }?.symbol
+        return objects.first { $0.tool == tool && $0.place != .row }?.symbol ?? afterSelect.first { $0.tool == tool }?.symbol
     }
 
     /// The name of what the badge shows, for VoiceOver.

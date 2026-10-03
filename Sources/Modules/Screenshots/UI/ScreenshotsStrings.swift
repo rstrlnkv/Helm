@@ -134,6 +134,10 @@ enum ScStr {
     /// «Steps» has no such word for numbered marks: the system tables say it of footsteps (`Intents.framework`'s `Localizable.loctable`, key
     /// `com.apple.intents.WorkoutNameIdentifier.Steps`: Schritte, Pasos, Pas, ステップ, Passos, Шаги, 步数), so the German, Spanish,
     /// Japanese, Portuguese and Russian are that table's word and the French (Étapes) and the Chinese (步骤) are Helm's own.
+    /// «Magnifier» is the lens Preview's markup calls «Loupe» in English: `AnnotationKit.framework`'s `AnnotationStrings.loctable`, key
+    /// `LOUPE_ANNOTATION_NAME` (Lupe, Lupa, Loupe, ルーペ, Lupa, Лупа, 放大镜; its pt_BR and pt_PT agree). «Emoji» is the first word of
+    /// AppKit's «Emoji & Symbols» (key `Emoji & Symbols` of `InputManager.loctable`: Emoji, Emojis, Emoji, 絵文字, Emoji, Эмодзи, 表情) in German,
+    /// French, Japanese, Portuguese and Russian; the Spanish (Emoji) and the Chinese (表情符号) are Helm's own.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
         case .arrow: L("Arrow")
@@ -147,6 +151,8 @@ enum ScStr {
         case .text: L("Text")
         case .step: L("Steps")
         case .spotlight: L("Spotlight")
+        case .magnifier: L("Magnifier")
+        case .emoji: L("Emoji")
         }
     }
 

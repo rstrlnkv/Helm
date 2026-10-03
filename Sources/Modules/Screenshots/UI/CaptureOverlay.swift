@@ -108,6 +108,10 @@ enum OverlayResult {
     /// is open; the ways out of it go through `endTyping`, and `close` drops the record itself. Nil when none is.
     private var typing: (display: DisplayID, at: CGPoint)?
     var isTyping: Bool { typing != nil }
+    /// The emoji the Emoji tool places on the next click on the picture, picked in the grid; nil until one is. Nothing of it is remembered.
+    private var emoji: String?
+    /// What the emoji grid shows; its cells come back through `perform` as `.pickEmoji`.
+    let emojiGrid = EmojiGridModel()
     /// What the palette shows; its cells come back through `perform`.
     let palette = EditorBarModel()
     /// The ⋯ menu: one object, filled again from `palette` at every opening.
@@ -149,6 +153,7 @@ enum OverlayResult {
         self.onFinish = onFinish
         palette.perform = { [weak self] in self?.perform($0) }
         palette.openMenu = { [weak self] in self?.openMoreMenu() }
+        emojiGrid.pick = { [weak self] in self?.perform(.pickEmoji($0)) }
     }
 
     // MARK: - Lifecycle
@@ -261,7 +266,7 @@ enum OverlayResult {
         // A press on the palette is the palette's: never a draft, never a new area. Its background is an
         // input like any other, so it withdraws Esc's question as a button does; and the reshape it ended
         // never having been released, it judges the selection as that release would.
-        if chrome(on: display)?.covers(local) == true {
+        if chrome(on: display)?.covers(local) == true || panels[display]?.view.emojiGridCovers(local) == true {
             if var current = edit, drag == nil { current.layers.disarm(); current.layers.releaseIfOutside(); edit = current; render() }
             return
         }
@@ -318,6 +323,14 @@ enum OverlayResult {
                panels[display]?.view.beginText(at: local, style: style, within: current.rect) == true {
                 current.layers.deselect()
                 typing = (display, local)
+                edit = current
+                render()
+                return
+            }
+            // The Emoji tool on bare picture inside the area puts the picked emoji there, its middle at the press; with none picked the press only
+            // lets go of the selection. On a layer or a handle the press is the editor's own, as the text tool's is.
+            if display == current.display, current.tool == .emoji, current.rect.contains(local), !current.layers.takes(at: local) {
+                if let emoji { current.layers.place(emoji: emoji, at: local, style: style) } else { current.layers.deselect() }
                 edit = current
                 render()
                 return
@@ -609,6 +622,8 @@ enum OverlayResult {
                 erasing = false
                 popover = nil
             }
+        case .pickEmoji(let picked)?:
+            if current.tool == .emoji, EmojiSet.isOne(picked) { emoji = picked }
         case .select?:
             dropCrop(&current)
             current.tool = nil
@@ -778,6 +793,7 @@ enum OverlayResult {
     private func render() {
         if let edit {
             let held = edit.layers.selected
+            emojiGrid.show(chosen: emoji)
             palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, cropping: crop != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
                       popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
         }
@@ -797,6 +813,7 @@ enum OverlayResult {
                 scene.draftID = edit.layers.draft?.id
                 scene.erasing = erasing
                 scene.cropping = crop != nil
+                scene.emojiGrid = edit.tool == .emoji && !erasing && crop == nil
                 scene.handlesOffered = AreaFrame.offersHandles(layersExist: !edit.layers.layers.isEmpty, cropping: crop != nil)
                 scene.ruler = ruler
                 scene.fading = edit.layers.erased
@@ -836,6 +853,8 @@ struct OverlayScene {
     var erasing = false
     /// Crop is on: the size plate stands at the area's top-left corner.
     var cropping = false
+    /// The Emoji tool is chosen: its grid stands by the palette, where the palette is shown.
+    var emojiGrid = false
     /// The area's handles are drawn: no layer on the picture, or Crop on (`AreaFrame.offersHandles`).
     var handlesOffered = true
     /// The layers the eraser's drag has met: drawn at `OverlayView.fadedOpacity` until the release takes them.
@@ -969,6 +988,41 @@ final class OverlayView: NSView {
     private var coloursMade = false
     private lazy var measuredColours = NSHostingView(rootView: EditorColoursPopover(model: overlay!.palette)).fittingSize
     var coloursSize: CGSize { measuredColours }
+
+    /// The emoji grid's host and size, made and measured the same way, at the first need.
+    private lazy var emojiHost: EditorBarHostingView<EmojiGrid> = {
+        emojiMade = true
+        let host = EditorBarHostingView(rootView: EmojiGrid(model: overlay!.emojiGrid))
+        host.isHidden = true
+        addSubview(host)
+        return host
+    }()
+    private var emojiMade = false
+    private lazy var measuredEmoji = NSHostingView(rootView: EmojiGrid(model: overlay!.emojiGrid)).fittingSize
+    /// Where the grid stands in this display's top-left points while it is shown.
+    private var emojiFrame: CGRect?
+
+    /// Whether the grid is shown over `local`, a display-local point: a press there is the grid's.
+    func emojiGridCovers(_ local: CGPoint) -> Bool { emojiFrame?.contains(local) == true }
+
+    /// The grid above the palette, `EditorChrome.popoverGap` from it, centred on it and held on the screen; below the palette where a pop-over
+    /// (thickness or colours) is above the palette or there is no room above. Hidden where there is no palette or the Emoji tool is not chosen.
+    private func placeEmojiGrid(_ scene: OverlayScene) {
+        guard scene.emojiGrid, let chrome = scene.chrome else {
+            emojiFrame = nil
+            if emojiMade { emojiHost.isHidden = true }
+            return
+        }
+        let size = measuredEmoji, palette = chrome.palette, margin = EditorChrome.margin
+        let above = palette.minY - EditorChrome.popoverGap - size.height
+        let popoverIsAbove = chrome.popover.map { $0.minY < palette.minY } ?? false
+        let y = !popoverIsAbove && above >= margin ? above : palette.maxY + EditorChrome.popoverGap
+        let x = min(max(palette.midX - size.width / 2, margin), max(margin, bounds.width - size.width - margin))
+        let frame = CGRect(x: x, y: min(max(y, margin), max(margin, bounds.height - size.height - margin)), width: size.width, height: size.height)
+        emojiFrame = frame
+        emojiHost.frame = layerRect(frame)
+        emojiHost.isHidden = false
+    }
 
     /// Pops `menu` up under the ⋯ circle, its left edge at the circle's, so that the circle and its badge stay in
     /// view; where there is no room below, AppKit flips it. The circle's place is the palette's own reading,
@@ -1230,6 +1284,8 @@ final class OverlayView: NSView {
             if coloursMade { coloursHost.isHidden = true }
         }
 
+        placeEmojiGrid(scene)
+
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }
         if let at, !scene.windowMode {
             let lines = CGMutablePath()
@@ -1383,7 +1439,10 @@ final class OverlayView: NSView {
     private func makeShape(_ annotation: Annotation, number: Int?, clippedTo box: CGRect, draft: Bool) -> CALayer {
         shapeBuilds += 1
         if annotation.tool == .blur { return makeMosaic(annotation, clippedTo: box) }
-        if annotation.tool == .text { return makeTiled(AnnotationText.tile(of: annotation, scale: frozen.scale), clippedTo: box) }
+        if annotation.tool == .text || annotation.tool == .emoji { return makeTiled(AnnotationText.tile(of: annotation, scale: frozen.scale), clippedTo: box) }
+        if annotation.tool == .magnifier {
+            return makeTiled(Magnifier.tile(of: annotation, over: frozen.shot, scale: frozen.scale), clippedTo: box)
+        }
         if let number { return makeTiled(AnnotationStep.tile(of: annotation, number: number, scale: frozen.scale), clippedTo: box) }
         let clip = CGPath(rect: box, transform: nil)
         var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)

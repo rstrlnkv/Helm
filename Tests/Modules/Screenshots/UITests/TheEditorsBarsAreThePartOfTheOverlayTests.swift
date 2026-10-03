@@ -256,7 +256,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
         let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45, .blur: 11, .text: 17]
         // The steps (an item of the ⋯ menu) and the spotlight (a cell of the palette) have no letter, and the menu shows none for them.
-        let keyless: Set<AnnotationTool> = [.step, .spotlight]
+        let keyless: Set<AnnotationTool> = [.step, .spotlight, .magnifier, .emoji]
         XCTAssertEqual(Set(codes.keys).union(keyless), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
             if let code = codes[tool] {
@@ -275,6 +275,11 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                     overlay?.mouseDown(on: first, at: CGPoint(x: 150, y: 150), flags: [])
                     overlay?.mouseUp(on: first)
                     overlay?.view(for: first)?.textField?.insertText("t", replacementRange: NSRange(location: NSNotFound, length: 0))
+                } else if tool == .emoji {
+                    // An emoji is a pick in the grid and a press on the picture, and not a drag.
+                    overlay?.perform(.pickEmoji("👍"))
+                    overlay?.mouseDown(on: first, at: CGPoint(x: 150, y: 150), flags: [])
+                    overlay?.mouseUp(on: first)
                 } else {
                     stroke(first)
                 }
@@ -294,7 +299,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         XCTAssertEqual(EditorKeys.action(keyCode: 45, flags: .capsLock), .tool(.pen), "Caps Lock read as a chord")
         XCTAssertEqual(EditorPalette.objects.filter { $0.place == .row }.map(\.tool), [.pen, .highlighter, .pencil, .spotlight],
                        "the row is not Pen, Marker, Pencil (and the spotlight, which the palette stands after the eraser and the ruler)")
-        XCTAssertEqual(Set(EditorPalette.objects.map(\.tool)), Set(AnnotationTool.allCases), "a tool has no cell")
+        XCTAssertEqual(Set(EditorPalette.objects.map(\.tool) + EditorPalette.afterSelect.map(\.tool)), Set(AnnotationTool.allCases), "a tool has no cell")
     }
 
     func testTheSameToolAgainPutsItDownByKeyAndByButton() throws {
@@ -507,7 +512,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 }
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
-            XCTAssertEqual(menu.count, 14, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Thickness and Opacity, Save, Pin: \(menu)")
+            XCTAssertEqual(menu.count, 16, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Magnifier, Emoji, Thickness and Opacity, Save, Pin: \(menu)")
             let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")

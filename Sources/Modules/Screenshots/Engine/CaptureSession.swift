@@ -231,13 +231,14 @@ public final class CaptureSession: @unchecked Sendable {
                         else { continue }
                         guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)
                         else { return nil }
-                        context.saveGState()
-                        context.setShouldAntialias(false)
-                        context.interpolationQuality = .none
-                        context.draw(tile.image, in: CGRect(x: tile.pixels.minX - origin.x,
-                                                            y: CGFloat(cut.height) - (tile.pixels.maxY - origin.y),
-                                                            width: tile.pixels.width, height: tile.pixels.height))
-                        context.restoreGState()
+                        place(tile, in: context, cutHeight: cut.height, origin: origin)
+                        continue
+                    }
+                    if layer.tool == .magnifier {
+                        // The lens is a picture of the display's pixels like the mosaic; one with nothing to show is drawn as the screen draws it: not at all.
+                        if let tile = Magnifier.tile(of: layer, over: display, scale: scale) {
+                            place(tile, in: context, cutHeight: cut.height, origin: origin)
+                        }
                         continue
                     }
                     context.saveGState()
@@ -254,7 +255,7 @@ public final class CaptureSession: @unchecked Sendable {
                     context.translateBy(x: 0, y: CGFloat(cut.height))
                     context.scaleBy(x: scale, y: -scale)
                     context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
-                    if layer.tool == .text {
+                    if layer.tool == .text || layer.tool == .emoji {
                         AnnotationText.draw(layer, in: context)
                         context.restoreGState()
                         continue
@@ -282,6 +283,17 @@ public final class CaptureSession: @unchecked Sendable {
             }
             return nil
         }
+    }
+
+    /// A picture of whole pixels of the display (`Pixelate.Tile`) drawn into the cut's bitmap, which starts at `origin` in the display's pixels: one pixel
+    /// to one, on the bitmap's own grid, so nothing is resampled. A mosaic's tile is opaque; a lens's is transparent outside its circle.
+    private static func place(_ tile: Pixelate.Tile, in context: CGContext, cutHeight: Int, origin: CGPoint) {
+        context.saveGState()
+        context.setShouldAntialias(false)
+        context.interpolationQuality = .none
+        context.draw(tile.image, in: CGRect(x: tile.pixels.minX - origin.x, y: CGFloat(cutHeight) - (tile.pixels.maxY - origin.y),
+                                            width: tile.pixels.width, height: tile.pixels.height))
+        context.restoreGState()
     }
 
     // MARK: - Delivering

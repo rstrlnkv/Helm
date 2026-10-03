@@ -15,7 +15,7 @@ enum EditorMenuItem: Equatable {
 /// the thin `NSMenu` over it. The tools come from `EditorPalette.objects`, the list the palette's row is drawn from, so a
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
-/// Order: the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Thickness and Opacity… (enabled while a
+/// Order: the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Magnifier and Emoji (`EditorPalette.afterSelect`), Thickness and Opacity… (enabled while a
 /// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
@@ -69,6 +69,9 @@ enum EditorMenu {
         }
         items.append(.tool(title: ScStr.crop, symbol: EditorPalette.cropSymbol, isOn: model.cropping, action: .crop))
         items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil && !model.erasing && !model.cropping, action: .select))
+        items += EditorPalette.afterSelect.map {
+            .tool(title: ScStr.tool($0.tool), symbol: $0.symbol, isOn: model.tool == $0.tool && !model.erasing, action: .tool($0.tool))
+        }
         // Every drawing tool has steps but the spotlight; Select and the eraser have none, and the item stays in its place either way. It opens the pop-over at ⋯.
         items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),
                              isEnabled: model.tool != nil && model.tool != .spotlight && !model.erasing, isOn: false))

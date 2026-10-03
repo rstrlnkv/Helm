@@ -2,7 +2,7 @@ import CoreGraphics
 import CoreText
 import Foundation
 
-/// The text tool's picture: one line of the system font, laid out by CoreText and drawn by the one function the
+/// The text tool's picture, and the Emoji tool's: one line of the system font, laid out by CoreText and drawn by the one function the
 /// screen and the export both call, so the text stands in the file where the screen showed it.
 ///
 /// **One line.** A text has no break: a newline that reaches `AnnotationEditing.place` becomes a space. The
@@ -44,9 +44,9 @@ public enum AnnotationText {
     /// Whether drawing `text` leaves a pixel of ink: the line is drawn as the layer draws it, in the Large step, into a
     /// bitmap of alpha only, and any pixel not zero is ink. What a person can see decides, not the character's category,
     /// so a filler or a lone variation selector is blank and a joined emoji is not.
-    public static func hasInk(_ text: String) -> Bool {
+    public static func hasInk(_ text: String, tool: AnnotationTool = .text) -> Bool {
         guard !text.isEmpty else { return false }
-        let probe = Annotation(tool: .text, start: .zero, end: .zero, style: .standard, text: text)
+        let probe = Annotation(tool: tool, start: .zero, end: .zero, style: .standard, text: text)
         let box = probe.frame.insetBy(dx: -overhang, dy: -overhang)
         let (width, height) = (Int(box.width.rounded(.up)), Int(box.height.rounded(.up)))
         guard width > 0, height > 0, width * height < 100_000_000,
@@ -85,9 +85,14 @@ public enum AnnotationText {
         return CTFontCreateWithFontDescriptor(descriptor, size, nil)
     }
 
+    /// The font a layer of text or of emoji is set in: the same face, the size of its own tool's step.
+    private static func font(of annotation: Annotation) -> CTFont {
+        font(size: annotation.style.thickness.points(for: annotation.tool == .emoji ? .emoji : .text), weight: semibold)
+    }
+
     private static func line(of annotation: Annotation, color: CGColor? = nil) -> CTLine? {
         guard let text = annotation.text, !text.isEmpty else { return nil }
-        var attributes: [CFString: Any] = [kCTFontAttributeName: font(for: annotation.style.thickness)]
+        var attributes: [CFString: Any] = [kCTFontAttributeName: font(of: annotation)]
         if let color { attributes[kCTForegroundColorAttributeName] = color }
         return CTLineCreateWithAttributedString(CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary))
     }
@@ -103,10 +108,14 @@ public enum AnnotationText {
     /// The text in `context`, whose user space is the display's top-left points; the ink is the annotation's own
     /// (`Annotation.fillColor`, the opacity in it). Nothing is drawn for no text.
     public static func draw(_ annotation: Annotation, in context: CGContext) {
-        guard annotation.tool == .text, let line = line(of: annotation, color: annotation.fillColor) else { return }
+        // An emoji is set in its own colours, which a foreground colour does not change: its opacity is the context's alpha.
+        let isEmoji = annotation.tool == .emoji
+        guard annotation.tool == .text || isEmoji, let line = line(of: annotation, color: isEmoji ? nil : annotation.fillColor) else { return }
         var ascent: CGFloat = 0
         CTLineGetTypographicBounds(line, &ascent, nil, nil)
         context.saveGState()
+        // The line is composited whole as a group, so the alpha is the emoji's and not each of its glyphs'.
+        if isEmoji { context.setAlpha(CGFloat(annotation.style.opacity)); context.beginTransparencyLayer(auxiliaryInfo: nil) }
         context.setShouldAntialias(true)
         context.setShouldSmoothFonts(false)
         context.setAllowsFontSubpixelPositioning(true)
@@ -116,6 +125,7 @@ public enum AnnotationText {
         context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
         context.textPosition = CGPoint(x: annotation.start.x, y: annotation.start.y + ascent)
         CTLineDraw(line, context)
+        if isEmoji { context.endTransparencyLayer() }
         context.restoreGState()
     }
 
@@ -129,8 +139,10 @@ public enum AnnotationText {
 
     /// What `tile(of:scale:)` makes, for any layer that is a picture of its own: `drawing` puts it in a context whose user
     /// space is the display's top-left points, and the tile is that, with `overhang` of room round `frame`, at whole pixels of
-    /// the display. The overlay lays it as a layer's contents and the export draws the same `drawing` into the file.
-    static func tile(covering frame: CGRect, scale: CGFloat, drawing: (CGContext) -> Void) -> Pixelate.Tile? {
+    /// the display, in the colour space `space`. The overlay lays it as a layer's contents and the export draws the same `drawing` into the file; the lens
+    /// (`Magnifier.tile`) is placed by the export itself, from a space of its picture's own.
+    static func tile(covering frame: CGRect, scale: CGFloat, space: CGColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!,
+                     drawing: (CGContext) -> Void) -> Pixelate.Tile? {
         guard scale.isFinite, scale > 0 else { return nil }
         let box = frame.insetBy(dx: -overhang, dy: -overhang)
         let x0 = (box.minX * scale).rounded(.down), y0 = (box.minY * scale).rounded(.down)
@@ -138,8 +150,7 @@ public enum AnnotationText {
         guard x1 > x0, y1 > y0, (x1 - x0) * (y1 - y0) < 1e8 else { return nil }
         let (width, height) = (Int(x1 - x0), Int(y1 - y0))
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
         // The export's own transform, display-local points to a bitmap's pixels, bottom-left.
         context.translateBy(x: 0, y: CGFloat(height))

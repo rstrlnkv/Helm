@@ -73,7 +73,8 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
             CGPoint(x: 150, y: 150), CGPoint(x: 150.4, y: 150.4), CGPoint(x: 0, y: 0),
         ]
         // The text is no drag and has no handle; its own cases are `TheTextIsALineTheEditorHoldsByItsAreaTests`.
-        for tool in AnnotationTool.allCases where tool != .text {
+        // An emoji is no drag either, and has no handle.
+        for tool in AnnotationTool.allCases where tool != .text && tool != .emoji {
             let layer = make(tool).layers[0]
             XCTAssertTrue(layer.isUsable, "\(tool): the setup drew nothing")
             for (index, handle) in layer.handles.enumerated() {
@@ -113,7 +114,7 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
         // The blur has no ink, so its recolour is no step at all (`TheBlurIsABoxTheEditorHoldsByItsAreaTests`).
         // A text is no drag: its recolour is in `TheTextIsALineTheEditorHoldsByItsAreaTests`. The spotlight has no ink either:
         // its recolour is no step (`TheSpotlightsShareOneDimTests`).
-        for tool in AnnotationTool.allCases where tool != .blur && tool != .text && tool != .spotlight {
+        for tool in AnnotationTool.allCases where tool != .blur && tool != .text && tool != .spotlight && tool != .emoji {
             var editing = make(tool)
             select(&editing)
             let before = editing.layers
