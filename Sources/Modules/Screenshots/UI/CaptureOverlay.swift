@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import SwiftUI
 import HelmRuntime
 import HelmUI
 import Module_Screenshots_Engine
@@ -69,6 +70,11 @@ enum OverlayResult {
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
+    /// The thickness and opacity pop-over, open when set: the centre of the cell that opened it, in the palette's own points.
+    /// Open only while a tool is chosen, so it is closed by everything that puts the tool down, and by the exits.
+    private var popover: CGFloat?
+    /// Whether the pop-over is open, for a test.
+    var popoverIsOpen: Bool { popover != nil }
     /// What the palette shows; its cells come back through `perform`.
     let bars = EditorBarModel()
     /// The ⋯ menu: one object, filled again from `bars` at every opening.
@@ -177,6 +183,7 @@ enum OverlayResult {
         openedMenu = nil
         onFinish = nil
         edit = nil
+        popover = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
         for entry in panels.values {
@@ -217,6 +224,14 @@ enum OverlayResult {
         // never having been released, it judges the selection as that release would.
         if chrome(on: display)?.covers(local) == true {
             if var current = edit, drag == nil { current.layers.disarm(); current.layers.releaseIfOutside(); edit = current; render() }
+            return
+        }
+        // An open pop-over is closed by a press outside the chrome, and that press is no other: it draws nothing and
+        // moves nothing, so the person who opened the pop-over by mistake is not left with a stroke.
+        if popover != nil {
+            popover = nil
+            if var current = edit { current.layers.disarm(); edit = current }
+            render()
             return
         }
         if var current = edit, drag == nil {
@@ -292,6 +307,8 @@ enum OverlayResult {
     /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
         pinRefused = false
+        // An open pop-over takes this press and nothing else: Esc's own rule below starts with the next one.
+        if popover != nil { popover = nil; render(); return }
         // A reshape under the pointer is cancelled, the area back as the press took it: Esc is the
         // way out of what is being done, and that press does only that.
         if let held = reshaping, var current = edit {
@@ -449,11 +466,13 @@ enum OverlayResult {
             // a held key's repeats are not that second press.
             guard !isRepeat else { return }
             current.tool = current.tool == tool ? nil : tool
+            popover = nil
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
             // Each tool is drawn with its own step and opacity, and every tool with the one colour and fill.
             if let picked = current.tool { styleTool = picked; style = memory.style(for: picked) }
         case .select?:
             current.tool = nil
+            popover = nil
             if let store { EditorMemory.remember(tool: nil, in: store) }
         // A pick is the next object's and, with one selected, that object's too.
         case .color(let color)?:
@@ -462,8 +481,18 @@ enum OverlayResult {
             remember()
         case .thickness(let step)?:
             style.thickness = step
+            // Q6, parked for the owner: with an object selected while the pop-over edits, a thickness pick also
+            // re-weights that object, as it always has. Whether the pop-over should edit the next stroke only is
+            // this one line; the opacity below already is the next stroke's alone.
             current.layers.setThickness(step)
             remember()
+        case .opacity(let value)?:
+            // A value that is no number is full ink, as the reader of the store reads it (`EditorMemory.read`).
+            style.opacity = value.clamped(to: 0.1...1, whenNotANumber: 1)
+            remember()
+        case .thicknessAndOpacity(let anchorX)?:
+            // A second request closes it; with no tool chosen there is nothing whose steps it could set.
+            popover = current.tool != nil && popover == nil ? anchorX : nil
         case .toggleFill?:
             // With a box selected the fill is flipped from that box's own state, and the pick follows it.
             if let box = current.layers.selected, box.tool == .rectangle || box.tool == .ellipse {
@@ -478,6 +507,7 @@ enum OverlayResult {
         case .redo?: current.layers.redo()
         case .exit(let how)?:
             guard !isRepeat else { return }
+            popover = nil
             // No room for a pin: the editor stays, with the picture in it, and says why on the plate
             // (the toast lies below the overlay and could not be seen).
             if how == .pin, !pinRoom() { pinRefused = true; return }
@@ -525,7 +555,12 @@ enum OverlayResult {
     func chrome(on display: DisplayID) -> EditorChrome? {
         guard let edit, drag == nil, reshaping == nil, !edit.layers.isBusy, edit.display == display,
               let view = panels[display]?.view else { return nil }
-        return EditorChrome.place(selection: edit.rect, in: view.frozen.frame.size, palette: view.paletteSize)
+        let screen = view.frozen.frame.size
+        let bare = EditorChrome.place(selection: edit.rect, in: screen, palette: view.paletteSize)
+        guard let cell = popover else { return bare }
+        // The pop-over's cell is in the palette's own points; the palette does not move for it.
+        return EditorChrome.place(selection: edit.rect, in: screen, palette: view.paletteSize,
+                                  popover: view.popoverSize, anchorX: bare.palette.minX + cell)
     }
 
     /// `style` is the pick of `styleTool`: kept beside the store and written to it.
@@ -537,8 +572,8 @@ enum OverlayResult {
     private func render() {
         if let edit {
             let held = edit.layers.selected
-            bars.show(tool: edit.tool, style: held?.style ?? style, selectedTool: held?.tool,
-                      canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
+            bars.show(tool: edit.tool, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
+                      popoverOpen: popover != nil, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
         }
         for (id, entry) in panels {
             var scene = OverlayScene()
@@ -675,6 +710,20 @@ final class OverlayView: NSView {
     /// What the palette measures in the language the overlay opened in; measured once, since the
     /// language cannot change under a capture that is up.
     var paletteSize: CGSize { measuredPalette }
+
+    /// The pop-over's host, made and hidden at the first need. Its card is given the height measured below, so
+    /// that the reveal has a number to grow to before any layout has run.
+    private lazy var popoverHost: EditorBarHostingView<EditorPopover> = {
+        popoverMade = true
+        let host = EditorBarHostingView(rootView: EditorPopover(model: overlay!.bars, height: popoverSize.height))
+        host.isHidden = true
+        addSubview(host)
+        return host
+    }()
+    private var popoverMade = false
+    /// The pop-over's card laid out whole, measured once like the palette.
+    private lazy var measuredPopover = NSHostingView(rootView: EditorPopover(model: overlay!.bars, height: nil)).fittingSize
+    var popoverSize: CGSize { measuredPopover }
 
     /// Pops `menu` up under the ⋯ circle, its left edge at the circle's, so that the circle and its badge stay in
     /// view; where there is no room below, AppKit flips it. The circle's place is the palette's own reading,
@@ -850,8 +899,15 @@ final class OverlayView: NSView {
             _ = measuredPalette
             paletteHost.frame = layerRect(chrome.palette)
             paletteHost.isHidden = false
+            if let popover = chrome.popover {
+                popoverHost.frame = layerRect(popover)
+                popoverHost.isHidden = false
+            } else if popoverMade {
+                popoverHost.isHidden = true
+            }
         } else if barsMade {
             paletteHost.isHidden = true
+            if popoverMade { popoverHost.isHidden = true }
         }
 
         let at = scene.pointer.map { CGPoint(x: $0.x, y: bounds.height - $0.y) }

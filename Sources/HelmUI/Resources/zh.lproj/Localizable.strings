@@ -1326,6 +1326,9 @@
 "Thin" = "细";
 "Medium" = "中";
 "Thick" = "粗";
+"Thickness" = "粗细";
+"Opacity" = "不透明度";
+"Thickness and Opacity…" = "粗细和不透明度…";
 "Filled" = "填充";
 "Undo" = "撤销";
 "Redo" = "重做";

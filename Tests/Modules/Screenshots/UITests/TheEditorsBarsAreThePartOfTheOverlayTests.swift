@@ -446,7 +446,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             let groups: [(String, [String])] = [
                 ("tools", AnnotationTool.allCases.map(ScStr.tool)),
                 ("colours", AnnotationColor.allCases.map(ScStr.ink)),
-                ("thicknesses", AnnotationThickness.allCases.map(ScStr.thickness)),
+                ("thickness step words, not on the palette yet", AnnotationThickness.allCases.map(ScStr.thickness)),
                 ("the rest", [ScStr.fill, ScStr.undo, ScStr.redo, ScStr.copy, ScStr.save, ScStr.closeEditor, ScStr.done, HelmA11y.moreActions]),
             ]
             for (name, words) in groups {

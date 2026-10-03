@@ -24,6 +24,11 @@ enum EditorAction: Equatable {
     /// The next object's colour, thickness and, for the boxes, fill.
     case color(AnnotationColor)
     case thickness(AnnotationThickness)
+    /// The next object's opacity, held to 0.1…1 where it is applied.
+    case opacity(Double)
+    /// Opens the thickness and opacity pop-over under the palette (above it when there is no room), centred at `anchorX` in the palette's own
+    /// points (the cell that asked); opening one that is open closes it, and with no tool chosen nothing opens.
+    case thicknessAndOpacity(anchorX: CGFloat)
     case toggleFill
     case undo, redo
     /// ⌫ and ⌦: the selected object goes; with none selected it asks nothing.

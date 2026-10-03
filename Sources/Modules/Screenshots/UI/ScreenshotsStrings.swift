@@ -153,8 +153,18 @@ enum ScStr {
         }
     }
 
-    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Thickness and Copy have no control on the palette
-    /// yet, and their names are kept for the one that comes. Pin is read by the ⋯ menu's Pin item while `PinEntry.isOffered`.
+    /// The pop-over's two rows, in macOS's own words: «Thickness» is key `Thickness` of Preview's `Localizable.loctable`
+    /// (Stärke, Grosor, Épaisseur, 太さ, Espessura, Толщина, 粗细) and «Opacity» key `Opacity` of `PaperKit.framework`'s
+    /// `Localizable.loctable` and of AppKit's `NSColorPanelExtras.loctable` (Deckkraft, Opacidad, Opacité, 不透明度,
+    /// Opacidade, Непрозрачность, 不透明度); Chinese is the tables' `zh_CN`, and their `pt_BR` and `pt_PT` agree.
+    static var thicknessLabel: String { L("Thickness") }
+    static var opacityLabel: String { L("Opacity") }
+    /// The ⋯ menu's item that opens the pop-over. No table has the phrase: it is the two words above joined by the
+    /// language's «and», with the ellipsis of an item that opens something.
+    static var thicknessAndOpacity: String { L("Thickness and Opacity…") }
+
+    /// The name of a thickness step. No control calls it yet: it is kept for the pop-over's slider, which would show these
+    /// words instead of the step's points if the owner picks the frame's word over the plan's number (a parked question).
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {
         case .thin: L("Thin")
@@ -163,6 +173,8 @@ enum ScStr {
         }
     }
 
+    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy has no control on the palette yet, and its name
+    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item while `PinEntry.isOffered`.
     static var fill: String { L("Filled") }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the

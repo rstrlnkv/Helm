@@ -1326,6 +1326,9 @@
 "Thin" = "Fino";
 "Medium" = "Médio";
 "Thick" = "Grosso";
+"Thickness" = "Espessura";
+"Opacity" = "Opacidade";
+"Thickness and Opacity…" = "Espessura e opacidade…";
 "Filled" = "Preenchido";
 "Undo" = "Desfazer";
 "Redo" = "Refazer";

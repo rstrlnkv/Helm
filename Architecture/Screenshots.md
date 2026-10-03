@@ -100,9 +100,22 @@ a pure list of values read from the same `EditorBarModel` and the same tool list
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
 carries the symbol of a chosen menu tool as a badge. The menu shows no key; the keys are `EditorKeys`', with the menu closed.
 
+A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
+(`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands
+right after Select and is enabled while a tool is chosen, so it reaches a tool with no cell on the row
+(`EditorPalette.action(forClickOn:chosen:anchorX:)`, `EditorAction.thicknessAndOpacity`). It is another view of the
+overlay's panel, placed by `EditorChrome` with the palette: centred on the cell that opened it, `EditorChrome.popoverGap` under the palette
+or above it when under is short, held on the display, and part of `EditorChrome.covers` so that a press on it is never
+a press on the picture, while the gap between the two is the picture's. Its two sliders edit the next object's style
+for the chosen tool (`EditorBarModel.picked`), the thickness on the tool's three steps and the opacity from 0.1 to 1,
+through `EditorAction.thickness` and `EditorAction.opacity` and so through `EditorMemory`. Esc and a right click close it
+and do nothing else, as does a click outside it, which draws and moves nothing; putting the tool down closes it. It
+appears by a clipped, measured height under `HelmMotion.disclosure`. With an object selected a thickness pick also
+re-weights it, as before; whether it should is an open question of the owner's (the one line is in `CaptureOverlay.perform`).
+
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
-read in one order by `CaptureOverlay.mouseDown`: the palette, then an area handle — unless the selected object has a
+read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then an area handle — unless the selected object has a
 handle at that point, which is the object's — then the object and the tool. The area handles are round dots on
 a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,

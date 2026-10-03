@@ -15,7 +15,11 @@ final class ThePaletteObjectZoneIsItsOwnTests: XCTestCase {
 
     @MainActor private func presses(tool: AnnotationTool?, row: CGFloat) throws -> [(x: CGFloat, action: EditorAction)] {
         try answersAcrossThePalette(language: .en, canUndoAndRedo: true, step: step, tool: tool, heightFraction: row).answers.compactMap {
-            if case .action(let action) = $0.answer { ($0.x, action) } else { nil }
+            // A press on the chosen object's cell opens the pop-over instead of choosing the tool again: the zone is the
+            // same, so it counts as that object's answer (the pop-over's own answer is ThePopoverEditsTheChosenToolsOwnStyleTests').
+            guard case .action(let action) = $0.answer else { return nil }
+            if case .thicknessAndOpacity = action, let tool { return ($0.x, .tool(tool)) }
+            return ($0.x, action)
         }
     }
 

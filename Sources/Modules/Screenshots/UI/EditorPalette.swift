@@ -12,6 +12,11 @@ import Module_Screenshots_Engine
     /// the colour and the fill apply to is its tool and not the picked one.
     @Published private(set) var selectedTool: AnnotationTool?
     @Published private(set) var style = AnnotationStyle.standard
+    /// What the next object is drawn with, whatever is selected: the pop-over's sliders show and set this, where `style`
+    /// is the selected object's while there is one.
+    @Published private(set) var picked = AnnotationStyle.standard
+    /// The thickness and opacity pop-over is open, for the pop-over's own reveal.
+    @Published private(set) var popoverOpen = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
     /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
@@ -22,13 +27,19 @@ import Module_Screenshots_Engine
     /// ⋯'s layout frame (its press zone) in the palette's own top-left points, which the overlay anchors the menu to;
     /// written by the palette's layout, not a state anything draws.
     var moreFrame = CGRect.zero
+    /// Where each row object's centre is along the palette, in its own points: what a second click on it opens the
+    /// pop-over at. Written by the palette's layout.
+    var cellMidX: [AnnotationTool: CGFloat] = [:]
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
-    func show(tool: AnnotationTool?, style: AnnotationStyle, selectedTool: AnnotationTool? = nil,
-              canUndo: Bool, canRedo: Bool) {
+    /// `picked` is the next object's style, which is `style` unless an object is selected.
+    func show(tool: AnnotationTool?, style: AnnotationStyle, picked: AnnotationStyle? = nil, selectedTool: AnnotationTool? = nil,
+              popoverOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
         if self.tool != tool { self.tool = tool }
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
         if self.style != style { self.style = style }
+        if self.picked != (picked ?? style) { self.picked = picked ?? style }
+        if self.popoverOpen != popoverOpen { self.popoverOpen = popoverOpen }
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
     }
@@ -82,6 +93,12 @@ struct EditorPalette: View {
         (.pencil, nil, .row),
     ]
 
+    /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred
+    /// at `anchorX`. Putting a tool down is the key's second press, as before the pop-over had a way to open.
+    static func action(forClickOn tool: AnnotationTool, chosen: AnnotationTool?, anchorX: CGFloat) -> EditorAction {
+        tool == chosen ? .thicknessAndOpacity(anchorX: anchorX) : .tool(tool)
+    }
+
     /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
     static let selectSymbol = "cursorarrow"
 
@@ -129,10 +146,11 @@ struct EditorPalette: View {
                 ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
                     let chosen = model.tool == object.tool
                     GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width, height: Self.height) {
-                        model.perform(.tool(object.tool))
+                        model.perform(Self.action(forClickOn: object.tool, chosen: model.tool, anchorX: model.cellMidX[object.tool] ?? 0))
                     } icon: {
                         PaletteObject(tool: object.tool, ink: Color(cgColor: model.style.ink(for: object.tool).cgColor), raised: chosen)
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).midX } action: { model.cellMidX[object.tool] = $0 }
                 }
             }
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)

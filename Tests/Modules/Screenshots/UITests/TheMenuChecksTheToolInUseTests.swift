@@ -13,7 +13,8 @@ import Module_Screenshots_Engine
 /// `EditorMenu.make(for:)` is the `NSMenu`, whose delegate fills it from `items` in `menuNeedsUpdate`, so every opening
 /// reads the model again.
 ///
-/// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Select, separator, Save, and
+/// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Select, Thickness and Opacity…
+/// (always there, right after the tools), separator, Save, and
 /// Pin only while offered. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
 /// highlighter) is chosen none is. The tool is asked of every case of `AnnotationTool` and of none, so a tool added
 /// later has to be in the answer.
@@ -61,7 +62,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
     private func expectedOutline(pinOffered: Bool) -> [String] {
         ["tool:\(ScStr.tool(.arrow))",
          "submenu:\(ScStr.shapes)[tool:\(ScStr.tool(.rectangle)),tool:\(ScStr.tool(.ellipse)),tool:\(ScStr.tool(.line)),separator,action:\(ScStr.fill)]",
-         "tool:\(ScStr.select)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : [])
+         "tool:\(ScStr.select)", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : [])
     }
 
     func testTheOrderOfTheItemsAndTheSeparatorsIsTheListOfThisStage() {
@@ -118,6 +119,67 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         XCTAssertEqual(save, .exit(.save))
         XCTAssertTrue(enabled)
         XCTAssertFalse(saveOn)
+    }
+
+    // MARK: - Thickness and Opacity…
+
+    private func popoverItem(_ items: [EditorMenuItem]) -> (index: Int, action: EditorAction, isEnabled: Bool, isOn: Bool)? {
+        for (index, item) in items.enumerated() {
+            if case .action(let title, let action, let isEnabled, let isOn) = item, title == ScStr.thicknessAndOpacity {
+                return (index, action, isEnabled, isOn)
+            }
+        }
+        return nil
+    }
+
+    /// Always present and always in the same place: right after Select, before the separator and Save; the menu does
+    /// not change shape with the choice. Enabled for every tool that has thickness steps (all of `AnnotationTool`),
+    /// disabled for Select, which has none.
+    func testTheItemIsAlwaysRightAfterSelectAndEnabledExactlyWhereThereAreSteps() throws {
+        AppLanguage.override = .en
+        var seen: Set<Bool> = []
+        for tool in Self.everyChoice {
+            let items = EditorMenu.items(for: model(tool: tool))
+            let found = try XCTUnwrap(popoverItem(items), "tool \(String(describing: tool)): no «\(ScStr.thicknessAndOpacity)» in \(outline(items))")
+            let selectAt = try XCTUnwrap(items.firstIndex { if case .tool(let t, _, _, _) = $0 { t == ScStr.select } else { false } })
+            XCTAssertEqual(found.index, selectAt + 1, "tool \(String(describing: tool)): not right after Select")
+            XCTAssertEqual(items[found.index + 1], .separator, "tool \(String(describing: tool)): the separator comes after it")
+            XCTAssertEqual(found.isEnabled, tool != nil, "tool \(String(describing: tool)): enabled where there are steps and only there")
+            XCTAssertFalse(found.isOn)
+            seen.insert(found.isEnabled)
+        }
+        XCTAssertEqual(seen, [true, false], "the control: the answer must come out both ways in this sweep")
+        XCTAssertEqual(ScStr.thicknessAndOpacity, "Thickness and Opacity…")
+    }
+
+    /// The same item in the NSMenu: its `isEnabled` follows the choice, and a click on it sends the action that opens
+    /// the pop-over at ⋯'s cell, which is what the model says ⋯'s cell is; a disabled one sends nothing.
+    func testTheNSMenuItemFollowsTheChoiceAndOpensThePopoverAtTheMoreCell() throws {
+        AppLanguage.override = .en
+        for tool in Self.everyChoice {
+            let m = model(tool: tool)
+            var sent: [EditorAction] = []
+            m.perform = { sent.append($0) }
+            let menu = EditorMenu.make(for: m)
+            menu.delegate?.menuNeedsUpdate?(menu)
+            let item = try XCTUnwrap(flat(menu).first { $0.title == ScStr.thicknessAndOpacity }, "tool \(String(describing: tool))")
+            XCTAssertEqual(item.isEnabled, tool != nil, "tool \(String(describing: tool))")
+            XCTAssertEqual(menu.index(of: item), 3, "Arrow, Shapes, Select, then the item")
+            let parent = try XCTUnwrap(item.menu)
+            parent.performActionForItem(at: parent.index(of: item))
+            XCTAssertEqual(sent, tool == nil ? [] : [.thicknessAndOpacity(anchorX: m.moreFrame.midX)],
+                           "tool \(String(describing: tool)): a click opens the pop-over at ⋯, or does nothing when disabled")
+        }
+    }
+
+    func testTheItemIsTitledInEveryLanguage() throws {
+        var titles: Set<String> = []
+        AppLanguage.each { language in
+            let title = ScStr.thicknessAndOpacity
+            XCTAssertFalse(title.isEmpty, "\(language)")
+            titles.insert(title)
+        }
+        XCTAssertGreaterThan(titles.count, 4, "eight languages say it in more than one way: the strings are not translated")
     }
 
     /// **Every object the palette does not keep in its row has a symbol, is in the menu with it, and is the badge when chosen.**
@@ -200,7 +262,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         delegate.menuNeedsUpdate?(menu)
         XCTAssertEqual(checked(), [ScStr.select], "third opening, nothing chosen")
         // And the titles after rebuilding are still the whole list, not a growing one.
-        XCTAssertEqual(menu.items.count, 5)
+        XCTAssertEqual(menu.items.count, 6)
     }
 
     /// A click on an item is the action the builder names, through the model's one door.
@@ -242,7 +304,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
                 menu.delegate?.menuNeedsUpdate?(menu)
                 let item = try XCTUnwrap(flat(menu).first { $0.title == ScStr.fill }, context)
                 XCTAssertEqual(item.isEnabled, m.fillApplies, "\(context): the NSMenuItem's isEnabled is not fillApplies")
-                XCTAssertTrue(flat(menu).filter { $0.title != ScStr.fill && !$0.isSeparatorItem && $0.action != nil }.allSatisfy(\.isEnabled),
+                XCTAssertTrue(flat(menu).filter { $0.title != ScStr.fill && $0.title != ScStr.thicknessAndOpacity && !$0.isSeparatorItem && $0.action != nil }.allSatisfy(\.isEnabled),
                               "\(context): another item is disabled")
             }
         }

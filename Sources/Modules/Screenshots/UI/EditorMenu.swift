@@ -15,7 +15,8 @@ enum EditorMenuItem: Equatable {
 /// the thin `NSMenu` over it. The tools come from `EditorPalette.objects`, the list the palette's row is drawn from, so a
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
-/// Order: Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Select, a separator, Save, and Pin only while
+/// Order: Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Select, Thickness and Opacity… (enabled while a
+/// tool is chosen), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
 /// `NSMenuItem` sends nothing even when its action is performed.
@@ -44,6 +45,9 @@ enum EditorMenu {
                               children: shapes.compactMap(tool) + [.separator,
                                   .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))
         items.append(.tool(title: ScStr.select, symbol: EditorPalette.selectSymbol, isOn: model.tool == nil, action: .select))
+        // Every tool has steps and Select has none; the item stays in its place either way. It opens the pop-over at ⋯.
+        items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),
+                             isEnabled: model.tool != nil, isOn: false))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]
         if pinOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
         return items
