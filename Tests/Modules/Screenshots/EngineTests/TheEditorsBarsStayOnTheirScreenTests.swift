@@ -6,6 +6,8 @@ import XCTest
 /// never off the screen.** A pure function of the selection, the screen and the palette's size, so each edge and each
 /// corner of the screen is a case; the sweep at the end asks the same of every selection on a grid, the thin and the
 /// tiny ones included. Where it stands in each of the three places is `ThePaletteStandsBelowAboveOrInsideTests`'s.
+///
+/// The class keeps its name because the stage's acceptance filter in the owner's plan names it; it renames with the plan.
 final class TheEditorsBarsStayOnTheirScreenTests: XCTestCase {
 
     private let screen = CGSize(width: 1000, height: 800)

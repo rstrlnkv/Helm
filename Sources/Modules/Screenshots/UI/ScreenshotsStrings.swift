@@ -121,7 +121,7 @@ enum ScStr {
         L("That folder cannot be used, so Helm saves to the Desktop.")
     }
 
-    // MARK: - The editor's bars
+    // MARK: - The palette, its menu and pop-overs
 
     /// The tools, in the words of macOS's own Preview markup menu; the ellipse is
     /// «Oval» there, and «Highlight» was its marker. «Pen» and «Marker» are the ones the system's PencilKit says:
@@ -189,7 +189,6 @@ enum ScStr {
     /// Preview's «Undo» and «Redo».
     static var undo: String { L("Undo") }
     static var redo: String { L("Redo") }
-    static var copy: String { L("Copy") }
     /// Preview's «Save».
     static var save: String { L("Save") }
     static var closeEditor: String { L("Close") }

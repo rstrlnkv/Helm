@@ -166,18 +166,18 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
                        "the pick did not carry to the next object, or the rectangle's step did")
     }
 
-    func testTheBarsShowTheSelectedObjectsStyleAndGoBackToThePickOnLettingGo() throws {
+    func testThePaletteShowsTheSelectedObjectsStyleAndGoesBackToThePickOnLettingGo() throws {
         let (id, _) = try build()
-        let bars = try XCTUnwrap(overlay?.bars)
+        let palette = try XCTUnwrap(overlay?.palette)
         draw(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
         overlay?.perform(.color(.blue))
         draw(id, .line, from: CGPoint(x: 150, y: 350), to: CGPoint(x: 400, y: 350))
         overlay?.perform(.color(.green)) // the pick is green now; the rectangle has no colour of its own
         drag(id, from: CGPoint(x: 220, y: 150), through: [])
-        XCTAssertEqual(bars.lit, .red, "the selected rectangle was drawn red before any pick, so its bar shows red")
-        XCTAssertTrue(bars.fillApplies, "a selected box has a fill to toggle whatever tool is in hand")
+        XCTAssertEqual(palette.lit, .red, "the selected rectangle was drawn red before any pick, so the palette's lit swatch is red")
+        XCTAssertTrue(palette.fillApplies, "a selected box has a fill to toggle whatever tool is in hand")
         overlay?.keyDown(key(53))
-        XCTAssertEqual(bars.lit, .green)
+        XCTAssertEqual(palette.lit, .green)
     }
 
     // MARK: What a pointer event costs

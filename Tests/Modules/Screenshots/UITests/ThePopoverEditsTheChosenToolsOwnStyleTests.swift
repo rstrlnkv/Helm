@@ -87,13 +87,13 @@ final class ThePopoverEditsTheChosenToolsOwnStyleTests: XCTestCase {
         let (id, _) = try build()
         let overlay = try XCTUnwrap(overlay)
         overlay.perform(.tool(.arrow))
-        for _ in 0..<20 where overlay.bars.moreFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
-        XCTAssertGreaterThan(overlay.bars.moreFrame.width, 20, "control: the palette reported ⋯'s cell")
-        overlay.perform(.thicknessAndOpacity(anchorX: overlay.bars.moreFrame.midX))
+        for _ in 0..<20 where overlay.palette.moreFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        XCTAssertGreaterThan(overlay.palette.moreFrame.width, 20, "control: the palette reported ⋯'s cell")
+        overlay.perform(.thicknessAndOpacity(anchorX: overlay.palette.moreFrame.midX))
         XCTAssertTrue(overlay.popoverIsOpen)
         let chrome = try XCTUnwrap(overlay.chrome(on: id))
         let popover = try XCTUnwrap(chrome.popover)
-        XCTAssertEqual(popover.midX, chrome.palette.minX + overlay.bars.moreFrame.midX, accuracy: 1.5, "centred on ⋯, in display points")
+        XCTAssertEqual(popover.midX, chrome.palette.minX + overlay.palette.moreFrame.midX, accuracy: 1.5, "centred on ⋯, in display points")
     }
 
     // MARK: each tool keeps its own
@@ -105,17 +105,17 @@ final class ThePopoverEditsTheChosenToolsOwnStyleTests: XCTestCase {
         let overlay = try XCTUnwrap(overlay)
         overlay.perform(.tool(.pen))
         overlay.perform(.opacity(0.5))
-        XCTAssertEqual(overlay.bars.style.opacity, 0.5, accuracy: 0.001, "the pick shows on the palette")
+        XCTAssertEqual(overlay.palette.style.opacity, 0.5, accuracy: 0.001, "the pick shows on the palette")
         overlay.perform(.tool(.highlighter))
-        XCTAssertEqual(overlay.bars.style.opacity, 1, accuracy: 0.001, "Marker has its own: the Pen's 50 % did not follow")
+        XCTAssertEqual(overlay.palette.style.opacity, 1, accuracy: 0.001, "Marker has its own: the Pen's 50 % did not follow")
         overlay.perform(.opacity(0.3))
         overlay.perform(.thickness(.thin))
         overlay.perform(.tool(.pen))
-        XCTAssertEqual(overlay.bars.style.opacity, 0.5, accuracy: 0.001, "the Pen got its own back")
-        XCTAssertEqual(overlay.bars.style.thickness, .medium, "the Pen never had a step picked")
+        XCTAssertEqual(overlay.palette.style.opacity, 0.5, accuracy: 0.001, "the Pen got its own back")
+        XCTAssertEqual(overlay.palette.style.thickness, .medium, "the Pen never had a step picked")
         overlay.perform(.tool(.highlighter))
-        XCTAssertEqual(overlay.bars.style.opacity, 0.3, accuracy: 0.001)
-        XCTAssertEqual(overlay.bars.style.thickness, .thin)
+        XCTAssertEqual(overlay.palette.style.opacity, 0.3, accuracy: 0.001)
+        XCTAssertEqual(overlay.palette.style.thickness, .thin)
         // And in the store, where the next editor reads it from.
         let read = EditorMemory.read(store)
         XCTAssertEqual(read.style(for: .pen).opacity, 0.5, accuracy: 0.001)
@@ -131,11 +131,11 @@ final class ThePopoverEditsTheChosenToolsOwnStyleTests: XCTestCase {
         overlay.perform(.tool(.pencil))
         for (given, expected) in [(0.01, 0.1), (-3.0, 0.1), (7.0, 1.0), (0.1, 0.1), (1.0, 1.0)] {
             overlay.perform(.opacity(given))
-            XCTAssertEqual(overlay.bars.style.opacity, expected, accuracy: 0.001, "given \(given)")
+            XCTAssertEqual(overlay.palette.style.opacity, expected, accuracy: 0.001, "given \(given)")
         }
         overlay.perform(.opacity(0.4))
         overlay.perform(.opacity(.nan))
-        XCTAssertTrue((0.1...1).contains(overlay.bars.style.opacity), "no number is not a stroke nobody can see: \(overlay.bars.style.opacity)")
+        XCTAssertTrue((0.1...1).contains(overlay.palette.style.opacity), "no number is not a stroke nobody can see: \(overlay.palette.style.opacity)")
     }
 
     // MARK: the numbers

@@ -47,25 +47,25 @@ final class TheClosedOverlayStaysClosedUnderTheMenuTests: XCTestCase {
         let live = memory()
         let liveOverlay = try build(store: live)
         defer { liveOverlay.close() }
-        try choose(ScStr.tool(.rectangle), in: EditorMenu.make(for: liveOverlay.bars))
+        try choose(ScStr.tool(.rectangle), in: EditorMenu.make(for: liveOverlay.palette))
         XCTAssertEqual(EditorMemory.read(live).tool, .rectangle, "the control: a pick on a live overlay is remembered")
 
         for title in [ScStr.tool(.rectangle), ScStr.select, ScStr.fill] {
             let store = memory()
             let overlay = try build(store: store)
-            let menu = EditorMenu.make(for: overlay.bars)
+            let menu = EditorMenu.make(for: overlay.palette)
             overlay.close()
             try choose(title, in: menu)
             XCTAssertNil(EditorMemory.read(store).tool, "«\(title)» chosen after the close wrote the tool to memory")
             XCTAssertEqual(EditorMemory.read(store).style(for: .rectangle), .standard, "«\(title)» chosen after the close wrote the style to memory")
             XCTAssertTrue(results.isEmpty)
         }
-        // Thickness and fill sent through the bars go through the same door.
+        // Thickness and fill sent through the palette go through the same door.
         let store = memory()
         let overlay = try build(store: store)
         overlay.close()
-        overlay.bars.perform(.thickness(.thick))
-        overlay.bars.perform(.toggleFill)
+        overlay.palette.perform(.thickness(.thick))
+        overlay.palette.perform(.toggleFill)
         XCTAssertEqual(EditorMemory.read(store).style(for: .rectangle), .standard, "a pick after the close was remembered")
     }
 
@@ -105,7 +105,7 @@ final class TheClosedOverlayStaysClosedUnderTheMenuTests: XCTestCase {
         }
         RunLoop.main.add(closer, forMode: .common)
         RunLoop.main.add(rescue, forMode: .common)
-        overlay.bars.openMenu()
+        overlay.palette.openMenu()
         closer.invalidate(); rescue.invalidate()
         XCTAssertTrue(closed, "the menu never ran its loop: the timer did not fire inside popUp")
         XCTAssertFalse(rescued, "the menu was still tracking after the overlay closed: it ended only by the rescue")

@@ -81,9 +81,9 @@ enum OverlayResult {
     var thicknessIsOpen: Bool { popover?.kind == .thickness }
     var coloursAreOpen: Bool { popover?.kind == .colours }
     /// What the palette shows; its cells come back through `perform`.
-    let bars = EditorBarModel()
-    /// The ⋯ menu: one object, filled again from `bars` at every opening.
-    private lazy var moreMenu = EditorMenu.make(for: bars)
+    let palette = EditorBarModel()
+    /// The ⋯ menu: one object, filled again from `palette` at every opening.
+    private lazy var moreMenu = EditorMenu.make(for: palette)
     /// The menu while `popUp` has not returned, so that `close` can end its tracking without making a menu never opened.
     private var openedMenu: NSMenu?
 
@@ -119,8 +119,8 @@ enum OverlayResult {
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
         self.onFinish = onFinish
-        bars.perform = { [weak self] in self?.perform($0) }
-        bars.openMenu = { [weak self] in self?.openMoreMenu() }
+        palette.perform = { [weak self] in self?.perform($0) }
+        palette.openMenu = { [weak self] in self?.openMoreMenu() }
     }
 
     // MARK: - Lifecycle
@@ -531,10 +531,10 @@ enum OverlayResult {
     /// What ⋯ asks for: the menu, under the ⋯ circle on the display whose palette is up. `popUp` returns only when the
     /// menu has closed, which the palette's pressed look counts on.
     private func openMoreMenu() {
-        guard let view = panels.values.first(where: { $0.view.barsAreShown })?.view else { return }
+        guard let view = panels.values.first(where: { $0.view.paletteIsShown })?.view else { return }
         openedMenu = moreMenu
         defer { openedMenu = nil }
-        view.popUp(moreMenu, below: EditorPalette.moreCircleBottomLeft(bars.moreFrame))
+        view.popUp(moreMenu, below: EditorPalette.moreCircleBottomLeft(palette.moreFrame))
     }
 
     func keyUp(_ event: NSEvent) {
@@ -582,7 +582,7 @@ enum OverlayResult {
     private func render() {
         if let edit {
             let held = edit.layers.selected
-            bars.show(tool: edit.tool, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
+            palette.show(tool: edit.tool, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
                       popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
         }
         for (id, entry) in panels {
@@ -651,10 +651,10 @@ struct OverlayScene {
 /// The capture overlay's panel: borderless, non-activating, at the screen-saver level.
 ///
 /// What was measured of a menu and tooltips over it (2026-10-02/03, Helm inactive, real keyboard): an `NSMenu`
-/// popped up from the editor's bar works: an item click and a submenu item click both land, and the
+/// popped up from the editor's bar (the two bars, before 43704363, which replaced them with the palette) works: an item click and a submenu item click both land, and the
 /// checkmark is drawn. With the menu closed, `EditorKeys` selects tools by key code, in the US and the Russian layout alike (the two measured);
 /// with it open, a `keyEquivalent` "a" fired in the US layout and not in the Russian one. Tooltips (`.help`) were not
-/// shown on the bar cells, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
+/// shown on the cells of those two bars, and the overlay forces the crosshair on every move (its cursor sets climbed by hundreds per
 /// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
 /// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The palette is hosted by `EditorBarHostingView`.
 final class OverlayPanel: NSPanel {
@@ -708,10 +708,10 @@ final class OverlayView: NSView {
     private let sizeLabel = LabelLayer()
     /// The editor's palette, made when this display first has an area to edit and never
     /// on another: a display with nothing selected builds no SwiftUI at all.
-    private lazy var paletteHost = EditorBarHostingView(rootView: EditorPalette(model: overlay!.bars))
-    private var barsMade = false
+    private lazy var paletteHost = EditorBarHostingView(rootView: EditorPalette(model: overlay!.palette))
+    private var paletteMade = false
     private lazy var measuredPalette: CGSize = {
-        barsMade = true
+        paletteMade = true
         addSubview(paletteHost)
         paletteHost.isHidden = true
         return paletteHost.fittingSize
@@ -725,26 +725,26 @@ final class OverlayView: NSView {
     /// that the reveal has a number to grow to before any layout has run.
     private lazy var popoverHost: EditorBarHostingView<EditorPopover> = {
         popoverMade = true
-        let host = EditorBarHostingView(rootView: EditorPopover(model: overlay!.bars, height: popoverSize.height))
+        let host = EditorBarHostingView(rootView: EditorPopover(model: overlay!.palette, height: popoverSize.height))
         host.isHidden = true
         addSubview(host)
         return host
     }()
     private var popoverMade = false
     /// The thickness and opacity pop-over's card laid out whole, measured once like the palette.
-    private lazy var measuredPopover = NSHostingView(rootView: EditorPopover(model: overlay!.bars, height: nil)).fittingSize
+    private lazy var measuredPopover = NSHostingView(rootView: EditorPopover(model: overlay!.palette, height: nil)).fittingSize
     var popoverSize: CGSize { measuredPopover }
 
     /// The colours pop-over's host and size, made and measured the same way, at the first need.
     private lazy var coloursHost: EditorBarHostingView<EditorColoursPopover> = {
         coloursMade = true
-        let host = EditorBarHostingView(rootView: EditorColoursPopover(model: overlay!.bars, height: coloursSize.height))
+        let host = EditorBarHostingView(rootView: EditorColoursPopover(model: overlay!.palette, height: coloursSize.height))
         host.isHidden = true
         addSubview(host)
         return host
     }()
     private var coloursMade = false
-    private lazy var measuredColours = NSHostingView(rootView: EditorColoursPopover(model: overlay!.bars)).fittingSize
+    private lazy var measuredColours = NSHostingView(rootView: EditorColoursPopover(model: overlay!.palette)).fittingSize
     var coloursSize: CGSize { measuredColours }
 
     /// Pops `menu` up under the ⋯ circle, its left edge at the circle's, so that the circle and its badge stay in
@@ -759,13 +759,13 @@ final class OverlayView: NSView {
         menu.popUp(positioning: nil, at: at, in: self)
     }
 
-    /// Whether the palette is on screen, for a test.
-    var barsAreShown: Bool { barsMade && !paletteHost.isHidden }
+    /// Whether the palette is on screen; `openMoreMenu` asks it, and so do the tests.
+    var paletteIsShown: Bool { paletteMade && !paletteHost.isHidden }
     /// The view a click at a display-local point would reach, for a test that asks whether it is the palette.
     func clickTarget(at local: CGPoint) -> NSView? { hitTest(CGPoint(x: local.x, y: bounds.height - local.y)) }
     /// Whether a view is the palette or inside it.
-    func isBar(_ view: NSView?) -> Bool {
-        guard barsMade, let view else { return false }
+    func isPalette(_ view: NSView?) -> Bool {
+        guard paletteMade, let view else { return false }
         return view.isDescendant(of: paletteHost)
     }
 
@@ -932,7 +932,7 @@ final class OverlayView: NSView {
                 if popoverMade { popoverHost.isHidden = true }
                 if coloursMade { coloursHost.isHidden = true }
             }
-        } else if barsMade {
+        } else if paletteMade {
             paletteHost.isHidden = true
             if popoverMade { popoverHost.isHidden = true }
             if coloursMade { coloursHost.isHidden = true }

@@ -31,8 +31,8 @@ final class TheMoreMenuOpensUnderTheCircleTests: XCTestCase {
         panel.orderFrontRegardless()
         panel.contentView?.layoutSubtreeIfNeeded()
         let host = try XCTUnwrap(view.subviews.first { String(describing: type(of: $0)).contains("EditorBarHostingView") })
-        for _ in 0..<20 where overlay.bars.moreFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
-        let zone = overlay.bars.moreFrame
+        for _ in 0..<20 where overlay.palette.moreFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        let zone = overlay.palette.moreFrame
         XCTAssertGreaterThan(zone.width, 20, "control: the palette reported the ⋯ zone (\(zone))")
 
         // Expected, from the host's screen rectangle alone (no flip arithmetic shared with the code under test).
@@ -58,7 +58,7 @@ final class TheMoreMenuOpensUnderTheCircleTests: XCTestCase {
         }
         RunLoop.main.add(probe, forMode: .common)
         RunLoop.main.add(rescue, forMode: .common)
-        overlay.bars.openMenu()
+        overlay.palette.openMenu()
         probe.invalidate(); rescue.invalidate()
 
         let menuWindow = try XCTUnwrap(found.max { $0.1.height < $1.1.height }, "control: no menu window found during tracking")

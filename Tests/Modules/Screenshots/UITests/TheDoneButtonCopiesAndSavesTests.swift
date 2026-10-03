@@ -82,7 +82,7 @@ final class TheDoneButtonCopiesAndSavesTests: XCTestCase {
 
     func testTheCheckmarksActionAndReturnComeToTheSameResultThroughTheOverlay() throws {
         // The palette's own door: the closure the overlay hands the model.
-        try build().bars.perform(.exit(.confirm))
+        try build().palette.perform(.exit(.confirm))
         let byCheckmark = try XCTUnwrap(results.last, "the checkmark's action ended nothing")
         results = []
         overlay?.close()

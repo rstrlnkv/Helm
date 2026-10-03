@@ -146,7 +146,7 @@ shortcut never comes through it. Esc and a right click are one door: with no lay
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
-A third exit, Pin, keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
+A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
 size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
 pixel cut; nothing is written, copied, played or toasted, and `CaptureController` is free again as after any

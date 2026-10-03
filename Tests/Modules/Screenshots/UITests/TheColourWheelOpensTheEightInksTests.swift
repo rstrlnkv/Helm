@@ -58,8 +58,8 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
 
     /// Presses the wheel's cell, once the palette's layout has reported it; its centre along the palette.
     private func openColours(_ overlay: CaptureOverlay) throws -> CGFloat {
-        for _ in 0..<20 where overlay.bars.wheelFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
-        let wheel = overlay.bars.wheelFrame
+        for _ in 0..<20 where overlay.palette.wheelFrame == .zero { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        let wheel = overlay.palette.wheelFrame
         XCTAssertGreaterThan(wheel.width, 20, "control: the palette reported the wheel's cell (\(wheel))")
         overlay.perform(.colours(anchorX: wheel.midX))
         return wheel.midX
@@ -296,10 +296,10 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         _ = try openColours(overlay)
         overlay.perform(.color(.orange))
         XCTAssertFalse(overlay.coloursAreOpen, "a pick left the pop-over open")
-        XCTAssertEqual(overlay.bars.style.color, .orange)
+        XCTAssertEqual(overlay.palette.style.color, .orange)
         XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .orange, "the pick is in the store, `editorColor`, for the next editor")
         overlay.perform(.tool(.highlighter))
-        XCTAssertEqual(overlay.bars.style.color, .orange, "the colour is every tool's, not the Pen's")
+        XCTAssertEqual(overlay.palette.style.color, .orange, "the colour is every tool's, not the Pen's")
         _ = try openColours(overlay)
         overlay.perform(.color(.blue))
         XCTAssertFalse(overlay.coloursAreOpen)

@@ -6,6 +6,8 @@ import Module_Screenshots_Engine
 /// What the palette shows, and the one door it acts through. The overlay owns the
 /// state and writes it here after every change; a click goes back out as the same
 /// `EditorAction` the keys make.
+///
+/// The name stays from the plan, which calls the model `EditorBarModel`; the overlay's property for it is `palette`.
 @MainActor final class EditorBarModel: ObservableObject {
     @Published private(set) var tool: AnnotationTool?
     /// The tool of the selected object, nil with none: the style shown is then its, and what
@@ -61,6 +63,8 @@ import Module_Screenshots_Engine
 /// press on the picture under it), **and never the keyboard**: the overlay's view stays
 /// the first responder, so the keys go on meaning what they meant a click ago. The arrow
 /// is its own cursor, for the crosshair is the overlay's.
+///
+/// The name stays because it hosts the palette and both pop-overs, and the OverlayPanel R3 record names it.
 final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
     override var acceptsFirstResponder: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

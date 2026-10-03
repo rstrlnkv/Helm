@@ -14,7 +14,7 @@ import Module_Screenshots_Engine
 /// of the shadow. The opacity is 6 % in light, as the source says; in dark it is 8 %, where the dark source files say
 /// 16 %: the 8 % was set from the designer's photograph against `palette-dark@3x.png`.
 ///
-/// The chosen object stands 10 pt higher; the palette cuts what hangs below it. The lift is
+/// The chosen object stands `lift` higher; the palette cuts what hangs below it. The lift is
 /// `HelmMotion.interface` unless `HelmMotion.travels` says the person asked for stillness, and then it is a cut. The
 /// cell is the palette's height and the object hangs from it by the offset its artwork needs, read off the mockup
 /// (`palette-frames/ctx-light.png`) by eye, a pt or two either way.
