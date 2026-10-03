@@ -40,7 +40,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
                                                                   frame: CGRect(x: 0, y: 0, width: 10, height: 5),
                                                                   scale: 2, image: image))], windows: []))
         }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
     private final class Disk: ShotWriting, @unchecked Sendable {

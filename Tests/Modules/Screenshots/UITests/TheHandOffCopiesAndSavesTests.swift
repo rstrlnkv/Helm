@@ -53,7 +53,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         func access() -> CaptureAccess { .denied }
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .failed }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .failed }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .failed }
     }
 
     private func picture() throws -> CGImage {

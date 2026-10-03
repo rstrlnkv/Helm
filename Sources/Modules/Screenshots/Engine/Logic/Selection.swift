@@ -13,6 +13,9 @@ public struct SelectionDrag: Sendable {
     /// at what value, so releasing shift hands the pointer back its freedom.
     private var locked: (axis: Axis, value: CGFloat)?
     private var lastPoint: CGPoint
+    /// The pointer has been off the press point at some time in this drag, and stays so: back on it, the selection is
+    /// empty but the drag is not a press any more.
+    public private(set) var hasMoved = false
 
     public enum Axis: Sendable { case horizontal, vertical }
 
@@ -45,6 +48,7 @@ public struct SelectionDrag: Sendable {
             dy = min(max(dy, bounds.minY - rect.minY), bounds.maxY - rect.maxY)
             anchor = CGPoint(x: anchor.x + dx, y: anchor.y + dy)
             pointer = CGPoint(x: pointer.x + dx, y: pointer.y + dy)
+            if pointer != anchor { hasMoved = true }
             return
         }
         var target = point
@@ -66,6 +70,7 @@ public struct SelectionDrag: Sendable {
         }
         pointer = target
         centred = option
+        if pointer != anchor { hasMoved = true }
     }
 
     private var centred = false

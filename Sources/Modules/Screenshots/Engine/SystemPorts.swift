@@ -144,7 +144,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         return CFUUIDCreateString(nil, reference) as String?
     }
 
-    public func window(_ id: UInt32, cursor: Bool) async -> WindowShot {
+    public func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -159,9 +159,10 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
         // scaled to fit; one sized to `contentRect` keeps the shadow inside that
         // size by shrinking the window to 1870×1407 px; this one answers
         // 2078×1586 with the window at exactly 1986×1494, the shadow around it
-        // untouched — the picture macOS's own tool makes of the same window.
+        // untouched — the picture macOS's own tool makes of the same window. That is with the shadow; the size
+        // with `ignoreShadows` has not been measured.
         let configuration = SCScreenshotConfiguration()
-        configuration.ignoreShadows = false
+        configuration.ignoreShadows = !shadow
         configuration.showsCursor = cursor
         do {
             let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter,

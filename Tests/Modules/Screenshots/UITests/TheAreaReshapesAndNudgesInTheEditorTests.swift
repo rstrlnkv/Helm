@@ -207,14 +207,23 @@ final class TheAreaReshapesAndNudgesInTheEditorTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(overlay?.chrome(on: display)).palette.midX, moved.midX, accuracy: 0.001, "the palette is not centred on the new area")
     }
 
-    func testTheSizePlateShowsPixelsWhileReshapingOnA2xDisplayAndNoCrosshairOrPlateAfter() throws {
+    /// The size plate stands over the area's top-left corner, 14 points right and 12 above, in pixels, for as long as the
+    /// area is edited; the loupe is there only while a handle is held. (It was a plate by the pointer, during the reshape only.)
+    func testTheSizePlateStandsOverTheCornerInPixelsAllTheWhileAndTheLoupeIsOnlyWhileAHandleIsHeld() throws {
         let view = try build(scale: 2)
-        XCTAssertTrue(view.visiblePlates.isEmpty)
+        XCTAssertTrue(view.visiblePlates.isEmpty, "no plate by the pointer while nothing is held")
+        XCTAssertEqual(view.areaSizePlate?.string, "800 × 600", "the size is in pixels of the display, 2 to the point")
+        XCTAssertNil(view.loupeReading, "the subject: no handle is held")
         try pull(view, .bottomRight, by: CGPoint(x: 10, y: 5), release: false)
-        XCTAssertEqual(view.visiblePlates.count, 1)
-        XCTAssertEqual(view.visiblePlates.first?.string, "820 × 610", "the size is in pixels of the display, 2 to the point")
+        XCTAssertTrue(view.visiblePlates.isEmpty, "the size was still drawn by the pointer")
+        let plate = try XCTUnwrap(view.areaSizePlate)
+        XCTAssertEqual(plate.string, "820 × 610")
+        XCTAssertEqual(plate.frame.minX, 100 + 14, accuracy: 0.001, "14 points right of the corner")
+        XCTAssertEqual(plate.frame.minY, view.bounds.height - 100 + 12, accuracy: 0.001, "12 points above the corner (the layer's y runs up)")
+        XCTAssertNotNil(view.loupeReading, "a handle is held and there is no loupe")
         overlay?.mouseUp(on: display)
-        XCTAssertTrue(view.visiblePlates.isEmpty, "a plate stayed after the release")
+        XCTAssertEqual(view.areaSizePlate?.string, "820 × 610", "the plate went with the release")
+        XCTAssertNil(view.loupeReading, "the loupe stayed after the release")
     }
 
     func testEscMidReshapeBringsTheAreaBackAndClosesNothing() throws {

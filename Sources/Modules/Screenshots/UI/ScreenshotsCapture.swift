@@ -55,6 +55,10 @@ struct CapturedShot {
     /// Not private: a test reads what the bar says through it, and puts no window on a screen.
     let bar: CapturePanel
     private var overlay: CaptureOverlay?
+    /// The overlay that has delivered its result and is in its flash: the panels are up and deaf for up to a
+    /// flash's length, and the module's end closes them at once (`cancel`). Kept after the flash until the next
+    /// result or `cancel`; by then the overlay has closed itself and holds no panels.
+    private var flashing: CaptureOverlay?
     /// One flag for the bar, its countdown and the overlay: they are one
     /// capture in three stages, and a second press at any of them is dropped.
     private var busy = false
@@ -160,6 +164,8 @@ struct CapturedShot {
         bar.close()
         overlay?.close()
         overlay = nil
+        flashing?.close()
+        flashing = nil
         toast.dismiss()
         busy = false
     }
@@ -211,7 +217,10 @@ struct CapturedShot {
     }
 
     private func overlayFinished(_ result: OverlayResult, freeze: Freeze) {
-        overlay?.close()
+        // The panels stay for the flash of a shot that is taken (and close at once for the rest); the delivery
+        // below does not wait for them, since its picture is the freeze's or the window's own.
+        overlay?.close(after: result)
+        flashing = overlay?.leaving == true ? overlay : nil
         overlay = nil
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
@@ -241,8 +250,8 @@ struct CapturedShot {
                                             local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
                     await handOff(CapturedShot(image: image, kind: .display))
                 }
-            case .window(let id):
-                let picked = await session.window(id, in: freeze)
+            case .window(let id, let shadow):
+                let picked = await session.window(id, in: freeze, shadow: shadow)
                 guard !Task.isCancelled else { return }
                 switch picked {
                 case .image(let image): await handOff(CapturedShot(image: image, kind: .window))

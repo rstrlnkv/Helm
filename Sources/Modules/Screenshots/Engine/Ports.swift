@@ -23,7 +23,7 @@ public enum FreezeOutcome: @unchecked Sendable {
 
 /// What asking for one window came back with.
 public enum WindowShot: @unchecked Sendable {
-    /// The window's own pixels — its shadow, a transparent background, and
+    /// The window's own pixels — its shadow unless the caller asked for none, a transparent background, and
     /// whatever covers it left out. **A protected window comes back black, and
     /// that is this case:** macOS hands the same black to every program, and the
     /// engine saves what it is given.
@@ -52,9 +52,11 @@ public protocol ScreenCapturing: Sendable {
     /// the display the pointer is on also comes back a second time with the
     /// pointer drawn in (`FrozenDisplay.withCursor`); without it that costs nothing.
     func freeze(cursor: Bool) async -> FreezeOutcome
-    /// One window with its shadow, over a transparent ground, so larger than
-    /// the window's frame.
-    func window(_ id: UInt32, cursor: Bool) async -> WindowShot
+    /// One window over a transparent ground. With `shadow` — the default of the
+    /// pick — its shadow is in the picture, so it is larger than the window's
+    /// frame; without it (an option-click) the system is asked to leave the
+    /// shadow out.
+    func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot
 }
 
 /// Why a picture was not written.

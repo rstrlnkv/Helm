@@ -101,7 +101,7 @@ final class ScreenshotsLiveCaptureBenchmark: XCTestCase {
         let candidates = freeze.windows.filter { $0.layer == 0 && $0.frame.width > 100 && $0.frame.height > 100 }
         let window = try XCTUnwrap(candidates.first, "no ordinary window on screen to ask for")
         let start = DispatchTime.now()
-        let shot = await capture.window(window.id, cursor: false)
+        let shot = await capture.window(window.id, cursor: false, shadow: true)
         let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
         guard case .image(let image) = shot else { return XCTFail("the window came back \(shot)") }
         let scale = freeze.frames.first?.scale ?? 2

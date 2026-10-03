@@ -140,7 +140,12 @@ public final class CaptureSession: @unchecked Sendable {
     /// it has gone, what was on screen at the freeze is cut from the freeze,
     /// which is what the person was looking at when they clicked. A protected
     /// window is saved as it came.
-    public func window(_ id: UInt32, in freeze: Freeze) async -> WindowResult {
+    ///
+    /// `shadow` is the click's: with it, the macOS default, the picture is the window and its
+    /// shadow; an option-click asks for the window alone. The cuts from the freeze have no shadow
+    /// of their own to leave out, so the flag does not reach them. The default is for callers that do not ask about
+    /// the shadow (the tests); the controller always passes the click's.
+    public func window(_ id: UInt32, in freeze: Freeze, shadow: Bool = true) async -> WindowResult {
         // The menu bar and the Dock are cut from the freeze at their own rects: the
         // Dock's window is a display-sized sheet and the system's picture of it
         // is not the strip. A Dock placed by its own Accessibility bounds is the
@@ -149,7 +154,7 @@ public final class CaptureSession: @unchecked Sendable {
            !surface.drawnAlone {
             return cutFromFreeze(id, in: freeze)
         }
-        switch await capture.window(id, cursor: settings().showCursor) {
+        switch await capture.window(id, cursor: settings().showCursor, shadow: shadow) {
         case .image(let image):
             return .image(image)
         case .gone:

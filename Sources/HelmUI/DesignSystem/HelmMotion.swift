@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import QuartzCore
 import HelmRuntime
 
 /// One vocabulary of motion for the whole app.
@@ -52,6 +53,14 @@ public enum HelmMotion {
     /// using this is responsible for its own `reduceMotion` branch, because a
     /// bare number cannot collapse the way a token does.
     public static var interfaceDuration: TimeInterval { 0.22 }
+
+    /// `interface` for a `CALayer`: Core Animation takes a timing function and has nowhere to put a
+    /// spring, so the curve is the nearest one without an overshoot — it leaves fast and settles slowly,
+    /// as a snappy spring does — and its length is `interfaceDuration`, which is the part the two share.
+    /// A caller using this is responsible for its own `reduceMotion` branch, as with the duration.
+    public static var interfaceCurve: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+    }
 
     /// The header strip lighting under the pointer, and going out again.
     ///
@@ -209,6 +218,12 @@ public enum HelmMotion {
     /// Reduce Motion the object is still raised — that is how the palette shows
     /// the choice — and only the travel is cut.
     public static func travels(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
+
+    /// Whether the screenshot overlay may flash the shot it has taken. The same shape as `travels`, and
+    /// for the same reason; under Reduce Motion there is no flash at all and the overlay closes at once.
+    public static func flashes(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
 }

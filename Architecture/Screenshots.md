@@ -32,6 +32,19 @@ own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.s
 and nowhere else. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
+Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
+has moved over, through the edit — and a window pick is never dimmed: the window, the menu bar or the Dock under the
+pointer is filled with the accent at 28 %, in the outline `WindowShape` gives it. That outline is the window's
+rectangle, because the system gives no radius for a window's corners; a rounded one would change that function
+and nothing else. The lines across the screen are drawn only while ⌥ is held, read from `flagsChanged`. A window is
+taken with its shadow, and an option-click takes it without: the flag goes through `OverlayResult.window` and
+`CaptureSession.window` to the port, which tells the system to leave the shadow out. While an area is edited its
+size stands over its top-left corner, and while one of its handles is held `LoupeLayer` shows the nine by nine
+pixels under the pointer that `PixelLoupe` reads from the frozen frame, in sRGB. An area or a window that is taken
+ends in a flash (`FlashLayer`) over the selection's or the window's shape, and the overlay closes after it, on a timer
+of the flash's length; the picture was cut from the freeze (a window's own comes from the system, of that window
+alone), so the flash is in neither. Under Reduce Motion there is no flash and the overlay closes at once.
+
 The panel (`Sources/Modules/Screenshots/UI/CapturePanel.swift`) is the bar the third
 shortcut opens: Whole screen, Window and Area, an Options menu that reads and writes the
 same settings the page does, and Capture. It is a non-activating key panel in every
