@@ -80,6 +80,11 @@ enum OverlayResult {
     var popoverIsOpen: Bool { popover != nil }
     var thicknessIsOpen: Bool { popover?.kind == .thickness }
     var coloursAreOpen: Bool { popover?.kind == .colours }
+    /// The text being typed: the display whose field it is in and where the line starts, in that display's top-left
+    /// points. The field itself is the view's (`OverlayView.textField`); this is the overlay's one record that an input
+    /// is open; the ways out of it go through `endTyping`, and `close` drops the record itself. Nil when none is.
+    private var typing: (display: DisplayID, at: CGPoint)?
+    var isTyping: Bool { typing != nil }
     /// What the palette shows; its cells come back through `perform`.
     let palette = EditorBarModel()
     /// The ⋯ menu: one object, filled again from `palette` at every opening.
@@ -148,6 +153,11 @@ enum OverlayResult {
             guard let screen = screens[frame.id] else { close(); return false }
             let view = OverlayView(frozen: frame, overlay: self)
             let panel = OverlayPanel(screen: screen, view: view)
+            // Another display's panel made key (the pointer went there) ends an input that was open in this one.
+            let id = frame.id
+            panel.onResignKey = { [weak self] in
+                MainActor.assumeIsolated { if self?.typing?.display == id { self?.endTyping() } }
+            }
             panels[frame.id] = (panel, view)
         }
         // The other direction of the same rule: a screen the freeze has no frame
@@ -189,6 +199,7 @@ enum OverlayResult {
         onFinish = nil
         edit = nil
         popover = nil
+        typing = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
         for entry in panels.values {
@@ -231,6 +242,8 @@ enum OverlayResult {
             if var current = edit, drag == nil { current.layers.disarm(); current.layers.releaseIfOutside(); edit = current; render() }
             return
         }
+        // A press anywhere else ends an open input first, as a click out of a text box does, and then means what it means.
+        endTyping()
         // An open pop-over is closed by a press outside the chrome, and that press is no other: it draws nothing and
         // moves nothing, so the person who opened the pop-over by mistake is not left with a stroke.
         if popover != nil {
@@ -251,6 +264,16 @@ enum OverlayResult {
                let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected) {
                 current.layers.end()
                 reshaping = (display, handle, current.rect, local)
+                edit = current
+                render()
+                return
+            }
+            // The text tool on bare picture inside the area starts a field there; on a layer or a handle the press is the
+            // editor's own, and selects.
+            if display == current.display, current.tool == .text, current.rect.contains(local), !current.layers.takes(at: local),
+               panels[display]?.view.beginText(at: local, style: style, within: current.rect) == true {
+                current.layers.deselect()
+                typing = (display, local)
                 edit = current
                 render()
                 return
@@ -312,6 +335,9 @@ enum OverlayResult {
     /// it comes; a selected object is let go of first, and that press asks nothing. A drag in progress is not an edit and leaves at once.
     private func escapeAsked() {
         pinRefused = false
+        // An open input takes this press and nothing else: it places a non-empty text and drops an empty one, and the
+        // rule below starts with the next press.
+        if typing != nil { endTyping(); return }
         // An open pop-over takes this press and nothing else: Esc's own rule below starts with the next one.
         if popover != nil { popover = nil; render(); return }
         // A reshape under the pointer is cancelled, the area back as the press took it: Esc is the
@@ -395,6 +421,8 @@ enum OverlayResult {
     func keyDown(_ event: NSEvent) {
         // A held Esc repeats, and a repeat is not the second press the question waits for.
         if event.keyCode == 53 { if !event.isARepeat { escapeAsked() }; return }
+        // The field has the keys while a text is typed: a key it did not take (it hands on what it has no use for) is not the editor's.
+        if typing != nil { return }
         if edit != nil, drag == nil { editorKey(event); return }
         switch event.keyCode {
         case 36, 76: // return, enter
@@ -437,6 +465,12 @@ enum OverlayResult {
     /// one meaning however it was asked for. Nil is an input with no action, which only
     /// withdraws Esc's question and ends a run of arrows (`AnnotationEditing.disarm`).
     func perform(_ action: EditorAction?, isRepeat: Bool = false) {
+        // An open input ends first, its text placed, so that the action meets the picture as it is; a colour, a step or
+        // an opacity is the field's own pick and restyles it (below), and the text is placed in that style.
+        switch action {
+        case .color?, .thickness?, .opacity?: break
+        default: endTyping()
+        }
         guard var current = edit, drag == nil, reshaping == nil else { return }
         pinRefused = false
         if case .nudge? = action {
@@ -464,7 +498,11 @@ enum OverlayResult {
         // Close is Esc's own door and carries Esc's question with it: disarming first would ask again for ever.
         if action == .close { escapeAsked(); return }
         current.layers.disarm()
-        defer { edit = current; render() }
+        defer {
+            edit = current
+            if let typing { panels[typing.display]?.view.restyleText(style) }
+            render()
+        }
         switch action {
         case .tool(let tool)?:
             // The same key again puts the tool down, which is how a drag selects again;
@@ -526,6 +564,19 @@ enum OverlayResult {
             finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
         case .nudge?, .close?, nil: break
         }
+    }
+
+    /// The input ends: the field goes, and its text is placed where the line began in the style picked now (`AnnotationEditing.place`:
+    /// one undo step, and none for an empty or blank text). Return, Esc, a press elsewhere, a palette action but a colour, a step or an opacity, an exit and
+    /// the panel losing key all come here; `close` drops the record without placing the text.
+    func endTyping() {
+        guard let held = typing else { return }
+        typing = nil
+        let text = panels[held.display]?.view.endText() ?? ""
+        guard var current = edit else { return }
+        current.layers.place(text: text, at: held.at, style: style)
+        edit = current
+        render()
     }
 
     /// What ⋯ asks for: the menu, under the ⋯ circle on the display whose palette is up. `popUp` returns only when the
@@ -676,6 +727,13 @@ final class OverlayPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// Called when this panel stops being key: the pointer went to another display, whose panel the overlay makes key.
+    var onResignKey: (() -> Void)?
+    override func resignKey() {
+        super.resignKey()
+        onResignKey?()
+    }
 }
 
 // MARK: - The view
@@ -836,6 +894,41 @@ final class OverlayView: NSView {
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    // MARK: The text field
+
+    /// The field of the text being typed, one at a time; nil when no input is open.
+    private(set) var textField: OverlayTextField?
+
+    /// Puts a field at `point` (display-local, top-left) in `style` and makes it the first responder; false when AppKit
+    /// refuses the responder, and then no field is left.
+    func beginText(at point: CGPoint, style: AnnotationStyle, within area: CGRect) -> Bool {
+        textField?.removeFromSuperview()
+        let field = OverlayTextField()
+        field.onEnd = { [weak overlay] in overlay?.endTyping() }
+        field.restyle(style)
+        field.clip = layerRect(area)
+        field.start(at: CGPoint(x: point.x, y: bounds.height - point.y))
+        addSubview(field)
+        guard window?.makeFirstResponder(field) == true else {
+            field.removeFromSuperview()
+            return false
+        }
+        textField = field
+        return true
+    }
+
+    func restyleText(_ style: AnnotationStyle) { textField?.restyle(style) }
+
+    /// The field goes and the keys are the editor's again; what was typed is returned.
+    func endText() -> String {
+        guard let field = textField else { return "" }
+        textField = nil
+        let text = field.string
+        field.removeFromSuperview()
+        window?.makeFirstResponder(self)
+        return text
+    }
 
     // MARK: Space
 
@@ -1051,9 +1144,15 @@ final class OverlayView: NSView {
     /// layer's contents, one image pixel to a screen pixel, the selection's rectangle its mask. A layer of its own
     /// and not a path: the mosaic has no outline to fill.
     private func makeMosaic(_ annotation: Annotation, clippedTo box: CGRect) -> CALayer {
+        makeTiled(Pixelate.tile(of: frozen.shot, rect: annotation.frame, blockPoints: annotation.blockPoints, scale: frozen.scale),
+                  clippedTo: box)
+    }
+
+    /// A picture of whole display pixels as a layer, one image pixel to a screen pixel, the selection's rectangle its mask:
+    /// the mosaic of a blur, and a text's line (`AnnotationText.tile`, the export's own `draw` into a bitmap).
+    private func makeTiled(_ tile: Pixelate.Tile?, clippedTo box: CGRect) -> CALayer {
         let layer = CALayer()
-        guard let tile = Pixelate.tile(of: frozen.shot, rect: annotation.frame, blockPoints: annotation.blockPoints,
-                                       scale: frozen.scale) else { return layer }
+        guard let tile else { return layer }
         let scale = frozen.scale
         layer.frame = CGRect(x: tile.pixels.minX / scale, y: bounds.height - tile.pixels.maxY / scale,
                              width: tile.pixels.width / scale, height: tile.pixels.height / scale)
@@ -1071,6 +1170,7 @@ final class OverlayView: NSView {
     private func makeShape(_ annotation: Annotation, clippedTo box: CGRect, draft: Bool) -> CALayer {
         shapeBuilds += 1
         if annotation.tool == .blur { return makeMosaic(annotation, clippedTo: box) }
+        if annotation.tool == .text { return makeTiled(AnnotationText.tile(of: annotation, scale: frozen.scale), clippedTo: box) }
         let clip = CGPath(rect: box, transform: nil)
         var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
         let shape = CAShapeLayer()

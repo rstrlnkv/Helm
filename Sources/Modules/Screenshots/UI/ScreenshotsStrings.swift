@@ -127,6 +127,8 @@ enum ScStr {
     /// «Oval» there, and «Highlight» was its marker. «Pen» and «Marker» are the ones the system's PencilKit says:
     /// keys `Pen` and `Marker` of `PencilKit.framework`'s `Localizable.loctable` (Pen: Stift, Bolígrafo, Stylo, ペン, Caneta, Перо, 笔;
     /// Marker: Marker, Marcador, Marqueur, マーカー, Marcador, Маркер, 马克笔); no table of Preview, Markup or AnnotationKit has the word.
+    /// «Text» is the word of Preview's toolbar: key `TB_text` of `Preview.app`'s `Localizable.loctable` (Text, Text, Texto, Texte, テキスト,
+    /// Texto, Текст, 文本), the same in `AnnotationKit.framework`'s `AKToolbarViewController.loctable` under `Text`.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
         case .arrow: L("Arrow")
@@ -137,6 +139,7 @@ enum ScStr {
         case .pencil: L("Pencil")
         case .highlighter: L("Highlighter")
         case .blur: L("Blur")
+        case .text: L("Text")
         }
     }
 

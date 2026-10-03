@@ -82,7 +82,7 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     }
 
     func testTheStoredNamesAreTheDeployedSpellings() {
-        XCTAssertEqual(AnnotationTool.allCases.map(\.rawValue), ["arrow", "rectangle", "ellipse", "line", "pen", "pencil", "highlighter", "blur"])
+        XCTAssertEqual(AnnotationTool.allCases.map(\.rawValue), ["arrow", "rectangle", "ellipse", "line", "pen", "pencil", "highlighter", "blur", "text"])
         XCTAssertEqual(AnnotationColor.allCases.map(\.rawValue),
                        ["red", "orange", "yellow", "green", "blue", "purple", "black", "white"])
         XCTAssertEqual(AnnotationThickness.allCases.map(\.rawValue), [0, 1, 2])

@@ -40,6 +40,30 @@ final class TheEscRuleHoldsAtItsEdgesTests: XCTestCase {
         XCTAssertEqual(editing.escape(), .armed, "a press after a withdrawal closed the picture")
         XCTAssertEqual(editing.escape(), .close)
     }
+
+    /// A placed text is a layer like any other: the first Esc after it asks, and the second closes. (The Esc that ends the
+    /// field is the overlay's and never reaches this value: `TheTextFieldTakesTheKeysTheEditorWouldTests`.)
+    func testAPlacedTextMakesTheFirstEscAskLikeAnyLayer() {
+        var editing = AnnotationEditing(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
+        XCTAssertTrue(editing.place(text: "note", at: CGPoint(x: 10, y: 10)))
+        XCTAssertEqual(editing.escape(), .armed, "a text on the picture closed it at once")
+        XCTAssertEqual(editing.escape(), .close)
+    }
+
+    /// An empty text leaves no layer, so the Esc after it finds the picture bare and closes at once.
+    func testAnEmptyTextLeavesTheEscRuleWithNothingToAsk() {
+        var editing = AnnotationEditing(bounds: CGRect(x: 0, y: 0, width: 400, height: 300))
+        XCTAssertFalse(editing.place(text: "  ", at: CGPoint(x: 10, y: 10)))
+        XCTAssertEqual(editing.escape(), .close, "an empty text left something for Esc to ask about")
+    }
+
+    /// Placing a text is an input: it withdraws a question already asked, and the next Esc asks afresh.
+    func testPlacingATextWithdrawsTheQuestion() {
+        var editing = armed()
+        XCTAssertTrue(editing.place(text: "late", at: CGPoint(x: 50, y: 50)))
+        XCTAssertFalse(editing.isArmed, "placing a text left the question up")
+        XCTAssertEqual(editing.escape(), .armed)
+    }
 }
 
 /// The question has no clock in real time either: a pause long enough for any window to lapse.

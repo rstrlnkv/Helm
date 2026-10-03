@@ -54,7 +54,7 @@ enum EditorKeys {
     static let toolKeys: [(tool: AnnotationTool, code: Int, letter: String)] = [
         (.arrow, kVK_ANSI_A, "A"), (.rectangle, kVK_ANSI_R, "R"), (.ellipse, kVK_ANSI_O, "O"), (.line, kVK_ANSI_L, "L"),
         (.pen, kVK_ANSI_N, "N"), (.pencil, kVK_ANSI_P, "P"), (.highlighter, kVK_ANSI_H, "H"),
-        (.blur, kVK_ANSI_B, "B"),
+        (.text, kVK_ANSI_T, "T"), (.blur, kVK_ANSI_B, "B"),
     ]
 
     static func action(keyCode: UInt16, flags: NSEvent.ModifierFlags) -> EditorAction? {

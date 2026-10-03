@@ -29,6 +29,9 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     /// box is held by its four corners like a rectangle and has no ink, so its colour and opacity are not read.
     /// The step is the mosaic's block, in points.
     case blur
+    /// One line of text (`AnnotationText`) whose top-left is where it was placed: no handles, taken by its area. The
+    /// step is the font's size in points, the ink the colour and opacity like any other tool's.
+    case text
 
     /// Drawn through the points of a drag rather than from its two ends.
     public var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
@@ -79,7 +82,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
     case thin = 0, medium, thick
 
     /// The step's width in points under a tool: the stroke's width, and for the arrow the
-    /// shaft at its thickest, of which the head is three, and for the blur the block's side. The one table the screen and the export read.
+    /// shaft at its thickest, of which the head is three, and for the blur the block's side, for the text the font's size. The one table the screen and the export read.
     public func points(for tool: AnnotationTool) -> CGFloat {
         let steps: [CGFloat]
         switch tool {
@@ -89,6 +92,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
         case .arrow: steps = [6, 10, 16]
         case .rectangle, .ellipse, .line: steps = [3, 5, 8]
         case .blur: steps = [10, 16, 24]
+        case .text: steps = [12, 15, 22]
         }
         return steps[rawValue]
     }
@@ -148,33 +152,37 @@ public struct Annotation: Sendable, Equatable {
     /// The freehand path of the pen, the pencil and the highlighter, first point to last; empty for the other tools.
     public let points: [CGPoint]
     public let style: AnnotationStyle
+    /// What the text tool wrote; nil for every other tool. Never in a log line: it is somebody's words.
+    public let text: String?
     /// Nothing outside `AnnotationEditing` gives one; 0 is the id of a value made by hand.
     public let id: ID
 
     public init(tool: AnnotationTool, start: CGPoint, end: CGPoint, points: [CGPoint] = [],
-                style: AnnotationStyle = .standard, id: ID = 0) {
+                style: AnnotationStyle = .standard, text: String? = nil, id: ID = 0) {
         self.tool = tool
         self.start = start
         self.end = end
         self.points = points
         self.style = style
+        self.text = text
         self.id = id
     }
 
     /// Whether the two are drawn the same: the ink as shown (an unset colour is the tool's own; a blur has none),
-    /// the thickness and the fill, which is what a person can see and so what an edit may be a step for.
+    /// the thickness, the fill and the text, which is what a person can see and so what an edit may be a step for.
     func looksLike(_ other: Annotation) -> Bool {
         (tool == .blur || style.ink(for: tool) == other.style.ink(for: other.tool))
-            && style.thickness == other.style.thickness && isFilled == other.isFilled
+            && style.thickness == other.style.thickness && isFilled == other.isFilled && text == other.text
     }
 
     /// The same object in another style.
     func restyled(_ style: AnnotationStyle) -> Annotation {
-        Annotation(tool: tool, start: start, end: end, points: points, style: style, id: id)
+        Annotation(tool: tool, start: start, end: end, points: points, style: style, text: text, id: id)
     }
 
-    /// The box round the geometry's points, not round the stroke's width.
+    /// The box round the geometry's points, not round the stroke's width; a text's is its line's room from where it starts.
     public var frame: CGRect {
+        if tool == .text { return CGRect(origin: start, size: AnnotationText.size(of: self)) }
         let all = [start, end] + points
         let xs = all.map(\.x), ys = all.map(\.y)
         return CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
@@ -188,6 +196,7 @@ public struct Annotation: Sendable, Equatable {
 
     /// Where the handles stand, in the order `AnnotationHandle` names them.
     public var handles: [(handle: AnnotationHandle, point: CGPoint)] {
+        if tool == .text { return [] }
         if isStraight { return [(.start, start), (.end, end)] }
         let box = frame
         return [(.topLeft, CGPoint(x: box.minX, y: box.minY)), (.topRight, CGPoint(x: box.maxX, y: box.minY)),
@@ -215,7 +224,7 @@ public struct Annotation: Sendable, Equatable {
         let dx = allowed(delta.x, low: bounds.minX - box.minX, high: bounds.maxX - box.maxX)
         let dy = allowed(delta.y, low: bounds.minY - box.minY, high: bounds.maxY - box.maxY)
         func move(_ point: CGPoint) -> CGPoint { CGPoint(x: point.x + dx, y: point.y + dy) }
-        return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, id: id)
+        return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, text: text, id: id)
     }
 
     /// The object with `handle` taken to `pointer`; nil when the object has no such handle.
@@ -228,10 +237,10 @@ public struct Annotation: Sendable, Equatable {
             switch handle {
             case .start:
                 return Annotation(tool: tool, start: pointer, end: end, points: points.isEmpty ? [] : [pointer, end],
-                                  style: style, id: id)
+                                  style: style, text: text, id: id)
             case .end:
                 return Annotation(tool: tool, start: start, end: pointer, points: points.isEmpty ? [] : [start, pointer],
-                                  style: style, id: id)
+                                  style: style, text: text, id: id)
             default: return nil
             }
         }
@@ -246,7 +255,7 @@ public struct Annotation: Sendable, Equatable {
         func map(_ point: CGPoint) -> CGPoint {
             CGPoint(x: scale(point.x, fixed.x, moving.x, pointer.x), y: scale(point.y, fixed.y, moving.y, pointer.y))
         }
-        return Annotation(tool: tool, start: map(start), end: map(end), points: points.map(map), style: style, id: id)
+        return Annotation(tool: tool, start: map(start), end: map(end), points: points.map(map), style: style, text: text, id: id)
     }
 
     /// How much of the ink the marker lets through: 60 %. The multiply is what keeps text readable.
@@ -275,7 +284,7 @@ public struct Annotation: Sendable, Equatable {
         return ink.copy(alpha: CGFloat(alpha)) ?? ink
     }
 
-    /// The ink of a stroked annotation; nil for a filled shape and for the blur, which is no ink but a picture (`Pixelate`).
+    /// The ink of a stroked annotation; nil for a filled shape, for the blur, which is no ink but a picture (`Pixelate`), and for a text (`AnnotationText`).
     ///
     /// **Caps and joins.** A shape has butt caps and mitred corners, the line and the
     /// pen and the pencil round both. The marker's caps stay butt, flat like a chisel nib, but its
@@ -285,7 +294,7 @@ public struct Annotation: Sendable, Equatable {
         guard !isFilled else { return nil }
         let width = style.thickness.points(for: tool)
         switch tool {
-        case .arrow, .blur: return nil
+        case .arrow, .blur, .text: return nil
         case .rectangle, .ellipse:
             return AnnotationStroke(width: width, color: inked(style.opacity), multiplies: false, cap: .butt, join: .miter)
         case .line, .pen, .pencil:
@@ -316,7 +325,7 @@ public struct Annotation: Sendable, Equatable {
             let angle = (atan2(dy, dx) / step).rounded() * step
             let length = hypot(dx, dy)
             return CGPoint(x: start.x + cos(angle) * length, y: start.y + sin(angle) * length)
-        case .arrow, .pen, .pencil:
+        case .arrow, .pen, .pencil, .text:
             return end
         }
     }
@@ -331,6 +340,7 @@ public struct Annotation: Sendable, Equatable {
         case .arrow, .line: return hypot(end.x - start.x, end.y - start.y) >= 1
         case .rectangle, .ellipse, .blur: return abs(end.x - start.x) >= 1 && abs(end.y - start.y) >= 1
         case .pen, .pencil, .highlighter: return points.contains { hypot($0.x - start.x, $0.y - start.y) >= 1 }
+        case .text: return text?.contains { !AnnotationText.isInvisible($0) } == true
         }
     }
 
@@ -360,6 +370,7 @@ public struct Annotation: Sendable, Equatable {
             }
             path.addLine(to: last)
             return path
+        case .text: return CGPath(rect: frame, transform: nil)
         case .rectangle, .blur:
             return CGPath(rect: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
                                        width: abs(end.x - start.x), height: abs(end.y - start.y)),

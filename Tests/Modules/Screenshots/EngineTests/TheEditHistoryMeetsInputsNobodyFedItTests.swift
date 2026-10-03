@@ -72,7 +72,8 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
             CGPoint(x: CGFloat.nan, y: 200), CGPoint(x: CGFloat.infinity, y: -CGFloat.infinity), CGPoint(x: -1e300, y: 1e300),
             CGPoint(x: 150, y: 150), CGPoint(x: 150.4, y: 150.4), CGPoint(x: 0, y: 0),
         ]
-        for tool in AnnotationTool.allCases {
+        // The text is no drag and has no handle; its own cases are `TheTextIsALineTheEditorHoldsByItsAreaTests`.
+        for tool in AnnotationTool.allCases where tool != .text {
             let layer = make(tool).layers[0]
             XCTAssertTrue(layer.isUsable, "\(tool): the setup drew nothing")
             for (index, handle) in layer.handles.enumerated() {
@@ -110,7 +111,8 @@ final class TheEditHistoryMeetsInputsNobodyFedItTests: XCTestCase {
 
     func testARecolourThenUndoBringsTheOldInkBackExactly() {
         // The blur has no ink, so its recolour is no step at all (`TheBlurIsABoxTheEditorHoldsByItsAreaTests`).
-        for tool in AnnotationTool.allCases where tool != .blur {
+        // A text is no drag: its recolour is in `TheTextIsALineTheEditorHoldsByItsAreaTests`.
+        for tool in AnnotationTool.allCases where tool != .blur && tool != .text {
             var editing = make(tool)
             select(&editing)
             let before = editing.layers

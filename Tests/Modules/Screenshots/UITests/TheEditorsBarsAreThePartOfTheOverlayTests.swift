@@ -254,7 +254,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     // MARK: the palette and a key
 
     func testEveryToolIsOnThePaletteAndOnAKeyAndTheTwoAgree() throws {
-        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45, .blur: 11]
+        let codes: [AnnotationTool: UInt16] = [.arrow: 0, .rectangle: 15, .ellipse: 31, .line: 37, .pencil: 35, .highlighter: 4, .pen: 45, .blur: 11, .text: 17]
         XCTAssertEqual(Set(codes.keys), Set(AnnotationTool.allCases), "a tool has no key in this test: the palette has a cell for it")
         for tool in AnnotationTool.allCases {
             XCTAssertEqual(EditorKeys.action(keyCode: codes[tool]!, flags: []), .tool(tool), "\(tool): the key means another tool")
@@ -264,7 +264,14 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 select(first)
                 if viaKey { overlay?.keyDown(key(codes[tool]!)) } else { overlay?.palette.perform(.tool(tool)) }
                 XCTAssertEqual(overlay?.palette.tool, tool, "\(tool) viaKey=\(viaKey): the palette does not show the tool")
-                stroke(first)
+                if tool == .text {
+                    // A text is a press and a field and not a drag; it is placed by the exit.
+                    overlay?.mouseDown(on: first, at: CGPoint(x: 150, y: 150), flags: [])
+                    overlay?.mouseUp(on: first)
+                    overlay?.view(for: first)?.textField?.insertText("t", replacementRange: NSRange(location: NSNotFound, length: 0))
+                } else {
+                    stroke(first)
+                }
                 overlay?.perform(.exit(.confirm))
                 drawn += try XCTUnwrap(edited()).layers.map(\.tool)
             }
@@ -494,7 +501,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
                 }
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
-            XCTAssertEqual(menu.count, 11, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Blur, Select, Thickness and Opacity, Save, Pin: \(menu)")
+            XCTAssertEqual(menu.count, 12, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Blur, Select, Thickness and Opacity, Save, Pin: \(menu)")
             let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")

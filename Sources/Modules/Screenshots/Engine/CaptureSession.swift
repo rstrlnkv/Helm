@@ -244,6 +244,11 @@ public final class CaptureSession: @unchecked Sendable {
                     context.translateBy(x: 0, y: CGFloat(cut.height))
                     context.scaleBy(x: scale, y: -scale)
                     context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                    if layer.tool == .text {
+                        AnnotationText.draw(layer, in: context)
+                        context.restoreGState()
+                        continue
+                    }
                     context.addPath(layer.outline)
                     if let stroke = layer.stroke {
                         context.setLineWidth(stroke.width)

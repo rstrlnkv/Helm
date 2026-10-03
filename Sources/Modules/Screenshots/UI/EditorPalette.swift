@@ -95,7 +95,7 @@ struct EditorPalette: View {
     static let objects: [(tool: AnnotationTool, symbol: String?, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
         (.line, "line.diagonal", .shapes), (.pen, nil, .row), (.highlighter, nil, .row),
-        (.pencil, nil, .row), (.blur, "square.grid.3x3", .menu),
+        (.pencil, nil, .row), (.text, "textformat", .menu), (.blur, "square.grid.3x3", .menu),
     ]
 
     /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred

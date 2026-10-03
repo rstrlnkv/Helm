@@ -62,14 +62,14 @@ read by physical key code in `Sources/Modules/Screenshots/UI/EditorKeys.swift`, 
 character a key makes follows the layout. `CaptureSession.annotated` draws the layers over
 the same pixel cut `CaptureSession.crop` makes, at the freeze's own scale for that display,
 so the file and the screen share one geometry. The tools are the arrow, rectangle, ellipse, line, pen, pencil,
-highlighter and blur; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
+highlighter, blur and text; a stroked one is inked by `AnnotationStroke`, which the overlay's shape layer and the
 export's context both read; the pen, the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
 in the file. The pen is solid; the pencil is grainy, and the grain is one mask: `PencilGrain`
 (`Sources/Modules/Screenshots/Engine/Logic/PencilGrain.swift`) hashes each image pixel's offset from the pixel its first
 point lands on, with no chance and no clock, so the export clips the stroke to it in the picture's own pixels and the
-overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur a layer with a mosaic as its contents), built again only when its
+overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur and the text a layer with a picture as its contents), built again only when its
 annotation is no longer equal to the one it was built from. ⇧ is read from the flags of each event and never kept from the press.
 
 The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
@@ -80,7 +80,24 @@ file and the display on the screen share their blocks, a block the box's edge cu
 narrower than half a block joins the block beside it (`Pixelate.edges`), and the box is rounded outward to whole pixels and drawn opaque.
 A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil and the
 delivery is refused, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
-the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: the one layer of the view that is not a shape layer.
+the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: a layer of the view that is not a shape layer.
+
+The text (`AnnotationTool.text`) is one line of the system font in semibold, its size by the step (`AnnotationThickness.points(for:)`), in the colour and the opacity
+every tool has, laid out by CoreText (`AnnotationText`, `Sources/Modules/Screenshots/Engine/Logic/AnnotationText.swift`): the annotation's `frame` is
+the line's own room from the point it starts at, so a step that changes the font moves the frame with it, it has no handles and is taken by its
+area, and a text of more than `AnnotationText.maxLength` graphemes, or with a break or a tab, is cut or joined at its one entry, `AnnotationEditing.place`
+(a grapheme keeps `AnnotationText.maxScalarsPerGrapheme` scalars, a cut grapheme that would fuse with its neighbour is dropped, so the result
+always passes `AnnotationText.fits`; controls go, invisible characters at the ends are trimmed), which
+is one undo step and no step at all for an empty text or one that draws no ink (`AnnotationText.hasInk`, decided by drawing it, not by category). `AnnotationText.draw` is the one function that puts the line on a context in the
+display's top-left points: the export calls it in its own transform, and the overlay lays `AnnotationText.tile`, the same call into a bitmap of whole
+display pixels, as a layer's contents. A press with the text tool on bare picture inside the area puts an `OverlayTextField`
+(`Sources/Modules/Screenshots/UI/OverlayTextField.swift`) in the panel at that point, in the font and ink the layer will have, and makes it the
+first responder, so while it is open the keys are the field's and `EditorKeys` sees none of them. The field is cut by the area like every layer
+(`OverlayTextField.clip`) and draws without font smoothing as the layer does. The ways out of the input go through
+`CaptureOverlay.endTyping`: Return, Enter and Esc, a press elsewhere, a right click, any palette action but a colour, a step or an opacity (which
+restyle the field), an exit, and the panel ceasing to be key each place a non-empty text and drop an empty one, and the press of Esc that
+ended the input is not the one the Esc rule reads; `close` drops the record of the input without placing the text. When `hasMarkedText()` a
+key is handed to the input context and `onEnd` is not called; a live input method was not tried, the tests mark text by hand.
 
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
 (`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure

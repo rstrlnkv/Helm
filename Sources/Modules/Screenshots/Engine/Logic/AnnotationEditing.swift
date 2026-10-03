@@ -130,6 +130,53 @@ public struct AnnotationEditing: Sendable {
         return true
     }
 
+    /// Whether a press at `point` lands on something already there: a handle of the selected object, or a layer. The
+    /// text tool asks it, since a press on one of those is the editor's own and only a press on bare picture starts a text.
+    public func takes(at point: CGPoint) -> Bool {
+        if let current = selected, AnnotationHit.handle(of: current, at: point) != nil { return true }
+        return AnnotationHit.topmost(in: layers, at: point) != nil
+    }
+
+    /// The selected object is let go of, as a click on bare picture does; the text tool starts a field there and no
+    /// press reaches `press`. Not a step.
+    public mutating func deselect() {
+        disarm()
+        selectedID = nil
+    }
+
+    /// A text the person typed, put on the picture with its top-left at `point`: one undo step, and the one entry
+    /// that cleans and bounds it: a tab or a break becomes a space, control characters go, blanks and invisible
+    /// characters at either end are trimmed, a grapheme keeps `AnnotationText.maxScalarsPerGrapheme` scalars (the rest
+    /// of them go, and a joiner the cut leaves at the end goes too), the first `AnnotationText.maxLength` graphemes stay
+    /// (the rest are cut), and a cut grapheme that would fuse with the one before it is dropped, so the text kept
+    /// always passes `AnnotationText.fits`. A text that draws no ink (`AnnotationText.hasInk`), a point that is not a number and an edit still under the pointer leave no layer and no step.
+    /// True when a layer was added.
+    @discardableResult
+    public mutating func place(text: String, at point: CGPoint, style: AnnotationStyle = .standard) -> Bool {
+        disarm()
+        guard gesture == nil, draft == nil, let clamped = clamp(point) else { return false }
+        let scalars = AnnotationText.oneLine(text).unicodeScalars.filter { $0.properties.generalCategory != .control }
+        let leading = String(String.UnicodeScalarView(scalars)).drop { AnnotationText.isInvisible($0) }.prefix(AnnotationText.maxLength)
+        let trimmed = leading.reversed().drop { AnnotationText.isInvisible($0) }.reversed()
+        var kept = ""
+        var count = 0
+        for grapheme in trimmed {
+            var scalars = grapheme.unicodeScalars.prefix(AnnotationText.maxScalarsPerGrapheme)
+            while scalars.last?.value == 0x200D { scalars = scalars.dropLast() }
+            let candidate = kept + String(String.UnicodeScalarView(scalars))
+            // A piece that fuses with its neighbour is no grapheme of its own: it is dropped, not cut again.
+            if !scalars.isEmpty, candidate.count == count + 1 { kept = candidate; count += 1 }
+        }
+        guard AnnotationText.fits(kept), AnnotationText.hasInk(kept) else { return false }
+        let placed = Annotation(tool: .text, start: clamped, end: clamped, style: style, text: kept, id: nextID)
+        guard placed.isUsable else { return false }
+        nextID += 1
+        record(layers)
+        layers.append(placed)
+        selectedID = nil
+        return true
+    }
+
     /// `shift` is the flag of **this** event, never one kept from the press: no release
     /// is guaranteed, so a kept flag could square every later shape.
     public mutating func drag(to raw: CGPoint, shift: Bool) {

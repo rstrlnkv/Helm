@@ -52,7 +52,7 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
                 XCTAssertEqual(item.keyEquivalent, "", "\(item.title) is not a tool and shows a key")
             }
         }
-        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .blur], "the menu's tools")
+        XCTAssertEqual(Set(shown.keys), [.arrow, .rectangle, .ellipse, .line, .text, .blur], "the menu's tools")
         for (tool, label) in shown {
             // The letter the label says, asked of the key that EditorKeys matches: the table and the matcher are one.
             let key = EditorKeys.toolKeys.first { $0.tool == tool }
@@ -65,13 +65,13 @@ final class TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests: XCTestC
     func testTheEditorsKeysAreUnchangedWithTheMenuClosed() {
         let expected: [Int: AnnotationTool] = [kVK_ANSI_A: .arrow, kVK_ANSI_R: .rectangle, kVK_ANSI_O: .ellipse, kVK_ANSI_L: .line,
                                                kVK_ANSI_N: .pen, kVK_ANSI_P: .pencil, kVK_ANSI_H: .highlighter,
-                                               kVK_ANSI_B: .blur]
+                                               kVK_ANSI_B: .blur, kVK_ANSI_T: .text]
         for code in 0..<128 {
             let got = EditorKeys.action(keyCode: UInt16(code), flags: [])
             if let tool = expected[code] { XCTAssertEqual(got, .tool(tool), "code \(code)") }
             else if case .tool = got { XCTFail("code \(code) became a tool key") }
         }
-        XCTAssertEqual(Set(EditorKeys.toolKeys.map(\.code)), Set(expected.keys), "the table holds the eight keys and no more")
+        XCTAssertEqual(Set(EditorKeys.toolKeys.map(\.code)), Set(expected.keys), "the table holds the nine keys and no more")
     }
 
     /// An action sent by a key while a menu is open is dropped; the same action sent by a click goes. With the event the
