@@ -15,7 +15,7 @@ enum EditorMenuItem: Equatable {
 /// the thin `NSMenu` over it. The tools come from `EditorPalette.objects`, the list the palette's row is drawn from, so a
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
-/// Order: Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Select, Thickness and Opacity… (enabled while a
+/// Order: the row objects taken off the row, Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Select, Thickness and Opacity… (enabled while a
 /// tool is chosen), a separator, Save, and Pin only while
 /// `PinEntry.isOffered`. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
@@ -53,7 +53,11 @@ enum EditorMenu {
             return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool, action: .tool(object.tool))
         }
         let shapes = EditorPalette.objects.filter { $0.place == .shapes }
-        var items = EditorPalette.objects.filter { $0.place == .menu }.compactMap(tool)
+        // A row object the person took off the row stands first, above the glyph tools, checked like them; its key is shown.
+        var items = EditorPalette.rowTools.filter { !model.isOnRow($0) }.map {
+            EditorMenuItem.tool(title: ScStr.tool($0), symbol: EditorPalette.menuSymbol(ofRowTool: $0), isOn: model.tool == $0, action: .tool($0))
+        }
+        items += EditorPalette.objects.filter { $0.place == .menu }.compactMap(tool)
         items.append(.submenu(title: ScStr.shapes, isOn: shapes.contains { $0.tool == model.tool },
                               children: shapes.compactMap(tool) + [.separator,
                                   .action(title: ScStr.fill, action: .toggleFill, isEnabled: model.fillApplies, isOn: model.style.filled)]))

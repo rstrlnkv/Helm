@@ -56,7 +56,9 @@ The tabs have one form, `HelmToolbarSwitcher`
 `ToolbarSwitcherStyle`, which the bar's right-click menu changes for all of them;
 its `compact` flag folds it to the current tab before AppKit would push the strip
 into its overflow menu, and `SettingsToolbar`'s "Folding the tabs" section decides
-when. The search field is an `NSSearchToolbarItem` carrying an `NSSearchField`
+when. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
+the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the glass lens draws the
+dot on a real screen was not measured. The search field is an `NSSearchToolbarItem` carrying an `NSSearchField`
 `SettingsToolbar` builds itself (`makeSearchItem`): Return, and only Return, runs a
 page's `onSubmit`. With `AppSettings.alwaysCollapseSearch` on, an empty idle field
 rests as AppKit's magnifier at every width, through one rest predicate

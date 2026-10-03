@@ -123,6 +123,8 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let editorThicknessByTool = "editorThicknessByTool"
         public static let editorOpacityByTool = "editorOpacityByTool"
         public static let editorFill = "editorFill"
+        /// Palette item raw value → shown or hidden, the person's own picks only (`PaletteItems`).
+        public static let paletteChoices = "paletteChoices"
     }
 }
 

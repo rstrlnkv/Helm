@@ -23,6 +23,9 @@ import Module_Screenshots_Engine
     @Published private(set) var coloursOpen = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    /// The objects the person took off the row (`PaletteItems`); they stand in the ⋯ menu instead. Read when the first
+    /// area is released, so the palette is measured with the row it will have.
+    @Published private(set) var hidden: Set<PaletteItem> = []
     /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
     @Published var morePressed = false
     var perform: (EditorAction) -> Void = { _ in }
@@ -50,6 +53,11 @@ import Module_Screenshots_Engine
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
     }
+
+    func hide(_ items: Set<PaletteItem>) { if hidden != items { hidden = items } }
+
+    /// Whether a row object is on the row: every one is, but the ones the person took off.
+    func isOnRow(_ tool: AnnotationTool) -> Bool { EditorPalette.item(of: tool).map { !hidden.contains($0) } ?? true }
 
     /// What the colour and the fill are about: the selected object's tool, or else the picked one.
     private var subject: AnnotationTool? { selectedTool ?? tool }
@@ -91,12 +99,19 @@ struct EditorPalette: View {
 
     enum Place { case row, menu, shapes }
 
-    /// The symbol is what the ⋯ menu and its badge draw, so a `row` tool, which `PaletteObject` draws, has none.
+    /// The symbol is what the ⋯ menu and its badge draw for a tool `PaletteObject` does not; a `row` tool, which it draws, has
+    /// none here and takes its symbol from `menuSymbol(ofRowTool:)` for the times it is hidden.
     static let objects: [(tool: AnnotationTool, symbol: String?, place: Place)] = [
         (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
         (.line, "line.diagonal", .shapes), (.pen, nil, .row), (.highlighter, nil, .row),
         (.pencil, nil, .row),
     ]
+
+    /// The tools the row is drawn from, in its order: what the settings page offers to take off and counts.
+    static var rowTools: [AnnotationTool] { objects.filter { $0.place == .row }.map(\.tool) }
+
+    /// The item a row object answers to in `PaletteItems`: the tool's raw value is the item's.
+    static func item(of tool: AnnotationTool) -> PaletteItem? { PaletteItem(rawValue: tool.rawValue) }
 
     /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred
     /// at `anchorX`. Putting a tool down is the key's second press, as before the pop-over had a way to open.
@@ -115,9 +130,18 @@ struct EditorPalette: View {
         CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
     }
 
-    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, nothing while a row object is raised.
+    /// The symbol a row object takes in the ⋯ menu and on ⋯'s badge while the person has taken it off the row. A default
+    /// for the owner to change; an object with no entry here, one added to `objects` later, gets `fallbackRowSymbol`.
+    private static let rowSymbols: [AnnotationTool: String] = [.pen: "pencil.tip", .highlighter: "highlighter", .pencil: "pencil"]
+    private static let fallbackRowSymbol = "scribble"
+
+    static func menuSymbol(ofRowTool tool: AnnotationTool) -> String { rowSymbols[tool] ?? fallbackRowSymbol }
+
+    /// The symbol on ⋯'s lower right: the chosen menu tool's, a row object's while it stands in the menu, Select's with
+    /// no tool, nothing while a tool of the row is raised.
     static func moreBadge(for model: EditorBarModel) -> String? {
         guard let tool = model.tool else { return selectSymbol }
+        if rowTools.contains(tool) { return model.isOnRow(tool) ? nil : menuSymbol(ofRowTool: tool) }
         return objects.first { $0.tool == tool && $0.place != .row }?.symbol
     }
 
@@ -148,7 +172,7 @@ struct EditorPalette: View {
             // step, so the step stays the one the gap to Done is.
             .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
             HStack(spacing: 0) {
-                ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
+                ForEach(Self.objects.filter { $0.place == .row && model.isOnRow($0.tool) }, id: \.tool) { object in
                     let chosen = model.tool == object.tool
                     GlassCell(name: ScStr.tool(object.tool), selected: chosen, look: .bare, width: PaletteObject.width, height: Self.height) {
                         model.perform(Self.action(forClickOn: object.tool, chosen: model.tool, anchorX: model.cellMidX[object.tool] ?? 0))

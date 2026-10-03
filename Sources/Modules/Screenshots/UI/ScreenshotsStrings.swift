@@ -110,7 +110,9 @@ enum ScStr {
     }
     static var shutterSound: String { L("Shutter sound") }
     static var showCursor: String { L("Show mouse pointer") }
-    static var chooseFolder: String { L("Choose…") }
+    /// One key for the two things «Choose…» opens: a folder and the palette's tools.
+    static var choose: String { L("Choose…") }
+    static var chooseFolder: String { choose }
 
     static var folder: String { L("Save folder") }
     static var folderNote: String { L("Where macOS keeps screenshots. Helm reads it and never changes it.") }
@@ -120,6 +122,28 @@ enum ScStr {
     static var chosenRefused: String {
         L("That folder cannot be used, so Helm saves to the Desktop.")
     }
+
+    // MARK: - The settings tabs and the editor's settings
+
+    /// The first tab, the gerund: `Capture` is the verb of the panel's button.
+    static var tabCapturing: String { L("Capturing") }
+    static var tabEditor: String { L("Editor") }
+    /// `Colour` is already the adjective of «Colour» printing, so the row has its own key.
+    static var defaultColour: String { L("Default colour") }
+    static var defaultColourNote: String {
+        L("Until a colour is picked, each tool has its own: red, and yellow for the highlighter.")
+    }
+    static var toolsInPalette: String { L("Tools in the palette") }
+    /// The ⋯ is the menu button's own name; each language's table quotes it as that language does.
+    static var hiddenToolsNote: String { L("Hidden tools move to the ⋯ menu and still answer to their keys.") }
+    /// Counted from the palette's list, never written: the first number is what the row shows.
+    static func toolsShown(_ shown: Int, of all: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let (n, m) = (Count(shown, language: language), Count(all, language: language))
+        return L("\(n) of \(m)", [.ru: "\(n) из \(m)", .es: "\(n) de \(m)", .fr: "\(n) sur \(m)", .de: "\(n) von \(m)",
+                                  .ja: "\(m) 個中 \(n) 個", .zh: "\(m) 个中的 \(n) 个", .pt: "\(n) de \(m)"], language: language)
+    }
+    /// Under «Show floating thumbnail»: where it stands and what several of them do.
+    static var thumbnailNote: String { L("Lower right. Shots taken one after another stack up.") }
 
     // MARK: - The palette, its menu and pop-overs
 

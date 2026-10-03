@@ -1376,3 +1376,12 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "У выделенной области есть маркеры для изменения формы — у совсем маленькой только по углам, — а клавиши со стрелками двигают её, или выбранный рисунок, на один пиксель, а с ⇧ на десять.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "«Закрепить» оставляет снятую область поверх ваших остальных окон в виде плавающей картинки того размера, в котором вы её сняли: перетащите её, прокрутите, чтобы изменить размер, прокрутите с ⌥, чтобы сделать бледнее или ярче, а чтобы закрыть, щёлкните по ней и нажмите Esc.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Модуль, которого Helm раньше не видел, например Снимки экрана, попадает в раздел боковой панели, где уже лежит больше всего модулей его вида, если раздела, который Helm создал для этого вида, больше нет, а не открывает свой раздел внизу упорядоченной вами боковой панели.";
+
+/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
+"Capturing" = "Съёмка";
+"Editor" = "Редактор";
+"Default colour" = "Цвет";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Пока цвет не выбран, у каждого инструмента свой: красный, а у маркера жёлтый.";
+"Tools in the palette" = "Инструменты в палитре";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Скрытые инструменты уходят в меню «⋯» и по-прежнему отвечают на свои клавиши.";
+"Lower right. Shots taken one after another stack up." = "Справа внизу. Несколько снимков подряд складываются в стопку.";

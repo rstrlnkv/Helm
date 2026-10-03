@@ -20,6 +20,7 @@ enum ScreenshotsPageRender {
                       screenRecording: PermissionState = .granted,
                       state: ScreenshotsState = untouched,
                       values: [String: Any] = [:],
+                      tab: ScreenshotsSettingsPage.Tab = .capturing,
                       width: CGFloat = 744) -> MountedRender {
         AppLanguage.override = language
         let transport = LocalTransport()
@@ -29,7 +30,7 @@ enum ScreenshotsPageRender {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
         let vm = ModuleViewModel(transport: transport)
         let mount = MountedRender(
-            ScreenshotsSettingsPage(vm: vm, store: store)
+            ScreenshotsSettingsPage(vm: vm, store: store, tab: tab)
                 .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted,
                                                       screenRecording: screenRecording)),
             width: width, height: 900, appearance: appearance)
