@@ -48,7 +48,10 @@ struct CapturedShot {
     let owner: ModuleViewModel
     private let store: NamespacedStore
     private let session: CaptureSession
-    private let toast = ShotToast()
+    /// Not private: a test drives the thumbnail's lifetime and the Share sheet through it.
+    let toast: ShotToast
+    /// The capsule's Copy in flight, held so `cancel` can reach it.
+    private var copyTask: Task<Void, Never>?
     /// Not private: a test reads what is pinned through it. The pins outlive a capture and
     /// the module's switch ends them (`teardown`); `cancel` leaves them be.
     let pins: PinBoard
@@ -73,13 +76,13 @@ struct CapturedShot {
     /// and the running app sleeps.
     private let tick: (Duration) async throws -> Void
 
-    /// `session`, `presentOverlay`, `presentBar`, `pins` and `tick` are seams for a test,
+    /// `session`, `presentOverlay`, `presentBar`, `pins`, `toast` and `tick` are seams for a test,
     /// which builds a session over fake ports, counts the presentations and holds
     /// the countdown still; the running app passes nothing and gets the real ones.
     init(owner: ModuleViewModel, store: NamespacedStore, session: CaptureSession? = nil,
          presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
          presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
-         pins: PinBoard = PinBoard(),
+         pins: PinBoard = PinBoard(), toast: ShotToast = ShotToast(),
          tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.owner = owner
         self.store = store
@@ -87,10 +90,13 @@ struct CapturedShot {
         self.presentBar = presentBar
         self.tick = tick
         self.pins = pins
+        self.toast = toast
         self.bar = CapturePanel(store: store)
         self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
         bar.model.cancel = { [weak self] in self?.cancel() }
+        toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
+        toast.onPin = { [weak self] image, frame in self?.pins.open(image, frame: frame) }
     }
 
     /// Whether a press is in progress at any stage. A test waits on it.
@@ -157,6 +163,8 @@ struct CapturedShot {
         pressTask = nil
         deliveryTask?.cancel()
         deliveryTask = nil
+        copyTask?.cancel()
+        copyTask = nil
         bar.close()
         overlay?.close()
         overlay = nil
@@ -227,10 +235,10 @@ struct CapturedShot {
                    !Task.isCancelled {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
-                    case .confirm, .copy, .save:
+                    case .confirm, .copy, .save, .share:
                         await handOff(CapturedShot(image: image, kind: .area),
                                       saves: exit != .copy, copies: exit != .save,
-                                      fileEvenFromClipboard: exit == .save)
+                                      fileEvenFromClipboard: exit == .save, thenShare: exit == .share)
                     case .pin:
                         pin(image, display: display, local: local, in: freeze)
                     }
@@ -283,30 +291,41 @@ struct CapturedShot {
     /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The
     /// full-screen shortcut never came through here: it has no editor.
     func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
-                 fileEvenFromClipboard: Bool = false) async {
+                 fileEvenFromClipboard: Bool = false, thenShare: Bool = false) async {
         guard !Task.isCancelled else { return }
         let settings = ScreenshotsSettings.read(store)
         session.shutter()
-        if settings.thumbnail { toast.showWorking(shot.image) }
+        // A person who asked for the Share sheet needs the thumbnail it opens at, whatever the setting says.
+        if settings.thumbnail || thenShare { toast.showWorking(shot.image) }
         let delivery = await session.deliver(shot.image, saves: saves, copies: copies,
                                              fileEvenFromClipboard: fileEvenFromClipboard)
-        if !Task.isCancelled { present(delivery) }
+        if !Task.isCancelled { present(delivery, sharing: thenShare) }
+    }
+
+    /// The capsule's Copy: the shot's full picture to the clipboard, from memory or read back from its file.
+    private func copyFromThumbnail() {
+        guard let image = toast.fullPicture() else { toast.showRefusal(.encoding); return }
+        copyTask?.cancel()
+        copyTask = Task {
+            let delivery = await session.deliver(image, saves: false, copies: true)
+            if !Task.isCancelled, let refusal = delivery.refusals.first { toast.showRefusal(refusal) }
+        }
     }
 
     // MARK: - What the person is told
 
-    private func present(_ delivery: Delivery) {
+    private func present(_ delivery: Delivery, sharing: Bool = false) {
         if let refusal = delivery.refusals.first {
             toast.showRefusal(refusal)
             return
         }
-        guard ScreenshotsSettings.read(store).thumbnail, let image = delivery.image else { return }
+        guard ScreenshotsSettings.read(store).thumbnail || sharing, let image = delivery.image else { return }
         let caption: String
         switch (delivery.files.isEmpty, delivery.copied) {
         case (false, true): caption = ScStr.savedAndCopied
         case (false, false): caption = ScStr.saved
         default: caption = ScStr.copied
         }
-        toast.showDone(image, caption: caption, file: delivery.files.first)
+        toast.showDone(image, caption: caption, file: delivery.files.first, share: sharing)
     }
 }

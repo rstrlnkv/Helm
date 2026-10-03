@@ -12,6 +12,8 @@ enum EditorExit: Equatable {
     case save
     /// The ⋯ menu's Pin item, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
     case pin
+    /// The ⋯ menu's Share… item: what Return does, then the system's Share sheet at the thumbnail that follows. No key.
+    case share
 }
 
 /// What a key or a click on the palette means to the editor: **one vocabulary**, so that a

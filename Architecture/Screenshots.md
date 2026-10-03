@@ -94,7 +94,7 @@ The palette carries the pen, the marker and the pencil as objects, each drawn by
 that is a template layer filled with the live ink colour, and the tip's highlight, with two native shadows; the picked
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
 filter and no text, because macOS drops a filter without a word (`ThePaletteArtworkCarriesNoFilterTests`); its attribution is in `NOTICE.md`.
-Every other tool, Select, Filled, Save and, while
+Every other tool, Select, Filled, Save, Share… and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
@@ -139,12 +139,27 @@ move the area. Esc while a handle is held puts the area back and closes nothing.
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for: Return
-copies and saves by the save target as it always did, the copy key only copies, and the
-save key only saves — to the macOS folder when the target is the clipboard. A window or a
+copies and saves by the save target as it always did, the copy key only copies, the
+save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
+Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
 whole display still arrives at `handOff` directly and does both, and the full-screen
 shortcut never comes through it. Esc and a right click are one door: with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
+
+The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) shows the shot as a bare picture
+in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/Engine/Logic/ShotThumbnail.swift`) from the
+reduced copy's pixels, so the view that takes the hover, the click and the drag, the window round it and the drag's frame
+are one size; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
+the ring unchanged. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
+Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider. A drag
+carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
+write is not done (`ShotToastModel.dragPayload`). The window's life is a clock that two holds stop, the pointer over the
+picture and the Share sheet; the pointer is also asked against the anchor view's rect, under a pointer-only hold and when
+the time is up, because an exit is not trusted. `dismiss` closes an open sheet. Not measured, and parked: a drag from
+a panel that is never key, the hover tracking and the first click on it, how the pointer's events go while the Share
+sheet is up, and the capsule for a picture narrower than it (the pointer over the part of the capsule outside the
+picture is outside the view that reports the hover).
 
 A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and

@@ -10,8 +10,9 @@ import Module_Screenshots_Engine
 
 /// **The pin is in the tree and out of v1: nothing a person can press says "Pin".** The owner's
 /// decision of 2026-10-02 keeps the pin's code and hides every way in. This asks what is *offered*,
-/// not the switch that hides it. The shot-toast capsule is drawn and the words on it are read back off the
-/// picture (text recognition); none is `ScStr.pin`. **The palette has no Pin cell any more; Pin is an item of the ⋯ menu
+/// not the switch that hides it. The shot-toast capsule is icons only: it is drawn with the pointer over it and its
+/// controls are counted in the rendered tree, one per cell of v1's list without Pin (a drawn Pin would be one more).
+/// The palette's words are read back off the picture (text recognition); none is `ScStr.pin`. **The palette has no Pin cell any more; Pin is an item of the ⋯ menu
 /// (`EditorMenu.swift`)**, and a menu is not in the picture. The palette is therefore asked by presses:
 /// one is sent at every second point across its mounted width in a window ordered in, and no press may come out
 /// as `.exit(.pin)`; the same sweep must also produce Done's `.exit(.confirm)` and the pencil, so an empty
@@ -22,9 +23,9 @@ import Module_Screenshots_Engine
 /// nothing either (measured: the tree was `[]` for both). An empty tree has no "Pin" in it, so a
 /// check on it passes for ever. The picture cannot be empty by accident: each read first demands what is
 /// certainly drawn on that very view, and a read that does not find it fails in its own words instead of
-/// passing. Where the view has words, they are the demand (the caption on a toast that has one). The palette
-/// is icons only, and a toast still working has an invisible caption: for those two the demand is that
-/// something was inked on the white, since no word is drawn there to ask for.
+/// passing. The palette and the capsule are icons only, so the demand is that something was inked on the white,
+/// since no word is drawn there to ask for; and the capsule's is also its control count, which an empty picture
+/// cannot give.
 ///
 /// **The "⋯" menu** is read by its items, as values (`EditorMenu.items`) and as the `NSMenu` filled from them, in every
 /// language and for every tool (`testNoItemOnTheMoreMenuIsPin`); the item exists only while `isOffered`, which
@@ -142,31 +143,25 @@ final class ThePinIsNotOfferedInV1Tests: XCTestCase {
         }
     }
 
-    private func picture() throws -> CGImage {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 40, height: 30, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        return try XCTUnwrap(context.makeImage())
-    }
-
+    /// A saved shot's capsule, drawn with the pointer over it: Copy, Show in Finder and ✕, and no fourth control that
+    /// could be a Pin. The count is compared with the list v1 offers (`pinOffered: false`), not with the default,
+    /// so a view that drew a Pin whatever the list says fails here.
     func testNoShotToastCapsuleOffersPin() throws {
         AppLanguage.override = .en
-        let image = try picture()
-        let file = URL(fileURLWithPath: "/tmp/not-opened.png")
-        for (name, content) in [("a picture with a file", ShotToastModel.Content.picture(image, caption: ScStr.saved, file: file)),
-                                ("a picture still working", .picture(image, caption: nil, file: nil))] {
-            let model = ShotToastModel()
-            model.content = content
-            model.shown = true
-            let toast = mounted(ShotToastView(model: model), width: ShotToast.width, height: 300)
-            let drawn = try words(on: toast)
-            if case .picture(_, let caption?, _) = content {
-                XCTAssertTrue(drawn.contains { $0.contains(caption.lowercased()) },
-                              "\(name): the read found no «\(caption)» — the picture read empty, so «no Pin» means nothing: \(drawn)")
-            } else {
-                XCTAssertGreaterThan(try inkedPixels(toast), 0, "\(name): the capsule drew nothing on white, so «no Pin» on it means nothing")
-            }
-            XCTAssertFalse(drawn.contains { $0.contains(ScStr.pin.lowercased()) }, "\(name): the capsule offers «\(ScStr.pin)»: \(drawn)")
-        }
+        XCTAssertFalse(PinEntry.isOffered, "the control: this file is about v1, where the pin is hidden")
+        let image = try ShotToastRig.picture(width: 40, height: 30)
+        let file = try ShotToastRig.realFile(self)
+        let v1 = ShotCapsule.cells(hasFile: true, pinOffered: false)
+        XCTAssertEqual(v1, [.copy, .reveal, .close])
+        let capsule = ShotToastRig.mount(.picture(image, caption: ScStr.saved, file: file), hovering: true, width: 300)
+        XCTAssertGreaterThan(try inkedPixels(capsule.mount), 0, "the thumbnail drew nothing on white, so «no Pin» on it means nothing")
+        XCTAssertEqual(capsule.mount.host.everyView(named: "_FocusRingView").count, v1.count,
+                       "the capsule draws other controls than v1's cells: a Pin among them")
+        XCTAssertFalse(try words(on: capsule.mount).contains { $0.contains(ScStr.pin.lowercased()) })
+        XCTAssertFalse(ShotCapsule.cells(hasFile: true).contains(.pin))
+        // A thumbnail still working has no capsule at all: nothing to press, so no Pin; it did draw.
+        let working = ShotToastRig.mount(.picture(image, caption: nil, file: nil), hovering: true, width: 300)
+        XCTAssertGreaterThan(try inkedPixels(working.mount), 0, "the working thumbnail drew nothing on white")
+        XCTAssertEqual(working.mount.host.everyView(named: "_FocusRingView").count, 0, "a working thumbnail offers controls")
     }
 }

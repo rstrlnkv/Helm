@@ -14,8 +14,7 @@ import Module_Screenshots_Engine
 /// reads the model again.
 ///
 /// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Select, Thickness and Opacity…
-/// (always there, right after the tools), separator, Save, and
-/// Pin only while offered. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
+/// (always there, right after the tools), separator, Save, Pin only while offered, and Share… last. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
 /// highlighter) is chosen none is. The tool is asked of every case of `AnnotationTool` and of none, so a tool added
 /// later has to be in the answer.
 @MainActor
@@ -62,7 +61,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
     private func expectedOutline(pinOffered: Bool) -> [String] {
         ["tool:\(ScStr.tool(.arrow))",
          "submenu:\(ScStr.shapes)[tool:\(ScStr.tool(.rectangle)),tool:\(ScStr.tool(.ellipse)),tool:\(ScStr.tool(.line)),separator,action:\(ScStr.fill)]",
-         "tool:\(ScStr.select)", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : [])
+         "tool:\(ScStr.select)", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : []) + ["action:\(ScStr.share)"]
     }
 
     func testTheOrderOfTheItemsAndTheSeparatorsIsTheListOfThisStage() {
@@ -115,7 +114,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
                               [ScStr.tool(.ellipse): .tool(.ellipse)], [ScStr.tool(.line): .tool(.line)], [ScStr.select: .select]],
                        "re-choosing the chosen tool sends what choosing it sent (Q3)")
         XCTAssertEqual(tools(items).map(\.symbol), ["arrow.up.right", "rectangle", "circle", "line.diagonal", "cursorarrow"])
-        guard case .action(_, let save, let enabled, let saveOn)? = items.last else { return XCTFail("the last item is not Save: \(outline(items))") }
+        guard case .action(_, let save, let enabled, let saveOn)? = items.dropLast().last else { return XCTFail("the item before Share… is not Save: \(outline(items))") }
         XCTAssertEqual(save, .exit(.save))
         XCTAssertTrue(enabled)
         XCTAssertFalse(saveOn)
@@ -209,8 +208,9 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         let hidden = EditorMenu.items(for: model(tool: nil))
         XCTAssertFalse(outline(hidden).contains("action:\(ScStr.pin)"), "the menu offers «\(ScStr.pin)» in v1: \(outline(hidden))")
         let shown = EditorMenu.items(for: model(tool: nil), pinOffered: true)
-        XCTAssertEqual(outline(shown).suffix(2), ["action:\(ScStr.save)", "action:\(ScStr.pin)"], "the item replaces the palette's cell, right after Save")
-        guard case .action(_, let action, true, false)? = shown.last else { return XCTFail("Pin is not a plain enabled item") }
+        XCTAssertEqual(outline(shown).suffix(3), ["action:\(ScStr.save)", "action:\(ScStr.pin)", "action:\(ScStr.share)"],
+                       "the item replaces the palette's cell, right after Save, and Share… stands last")
+        guard case .action(_, let action, true, false)? = shown.dropLast().last else { return XCTFail("Pin is not a plain enabled item") }
         XCTAssertEqual(action, .exit(.pin))
     }
 
@@ -263,7 +263,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         delegate.menuNeedsUpdate?(menu)
         XCTAssertEqual(checked(), [ScStr.select], "third opening, nothing chosen")
         // And the titles after rebuilding are still the whole list, not a growing one.
-        XCTAssertEqual(menu.items.count, 6)
+        XCTAssertEqual(menu.items.count, 7)
     }
 
     /// A click on an item is the action the builder names, through the model's one door.

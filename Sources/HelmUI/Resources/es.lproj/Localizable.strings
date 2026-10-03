@@ -1350,6 +1350,8 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Necesario para que Capturas de pantalla pueda capturar la pantalla. Helm no graba vídeo ni sonido: macOS solo tiene un interruptor para leer píxeles y para grabar.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "La grabación de pantalla y del audio del sistema está desactivada. Sin ella Helm no puede leer la pantalla y los atajos de captura no capturan nada.";
 "Open Screen & System Audio Recording…" = "Abrir Grabación de pantalla y del audio del sistema…";
+/* Screenshots, popup track: the thumbnail's Share sheet. */
+"Share…" = "Compartir…";
 "Sort By" = "Ordenar por";
 "Sort by Name" = "Ordenar por nombre";
 "Sort by Size" = "Ordenar por tamaño";

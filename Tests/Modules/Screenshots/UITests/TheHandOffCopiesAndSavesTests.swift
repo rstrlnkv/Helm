@@ -56,13 +56,6 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .failed }
     }
 
-    private func picture() throws -> CGImage {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        return try XCTUnwrap(context.makeImage())
-    }
-
     private func controller(saving target: SaveTarget) -> (CaptureController, Board, Disk) {
         let board = Board(), disk = Disk()
         let backing = InMemoryKeyValueStore()
@@ -81,7 +74,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
     func testEveryKindOfPickIsCopiedAndSaved() async throws {
         for kind in [CapturedShot.Kind.area, .window, .display] {
             let (controller, board, disk) = controller(saving: .desktop)
-            await controller.handOff(CapturedShot(image: try picture(), kind: kind))
+            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: kind))
             XCTAssertEqual(board.copies, 1, "\(kind): the picture was not copied")
             XCTAssertEqual(disk.written, 1, "\(kind): the picture was not saved")
         }
@@ -93,7 +86,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
     func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
         for target in SaveTarget.allCases {
             let (controller, board, disk) = controller(saving: target)
-            await controller.handOff(CapturedShot(image: try picture(), kind: .area))
+            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: .area))
             XCTAssertEqual(board.copies, 1, "target \(target): an area was not copied")
             XCTAssertEqual(disk.written, target == .clipboard ? 0 : 1,
                            "target \(target): an area was \(target == .clipboard ? "saved as a file though the target is the clipboard" : "not saved")")

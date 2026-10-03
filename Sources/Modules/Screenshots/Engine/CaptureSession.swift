@@ -416,7 +416,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// white — a clear picture and a half-transparent one both came out right
     /// with the flattening taken out — so this pins the ground rather than
     /// repairing a defect that was seen.)
-    static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
+    public static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
         autoreleasepool {
             let source: CGImage
             switch format {

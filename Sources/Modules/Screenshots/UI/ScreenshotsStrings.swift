@@ -178,7 +178,7 @@ enum ScStr {
     }
 
     /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy has no control on the palette yet, and its name
-    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item while `PinEntry.isOffered`.
+    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
     static var fill: String { L("Filled") }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
@@ -204,6 +204,11 @@ enum ScStr {
 
     /// The word in a file name and on a thumbnail. One key, macOS's own word.
     static var thumbnailLabel: String { L("Screenshot") }
+    /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
+    static var copy: String { L("Copy") }
+    static var showInFinder: String { L("Show in Finder") }
+    /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
+    static var share: String { L("Share…") }
     static var saved: String { L("Saved") }
     static var copied: String { L("Copied to the clipboard") }
     static var savedAndCopied: String { L("Saved and copied") }
