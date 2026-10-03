@@ -168,8 +168,7 @@ enum ScStr {
     /// Colores, Couleurs, カラー, Цвета, 颜色, Cores), so Japanese keeps the panel's カラー and Chinese its 颜色.
     static var allColours: String { L("All Colours") }
 
-    /// The name of a thickness step. No control calls it yet: it is kept for the pop-over's slider, which would show these
-    /// words instead of the step's points if the owner picks the frame's word over the plan's number (a parked question).
+    /// The name of a thickness step, which the pop-over says beside its slider (the frame's «Средняя»).
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {
         case .thin: L("Thin")

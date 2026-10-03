@@ -10,14 +10,13 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **The thickness-and-opacity pop-over edits the chosen tool's own style, opens from a second click on the chosen
-/// row object or from ⋯, and says its numbers in the person's language.**
+/// row object or from ⋯, and says its words and percent in the person's language.**
 ///
-/// Written against these names, which the engineer's change has to carry (or tell the tester the new ones):
 /// - `EditorAction.thicknessAndOpacity(anchorX:)` opens the pop-over at a cell's centre (palette-local points) and
 ///   `EditorAction.opacity(Double)` sets the opacity (0.1…1); `EditorAction.thickness(_)` is the existing step.
 /// - `EditorPalette.action(forClickOn:chosen:anchorX:)` is what a click on a row object sends: the tool for a first
 ///   click, the pop-over for a second one on the chosen object.
-/// - `EditorPopover.thicknessText(_:for:)` and `EditorPopover.opacityText(_:)` are the numbers on the right.
+/// - `ScStr.thickness(_:)` (the step's word) and `EditorPopover.opacityText(_:)` are what stands on the right.
 /// - `CaptureOverlay.popoverIsOpen` and `EditorChrome.popover` (via `chrome(on:)`).
 ///
 /// The per-tool half of the memory lives in `EachToolKeepsItsOwnThicknessAndOpacityTests`; this file asks the same
@@ -138,63 +137,24 @@ final class ThePopoverEditsTheChosenToolsOwnStyleTests: XCTestCase {
         XCTAssertTrue((0.1...1).contains(overlay.palette.style.opacity), "no number is not a stroke nobody can see: \(overlay.palette.style.opacity)")
     }
 
-    // MARK: the numbers
+    // MARK: the words and the percent
 
-    /// The number is the step's points from `AnnotationThickness.points(for:)`, for every tool and every step.
-    func testTheNumberIsThePointsOfTheStepForEveryToolAndStep() throws {
-        AppLanguage.override = .en
-        for tool in AnnotationTool.allCases {
-            for step in AnnotationThickness.allCases {
-                let text = EditorPopover.thicknessText(step, for: tool)
-                let unit = Self.macOSPointsUnit(.en)
-                XCTAssertTrue(text.hasSuffix(unit), "\(tool) \(step): «\(text)»")
-                let number = Self.numberBefore(unit, in: text)
-                XCTAssertEqual(Double(number), Double(step.points(for: tool)), "\(tool) \(step): «\(text)»")
-            }
-        }
+    /// The thickness is said as the step's word, as the frame has it («Средняя»), and the card reads it from `ScStr.thickness`;
+    /// the points are not said. (The marks under the slider are measured on the render, in `ThePopoverSliderAndTheOpenMenusReturnKeyTests`.)
+    func testTheThicknessIsAWordNotPoints() throws {
+        let card = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorPopover.swift")
+        XCTAssertTrue(card.contains("number: ScStr.thickness(model.picked.thickness)"), "the thickness row does not say the step's word")
+        XCTAssertFalse(card.contains("points(for:"), "the card still says points")
     }
 
-    /// Spelled out here, in each of the eight languages: Pen thin is 1.5 pt, Pen medium 3, Marker medium 12, Pencil
-    /// medium 3.5. The decimal mark is the language's own; the unit is the language's own (en `pt`, ru «пт», zh «点»).
-    func testTheNumberIsInTheLanguagesOwnFormat() {
-        var units = Set<String>()
+    /// The word is there in each of the eight languages, a different one for each step; Russian is the frame's.
+    func testTheStepsWordIsThereAndDistinctInEveryLanguage() {
         AppLanguage.each { language in
-            let unit = Self.macOSPointsUnit(language)
-            units.insert(unit)
-            let mark = Locale(identifier: language.rawValue).decimalSeparator ?? "."
-            XCTAssertEqual(mark, [.ru, .fr, .de, .es, .pt].contains(language) ? "," : ".", "control: the language's own mark")
-            func number(_ text: String) -> String { Self.numberBefore(unit, in: text) }
-            for (step, tool, expected) in [(AnnotationThickness.thin, AnnotationTool.pen, "1\(mark)5"),
-                                           (.medium, .pen, "3"), (.medium, .highlighter, "12"), (.medium, .pencil, "3\(mark)5")] {
-                let text = EditorPopover.thicknessText(step, for: tool)
-                XCTAssertTrue(text.hasSuffix(unit), "\(language) \(tool): «\(text)» should end in macOS's «\(unit)»")
-                XCTAssertEqual(number(text), expected, "\(language) \(tool) \(step): «\(text)»")
-            }
+            let words = AnnotationThickness.allCases.map(ScStr.thickness)
+            XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
+            XCTAssertEqual(Set(words).count, words.count, "\(language): \(words)")
+            if language == .ru { XCTAssertEqual(words, ["Тонкая", "Средняя", "Толстая"]) }
         }
-        XCTAssertTrue(units.contains { $0 != "pt" }, "control: macOS itself spells the unit differently in some of the eight: \(units)")
-    }
-
-    /// Ruler.loctable names its languages by region where there is more than one: Simplified Chinese, Brazilian Portuguese.
-    private nonisolated static func loctableKey(_ language: AppLanguage) -> String {
-        switch language { case .zh: return "zh_CN"; case .pt: return "pt_BR"; default: return language.rawValue }
-    }
-
-    /// The unit macOS writes for points, read from AppKit's own `Ruler.loctable` key `pt` (an independent source, not the
-    /// engineer's table). 
-    private nonisolated static func macOSPointsUnit(_ language: AppLanguage) -> String {
-        let url = URL(fileURLWithPath: "/System/Library/Frameworks/AppKit.framework/Resources/Ruler.loctable")
-        guard let data = try? Data(contentsOf: url),
-              let table = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-              let entry = table[Self.loctableKey(language)] as? [String: String], let unit = entry["pt"], !unit.isEmpty else {
-            XCTFail("Ruler.loctable has no `pt` for \(language)"); return "?"
-        }
-        return unit
-    }
-
-    /// The text without its unit and without the spaces (breaking or not) between: the unit's length is not assumed.
-    private nonisolated static func numberBefore(_ unit: String, in text: String) -> String {
-        guard text.hasSuffix(unit) else { return text }
-        return String(text.dropLast(unit.count)).trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{00A0}\u{202F}")))
     }
 
     func testTheOpacityIsAWholePercentInEveryLanguage() {

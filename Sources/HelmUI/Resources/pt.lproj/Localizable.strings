@@ -1323,9 +1323,9 @@
 "Pencil" = "Lápis";
 "Highlighter" = "Marcador";
 "Black" = "Preto";
-"Thin" = "Fino";
-"Medium" = "Médio";
-"Thick" = "Grosso";
+"Thin" = "Fina";
+"Medium" = "Média";
+"Thick" = "Grossa";
 "Thickness" = "Espessura";
 "Opacity" = "Opacidade";
 "Thickness and Opacity…" = "Espessura e opacidade…";

@@ -152,9 +152,9 @@ final class ThePopoverSurvivesTheInputsNobodyPlannedTests: XCTestCase {
     func testALanguageChangedBetweenTwoCallsIsReadAtOnce() {
         AppLanguage.override = .en
         let english = EditorPopover.opacityText(0.5)
-        let thicknessEnglish = EditorPopover.thicknessText(.thin, for: .pen)
+        let thicknessEnglish = ScStr.thickness(.thin)
         AppLanguage.override = .fr
         XCTAssertNotEqual(EditorPopover.opacityText(0.5), english)
-        XCTAssertNotEqual(EditorPopover.thicknessText(.thin, for: .pen), thicknessEnglish)
+        XCTAssertNotEqual(ScStr.thickness(.thin), thicknessEnglish)
     }
 }

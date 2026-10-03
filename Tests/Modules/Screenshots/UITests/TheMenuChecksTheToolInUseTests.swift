@@ -230,9 +230,9 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         menu.items.flatMap { [$0] + ($0.submenu.map(flat) ?? []) }
     }
 
-    /// **No item carries a key equivalent, ⌘S included**: the label is the owner's open question and a later
-    /// one-place change; today the menu says no key at all.
-    func testNoItemCarriesAKeyEquivalent() throws {
+    /// **Only the tool items carry a key equivalent, and no item a modifier** (⌘S is not shown): the key is a label, and
+    /// `TheMenuShowsTheToolKeysAndAKeyInTheOpenMenuDoesNothingTests` asks which letters.
+    func testOnlyTheToolItemsCarryAKeyLabel() throws {
         AppLanguage.override = .en
         for tool in Self.everyChoice {
             let m = model(tool: tool)
@@ -240,7 +240,8 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             menu.delegate?.menuNeedsUpdate?(menu)
             let all = flat(menu)
             XCTAssertGreaterThanOrEqual(all.filter { !$0.isSeparatorItem }.count, 8, "the menu is empty, so «no key» means nothing")
-            XCTAssertEqual(all.filter { !$0.keyEquivalent.isEmpty }.map(\.title), [], "tool \(String(describing: tool))")
+            XCTAssertEqual(all.filter { !$0.keyEquivalent.isEmpty }.map(\.title),
+                           [ScStr.tool(.arrow), ScStr.tool(.rectangle), ScStr.tool(.ellipse), ScStr.tool(.line)], "tool \(String(describing: tool))")
             XCTAssertEqual(all.filter { !$0.keyEquivalentModifierMask.isEmpty && !$0.isSeparatorItem }.count, 0, "a modifier is left on an item")
         }
     }

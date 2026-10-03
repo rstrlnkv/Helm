@@ -98,7 +98,7 @@ Every other tool, Select, Filled, Save and, while
 `PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
-carries the symbol of a chosen menu tool as a badge. The menu shows no key; the keys are `EditorKeys`', with the menu closed.
+carries the symbol of a chosen menu tool as a badge. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select shows none). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
 
 A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
 (`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands

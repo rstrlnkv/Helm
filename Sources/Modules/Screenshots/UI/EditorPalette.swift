@@ -200,7 +200,7 @@ struct EditorPalette: View {
     }
 
     private func swatch(_ color: AnnotationColor) -> some View {
-        EditorSwatch(color: color, selected: model.lit == color) { model.perform(.color(color)) }
+        EditorSwatch(color: color, selected: model.lit == color, blackTurnsWhiteInDark: true) { model.perform(.color(color)) }
     }
 
     /// The colour wheel's cell, which opens the pop-over of all eight inks under it. While the colour is one the grid has
@@ -231,12 +231,20 @@ struct EditorPalette: View {
 }
 
 /// One ink's swatch: a 24 pt circle, ringed in its own colour while it is the lit one. The palette's grid and the colours
-/// pop-over draw it the same way.
+/// pop-over draw it the same way, except for `blackTurnsWhiteInDark`, which only the grid sets.
 struct EditorSwatch: View {
     let color: AnnotationColor
     let selected: Bool
+    /// The palette's grid draws black white on dark glass, as the frame does; the ink it sends is still black. The colours
+    /// pop-over has a white of its own beside its black, so it does not.
+    var blackTurnsWhiteInDark = false
     let press: () -> Void
     @Environment(\.colorScheme) private var scheme
+
+    /// The colour the swatch is drawn in.
+    static func drawn(_ color: AnnotationColor, scheme: ColorScheme, blackTurnsWhiteInDark: Bool) -> AnnotationColor {
+        color == .black && scheme == .dark && blackTurnsWhiteInDark ? .white : color
+    }
 
     /// The lit swatch's ring, outer edge to outer edge: 24 + 2 × (2.5 gap + 2 ring). No step of the ladder has it.
     static let ringDiameter: CGFloat = 33
@@ -244,14 +252,15 @@ struct EditorSwatch: View {
     var body: some View {
         // Black is the one ink with no edge of its own on dark glass (1.57:1 without it), so it keeps the
         // 1 pt edge there; white has none on light glass, and keeps it there. No other swatch has one.
-        let edged = (color == .black && scheme == .dark) || (color == .white && scheme == .light)
+        let shown = Self.drawn(color, scheme: scheme, blackTurnsWhiteInDark: blackTurnsWhiteInDark)
+        let edged = (shown == .black && scheme == .dark) || (shown == .white && scheme == .light)
         Button(action: press) {
             Circle()
-                .fill(Color(cgColor: color.cgColor))
+                .fill(Color(cgColor: shown.cgColor))
                 .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
                 .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: edged ? 1 : 0))
                 // An overlay, so the ring takes no room: the grid's pitch is the swatch and the gap.
-                .overlay(Circle().strokeBorder(Color(cgColor: color.cgColor), lineWidth: selected ? 2 : 0)
+                .overlay(Circle().strokeBorder(Color(cgColor: shown.cgColor), lineWidth: selected ? 2 : 0)
                     .frame(width: Self.ringDiameter, height: Self.ringDiameter))
         }
         .buttonStyle(.plain)

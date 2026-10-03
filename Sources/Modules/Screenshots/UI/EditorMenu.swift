@@ -23,15 +23,28 @@ enum EditorMenuItem: Equatable {
 /// **Shapes** is checked while a shape is the tool. A click on the chosen tool sends what choosing it sent: the
 /// editor's rule puts a tool down by choosing it twice.
 enum EditorMenu {
-    /// The key a menu item shows for its action. Empty: the owner has not decided whether the menu shows keys, and with
-    /// no equivalent a key pressed while the menu is open does nothing in any layout. Showing the keys is a change of
-    /// this one function.
-    static func keyEquivalent(of action: EditorAction) -> String { "" }
+    /// The key a menu item shows at its right, for the tools that have one (`EditorKeys.toolKeys`): a label and nothing
+    /// else, since `choose` drops an action that a key sent. Returning "" drops every label at once.
+    static func keyEquivalent(of action: EditorAction) -> String {
+        guard case .tool(let tool) = action else { return "" }
+        return EditorKeys.toolKeys.first { $0.tool == tool }?.letter.lowercased() ?? ""
+    }
 
     /// The image an item draws beside its title. Returning nil drops every item image at once; it was not drawn
     /// beside a checked item in the overlay's measurement, which is why this is one place.
     static func image(symbol: String) -> NSImage? {
-        NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        image?.isTemplate = true
+        return image
+    }
+
+    /// Whether an action's event is a key event typing a letter of `EditorKeys.toolKeys`: `Filler.choose` drops an action
+    /// for which this is true. A menu runs a key equivalent while it is open, and the owner has decided that a tool's letter
+    /// pressed in the open menu does nothing; the editor's own keys meet the menu closed. Return and space on a highlighted
+    /// item are key events too, but no letter of that table, so they are a choice (keyboard navigation, VoiceOver) and pass.
+    static func isSentByAKey(_ event: NSEvent?) -> Bool {
+        guard event?.type == .keyDown, let typed = event?.charactersIgnoringModifiers?.lowercased() else { return false }
+        return EditorKeys.toolKeys.contains { $0.letter.lowercased() == typed }
     }
 
     @MainActor static func items(for model: EditorBarModel, pinOffered: Bool = PinEntry.isOffered) -> [EditorMenuItem] {
@@ -116,7 +129,8 @@ enum EditorMenu {
         }
 
         @objc private func choose(_ item: NSMenuItem) {
-            if let action = item.representedObject as? EditorAction { model.perform(action) }
+            guard !EditorMenu.isSentByAKey(NSApp.currentEvent), let action = item.representedObject as? EditorAction else { return }
+            model.perform(action)
         }
     }
 }

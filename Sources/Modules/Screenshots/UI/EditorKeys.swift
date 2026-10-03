@@ -49,6 +49,13 @@ enum EditorAction: Equatable {
 /// the layout, so a binding written on it works for one of the two. The code names
 /// the place on the keyboard.
 enum EditorKeys {
+    /// The tool keys, the one table: `action(keyCode:flags:)` reads the code and the ⋯ menu shows the letter beside the tool.
+    /// The letter is what the key says on an English layout; the code is what is matched.
+    static let toolKeys: [(tool: AnnotationTool, code: Int, letter: String)] = [
+        (.arrow, kVK_ANSI_A, "A"), (.rectangle, kVK_ANSI_R, "R"), (.ellipse, kVK_ANSI_O, "O"), (.line, kVK_ANSI_L, "L"),
+        (.pen, kVK_ANSI_N, "N"), (.pencil, kVK_ANSI_P, "P"), (.highlighter, kVK_ANSI_H, "H"),
+    ]
+
     static func action(keyCode: UInt16, flags: NSEvent.ModifierFlags) -> EditorAction? {
         let flags = flags.intersection([.command, .shift, .option, .control])
         // The arrows carry the numeric-pad and function flags of their own, which the intersection
@@ -63,14 +70,8 @@ enum EditorKeys {
             default: break
             }
         }
+        if flags.isEmpty, let key = toolKeys.first(where: { $0.code == Int(keyCode) }) { return .tool(key.tool) }
         switch (Int(keyCode), flags) {
-        case (kVK_ANSI_A, []): return .tool(.arrow)
-        case (kVK_ANSI_R, []): return .tool(.rectangle)
-        case (kVK_ANSI_O, []): return .tool(.ellipse)
-        case (kVK_ANSI_L, []): return .tool(.line)
-        case (kVK_ANSI_N, []): return .tool(.pen)
-        case (kVK_ANSI_P, []): return .tool(.pencil)
-        case (kVK_ANSI_H, []): return .tool(.highlighter)
         case (kVK_Delete, []), (kVK_ForwardDelete, []): return .delete
         case (kVK_ANSI_Z, .command): return .undo
         case (kVK_ANSI_Z, [.command, .shift]): return .redo
