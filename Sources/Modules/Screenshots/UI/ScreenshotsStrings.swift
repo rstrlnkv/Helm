@@ -150,8 +150,8 @@ enum ScStr {
         }
     }
 
-    /// Thickness, Fill, Copy and Save have no cell on the palette: the next task's ⋯ menu takes them, and these
-    /// names are kept for it. Pin is read by the palette's Pin cell while `PinEntry.isOffered`.
+    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Thickness and Copy have no control on the palette
+    /// yet, and their names are kept for the one that comes. Pin is read by the ⋯ menu's Pin item while `PinEntry.isOffered`.
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {
         case .thin: L("Thin")
@@ -161,6 +161,11 @@ enum ScStr {
     }
 
     static var fill: String { L("Filled") }
+    /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
+    /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
+    /// shapes are key `TB_USD_Shapes` of its `Localizable.loctable`.
+    static var shapes: String { L("Shapes") }
+    static var select: String { L("Select") }
     /// Preview's «Undo» and «Redo».
     static var undo: String { L("Undo") }
     static var redo: String { L("Redo") }
@@ -170,7 +175,7 @@ enum ScStr {
     static var closeEditor: String { L("Close") }
     /// The editor's checkmark: what Return does.
     static var done: String { L("Done") }
-    /// The editor's Pin cell, which keeps the picture on the screen as a window.
+    /// The editor's Pin item on the ⋯ menu, which keeps the picture on the screen as a window.
     static var pin: String { L("Pin") }
     /// The plate at the limit of open pins; no number, so no table.
     static var pinLimit: String { L("Too many pins are open — close one first") }

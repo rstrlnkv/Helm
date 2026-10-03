@@ -11,9 +11,8 @@ import Module_Screenshots_Engine
 /// **The pin is in the tree and out of v1: nothing a person can press says "Pin".** The owner's
 /// decision of 2026-10-02 keeps the pin's code and hides every way in. This asks what is *offered*,
 /// not the switch that hides it. The shot-toast capsule is drawn and the words on it are read back off the
-/// picture (text recognition); none is `ScStr.pin`. **The palette's Pin cell is an icon with a name and no printed
-/// word**, so the picture cannot see it (measured: `EditorPalette` at `isOffered = true` is 451 pt wide in a hosting
-/// view and 419 pt at `false`, and the word read passed at `true`). The palette is therefore asked by presses:
+/// picture (text recognition); none is `ScStr.pin`. **The palette has no Pin cell any more; Pin is an item of the ⋯ menu
+/// (`EditorMenu.swift`)**, and a menu is not in the picture. The palette is therefore asked by presses:
 /// one is sent at every second point across its mounted width in a window ordered in, and no press may come out
 /// as `.exit(.pin)`; the same sweep must also produce Done's `.exit(.confirm)` and the pencil, so an empty
 /// sweep fails in its own words instead of passing (`testNoPressAcrossTheEditorsPaletteSendsPin`).
@@ -27,8 +26,9 @@ import Module_Screenshots_Engine
 /// is icons only, and a toast still working has an invisible caption: for those two the demand is that
 /// something was inked on the white, since no word is drawn there to ask for.
 ///
-/// **What this does not reach.** The "⋯" menu is an `NSMenu` and is read by its item titles; it does
-/// not exist yet, and its half joins this file when it does.
+/// **The "⋯" menu** is read by its items, as values (`EditorMenu.items`) and as the `NSMenu` filled from them, in every
+/// language and for every tool (`testNoItemOnTheMoreMenuIsPin`); the item exists only while `isOffered`, which
+/// `TheMenuChecksTheToolInUseTests` asks of the builder at `true` as well.
 @MainActor
 final class ThePinIsNotOfferedInV1Tests: XCTestCase {
 
@@ -94,6 +94,51 @@ final class ThePinIsNotOfferedInV1Tests: XCTestCase {
             XCTAssertTrue(sent.contains { $0.action == .exit(.confirm) }, "\(language): no press reached Done, so «no Pin» on the palette means nothing: \(sent.count) presses")
             XCTAssertTrue(sent.contains { $0.action == .tool(.pencil) }, "\(language): no press reached the pencil, so the sweep did not cover the palette")
             XCTAssertFalse(sent.contains { $0.action == .exit(.pin) }, "\(language): a press on the palette sent the pin exit")
+        }
+    }
+
+    /// **The ⋯ menu is read by its items, built and as an NSMenu.** Every title of every item, submenus included, in
+    /// every language, for every tool and for none; and every action: none is `.exit(.pin)`, none is titled
+    /// «Pin». The same read must find Save, so an empty menu fails in its own words instead of passing.
+    func testNoItemOnTheMoreMenuIsPin() throws {
+        func titles(_ items: [EditorMenuItem]) -> [String] {
+            items.flatMap { item -> [String] in
+                switch item {
+                case .tool(let title, _, _, _): [title]
+                case .submenu(let title, _, let children): [title] + titles(children)
+                case .action(let title, _, _, _): [title]
+                case .separator: []
+                }
+            }
+        }
+        func actions(_ items: [EditorMenuItem]) -> [EditorAction] {
+            items.flatMap { item -> [EditorAction] in
+                switch item {
+                case .tool(_, _, _, let action): [action]
+                case .submenu(_, _, let children): actions(children)
+                case .action(_, let action, _, _): [action]
+                case .separator: []
+                }
+            }
+        }
+        func every(_ menu: NSMenu) -> [NSMenuItem] { menu.items.flatMap { [$0] + ($0.submenu.map(every) ?? []) } }
+        XCTAssertFalse(PinEntry.isOffered, "the control: this file is about v1, where the pin is hidden")
+        for language in AppLanguage.allCases {
+            AppLanguage.override = language
+            for tool in [nil] + AnnotationTool.allCases.map({ Optional($0) }) {
+                let model = EditorBarModel()
+                model.show(tool: tool, style: .standard, canUndo: true, canRedo: true)
+                let context = "\(language), tool \(String(describing: tool))"
+                let items = EditorMenu.items(for: model)
+                XCTAssertTrue(titles(items).contains(ScStr.save), "\(context): the read found no Save, so «no Pin» on the menu means nothing: \(titles(items))")
+                XCTAssertFalse(titles(items).contains(ScStr.pin), "\(context): the menu offers «\(ScStr.pin)»")
+                XCTAssertFalse(actions(items).contains(.exit(.pin)), "\(context): an item sends the pin exit")
+                let menu = EditorMenu.make(for: model)
+                menu.delegate?.menuNeedsUpdate?(menu)
+                let built = every(menu)
+                XCTAssertTrue(built.contains { $0.title == ScStr.save }, "\(context): the NSMenu has no Save")
+                XCTAssertFalse(built.contains { $0.title == ScStr.pin }, "\(context): the NSMenu offers «\(ScStr.pin)»")
+            }
         }
     }
 

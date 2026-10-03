@@ -83,8 +83,8 @@ final class ThePinLimitIsSaidOnThePlateAndTheEditorStaysTests: XCTestCase {
         XCTAssertEqual(view.visiblePlates.compactMap(\.string), [ScStr.pinLimit], "a second one-point move withdrew the refusal")
     }
 
-    /// D1: the pointer is on the Pin cell when the refusal comes, and the plate must not lie under the glass
-    /// palette it was pressed on: its frame misses the palette's frame and stays inside the display.
+    /// D1: the refusal comes after Pin was chosen from the menu opened under the ⋯ circle, and the plate must not lie under the glass
+    /// palette: its frame misses the palette's frame and stays inside the display.
     func testTheRefusalPlateDoesNotLieUnderThePalette() throws {
         let (overlay, display, view) = try build()
         let palette = try XCTUnwrap(overlay.chrome(on: display)?.palette, "the control: no palette")
@@ -118,23 +118,40 @@ final class ThePinLimitIsSaidOnThePlateAndTheEditorStaysTests: XCTestCase {
             let words = [ScStr.pin, ScStr.pinLimit, ScStr.pinnedScreenshot]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertFalse(ScStr.pinLimit.contains(where: \.isNumber), "\(language): the limit sentence carries a number")
+            // The Pin item sits in the ⋯ menu beside Save, Select, Shapes and the tools, and on the palette beside its cells:
+            // the names it must differ from are those, read from the menu itself with the pin offered.
+            func titles(_ items: [EditorMenuItem]) -> [String] {
+                items.flatMap { item -> [String] in
+                    switch item {
+                    case .tool(let title, _, _, _), .action(let title, _, _, _): [title]
+                    case .submenu(let title, _, let kids): [title] + titles(kids)
+                    case .separator: []
+                    }
+                }
+            }
+            let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
+            XCTAssertEqual(menu.filter { $0 == ScStr.pin }.count, 1, "\(language): the pin item is not in the menu once: \(menu)")
             let others = [ScStr.undo, ScStr.redo, ScStr.done, ScStr.closeEditor, HelmA11y.moreActions, ScStr.confirmClose]
-            XCTAssertFalse(others.contains(ScStr.pin), "\(language): the Pin cell shares a name with another control on the palette")
+                + menu.filter { $0 != ScStr.pin }
+            XCTAssertGreaterThanOrEqual(others.count, 14, "\(language): the comparison set is too small to mean anything")
+            XCTAssertFalse(others.contains(ScStr.pin), "\(language): the Pin item shares a name with another control or menu item")
+            XCTAssertEqual(Set(menu).count, menu.count, "\(language): two menu items share a name: \(menu)")
             XCTAssertNotEqual(ScStr.pinLimit, ScStr.confirmClose, "\(language)")
         }
     }
 
-    /// The palette builds its pin entry only behind a switch; **every** way the palette could say or send Pin (the exit, the
-    /// word, the pin symbol) lies inside the braces of an `if PinEntry.isOffered`. Not "the switch is named
-    /// somewhere in the file": a Pin cell outside the braces beside an unrelated mention of the switch is
-    /// the defect, and a mention anywhere would have passed it.
-    func testThePaletteSendsThePinExitOnlyBehindTheSwitch() throws {
-        let code = Array(SwiftSource.uncommented(try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorPalette.swift")))
+    /// The ⋯ menu builds its pin item only behind a switch; **every** way the menu could say or send Pin (the exit, the
+    /// word) lies inside the braces of an `if pinOffered`, the builder's parameter, whose default is `PinEntry.isOffered`.
+    /// Not "the switch is named somewhere in the file": a Pin item outside the braces beside an unrelated mention of the
+    /// switch is the defect, and a mention anywhere would have passed it. (The palette itself has no Pin cell:
+    /// `TheMenuChecksTheToolInUseTests.testThePaletteViewHasNoPinCell`.)
+    func testTheMenuSendsThePinExitOnlyBehindTheSwitch() throws {
+        let code = Array(SwiftSource.uncommented(try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorMenu.swift")))
         let text = String(code)
-        // The braces of every `if PinEntry.isOffered {`, as offset ranges.
+        // The braces of every `if pinOffered {`, as offset ranges.
         var guarded: [Range<Int>] = []
         var search = text.startIndex..<text.endIndex
-        while let found = text.range(of: "if PinEntry.isOffered", range: search) {
+        while let found = text.range(of: "if pinOffered", range: search) {
             let start = text.distance(from: text.startIndex, to: found.upperBound)
             if let open = code[start...].firstIndex(of: "{") {
                 var depth = 0, close = open
@@ -146,19 +163,20 @@ final class ThePinLimitIsSaidOnThePlateAndTheEditorStaysTests: XCTestCase {
             search = found.upperBound..<text.endIndex
         }
         var seen = 0
-        for needle in [".exit(.pin)", "ScStr.pin", "\"pin\""] {
+        XCTAssertTrue(text.contains("pinOffered: Bool = PinEntry.isOffered"), "the builder's switch is not the constant")
+        for needle in [".exit(.pin)", "ScStr.pin"] {
             var from = text.startIndex..<text.endIndex
             while let hit = text.range(of: needle, range: from) {
                 seen += 1
                 let at = text.distance(from: text.startIndex, to: hit.lowerBound)
-                XCTAssertTrue(guarded.contains { $0.contains(at) }, "the palette says Pin with \(needle) outside an `if PinEntry.isOffered`")
+                XCTAssertTrue(guarded.contains { $0.contains(at) }, "the menu says Pin with \(needle) outside an `if pinOffered`")
                 from = hit.upperBound..<text.endIndex
             }
         }
-        // The Pin cell must exist, and every needle of it is inside the braces.
-        XCTAssertGreaterThan(seen, 0, "the palette has no Pin cell: `true` would bring nothing back")
-        XCTAssertFalse(guarded.isEmpty, "the palette says Pin \(seen) time(s) and has no switch at all")
-        XCTAssertGreaterThan(code.count, 1000, "the scan read an empty palette source")
+        // The Pin item must exist, and every needle of it is inside the braces.
+        XCTAssertGreaterThan(seen, 0, "the menu has no Pin item: `true` would bring nothing back")
+        XCTAssertFalse(guarded.isEmpty, "the menu says Pin \(seen) time(s) and has no switch at all")
+        XCTAssertGreaterThan(code.count, 1000, "the scan read an empty menu source")
     }
 
     /// Pin has no key (a pin is a cell only): no key of the table produces it.

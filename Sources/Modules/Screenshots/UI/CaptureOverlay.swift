@@ -66,6 +66,10 @@ enum OverlayResult {
     private let store: NamespacedStore?
     /// What the palette shows; its cells come back through `perform`.
     let bars = EditorBarModel()
+    /// The ⋯ menu: one object, filled again from `bars` at every opening.
+    private lazy var moreMenu = EditorMenu.make(for: bars)
+    /// The menu while `popUp` has not returned, so that `close` can end its tracking without making a menu never opened.
+    private var openedMenu: NSMenu?
 
     /// What the overlay opened on, for a test that must know the capture panel's Area mode
     /// handed it the remembered selection and no other press did.
@@ -78,10 +82,10 @@ enum OverlayResult {
         panels.compactMapValues { $0.view.drawnPicture }
     }
 
-    /// Whether another pin may open: asked at the palette's Pin cell (`.exit(.pin)`) and nowhere else, so the
-    /// other exits leave at the limit as ever. The cell is built only while `PinEntry.isOffered`.
+    /// Whether another pin may open: asked at the ⋯ menu's Pin item (`.exit(.pin)`) and nowhere else, so the
+    /// other exits leave at the limit as ever. The item is built only while `PinEntry.isOffered`.
     private let pinRoom: () -> Bool
-    /// The Pin cell was refused for want of room, and the plate says so until the next input.
+    /// The Pin item was refused for want of room, and the plate says so until the next input.
     private var pinRefused = false
     /// A nudge let go of the selected object and the arrow key that did it is still down: its repeats
     /// move nothing. Any key or palette click that reaches `perform` while no drag or reshape is under way
@@ -100,6 +104,7 @@ enum OverlayResult {
         self.preselected = mode == .area ? preselection : nil
         self.onFinish = onFinish
         bars.perform = { [weak self] in self?.perform($0) }
+        bars.openMenu = { [weak self] in self?.openMoreMenu() }
     }
 
     // MARK: - Lifecycle
@@ -160,7 +165,13 @@ enum OverlayResult {
         if let keyed { keyed.panel.makeFirstResponder(keyed.view) }
     }
 
+    /// Closing is the event that ends delivery: it clears `onFinish` and `edit` (so an item chosen afterwards finds no
+    /// editor to act on and no owner to call, and remembers no tool) and ends the tracking of an open ⋯ menu.
     func close() {
+        openedMenu?.cancelTrackingWithoutAnimation()
+        openedMenu = nil
+        onFinish = nil
+        edit = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
         for entry in panels.values {
@@ -433,6 +444,9 @@ enum OverlayResult {
             guard !isRepeat else { return }
             current.tool = current.tool == tool ? nil : tool
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
+        case .select?:
+            current.tool = nil
+            if let store { EditorMemory.remember(tool: nil, in: store) }
         // A pick is the next object's and, with one selected, that object's too.
         case .color(let color)?:
             style.color = color
@@ -465,6 +479,15 @@ enum OverlayResult {
             finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
         case .nudge?, .close?, nil: break
         }
+    }
+
+    /// What ⋯ asks for: the menu, under the ⋯ circle on the display whose palette is up. `popUp` returns only when the
+    /// menu has closed, which the palette's pressed look counts on.
+    private func openMoreMenu() {
+        guard let view = panels.values.first(where: { $0.view.barsAreShown })?.view else { return }
+        openedMenu = moreMenu
+        defer { openedMenu = nil }
+        view.popUp(moreMenu, below: EditorPalette.moreCircleBottomLeft(bars.moreFrame))
     }
 
     func keyUp(_ event: NSEvent) {
@@ -518,7 +541,7 @@ enum OverlayResult {
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
                 if pinRefused {
-                    // By the palette the Pin cell is in, not by the pointer, which is on the glass the plate would lie under.
+                    // By the palette, which the menu was opened from, so that the plate does not lie under the glass.
                     scene.plate = ScStr.pinLimit
                     scene.plateByActions = true
                 } else if edit.layers.isArmed {
@@ -635,6 +658,18 @@ final class OverlayView: NSView {
     /// What the palette measures in the language the overlay opened in; measured once, since the
     /// language cannot change under a capture that is up.
     var paletteSize: CGSize { measuredPalette }
+
+    /// Pops `menu` up under the ⋯ circle, its left edge at the circle's, so that the circle and its badge stay in
+    /// view; where there is no room below, AppKit flips it. The circle's place is the palette's own reading,
+    /// converted from the host's top-left points to this view's. The menu's window rises `menuLift` above the
+    /// point it is given (4.5 pt measured in-process on a real popUp: window top 512.0 with the ring's bottom at
+    /// 511.5 at a lift of 4); where the body sits inside its window has no public reader. The point therefore lies
+    /// that far plus the badge's reach below the circle.
+    func popUp(_ menu: NSMenu, below circle: CGPoint) {
+        let menuLift: CGFloat = 4.5
+        let at = paletteHost.convert(CGPoint(x: circle.x, y: circle.y + EditorPalette.moreBadgeReach + menuLift), to: self)
+        menu.popUp(positioning: nil, at: at, in: self)
+    }
 
     /// Whether the palette is on screen, for a test.
     var barsAreShown: Bool { barsMade && !paletteHost.isHidden }

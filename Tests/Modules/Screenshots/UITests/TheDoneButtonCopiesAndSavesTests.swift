@@ -32,7 +32,7 @@ final class TheDoneButtonCopiesAndSavesTests: XCTestCase {
         super.tearDown()
     }
 
-    /// While `PinEntry.isOffered` is false: with it true the Pin cell sends `.exit(.pin)` and the exit assertion below would fail.
+    /// While `PinEntry.isOffered` is false: with it true the menu's Pin item would send `.exit(.pin)`, which the palette's own presses do not reach.
     func testAPressOnTheCheckmarkSendsConfirmAndNoPressOnThePaletteSendsCopySaveOrPin() throws {
         for language in AppLanguage.allCases {
             let sent = try actionsAcrossThePalette(language: language)

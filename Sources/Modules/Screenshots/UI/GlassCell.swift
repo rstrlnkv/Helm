@@ -22,6 +22,15 @@ struct GlassCell<Icon: View>: View {
     /// The glyph's colour, where the cell's own is not the text colour; it greys when the cell is disabled and
     /// the cell's circle stays as it was. Nil leaves the glyph as it inherits it.
     var ink: Color?
+    /// The cell is drawn pressed: a grey circle is filled with `paletteInk`, and the glyph is the caller's `ink`
+    /// (`pressedInk`). ⋯ while its menu is open.
+    var pressed = false
+    /// The width and height of the cell's layout and of the part that takes a press, the circle centred in it; nil is the
+    /// cell's own size. SwiftUI takes no press outside a view's layout, so the caller makes room for it.
+    var hit: CGFloat?
+    /// A 14 pt badge at the cell's lower right, drawn by this SF Symbol, and the accessibility value that goes with it.
+    var badge: String?
+    var value: String?
     @Environment(\.isEnabled) private var enabled
     let action: () -> Void
     @ViewBuilder let icon: Icon
@@ -33,11 +42,14 @@ struct GlassCell<Icon: View>: View {
                 .foregroundStyle(ink.map { AnyShapeStyle(enabled ? $0 : Self.disabledInk) } ?? AnyShapeStyle(.primary))
                 .frame(width: width, height: HelmSpace.s7)
                 .background(fill)
+                .overlay(alignment: .bottomTrailing) { badgeView }
+                .frame(width: hit ?? width, height: hit ?? HelmSpace.s7)
                 .contentShape(Rectangle())
         }
         .modifier(Plain(unfaded: ink != nil))
         .help(name)
         .accessibilityLabel(name)
+        .accessibilityValue(value ?? "")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -64,6 +76,28 @@ struct GlassCell<Icon: View>: View {
     /// A disabled glyph, from the same mockup: `#B8B8BD` light, `#6C6C70` dark. Opaque, so nothing dims it twice.
     private static var disabledInk: Color { adaptive(light: (0xB8, 0xB8, 0xBD), dark: (0x6C, 0x6C, 0x70)) }
 
+    /// The glyph on a pressed circle and in the badge, and the ring round the badge, from the mockup: `#F7F7F7` on
+    /// light and `#1F1F21` on dark. The pressed circle itself is `paletteInk`.
+    static var pressedInk: Color { adaptive(light: (0xF7, 0xF7, 0xF7), dark: (0x1F, 0x1F, 0x21)) }
+    private static var badgeSize: CGFloat { 14 }
+    private static var badgeRing: CGFloat { 1.5 }
+    private static var badgeOffset: CGFloat { 3 }
+    /// How far the badge and its ring reach below the circle: the offset and the ring's width.
+    static var badgeReach: CGFloat { badgeOffset + badgeRing }
+
+    @ViewBuilder private var badgeView: some View {
+        if let badge {
+            Image(systemName: badge)
+                .font(.system(size: 8.5, weight: .semibold))
+                .foregroundStyle(Self.pressedInk)
+                .frame(width: Self.badgeSize, height: Self.badgeSize)
+                .background(Circle().fill(Self.paletteInk))
+                // The mockup's 1.5 pt ring, so the badge does not merge with a pressed circle of its own colour.
+                .overlay(Circle().strokeBorder(Self.pressedInk, lineWidth: Self.badgeRing).padding(-Self.badgeRing))
+                .offset(x: Self.badgeOffset, y: Self.badgeOffset)
+        }
+    }
+
     private static func adaptive(light: (Int, Int, Int), dark: (Int, Int, Int)) -> Color {
         func ns(_ c: (Int, Int, Int)) -> NSColor {
             NSColor(srgbRed: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: 1)
@@ -76,7 +110,7 @@ struct GlassCell<Icon: View>: View {
     @ViewBuilder private var fill: some View {
         switch look {
         case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected ? 0.14 : 0))
-        case .greyCircle: Circle().fill(HelmSurface.onPanelFill)
+        case .greyCircle: Circle().fill(pressed ? AnyShapeStyle(Self.paletteInk) : AnyShapeStyle(HelmSurface.onPanelFill))
         case .accent: Circle().fill(Color.accentColor)
         }
     }
@@ -85,8 +119,10 @@ struct GlassCell<Icon: View>: View {
 extension GlassCell where Icon == Image {
     /// A cell drawn by an SF Symbol.
     init(symbol: String, name: String, selected: Bool = false, look: Look = .plain, width: CGFloat = HelmSpace.s7,
-         ink: Color? = nil, action: @escaping () -> Void) {
-        self.init(name: name, selected: selected, look: look, width: width, ink: ink, action: action) {
+         ink: Color? = nil, pressed: Bool = false, hit: CGFloat? = nil, badge: String? = nil, value: String? = nil,
+         action: @escaping () -> Void) {
+        self.init(name: name, selected: selected, look: look, width: width, ink: ink, pressed: pressed, hit: hit,
+                  badge: badge, value: value, action: action) {
             Image(systemName: symbol)
         }
     }

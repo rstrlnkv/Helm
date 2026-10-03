@@ -14,7 +14,14 @@ import Module_Screenshots_Engine
     @Published private(set) var style = AnnotationStyle.standard
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
+    @Published var morePressed = false
     var perform: (EditorAction) -> Void = { _ in }
+    /// What ⋯ calls: the overlay pops the menu up, and the call returns when the menu has closed.
+    var openMenu: () -> Void = {}
+    /// ⋯'s layout frame (its press zone) in the palette's own top-left points, which the overlay anchors the menu to;
+    /// written by the palette's layout, not a state anything draws.
+    var moreFrame = CGRect.zero
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     func show(tool: AnnotationTool?, style: AnnotationStyle, selectedTool: AnnotationTool? = nil,
@@ -30,7 +37,7 @@ import Module_Screenshots_Engine
     private var subject: AnnotationTool? { selectedTool ?? tool }
     /// The swatch that is lit: the picked colour, or the one the tool draws in until one is picked.
     var lit: AnnotationColor { style.ink(for: subject ?? .pencil) }
-    /// Read by no cell yet: the fill leaves the palette for the next task's ⋯ menu, which takes it.
+    /// Whether a box is the subject, so that the fill changes what is drawn or selected now. Filled in the ⋯ menu is enabled by it.
     var fillApplies: Bool { subject == .rectangle || subject == .ellipse }
 }
 
@@ -45,10 +52,11 @@ final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
 }
 
 /// The editor's one capsule, left to right: Undo and Redo, the objects, the colours in a grid of three
-/// by two, ⋯, Done, Pin (only while `PinEntry.isOffered`), a separator and ✕. Every cell is a control with a name.
+/// by two, ⋯, Done, a separator and ✕. Every cell is a control with a name.
 ///
-/// The objects come from one list that says where each stands: in the `row` or in the `menu` behind ⋯.
-/// The menu has no content yet, so a tool placed there has no button, only its key.
+/// The objects come from one list that says where each stands: in the `row`, in the `menu` behind ⋯, or in the
+/// `shapes` submenu of it; the row and `EditorMenu` are both read from it. ⋯ shows the symbol of a chosen menu tool
+/// as a badge.
 struct EditorPalette: View {
     @ObservedObject var model: EditorBarModel
     @Environment(\.colorScheme) private var scheme
@@ -56,22 +64,53 @@ struct EditorPalette: View {
     /// The lit swatch's ring, outer edge to outer edge: 24 + 2 × (2.5 gap + 2 ring). No step of the ladder has it.
     private static let ringDiameter: CGFloat = 33
 
+    /// What ⋯ takes a press on, around its 28 pt circle, and how far that reaches past the circle on each side.
+    private static let moreZone: CGFloat = 36
+    private static var moreOverhang: CGFloat { (moreZone - HelmSpace.s7) / 2 }
+
+    private static let space = "palette"
+
     /// The capsule's height, which every cell is centred in.
     static let height: CGFloat = 76
 
-    enum Place { case row, menu }
+    enum Place { case row, menu, shapes }
 
     /// Drawn by the SF Symbols the bars used before, until the artwork replaces them.
     static let objects: [(tool: AnnotationTool, symbol: String, place: Place)] = [
-        (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .menu), (.ellipse, "circle", .menu),
-        (.line, "line.diagonal", .menu), (.pencil, "pencil", .row), (.highlighter, "highlighter", .row),
+        (.arrow, "arrow.up.right", .menu), (.rectangle, "rectangle", .shapes), (.ellipse, "circle", .shapes),
+        (.line, "line.diagonal", .shapes), (.pencil, "pencil", .row), (.highlighter, "highlighter", .row),
     ]
+
+    /// The symbol of Select, which is no `AnnotationTool`: with no tool chosen a drag selects.
+    static let selectSymbol = "cursorarrow"
+
+    /// How far ⋯'s badge and its ring reach below the circle.
+    static var moreBadgeReach: CGFloat { GlassCell<Image>.badgeReach }
+
+    /// The ⋯ circle's lower left in the palette's top-left points: the circle is centred in its zone.
+    static func moreCircleBottomLeft(_ zone: CGRect) -> CGPoint {
+        CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
+    }
+
+    /// The symbol on ⋯'s lower right: the chosen menu tool's, Select's with no tool, nothing while a row object is raised.
+    static func moreBadge(for model: EditorBarModel) -> String? {
+        guard let tool = model.tool else { return selectSymbol }
+        return objects.first { $0.tool == tool && $0.place != .row }?.symbol
+    }
+
+    /// The name of what the badge shows, for VoiceOver.
+    static func moreValue(for model: EditorBarModel) -> String? {
+        guard moreBadge(for: model) != nil else { return nil }
+        return model.tool.map(ScStr.tool) ?? ScStr.select
+    }
 
     /// Three to a row: the order the palette is read in.
     private static let colours: [AnnotationColor] = [.red, .yellow, .blue, .green, .black]
 
     var body: some View {
-        HStack(spacing: HelmSpace.s5) {
+        // The gaps are the step (12) plus what the mockup adds, one by one, so ⋯'s layout can be its 36 pt zone: its two gaps
+        // are 4 pt shorter than the visible ones, which stay the circle's to its neighbours.
+        HStack(spacing: 0) {
             HStack(spacing: HelmSpace.s4) {
                 GlassCell(symbol: "arrow.uturn.backward", name: ScStr.undo, look: .greyCircle, ink: GlassCell<Image>.paletteInk) {
                     model.perform(.undo)
@@ -84,24 +123,29 @@ struct EditorPalette: View {
             }
             // The mockup's gaps are 14, 16 and 14 where the ladder has 12: the 2 and the 4 are added to the
             // step, so the step stays the one the gap to Done is.
-            .padding(.trailing, HelmSpace.s1)
+            .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
             HStack(spacing: HelmSpace.s1) {
                 ForEach(Self.objects.filter { $0.place == .row }, id: \.tool) { object in
                     GlassCell(symbol: object.symbol, name: ScStr.tool(object.tool), selected: model.tool == object.tool,
                               width: HelmSpace.s8) { model.perform(.tool(object.tool)) }
                 }
             }
-            .padding(.trailing, HelmSpace.s2)
+            .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)
             colourGrid
-                .padding(.trailing, HelmSpace.s1)
-            GlassCell(symbol: "ellipsis", name: HelmA11y.moreActions, look: .greyCircle, ink: GlassCell<Image>.paletteInk) {}
+                .padding(.trailing, HelmSpace.s5 + HelmSpace.s1 - Self.moreOverhang)
+            // The circle is 28 pt and takes a press 36 pt wide: Done is 12 pt from the circle and 8 from the zone.
+            GlassCell(symbol: "ellipsis", name: HelmA11y.moreActions, look: .greyCircle,
+                      ink: model.morePressed ? GlassCell<Image>.pressedInk : GlassCell<Image>.paletteInk,
+                      pressed: model.morePressed, hit: Self.moreZone, badge: Self.moreBadge(for: model), value: Self.moreValue(for: model)) {
+                model.morePressed = true
+                model.openMenu()
+                model.morePressed = false
+            }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.moreFrame = $0 }
+            .padding(.trailing, HelmSpace.s5 - Self.moreOverhang)
             HStack(spacing: HelmSpace.s2) {
                 GlassCell(name: ScStr.done, look: .accent) { model.perform(.exit(.confirm)) } icon: {
                     Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(.white)
-                }
-                // Where the old action row had it, between the exits and Close; the ⋯ menu takes it in a later task.
-                if PinEntry.isOffered {
-                    GlassCell(symbol: "pin", name: ScStr.pin, ink: GlassCell<Image>.paletteInk) { model.perform(.exit(.pin)) }
                 }
                 Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: HelmSpace.s6)
                 GlassCell(symbol: "xmark", name: ScStr.closeEditor, ink: GlassCell<Image>.paletteInk) { model.perform(.close) }
@@ -109,6 +153,7 @@ struct EditorPalette: View {
         }
         .padding(.horizontal, HelmSpace.s6)
         .frame(height: Self.height)
+        .coordinateSpace(name: Self.space)
         // Glass and no edge of our own: it carries its own.
         .glassEffect(.regular, in: .capsule)
     }

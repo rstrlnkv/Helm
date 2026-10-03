@@ -9,7 +9,7 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **Esc and the right click mid-drawing are one door and drop the stroke under the pointer:** the
-/// release that follows makes no layer, the bars come back, and the Esc question is asked and
+/// release that follows makes no layer, the palette comes back, and the Esc question is asked and
 /// answered as the rule says afterwards.
 @MainActor
 final class TheEscapeMidDrawingLeavesNoTraceTests: XCTestCase {
@@ -63,10 +63,10 @@ final class TheEscapeMidDrawingLeavesNoTraceTests: XCTestCase {
 
     private func assertDropped(_ id: DisplayID, _ view: OverlayView, _ why: String) {
         XCTAssertTrue(results.isEmpty, "\(why): it closed the editor \(results)")
-        XCTAssertNotNil(overlay?.chrome(on: id), "\(why): the bars did not come back at the drop")
+        XCTAssertNotNil(overlay?.chrome(on: id), "\(why): the palette did not come back at the drop")
         overlay?.mouseUp(on: id)
         XCTAssertEqual(view.drawnShapes.count, 1, "\(why): the release made a layer")
-        XCTAssertNotNil(overlay?.chrome(on: id), "\(why): the bars did not come back")
+        XCTAssertNotNil(overlay?.chrome(on: id), "\(why): the palette did not come back")
         XCTAssertTrue(view.visiblePlates.isEmpty, "\(why): the drop asked the question")
     }
 

@@ -1317,6 +1317,8 @@
 "Rectangle" = "長方形";
 "Oval" = "楕円";
 "Line" = "線";
+"Shapes" = "図形";
+"Select" = "選択";
 "Pencil" = "鉛筆";
 "Highlight" = "ハイライト";
 "Black" = "ブラック";

@@ -1317,6 +1317,8 @@
 "Rectangle" = "矩形";
 "Oval" = "椭圆形";
 "Line" = "线条";
+"Shapes" = "形状";
+"Select" = "选择";
 "Pencil" = "铅笔";
 "Highlight" = "高亮标记";
 "Black" = "黑色";

@@ -1317,6 +1317,8 @@
 "Rectangle" = "Rectangle";
 "Oval" = "Ovale";
 "Line" = "Ligne";
+"Shapes" = "Formes";
+"Select" = "Sélection";
 "Pencil" = "Crayon";
 "Highlight" = "Surbrillance";
 "Black" = "Noir";

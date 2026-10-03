@@ -322,7 +322,7 @@ public struct AnnotationEditing: Sendable {
     }
 
     /// The selected object is let go of when none of it is inside the area any more: a frame and
-    /// handles left in the dim, under the bars, are something nobody can see to act on. One that is
+    /// handles left in the dim, under the palette, are something nobody can see to act on. One that is
     /// partly inside stays selected; nothing is recorded, the object stays where it is.
     public mutating func releaseIfOutside() {
         guard let current = selected, bounds.intersection(current.frame).isNull else { return }

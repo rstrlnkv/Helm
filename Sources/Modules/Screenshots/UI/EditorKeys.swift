@@ -10,15 +10,17 @@ enum EditorExit: Equatable {
     case copy
     /// ⌘S: a file only.
     case save
-    /// The palette's Pin cell, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
+    /// The ⋯ menu's Pin item, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
     case pin
 }
 
 /// What a key or a click on the palette means to the editor: **one vocabulary**, so that a
 /// tool key and the tool's cell cannot do two different things. The keys name only
-/// some of these; the rest are the palette's.
+/// some of these; the rest are the palette's and the ⋯ menu's.
 enum EditorAction: Equatable {
     case tool(AnnotationTool)
+    /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
+    case select
     /// The next object's colour, thickness and, for the boxes, fill.
     case color(AnnotationColor)
     case thickness(AnnotationThickness)

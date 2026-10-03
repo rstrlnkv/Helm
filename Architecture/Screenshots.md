@@ -83,6 +83,12 @@ boxes — is an `AnnotationStyle` the object is begun with; a colour never picke
 (red, and yellow for the marker), and the last tool and style are read once, at the first release of a
 capture, and written at each pick by `EditorMemory`, with every stored value bounded.
 
+The palette carries the pencil and the marker as objects; every other tool, Select, Filled, Save and, while
+`PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
+a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
+it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
+carries the symbol of a chosen menu tool as a badge. The menu shows no key; the keys are `EditorKeys`', with the menu closed.
+
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
 read in one order by `CaptureOverlay.mouseDown`: the palette, then an area handle — unless the selected object has a
@@ -114,7 +120,7 @@ pixel cut; nothing is written, copied, played or toasted, and `CaptureController
 other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out: the
 capture bar and the toast are `.statusBar` and the overlay `.screenSaver`, so a new capture lies over
 every pin, and the toast, which would be below the overlay, is why the limit of `PinGeometry.limit` open pins is
-said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the palette's Pin cell, built only while `PinEntry.isOffered`, and stays open when
+said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the ⋯ menu's Pin item, built only while `PinEntry.isOffered`, and stays open when
 there is none). A pin is key only once clicked, so Esc closes exactly the pin last touched and no other
 window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
