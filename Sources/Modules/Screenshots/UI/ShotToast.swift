@@ -17,7 +17,8 @@ import Module_Screenshots_Engine
     @Published var hovering = false
     /// What the close control does: the toast's own `dismiss`, set by its owner.
     var dismiss: () -> Void = {}
-    /// What the capsule's Copy and Pin do, and what the pointer's coming and going tells the toast's clock: set by its owner.
+    /// What the capsule's Edit, Copy and Pin do, and what the pointer's coming and going tells the toast's clock: set by its owner.
+    var edit: () -> Void = {}
     var copy: () -> Void = {}
     var pin: () -> Void = {}
     var hoverChanged: (Bool) -> Void = { _ in }
@@ -27,6 +28,18 @@ import Module_Screenshots_Engine
     /// The full picture of a shot that was only copied: a thumbnail is a reduced copy, and a drag or a share of it
     /// would hand over `ShotThumbnail.longestEdge` pixels. A shot with a file holds none, and is read back from the file when asked.
     var full: CGImage?
+    /// What the shot's file was when it was written: what «Edit» and the replacement that follows ask the file
+    /// against. Nil for a shot with no file.
+    var reading: ShotReading?
+
+    /// What «Edit» opens on, nil while there is nothing it could: the written file with its reading, or the held
+    /// picture of a shot that was only copied. A file with no reading is not offered, since nothing could say
+    /// later that it is still that file.
+    var editSource: (shot: WrittenShot?, held: CGImage?)? {
+        guard case .picture(_, let caption, let file)? = content, caption != nil else { return nil }
+        if let file { return reading.map { (WrittenShot(url: file, reading: $0), nil) } }
+        return full.map { (nil, $0) }
+    }
 
     /// The pointer's coming and going, from the thumbnail's view.
     func pointer(over: Bool) {
@@ -42,20 +55,16 @@ import Module_Screenshots_Engine
         return full.map { .picture($0) }
     }
 
-    /// A click on the thumbnail: the file in the system's own viewer, until the editor opens from here.
-    func open() {
-        guard case .picture(_, _, let file?)? = content else { return }
-        NSWorkspace.shared.open(file)
-    }
 }
 
-/// What the capsule over a thumbnail offers, in order; the ✕ stands after a divider. «Show in Finder» only for a
-/// shot that has a file, and Pin only while `PinEntry.isOffered`.
+/// What the capsule over a thumbnail offers, in order; the ✕ stands after a divider. «Edit» only where there is
+/// something to open the editor on (`ShotToastModel.editSource`), «Show in Finder» only for a shot that has a
+/// file, and Pin only while `PinEntry.isOffered`.
 enum ShotCapsule {
-    enum Cell: Equatable { case copy, reveal, pin, close }
+    enum Cell: Equatable { case edit, copy, reveal, pin, close }
 
-    static func cells(hasFile: Bool, pinOffered: Bool = PinEntry.isOffered) -> [Cell] {
-        var cells: [Cell] = [.copy]
+    static func cells(hasFile: Bool, canEdit: Bool = false, pinOffered: Bool = PinEntry.isOffered) -> [Cell] {
+        var cells: [Cell] = canEdit ? [.edit, .copy] : [.copy]
         if hasFile { cells.append(.reveal) }
         if pinOffered { cells.append(.pin) }
         return cells + [.close]
@@ -68,14 +77,39 @@ enum ShotCapsule {
     static let separatorHeight: CGFloat = 22
     static let separatorGap = HelmSpace.s2
     private static let dividerWidth: CGFloat = 1
+    /// Between one cell and the next, the mockup's 2 pt: the divider's air is its own and comes on top of it.
+    static let gap = HelmSpace.s1
 
-    /// The capsule's width for a number of cells, the ✕ counted. Computed from the numbers the capsule is laid out by.
+    /// The capsule's width for a number of cells, the ✕ counted: a gap between each two cells (the divider stands in
+    /// the gap before the ✕ and is not a cell). Computed from the numbers the capsule is laid out by.
     static func width(cellCount: Int) -> CGFloat {
-        CGFloat(cellCount) * HelmSpace.s7 + dividerWidth + 2 * separatorGap + 2 * inset
+        CGFloat(cellCount) * HelmSpace.s7 + CGFloat(max(0, cellCount - 1)) * gap + dividerWidth + 2 * separatorGap + 2 * inset
     }
 
     /// The widest the capsule can be while the picture is not wider: the room the window keeps for it.
-    static var widest: CGFloat { width(cellCount: cells(hasFile: true).count) }
+    static var widest: CGFloat { width(cellCount: cells(hasFile: true, canEdit: true).count) }
+
+    /// How far the capsule stands up from the picture's lower edge, and how far its top is from that edge: a cell
+    /// with the inset above and below it, on the rise.
+    static let rise = HelmSpace.s4
+    static var reach: CGFloat { rise + HelmSpace.s7 + 2 * inset }
+}
+
+/// A transparent AppKit view behind the capsule's cells that answers a press anywhere in the capsule's shape and
+/// does nothing with it. SwiftUI's own hit test leaves the rim and the divider to what lies below.
+final class ShotCapsuleView: NSView {
+    override var mouseDownCanMoveWindow: Bool { false }
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let radius = bounds.height / 2
+        return NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).contains(convert(point, from: superview)) ? self : nil
+    }
+    override func mouseDown(with event: NSEvent) {}
+    override func mouseUp(with event: NSEvent) {}
+}
+
+struct ShotCapsuleShield: NSViewRepresentable {
+    func makeNSView(context: Context) -> ShotCapsuleView { ShotCapsuleView() }
+    func updateNSView(_ view: ShotCapsuleView, context: Context) {}
 }
 
 @MainActor final class ShotToast {
@@ -91,7 +125,8 @@ enum ShotCapsule {
     /// the pointer keeps, to end it when the pointer is elsewhere, and when the time is up, to hold when it is there. A
     /// seam for a test.
     var pointerIsOver: () -> Bool
-    /// What the capsule's Copy and Pin ask of whoever owns the session and the board.
+    /// What the capsule's Edit, Copy and Pin ask of whoever owns the session and the board.
+    var onEdit: () -> Void = {}
     var onCopy: () -> Void = {}
     var onPin: (CGImage, CGRect) -> Void = { _, _ in }
     /// Closes a sheet that is open. A seam: a test reads which sheet was closed, and the running app asks the picker.
@@ -122,6 +157,7 @@ enum ShotCapsule {
         }
         model.dismiss = { [weak self] in self?.dismiss() }
         model.hoverChanged = { [weak self] over in self?.setHover(over) }
+        model.edit = { [weak self] in self?.onEdit() }
         model.copy = { [weak self] in self?.onCopy() }
         model.pin = { [weak self] in self?.pin() }
         model.anchorAttached = { [weak self] in self?.attemptShare() }
@@ -134,10 +170,12 @@ enum ShotCapsule {
         present(.picture(Self.thumbnail(of: image), caption: nil, file: nil), lasting: 6)
     }
 
-    /// `share` also opens the system's Share sheet at the thumbnail once it is up.
-    func showDone(_ image: CGImage, caption: String, file: URL?, share: Bool = false) {
+    /// `share` also opens the system's Share sheet at the thumbnail once it is up. `reading` is what the writer
+    /// read of `file` as it wrote it, which is what makes the shot one «Edit» can open.
+    func showDone(_ image: CGImage, caption: String, file: URL?, share: Bool = false, reading: ShotReading? = nil) {
         present(.picture(Self.thumbnail(of: image), caption: caption, file: file), lasting: 5)
         model.full = file == nil ? image : nil
+        model.reading = file == nil ? nil : reading
         if share { requestShare() }
     }
 
@@ -151,8 +189,14 @@ enum ShotCapsule {
     /// decision is one a test can ask without a window.
     static func refusalContent(_ reason: CaptureRefusal) -> ShotToastModel.Content {
         let permission = reason == .noPermission
-        return .refusal(title: permission ? ScStr.noPermissionTitle : ScStr.failedTitle,
-                        body: ScStr.refusal(reason), offersSettings: permission)
+        let title: String
+        switch reason {
+        case .noPermission: title = ScStr.noPermissionTitle
+        // A shot that was taken and could not be opened or replaced: «not taken» would be untrue of it.
+        case .notEditable, .notReplaced: title = ScStr.thumbnailLabel
+        case .captureFailed, .displayGone, .windowGone, .write, .pasteboard, .encoding: title = ScStr.failedTitle
+        }
+        return .refusal(title: title, body: ScStr.refusal(reason), offersSettings: permission)
     }
 
     func dismiss() {
@@ -166,6 +210,7 @@ enum ShotCapsule {
         panel = nil
         model.content = nil
         model.full = nil
+        model.reading = nil
     }
 
     // MARK: - How long it lives
@@ -272,7 +317,9 @@ enum ShotCapsule {
     /// The picture as a pin, where the thumbnail stands; the toast goes.
     private func pin() {
         guard let image = fullPicture(), let anchor = model.anchor, let window = anchor.window else { return }
-        onPin(image, window.convertToScreen(anchor.convert(anchor.bounds, to: nil)))
+        // The picture's own rect: the view is larger than the picture while the capsule is up over a small shot.
+        let rect = (anchor as? ShotDragView)?.pictureFrame ?? anchor.bounds
+        onPin(image, window.convertToScreen(anchor.convert(rect, to: nil)))
         dismiss()
     }
 
@@ -281,6 +328,7 @@ enum ShotCapsule {
     private func present(_ content: ShotToastModel.Content, lasting seconds: Double) {
         dismissal?.cancel()
         model.full = nil
+        model.reading = nil
         // The pointer stays held across a picture that replaces a picture, the write's result over its working
         // thumbnail above all: the view is the same one. Whether AppKit sends a new enter for a pointer that never
         // left is not measured, and a hold dropped here would not come back.
@@ -312,6 +360,7 @@ enum ShotCapsule {
             self?.panel = nil
             self?.model.content = nil
             self?.model.full = nil
+            self?.model.reading = nil
         }
     }
 
@@ -394,16 +443,32 @@ struct ShotToastView: View {
 
     /// The shot alone, in a white frame: the thumbnail macOS shows. The caption is not on the screen; it is the value
     /// a screen reader reads. The capsule comes up from the lower edge while the pointer is over it, and only when
-    /// the result is in, since Copy and Show in Finder need what was written.
+    /// the result is in, since Edit, Copy and Show in Finder need what was written.
+    ///
+    /// **While the capsule is up the pointer's zone is the picture and the capsule together.** On a shot narrower
+    /// or shorter than the capsule the cells reach outside the picture, and a zone that was the picture alone
+    /// would lose the pointer on its way to an outer cell and take the capsule from under it. On a shot narrower
+    /// than the capsule both stand against the picture's trailing edge and reach leftward, into the window's own
+    /// room: the ring stays where `ShotToast.place` counts on it, by the screen's edge, and the capsule stays on
+    /// the screen.
     private func picture(_ image: CGImage, caption: String?, file: URL?) -> some View {
         let size = ShotThumbnail.fitted(pixels: CGSize(width: image.width, height: image.height))
+        let cells = ShotCapsule.cells(hasFile: file != nil, canEdit: model.editSource != nil)
+        let capsuleWidth = ShotCapsule.width(cellCount: cells.count)
+        let capsuleUp = model.hovering && caption != nil
+        let narrow = size.width < capsuleWidth
+        let zone = capsuleUp
+            ? CGSize(width: max(size.width, capsuleWidth), height: max(size.height, ShotCapsule.reach)) : size
         return Image(decorative: image, scale: 1)
             .resizable()
             .frame(width: size.width, height: size.height)
             .clipShape(.rect(cornerRadius: Self.pictureRadius))
-            .overlay { ShotDragSource(model: model, preview: image) }
-            .overlay(alignment: .bottom) {
-                if model.hovering, caption != nil { capsule(hasFile: file != nil) }
+            .overlay(alignment: narrow ? .bottomTrailing : .bottom) {
+                ShotDragSource(model: model, preview: image, picture: size, trailing: narrow)
+                    .frame(width: zone.width, height: zone.height)
+            }
+            .overlay(alignment: narrow ? .bottomTrailing : .bottom) {
+                if capsuleUp { capsule(cells) }
             }
             .padding(Self.frameWidth)
             // The shadow belongs to the ring's own shape: the capsule's glass and glyphs on the picture cast none.
@@ -412,8 +477,9 @@ struct ShotToastView: View {
                     .fill(.white)
                     .shadow(color: .black.opacity(0.35), radius: 30, y: 10)
             }
-            // Room for the capsule where the picture is narrower than it; the ring stays round the picture.
-            .frame(minWidth: ShotCapsule.widest)
+            // Room for the capsule where the picture is narrower than it; the ring stays round the picture, at the
+            // trailing edge, which is the one `ShotToast.place` stands 20 pt from the screen's.
+            .frame(minWidth: ShotCapsule.widest, alignment: .trailing)
             .animation(HelmMotion.interface, value: model.hovering)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(ScStr.thumbnailLabel)
@@ -425,29 +491,36 @@ struct ShotToastView: View {
     private static let frameWidth: CGFloat = 3
     private static let pictureRadius: CGFloat = 5
 
-    /// «Copy · Show in Finder (· Pin) | ✕», on glass, 8 pt up from the picture's lower edge.
-    private func capsule(hasFile: Bool) -> some View {
+    /// «Edit · Copy · Show in Finder (· Pin) | ✕», on glass, 8 pt up from the picture's lower edge.
+    ///
+    /// **The whole capsule takes the press** (`ShotCapsuleView`): under it lies the drag view, whose click is «Edit»,
+    /// and a press on the rim or the divider that reached it would open the editor and take the thumbnail away.
+    private func capsule(_ cells: [ShotCapsule.Cell]) -> some View {
         HStack(spacing: 0) {
-            ForEach(ShotCapsule.cells(hasFile: hasFile), id: \.self) { cell in
-                switch cell {
-                case .copy: GlassCell(symbol: "doc.on.doc", name: ScStr.copy) { model.copy() }
-                case .reveal: GlassCell(symbol: "folder", name: ScStr.showInFinder) { reveal() }
-                case .pin: GlassCell(symbol: "pin", name: ScStr.pin) { model.pin() }
-                case .close:
-                    Divider().frame(height: ShotCapsule.separatorHeight).padding(.horizontal, ShotCapsule.separatorGap)
-                    closeCell
+            HStack(spacing: ShotCapsule.gap) {
+                ForEach(cells.filter { $0 != .close }, id: \.self) { cell in
+                    switch cell {
+                    case .edit: GlassCell(symbol: "pencil", name: ScStr.edit) { model.edit() }
+                    case .copy: GlassCell(symbol: "doc.on.doc", name: ScStr.copy) { model.copy() }
+                    case .reveal: GlassCell(symbol: "folder", name: ScStr.showInFinder) { reveal() }
+                    case .pin: GlassCell(symbol: "pin", name: ScStr.pin) { model.pin() }
+                    case .close: EmptyView()
+                    }
                 }
+                Divider().frame(height: ShotCapsule.separatorHeight).padding(.horizontal, ShotCapsule.separatorGap)
             }
+            closeCell
         }
         .padding(ShotCapsule.inset)
+        .background { ShotCapsuleShield() }
         .glassEffect(.regular, in: .capsule)
-        .padding(.bottom, HelmSpace.s4)
+        .padding(.bottom, ShotCapsule.rise)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private func reveal() {
         guard case .picture(_, _, let file?)? = model.content else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([file])
+        HelmReveal.inFinder(file.path)
     }
 
     /// The way off the screen: the capsule's ✕ on a thumbnail whose result is in, and the refusal's, which stays up

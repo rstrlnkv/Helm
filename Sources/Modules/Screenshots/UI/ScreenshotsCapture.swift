@@ -95,6 +95,7 @@ struct CapturedShot {
         self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
         bar.model.cancel = { [weak self] in self?.cancel() }
+        toast.onEdit = { [weak self] in self?.editFromThumbnail() }
         toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
         toast.onPin = { [weak self] image, frame in self?.pins.open(image, frame: frame) }
     }
@@ -218,7 +219,55 @@ struct CapturedShot {
         }
     }
 
-    private func overlayFinished(_ result: OverlayResult, freeze: Freeze) {
+    // MARK: - «Edit» on the thumbnail
+
+    /// What an editor opened from the thumbnail was opened on: the picture over its freeze, and the shot whose file
+    /// a save replaces. `original` is nil for a shot that was only copied, which has nothing to replace.
+    struct ShotEdit {
+        let shown: PictureOnScreen
+        let original: WrittenShot?
+    }
+
+    /// The thumbnail's click and the capsule's Edit: the palette round the finished picture. One capture at a time,
+    /// so a press while another is open or in flight is dropped, as a shortcut's is.
+    func editFromThumbnail() {
+        guard !busy, let source = toast.model.editSource else { return }
+        busy = true
+        pressTask = Task { await self.edit(source.shot, held: source.held) }
+    }
+
+    private func edit(_ shot: WrittenShot?, held: CGImage?) async {
+        let opened = await session.openEdit(of: shot, held: held, on: Self.displayUnderPointer())
+        // The module went off while the file was read or the screen frozen: no overlay for a module that is off.
+        guard !Task.isCancelled else { return }
+        switch opened {
+        case .refused(let reason):
+            toast.showRefusal(reason)
+            busy = false
+        case .ready(let shown):
+            let editing = ShotEdit(shown: shown, original: shot)
+            let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: store,
+                                         pinRoom: { [weak self] in self?.pins.hasRoom ?? false }) { [weak self] result in
+                self?.overlayFinished(result, freeze: shown.freeze, editing: editing)
+            }
+            self.overlay = overlay
+            if presentOverlay(overlay) {
+                // The picture is in the editor now, and the thumbnail would lie under the overlay.
+                toast.dismiss()
+            } else {
+                self.overlay = nil
+                busy = false
+            }
+        }
+    }
+
+    private static func displayUnderPointer() -> DisplayID? {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(mouse) }
+        return (screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32).map { DisplayID($0) }
+    }
+
+    private func overlayFinished(_ result: OverlayResult, freeze: Freeze, editing: ShotEdit? = nil) {
         overlay?.close()
         overlay = nil
         deliveryTask = Task {
@@ -229,16 +278,24 @@ struct CapturedShot {
             case .cancelled:
                 break
             case .edited(let display, let local, let layers, let exit):
-                remember(display: display, local: local, in: freeze)
-                if let image = await session.annotated(freeze, display: display, local: local, layers: layers,
-                                                       detached: exit == .pin),
-                   !Task.isCancelled {
+                let image: CGImage?
+                if let editing {
+                    // The picture's own pixels, and an area on the display it was shown on: any other display's
+                    // points are not the picture's.
+                    image = display == editing.shown.display
+                        ? await session.annotated(editing.shown, local: local, layers: layers) : nil
+                } else {
+                    remember(display: display, local: local, in: freeze)
+                    image = await session.annotated(freeze, display: display, local: local, layers: layers,
+                                                    detached: exit == .pin)
+                }
+                if let image, !Task.isCancelled {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .confirm, .copy, .save, .share:
                         await handOff(CapturedShot(image: image, kind: .area),
                                       saves: exit != .copy, copies: exit != .save,
-                                      fileEvenFromClipboard: exit == .save, thenShare: exit == .share)
+                                      fileEvenFromClipboard: exit == .save, thenShare: exit == .share, editing: editing)
                     case .pin:
                         pin(image, display: display, local: local, in: freeze)
                     }
@@ -290,16 +347,24 @@ struct CapturedShot {
     /// then calls this with the two things its exit asked for (Return asks for both
     /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The
     /// full-screen shortcut never came through here: it has no editor.
+    ///
+    /// `editing` marks the exit of an editor opened from the thumbnail: **a save then replaces that shot's file**,
+    /// and the order of that replacement is the session's (`CaptureSession.deliver(…replacing:)`), not this
+    /// type's. No shutter, since no picture was taken, and the thumbnail comes back whatever the setting says,
+    /// since it is where the edit was asked for. A shot that had no file replaces nothing: it is saved as a new one,
+    /// or only copied under the clipboard target, as any shot is.
     func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
-                 fileEvenFromClipboard: Bool = false, thenShare: Bool = false) async {
+                 fileEvenFromClipboard: Bool = false, thenShare: Bool = false, editing: ShotEdit? = nil) async {
         guard !Task.isCancelled else { return }
         let settings = ScreenshotsSettings.read(store)
-        session.shutter()
+        if editing == nil { session.shutter() }
         // A person who asked for the Share sheet needs the thumbnail it opens at, whatever the setting says.
-        if settings.thumbnail || thenShare { toast.showWorking(shot.image) }
+        let shows = settings.thumbnail || thenShare || editing != nil
+        if shows { toast.showWorking(shot.image) }
         let delivery = await session.deliver(shot.image, saves: saves, copies: copies,
-                                             fileEvenFromClipboard: fileEvenFromClipboard)
-        if !Task.isCancelled { present(delivery, sharing: thenShare) }
+                                             fileEvenFromClipboard: fileEvenFromClipboard,
+                                             replacing: editing?.original)
+        if !Task.isCancelled { present(delivery, showing: shows, sharing: thenShare) }
     }
 
     /// The capsule's Copy: the shot's full picture to the clipboard, from memory or read back from its file.
@@ -314,18 +379,21 @@ struct CapturedShot {
 
     // MARK: - What the person is told
 
-    private func present(_ delivery: Delivery, sharing: Bool = false) {
+    /// `showing` is nil for a delivery that asks the setting itself, which is the full-screen shortcut's.
+    private func present(_ delivery: Delivery, showing: Bool? = nil, sharing: Bool = false) {
         if let refusal = delivery.refusals.first {
             toast.showRefusal(refusal)
             return
         }
-        guard ScreenshotsSettings.read(store).thumbnail || sharing, let image = delivery.image else { return }
+        guard showing ?? ScreenshotsSettings.read(store).thumbnail, let image = delivery.image else { return }
         let caption: String
         switch (delivery.files.isEmpty, delivery.copied) {
+        case (false, _) where delivery.replaced: caption = ScStr.replaced
         case (false, true): caption = ScStr.savedAndCopied
         case (false, false): caption = ScStr.saved
         default: caption = ScStr.copied
         }
-        toast.showDone(image, caption: caption, file: delivery.files.first, share: sharing)
+        let shot = delivery.written.first
+        toast.showDone(image, caption: caption, file: shot?.url, share: sharing, reading: shot?.reading)
     }
 }

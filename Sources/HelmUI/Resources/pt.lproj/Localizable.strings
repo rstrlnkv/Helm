@@ -1350,8 +1350,11 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Necessário para o Capturas de Tela capturar a tela. O Helm não grava vídeo nem som — o macOS só tem um controle para ler pixels e para gravar.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "A gravação do áudio do sistema e da tela está desativada. Sem ela o Helm não consegue ler a tela, e os atalhos de captura não capturam nada.";
 "Open Screen & System Audio Recording…" = "Abrir Gravação do Áudio do Sistema e da Tela…";
-/* Screenshots, popup track: the thumbnail's Share sheet. */
+/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Compartilhar…";
+"Replaced. The original is in the Trash." = "Substituída. O original está no Lixo.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "A captura foi movida ou alterada depois de feita. Sua edição foi salva como um arquivo separado.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "A captura foi movida ou alterada depois de feita, por isso não pode ser editada aqui.";
 "Sort By" = "Ordenar por";
 "Sort by Name" = "Ordenar por Nome";
 "Sort by Size" = "Ordenar por Tamanho";

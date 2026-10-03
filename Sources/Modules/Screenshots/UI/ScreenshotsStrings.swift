@@ -205,6 +205,7 @@ enum ScStr {
     /// The word in a file name and on a thumbnail. One key, macOS's own word.
     static var thumbnailLabel: String { L("Screenshot") }
     /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
+    static var edit: String { L("Edit") }
     static var copy: String { L("Copy") }
     static var showInFinder: String { L("Show in Finder") }
     /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
@@ -212,6 +213,8 @@ enum ScStr {
     static var saved: String { L("Saved") }
     static var copied: String { L("Copied to the clipboard") }
     static var savedAndCopied: String { L("Saved and copied") }
+    /// What a screen reader reads of a thumbnail whose edit took its original's place.
+    static var replaced: String { L("Replaced. The original is in the Trash.") }
     /// The plate over an edited picture after a first Esc.
     static var confirmClose: String { L("Press Esc again to close without saving") }
     static var dismissToast: String { L("Close") }
@@ -235,6 +238,15 @@ enum ScStr {
         case .write(.namesExhausted), .write(.failed): L("The screenshot could not be saved.")
         case .pasteboard: L("The clipboard did not take the picture.")
         case .encoding: L("The picture could not be made.")
+        case .notEditable:
+            L("The screenshot was moved or changed after it was taken, so it cannot be edited here.")
+        // The Trash's own two words for a file that is not where it was end by naming a «Scan again» control,
+        // which this module has none of: they are this module's sentence, and the one sentence also says it for a
+        // folder that took no write: the person is told that the edit is a separate file, not why.
+        case .notReplaced(.missing), .notReplaced(.changed), .notReplaced(.folderRefused),
+             .notReplaced(.trash(.missing)), .notReplaced(.trash(.changedSinceScan)):
+            L("The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.")
+        case .notReplaced(.trash(let reason)): TrashReasonText.sentence(reason.rawValue)
         }
     }
 

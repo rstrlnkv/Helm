@@ -50,6 +50,9 @@ enum OverlayResult {
     /// that Return confirms and any new drag replaces. A reading, already cut to
     /// the display as it is now by `RememberedSelection.landing`.
     private var preselected: (display: DisplayID, rect: CGRect)?
+    /// A finished picture the overlay was opened on (`PictureOnScreen`): the editor is up at once on its rectangle,
+    /// and that rectangle is the bounds of the area, so the area is never more than the picture.
+    private let picture: (display: DisplayID, rect: CGRect)?
     private var spaceHeld = false
     /// The area being edited, set once a selection is released; nil while selecting.
     private var edit: (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)?
@@ -111,13 +114,14 @@ enum OverlayResult {
     private var arrowReleasedObject = false
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.pinRoom = pinRoom
         self.store = store
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
+        self.picture = picture
         self.onFinish = onFinish
         palette.perform = { [weak self] in self?.perform($0) }
         palette.openMenu = { [weak self] in self?.openMoreMenu() }
@@ -170,6 +174,7 @@ enum OverlayResult {
         }
         // Opened in window mode, the window under the pointer is lit at once.
         if mode == .window, let pointer { hovered = windowUnder(display: pointer.display, local: pointer.point) }
+        if let picture { startEditing(display: picture.display, rect: picture.rect) }
         render()
         return true
     }
@@ -268,8 +273,7 @@ enum OverlayResult {
         case .window:
             if let hovered { finish(.window(hovered.id)) }
         case .area:
-            guard let frame = freeze.frames.first(where: { $0.id == display }) else { return }
-            let bounds = CGRect(origin: .zero, size: frame.frame.size)
+            guard picture == nil || picture?.display == display, let bounds = displayBounds(display) else { return }
             preselected = nil
             drag = (display, SelectionDrag(start: local, bounds: bounds))
             render()
@@ -452,7 +456,7 @@ enum OverlayResult {
             let delta = AreaFrame.step(CGPoint(x: dx, y: dy), pixels: pixels, scale: frame.scale)
             let hadSelection = current.layers.selected != nil
             if !current.layers.nudgeSelected(by: delta) {
-                current.rect = AreaFrame.nudged(current.rect, by: delta, within: CGRect(origin: .zero, size: frame.frame.size))
+                current.rect = AreaFrame.nudged(current.rect, by: delta, within: displayBounds(current.display) ?? current.rect)
                 current.layers.reshape(bounds: current.rect)
             } else if hadSelection, current.layers.selected == nil {
                 arrowReleasedObject = true
@@ -553,8 +557,10 @@ enum OverlayResult {
         CGPoint(x: mouse.x - panel.frame.minX, y: height - (mouse.y - panel.frame.minY))
     }
 
+    /// What an area on `display` stays inside: the display, or the picture the overlay was opened on.
     private func displayBounds(_ display: DisplayID) -> CGRect? {
-        freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
+        if let picture, picture.display == display { return picture.rect }
+        return freeze.frames.first { $0.id == display }.map { CGRect(origin: .zero, size: $0.frame.size) }
     }
 
     /// Where the palette stands on `display`: nil when it is not the edited one, and nil while an

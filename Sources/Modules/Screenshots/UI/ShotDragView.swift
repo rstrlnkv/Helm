@@ -30,6 +30,16 @@ final class ShotDragView: NSView, NSDraggingSource {
     /// Asked when a drag begins, so a drag that begins after the file was written carries the file.
     var payload: () -> ShotDrag? = { nil }
     var preview: CGImage?
+    /// The picture's own size and side inside this view, which is larger than the picture while the capsule is up
+    /// over a small shot: what a drag shows as its frame is the picture, not the zone.
+    var pictureSize: CGSize?
+    var trailing = false
+    /// Where the picture is in this view: on its lower edge, against its trailing edge or in its middle.
+    var pictureFrame: NSRect {
+        let size = pictureSize ?? bounds.size
+        return NSRect(x: trailing ? bounds.maxX - size.width : bounds.midX - size.width / 2, y: bounds.minY,
+                      width: size.width, height: size.height)
+    }
     var onClick: () -> Void = {}
     var onHover: (Bool) -> Void = { _ in }
     /// The view is on a window: the Share sheet may be shown relative to it.
@@ -65,8 +75,9 @@ final class ShotDragView: NSView, NSDraggingSource {
         pressed = nil
         guard let writer = payload()?.writer() else { return }
         let item = NSDraggingItem(pasteboardWriter: writer)
-        let picture = preview.map { NSImage(cgImage: $0, size: bounds.size) }
-        item.setDraggingFrame(bounds, contents: picture)
+        let frame = pictureFrame
+        let picture = preview.map { NSImage(cgImage: $0, size: frame.size) }
+        item.setDraggingFrame(frame, contents: picture)
         beginDraggingSession(with: [item], event: event, source: self)
     }
 
@@ -81,19 +92,25 @@ final class ShotDragView: NSView, NSDraggingSource {
     }
 }
 
-/// `ShotDragView` in the thumbnail's picture, over it and under the capsule.
+/// `ShotDragView` in the thumbnail's picture, over it and under the capsule. A click on it is «Edit».
 struct ShotDragSource: NSViewRepresentable {
     let model: ShotToastModel
     let preview: CGImage
+    let picture: CGSize
+    let trailing: Bool
 
     func makeNSView(context: Context) -> ShotDragView {
         let view = ShotDragView()
         view.payload = { [weak model] in model?.dragPayload }
-        view.onClick = { [weak model] in model?.open() }
+        view.onClick = { [weak model] in model?.edit() }
         view.onHover = { [weak model] over in model?.pointer(over: over) }
         view.onWindow = { [weak model] view in model?.anchor = view }
         return view
     }
 
-    func updateNSView(_ view: ShotDragView, context: Context) { view.preview = preview }
+    func updateNSView(_ view: ShotDragView, context: Context) {
+        view.preview = preview
+        view.pictureSize = picture
+        view.trailing = trailing
+    }
 }

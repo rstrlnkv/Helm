@@ -50,7 +50,7 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let board = CancellingBoard(), writer = FakeWriter()
         let session = CaptureSession(
-            capture: FakeCapture(), writer: writer, pasteboard: board, preferences: FakePreferences(),
+            capture: FakeCapture(), writer: writer, trash: FakeTrash(folder: FakeWriter()), pasteboard: board, preferences: FakePreferences(),
             shutter: FakeShutter(), settings: { .defaults }, naming: { .english },
             now: { Date(timeIntervalSince1970: 1_790_000_000) },
             locations: ScreenshotsLocations(home: home, desktop: desktop))

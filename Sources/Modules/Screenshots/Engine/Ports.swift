@@ -1,7 +1,8 @@
 import CoreGraphics
 import Foundation
+import HelmRuntime
 
-// The four things the engine asks the machine, each a protocol with a fake that
+// The things the engine asks the machine, each a protocol with a fake that
 // holds every state the real one has. A simpler fake makes a failure
 // unrepresentable rather than untested: a capture port that can only succeed
 // proves nothing about what a denied grant does.
@@ -71,18 +72,82 @@ public enum WriteRefusal: Sendable, Equatable {
     case failed(Int32)
 }
 
+/// What a file was at one moment: who it is and what `stat` said of it.
+///
+/// **A reading, never the file.** It is taken when the shot is written and compared with a fresh one before the file
+/// is opened for an edit and again before it is moved to the Trash (`ShotReplacement.verdict`). The identity alone
+/// would not do: a program that writes into the file in place keeps the inode, so the size and the modification time
+/// are compared too. The time is carried as the two integers `stat` gives, never added up.
+public struct ShotReading: Sendable, Equatable {
+    public let identity: PathCanonical.FileIdentity
+    public let size: Int64
+    public let modifiedSeconds: Int64
+    public let modifiedNanoseconds: Int64
+    /// False for a link, a folder and everything else that is not a plain file.
+    public let isRegularFile: Bool
+
+    public init(identity: PathCanonical.FileIdentity, size: Int64, modifiedSeconds: Int64,
+                modifiedNanoseconds: Int64, isRegularFile: Bool) {
+        self.identity = identity
+        self.size = size
+        self.modifiedSeconds = modifiedSeconds
+        self.modifiedNanoseconds = modifiedNanoseconds
+        self.isRegularFile = isRegularFile
+    }
+
+    /// What `fstat` or `lstat` answered.
+    public init(_ info: stat) {
+        self.init(identity: PathCanonical.FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino),
+                  size: Int64(info.st_size), modifiedSeconds: Int64(info.st_mtimespec.tv_sec),
+                  modifiedNanoseconds: Int64(info.st_mtimespec.tv_nsec),
+                  isRegularFile: info.st_mode & S_IFMT == S_IFREG)
+    }
+}
+
+/// A file the writer made, and what it was when it was made.
+public struct WrittenShot: Sendable, Equatable {
+    public let url: URL
+    public let reading: ShotReading
+
+    public init(url: URL, reading: ShotReading) {
+        self.url = url
+        self.reading = reading
+    }
+}
+
 public enum ShotWrite: Sendable, Equatable {
-    case written(URL)
+    case written(WrittenShot)
     case refused(WriteRefusal)
+
+    /// The file that was written, nil for a refusal.
+    public var url: URL? {
+        if case .written(let shot) = self { shot.url } else { nil }
+    }
 }
 
 /// Writing one picture into a folder without ever replacing a file.
 ///
 /// `base` is the name without an extension and `pathExtension` the one the bytes
 /// are in ("png", "jpg"); the port finds the first free one with `ShotNames.candidate`, and **a name taken is not an error**. The
-/// answer is the file actually written, because the name asked for may not be it.
+/// answer is the file actually written, because the name asked for may not be it, with the reading of it taken
+/// from the descriptor it was written through, before it was given its name.
 public protocol ShotWriting: Sendable {
     func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite
+    /// What is at `url` now, by `lstat`: a link answers for itself, not for what it points at. **Every reason there
+    /// is nothing to read is `nil`:** no such name, a folder above it gone, a folder above it that may not be
+    /// searched. `ShotReplacement.verdict` reads all of them as `.missing`, and every one of them refuses.
+    func reading(of url: URL) -> ShotReading?
+    /// Gives `written` the name `name`, **only when that name is free**. False for every reason it did not: the name
+    /// is taken, `written` is gone, the volume refused. The caller does one thing with all of them, which is to
+    /// leave `written` under the name it has.
+    func claim(_ written: URL, as name: URL) -> Bool
+}
+
+/// The move to the Trash, as a port: `CaptureSession` hands it to `HelmTrash.remove` as its `trashing`, which keeps
+/// the batch's rules there and lets a fake say what was moved and when. It throws what `FileManager.trashItem`
+/// throws, because `HelmTrash` reads the error's code.
+public protocol ShotTrashing: Sendable {
+    func trash(_ url: URL) throws
 }
 
 public enum PasteOutcome: Sendable, Equatable {

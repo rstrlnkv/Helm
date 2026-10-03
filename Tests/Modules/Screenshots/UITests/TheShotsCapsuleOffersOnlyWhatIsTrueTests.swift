@@ -4,6 +4,7 @@ import HelmTestSupport
 import HelmUI
 import SwiftUI
 import XCTest
+import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **The capsule over the thumbnail offers what is true of this shot, and each cell does what it says.** Show in
@@ -162,5 +163,97 @@ final class TheShotsCapsuleOffersOnlyWhatIsTrueTests: XCTestCase {
         toast.showRefusal(.pasteboard)
         XCTAssertNil(toast.fullPicture(), "a refusal kept the last shot's picture for a Copy")
         XCTAssertNil(toast.model.full)
+    }
+
+    // MARK: The Edit cell
+
+    /// Edit is first, only where there is something to open the editor on, and Copy is next: in every combination.
+    func testEditStandsFirstAndOnlyWhereTheEditorHasSomethingToOpenOn() {
+        XCTAssertEqual(ShotCapsule.cells(hasFile: true, canEdit: true, pinOffered: false), [.edit, .copy, .reveal, .close])
+        XCTAssertEqual(ShotCapsule.cells(hasFile: false, canEdit: true, pinOffered: false), [.edit, .copy, .close])
+        XCTAssertEqual(ShotCapsule.cells(hasFile: true, canEdit: true, pinOffered: true), [.edit, .copy, .reveal, .pin, .close])
+        XCTAssertEqual(ShotCapsule.cells(hasFile: false, canEdit: true, pinOffered: true), [.edit, .copy, .pin, .close])
+        XCTAssertEqual(ShotCapsule.cells(hasFile: true, canEdit: false, pinOffered: false), [.copy, .reveal, .close], "no Edit unless it can be kept")
+        for hasFile in [false, true] {
+            for pinOffered in [false, true] {
+                XCTAssertFalse(ShotCapsule.cells(hasFile: hasFile, pinOffered: pinOffered).contains(.edit), "the default offers an Edit")
+                let cells = ShotCapsule.cells(hasFile: hasFile, canEdit: true, pinOffered: pinOffered)
+                XCTAssertEqual(cells.first, .edit)
+                XCTAssertEqual(cells.last, .close)
+                XCTAssertEqual(Set(cells).count, cells.count)
+            }
+        }
+    }
+
+    /// «Edit» is on a thumbnail exactly when its result is in and either the file was read as it was written or the
+    /// picture is held: never on a working thumbnail, a refusal, one with a file and no reading, or a gone toast, and a
+    /// new thumbnail never inherits the last one's reading.
+    func testEditIsOfferedExactlyWhenTheShotCanBeEditedAndKeepsNoReadingOfAnother() throws {
+        let toast = made()
+        let image = try ShotToastRig.picture(width: 200, height: 100)
+        let folder = scratchDirectory("capsule-edit")
+        let a = try ShotToastRig.writePNG(image, in: folder, named: "a.png"), b = try ShotToastRig.writePNG(image, in: folder, named: "b.png")
+        let reading = try XCTUnwrap(FileShotWriter().reading(of: a))
+
+        XCTAssertNil(toast.model.editSource, "nothing is shown and an Edit is on offer")
+        toast.showWorking(image)
+        XCTAssertNil(toast.model.editSource, "a working thumbnail offers Edit")
+        toast.showDone(image, caption: "Saved", file: a, reading: nil)
+        XCTAssertNil(toast.model.editSource, "a file with no reading is offered: nothing could say later that it is still the shot's")
+        toast.showDone(image, caption: "Saved", file: a, reading: reading)
+        let source = try XCTUnwrap(toast.model.editSource)
+        XCTAssertEqual(source.shot, WrittenShot(url: a, reading: reading))
+        XCTAssertNil(source.held, "a saved shot holds its picture as well as its file")
+        // The next shot has no reading of its own: it does not borrow the last one's.
+        toast.showDone(image, caption: "Saved", file: b, reading: nil)
+        XCTAssertNil(toast.model.editSource, "b.png was offered under a.png's reading")
+        // A shot with no file holds its picture and offers it, and a reading that is passed with it is nobody's.
+        toast.showDone(image, caption: "Copied", file: nil, reading: reading)
+        let held = try XCTUnwrap(toast.model.editSource)
+        XCTAssertNil(held.shot)
+        XCTAssertNotNil(held.held)
+        XCTAssertNil(toast.model.reading)
+        toast.showRefusal(.pasteboard)
+        XCTAssertNil(toast.model.editSource, "a refusal plaque offers Edit")
+        toast.showDone(image, caption: "Saved", file: a, reading: reading)
+        toast.dismiss()
+        XCTAssertNil(toast.model.editSource, "a toast that is gone offers Edit")
+        XCTAssertNil(toast.model.reading, "a gone toast kept a reading")
+    }
+
+    /// The rendered capsule holds the Edit cell when the list says so, and not otherwise.
+    func testTheRenderedCapsuleDrawsTheEditCellOnlyWithSomethingToEdit() throws {
+        let image = try ShotToastRig.picture()
+        let file = try ShotToastRig.realFile(self)
+        let reading = try XCTUnwrap(FileShotWriter().reading(of: file))
+        func drawn(file: URL?, reading: ShotReading?, held: CGImage? = nil) -> Int {
+            let model = ShotToastModel()
+            model.content = .picture(image, caption: "x", file: file)
+            model.reading = reading
+            model.full = held
+            model.shown = true
+            model.hovering = true
+            let mount = MountedRender(ShotToastView(model: model), width: ShotToast.width, height: 300, appearance: .aqua)
+            mount.settle(20)
+            return mount.host.everyView(named: "_FocusRingView").count
+        }
+        let withEdit = ShotCapsule.cells(hasFile: true, canEdit: true).count
+        let without = ShotCapsule.cells(hasFile: true).count
+        XCTAssertEqual(withEdit, without + 1, "the control: an Edit adds a cell")
+        XCTAssertEqual(drawn(file: file, reading: reading), withEdit, "a saved shot with its reading draws no Edit")
+        XCTAssertEqual(drawn(file: file, reading: nil), without, "a saved shot with no reading draws an Edit")
+        XCTAssertEqual(drawn(file: nil, reading: nil, held: image), ShotCapsule.cells(hasFile: false, canEdit: true).count,
+                       "a clipboard-only shot with its picture draws no Edit")
+        XCTAssertEqual(drawn(file: nil, reading: nil), ShotCapsule.cells(hasFile: false).count, "a shot with no file and no picture draws an Edit")
+    }
+
+    /// The cell asks the owner, as Copy does.
+    func testTheEditCellAsksTheOwner() throws {
+        let toast = made()
+        var edits = 0
+        toast.onEdit = { edits += 1 }
+        toast.showDone(try ShotToastRig.picture(), caption: "x", file: nil)
+        toast.model.edit()
+        XCTAssertEqual(edits, 1)
     }
 }

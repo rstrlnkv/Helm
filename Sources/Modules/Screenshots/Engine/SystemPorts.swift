@@ -304,6 +304,10 @@ public struct SystemDockBounds: DockBounds {
 public struct FileShotWriter: ShotWriting {
     public init() {}
 
+    /// A seam for a test, run with the new name right after the move and before the answer is made: it swaps what
+    /// stands under that name, to prove the reading is the descriptor's and not an `lstat` of the name. Nothing by default.
+    var afterTheMove: @Sendable (URL) -> Void = { _ in }
+
     public func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory)
@@ -327,6 +331,10 @@ public struct FileShotWriter: ShotWriting {
                 offset += written
             }
         }
+        // The reading is of the object itself, through the descriptor it was written by and before it has a name
+        // anybody else could know: giving it one changes neither its inode, its size nor the time it was written.
+        var info = stat()
+        if failure == 0, fstat(descriptor, &info) != 0 { failure = errno }
         if Darwin.close(descriptor) != 0, failure == 0 { failure = errno }
         guard failure == 0 else {
             unlink(temporary)
@@ -336,20 +344,38 @@ public struct FileShotWriter: ShotWriting {
         for attempt in 0..<ShotNames.limit {
             let destination = folder.appendingPathComponent(
                 ShotNames.candidate(base: base, pathExtension: pathExtension, attempt: attempt))
-            var answer = renamex_np(temporary, destination.path, UInt32(RENAME_EXCL))
-            var code = errno
-            if answer != 0, code == ENOTSUP || code == EINVAL {
-                answer = link(temporary, destination.path)
-                code = errno
-                if answer == 0 { unlink(temporary) }
+            let code = Self.move(temporary, toFreeName: destination.path)
+            if code == 0 {
+                afterTheMove(destination)
+                return .written(WrittenShot(url: destination, reading: ShotReading(info)))
             }
-            if answer == 0 { return .written(destination) }
             if code == EEXIST { continue }
             unlink(temporary)
             return .refused(Self.refusal(code))
         }
         unlink(temporary)
         return .refused(.namesExhausted)
+    }
+
+    public func reading(of url: URL) -> ShotReading? {
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else { return nil }
+        return ShotReading(info)
+    }
+
+    public func claim(_ written: URL, as name: URL) -> Bool {
+        Self.move(written.path, toFreeName: name.path) == 0
+    }
+
+    /// The one move this writer makes, for a new file's name and for a claimed one: `RENAME_EXCL`, and the hard
+    /// link where the volume has no such flag. Zero, or the errno; `EEXIST` is a name that is taken.
+    private static func move(_ from: String, toFreeName to: String) -> Int32 {
+        if renamex_np(from, to, UInt32(RENAME_EXCL)) == 0 { return 0 }
+        let code = errno
+        guard code == ENOTSUP || code == EINVAL else { return code }
+        guard link(from, to) == 0 else { return errno }
+        unlink(from)
+        return 0
     }
 
     private static func refusal(_ code: Int32) -> WriteRefusal {
@@ -360,6 +386,18 @@ public struct FileShotWriter: ShotWriting {
         case ENOTDIR: .notAFolder
         default: .failed(code)
         }
+    }
+}
+
+// MARK: - The Trash
+
+/// `FileManager.trashItem`, and nothing of its own: the rules of a removal are `HelmTrash.remove`'s, which is the
+/// only caller this has (`CaptureSession.replace`).
+public struct SystemShotTrash: ShotTrashing {
+    public init() {}
+
+    public func trash(_ url: URL) throws {
+        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
     }
 }
 

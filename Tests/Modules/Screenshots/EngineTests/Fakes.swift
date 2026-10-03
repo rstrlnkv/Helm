@@ -83,15 +83,52 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     }
 }
 
+/// What moved, in the order it moved: the reverse channel of the writer and the trash, which share one, so that a
+/// test reads the three steps of a replacement as one sequence.
+final class ShotMoves: @unchecked Sendable {
+    enum Move: Equatable {
+        case wrote(URL)
+        case trashed(URL)
+        case claimed(URL, as: URL)
+    }
+    private let lock = NSLock()
+    private var _all: [Move] = []
+    var all: [Move] { lock.withLock { _all } }
+    func note(_ move: Move) { lock.withLock { _all.append(move) } }
+}
+
 /// Holds the set of names already taken, as a folder would, and refuses as told.
 /// It walks `ShotNames.candidate` exactly as the real writer does, so the ladder
 /// is the one under test and not a second copy of it.
+///
+/// It also holds what `lstat` would say of each file it wrote, which a test changes to stand for a file that was
+/// renamed away (`nil`), written into, replaced by another or turned into a link, and it can refuse a claim.
 final class FakeWriter: ShotWriting, @unchecked Sendable {
     private let lock = NSLock()
     private var _taken: Set<String> = []
     private var _refuse: WriteRefusal?
     private var _written: [(url: URL, bytes: Int)] = []
     private var _data: [Data] = []
+    private var _readings: [String: ShotReading] = [:]
+    private var _inode: UInt64 = 100
+    private var _refusesClaim = false
+    let moves: ShotMoves
+
+    init(moves: ShotMoves = ShotMoves()) { self.moves = moves }
+
+    /// What is at a path now, as the port reads it.
+    func setReading(_ reading: ShotReading?, at url: URL) { lock.withLock { _readings[url.path] = reading } }
+    var refusesClaim: Bool {
+        get { lock.withLock { _refusesClaim } }
+        set { lock.withLock { _refusesClaim = newValue } }
+    }
+    /// The file left: its name is free and nothing is read at it. What a trash that succeeded does to the folder.
+    func vanish(_ url: URL) {
+        lock.withLock {
+            _readings[url.path] = nil
+            _taken.remove(url.lastPathComponent)
+        }
+    }
 
     var taken: Set<String> {
         get { lock.withLock { _taken } }
@@ -115,10 +152,55 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
                 let url = folder.appendingPathComponent(name)
                 _written.append((url, png.count))
                 _data.append(png)
-                return .written(url)
+                _inode += 1
+                let reading = ShotReading(identity: PathCanonical.FileIdentity(device: 1, inode: _inode), size: Int64(png.count),
+                                          modifiedSeconds: 1_790_000_000, modifiedNanoseconds: Int64(_inode), isRegularFile: true)
+                _readings[url.path] = reading
+                moves.note(.wrote(url))
+                return .written(WrittenShot(url: url, reading: reading))
             }
             return .refused(.namesExhausted)
         }
+    }
+
+    func reading(of url: URL) -> ShotReading? { lock.withLock { _readings[url.path] } }
+
+    func claim(_ written: URL, as name: URL) -> Bool {
+        lock.withLock {
+            guard !_refusesClaim, let reading = _readings[written.path],
+                  _readings[name.path] == nil, !_taken.contains(name.lastPathComponent) else { return false }
+            _readings[written.path] = nil
+            _readings[name.path] = reading
+            _taken.remove(written.lastPathComponent)
+            _taken.insert(name.lastPathComponent)
+            moves.note(.claimed(written, as: name))
+            return true
+        }
+    }
+}
+
+/// The Trash in the two states the real one has: the file leaves, or the move throws what `FileManager` throws.
+/// Every path it was asked to move is recorded, a refused one too.
+final class FakeTrash: ShotTrashing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let folder: FakeWriter
+    private var _failure: NSError?
+    private var _asked: [URL] = []
+
+    init(folder: FakeWriter) { self.folder = folder }
+
+    /// The Cocoa error the next moves throw; nil and they succeed.
+    var failure: NSError? {
+        get { lock.withLock { _failure } }
+        set { lock.withLock { _failure = newValue } }
+    }
+    var asked: [URL] { lock.withLock { _asked } }
+
+    func trash(_ url: URL) throws {
+        let failure = lock.withLock { _asked.append(url); return _failure }
+        if let failure { throw failure }
+        folder.vanish(url)
+        folder.moves.note(.trashed(url))
     }
 }
 
@@ -176,7 +258,8 @@ final class FakeShutter: ShutterPlaying, @unchecked Sendable {
 /// Desktop of whoever runs the suite.
 struct Rig {
     let capture = FakeCapture()
-    let writer = FakeWriter()
+    let writer: FakeWriter
+    let trash: FakeTrash
     let pasteboard = FakePasteboard()
     let preferences = FakePreferences()
     let shutter = FakeShutter()
@@ -187,11 +270,14 @@ struct Rig {
 
     init(home: URL, settings: ScreenshotsSettings = .defaults) {
         self.home = home
+        let writer = FakeWriter()
+        self.writer = writer
+        self.trash = FakeTrash(folder: writer)
         self.desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
         session = CaptureSession(
-            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences, shutter: shutter,
+            capture: capture, writer: writer, trash: trash, pasteboard: pasteboard, preferences: preferences, shutter: shutter,
             settings: { settings }, naming: { .english }, now: { fixed },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
     }

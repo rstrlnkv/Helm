@@ -45,6 +45,9 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         func release() { lock.withLock { holding = false }; gate.signal() }
         var written: Int { lock.withLock { count } }
         func refuse(_ reason: WriteRefusal) { lock.withLock { refusal = reason } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             if lock.withLock({ holding }) { gate.wait() }
             return lock.withLock {
@@ -53,7 +56,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
                 // Written for real: what leaves is asked of the file system.
                 let url = folder.appendingPathComponent(base + "." + pathExtension)
                 try? png.write(to: url)
-                return .written(url)
+                return .written(WrittenShot(url: url, reading: NoFile.reading))
             }
         }
     }
@@ -118,7 +121,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("share-handoff")
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, pasteboard: board,
+        let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: board,
                                      preferences: NoPreferences(), shutter: NoShutter(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))

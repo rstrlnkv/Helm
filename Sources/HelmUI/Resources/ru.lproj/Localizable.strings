@@ -1350,8 +1350,11 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Нужно, чтобы Снимки экрана могли снимать экран. Helm не записывает ни видео, ни звук — просто у macOS один переключатель и на чтение пикселей, и на запись.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Запись экрана и\U00A0системного звука выключена. Без неё Helm не может прочитать экран, поэтому сочетания для снимков ничего не снимают.";
 "Open Screen & System Audio Recording…" = "Открыть «Запись экрана и\U00A0системного звука»…";
-/* Screenshots, popup track: the thumbnail's Share sheet. */
+/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Поделиться…";
+"Replaced. The original is in the Trash." = "Заменено. Исходный файл — в Корзине.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "Снимок переместили или изменили после съёмки. Правка сохранена отдельным файлом.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "Снимок переместили или изменили после съёмки, поэтому здесь его не изменить.";
 "Sort By" = "Сортировать";
 "Sort by Name" = "Сортировать по имени";
 "Sort by Size" = "Сортировать по размеру";

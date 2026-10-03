@@ -89,7 +89,7 @@ final class TheThumbnailsWindowHoldsItsPictureItsCapsuleAndItsPointerTests: XCTe
         }
     }
 
-    /// **Left red on purpose: a defect in working code, handed on.** `place` puts the window's right and lower edges
+    /// **A defect of stage 3, handed to engineer red and repaired in stage 4; this holds it repaired.** `place` puts the window's right and lower edges
     /// `shadowRoom - 20` past the screen's visible corner on the one assumption that the ring stands `shadowRoom` from
     /// them; on a shot narrower than the capsule the picture is centred in the wider window (`.frame(minWidth:)`), so
     /// its ring stands further from the right edge and the picture is not 20 pt from the screen's edge.
@@ -120,16 +120,32 @@ final class TheThumbnailsWindowHoldsItsPictureItsCapsuleAndItsPointerTests: XCTe
         XCTAssertEqual(three.cells.count, 3, "the control: Copy, Show in Finder and ✕")
         XCTAssertEqual(try capsuleWidth(two), ShotCapsule.width(cellCount: 2), accuracy: 0.5, "two cells")
         XCTAssertEqual(try capsuleWidth(three), ShotCapsule.width(cellCount: 3), accuracy: 0.5, "three cells")
-        XCTAssertEqual(try capsuleWidth(three) - (try capsuleWidth(two)), HelmSpace.s7, accuracy: 0.5, "a cell is not one `HelmSpace.s7`")
+        XCTAssertEqual(try capsuleWidth(three) - (try capsuleWidth(two)), HelmSpace.s7 + ShotCapsule.gap, accuracy: 0.5,
+                       "one more cell is not a cell (`HelmSpace.s7`) and the gap (`ShotCapsule.gap`) before it")
     }
 
-    /// Four cells need the Pin, which the entry hides in v1: it cannot be drawn here, and the formula is asked of the
-    /// list instead, so that the room kept for the widest is the widest the list can be.
-    func testTheWidestIsTheListsWidestAndFourCellsCannotBeDrawnWhilePinIsHidden() {
-        XCTAssertFalse(PinEntry.isOffered, "the control: this file is about v1; if the pin is offered, draw four cells above")
-        XCTAssertEqual(ShotCapsule.cells(hasFile: true, pinOffered: true).count, 4)
-        XCTAssertEqual(ShotCapsule.width(cellCount: 4), 4 * HelmSpace.s7 + 1 + 2 * ShotCapsule.separatorGap + 2 * ShotCapsule.inset)
-        XCTAssertGreaterThanOrEqual(ShotCapsule.width(cellCount: 4), ShotCapsule.widest, "the widest the list can be is wider than the room kept")
+    /// The room the window keeps is the widest list the capsule can have: with Edit on offer it is Edit, Copy, Show in
+    /// Finder and ✕, and one more while the entry offers the Pin. Asked of every list the view can draw (a file or none,
+    /// an Edit or none), so that a cell added to the list and not to the room is red here and not clipped on a screen.
+    func testTheWidestIsNoNarrowerThanAnyListTheCapsuleCanHave() {
+        XCTAssertFalse(PinEntry.isOffered, "the control: this file is about v1; with the pin offered `widest` has one more cell")
+        for hasFile in [false, true] {
+            for canEdit in [false, true] {
+                for pinOffered in [false, true] where pinOffered == PinEntry.isOffered {
+                    let cells = ShotCapsule.cells(hasFile: hasFile, canEdit: canEdit, pinOffered: pinOffered)
+                    XCTAssertLessThanOrEqual(ShotCapsule.width(cellCount: cells.count), ShotCapsule.widest,
+                                             "file \(hasFile), edit \(canEdit): \(cells) is wider than the room kept")
+                }
+            }
+        }
+        XCTAssertEqual(ShotCapsule.cells(hasFile: true, canEdit: true, pinOffered: false).count, 4, "Edit, Copy, Show in Finder, ✕")
+        XCTAssertEqual(ShotCapsule.widest, ShotCapsule.width(cellCount: 4), "the room is the widest list's, not a cell wider")
+        // The divider's one point is the constant's own, private: the difference between two lists is what names the rest.
+        XCTAssertEqual(ShotCapsule.width(cellCount: 4) - ShotCapsule.width(cellCount: 3), HelmSpace.s7 + ShotCapsule.gap,
+                       "a fourth cell is a cell and the gap before it")
+        XCTAssertEqual(ShotCapsule.width(cellCount: 4),
+                       4 * HelmSpace.s7 + 3 * ShotCapsule.gap + 1 + 2 * ShotCapsule.separatorGap + 2 * ShotCapsule.inset,
+                       "four cells, three gaps, the divider's point, the two separator gaps, the two insets")
     }
 
     /// The capsule stands inside the window on every shot, tiny ones included (it is not clipped by its own panel).
@@ -161,10 +177,10 @@ final class TheThumbnailsWindowHoldsItsPictureItsCapsuleAndItsPointerTests: XCTe
         }
     }
 
-    /// **Left red on purpose: a defect in working code, handed on.** A shot narrower than the capsule's cells (93 pt for
-    /// Copy, Show in Finder, ✕: every portrait taller than 1.35 times its width, 900×1600 among them) or shorter than the
-    /// cell's 28 pt with its 4 pt inset and the capsule's 8 pt rise (40 pt: a strip such as 1600×100, which stands 200×12.5) has a hover zone
-    /// smaller than the capsule: the part of the capsule outside the picture
+    /// **A shot narrower than the capsule's cells (`ShotCapsule.width(cellCount:)`: every portrait taller than that
+    /// many times its width, 900×1600 among them) or shorter than the capsule's `ShotCapsule.reach` (a strip such as
+    /// 1600×100, which stands 200×12.5) has a hover zone smaller than the capsule if the window is the picture's alone**:
+    /// the window keeps the capsule's room, and this holds every cell inside the zone. The part of the capsule outside the picture
     /// is outside `ShotDragView`, whose tracking area is the only thing that reports the pointer, so a pointer moving
     /// from the picture onto an outer cell leaves the zone (an exit, then `hovering = false` and the capsule is
     /// removed from under it). The exit itself is not measured; the rects are.

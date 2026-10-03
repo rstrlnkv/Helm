@@ -32,6 +32,16 @@ final class UserFileScopeTests: XCTestCase {
         XCTAssertTrue(UserFileScope.isRemovable("/Users/x/Documents/…"))
     }
 
+    /// Screenshots is this gate's caller since «Edit» replaces the file a shot wrote: the original goes to the Trash
+    /// from where the module saves, which is the Desktop, Documents or a folder the person chose.
+    func testAScreenshotOnTheDesktopAndInAChosenFolderIsTheUsersOwnFile() {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        XCTAssertTrue(UserFileScope.isRemovable(home + "/Desktop/Screenshot 2026-10-02 at 18.00.00.png"))
+        XCTAssertTrue(UserFileScope.isRemovable(home + "/Documents/Screenshot 2026-10-02 at 18.00.00.jpg"))
+        XCTAssertTrue(UserFileScope.isRemovable(home + "/Pictures/Shots/Screenshot 2026-10-02 at 18.00.00 (1).png"))
+        XCTAssertTrue(UserFileScope.isRemovable("/Volumes/Work/Shots/Screenshot 2026-10-02 at 18.00.00.png"))
+    }
+
     func testOrdinaryUserFilesAreRemovable() {
         XCTAssertTrue(UserFileScope.isRemovable("/Users/x/Movies/clip.mov"))
         XCTAssertTrue(UserFileScope.isRemovable("/Applications/Old.app"))

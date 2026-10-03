@@ -92,8 +92,11 @@ final class ThePinMeetsAFrameThatMovedUnderItAndAPictureThatBorrowedTests: XCTes
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         let count = Count()
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            count.bump(); return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            count.bump(); return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
     private final class Shutter: ShutterPlaying, @unchecked Sendable { func play() {} }
@@ -130,7 +133,7 @@ final class ThePinMeetsAFrameThatMovedUnderItAndAPictureThatBorrowedTests: XCTes
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         let home = scratchDirectory("pin-detached-controller")
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), pasteboard: Board(),
+        let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), trash: NoTrash(), pasteboard: Board(),
                                      preferences: NoPreferences(), shutter: Shutter(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))

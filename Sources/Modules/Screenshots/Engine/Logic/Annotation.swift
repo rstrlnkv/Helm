@@ -213,6 +213,11 @@ public struct Annotation: Sendable, Equatable {
         return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, id: id)
     }
 
+    /// The same object with every point of its geometry taken through `transform`.
+    func mapped(_ transform: (CGPoint) -> CGPoint) -> Annotation {
+        Annotation(tool: tool, start: transform(start), end: transform(end), points: points.map(transform), style: style, id: id)
+    }
+
     /// The object with `handle` taken to `pointer`; nil when the object has no such handle.
     /// A straight one moves that end. A box, and a freehand stroke inside its box, keeps the
     /// opposite corner where it is and scales every point of the geometry by the same factor

@@ -14,8 +14,8 @@ cannot read for itself — the validated save folder and which of the system's o
 screenshot shortcuts are still ticked — as `ScreenshotsState`.
 
 Everything the session asks of the machine is a port with a fake
-(`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the
-clipboard, and three preference reads of what macOS owns. All three are **read and
+(`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the move of
+an edit's original to the Trash, the clipboard, and three preference reads of what macOS owns. All three are **read and
 never written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
 for the boxes, and the global domain's user-interface-sound switch for the shutter — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
 `Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` are what judge them:
@@ -48,8 +48,42 @@ A picture is written to a temporary name and moved into place with RENAME_EXCL
 (`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a
 name taken is one more number to try and nothing is ever overwritten. The capture is
 deliberately not a phase in the activity registry and logs nothing when it works: the
-log holds refusals — no grant, a refused write, a refused folder — with paths through
-`Redact`.
+log holds refusals — no grant, a refused write, a refused folder, an original that was not
+replaced — with paths through `Redact`. The one phase the module has is the removal's,
+which `HelmTrash.remove` opens for every module that hands it a path.
+
+**«Edit» replaces the file a shot wrote, and writes over nothing to do it.** The writer
+answers with a `WrittenShot`: the file's URL and a `ShotReading` — device and inode, size,
+modification time, whether it is a plain file — taken by `fstat` from the descriptor the
+bytes went through, before the file has its name. `CaptureSession.openEdit` asks the path
+again (`ShotWriting.reading`, an `lstat`, so a link answers for itself) before a pixel is
+read, and a file that is not the one written does not open the editor. A save from that
+editor is three steps, none in the UI target: `CaptureSession.deliver` writes the edit
+**beside** the original by the same RENAME_EXCL write, under the first free name of the
+ladder, which begins at the original's own; `CaptureSession.replace` then does the other
+two: the original goes to the Trash through `HelmTrash.remove`, past
+`UserFileScope` and with the reading asked once more inside the move itself; and the edit
+claims the freed name (`ShotWriting.claim`, RENAME_EXCL again, so a name taken in between
+leaves the edit under its own, and is not told as a replacement). The reading the shot then
+carries into the next edit is the one the module took from the descriptor it wrote through,
+never one taken again from the name: a rename changes neither inode, size nor time written,
+and a reading of a file that stands under the name by then would license the next replacement
+to trash a stranger. The replacement is a new file, not the
+original's bytes overwritten: it has the writer's mode and none of the original's Finder
+tags, comments, ACL or extended attributes, which stay on the file in the Trash.
+`Sources/Modules/Screenshots/Engine/Logic/ShotReplacement.swift`
+is the comparison, `.same`, `.missing` or `.changed`. Every refusal is in the
+delivery's refusals (`ReplaceRefusal`), and the original is never overwritten. Where the two
+files lie differs by reason. The file renamed away, moved, written into, replaced or turned
+into a link, the gate's own and the Trash's: the original is where it was and the edit beside
+it. The original's folder refusing the write, every name of the ladder taken or the folder
+renamed (`.folderRefused`): the edit lies where the settings save, as a new shot. The original
+renamed or deleted before Done: the edit takes the first name of the ladder, the original's own,
+and is what the move then finds there (`.changed`). The after-shot window does not say which:
+the file gone or changed, in either of the gate's words for it, and the folder's refusal share
+one sentence («moved or changed … saved as a separate file»); the gate's other reasons
+and the Trash's have their own. A shot that had no file replaces nothing: it is saved as a new
+shot, or only copied under the clipboard target, as any shot is.
 
 After a drag is released the overlay does not finish: it becomes the inline editor of
 that area, a second phase of the same panel, and the picture under the layers is never
@@ -149,17 +183,20 @@ late, and any other input withdraws the question; no clock is read.
 
 The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) shows the shot as a bare picture
 in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/Engine/Logic/ShotThumbnail.swift`) from the
-reduced copy's pixels, so the view that takes the hover, the click and the drag, the window round it and the drag's frame
-are one size; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
-the ring unchanged. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
-Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider. A drag
+reduced copy's pixels, so the view that takes the hover, the click and the drag, and the drag's frame
+are one size while the capsule is down; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
+the ring unchanged and at the window's trailing edge, which is the edge `ShotToast.place` stands from the screen's. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
+Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider;
+while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
+A click on the picture is Edit: `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
+`Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display, and the overlay opens in the editor on the picture's own
+rectangle, which is also the bounds of its area; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
 carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
 write is not done (`ShotToastModel.dragPayload`). The window's life is a clock that two holds stop, the pointer over the
 picture and the Share sheet; the pointer is also asked against the anchor view's rect, under a pointer-only hold and when
 the time is up, because an exit is not trusted. `dismiss` closes an open sheet. Not measured, and parked: a drag from
 a panel that is never key, the hover tracking and the first click on it, how the pointer's events go while the Share
-sheet is up, and the capsule for a picture narrower than it (the pointer over the part of the capsule outside the
-picture is outside the view that reports the hover).
+sheet is up, and whether AppKit sends an exit or an enter when the hover's view changes size under a still pointer.
 
 A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
