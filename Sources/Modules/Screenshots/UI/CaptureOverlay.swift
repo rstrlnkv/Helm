@@ -553,6 +553,7 @@ enum OverlayResult {
                 }
                 scene.chrome = chrome(on: id)
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
+                scene.draftID = edit.layers.draft?.id
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
                 if pinRefused {
                     // By the palette, which the menu was opened from, so that the plate does not lie under the glass.
@@ -583,6 +584,8 @@ struct OverlayScene {
     var editing = false
     /// Layers over the selection, the one being drawn last.
     var layers: [Annotation] = []
+    /// Which of `layers` is still being drawn, if one is.
+    var draftID: Annotation.ID?
     /// The selected layer, held by its handles; nil while one is being drawn.
     var selected: Annotation?
     /// Where the palette stands; nil is none on this display, or none while drawing, moving, resizing or reshaping.
@@ -924,6 +927,7 @@ final class OverlayView: NSView {
             for shape in drawnShapes { shape.removeFromSuperlayer() }
             drawnShapes = []
             shapeCache = [:]
+            draftGrain = nil
             drawHandles(nil)
             return
         }
@@ -933,17 +937,23 @@ final class OverlayView: NSView {
             shapeCache = [:]
             cachedBox = box
         }
-        var kept: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer)] = [:]
+        var kept: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer, draft: Bool)] = [:]
         for annotation in scene.layers {
+            let draft = annotation.id == scene.draftID
             if let entry = shapeCache[annotation.id], entry.annotation == annotation {
-                kept[annotation.id] = entry
+                // The draft's grain covers the display; once it is released it is cut to the stroke's own box.
+                if entry.draft && !draft { entry.shape.mask = grainMask(annotation, draft: false) }
+                kept[annotation.id] = (entry.annotation, entry.shape, draft)
             } else {
                 shapeCache[annotation.id]?.shape.removeFromSuperlayer()
-                kept[annotation.id] = (annotation, makeShape(annotation, clippedTo: box))
+                kept[annotation.id] = (annotation, makeShape(annotation, clippedTo: box, draft: draft), draft)
             }
         }
         for (id, entry) in shapeCache where kept[id]?.shape !== entry.shape { entry.shape.removeFromSuperlayer() }
         shapeCache = kept
+        // The draft's whole-display grain lives as long as the draft: a release has just cut it, a drop (Esc, right
+        // click) leaves no draft among the layers, and either event ends here.
+        if !kept.values.contains(where: \.draft) { draftGrain = nil }
         let ordered = scene.layers.compactMap { kept[$0.id]?.shape }
         // Re-inserting each below the dim in turn is what puts the sequence in order.
         if ordered.count != drawnShapes.count || !zip(ordered, drawnShapes).allSatisfy({ $0 === $1 }) {
@@ -953,7 +963,7 @@ final class OverlayView: NSView {
         drawHandles(scene.selected)
     }
 
-    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect) -> CAShapeLayer {
+    private func makeShape(_ annotation: Annotation, clippedTo box: CGRect, draft: Bool) -> CAShapeLayer {
         shapeBuilds += 1
         let clip = CGPath(rect: box, transform: nil)
         var turn = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
@@ -969,6 +979,7 @@ final class OverlayView: NSView {
             // The export's `.multiply` blend; a layer composites with the picture
             // beneath it by this filter name.
             if stroke.multiplies { shape.compositingFilter = "multiplyBlendMode" }
+            shape.mask = grainMask(annotation, draft: draft)
         } else {
             shape.path = path?.intersection(clip)
             shape.fillColor = annotation.fillColor
@@ -976,6 +987,44 @@ final class OverlayView: NSView {
         shape.strokeColor = nil
         return shape
     }
+
+    /// The pencil's grain, the file's one: the same function over the display's own pixels, laid on the layer at one
+    /// pixel to a pixel. A finished stroke's is cut to its own box. A draft's covers the display and is kept for as
+    /// long as its anchor stands, since the grain does not follow the path and the shape's path clips it: a drag
+    /// pays the build once and not per pointer event.
+    /// Nil for every tool but the pencil: `AnnotationTool.isGrainy` decides it, here and in the export, so no caller can give the Pen or the Marker a grain.
+    private func grainMask(_ annotation: Annotation, draft: Bool) -> CALayer? {
+        guard annotation.tool.isGrainy, let stroke = annotation.stroke else { return nil }
+        let display = CGRect(x: 0, y: 0, width: bounds.width * frozen.scale, height: bounds.height * frozen.scale)
+        let pixels: CGRect, alpha: CGImage
+        if draft, let anchor = annotation.points.first {
+            let key = DraftGrain(anchor: anchor, scale: frozen.scale, size: display.size)
+            if draftGrain?.key != key {
+                draftGrain = PencilGrain.mask(anchoredAt: anchor, scale: frozen.scale, pixels: display)
+                    .flatMap { grain in grain.alpha.map { (key, grain, $0) } }
+            }
+            guard let kept = draftGrain else { return nil }
+            (pixels, alpha) = (kept.mask.pixels, kept.alpha)
+        } else {
+            // Released: the draft's own grain, cut to the stroke's box, and no longer kept whole.
+            let box = PencilGrain.box(for: annotation.points, width: stroke.width, scale: frozen.scale, pixels: display)
+            let grain = box.flatMap { draftGrain?.mask.cut(to: $0) }
+                ?? PencilGrain.mask(for: annotation.points, width: stroke.width, scale: frozen.scale, pixels: display)
+            draftGrain = nil
+            guard let grain, let cut = grain.alpha else { return nil }
+            (pixels, alpha) = (grain.pixels, cut)
+        }
+        let mask = CALayer()
+        mask.contents = alpha
+        mask.contentsScale = frozen.scale
+        mask.magnificationFilter = .nearest
+        mask.frame = CGRect(x: pixels.minX / frozen.scale, y: bounds.height - pixels.maxY / frozen.scale,
+                            width: pixels.width / frozen.scale, height: pixels.height / frozen.scale)
+        return mask
+    }
+
+    private struct DraftGrain: Equatable { let anchor: CGPoint, scale: CGFloat, size: CGSize }
+    private var draftGrain: (key: DraftGrain, mask: PencilGrain.Mask, alpha: CGImage)?
 
     /// The box round the selected object and a square at each of its handles; none for none.
     private func drawHandles(_ annotation: Annotation?) {
@@ -1022,7 +1071,7 @@ final class OverlayView: NSView {
     /// How many shape layers were built since the view was made, for a test that counts the
     /// rebuilds a pointer event costs.
     private(set) var shapeBuilds = 0
-    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer)] = [:]
+    private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CAShapeLayer, draft: Bool)] = [:]
     private var cachedBox: CGRect?
 
     /// Where the selected object's handles are drawn, in display-local points; none for none.

@@ -55,7 +55,15 @@ final class TheNewToolsExportAtTheScreensWidthAndMultiplyTests: XCTestCase {
                 // On the white half the ink is the only thing that is not white: its green channel is low.
                 let ink = column(out, x: Int(75 * scale)).map { Double(255 - Int($0[1])) / (255 - 41) }
                 let rows = tool == .ellipse ? Array(ink[0..<(ink.count / 2)]) : ink
-                XCTAssertEqual(rows.reduce(0, +), points * Double(scale), accuracy: 0.4,
+                // The pencil's grain leaves gaps in any one column: its thickness is, row by row, the most ink any
+                // column of the stretch 60…90 pt has there, summed (the same measure as `ThePenAndThePencilLeaveTwoStrokesTests`'s
+                // thin-step test), so a sub-pixel error shows as it does in a column of a grainless stroke.
+                let stretch = tool == .pencil ? (Int(60 * scale)..<Int(90 * scale)).map { column(out, x: $0) } : []
+                let thick = tool == .pencil
+                    ? (0..<out.height).reduce(0.0) { sum, row in
+                        sum + (stretch.map { Double(255 - Int($0[row][1])) / (255 - 41) }.max() ?? 0) }
+                    : rows.reduce(0, +)
+                XCTAssertEqual(thick, points * Double(scale), accuracy: 0.4,
                                "\(tool) at \(scale)x: the stroke is not \(points) points thick")
             }
         }

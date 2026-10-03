@@ -208,13 +208,22 @@ public final class CaptureSession: @unchecked Sendable {
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
                 else { continue }
                 context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
-                // Display-local points, top-left, to this bitmap's pixels, bottom-left.
-                context.translateBy(x: 0, y: CGFloat(cut.height))
-                context.scaleBy(x: scale, y: -scale)
-                context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
                 context.setAllowsAntialiasing(true)
                 for layer in layers {
                     context.saveGState()
+                    // The pencil's grain is a clip in the bitmap's own pixels, so it goes in before the points' transform.
+                    if layer.tool.isGrainy, let stroke = layer.stroke {
+                        let cutPixels = CGRect(origin: origin, size: CGSize(width: cut.width, height: cut.height))
+                        guard let grain = PencilGrain.mask(for: layer.points, width: stroke.width, scale: scale, pixels: cutPixels)
+                        else { context.restoreGState(); continue }
+                        context.clip(to: CGRect(x: grain.pixels.minX - origin.x,
+                                                y: CGFloat(cut.height) - (grain.pixels.maxY - origin.y),
+                                                width: grain.pixels.width, height: grain.pixels.height), mask: grain.grey)
+                    }
+                    // Display-local points, top-left, to this bitmap's pixels, bottom-left.
+                    context.translateBy(x: 0, y: CGFloat(cut.height))
+                    context.scaleBy(x: scale, y: -scale)
+                    context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
                     context.addPath(layer.outline)
                     if let stroke = layer.stroke {
                         context.setLineWidth(stroke.width)

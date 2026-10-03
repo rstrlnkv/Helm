@@ -28,6 +28,10 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
 
     /// Drawn through the points of a drag rather than from its two ends.
     public var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
+
+    /// Takes the pencil's grain (`PencilGrain`): the one predicate the screen and the export both ask, so neither
+    /// can give the Pen or the Marker a grain the other does not.
+    public var isGrainy: Bool { self == .pencil }
 }
 
 /// How a stroked annotation is inked: one description that the screen's shape layer and

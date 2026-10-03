@@ -66,7 +66,10 @@ and highlighter; a stroked one is inked by `AnnotationStroke`, which the overlay
 export's context both read; the pen, the pencil and the highlighter are freehand through the same trail of kept
 points (bounded, thinned, the pointer as the tip), ⇧ making the highlighter one straight stroke snapped to
 45°, and the highlighter's multiply is a layer compositing filter on the screen and a context blend mode
-in the file. The overlay's view keeps one shape layer per annotation, built again only when its
+in the file. The pen is solid; the pencil is grainy, and the grain is one mask: `PencilGrain`
+(`Sources/Modules/Screenshots/Engine/Logic/PencilGrain.swift`) hashes each image pixel's offset from the pixel its first
+point lands on, with no chance and no clock, so the export clips the stroke to it in the picture's own pixels and the
+overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one shape layer per annotation, built again only when its
 annotation is no longer equal to the one it was built from. ⇧ is read from the flags of each event and never kept from the press.
 
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
