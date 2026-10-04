@@ -1416,3 +1416,6 @@
 "Text copied" = "已拷贝文本";
 "No text was found" = "未找到文本";
 "The text could not be read" = "无法读取文本";
+
+/* Screenshots — stage11 track */
+"Eyedropper" = "吸管";

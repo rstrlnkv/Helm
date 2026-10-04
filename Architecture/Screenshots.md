@@ -209,7 +209,7 @@ when below is short, inside it against its bottom edge when neither has room, an
 on the edited display only; it is gone while an object is drawn or an area dragged and
 back on the release. A press on the palette is its own and never reaches the picture. A key and a palette button
 are one vocabulary, `EditorAction`, performed by `CaptureOverlay.perform`, so a tool has one meaning
-however it was asked for. What the next object is drawn with — one of eight fixed sRGB colours, fill for the
+however it was asked for. What the next object is drawn with — a colour (an `AnnotationInk`: three sRGB numbers, the eight swatches of `AnnotationColor` and any other), fill for the
 boxes, and each tool's own one of three thicknesses and its opacity (the pen's steps are not the marker's: one table,
 `AnnotationThickness.points(for:)`, which the stroke and the arrow's head both read) — is an `AnnotationStyle` the
 object is begun with; a colour never picked leaves each tool its own (red, and yellow for the marker), the colour and
@@ -217,6 +217,8 @@ fill are every tool's and the step and opacity are the tool's, and the last tool
 first release of a capture, and written at each pick by `EditorMemory`. The step and the opacity are two tables in the store,
 keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
 step of the days before the tables is retired, neither read nor migrated.
+The colour is kept under `editorInk` as three numbers; `editorColor`, the swatch's name of the days before, is read only while `editorInk` has never been written, never written again
+and never removed, and an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
 
 The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
 through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
@@ -278,12 +280,18 @@ pop-over (`Sources/Modules/Screenshots/UI/EditorColoursPopover.swift`): all eigh
 the order `AnnotationColor` lists them, which no mockup draws and the owner may change in that one line. It is placed,
 closed and revealed as the thickness one is, through the one `popoverCard` card and `CaptureOverlay`'s one `popover`, so
 only one is open at a time; unlike it, it opens with no tool chosen, since the colour is every tool's. A swatch sends
-`EditorAction.color` and the pick closes it. While the colour is orange, purple or white, which the grid has no swatch
-for, the wheel's centre shows it and no grid swatch is ringed.
+`EditorAction.color` and the pick closes it. While the colour is any the grid has no swatch
+for (orange, purple, white, or one picked on the system's panel or from the picture), the wheel's centre shows it and no grid swatch is ringed.
+
+The pop-over has a third row of two cells with no text: the wheel (`EditorAction.allColours`, named `ScStr.allColours`), which opens the system's colour panel
+(`EditorColourPanel`, behind `ColourPanelOpening` so that a test hands the overlay a fake), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
+`NSColorPanel.shared` raised above the overlay, and its reasons are in `EditorColourPanel`'s doc comment. The eyedropper is a mode of the overlay like the eraser and Crop (`CaptureOverlay.sampling`):
+while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
+frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click, another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.
 
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
-read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then an area handle — offered only while the picture has no layer or Crop is on (`AreaFrame.offersHandles`, the one predicate the press and the drawn dots both read), and not where the selected object has a
+read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then the eyedropper, if on (the pick, or nothing, and the mode is over), then an area handle — offered only while the picture has no layer or Crop is on (`AreaFrame.offersHandles`, the one predicate the press and the drawn dots both read), and not where the selected object has a
 handle at that point, which is the object's — then, with the eraser on, the erase, whatever lies under the pointer, then the ruler's strip, where the area shows it, and otherwise the object and the tool. The area handles are round dots on
 a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,

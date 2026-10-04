@@ -4,8 +4,8 @@ import Module_Screenshots_Engine
 
 /// The selection's loupe: the nine by nine pixels around the pointer, magnified without smoothing in a
 /// round window with a grid, the middle pixel boxed, and a plate under it that reads the middle pixel's
-/// colour and place. Shown only while a handle of the area is held, so the person sees the pixel the edge
-/// will land on.
+/// colour and place. Shown only where `OverlayScene.loupeAt` is set, which two things do: a handle of the area held, so the
+/// person sees the pixel the edge will land on, and the eyedropper on, so the person sees the pixel a click will pick.
 ///
 /// The layer covers the view and its parts are placed in the view's own layer space (origin bottom-left).
 final class LoupeLayer: CALayer {

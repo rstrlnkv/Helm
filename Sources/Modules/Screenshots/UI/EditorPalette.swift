@@ -75,7 +75,7 @@ import Module_Screenshots_Engine
     /// What the colour and the fill are about: the selected object's tool, or else the picked one.
     private var subject: AnnotationTool? { selectedTool ?? tool }
     /// The swatch that is lit: the picked colour, or the one the tool draws in until one is picked.
-    var lit: AnnotationColor { style.ink(for: subject ?? .pen) }
+    var lit: AnnotationInk { style.ink(for: subject ?? .pen) }
     /// Whether a box is the subject, so that the fill changes what is drawn or selected now. Filled in the ⋯ menu is enabled by it.
     var fillApplies: Bool { subject == .rectangle || subject == .ellipse }
 }
@@ -316,22 +316,23 @@ struct EditorPalette: View {
     }
 
     private func swatch(_ color: AnnotationColor) -> some View {
-        EditorSwatch(color: color, selected: model.lit == color, blackTurnsWhiteInDark: true) { model.perform(.color(color)) }
+        EditorSwatch(color: color, selected: model.lit == AnnotationInk(color), blackTurnsWhiteInDark: true) { model.perform(.color(AnnotationInk(color))) }
     }
 
     /// The colour wheel's cell, which opens the pop-over of all eight inks under it. While the colour is one the grid has
     /// no swatch for, its centre shows it, and the grid has no ring: the colour is seen in the one place that is lit.
     private var wheel: some View {
-        let apart = Self.colours.contains(model.lit) ? nil : model.lit
-        return Button { model.perform(.colours(anchorX: model.wheelFrame.midX)) } label: { wheelFace(showing: apart) }
+        let apart = model.lit.swatch.map(Self.colours.contains) == true ? nil : model.lit
+        return Button { model.perform(.colours(anchorX: model.wheelFrame.midX)) } label: { Self.wheelFace(showing: apart) }
             .buttonStyle(.plain)
             .help(ScStr.allColours)
             .accessibilityLabel(ScStr.allColours)
-            .accessibilityValue(apart.map(ScStr.ink) ?? "")
+            .accessibilityValue(apart.map { $0.swatch.map(ScStr.ink) ?? HelmA11y.otherColour } ?? "")
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.colourCell = $0 }
     }
 
-    private func wheelFace(showing apart: AnnotationColor?) -> some View {
+    /// The wheel's face: the spectrum, and the custom colour at its centre when there is one. The colours pop-over draws it too.
+    static func wheelFace(showing apart: AnnotationInk?) -> some View {
         Circle()
             .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
             .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)

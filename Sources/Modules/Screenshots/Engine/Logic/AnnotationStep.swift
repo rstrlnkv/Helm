@@ -41,7 +41,7 @@ public enum AnnotationStep {
 
     /// White on an ink whose luma (the Rec. 709 weights on the sRGB values) is under 0.55, black on a lighter one: white on the
     /// red, blue, purple and black, black on the orange, yellow, green and white.
-    public static func digitColor(on ink: AnnotationColor) -> CGColor {
+    public static func digitColor(on ink: AnnotationInk) -> CGColor {
         let parts = ink.cgColor.components ?? [0, 0, 0, 1]
         let luma = 0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]
         return luma < 0.55 ? CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1) : CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)

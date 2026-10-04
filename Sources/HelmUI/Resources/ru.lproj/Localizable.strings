@@ -1416,3 +1416,6 @@
 "Text copied" = "Текст скопирован";
 "No text was found" = "Текст не найден";
 "The text could not be read" = "Не удалось прочесть текст";
+
+/* Screenshots — stage11 track */
+"Eyedropper" = "Пипетка";

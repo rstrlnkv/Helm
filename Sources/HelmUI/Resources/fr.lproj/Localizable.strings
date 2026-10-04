@@ -1416,3 +1416,6 @@
 "Text copied" = "Texte copié";
 "No text was found" = "Aucun texte trouvé";
 "The text could not be read" = "Le texte n’a pas pu être lu";
+
+/* Screenshots — stage11 track */
+"Eyedropper" = "Pipette";

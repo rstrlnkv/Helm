@@ -1416,3 +1416,6 @@
 "Text copied" = "テキストをコピーしました";
 "No text was found" = "テキストが見つかりませんでした";
 "The text could not be read" = "テキストを読み取れませんでした";
+
+/* Screenshots — stage11 track */
+"Eyedropper" = "スポイト";

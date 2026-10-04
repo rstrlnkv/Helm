@@ -408,7 +408,7 @@ public struct AnnotationEditing: Sendable {
         layers[index] = changed
     }
 
-    public mutating func recolor(_ color: AnnotationColor) {
+    public mutating func recolor(_ color: AnnotationInk) {
         editSelected { var style = $0.style; style.color = color; return $0.restyled(style) }
     }
 

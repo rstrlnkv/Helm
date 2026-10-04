@@ -14,10 +14,12 @@ import Module_Screenshots_Engine
 /// one colour every tool shares and closes it, and a colour the grid has no swatch for shows in the wheel's centre.**
 ///
 /// `Architecture/Screenshots.md`, the colour grid and wheel: the grid holds red, yellow, blue, green, black; orange,
-/// purple and white are only in the pop-over, and when one of them is the colour it is seen in the centre of the wheel's cell, with no ring
+/// purple and white are only in the pop-over, and when one of them (or any other colour outside the grid, which the pop-over's wheel test below draws) is the colour it is seen in the centre of the wheel's cell, with no ring
 /// on any of the five grid swatches. No frame in `palette-frames/` draws the colours pop-over, so its order is derived:
 /// the spectrum `AnnotationColor` already lists (red, orange, yellow, green, blue, purple, black, white); the grid's
-/// reading order is the other candidate and is not pinned here.
+/// reading order is the other candidate and is not pinned here. The pop-over's third row (the system's panel and the eyedropper) is
+/// pressed in `testEachSwatchOfThePopoverSendsItsInkAndTheViewDrawsThemInTheDeclaredOrder` only as far as what it sends; the panel and the
+/// eyedropper themselves are in `TheAllColoursPanelIsAskedAndSentAwayTests` and `ThePipettePicksTheFrozenPixelNotTheLayersTests`.
 @MainActor
 final class TheColourWheelOpensTheEightInksTests: XCTestCase {
 
@@ -98,7 +100,7 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         let model = EditorBarModel()
         model.show(tool: .pen, style: .standard, canUndo: false, canRedo: false)
         var at = CGPoint.zero
-        var first: [AnnotationColor: CGPoint] = [:]
+        var first: [AnnotationInk: CGPoint] = [:]
         var odd: [EditorAction] = []
         model.perform = {
             if case .color(let ink) = $0 { if first[ink] == nil { first[ink] = at } } else { odd.append($0) }
@@ -112,10 +114,12 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         var points: [CGPoint] = []
         for y in stride(from: 2.0, to: size.height, by: 4) { for x in stride(from: 2.0, to: size.width, by: 4) { points.append(CGPoint(x: x, y: y)) } }
         try press(mount, at: points) { at = $0 }
-        XCTAssertTrue(odd.isEmpty, "the pop-over sent something other than a pick: \(odd)")
-        XCTAssertEqual(Set(first.keys), Set(AnnotationColor.allCases), "a swatch of the eight cannot be pressed: \(first.keys)")
+        // The third row's two cells are the wheel and the eyedropper, and nothing else is not a pick.
+        XCTAssertTrue(odd.contains(.allColours) && odd.contains(.eyedropper), "the third row's cells cannot be pressed: \(odd)")
+        XCTAssertTrue(odd.allSatisfy { $0 == .allColours || $0 == .eyedropper }, "the pop-over sent something other than a pick: \(odd)")
+        XCTAssertEqual(Set(first.keys), Set(AnnotationColor.allCases.map(AnnotationInk.init)), "a swatch of the eight cannot be pressed: \(first.keys)")
         let drawn = first.keys.sorted { (first[$0]!.y, first[$0]!.x) < (first[$1]!.y, first[$1]!.x) }
-        XCTAssertEqual(drawn, EditorColoursPopover.inks, "the pop-over draws the eight in another order than it declares")
+        XCTAssertEqual(drawn, EditorColoursPopover.inks.map(AnnotationInk.init), "the pop-over draws the eight in another order than it declares")
     }
 
     // MARK: the wheel is a pressable control with a name
@@ -124,7 +128,7 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         throws -> (model: EditorBarModel, mount: MountedRender, rep: NSBitmapImageRep) {
         AppLanguage.override = .en
         let model = EditorBarModel()
-        model.show(tool: .pen, style: AnnotationStyle(color: lit), canUndo: false, canRedo: false)
+        model.show(tool: .pen, style: AnnotationStyle(color: lit.map(AnnotationInk.init)), canUndo: false, canRedo: false)
         let probe = NSHostingView(rootView: EditorPalette(model: model))
         probe.sizingOptions = [.intrinsicContentSize]
         let size = probe.fittingSize
@@ -206,6 +210,49 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
                 XCTAssertNotEqual(got, wheelOnly, "\(ink) \(appearance.rawValue): the centre did not change")
                 XCTAssertGreaterThan(got[3], 0.9, "\(ink) \(appearance.rawValue): the centre is not solid: \(got)")
             }
+        }
+    }
+
+    /// The pop-over's own wheel (its third row, first cell) shows a colour none of the eight is at its centre, and shows nothing of the
+    /// kind for one of the eight. Read as the pixels that change between the two renderings, so nothing is assumed about where it sits.
+    func testThePopoversWheelShowsACustomColourAtItsCentreAndNothingForTheEight() throws {
+        AppLanguage.override = .en
+        func render(_ ink: AnnotationInk?) throws -> (rep: NSBitmapImageRep, mount: MountedRender) {
+            let model = EditorBarModel()
+            model.show(tool: .pen, style: AnnotationStyle(color: ink), canUndo: false, canRedo: false)
+            let probe = NSHostingView(rootView: EditorColoursPopover(model: model))
+            probe.sizingOptions = [.intrinsicContentSize]
+            let size = probe.fittingSize
+            let mount = MountedRender(EditorColoursPopover(model: model), width: size.width, height: size.height, appearance: .aqua)
+            mount.settle(20)
+            let rep = try XCTUnwrap(mount.host.bitmapImageRepForCachingDisplay(in: mount.host.bounds))
+            mount.host.cacheDisplay(in: mount.host.bounds, to: rep)
+            return (rep, mount)
+        }
+        let custom = try XCTUnwrap(AnnotationInk(red: 0.2, green: 0.4, blue: 0.6))
+        let none = try render(AnnotationInk(.red))
+        let lit = try render(custom)
+        XCTAssertEqual(none.rep.pixelsWide, lit.rep.pixelsWide, "control: the two renderings are the same size")
+        // The reference: a plain disc of the ink through the same mount and readback.
+        let disc = MountedRender(Circle().fill(Color(cgColor: custom.cgColor)).frame(width: 24, height: 24), width: 24, height: 24, appearance: .aqua)
+        disc.settle(20)
+        let discRep = try XCTUnwrap(disc.host.bitmapImageRepForCachingDisplay(in: disc.host.bounds))
+        disc.host.cacheDisplay(in: disc.host.bounds, to: discRep)
+        let want = try pixel(discRep, CGPoint(x: 12, y: 12), in: disc.host)
+        func near(_ rep: NSBitmapImageRep, _ x: Int, _ y: Int) -> Bool {
+            guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return false }
+            return abs(c.redComponent - want[0]) + abs(c.greenComponent - want[1]) + abs(c.blueComponent - want[2]) < 0.08
+        }
+        // The pixels that are the ink's colour in the lit rendering and are not in the other: the disc at the wheel's centre.
+        var patch: [(Int, Int)] = []
+        for y in 0..<lit.rep.pixelsHigh { for x in 0..<lit.rep.pixelsWide where near(lit.rep, x, y) && !near(none.rep, x, y) { patch.append((x, y)) } }
+        XCTAssertGreaterThan(patch.count, 30, "the pop-over's wheel shows no solid patch of a colour none of the eight is")
+        // One of the eight lights its swatch and leaves the wheel's centre as it was.
+        let orange = try render(AnnotationInk(.orange))
+        for (x, y) in patch {
+            let a = orange.rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB), b = none.rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
+            XCTAssertEqual(a?.redComponent ?? -1, b?.redComponent ?? -2, accuracy: 0.03, "one of the eight changed the pop-over's wheel at (\(x), \(y))")
+            XCTAssertEqual(a?.blueComponent ?? -1, b?.blueComponent ?? -2, accuracy: 0.03, "one of the eight changed the pop-over's wheel at (\(x), \(y))")
         }
     }
 
