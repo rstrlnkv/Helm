@@ -56,6 +56,11 @@ enum OverlayResult {
     /// The eraser is on: a drag takes away the layers it meets (`AnnotationEditing.beginErase`) and `edit.tool` stays what it
     /// was under it. A mode of this overlay and no `AnnotationTool`, so `EditorMemory` is never asked to keep it.
     private var erasing = false
+    /// The eyedropper is on (`EditorAction.eyedropper`): the loupe follows the pointer over the area, and the next click on the area picks the
+    /// pixel of the frozen picture under it as the colour (`PixelLoupe`, read from the frame and never from a layer). A mode of this overlay like
+    /// the eraser and Crop, nothing of it remembered; any other action, Esc, a right click, a press on the picture and `close` put it down.
+    /// A press on the palette is the palette's: its actions end the mode, its bare background does not.
+    private var sampling = false
     /// The radius of the eraser's circle, in points of the display: what a drag meets and what the cursor draws.
     static let eraserRadius: CGFloat = 9
     /// The ruler is on the picture, a switch of this overlay (`EditorAction.toggleRuler`) over whatever tool is chosen: not a layer, so
@@ -89,6 +94,8 @@ enum OverlayResult {
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
+    /// What opens the system's colour panel (`.allColours`); a test hands in a fake, for no test opens the real one.
+    private let colourPanel: ColourPanelOpening
     /// The pop-over that is open, one at a time: the thickness and opacity one, open only while a tool is chosen, or the
     /// colours one, and the centre of the cell that opened it, in the palette's own points. Closed by everything that
     /// puts the tool down, and by the exits.
@@ -140,10 +147,12 @@ enum OverlayResult {
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
          store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         colourPanel: ColourPanelOpening = EditorColourPanel(),
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.pinRoom = pinRoom
         self.store = store
+        self.colourPanel = colourPanel
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
         self.onFinish = onFinish
@@ -222,6 +231,8 @@ enum OverlayResult {
         onFinish = nil
         edit = nil
         popover = nil
+        sampling = false
+        colourPanel.close()
         typing = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
@@ -273,6 +284,15 @@ enum OverlayResult {
             popover = nil
             if var current = edit { current.layers.disarm(); edit = current }
             render()
+            return
+        }
+        // The eyedropper takes any press that is not the palette's or an open pop-over's and is over with it: on the area, the pixel
+        // under it is the colour; anywhere else nothing is picked.
+        if sampling, let current = edit, drag == nil {
+            sampling = false
+            if display == current.display, current.rect.contains(local),
+               let frame = freeze.frames.first(where: { $0.id == display }),
+               let loupe = PixelLoupe.around(local, in: frame) { perform(.color(AnnotationInk(loupe))) } else { render() }
             return
         }
         if var current = edit, drag == nil {
@@ -386,7 +406,7 @@ enum OverlayResult {
     func rightMouseDown() { escapeAsked() }
 
     /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`, and it is asked last. Before it, in this order, each press does
-    /// only its own thing and arms nothing: an open text input is ended, an open pop-over is closed, a held area handle puts the area back as the press
+    /// only its own thing and arms nothing: an open text input is ended, the eyedropper is put down, an open pop-over is closed, a held area handle puts the area back as the press
     /// took it, and with Crop on the area goes back as the mode found it (a selected object stays selected). Then the rule: at once with nothing to
     /// lose, and with layers a second press, whenever it comes; a selected object is let go of first, and that press asks nothing. A drag in
     /// progress is not an edit and leaves at once.
@@ -395,6 +415,8 @@ enum OverlayResult {
         // An open input takes this press and nothing else: it places a non-empty text and drops an empty one, and the
         // rule below starts with the next press.
         if typing != nil { endTyping(); return }
+        // The eyedropper is put down by this press, which does only that.
+        if sampling { sampling = false; render(); return }
         // An open pop-over takes this press and nothing else: Esc's own rule below starts with the next one.
         if popover != nil { popover = nil; render(); return }
         // A reshape under the pointer is cancelled, the area back as the press took it: Esc is the
@@ -541,6 +563,7 @@ enum OverlayResult {
         default: endTyping()
         }
         guard var current = edit, drag == nil, reshaping == nil else { return }
+        if action != .eyedropper { sampling = false }
         pinRefused = false
         if case .nudge? = action {
             // A repeat after the object was let go of is the held key going on, not a new input.
@@ -592,6 +615,15 @@ enum OverlayResult {
             dropCrop(&current)
             erasing.toggle()
             popover = nil
+        case .eyedropper?:
+            // Only ever on: no key asks for it (`EditorKeys.action`), and the cell's press closes its pop-over, which asking for it
+            // again would mean; the mode ends with the pick or with any other input (above).
+            popover = nil
+            sampling = true
+        case .allColours?:
+            // The system's colour panel, which stands over the overlay (`EditorColourPanel`); what is picked there is a `.color` like any other.
+            popover = nil
+            colourPanel.open(showing: style.ink(for: styleTool)) { [weak self] in self?.perform(.color($0)) }
         case .toggleRuler?:
             // A switch: the key again lowers it, and a click on the raised object does. The tool chosen and the eraser stay as they were.
             guard !isRepeat else { return }
@@ -785,6 +817,7 @@ enum OverlayResult {
             var scene = OverlayScene()
             scene.windowMode = mode == .window
             if let pointer, pointer.display == id, edit == nil || drag != nil { scene.pointer = pointer.point }
+            scene.sampling = sampling
             if let drag, drag.display == id { scene.selection = drag.drag.rect }
             else if let edit, edit.display == id {
                 scene.selection = edit.rect
@@ -796,6 +829,8 @@ enum OverlayResult {
                 scene.layers = edit.layers.layers + (edit.layers.draft.map { [$0] } ?? [])
                 scene.draftID = edit.layers.draft?.id
                 scene.erasing = erasing
+                if sampling, let pointer, pointer.display == id, edit.rect.contains(pointer.point),
+                   scene.chrome?.covers(pointer.point) != true { scene.loupeAt = pointer.point }
                 scene.cropping = crop != nil
                 scene.handlesOffered = AreaFrame.offersHandles(layersExist: !edit.layers.layers.isEmpty, cropping: crop != nil)
                 scene.ruler = ruler
@@ -834,6 +869,8 @@ struct OverlayScene {
     var draftID: Annotation.ID?
     /// The eraser is on: the cursor is its circle.
     var erasing = false
+    /// The eyedropper is on: the cursor is its symbol on every display, the loupe only over the area (`loupeAt`).
+    var sampling = false
     /// Crop is on: the size plate stands at the area's top-left corner.
     var cropping = false
     /// The area's handles are drawn: no layer on the picture, or Crop on (`AreaFrame.offersHandles`).
@@ -855,6 +892,8 @@ struct OverlayScene {
     var plateByActions = false
     /// The area is being reshaped and the pointer is here: its size in pixels is on a plate by it.
     var sizingAt: CGPoint?
+    /// The eyedropper is on and the pointer is here, in display-top-left points: the loupe reads the pixel under it.
+    var loupeAt: CGPoint?
 }
 
 // MARK: - The panel
@@ -869,12 +908,15 @@ struct OverlayScene {
 /// open). Not yet measured: whether that forced crosshair is what hides the tooltips, and whether a menu
 /// item's SF Symbol image is drawn on its own (it was not, beside `state = .on`). The palette is hosted by `EditorBarHostingView`.
 final class OverlayPanel: NSPanel {
+    /// Every Space and full-screen apps; the colour panel that stands over the overlay (`EditorColourPanel`) takes the same.
+    static let behaviour: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+
     init(screen: NSScreen, view: NSView) {
         super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
         // Above the menu bar and the Dock, over full-screen apps, in every Space.
         level = .screenSaver
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        collectionBehavior = Self.behaviour
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
@@ -929,6 +971,7 @@ final class OverlayView: NSView {
     let rulerLayer = RulerLayer()
     private let coordinateLabel = LabelLayer()
     private let sizeLabel = LabelLayer()
+    private let loupeLayer = LoupeLayer()
     /// The editor's palette, made when this display first has an area to edit and never
     /// on another: a display with nothing selected builds no SwiftUI at all.
     private lazy var paletteHost = EditorBarHostingView(rootView: EditorPalette(model: overlay!.palette))
@@ -1045,7 +1088,7 @@ final class OverlayView: NSView {
         rulerLayer.isHidden = true
         for sublayer in [imageLayer, spotlightLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
                          crosshairLayer,
-                         coordinateLabel, sizeLabel] as [CALayer] {
+                         coordinateLabel, sizeLabel, loupeLayer] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
         imageLayer.frame = bounds
@@ -1141,9 +1184,14 @@ final class OverlayView: NSView {
     private var windowMode = false
     /// The eraser is on (`OverlayScene.erasing`): the cursor is its circle.
     private var erasing = false
-    private func setCursor() {
-        (windowMode ? Self.cameraCursor : erasing ? Self.eraserCursor : NSCursor.crosshair).set()
+    /// The eyedropper is on (`OverlayScene.sampling`): the cursor is its symbol, before the eraser's circle, as the press goes to the
+    /// eyedropper before the eraser.
+    private var sampling = false
+    /// The cursor the view asks for now: what a test reads.
+    var askedCursor: NSCursor {
+        windowMode ? Self.cameraCursor : sampling ? Self.eyedropperCursor : erasing ? Self.eraserCursor : NSCursor.crosshair
     }
+    private func setCursor() { askedCursor.set() }
 
     /// The opacity of a layer the eraser's drag has met, until the release takes it.
     static let fadedOpacity: Float = 0.3
@@ -1164,15 +1212,21 @@ final class OverlayView: NSView {
         return NSCursor(image: image, hotSpot: NSPoint(x: size.width / 2, y: size.height / 2))
     }()
 
-    private static let cameraCursor: NSCursor = {
-        let size = NSSize(width: 28, height: 24)
-        let base = NSImage(systemSymbolName: "camera.fill", accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: 18, weight: .regular))
+    private static let cameraCursor = symbolCursor("camera.fill", size: NSSize(width: 28, height: 24), pointSize: 18)
+
+    /// The eyedropper is on (`OverlayScene.sampling`): the cursor is its symbol, its tip at the hot spot, on every display and
+    /// wherever the pointer is, so the mode shows before the pointer reaches the area.
+    static let eyedropperCursor = symbolCursor("eyedropper", size: NSSize(width: 24, height: 24), pointSize: 18,
+                                               hotSpot: NSPoint(x: 3, y: 21))
+
+    /// A symbol on a white halo and then black: legible over a dark window and a light one. The hot spot is the middle unless given.
+    private static func symbolCursor(_ name: String, size: NSSize, pointSize: CGFloat, hotSpot: NSPoint? = nil) -> NSCursor {
+        let base = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: pointSize, weight: .regular))
         let image = NSImage(size: size, flipped: false) { rect in
             guard let base else { return false }
             let glyph = NSRect(x: (rect.width - base.size.width) / 2, y: (rect.height - base.size.height) / 2,
                                width: base.size.width, height: base.size.height)
-            // White halo, then black: legible over a dark window and a light one.
             for offset in [(-1.0, 0.0), (1, 0), (0, -1), (0, 1)] {
                 base.withSymbolConfiguration(.init(paletteColors: [.white]))?
                     .draw(in: glyph.offsetBy(dx: offset.0, dy: offset.1))
@@ -1180,8 +1234,8 @@ final class OverlayView: NSView {
             base.withSymbolConfiguration(.init(paletteColors: [.black]))?.draw(in: glyph)
             return true
         }
-        return NSCursor(image: image, hotSpot: NSPoint(x: size.width / 2, y: size.height / 2))
-    }()
+        return NSCursor(image: image, hotSpot: hotSpot ?? NSPoint(x: size.width / 2, y: size.height / 2))
+    }
 
     // MARK: Drawing
 
@@ -1191,8 +1245,9 @@ final class OverlayView: NSView {
         defer { CATransaction.commit() }
 
         windowMode = scene.windowMode
-        if erasing != scene.erasing {
+        if erasing != scene.erasing || sampling != scene.sampling {
             erasing = scene.erasing
+            sampling = scene.sampling
             setCursor()
         }
         let all = bounds
@@ -1238,6 +1293,13 @@ final class OverlayView: NSView {
             crosshairLayer.path = lines
         } else {
             crosshairLayer.path = nil
+        }
+
+        // The loupe, only while the eyedropper is on: the pixels of the frame without the pointer, round the pointer.
+        if let held = scene.loupeAt, let reading = PixelLoupe.around(held, in: frozen) {
+            loupeLayer.show(reading, at: CGPoint(x: held.x, y: bounds.height - held.y), within: bounds)
+        } else {
+            loupeLayer.isHidden = true
         }
 
         // **One plate, by the pointer.** Before a drag it says where the pointer
@@ -1503,6 +1565,10 @@ final class OverlayView: NSView {
 
     /// The plates on screen, so a test can ask how many there are and where.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }
+
+    /// The loupe's plate text, and where its window stands; both nil while the loupe is hidden.
+    var loupeReading: String? { loupeLayer.reading }
+    var loupeDisc: CGRect? { loupeLayer.isHidden ? nil : loupeLayer.disc }
 }
 
 /// A small text plate: white digits on a dark rounded ground, sized to its text.

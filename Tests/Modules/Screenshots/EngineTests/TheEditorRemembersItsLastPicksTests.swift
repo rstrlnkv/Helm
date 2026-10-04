@@ -35,7 +35,7 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
         for color in AnnotationColor.allCases {
             for step in AnnotationThickness.allCases {
                 let kept = store()
-                let style = AnnotationStyle(color: color, thickness: step, filled: step == .medium)
+                let style = AnnotationStyle(color: AnnotationInk(color), thickness: step, filled: step == .medium)
                 EditorMemory.remember(style: style, for: .arrow, in: kept)
                 XCTAssertEqual(EditorMemory.read(kept).style(for: .arrow), style, "\(color) \(step)")
             }

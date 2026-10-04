@@ -114,7 +114,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
 public struct AnnotationStyle: Sendable, Equatable {
     /// Nil until a colour is picked: each tool then has its own — red, and yellow for
     /// the marker. Once one is picked it is every tool's, the marker's included.
-    public var color: AnnotationColor?
+    public var color: AnnotationInk?
     public var thickness: AnnotationThickness
     public var filled: Bool
     /// How much of the ink shows, 0.1…1 once read from the store; the marker's own 0.6 is multiplied by it.
@@ -122,7 +122,7 @@ public struct AnnotationStyle: Sendable, Equatable {
 
     /// The default step is the middle one, which is what a tool nobody picked a step for reads
     /// from the store (`EditorMemory`), so `standard` is that tool's style and not a second default.
-    public init(color: AnnotationColor? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
+    public init(color: AnnotationInk? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
                 opacity: Double = 1) {
         self.color = color
         self.thickness = thickness
@@ -133,7 +133,7 @@ public struct AnnotationStyle: Sendable, Equatable {
     public static let standard = AnnotationStyle()
 
     /// The ink a tool is drawn in under this style.
-    public func ink(for tool: AnnotationTool) -> AnnotationColor {
+    public func ink(for tool: AnnotationTool) -> AnnotationInk {
         color ?? (tool == .highlighter ? .yellow : .red)
     }
 }

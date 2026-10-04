@@ -485,9 +485,9 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
         let tokens = Set(try NSRegularExpression(pattern: #"(?:ScStr|HelmA11y)\.[A-Za-z]+"#)
             .matches(in: source, range: NSRange(source.startIndex..., in: source))
             .map { String(source[Range($0.range, in: source)!]) })
-        // `select` and `crop` are the labels that show the chosen tool or mode, not controls.
+        // `select` and `crop` are the labels that show the chosen tool or mode, not controls; `otherColour` is the wheel's value when the colour is no swatch.
         let known: Set<String> = ["ScStr.tool", "ScStr.eraser", "ScStr.ruler", "ScStr.ink", "ScStr.allColours", "ScStr.undo", "ScStr.redo", "HelmA11y.moreActions",
-                                  "ScStr.done", "ScStr.closeEditor", "ScStr.select", "ScStr.crop"]
+                                  "ScStr.done", "ScStr.closeEditor", "ScStr.select", "ScStr.crop", "HelmA11y.otherColour"]
         XCTAssertEqual(tokens, known, "the palette names a control this test does not list, or lists one the palette lost")
     }
 
@@ -496,6 +496,9 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
     func testEveryWordTheMenuAndThePopoversShowIsThereAndDistinctInEveryLanguage() throws {
         let popover = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorPopover.swift")
         XCTAssertTrue(popover.contains("ScStr.thicknessLabel") && popover.contains("ScStr.opacityLabel"), "the pop-over lost a row this test names")
+        // The colours pop-over's third row: the wheel and the eyedropper, each named from the shipping string, which is in every language below.
+        let colours = try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorColoursPopover.swift")
+        XCTAssertTrue(colours.contains("ScStr.eyedropper") && colours.contains("ScStr.allColours"), "the colours pop-over lost a cell this test names")
         AppLanguage.each { language in
             func titles(_ items: [EditorMenuItem]) -> [String] {
                 items.flatMap { item -> [String] in
@@ -508,7 +511,7 @@ final class TheEditorsBarsAreThePartOfTheOverlayTests: XCTestCase {
             }
             let menu = titles(EditorMenu.items(for: EditorBarModel(), pinOffered: true))
             XCTAssertEqual(menu.count, 14, "\(language): Arrow, Shapes, Rectangle, Oval, Line, Filled, Text, Steps, Blur, Crop, Select, Thickness and Opacity, Save, Pin: \(menu)")
-            let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel]
+            let words = menu + [ScStr.thicknessLabel, ScStr.opacityLabel, ScStr.eyedropper, ScStr.allColours]
             XCTAssertFalse(words.contains(where: \.isEmpty), "\(language): \(words)")
             XCTAssertEqual(Set(words).count, words.count, "\(language): two words share a name in the menu and pop-overs: \(words)")
         }

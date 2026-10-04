@@ -171,15 +171,18 @@ public struct HelmPaletteSwatches: View {
 /// A closure cannot be one — the panel wants an object and a selector — and an
 /// object created inside the action that opens the panel is deallocated before
 /// the first colour comes back, which reads as a panel that does nothing. Held
-/// by the view for as long as the view is there.
-final class ColorPanelBridge: NSObject {
-    var onPick: (NSColor) -> Void = { _ in }
+/// by whoever opens the panel: the swatch row's view (its `@State`) for as long as the
+/// view is there, the Screenshots editor's `EditorColourPanel` for as long as it lives.
+public final class ColorPanelBridge: NSObject {
+    public var onPick: (NSColor) -> Void = { _ in }
+
+    public override init() { super.init() }
 
     /// `@MainActor` on the method and not on the class: AppKit sends an action
     /// on the main thread, which is what makes the annotation true, while the
     /// class's `init` has to stay nonisolated for the `@State` default above to
     /// build. Neither annotation moves ownership — the panel still holds this
-    /// weakly and the view still holds it for as long as the view is there.
+    /// weakly and its holder, named above, still holds it.
     @MainActor
-    @objc func colourChanged(_ sender: NSColorPanel) { onPick(sender.color) }
+    @objc public func colourChanged(_ sender: NSColorPanel) { onPick(sender.color) }
 }

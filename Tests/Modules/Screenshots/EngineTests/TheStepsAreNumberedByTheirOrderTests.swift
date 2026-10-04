@@ -245,8 +245,8 @@ final class TheStepsAreNumberedByTheirOrderTests: XCTestCase {
 
     func testTheDigitIsWhiteOrBlackByWhichReadsOnTheInk() {
         let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1), black = CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
-        for ink in [AnnotationColor.red, .blue, .purple, .black] { XCTAssertEqual(AnnotationStep.digitColor(on: ink), white, "\(ink)") }
-        for ink in [AnnotationColor.orange, .yellow, .green, .white] { XCTAssertEqual(AnnotationStep.digitColor(on: ink), black, "\(ink)") }
+        for ink in [AnnotationInk.red, .blue, .purple, .black] { XCTAssertEqual(AnnotationStep.digitColor(on: ink), white, "\(ink)") }
+        for ink in [AnnotationInk.orange, .yellow, .green, .white] { XCTAssertEqual(AnnotationStep.digitColor(on: ink), black, "\(ink)") }
     }
 
     func testTheCirclesSizeIsTheThicknessStepsAndItsDigitStaysCentred() throws {

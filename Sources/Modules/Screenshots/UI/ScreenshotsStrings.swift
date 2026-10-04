@@ -187,6 +187,11 @@ enum ScStr {
     /// Colores, Couleurs, カラー, Цвета, 颜色, Cores), so Japanese keeps the panel's カラー and Chinese its 颜色.
     static var allColours: String { L("All Colours") }
 
+    /// The eyedropper's name. Helm's own words: measured, no table macOS displays carries it; the word occurs only in accessibility
+    /// tables (the symbol's name in `AccessibilitySharedSupport`'s symbol-names table, and `DesktopServicesUI`'s `Localizable` table under
+    /// an accessibility key).
+    static var eyedropper: String { L("Eyedropper") }
+
     /// The name of a thickness step, which the pop-over says beside its slider (the frame's «Средняя»).
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {

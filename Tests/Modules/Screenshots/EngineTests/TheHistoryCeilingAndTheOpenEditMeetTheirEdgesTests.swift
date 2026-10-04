@@ -26,7 +26,7 @@ final class TheHistoryCeilingAndTheOpenEditMeetTheirEdgesTests: XCTestCase {
     /// where the work was, and the redo side is no deeper than the undo side.
     func testUndoThreeHundredTimesStopsAtTheCeilingAndRedoReturnsExactlyWhatWasWalkedOver() {
         var editing = oneRectangle()
-        let colors: [AnnotationColor] = [.blue, .green]
+        let colors: [AnnotationInk] = [.blue, .green]
         let base = AnnotationEditing.historyLimit
         XCTAssertLessThan(base, 300, "the feed is 300 edits and means to overrun the ceiling")
         var seen: [[Annotation]] = []

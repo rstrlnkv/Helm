@@ -31,7 +31,12 @@ enum EditorAction: Equatable {
     /// The ⋯ menu's Select: no tool, so a drag selects. Choosing it twice is still no tool.
     case select
     /// The next object's colour, thickness and, for the boxes, fill.
-    case color(AnnotationColor)
+    case color(AnnotationInk)
+    /// The colours pop-over's wheel: the system's colour panel, which sends `.color` with what is picked.
+    case allColours
+    /// The colours pop-over's eyedropper, a mode of the overlay: the next click on the area picks the pixel under it as `.color`;
+    /// Esc, a right click, a press on the picture or any other action puts it down. No key asks for it, and asking is only ever on.
+    case eyedropper
     case thickness(AnnotationThickness)
     /// The next object's opacity, held to 0.1…1 where it is applied.
     case opacity(Double)

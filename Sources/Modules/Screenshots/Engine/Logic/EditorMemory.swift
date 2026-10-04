@@ -16,12 +16,12 @@ import HelmRuntime
 public struct EditorMemory: Equatable, Sendable {
     /// Nil is no tool, which is what a drag on the area means.
     public var tool: AnnotationTool?
-    private var color: AnnotationColor?
+    private var color: AnnotationInk?
     private var filled: Bool
     private var steps: [AnnotationTool: AnnotationThickness]
     private var opacities: [AnnotationTool: Double]
 
-    public init(tool: AnnotationTool? = nil, color: AnnotationColor? = nil, filled: Bool = false) {
+    public init(tool: AnnotationTool? = nil, color: AnnotationInk? = nil, filled: Bool = false) {
         self.tool = tool
         self.color = color
         self.filled = filled
@@ -47,7 +47,7 @@ public struct EditorMemory: Equatable, Sendable {
         typealias Key = ScreenshotsSettings.Key
         var memory = EditorMemory(
             tool: AnnotationTool(rawValue: store.string(Key.editorTool, default: "")),
-            color: AnnotationColor(rawValue: store.string(Key.editorColor, default: "")),
+            color: readInk(store),
             filled: store.bool(Key.editorFill, default: false))
         let stored = store.intTable(Key.editorThicknessByTool)
         let opacities = store.doubleTable(Key.editorOpacityByTool)
@@ -64,6 +64,18 @@ public struct EditorMemory: Equatable, Sendable {
         return memory
     }
 
+    /// The shared colour: `editorInk`, three numbers; or, while that key has never been written, the swatch the old
+    /// `editorColor` names. A key that is there and cannot be read as three numbers is no colour, and the old key
+    /// is not asked then, so a damaged record never turns into a colour from before it.
+    private static func readInk(_ store: NamespacedStore) -> AnnotationInk? {
+        typealias Key = ScreenshotsSettings.Key
+        guard let stored = store.object(Key.editorInk) else {
+            return AnnotationColor(rawValue: store.string(Key.editorColor, default: "")).map(AnnotationInk.init)
+        }
+        guard let parts = stored as? [Double], parts.count == 3 else { return nil }
+        return AnnotationInk(red: parts[0], green: parts[1], blue: parts[2])
+    }
+
     public static func remember(tool: AnnotationTool?, in store: NamespacedStore) {
         store.set(tool?.rawValue, for: ScreenshotsSettings.Key.editorTool)
     }
@@ -72,7 +84,7 @@ public struct EditorMemory: Equatable, Sendable {
     /// and what the two tables hold under a name that is no tool is dropped with the write.
     public static func remember(style: AnnotationStyle, for tool: AnnotationTool, in store: NamespacedStore) {
         typealias Key = ScreenshotsSettings.Key
-        store.set(style.color?.rawValue, for: Key.editorColor)
+        if let ink = style.color { store.set([ink.red, ink.green, ink.blue], for: Key.editorInk) }
         store.set(style.filled, for: Key.editorFill)
         let known = Set(AnnotationTool.allCases.map(\.rawValue))
         var steps = store.intTable(Key.editorThicknessByTool).filter { known.contains($0.key) }
