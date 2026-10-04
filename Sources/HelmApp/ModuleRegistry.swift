@@ -14,7 +14,7 @@ import Module_Screenshots_UI
 
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {
-    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor(), HostsDescriptor(), ScreenshotsDescriptor()]
+    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), ScreenshotsDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor(), HostsDescriptor()]
 
     /// The descriptor an id names, or nil for an id from a store written by
     /// another build. Spelled here because everything that reads a stored

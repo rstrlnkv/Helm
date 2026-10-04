@@ -1,6 +1,7 @@
 import XCTest
 import HelmRuntime
 import Module_Screenshots_UI
+import Module_Homebrew_UI
 @testable import HelmApp
 @testable import HelmUI
 
@@ -287,6 +288,17 @@ final class ScreenshotsMeetsAnArrangedSidebarTests: XCTestCase {
 
     /// The first read's answer is not persisted by the read, so it has to be the
     /// same answer every launch; and once written, reading it back changes nothing.
+    func testAFreshSidebarPlacesScreenshotsDirectlyBeforeHomebrew() throws {
+        // A machine with no stored arrangement: the seed is spelled by the registry's order, and the
+        // owner decided Screenshots stands directly before Homebrew. The relation is asserted, not the list.
+        let brew = HomebrewDescriptor.id.rawValue
+        let read = SidebarLayoutStore.read(from: store(), registry: SidebarLayoutStore.registry())
+        let home = try section(holding: shot, in: read)
+        let shotAt = try XCTUnwrap(home.modules.firstIndex(of: shot))
+        let brewAt = try XCTUnwrap(home.modules.firstIndex(of: brew), "Homebrew shares the section")
+        XCTAssertEqual(shotAt + 1, brewAt, "Screenshots directly before Homebrew: \(home.modules)")
+    }
+
     func testTheArrivalIsStableAcrossReadsAndAWrite() {
         let arranged = SidebarLayout.seeded(from: before).removingSection(utilities)
         let s = store()
