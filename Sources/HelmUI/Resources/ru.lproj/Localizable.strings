@@ -1350,7 +1350,6 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Нужно, чтобы Снимки экрана могли снимать экран. Helm не записывает ни видео, ни звук — просто у macOS один переключатель и на чтение пикселей, и на запись.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Запись экрана и\U00A0системного звука выключена. Без неё Helm не может прочитать экран, поэтому сочетания для снимков ничего не снимают.";
 "Open Screen & System Audio Recording…" = "Открыть «Запись экрана и\U00A0системного звука»…";
-/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Поделиться…";
 "Replaced. The original is in the Trash." = "Заменено. Исходный файл — в Корзине.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "Снимок переместили или изменили после съёмки. Правка сохранена отдельным файлом.";
@@ -1382,7 +1381,6 @@
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "«Закрепить» оставляет снятую область поверх ваших остальных окон в виде плавающей картинки того размера, в котором вы её сняли: перетащите её, прокрутите, чтобы изменить размер, прокрутите с ⌥, чтобы сделать бледнее или ярче, а чтобы закрыть, щёлкните по ней и нажмите Esc.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Модуль, которого Helm раньше не видел, например Снимки экрана, попадает в раздел боковой панели, где уже лежит больше всего модулей его вида, если раздела, который Helm создал для этого вида, больше нет, а не открывает свой раздел внизу упорядоченной вами боковой панели.";
 
-/* Screenshots — editor track */
 "Blur" = "Размытие";
 "Text" = "Текст";
 "Eraser" = "Ластик";
@@ -1391,7 +1389,6 @@
 "Spotlight" = "Прожектор";
 "Crop" = "Обрезка";
 
-/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
 "Capturing" = "Съёмка";
 "Editor" = "Редактор";
 "Default colour" = "Цвет";
@@ -1400,12 +1397,10 @@
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Скрытые инструменты уходят в меню «⋯» и по-прежнему отвечают на свои клавиши.";
 "Lower right. Shots taken one after another stack up." = "Справа внизу. Несколько снимков подряд складываются в стопку.";
 
-/* Capture track */
 "30 seconds" = "30\U00A0секунд";
 "Timer: %@" = "Таймер: %@";
 "Put the Panel Back" = "Вернуть панель на место";
 
-/* Screenshots — stage12 track */
 "Magnifier" = "Лупа";
 "Emoji" = "Эмодзи";
 
@@ -1417,5 +1412,4 @@
 "No text was found" = "Текст не найден";
 "The text could not be read" = "Не удалось прочесть текст";
 
-/* Screenshots — stage11 track */
 "Eyedropper" = "Пипетка";

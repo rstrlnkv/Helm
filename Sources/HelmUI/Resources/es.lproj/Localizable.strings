@@ -1350,7 +1350,6 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Necesario para que Capturas de pantalla pueda capturar la pantalla. Helm no graba vídeo ni sonido: macOS solo tiene un interruptor para leer píxeles y para grabar.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "La grabación de pantalla y del audio del sistema está desactivada. Sin ella Helm no puede leer la pantalla y los atajos de captura no capturan nada.";
 "Open Screen & System Audio Recording…" = "Abrir Grabación de pantalla y del audio del sistema…";
-/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Compartir…";
 "Replaced. The original is in the Trash." = "Reemplazada. El original está en la papelera.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "La captura se movió o se modificó después de hacerla. Tu edición se ha guardado como un archivo aparte.";
@@ -1382,7 +1381,6 @@
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“Fijar” mantiene una zona capturada encima de tus otras ventanas como una imagen flotante del tamaño con que la capturaste: arrástrala, desplaza para cambiar su tamaño, desplaza con ⌥ para hacerla más tenue o más nítida, y haz clic en ella y pulsa Esc para cerrarla.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Un módulo que Helm no había visto antes, como Capturas de pantalla, se une a la sección de la barra lateral que ya reúne la mayoría de los módulos de su clase cuando falta la sección que Helm creó para esa clase, en vez de abrir una sección propia al final de una barra lateral que has ordenado.";
 
-/* Screenshots — editor track */
 "Blur" = "Desenfoque";
 "Text" = "Texto";
 "Eraser" = "Borrador";
@@ -1391,7 +1389,6 @@
 "Spotlight" = "Foco";
 "Crop" = "Recortar";
 
-/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
 "Capturing" = "Captura";
 "Editor" = "Editor";
 "Default colour" = "Color predeterminado";
@@ -1400,12 +1397,10 @@
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Las herramientas ocultas pasan al menú “⋯” y siguen respondiendo a sus teclas.";
 "Lower right. Shots taken one after another stack up." = "Abajo a la derecha. Varias capturas seguidas se apilan.";
 
-/* Capture track */
 "30 seconds" = "30\U00A0segundos";
 "Timer: %@" = "Temporizador: %@";
 "Put the Panel Back" = "Devolver el panel a su sitio";
 
-/* Screenshots — stage12 track */
 "Magnifier" = "Lupa";
 "Emoji" = "Emoji";
 
@@ -1417,5 +1412,4 @@
 "No text was found" = "No se encontró texto";
 "The text could not be read" = "No se pudo leer el texto";
 
-/* Screenshots — stage11 track */
 "Eyedropper" = "Cuentagotas";

@@ -1350,7 +1350,6 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "スクリーンショットが画面を撮影するために必要です。Helm は映像も音も録画・録音しません。macOS では、ピクセルの読み取りと録画が同じスイッチにまとめられているだけです。";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "画面収録とシステムオーディオ録音がオフです。このままでは Helm は画面を読み取れず、スクリーンショットのショートカットは何も撮影しません。";
 "Open Screen & System Audio Recording…" = "画面収録とシステムオーディオ録音を開く…";
-/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "共有…";
 "Replaced. The original is in the Trash." = "置き換えました。元のファイルはゴミ箱にあります。";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "スクリーンショットは撮影後に移動または変更されました。編集内容は別のファイルとして保存されています。";
@@ -1382,7 +1381,6 @@
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“ピン留め”は、取り込んだ範囲を、取り込んだ大きさの浮かぶ画像として、ほかのウインドウの上に残します。ドラッグで移動し、スクロールでサイズを変え、⌥ を押しながらスクロールすると薄くなったり濃くなったりし、クリックして Esc を押すと閉じます。";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "スクリーンショットなど、Helm がまだ見たことのないモジュールは、Helm がその種類のために作ったセクションがなくなっているとき、並べ替えたサイドバーの末尾に独立したセクションを作るのではなく、同じ種類のモジュールが最も多く入っているサイドバーのセクションに加わります。";
 
-/* Screenshots — editor track */
 "Blur" = "ぼかし";
 "Text" = "テキスト";
 "Eraser" = "消しゴム";
@@ -1391,7 +1389,6 @@
 "Spotlight" = "スポットライト";
 "Crop" = "切り取り";
 
-/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
 "Capturing" = "取り込み";
 "Editor" = "エディタ";
 "Default colour" = "デフォルトのカラー";
@@ -1400,12 +1397,10 @@
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "非表示にしたツールは“⋯”メニューに移り、これまでどおりキーで使えます。";
 "Lower right. Shots taken one after another stack up." = "右下に表示されます。続けて撮影したスクリーンショットは重なって並びます。";
 
-/* Capture track */
 "30 seconds" = "30秒";
 "Timer: %@" = "タイマー：%@";
 "Put the Panel Back" = "パネルを元の位置に戻す";
 
-/* Screenshots — stage12 track */
 "Magnifier" = "ルーペ";
 "Emoji" = "絵文字";
 
@@ -1417,5 +1412,4 @@
 "No text was found" = "テキストが見つかりませんでした";
 "The text could not be read" = "テキストを読み取れませんでした";
 
-/* Screenshots — stage11 track */
 "Eyedropper" = "スポイト";

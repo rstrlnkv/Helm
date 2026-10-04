@@ -1350,7 +1350,6 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing.";
 "Open Screen & System Audio Recording…" = "Open Screen & System Audio Recording…";
-/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Share…";
 "Replaced. The original is in the Trash." = "Replaced. The original is in the Trash.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.";
@@ -1382,7 +1381,6 @@
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged.";
 
-/* Screenshots — editor track */
 "Blur" = "Blur";
 "Text" = "Text";
 "Eraser" = "Eraser";
@@ -1391,7 +1389,6 @@
 "Spotlight" = "Spotlight";
 "Crop" = "Crop";
 
-/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
 "Capturing" = "Capturing";
 "Editor" = "Editor";
 "Default colour" = "Default colour";
@@ -1400,12 +1397,10 @@
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Hidden tools move to the ⋯ menu and still answer to their keys.";
 "Lower right. Shots taken one after another stack up." = "Lower right. Shots taken one after another stack up.";
 
-/* Capture track */
 "30 seconds" = "30 seconds";
 "Timer: %@" = "Timer: %@";
 "Put the Panel Back" = "Put the Panel Back";
 
-/* Screenshots — stage12 track */
 "Magnifier" = "Magnifier";
 "Emoji" = "Emoji";
 
@@ -1417,5 +1412,4 @@
 "No text was found" = "No text was found";
 "The text could not be read" = "The text could not be read";
 
-/* Screenshots — stage11 track */
 "Eyedropper" = "Eyedropper";

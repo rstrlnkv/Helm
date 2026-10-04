@@ -1350,7 +1350,6 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Nötig, damit Bildschirmfotos den Bildschirm aufnehmen können. Helm nimmt weder Video noch Ton auf — macOS hat nur einen Schalter für das Lesen von Pixeln und für Aufnahmen.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Die Aufnahme von Bildschirm & Systemaudio ist ausgeschaltet. Ohne sie kann Helm den Bildschirm nicht lesen, daher nehmen die Kurzbefehle für Bildschirmfotos nichts auf.";
 "Open Screen & System Audio Recording…" = "Aufnahme von Bildschirm & Systemaudio öffnen…";
-/* Screenshots, popup track: the thumbnail's Share sheet, and «Edit» replacing the file a shot wrote. */
 "Share…" = "Teilen\U00A0…";
 "Replaced. The original is in the Trash." = "Ersetzt. Das Original liegt im Papierkorb.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "Das Bildschirmfoto wurde nach der Aufnahme bewegt oder geändert. Deine Bearbeitung ist als eigene Datei gesichert.";
@@ -1382,7 +1381,6 @@
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "„Anpinnen“ hält einen aufgenommenen Bereich über deinen anderen Fenstern als schwebendes Bild in der Größe, in der du ihn aufgenommen hast: Ziehe es, scrolle, um die Größe zu ändern, scrolle mit ⌥, um es blasser oder klarer zu machen, und klicke es an und drücke Esc, um es zu schließen.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Ein Modul, das Helm noch nicht kannte, etwa Bildschirmfotos, kommt in den Abschnitt der Seitenleiste, der schon die meisten Module seiner Art enthält, wenn der Abschnitt, den Helm für diese Art angelegt hat, fehlt, statt unten in einer von dir geordneten Seitenleiste einen eigenen Abschnitt zu beginnen.";
 
-/* Screenshots — editor track */
 "Blur" = "Weichzeichner";
 "Text" = "Text";
 "Eraser" = "Radiergummi";
@@ -1391,7 +1389,6 @@
 "Spotlight" = "Spotlight";
 "Crop" = "Zuschneiden";
 
-/* Screenshots settings track: the three tabs, the editor's settings, tools in the palette */
 "Capturing" = "Aufnahme";
 "Editor" = "Editor";
 "Default colour" = "Standardfarbe";
@@ -1400,12 +1397,10 @@
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Ausgeblendete Werkzeuge wandern ins Menü „⋯“ und reagieren weiterhin auf ihre Tasten.";
 "Lower right. Shots taken one after another stack up." = "Unten rechts. Mehrere Aufnahmen hintereinander werden gestapelt.";
 
-/* Capture track */
 "30 seconds" = "30\U00A0Sekunden";
 "Timer: %@" = "Timer: %@";
 "Put the Panel Back" = "Panel wieder an seinen Platz setzen";
 
-/* Screenshots — stage12 track */
 "Magnifier" = "Lupe";
 "Emoji" = "Emoji";
 
@@ -1417,5 +1412,4 @@
 "No text was found" = "Kein Text gefunden";
 "The text could not be read" = "Der Text konnte nicht gelesen werden";
 
-/* Screenshots — stage11 track */
 "Eyedropper" = "Pipette";
