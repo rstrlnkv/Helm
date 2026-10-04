@@ -187,15 +187,18 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
 
     // MARK: The item
 
-    /// Share… is the menu's last item whatever is chosen and whether or not the Pin is offered, is always enabled, is
-    /// titled in every language, carries no key and sends the one exit the controller turns into a share.
-    func testTheMenusShareItemIsLastEnabledKeylessAndSendsTheShareExit() throws {
+    /// Share… is the last item of its group, the one before the separator that sets off the two reading items, whatever is
+    /// chosen and whether or not the Pin is offered; it is always enabled, titled in every language, carries no key and
+    /// sends the one exit the controller turns into a share.
+    func testTheMenusShareItemEndsItsGroupEnabledKeylessAndSendsTheShareExit() throws {
         for pinOffered in [false, true] {
             for tool in [nil] + AnnotationTool.allCases.map({ Optional($0) }) {
                 let model = EditorBarModel()
                 model.show(tool: tool, style: AnnotationStyle(), canUndo: false, canRedo: false)
-                guard case .action(let title, let action, let enabled, let on)? = EditorMenu.items(for: model, pinOffered: pinOffered).last else {
-                    return XCTFail("the menu does not end with an action")
+                let items = EditorMenu.items(for: model, pinOffered: pinOffered)
+                guard let separator = items.lastIndex(of: .separator), separator > 0,
+                      case .action(let title, let action, let enabled, let on) = items[separator - 1] else {
+                    return XCTFail("no action before the last separator")
                 }
                 XCTAssertEqual(title, ScStr.share)
                 XCTAssertEqual(action, .exit(.share))
@@ -209,7 +212,8 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         model.perform = { sent.append($0) }
         let menu = EditorMenu.make(for: model)
         menu.delegate?.menuNeedsUpdate?(menu)
-        let item = try XCTUnwrap(menu.items.last)
+        let separator = try XCTUnwrap(menu.items.lastIndex { $0.isSeparatorItem })
+        let item = menu.items[separator - 1]
         XCTAssertEqual(item.title, ScStr.share)
         XCTAssertEqual(item.keyEquivalent, "", "Share… has a key, and the menu gives none to the items below Save")
         menu.performActionForItem(at: menu.index(of: item))

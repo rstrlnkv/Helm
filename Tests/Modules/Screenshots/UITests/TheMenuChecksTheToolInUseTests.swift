@@ -14,7 +14,7 @@ import Module_Screenshots_Engine
 /// reads the model again.
 ///
 /// Order, this stage: Arrow, Shapes ▸ (Rectangle, Oval, Line, separator, Filled), Text, Steps, Blur, Crop, Select, Magnifier, Emoji, Thickness and Opacity…
-/// (always there, right after the tools), separator, Save, Pin only while offered, and Share… last. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
+/// (always there, right after the tools), separator, Save, Pin only while offered, Share… (the last of that group), separator, Copy Text and Blur Emails and Phone Numbers. Exactly one tool item is on: the chosen menu tool; while a row object (the pencil, the
 /// highlighter, the spotlight) is chosen none is. The tool is asked of every case of `AnnotationTool` and of none, so a tool added
 /// later has to be in the answer.
 @MainActor
@@ -262,10 +262,10 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         let hidden = EditorMenu.items(for: model(tool: nil))
         XCTAssertFalse(outline(hidden).contains("action:\(ScStr.pin)"), "the menu offers «\(ScStr.pin)» in v1: \(outline(hidden))")
         let shown = EditorMenu.items(for: model(tool: nil), pinOffered: true)
-        XCTAssertEqual(outline(shown).suffix(3), ["action:\(ScStr.save)", "action:\(ScStr.pin)", "action:\(ScStr.share)"],
-                       "the item replaces the palette's cell, right after Save, and Share… stands last")
-        guard case .action(_, let action, true, false)? = shown.dropLast().last else { return XCTFail("Pin is not a plain enabled item") }
-        XCTAssertEqual(outline(shown).dropLast(3).suffix(2), ["action:\(ScStr.save)", "action:\(ScStr.pin)"], "the item replaces the palette's cell, right after Save")
+        // Save · Pin · Share… are the group before the separator; Copy Text and Blur Emails and Phone Numbers come after it.
+        XCTAssertEqual(outline(shown).dropLast(3).suffix(3), ["action:\(ScStr.save)", "action:\(ScStr.pin)", "action:\(ScStr.share)"],
+                       "the item replaces the palette's cell, right after Save, and Share… ends the group before the separator")
+        guard case .action(_, let action, true, false)? = shown.dropLast(3).dropLast().last else { return XCTFail("Pin is not a plain enabled item") }
         XCTAssertEqual(action, .exit(.pin))
     }
 
