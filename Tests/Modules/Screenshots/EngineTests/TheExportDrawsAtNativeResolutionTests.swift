@@ -36,7 +36,8 @@ final class TheExportDrawsAtNativeResolutionTests: XCTestCase {
             let rig = Rig(home: scratchDirectory("shots-export-\(Int(scale))"))
             let selection = CGRect(x: 10, y: 10, width: 60, height: 30)
             // Top edge of the rectangle at y = 20 points: ten points under the selection's top.
-            let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 60, y: 35))
+            let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 60, y: 35),
+                                   style: AnnotationStyle(thickness: .thin))
             let drawn = await rig.session.annotated(freeze(scale: scale), display: DisplayID(1),
                                                     local: selection, layers: [layer])
             let out = try XCTUnwrap(drawn)
@@ -75,7 +76,8 @@ final class TheExportDrawsAtNativeResolutionTests: XCTestCase {
         // before it, and a layer at a known point must still be where that point is.
         let rig = Rig(home: scratchDirectory("shots-export-round"))
         let selection = CGRect(x: 10.25, y: 10, width: 40, height: 30)
-        let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 40, y: 30))
+        let layer = Annotation(tool: .rectangle, start: CGPoint(x: 20, y: 20), end: CGPoint(x: 40, y: 30),
+                               style: AnnotationStyle(thickness: .thin))
         let drawn = await rig.session.annotated(freeze(scale: 2), display: DisplayID(1),
                                                 local: selection, layers: [layer])
         let out = try XCTUnwrap(drawn)

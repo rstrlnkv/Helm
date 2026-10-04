@@ -10,7 +10,7 @@ import XCTest
 
 /// **The area handles and the arrows, fed what the task never named:** an object left outside a shrunk area,
 /// an arrow while a draft, a move or Esc's question stands, a held arrow at the wall, the area walked onto a
-/// display's edge at 2x by ten-pixel steps, a handle that a bar covers, and Esc mid-reshape with the drag going on.
+/// display's edge at 2x by ten-pixel steps, a handle that the palette covers, and Esc mid-reshape with the drag going on.
 @MainActor
 final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     private var overlay: CaptureOverlay?
@@ -38,6 +38,8 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     private let left: UInt16 = 123, right: UInt16 = 124, down: UInt16 = 125, up: UInt16 = 126, esc: UInt16 = 53
 
     private func confirmed() throws -> (local: CGRect, layers: [Annotation]) {
+        // With Crop on, Return takes the crop and the next one is the exit.
+        if overlay?.isCropping == true { overlay?.perform(.exit(.confirm)) }
         overlay?.perform(.exit(.confirm))
         guard case .edited(_, let local, let layers, _)? = results.last else {
             XCTFail("not an edited area: \(results)")
@@ -54,6 +56,7 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
     func testASelectedObjectLeftOutsideTheShrunkAreaIsLetGoOfAtTheReleaseAndStillHandedOn() throws {
         let view = try build()
         drawAndSelect()
+        overlay?.perform(.crop) // over a marked picture the area's handles are offered with Crop on only
         XCTAssertEqual(view.drawnHandles.count, 4, "the subject: an object is selected")
         // The area's right edge pulled in to x = 150: the object (200...300) is wholly outside.
         // The press is on the area's handle, and the object's own are further than its reach.
@@ -76,14 +79,14 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let cut = try XCTUnwrap(context.makeImage())
         let outside = Annotation(tool: .rectangle, start: CGPoint(x: 400, y: 400), end: CGPoint(x: 500, y: 500), id: 1)
-        let drawn = try XCTUnwrap(CaptureSession.draw([outside], over: cut, at: .zero, scale: 1))
+        let drawn = try XCTUnwrap(CaptureSession.draw([outside], over: cut, at: .zero, scale: 1, display: cut))
         let before = try XCTUnwrap(cut.dataProvider?.data) as Data
         let after = try XCTUnwrap(drawn.dataProvider?.data) as Data
         let nonZero = after.contains { $0 != 0 }
         XCTAssertFalse(nonZero, "the subject is a blank cut; ink appeared from a layer outside it")
         XCTAssertEqual(before.count, after.count)
         let inside = Annotation(tool: .rectangle, start: CGPoint(x: 10, y: 10), end: CGPoint(x: 50, y: 50), id: 2)
-        let marked = try XCTUnwrap(CaptureSession.draw([inside], over: cut, at: .zero, scale: 1))
+        let marked = try XCTUnwrap(CaptureSession.draw([inside], over: cut, at: .zero, scale: 1, display: cut))
         XCTAssertTrue((try XCTUnwrap(marked.dataProvider?.data) as Data).contains { $0 != 0 }, "the control: a layer inside draws")
     }
 
@@ -101,7 +104,7 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(local, CGRect(x: 100, y: 100, width: 400, height: 300), "an arrow moved the area under a draft")
         XCTAssertEqual(layers.count, 1)
         XCTAssertEqual(layers.first?.frame, CGRect(x: 200, y: 200, width: 100, height: 60))
-        XCTAssertEqual(view.drawnAreaHandles.count, 8)
+        XCTAssertTrue(view.drawnAreaHandles.isEmpty, "the handles of a marked picture are Crop's")
     }
 
     func testAnArrowDuringAMoveOfAnObjectChangesNothingAndTheMoveIsOneStep() throws {
@@ -184,43 +187,38 @@ final class TheReshapedAreaMeetsInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(try confirmed().local, CGRect(x: 0, y: 0, width: 400, height: 300))
     }
 
-    // MARK: A handle under a bar
+    // MARK: A handle under the palette
 
-    func testAHandleTheBarCoversIsTheBarsAndTheAreaStaysWhole() throws {
-        // Find, by the same placement the overlay uses, an area whose bar sits on one of its own handles.
-        var found: (area: CGRect, points: [CGPoint])?
-        let probe = try build()
-        let sizes = probe.barSizes
+    /// The palette stands 14 points from the area and a handle takes a press within `AreaFrame.reach`, so on a display as tall as
+    /// this one no placement puts the palette on a handle: the press order "palette first" has no input to meet.
+    /// (The tool bar of the old two-bar layout did stand on handles, and this was a press on one.) This is
+    /// that fact, asked over every area on a grid; a palette that comes to stand on a handle turns it red, and
+    /// the press on it then needs the test it had.
+    func testNoPlacementOfThePaletteStandsOnAHandleOfItsArea() throws {
+        let paletteSize = try build().paletteSize
         let size = CGSize(width: 1000, height: 800)
-        let candidates = [CGRect(x: 0, y: 0, width: 1000, height: 800), CGRect(x: 0, y: 0, width: 1000, height: 40),
-                          CGRect(x: 0, y: 760, width: 1000, height: 40), CGRect(x: 0, y: 0, width: 40, height: 800),
-                          CGRect(x: 960, y: 0, width: 40, height: 800), CGRect(x: 20, y: 20, width: 960, height: 760),
-                          CGRect(x: 400, y: 300, width: 200, height: 200)]
-        for area in candidates {
-            let chrome = EditorChrome.place(selection: area, in: size, tools: sizes.tools, actions: sizes.actions)
-            // A press within a handle's reach that a bar covers: the handle's centre may well be clear of the bar.
-            var points: [CGPoint] = []
-            for handle in AreaFrame.handles(of: area).map(\.point) {
-                for dx in stride(from: CGFloat(-6), through: 6, by: 2) {
-                    for dy in stride(from: CGFloat(-6), through: 6, by: 2) {
-                        let at = CGPoint(x: handle.x + dx, y: handle.y + dy)
-                        if chrome.covers(at), AreaFrame.handle(of: area, at: at) != nil, size.width > at.x, at.x >= 0, at.y >= 0 { points.append(at) }
+        let edges: [CGFloat] = [0, 1, 60, 300, 640, 930, 999, 1000]
+        let tops: [CGFloat] = [0, 1, 40, 390, 700, 770, 799, 800]
+        var areas = 0, pressed = 0
+        for x0 in edges { for x1 in edges where x1 > x0 + 8 {
+            for y0 in tops { for y1 in tops where y1 > y0 + 8 {
+                let area = CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+                let chrome = EditorChrome.place(selection: area, in: size, palette: paletteSize)
+                areas += 1
+                for handle in AreaFrame.handles(of: area).map(\.point) {
+                    for dx in stride(from: CGFloat(-6), through: 6, by: 2) {
+                        for dy in stride(from: CGFloat(-6), through: 6, by: 2) {
+                            let at = CGPoint(x: handle.x + dx, y: handle.y + dy)
+                            guard AreaFrame.handle(of: area, at: at) != nil else { continue }
+                            pressed += 1
+                            XCTAssertFalse(chrome.covers(at), "the palette \(chrome.palette) stands on a handle press \(at) of \(area)")
+                        }
                     }
                 }
-            }
-            if !points.isEmpty { found = (area, points); break }
-        }
-        let hit = try XCTUnwrap(found, "no bar covers a handle of any candidate area: the press order bar-first has no input to meet")
-        results = []
-        overlay?.close()
-        _ = try build(area: hit.area)
-        XCTAssertEqual(overlay?.chrome(on: display)?.covers(hit.points[0]), true, "the subject: the bar is up over the handle")
-        for point in hit.points {
-            overlay?.mouseDown(on: display, at: point, flags: [])
-            overlay?.mouseDragged(on: display, at: CGPoint(x: point.x + 3, y: point.y - 3), flags: [])
-            overlay?.mouseUp(on: display)
-        }
-        XCTAssertEqual(try confirmed().local, hit.area, "a press under a bar reshaped the area")
+            } }
+        } }
+        XCTAssertGreaterThan(areas, 300, "the sweep did not run: \(areas) areas")
+        XCTAssertGreaterThan(pressed, 10_000, "the sweep asked of \(pressed) presses")
     }
 
     // MARK: Esc mid-reshape, the drag goes on

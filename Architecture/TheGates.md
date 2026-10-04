@@ -19,7 +19,8 @@ sed -n '/private static func roots/,/^    }/p' Sources/HelmRuntime/RemovableScop
 ```
 
 `UserFileScope` (`Sources/HelmRuntime/UserFileScope.swift`) asks what belongs to the
-*user*; Disk and Duplicates read it. `WatchScope`
+*user*; Disk, Duplicates and Autopilot (`RuleRunner.swift`) read it, and Screenshots asks it of the one file an edit replaces
+(`CaptureSession.replace`). `WatchScope`
 (`Sources/Modules/Autopilot/Engine/Logic/WatchScope.swift`) is Autopilot's own and asks
 where an unattended folder rule may reach. `ScanRoot` (`Sources/HelmRuntime/ScanRoot.swift`)
 asks where a read nobody is watching may begin and how far it may descend. The doc comments
@@ -58,4 +59,6 @@ one (ARCHITECTURE.md § Background scans, where the attempt is written before th
 
 What happened between a reading and the act is asked of every stored reading, and who
 re-asked: a flag is the wrong question, and a reading that was true when taken is not
-evidence at the moment of the act.
+evidence at the moment of the act. A screenshot's file carries the reading its writer
+took of it, and the path is asked again when the editor opens on it and inside the move
+that sends it to the Trash (ARCHITECTURE.md § Screenshots).

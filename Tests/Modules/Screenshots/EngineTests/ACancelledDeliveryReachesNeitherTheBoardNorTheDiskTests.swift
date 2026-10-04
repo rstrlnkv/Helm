@@ -17,11 +17,13 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         private let lock = NSLock()
         private var count = 0
         var copies: Int { lock.withLock { count } }
+        func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
         func copy(png: Data) -> PasteOutcome {
             lock.withLock { count += 1 }
             withUnsafeCurrentTask { $0?.cancel() }
             return .accepted
         }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
 
     /// Cancelled before the delivery began: nothing is copied and nothing is written.
@@ -50,8 +52,8 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let board = CancellingBoard(), writer = FakeWriter()
         let session = CaptureSession(
-            capture: FakeCapture(), writer: writer, pasteboard: board, preferences: FakePreferences(),
-            shutter: FakeShutter(), settings: { .defaults }, naming: { .english },
+            capture: FakeCapture(), writer: writer, trash: FakeTrash(folder: FakeWriter()), pasteboard: board, preferences: FakePreferences(),
+            shutter: FakeShutter(), textReader: FakeTextReader(), settings: { .defaults }, naming: { .english },
             now: { Date(timeIntervalSince1970: 1_790_000_000) },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
         _ = await Task {

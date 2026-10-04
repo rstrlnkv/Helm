@@ -40,21 +40,31 @@ final class TheNewToolsExportAtTheScreensWidthAndMultiplyTests: XCTestCase {
     }
 
     func testAPencilALineAndAnEllipseAreStrokedAtPointsTimesTheScale() async throws {
-        let horizontal: [(AnnotationTool, Annotation)] = [
+        // The thin step of each tool, in the owner's points: the pencil's own 2, the line's and the oval's 3.
+        let thin = AnnotationStyle(thickness: .thin)
+        let horizontal: [(AnnotationTool, Annotation, Double)] = [
             (.pencil, Annotation(tool: .pencil, start: CGPoint(x: 55, y: 30), end: CGPoint(x: 95, y: 30),
-                                 points: [CGPoint(x: 55, y: 30), CGPoint(x: 75, y: 30), CGPoint(x: 95, y: 30)])),
-            (.line, Annotation(tool: .line, start: CGPoint(x: 55, y: 30), end: CGPoint(x: 95, y: 30))),
+                                 points: [CGPoint(x: 55, y: 30), CGPoint(x: 75, y: 30), CGPoint(x: 95, y: 30)], style: thin), 2),
+            (.line, Annotation(tool: .line, start: CGPoint(x: 55, y: 30), end: CGPoint(x: 95, y: 30), style: thin), 3),
             // The top of a circle of radius 20 centred at (75, 30) is the ink at x = 75, y = 10.
-            (.ellipse, Annotation(tool: .ellipse, start: CGPoint(x: 55, y: 10), end: CGPoint(x: 95, y: 50))),
+            (.ellipse, Annotation(tool: .ellipse, start: CGPoint(x: 55, y: 10), end: CGPoint(x: 95, y: 50), style: thin), 3),
         ]
         for scale in [CGFloat(1), 2] {
-            for (tool, layer) in horizontal {
+            for (tool, layer, points) in horizontal {
                 let out = try await export(layer, scale: scale, name: "shots-new-\(tool)-\(Int(scale))")
                 // On the white half the ink is the only thing that is not white: its green channel is low.
                 let ink = column(out, x: Int(75 * scale)).map { Double(255 - Int($0[1])) / (255 - 41) }
                 let rows = tool == .ellipse ? Array(ink[0..<(ink.count / 2)]) : ink
-                XCTAssertEqual(rows.reduce(0, +), 3 * Double(scale), accuracy: 0.4,
-                               "\(tool) at \(scale)x: the stroke is not 3 points thick")
+                // The pencil's grain leaves gaps in any one column: its thickness is, row by row, the most ink any
+                // column of the stretch 60…90 pt has there, summed (the same measure as `ThePenAndThePencilLeaveTwoStrokesTests`'s
+                // thin-step test), so a sub-pixel error shows as it does in a column of a grainless stroke.
+                let stretch = tool == .pencil ? (Int(60 * scale)..<Int(90 * scale)).map { column(out, x: $0) } : []
+                let thick = tool == .pencil
+                    ? (0..<out.height).reduce(0.0) { sum, row in
+                        sum + (stretch.map { Double(255 - Int($0[row][1])) / (255 - 41) }.max() ?? 0) }
+                    : rows.reduce(0, +)
+                XCTAssertEqual(thick, points * Double(scale), accuracy: 0.4,
+                               "\(tool) at \(scale)x: the stroke is not \(points) points thick")
             }
         }
     }
@@ -72,7 +82,7 @@ final class TheNewToolsExportAtTheScreensWidthAndMultiplyTests: XCTestCase {
             XCTAssertGreaterThan(white[1], 200, "\(scale)x: the tint is not the yellow: \(white)")
             // Thickness: the rows of the white half that took the tint.
             let tinted = column(out, x: Int(70 * scale)).filter { $0[2] < 250 }.count
-            XCTAssertEqual(Double(tinted), Double(AnnotationThickness.thin.marker * scale), accuracy: 2 * Double(scale),
+            XCTAssertEqual(Double(tinted), Double(AnnotationThickness.medium.points(for: .highlighter) * scale), accuracy: 2 * Double(scale),
                            "\(scale)x: the marker is not its width times the scale")
             // Outside the stroke nothing changed.
             XCTAssertEqual(column(out, x: Int(70 * scale))[0], [255, 255, 255, 255])

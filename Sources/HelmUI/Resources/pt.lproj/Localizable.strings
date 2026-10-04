@@ -1317,12 +1317,19 @@
 "Rectangle" = "Retângulo";
 "Oval" = "Oval";
 "Line" = "Linha";
+"Shapes" = "Formas";
+"Select" = "Seleção";
+"Pen" = "Caneta";
 "Pencil" = "Lápis";
-"Highlight" = "Destacar";
+"Highlighter" = "Marcador";
 "Black" = "Preto";
-"Thin" = "Fino";
-"Medium" = "Médio";
-"Thick" = "Grosso";
+"Thin" = "Fina";
+"Medium" = "Média";
+"Thick" = "Grossa";
+"Thickness" = "Espessura";
+"Opacity" = "Opacidade";
+"Thickness and Opacity…" = "Espessura e opacidade…";
+"All Colours" = "Todas as cores";
 "Filled" = "Preenchido";
 "Undo" = "Desfazer";
 "Redo" = "Refazer";
@@ -1343,6 +1350,10 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Necessário para o Capturas de Tela capturar a tela. O Helm não grava vídeo nem som — o macOS só tem um controle para ler pixels e para gravar.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "A gravação do áudio do sistema e da tela está desativada. Sem ela o Helm não consegue ler a tela, e os atalhos de captura não capturam nada.";
 "Open Screen & System Audio Recording…" = "Abrir Gravação do Áudio do Sistema e da Tela…";
+"Share…" = "Compartilhar…";
+"Replaced. The original is in the Trash." = "Substituída. O original está no Lixo.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "A captura foi movida ou alterada depois de feita. Sua edição foi salva como um arquivo separado.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "A captura foi movida ou alterada depois de feita, por isso não pode ser editada aqui.";
 "Sort By" = "Ordenar por";
 "Sort by Name" = "Ordenar por Nome";
 "Sort by Size" = "Ordenar por Tamanho";
@@ -1369,3 +1380,45 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "A área que você arrastou tem alças para remodelá-la — só nos cantos quando é muito pequena — e as teclas de seta a movem, ou movem o desenho selecionado, um pixel por vez, dez com ⇧.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“Fixar” mantém uma área capturada acima das suas outras janelas como uma imagem flutuante do tamanho em que você a capturou: arraste-a, role para redimensionar, role com ⌥ para deixá-la mais transparente ou mais nítida, e clique nela e pressione Esc para fechá-la.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Um módulo que o Helm ainda não conhecia, como Capturas de Tela, entra na seção da barra lateral que já reúne a maioria dos módulos do seu tipo quando a seção que o Helm criou para esse tipo não existe mais, em vez de abrir uma seção própria no fim de uma barra lateral que você organizou.";
+
+"Blur" = "Desfoque";
+"Text" = "Texto";
+"Eraser" = "Borracha";
+"Ruler" = "Régua";
+"Steps" = "Passos";
+"Spotlight" = "Holofote";
+"Crop" = "Recortar";
+
+"Capturing" = "Captura";
+"Editor" = "Editor";
+"Default colour" = "Cor padrão";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Enquanto nenhuma cor for escolhida, cada ferramenta usa a sua: vermelho, e amarelo para o marcador.";
+"Tools in the palette" = "Ferramentas na paleta";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "As ferramentas ocultas vão para o menu “⋯” e continuam respondendo às suas teclas.";
+"Lower right. Shots taken one after another stack up." = "No canto inferior direito. Várias capturas seguidas ficam empilhadas.";
+
+"30 seconds" = "30 segundos";
+"Timer: %@" = "Timer: %@";
+"Put the Panel Back" = "Recolocar o painel";
+
+"Magnifier" = "Lupa";
+"Emoji" = "Emoji";
+
+"Copy Text" = "Copiar texto";
+"Blur Emails and Phone Numbers" = "Desfocar e-mails e telefones";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Desfoca endereços de e-mail, números de telefone e de cartão e links que o macOS lê na imagem. Rostos, escrita à mão e todo o resto ficam como estão.";
+"Nothing was blurred. Check the picture yourself." = "Nada foi desfocado. Confira você mesmo a imagem.";
+"Text copied" = "Texto copiado";
+"No text was found" = "Nenhum texto encontrado";
+"The text could not be read" = "Não foi possível ler o texto";
+
+"Eyedropper" = "Conta-gotas";
+"Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”." = "O editor de Capturas de Tela é uma paleta junto à seleção, em vez de duas barras: “Caneta”, “Marcador”, “Lápis”, “Borracha”, “Régua” e “Holofote”, e um menu ⋯ com “Seta”, “Formas”, “Texto”, “Passos”, “Desfoque”, “Recortar”, “Seleção”, “Lupa”, “Emoji”, “Salvar”, “Compartilhar…”, “Copiar texto” e “Desfocar e-mails e telefones”. Cada ferramenta de desenho guarda a sua própria espessura e opacidade, ajustadas em um pop-over (“Espessura e opacidade…”) — “Borracha” e “Holofote” não têm nenhuma das duas, e a cor pode ser qualquer uma: o painel de cores do sistema ou o “Conta-gotas”.";
+"What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names." = "O que a linha da dev.16 chamava de “Destacar” agora é “Marcador”, e “Linha”, “Retângulo” e “Oval” ficam em “Formas”; “Lápis” e “Seta” mantêm os nomes.";
+"“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back." = "“Fixar” não é oferecido por enquanto, nem no editor nem no menu dele; o que a linha da dev.16 diz sobre isso não vale até ele voltar.";
+"Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”." = "Capturas de Tela: “Texto” coloca uma linha de texto na imagem, “Passos” numera as coisas, “Holofote” escurece tudo, menos a parte que você escolhe, “Recortar” corta a imagem, “Desfoque” cobre parte dela com um mosaico, “Borracha” e “Régua” fazem o que os nomes dizem, e “Lupa” e “Emoji” acrescentam uma lupa e um emoji. “Ferramentas na paleta” nos Ajustes escolhe quais ferramentas ficam na paleta — as outras vão para o menu ⋯ e continuam respondendo às suas teclas — e os Ajustes agora têm três abas, a primeira “Captura”, a segunda “Editor”.";
+"“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds." = "“Copiar texto” coloca na área de transferência o texto que o Helm lê na imagem, e “Desfocar e-mails e telefones” desfoca os endereços de e-mail, números de telefone, números de cartão e links que ele encontra.";
+"Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”." = "Escolher uma área ou uma janela funciona como no macOS: nada escurece antes de você arrastar, uma janela é capturada com a sombra, e ⌥ deixa a sombra de fora. O painel de captura funciona como o do ⇧⌘5, e o timer dele também oferece “30 segundos”.";
+"The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20." = "A miniatura depois de uma captura é uma só janela: as ações dela aparecem quando você aponta para ela, dá para arrastar a imagem para fora dela, e “Compartilhar…”, no menu ⋯ do editor, abre a folha de compartilhamento do sistema junto dela. “Editar” abre o editor na imagem salva, e “Concluído” substitui o arquivo — o original vai para o Lixo. As capturas feitas em sequência se empilham, até 20.";
+"Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order." = "Capturas de Tela fica logo antes do Homebrew em uma barra lateral que o Helm monta do zero; uma barra lateral que você organizou mantém a ordem.";
+"Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet." = "Duas coisas para saber antes de testar: “Desfocar e-mails e telefones” ainda não é seguro para esconder dados privados — texto maior que o seu maior bloco ainda pode ser lido de volta no mosaico, assim como texto pequeno sob “Desfoque” em um ajuste fino, e enquanto o Helm ainda lê a imagem, “Concluído” a salva sem os desfoques e não avisa. E boa parte deste redesenho ainda não foi vista em uma tela de verdade.";

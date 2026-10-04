@@ -22,14 +22,17 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         func access() -> CaptureAccess { .granted }
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
     private struct Disk: ShotWriting {
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            .written(folder.appendingPathComponent(base + "." + pathExtension))
+            .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private typealias Board = CountingBoard
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -74,8 +77,8 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         store.set(remember, for: ScreenshotsSettings.Key.rememberSelection)
         store.set(SaveTarget.clipboard.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         stored?.write(to: store)
-        let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), pasteboard: Board(),
-                                     preferences: NoPreferences(), shutter: NoShutter(),
+        let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), trash: NoTrash(), pasteboard: Board(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english })
         let opened = Opened()
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,

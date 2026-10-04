@@ -41,7 +41,9 @@ final class TheEditsOfAnObjectAreOneStepEachTests: XCTestCase {
     // MARK: Click or drag
 
     func testAClickOnAnObjectSelectsItWithAnyToolAndAddsNothing() {
-        for tool in [nil] + AnnotationTool.allCases.map(Optional.some) {
+        // The steps tool is the one exception: its click places a step wherever it lands
+        // (`TheStepsAreNumberedByTheirOrderTests.testAClickOutsideTheAreaPlacesNothingAndAClickOnAnotherLayerStillPlaces`).
+        for tool in [nil] + AnnotationTool.allCases.filter({ $0 != .step }).map(Optional.some) {
             var editing = AnnotationEditing(bounds: area)
             draw(&editing)
             let id = editing.layers[0].id
@@ -335,7 +337,7 @@ final class TheEditsOfAnObjectAreOneStepEachTests: XCTestCase {
         dragged(&editing, from: CGPoint(x: 200, y: 150), through: [CGPoint(x: 260, y: 230)])
         editing.recolor(.blue)
         let white = makeImage(width: 400, height: 300, red: 255, green: 255, blue: 255)
-        let out = try XCTUnwrap(CaptureSession.draw(editing.layers, over: white, at: .zero, scale: 1))
+        let out = try XCTUnwrap(CaptureSession.draw(editing.layers, over: white, at: .zero, scale: 1, display: white))
         func pixel(_ x: Int, _ y: Int) -> [UInt8] {
             let context = CGContext(data: nil, width: out.width, height: out.height, bitsPerComponent: 8, bytesPerRow: out.width * 4,
                                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!

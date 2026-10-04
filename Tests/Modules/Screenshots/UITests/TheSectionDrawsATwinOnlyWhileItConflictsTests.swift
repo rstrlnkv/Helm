@@ -68,7 +68,7 @@ final class TheSectionDrawsATwinOnlyWhileItConflictsTests: XCTestCase {
         var state = ScreenshotsPageRender.untouched
         state.boxes = boxes
         return ScreenshotsPageRender.height(of: ScreenshotsPageRender.mount(
-            language: .en, appearance: .aqua, state: state, values: values))
+            language: .en, appearance: .aqua, state: state, values: values, tab: .system))
     }
 
     private func recording(area: (Int, Int), screen: (Int, Int)? = nil) -> [String: Any] {

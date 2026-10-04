@@ -42,3 +42,26 @@ and CoreSVG drew a plain red rectangle while reporting success.
 EmojiOne v2.2.7 (CC BY 4.0) was used briefly. Its flags are round, which is
 that set's own shape; flag-icons is rectangular, which is the shape a flag has.
 Later EmojiOne artwork is under JoyPixels' own licence and is not usable here.
+
+## Palette objects — PencilKit for Figma
+
+`Sources/Modules/Screenshots/UI/PaletteObjects.xcassets` holds the Pen, Marker,
+Pencil, Eraser and Ruler drawn on the screenshot editor's palette, in a light and a dark variant each.
+They are taken from the Figma file **PencilKit for figma (Copy)**
+(<https://www.figma.com/design/33IGj6K24Gp1BJIpWmHZJs/PencilKit-for-figma--Copy->),
+a community recreation of Apple's iPadOS 13 PencilKit picker.
+
+- Source: <https://www.figma.com/design/33IGj6K24Gp1BJIpWmHZJs/PencilKit-for-figma--Copy->
+- Author: (to be filled in by the owner)
+- Licence: (to be filled in by the owner)
+- Use in Helm: the owner checked the file's licence on 2026-10-02 and decided
+  the objects may be used.
+- Modified for Helm: SVG filters removed (macOS drops them silently), the Pen, Marker and
+  Pencil split into body, tip and tip highlight layers so the tip can take the ink colour (the Eraser and
+  the Ruler are a body layer only),
+  thickness labels removed, the shadow margin cropped, the dark Marker re-aligned to the
+  light one's height.
+
+The Spotlight object in the same catalogue (`spotlight-light-body` and `spotlight-dark-body`): its shape was drawn for Helm; the body and band
+fills are the Pen's gradients from that file (the same stops as `pen-light-body` and `pen-dark-body`, the dark ones written with fewer digits), and
+the beam and lens gradients are Helm's. The SVG filter its source carried was removed, as for the others, since macOS drops filters.

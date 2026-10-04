@@ -34,20 +34,23 @@ final class TheCountdownMeetsEveryOtherPressTests: XCTestCase {
                                                                   frame: CGRect(x: 0, y: 0, width: 10, height: 5),
                                                                   scale: 2, image: image))], windows: []))
         }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
 
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private typealias Board = CountingBoard
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -99,8 +102,8 @@ final class TheCountdownMeetsEveryOtherPressTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: capture, writer: disk, pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
+        let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
+                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
                                            session: session,

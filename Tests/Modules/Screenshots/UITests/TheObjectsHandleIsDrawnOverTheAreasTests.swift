@@ -45,6 +45,7 @@ final class TheObjectsHandleIsDrawnOverTheAreasTests: XCTestCase {
         built.mouseDown(on: id, at: CGPoint(x: 400, y: 150), flags: [])
         built.mouseUp(on: id)
         XCTAssertNotNil(view.drawnHandles.first { $0 == CGPoint(x: 450, y: 150) }, "the subject: the object is held at that point")
+        built.perform(.crop) // the area's dots over a marked picture are Crop's
         XCTAssertNotNil(view.drawnAreaHandles.first { $0 == CGPoint(x: 450, y: 150) }, "the subject: the area has a dot there")
         let root = try XCTUnwrap(view.layer)
         // The edge is the accent, a dot's fill is white to within a rounding. Three points inside the area's dot (radius 4.5) and on the square's edge (x 454 ± 0.75).

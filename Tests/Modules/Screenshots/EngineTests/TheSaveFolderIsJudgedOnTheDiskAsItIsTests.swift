@@ -40,7 +40,7 @@ final class TheSaveFolderIsJudgedOnTheDiskAsItIsTests: XCTestCase {
         XCTAssertEqual(folder.url.path, link.path)
 
         let written = FileShotWriter().write(Data("through the link".utf8), into: folder.url, base: "shot", pathExtension: "png")
-        guard case .written(let url) = written else { return XCTFail("\(written)") }
+        guard let url = written.url else { return XCTFail("\(written)") }
         XCTAssertEqual(try Data(contentsOf: target.appendingPathComponent(url.lastPathComponent)),
                        Data("through the link".utf8), "the picture did not land in the link's folder")
     }

@@ -133,10 +133,10 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
     func testAMoveAndAResizeAreOnTheScreenAndInTheFile() throws {
         let (id, view) = try build()
         draw(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
-        let before = view.drawnShapes[0].path?.boundingBoxOfPath
+        let before = (view.drawnShapes[0] as? CAShapeLayer)?.path?.boundingBoxOfPath
         // No tool: a drag on the body of an object takes it.
         drag(id, from: CGPoint(x: 220, y: 150), through: [CGPoint(x: 250, y: 170), CGPoint(x: 280, y: 190)])
-        XCTAssertNotEqual(view.drawnShapes[0].path?.boundingBoxOfPath, before, "the object moved in the engine and not on the screen")
+        XCTAssertNotEqual((view.drawnShapes[0] as? CAShapeLayer)?.path?.boundingBoxOfPath, before, "the object moved in the engine and not on the screen")
         XCTAssertEqual(view.drawnHandles.count, 4)
         // Then a corner.
         drag(id, from: CGPoint(x: 360, y: 290), through: [CGPoint(x: 400, y: 330)])
@@ -161,22 +161,23 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
         overlay?.keyDown(key(36, "\r"))
         let layers = try delivered()
         XCTAssertEqual(layers[0].style, AnnotationStyle(color: .purple, thickness: .thick, filled: true), "the selected was not recoloured")
-        XCTAssertEqual(layers[1].style, AnnotationStyle(color: .purple, thickness: .thick, filled: true),
-                       "the pick did not carry to the next object")
+        // The colour and the fill are every tool's; the step is the rectangle's own, so the line opens on its middle one.
+        XCTAssertEqual(layers[1].style, AnnotationStyle(color: .purple, thickness: .medium, filled: true),
+                       "the pick did not carry to the next object, or the rectangle's step did")
     }
 
-    func testTheBarsShowTheSelectedObjectsStyleAndGoBackToThePickOnLettingGo() throws {
+    func testThePaletteShowsTheSelectedObjectsStyleAndGoesBackToThePickOnLettingGo() throws {
         let (id, _) = try build()
-        let bars = try XCTUnwrap(overlay?.bars)
+        let palette = try XCTUnwrap(overlay?.palette)
         draw(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
         overlay?.perform(.color(.blue))
         draw(id, .line, from: CGPoint(x: 150, y: 350), to: CGPoint(x: 400, y: 350))
         overlay?.perform(.color(.green)) // the pick is green now; the rectangle has no colour of its own
         drag(id, from: CGPoint(x: 220, y: 150), through: [])
-        XCTAssertEqual(bars.lit, .red, "the selected rectangle was drawn red before any pick, so its bar shows red")
-        XCTAssertTrue(bars.fillApplies, "a selected box has a fill to toggle whatever tool is in hand")
+        XCTAssertEqual(palette.lit, .red, "the selected rectangle was drawn red before any pick, so the palette's lit swatch is red")
+        XCTAssertTrue(palette.fillApplies, "a selected box has a fill to toggle whatever tool is in hand")
         overlay?.keyDown(key(53))
-        XCTAssertEqual(bars.lit, .green)
+        XCTAssertEqual(palette.lit, .green)
     }
 
     // MARK: What a pointer event costs

@@ -51,7 +51,7 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     private var _freeze: FreezeOutcome = .failed
     private var _windows: [UInt32: WindowShot] = [:]
     private var _freezeCalls = 0, _requestCalls = 0, _windowCalls = 0
-    private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = []
+    private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = [], _windowShadows: [Bool] = []
 
     var grant: CaptureAccess {
         get { lock.withLock { _access } }
@@ -72,26 +72,68 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     /// reads from the setting and hands the port.
     var freezeCursors: [Bool] { lock.withLock { _freezeCursors } }
     var windowCursors: [Bool] { lock.withLock { _windowCursors } }
+    /// Whether each window call asked for the shadow, in order.
+    var windowShadows: [Bool] { lock.withLock { _windowShadows } }
 
     func access() -> CaptureAccess { lock.withLock { _access } }
     func requestAccess() { lock.withLock { _requestCalls += 1 } }
     func freeze(cursor: Bool) async -> FreezeOutcome {
         lock.withLock { _freezeCalls += 1; _freezeCursors.append(cursor); return _freeze }
     }
-    func window(_ id: UInt32, cursor: Bool) async -> WindowShot {
-        lock.withLock { _windowCalls += 1; _windowCursors.append(cursor); return _windows[id] ?? .gone }
+    func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot {
+        lock.withLock {
+            _windowCalls += 1; _windowCursors.append(cursor); _windowShadows.append(shadow)
+            return _windows[id] ?? .gone
+        }
     }
+}
+
+/// What moved, in the order it moved: the reverse channel of the writer and the trash, which share one, so that a
+/// test reads the three steps of a replacement as one sequence.
+final class ShotMoves: @unchecked Sendable {
+    enum Move: Equatable {
+        case wrote(URL)
+        case trashed(URL)
+        case claimed(URL, as: URL)
+    }
+    private let lock = NSLock()
+    private var _all: [Move] = []
+    var all: [Move] { lock.withLock { _all } }
+    func note(_ move: Move) { lock.withLock { _all.append(move) } }
 }
 
 /// Holds the set of names already taken, as a folder would, and refuses as told.
 /// It walks `ShotNames.candidate` exactly as the real writer does, so the ladder
 /// is the one under test and not a second copy of it.
+///
+/// It also holds what `lstat` would say of each file it wrote, which a test changes to stand for a file that was
+/// renamed away (`nil`), written into, replaced by another or turned into a link, and it can refuse a claim.
 final class FakeWriter: ShotWriting, @unchecked Sendable {
     private let lock = NSLock()
     private var _taken: Set<String> = []
     private var _refuse: WriteRefusal?
     private var _written: [(url: URL, bytes: Int)] = []
     private var _data: [Data] = []
+    private var _readings: [String: ShotReading] = [:]
+    private var _inode: UInt64 = 100
+    private var _refusesClaim = false
+    let moves: ShotMoves
+
+    init(moves: ShotMoves = ShotMoves()) { self.moves = moves }
+
+    /// What is at a path now, as the port reads it.
+    func setReading(_ reading: ShotReading?, at url: URL) { lock.withLock { _readings[url.path] = reading } }
+    var refusesClaim: Bool {
+        get { lock.withLock { _refusesClaim } }
+        set { lock.withLock { _refusesClaim = newValue } }
+    }
+    /// The file left: its name is free and nothing is read at it. What a trash that succeeded does to the folder.
+    func vanish(_ url: URL) {
+        lock.withLock {
+            _readings[url.path] = nil
+            _taken.remove(url.lastPathComponent)
+        }
+    }
 
     var taken: Set<String> {
         get { lock.withLock { _taken } }
@@ -115,10 +157,55 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
                 let url = folder.appendingPathComponent(name)
                 _written.append((url, png.count))
                 _data.append(png)
-                return .written(url)
+                _inode += 1
+                let reading = ShotReading(identity: PathCanonical.FileIdentity(device: 1, inode: _inode), size: Int64(png.count),
+                                          modifiedSeconds: 1_790_000_000, modifiedNanoseconds: Int64(_inode), isRegularFile: true)
+                _readings[url.path] = reading
+                moves.note(.wrote(url))
+                return .written(WrittenShot(url: url, reading: reading))
             }
             return .refused(.namesExhausted)
         }
+    }
+
+    func reading(of url: URL) -> ShotReading? { lock.withLock { _readings[url.path] } }
+
+    func claim(_ written: URL, as name: URL) -> Bool {
+        lock.withLock {
+            guard !_refusesClaim, let reading = _readings[written.path],
+                  _readings[name.path] == nil, !_taken.contains(name.lastPathComponent) else { return false }
+            _readings[written.path] = nil
+            _readings[name.path] = reading
+            _taken.remove(written.lastPathComponent)
+            _taken.insert(name.lastPathComponent)
+            moves.note(.claimed(written, as: name))
+            return true
+        }
+    }
+}
+
+/// The Trash in the two states the real one has: the file leaves, or the move throws what `FileManager` throws.
+/// Every path it was asked to move is recorded, a refused one too.
+final class FakeTrash: ShotTrashing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let folder: FakeWriter
+    private var _failure: NSError?
+    private var _asked: [URL] = []
+
+    init(folder: FakeWriter) { self.folder = folder }
+
+    /// The Cocoa error the next moves throw; nil and they succeed.
+    var failure: NSError? {
+        get { lock.withLock { _failure } }
+        set { lock.withLock { _failure = newValue } }
+    }
+    var asked: [URL] { lock.withLock { _asked } }
+
+    func trash(_ url: URL) throws {
+        let failure = lock.withLock { _asked.append(url); return _failure }
+        if let failure { throw failure }
+        folder.vanish(url)
+        folder.moves.note(.trashed(url))
     }
 }
 
@@ -126,17 +213,84 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
     private let lock = NSLock()
     private var _accepts = true
     private var _copies: [Data] = []
+    private var _texts: [String] = []
     var accepts: Bool {
         get { lock.withLock { _accepts } }
         set { lock.withLock { _accepts = newValue } }
     }
     var copies: [Data] { lock.withLock { _copies } }
+    /// Every list that was written, one entry a write: a group copied in one write is one entry here.
+    private var _lists: [[Data]] = []
+    var lists: [[Data]] { lock.withLock { _lists } }
+    /// The text of each copy that was taken, in order.
+    var texts: [String] { lock.withLock { _texts } }
     func copy(png: Data) -> PasteOutcome {
         lock.withLock {
             guard _accepts else { return .refused }
             _copies.append(png)
             return .accepted
         }
+    }
+    func copy(pngs: [Data]) -> PasteOutcome {
+        lock.withLock {
+            guard _accepts else { return .refused }
+            _lists.append(pngs)
+            return .accepted
+        }
+    }
+    func copy(text: String) -> PasteOutcome {
+        lock.withLock {
+            guard _accepts else { return .refused }
+            _texts.append(text)
+            return .accepted
+        }
+    }
+}
+
+/// Reads what it was told to and counts the pictures it was handed — it keeps them, so a test can ask which
+/// picture a reading was made of. It answers at once; `held` makes it wait for `release()` first, which is
+/// how a test has a reading still in flight when the editor goes away.
+final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _reading: TextReading = .read([])
+    private var _images: [CGImage] = []
+    private var _held = false
+    private var _waiting: [CheckedContinuation<Void, Never>] = []
+
+    var reading: TextReading {
+        get { lock.withLock { _reading } }
+        set { lock.withLock { _reading = newValue } }
+    }
+    var held: Bool {
+        get { lock.withLock { _held } }
+        set { lock.withLock { _held = newValue } }
+    }
+    /// The pictures each call was handed, in order.
+    var images: [CGImage] { lock.withLock { _images } }
+    var calls: Int { lock.withLock { _images.count } }
+
+    func read(_ image: CGImage) async -> TextReading {
+        // The picture is kept and the wait begun in one step, so a `release()` cannot fall between them.
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let answersNow = lock.withLock { () -> Bool in
+                _images.append(image)
+                guard _held else { return true }
+                _waiting.append(continuation)
+                return false
+            }
+            if answersNow { continuation.resume() }
+        }
+        return lock.withLock { _reading }
+    }
+
+    /// Lets every call that is waiting answer.
+    func release() {
+        let waiting = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            _held = false
+            defer { _waiting = [] }
+            return _waiting
+        }
+        waiting.forEach { $0.resume() }
     }
 }
 
@@ -176,10 +330,12 @@ final class FakeShutter: ShutterPlaying, @unchecked Sendable {
 /// Desktop of whoever runs the suite.
 struct Rig {
     let capture = FakeCapture()
-    let writer = FakeWriter()
+    let writer: FakeWriter
+    let trash: FakeTrash
     let pasteboard = FakePasteboard()
     let preferences = FakePreferences()
     let shutter = FakeShutter()
+    let reader = FakeTextReader()
     let home: URL
     let desktop: URL
     var settings: ScreenshotsSettings = .defaults
@@ -187,11 +343,14 @@ struct Rig {
 
     init(home: URL, settings: ScreenshotsSettings = .defaults) {
         self.home = home
+        let writer = FakeWriter()
+        self.writer = writer
+        self.trash = FakeTrash(folder: writer)
         self.desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
         session = CaptureSession(
-            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences, shutter: shutter,
+            capture: capture, writer: writer, trash: trash, pasteboard: pasteboard, preferences: preferences, shutter: shutter, textReader: reader,
             settings: { settings }, naming: { .english }, now: { fixed },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
     }

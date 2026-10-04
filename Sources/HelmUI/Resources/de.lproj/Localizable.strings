@@ -1317,12 +1317,19 @@
 "Rectangle" = "Rechteck";
 "Oval" = "Oval";
 "Line" = "Linie";
+"Shapes" = "Formen";
+"Select" = "Auswahl";
+"Pen" = "Stift";
 "Pencil" = "Bleistift";
-"Highlight" = "Hervorhebung";
+"Highlighter" = "Marker";
 "Black" = "Schwarz";
 "Thin" = "Dünn";
 "Medium" = "Mittel";
 "Thick" = "Dick";
+"Thickness" = "Stärke";
+"Opacity" = "Deckkraft";
+"Thickness and Opacity…" = "Stärke und Deckkraft…";
+"All Colours" = "Alle Farben";
 "Filled" = "Gefüllt";
 "Undo" = "Widerrufen";
 "Redo" = "Wiederholen";
@@ -1343,6 +1350,10 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Nötig, damit Bildschirmfotos den Bildschirm aufnehmen können. Helm nimmt weder Video noch Ton auf — macOS hat nur einen Schalter für das Lesen von Pixeln und für Aufnahmen.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Die Aufnahme von Bildschirm & Systemaudio ist ausgeschaltet. Ohne sie kann Helm den Bildschirm nicht lesen, daher nehmen die Kurzbefehle für Bildschirmfotos nichts auf.";
 "Open Screen & System Audio Recording…" = "Aufnahme von Bildschirm & Systemaudio öffnen…";
+"Share…" = "Teilen\U00A0…";
+"Replaced. The original is in the Trash." = "Ersetzt. Das Original liegt im Papierkorb.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "Das Bildschirmfoto wurde nach der Aufnahme bewegt oder geändert. Deine Bearbeitung ist als eigene Datei gesichert.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "Das Bildschirmfoto wurde nach der Aufnahme bewegt oder geändert und kann hier nicht bearbeitet werden.";
 "Sort By" = "Sortieren nach";
 "Sort by Name" = "Nach Name sortieren";
 "Sort by Size" = "Nach Größe sortieren";
@@ -1369,3 +1380,45 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "Der aufgezogene Bereich hat Griffe, um ihn zu verändern — bei einem sehr kleinen nur an den Ecken —, und die Pfeiltasten bewegen ihn oder die gewählte Zeichnung um einen Pixel, mit ⇧ um zehn.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "„Anpinnen“ hält einen aufgenommenen Bereich über deinen anderen Fenstern als schwebendes Bild in der Größe, in der du ihn aufgenommen hast: Ziehe es, scrolle, um die Größe zu ändern, scrolle mit ⌥, um es blasser oder klarer zu machen, und klicke es an und drücke Esc, um es zu schließen.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Ein Modul, das Helm noch nicht kannte, etwa Bildschirmfotos, kommt in den Abschnitt der Seitenleiste, der schon die meisten Module seiner Art enthält, wenn der Abschnitt, den Helm für diese Art angelegt hat, fehlt, statt unten in einer von dir geordneten Seitenleiste einen eigenen Abschnitt zu beginnen.";
+
+"Blur" = "Weichzeichner";
+"Text" = "Text";
+"Eraser" = "Radiergummi";
+"Ruler" = "Lineal";
+"Steps" = "Schritte";
+"Spotlight" = "Spotlight";
+"Crop" = "Zuschneiden";
+
+"Capturing" = "Aufnahme";
+"Editor" = "Editor";
+"Default colour" = "Standardfarbe";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Solange keine Farbe gewählt ist, hat jedes Werkzeug seine eigene: Rot, beim Marker Gelb.";
+"Tools in the palette" = "Werkzeuge in der Palette";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Ausgeblendete Werkzeuge wandern ins Menü „⋯“ und reagieren weiterhin auf ihre Tasten.";
+"Lower right. Shots taken one after another stack up." = "Unten rechts. Mehrere Aufnahmen hintereinander werden gestapelt.";
+
+"30 seconds" = "30\U00A0Sekunden";
+"Timer: %@" = "Timer: %@";
+"Put the Panel Back" = "Panel wieder an seinen Platz setzen";
+
+"Magnifier" = "Lupe";
+"Emoji" = "Emoji";
+
+"Copy Text" = "Text kopieren";
+"Blur Emails and Phone Numbers" = "E-Mails und Telefonnummern weichzeichnen";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Zeichnet E-Mail-Adressen, Telefon- und Kartennummern und Links weich, die macOS im Bild liest. Gesichter, Handschrift und alles Übrige bleiben, wie sie sind.";
+"Nothing was blurred. Check the picture yourself." = "Nichts weichgezeichnet. Prüfe das Bild selbst.";
+"Text copied" = "Text kopiert";
+"No text was found" = "Kein Text gefunden";
+"The text could not be read" = "Der Text konnte nicht gelesen werden";
+
+"Eyedropper" = "Pipette";
+"Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”." = "Der Editor von Bildschirmfotos ist eine Palette an der Auswahl statt zweier Leisten: „Stift“, „Marker“, „Bleistift“, „Radiergummi“, „Lineal“ und „Spotlight“, dazu ein Menü ⋯ mit „Pfeil“, „Formen“, „Text“, „Schritte“, „Weichzeichner“, „Zuschneiden“, „Auswahl“, „Lupe“, „Emoji“, „Sichern“, „Teilen\U00A0…“, „Text kopieren“ und „E-Mails und Telefonnummern weichzeichnen“. Jedes Zeichenwerkzeug behält seine eigene Stärke und Deckkraft, eingestellt in einem Einblendfenster („Stärke und Deckkraft…“) — „Radiergummi“ und „Spotlight“ haben beides nicht, und eine Farbe kann jede beliebige sein: das Farbfenster des Systems oder die „Pipette“.";
+"What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names." = "Was die Zeile von dev.16 „Hervorhebung“ nannte, heißt jetzt „Marker“, und „Linie“, „Rechteck“ und „Oval“ stehen unter „Formen“; „Bleistift“ und „Pfeil“ behalten ihre Namen.";
+"“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back." = "„Anpinnen“ wird vorerst nicht angeboten, weder im Editor noch in dessen Menü; was die Zeile von dev.16 dazu sagt, gilt erst wieder, wenn es zurückkommt.";
+"Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”." = "Bildschirmfotos: „Text“ setzt eine Textzeile aufs Bild, „Schritte“ nummeriert Dinge, „Spotlight“ dunkelt alles außer dem gewählten Teil ab, „Zuschneiden“ schneidet das Bild zu, „Weichzeichner“ deckt einen Teil mit einem Mosaik ab, „Radiergummi“ und „Lineal“ tun, was ihre Namen sagen, und „Lupe“ und „Emoji“ fügen eine Lupe und ein Emoji hinzu. „Werkzeuge in der Palette“ in den Einstellungen bestimmt, welche Werkzeuge in der Palette sitzen — die übrigen wandern ins Menü ⋯ und reagieren weiter auf ihre Tasten —, und die Einstellungen haben jetzt drei Tabs, den ersten „Aufnahme“, den zweiten „Editor“.";
+"“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds." = "„Text kopieren“ legt den Text, den Helm im Bild liest, in die Zwischenablage, und „E-Mails und Telefonnummern weichzeichnen“ legt einen Weichzeichner über die E-Mail-Adressen, Telefonnummern, Kartennummern und Links, die es findet.";
+"Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”." = "Die Wahl eines Bereichs oder Fensters funktioniert so wie in macOS: Vor dem Aufziehen wird nichts abgedunkelt, ein Fenster wird mit seinem Schatten aufgenommen, und ⌥ lässt den Schatten weg. Das Aufnahme-Panel funktioniert wie das auf ⇧⌘5, und sein Timer bietet auch „30\U00A0Sekunden“.";
+"The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20." = "Die Miniatur nach einer Aufnahme ist ein einziges Fenster: Ihre Aktionen erscheinen, wenn du darauf zeigst, du kannst das Bild aus ihr herausziehen, und „Teilen\U00A0…“ im Menü ⋯ des Editors öffnet das Teilen-Fenster des Systems an ihr. „Bearbeiten“ öffnet den Editor mit dem gesicherten Bild, und „Fertig“ ersetzt die Datei — das Original kommt in den Papierkorb. Nacheinander aufgenommene Bilder stapeln sich, bis zu 20.";
+"Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order." = "Bildschirmfotos steht direkt vor Homebrew in einer Seitenleiste, die Helm neu aufbaut; eine von dir geordnete Seitenleiste behält ihre Reihenfolge.";
+"Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet." = "Zwei Dinge, die du vor dem Testen wissen solltest: „E-Mails und Telefonnummern weichzeichnen“ ist noch nicht sicher, um private Daten zu verbergen — Text, der größer ist als sein größter Block, lässt sich unter Umständen noch aus dem Mosaik zurücklesen, ebenso kleiner Text unter „Weichzeichner“ bei dünner Einstellung, und solange Helm das Bild noch liest, sichert „Fertig“ es ohne die Weichzeichnungen und sagt nichts. Und vieles an dieser Neugestaltung ist noch nicht auf einem echten Bildschirm angesehen worden.";

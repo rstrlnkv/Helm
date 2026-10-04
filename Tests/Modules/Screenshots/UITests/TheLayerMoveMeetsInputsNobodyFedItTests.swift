@@ -57,7 +57,10 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
         let positions = view.drawnShapes.map { shape in sublayers.firstIndex(where: { $0 === shape }) }
         XCTAssertTrue(positions.allSatisfy { $0 != nil }, "a shape is not in the view's own layer: \(positions)")
         XCTAssertEqual(positions.compactMap { $0 }, positions.compactMap { $0 }.sorted(), "the shapes are not in the annotations' order")
-        let dim = try XCTUnwrap(sublayers.firstIndex(where: { ($0 as? CAShapeLayer)?.fillRule == .evenOdd }))
+        // The area's dim: the even-odd layer that is not the spotlights', which stands under the shapes.
+        let dim = try XCTUnwrap(sublayers.firstIndex(where: { ($0 as? CAShapeLayer)?.fillRule == .evenOdd && $0 !== view.drawnSpotlightDim }))
+        let spotlights = try XCTUnwrap(sublayers.firstIndex { $0 === view.drawnSpotlightDim })
+        XCTAssertTrue(positions.compactMap { $0 }.allSatisfy { $0 > spotlights }, "a shape stands under the spotlights' dim")
         XCTAssertTrue(positions.compactMap { $0 }.allSatisfy { $0 < dim }, "a shape stands over the dim")
         XCTAssertEqual(view.drawnShapes.map { $0.compositingFilter != nil }, [false, true, false],
                        "the multiply is on a layer other than the marker's")
@@ -86,7 +89,7 @@ final class TheLayerMoveMeetsInputsNobodyFedItTests: XCTestCase {
             let (id, view) = try build(scale: scale)
             drag(id, .highlighter, from: CGPoint(x: 120, y: 200), to: CGPoint(x: 480, y: 200))
             let shape = try XCTUnwrap(view.drawnShapes.first, "\(scale)x: nothing drawn")
-            let path = try XCTUnwrap(shape.path)
+            let path = try XCTUnwrap((shape as? CAShapeLayer)?.path)
             // The selection in the layer's own space is flipped: y from the top 100...400 is the view's height less that.
             let clip = CGRect(x: 100, y: view.bounds.height - 400, width: 400, height: 300)
             XCTAssertTrue(clip.insetBy(dx: -0.01, dy: -0.01).contains(path.boundingBoxOfPath), "\(scale)x: the marker spills over the area: \(path.boundingBoxOfPath)")

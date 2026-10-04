@@ -36,25 +36,23 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             await gate.arrive()
             return .frozen(frozen)
         }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
 
-    private final class Board: ShotPasteboard, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var copies: Int { lock.withLock { count } }
-        func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
-    }
+    private typealias Board = CountingBoard
 
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
@@ -66,7 +64,9 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         func play() {}
     }
 
-    private func frozen() throws -> Freeze {
+    private func frozen(real: Bool = false) throws -> Freeze {
+        // Frames for the real screens, which the overlay needs to build its panels.
+        if real { return Freeze(displays: try OverlayRig.frames().map { .image($0) }, windows: []) }
         let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
                                               space: CGColorSpaceCreateDeviceRGB(),
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
@@ -79,15 +79,15 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     }
 
     /// The thumbnail is off, so no toast is put on anybody's screen.
-    private func rig(_ target: SaveTarget,
+    private func rig(_ target: SaveTarget, realScreens: Bool = false,
                      presenting: @escaping (CaptureOverlay) -> Bool = { _ in false })
         throws -> (CaptureController, HeldFreeze, Disk, Board) {
-        let capture = HeldFreeze(try frozen()), disk = Disk(), board = Board()
+        let capture = HeldFreeze(try frozen(real: realScreens)), disk = Disk(), board = Board()
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: capture, writer: disk, pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(),
+        let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
@@ -151,6 +151,44 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         await grace(0.5)
         XCTAssertEqual(presented.value, 0,
                        "a module switched off during the freeze still put the area-shortcut overlay on every screen")
+    }
+
+    /// The overlay is held through the presentation seam (built, never shown), a shot is taken and the module
+    /// goes off while the overlay waits for its flash: the panels must be gone at once, not when the timer
+    /// finds them. The control is the same shot left alone, which is still open and leaving right after it.
+    func testTheModuleGoingOffDuringTheFlashClosesTheOverlayAtOnce() async throws {
+        for cancelled in [false, true] {
+            let held = Held()
+            let (controller, capture, _, _) = try rig(.clipboard, realScreens: true, presenting: { overlay in
+                overlay.reducesMotion = { false }
+                held.overlay = overlay
+                return overlay.build()
+            })
+            controller.begin(.area)
+            await capture.gate.reached()
+            await capture.gate.open()
+            await waitUntil("the overlay reached the seam") { held.overlay != nil }
+            let overlay = try XCTUnwrap(held.overlay)
+            let display = try XCTUnwrap(try OverlayRig.frames().first?.id)
+            overlay.mouseDown(on: display, at: CGPoint(x: 100, y: 100), flags: [])
+            overlay.mouseDragged(on: display, at: CGPoint(x: 400, y: 300), flags: [])
+            overlay.mouseUp(on: display)
+            overlay.perform(.exit(.confirm))
+            XCTAssertTrue(overlay.isOpen && overlay.leaving, "the subject: the shot is flashing (\(cancelled))")
+            if cancelled {
+                controller.cancel()
+                XCTAssertFalse(overlay.isOpen, "the module went off in the flash and the panels stayed up")
+                XCTAssertFalse(overlay.leaving)
+            } else {
+                XCTAssertTrue(overlay.isOpen, "the control: left alone it is open until the flash is over")
+                await waitUntil("the flash ended by itself") { !overlay.isOpen }
+            }
+            overlay.close()
+        }
+    }
+
+    @MainActor private final class Held {
+        var overlay: CaptureOverlay?
     }
 
     private final class Count: @unchecked Sendable {

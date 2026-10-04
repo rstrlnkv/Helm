@@ -63,9 +63,9 @@ final class TheHitTestingNamesWhatIsUnderThePointerTests: XCTestCase {
         XCTAssertFalse(hits(pencil, 200, 120))
         let marker = Annotation(tool: .highlighter, start: CGPoint(x: 100, y: 100), end: CGPoint(x: 300, y: 100),
                                 points: [CGPoint(x: 100, y: 100), CGPoint(x: 300, y: 100)], id: 2)
-        // 16 points wide: 8 each side and 4 of tolerance.
-        XCTAssertTrue(hits(marker, 200, 111), "11 points off a 16-point marker is on it")
-        XCTAssertFalse(hits(marker, 200, 113), "13 points off is not")
+        // 12 points wide, the marker's middle step: 6 each side and 4 of tolerance.
+        XCTAssertTrue(hits(marker, 200, 109), "9 points off a 12-point marker is on it")
+        XCTAssertFalse(hits(marker, 200, 111), "11 points off is not")
     }
 
     func testTheTopmostLayerWinsWhereTwoOverlapAndANonNumberHitsNothing() {

@@ -4,12 +4,17 @@ import HelmUI
 import Module_Screenshots_Engine
 
 struct ScreenshotsSettingsPage: View {
+    /// The three tabs of the window's toolbar switcher: what a capture makes, what the editor opens with, and what macOS
+    /// holds of the same shortcuts.
+    enum Tab: String, CaseIterable { case capturing, editor, system }
+
     @ObservedObject private var model: ScreenshotsPageModel
     private let store: NamespacedStore
     /// Whether a folder may be written into: the one question a capture asks the
     /// disk that raises a protected-folder prompt. A seam so a test can count it.
     private let writable: (String) -> Bool
 
+    @State private var tab = Tab.capturing
     @State private var screenRecording: PermissionState = .granted
     @State private var target: SaveTarget
     @State private var otherFolder: String?
@@ -17,6 +22,13 @@ struct ScreenshotsSettingsPage: View {
     @State private var thumbnail: Bool
     @State private var shutterSound: Bool
     @State private var showCursor: Bool
+    /// The colour a new object starts in, nil until one is picked (`EditorMemory`'s own key).
+    @State private var ink: AnnotationColor?
+    /// The items the person has not taken off (`PaletteItems.visible`), read again when the store says so; the page
+    /// counts only those `EditorPalette.rowKinds` answer to.
+    @State private var shownItems: Set<PaletteItem>
+    /// The list of palette tools is open.
+    @State private var choosing = false
     /// Set when the folder just chosen was refused, so the page says so instead
     /// of quietly keeping the old one.
     @State private var chosenRefused = false
@@ -31,11 +43,13 @@ struct ScreenshotsSettingsPage: View {
     @StateObject private var screenKey: HelmHotkeyRecorder
     @StateObject private var panelKey: HelmHotkeyRecorder
 
-    init(vm: ModuleViewModel, store: NamespacedStore,
+    /// `tab` is the one the page opens on: the window's switcher moves it afterwards, and a test names the tab it reads.
+    init(vm: ModuleViewModel, store: NamespacedStore, tab: Tab = .capturing,
          writable: @escaping (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) {
         model = ScreenshotsPageModel.shared(vm: vm)
         self.store = store
         self.writable = writable
+        _tab = State(initialValue: tab)
         let settings = ScreenshotsSettings.read(store)
         _target = State(initialValue: settings.saveTarget)
         _otherFolder = State(initialValue: settings.otherFolder)
@@ -43,6 +57,8 @@ struct ScreenshotsSettingsPage: View {
         _thumbnail = State(initialValue: settings.thumbnail)
         _shutterSound = State(initialValue: settings.shutterSound)
         _showCursor = State(initialValue: settings.showCursor)
+        _ink = State(initialValue: AnnotationColor(rawValue: store.string(ScreenshotsSettings.Key.editorColor, default: "")))
+        _shownItems = State(initialValue: Set(PaletteItems.visible(store)))
         _areaKey = StateObject(wrappedValue: Self.recorder(.area, store))
         _screenKey = StateObject(wrappedValue: Self.recorder(.fullScreen, store))
         _panelKey = StateObject(wrappedValue: Self.recorder(.panel, store))
@@ -57,12 +73,19 @@ struct ScreenshotsSettingsPage: View {
             if screenRecording == .denied {
                 Section { HelmPermissionNote(need: .screenRecording, text: ScStr.needsAccess) }
             }
-            shortcutsSection
-            systemSection
-            saveSection
-            folderSection
+            switch tab {
+            case .capturing:
+                shortcutsSection
+                saveSection
+                folderSection
+            case .editor:
+                editorSection
+            case .system:
+                systemSection
+            }
         }
         .formStyle(.grouped)
+        .helmWindowToolbar(toolbarContent, token: ScreenshotsDescriptor.id.rawValue)
         .helmIdlesOffScreen()
         .helmTracksScreenRecording($screenRecording)
         .task { model.refresh() }
@@ -72,7 +95,7 @@ struct ScreenshotsSettingsPage: View {
         }
         .animation(HelmMotion.interface, value: screenRecording)
         .task(id: JudgedFolder(target: target, other: otherFolder)) { judge() }
-        // The bar's Options menu writes the same keys while this page may be up.
+        // The panel's gear menu writes some of the same keys while this page may be up.
         .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
             if Self.keys.contains(where: { store.changed(note, is: $0) }) { mirror() }
         }
@@ -82,6 +105,7 @@ struct ScreenshotsSettingsPage: View {
         ScreenshotsSettings.Key.saveTarget, ScreenshotsSettings.Key.otherFolder,
         ScreenshotsSettings.Key.format, ScreenshotsSettings.Key.thumbnail,
         ScreenshotsSettings.Key.shutterSound, ScreenshotsSettings.Key.showCursor,
+        ScreenshotsSettings.Key.editorColor, ScreenshotsSettings.Key.paletteChoices,
     ]
 
     /// Takes what the store holds now, for each control another surface may have
@@ -95,6 +119,24 @@ struct ScreenshotsSettingsPage: View {
         if thumbnail != settings.thumbnail { thumbnail = settings.thumbnail }
         if shutterSound != settings.shutterSound { shutterSound = settings.shutterSound }
         if showCursor != settings.showCursor { showCursor = settings.showCursor }
+        let picked = AnnotationColor(rawValue: store.string(ScreenshotsSettings.Key.editorColor, default: ""))
+        if ink != picked { ink = picked }
+        let shown = Set(PaletteItems.visible(store))
+        if shownItems != shown { shownItems = shown }
+    }
+
+    // MARK: - The tabs
+
+    /// The switcher's three segments. **The dot on the system tab is `holdsSystemKeys`**, the reading beside the one that
+    /// offers «Use ⇧⌘3 and ⇧⌘4» (`offersToUseSystemKeys`), so the tab and the page below it cannot say different things.
+    private var toolbarContent: HelmPageToolbarContent {
+        let holds = Self.holdsSystemKeys(model.state.boxes)
+        return HelmPageToolbarContent(
+            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
+                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
+                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
+                                  needsAttention: holds, attentionNote: holds ? ScStr.stillOn : nil)],
+            selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }))
     }
 
     private struct JudgedFolder: Hashable { let target: SaveTarget; let other: String? }
@@ -183,6 +225,13 @@ struct ScreenshotsSettingsPage: View {
     /// the other two.
     static func offersToUseSystemKeys(_ boxes: [SystemBoxReading]) -> Bool {
         SystemBox.capture.allSatisfy { box in boxes.first { $0.box == box }?.state == .off }
+    }
+
+    /// Whether macOS is **read** as still holding ⇧⌘3 or ⇧⌘4: a capture box that is on. It is the other side of
+    /// `offersToUseSystemKeys` — nothing is both — and a box that is unknown is neither, because a dot that says «Still on
+    /// in macOS» over a reading nobody made is the claim the page exists not to draw.
+    static func holdsSystemKeys(_ boxes: [SystemBoxReading]) -> Bool {
+        SystemBox.capture.contains { box in boxes.first { $0.box == box }?.state == .on }
     }
 
     /// Whether ⇧⌘5 goes to the panel with the other two: only when box 184 is
@@ -307,6 +356,60 @@ struct ScreenshotsSettingsPage: View {
         return (keyCode, modifiers, HotkeyCombination(keyCode: keyCode, modifiers: modifiers)?.label ?? "")
     }
 
+    // MARK: - The editor
+
+    /// The row objects with the item each answers to: what the list offers and what «N of M» counts. Read from the
+    /// palette's own list, so an object added there is offered here with nothing said twice.
+    private var paletteChoices: [(item: PaletteItem, kind: PaletteObject.Kind)] {
+        EditorPalette.rowKinds.compactMap { kind in EditorPalette.item(of: kind).map { ($0, kind) } }
+    }
+
+    private var editorSection: some View {
+        Section {
+            HelmSettingRow(ScStr.defaultColour, note: ScStr.defaultColourNote) {
+                HStack(spacing: HelmSpace.s3) {
+                    ForEach(AnnotationColor.allCases, id: \.self) { color in
+                        EditorSwatch(color: color, selected: ink == color) {
+                            ink = color
+                            store.set(color.rawValue, for: ScreenshotsSettings.Key.editorColor)
+                        }
+                    }
+                }
+            }
+            HelmSettingRow(ScStr.toolsInPalette, note: ScStr.hiddenToolsNote) {
+                HStack(spacing: HelmSpace.s4) {
+                    let choices = paletteChoices
+                    Text(ScStr.toolsShown(choices.filter { shownItems.contains($0.item) }.count, of: choices.count))
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                    Button(ScStr.choose) { choosing = true }
+                        .controlSize(.small)
+                        .popover(isPresented: $choosing) { toolList }
+                }
+                // The count and the button hold their line, as `BoxStatus` does; the note is what wraps.
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        } header: {
+            HelmSectionTitle(ScStr.tabEditor)
+        }
+    }
+
+    /// One checkbox per object of the row. Colours, Undo, Redo, ⋯, Done and ✕ are not in it: they are not
+    /// `PaletteItem`s, so nothing written here can take them away.
+    private var toolList: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            ForEach(paletteChoices, id: \.item) { choice in
+                Toggle(EditorPalette.name(of: choice.kind), isOn: Binding(
+                    get: { shownItems.contains(choice.item) },
+                    set: { shown in
+                        PaletteItems.set(choice.item, shown: shown, in: store)
+                        shownItems = Set(PaletteItems.visible(store))
+                    }))
+            }
+        }
+        .padding(HelmSpace.s5)
+    }
+
     // MARK: - What a capture makes
 
     private var saveSection: some View {
@@ -335,7 +438,7 @@ struct ScreenshotsSettingsPage: View {
                     store.set(value.rawValue, for: ScreenshotsSettings.Key.format)
                 }
             }
-            HelmSettingRow(ScStr.floatingThumbnail) {
+            HelmSettingRow(ScStr.floatingThumbnail, note: ScStr.thumbnailNote) {
                 Toggle(ScStr.floatingThumbnail, isOn: $thumbnail)
                     .labelsHidden()
                     .onChange(of: thumbnail) { _, value in

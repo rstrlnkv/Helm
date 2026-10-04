@@ -161,6 +161,16 @@ final class StringsLiveInLprojTests: XCTestCase {
         // «Error» is the RAE's word and the one this file's own «Errors» =
         // «Errores» is the plural of.
         "Error": [.es],
+        // The Screenshots editor's name. German, Spanish and Portuguese each
+        // have the word as their own — «Der Editor», «El editor», «O editor»
+        // in the changelogs — so the tab says it the way English does.
+        "Editor": [.de, .es, .pt],
+        // The emoji button, as macOS displays it: AppKit InputManager.loctable
+        // says «Emoji & Symbole» in de, «Emojis y símbolos» in es, «Emoji et
+        // symboles» in fr, «Emoji e Símbolos» in pt_BR. German, French and
+        // Portuguese keep that word; Spanish does not — macOS says «Emojis», and
+        // Helm's «Emoji» is its own (`ScStr.tool` in ScreenshotsStrings says so).
+        "Emoji": [.de, .es, .fr, .pt],
         "Extension": [.fr],
         "General": [.es],
         "h": [.es, .fr, .pt],
@@ -204,12 +214,20 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Plug-ins": [.de, .pt],
         "Ring": [.de],
         "Rostislav Strelnikov": [.es, .fr, .de, .ja, .zh, .pt],
+        // German uses the loanword for the system search and the de changelog
+        // quotes «Spotlight» as the control's name.
+        "Spotlight": [.de],
         "Start": [.de],
         "Style": [.fr],
         "System": [.de],
         "Tab": [.de],
         "Tag": [.fr, .de],
+        // «Text» is the German word, spelled as English spells it.
+        "Text": [.de],
         "Timer": [.de, .pt],
+        // The same word as the plain «Timer» above, with its countdown: macOS
+        // de and pt_BR both display «Timer» for it.
+        "Timer: %@": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],
         // The same two languages as the dial above it, for the same reason

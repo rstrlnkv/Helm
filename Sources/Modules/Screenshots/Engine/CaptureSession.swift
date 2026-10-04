@@ -16,6 +16,30 @@ public enum CaptureRefusal: Sendable, Equatable {
     case write(WriteRefusal)
     case pasteboard
     case encoding
+    /// «Edit» was asked and nothing was opened: the shot's file is no longer the file that shot wrote, or it is, and
+    /// no picture could be read from it, or the shot has neither a file nor a picture held.
+    case notEditable
+    /// The edit is saved and the original was not replaced. Where each reason leaves the two is told by
+    /// `ReplaceRefusal`: the original is where it was and the edit beside it, except where a case says otherwise.
+    case notReplaced(ReplaceRefusal)
+}
+
+/// Why an edit did not take its original's place.
+public enum ReplaceRefusal: Sendable, Equatable {
+    /// The second re-ask, inside the move, found nothing at the shot's path: the original was renamed, moved away or
+    /// deleted between the edit's write and the move. The edit is beside where it was.
+    case missing
+    /// The path held what the shot did not write (`ShotReplacement.Verdict.changed`), found at the move, or no move was
+    /// tried at all: the edit was written in a format this module does not write over (a foreign extension). The original
+    /// renamed or deleted before the edit's write also comes out here: the edit took the original's own name, the first
+    /// of the ladder, and is what the move found there. The edit is then under the original's name.
+    case changed
+    /// The original's folder took no write (refused, every name of the ladder taken, or the folder itself renamed or
+    /// gone), so the edit lies where the settings save and the original was never asked about. Told to a person as
+    /// `.missing` is: that is a sentence of the screen's, and this case is for whoever must tell the reasons apart.
+    case folderRefused
+    /// `HelmTrash` refused the original, or macOS did: the gate's `outOfScope` is one of these.
+    case trash(TrashFailure.Reason)
 }
 
 /// What a capture ended as: the files that exist, whether the clipboard took
@@ -23,13 +47,25 @@ public enum CaptureRefusal: Sendable, Equatable {
 /// verdict, because the full-screen shortcut over two displays can save one and lose the other, and
 /// "saved 2" over a display that was gone is the sentence a person believes.
 public struct Delivery: @unchecked Sendable {
-    public var files: [URL] = []
+    /// Every file this delivery wrote, each with the reading of it the next edit is checked against.
+    public var written: [WrittenShot] = []
+    public var files: [URL] { written.map(\.url) }
+    /// The original of an edit went to the Trash and the file here has its name. Not set when the name was taken
+    /// between the two: the file here is then beside it, and nothing is said of the name.
+    public var replaced = false
     public var copied = false
     public var refusals: [CaptureRefusal] = []
     /// The first picture that was made, for the thumbnail.
     public var image: CGImage?
 
     public init() {}
+}
+
+/// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its
+/// file for a saved one.
+public enum ShotSource: @unchecked Sendable {
+    case picture(CGImage)
+    case file(URL)
 }
 
 /// The result of asking for one window.
@@ -43,6 +79,19 @@ public enum BeginResult: @unchecked Sendable {
     case refused(CaptureRefusal)
 }
 
+public enum EditOpening: @unchecked Sendable {
+    case ready(PictureOnScreen)
+    case refused(CaptureRefusal)
+}
+
+/// Whether one pass of `CaptureSession.copyAll` is to go on: read between two pictures, set from any thread.
+private final class GroupPass: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+    var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
+    func stop() { lock.lock(); stopped = true; lock.unlock() }
+}
+
 /// One capture, start to finish, from the ports and the logic.
 ///
 /// `@unchecked Sendable`: its closures read a `NamespacedStore`, which is a
@@ -54,33 +103,42 @@ public enum BeginResult: @unchecked Sendable {
 /// call to the next, and the caller carries it, because its owner is the
 /// overlay and the overlay's lifetime is the capture's.
 ///
-/// **Nothing here is a phase in the activity trail and nothing logs a capture.**
-/// The log is for what was refused — no grant, a failed write, a folder that
-/// was refused — and a line per press would be noise in the file a person
-/// attaches to a bug report. Paths go through `Redact`.
+/// **Nothing logs a capture, and one thing here is a phase in the activity trail:** the move of an edit's
+/// original to the Trash, which `HelmTrash.remove` opens as it does for every module. The log is for what was
+/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and a line
+/// per press would be noise in the file a person attaches to a bug report. Paths go through `Redact`.
 public final class CaptureSession: @unchecked Sendable {
     private let capture: ScreenCapturing
     private let writer: ShotWriting
+    private let trash: ShotTrashing
     private let pasteboard: ShotPasteboard
     private let preferences: CapturePreferences
     private let shutterPort: ShutterPlaying
+    private let textReader: ScreenTextReading
     private let settings: () -> ScreenshotsSettings
     private let naming: () -> ShotNaming
     private let now: () -> Date
     private let locations: ScreenshotsLocations
     private let category = ScreenshotsEngine.moduleID
+    /// The group's copy runs on one queue, so one pass at a time; `latestPass` is the token the next press stops.
+    /// The only state here besides the ports.
+    private let groupQueue = DispatchQueue(label: "helm.screenshots.copy-all", qos: .userInitiated)
+    private let passes = NSLock()
+    private var latestPass: GroupPass?
 
-    public init(capture: ScreenCapturing, writer: ShotWriting, pasteboard: ShotPasteboard,
-                preferences: CapturePreferences, shutter: ShutterPlaying,
+    public init(capture: ScreenCapturing, writer: ShotWriting, trash: ShotTrashing, pasteboard: ShotPasteboard,
+                preferences: CapturePreferences, shutter: ShutterPlaying, textReader: ScreenTextReading,
                 settings: @escaping () -> ScreenshotsSettings,
                 naming: @escaping () -> ShotNaming = { .english },
                 now: @escaping () -> Date = { Date() },
                 locations: ScreenshotsLocations = .system) {
         self.capture = capture
         self.writer = writer
+        self.trash = trash
         self.pasteboard = pasteboard
         self.preferences = preferences
         self.shutterPort = shutter
+        self.textReader = textReader
         self.settings = settings
         self.naming = naming
         self.now = now
@@ -113,6 +171,44 @@ public final class CaptureSession: @unchecked Sendable {
         }
     }
 
+    // MARK: - Editing a shot that was taken
+
+    /// «Edit»: the shot's picture over a fresh freeze, for the overlay to open on.
+    ///
+    /// **The file is asked before a pixel of it is read.** `shot` carries the reading taken when it was written,
+    /// and the path is a name: by now it may lead to another picture, and an editor opened on that one would
+    /// offer to replace somebody's file with an edit of it. A file that is not the one written is a refusal and
+    /// the editor does not open. `held` is the picture of a shot that has no file, which is asked nothing.
+    public func openEdit(of shot: WrittenShot?, held: CGImage?, on display: DisplayID?) async -> EditOpening {
+        let writer = writer, category = category
+        let read: CGImage? = await offTheCooperativePool {
+            guard let shot else { return held }
+            let verdict = ShotReplacement.verdict(stored: shot.reading, now: writer.reading(of: shot.url))
+            guard verdict == .same else {
+                HelmLog.shared.warn(category, "edit refused: the shot's file is \(verdict) at \(Redact.path(shot.url.path))")
+                return nil
+            }
+            guard let source = CGImageSourceCreateWithURL(shot.url as CFURL, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+                HelmLog.shared.warn(category, "edit refused: no picture could be read from \(Redact.path(shot.url.path))")
+                return nil
+            }
+            return image
+        }
+        guard let picture = read else { return .refused(.notEditable) }
+        guard !Task.isCancelled else { return .refused(.captureFailed) }
+        switch await begin() {
+        case .refused(let reason): return .refused(reason)
+        case .ready(let freeze):
+            guard let shown = await offTheCooperativePool({ PictureOnScreen.place(picture, over: freeze, on: display) })
+            else {
+                HelmLog.shared.warn(category, "the picture could not be laid over the frozen screen")
+                return .refused(.captureFailed)
+            }
+            return .ready(shown)
+        }
+    }
+
     private func refuseForPermission() {
         HelmLog.shared.warn(category, "no screen recording permission — capture refused")
         capture.requestAccess()
@@ -124,12 +220,24 @@ public final class CaptureSession: @unchecked Sendable {
     /// the one with the pointer in it when the freeze took one. Nil when nothing
     /// of the selection is on the frame.
     public func crop(_ freeze: Freeze, display: DisplayID, local rect: CGRect) -> CGImage? {
+        part(of: freeze, display: display, local: rect)?.cut
+    }
+
+    /// The one place a selection becomes pixels of a frame: the frame, the whole pixels the selection covers on it
+    /// and the cut of `shot` there, so the file, the pin and a reading of the text are cut from the same picture.
+    private func part(of freeze: Freeze, display: DisplayID, local rect: CGRect) -> FramePart? {
         guard let frame = freeze.frames.first(where: { $0.id == display }),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
-                                              imageWidth: frame.image.width,
-                                              imageHeight: frame.image.height)
+                                              imageWidth: frame.image.width, imageHeight: frame.image.height),
+              let cut = frame.shot.cropping(to: pixels)
         else { return nil }
-        return frame.shot.cropping(to: pixels)
+        return FramePart(frame: frame, pixels: pixels, cut: cut)
+    }
+
+    private struct FramePart {
+        let frame: FrozenDisplay
+        let pixels: CGRect
+        let cut: CGImage
     }
 
     /// One window, **asked for again at the click**.
@@ -140,7 +248,12 @@ public final class CaptureSession: @unchecked Sendable {
     /// it has gone, what was on screen at the freeze is cut from the freeze,
     /// which is what the person was looking at when they clicked. A protected
     /// window is saved as it came.
-    public func window(_ id: UInt32, in freeze: Freeze) async -> WindowResult {
+    ///
+    /// `shadow` is the click's: with it, the macOS default, the picture is the window and its
+    /// shadow; an option-click asks for the window alone. The cuts from the freeze have no shadow
+    /// of their own to leave out, so the flag does not reach them. The default is for callers that do not ask about
+    /// the shadow (the tests); the controller always passes the click's.
+    public func window(_ id: UInt32, in freeze: Freeze, shadow: Bool = true) async -> WindowResult {
         // The menu bar and the Dock are cut from the freeze at their own rects: the
         // Dock's window is a display-sized sheet and the system's picture of it
         // is not the strip. A Dock placed by its own Accessibility bounds is the
@@ -149,7 +262,7 @@ public final class CaptureSession: @unchecked Sendable {
            !surface.drawnAlone {
             return cutFromFreeze(id, in: freeze)
         }
-        switch await capture.window(id, cursor: settings().showCursor) {
+        switch await capture.window(id, cursor: settings().showCursor, shadow: shadow) {
         case .image(let image):
             return .image(image)
         case .gone:
@@ -187,34 +300,107 @@ public final class CaptureSession: @unchecked Sendable {
     /// that what holds it (a pin) holds the selection and not the whole frozen display.
     public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
                           layers: [Annotation], detached: Bool = false) async -> CGImage? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }),
-              let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
-                                              imageWidth: frame.image.width, imageHeight: frame.image.height),
-              let cut = frame.shot.cropping(to: pixels)
-        else { return nil }
+        guard let found = part(of: freeze, display: display, local: rect) else { return nil }
+        let (frame, pixels, cut) = (found.frame, found.pixels, found.cut)
         guard !layers.isEmpty || detached else { return cut }
         let scale = frame.scale
-        return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale) }
+        let display = frame.shot
+        return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale, display: display) }
+    }
+
+    /// The edit of a finished picture: the part of `picture` under the area, with the layers over it, **at the
+    /// picture's own size**. The layers are in the points of the display the picture was shown on. **Each axis has
+    /// the ratio of its own** (the picture's pixels over the rectangle's points on that axis): the rectangle is
+    /// whole display pixels, so on a thin picture reduced to fit the two ratios differ by a good part, and one
+    /// number for both put a mark off by up to the whole file. The marks are moved into the picture's own
+    /// proportions by those two ratios, so a mark lands where it was drawn within a display pixel on both axes
+    /// and the whole area is exactly the picture's pixel size; a stroke is then as thick as `pixelsPerPoint`
+    /// says, the larger ratio, which is the display's scale while the picture fits.
+    /// What of the area lies outside the picture is not in the file; nil when none of it is on the picture.
+    public func annotated(_ shown: PictureOnScreen, local rect: CGRect, layers: [Annotation]) async -> CGImage? {
+        let picture = shown.picture, perPoint = shown.pixelsPerPoint, stand = shown.rect
+        let part = rect.intersection(stand)
+        // A point of the display to the point of a picture drawn at `perPoint` on both axes.
+        let kx = CGFloat(picture.width) / stand.width / perPoint, ky = CGFloat(picture.height) / stand.height / perPoint
+        func inPicture(_ point: CGPoint) -> CGPoint { CGPoint(x: (point.x - stand.minX) * kx, y: (point.y - stand.minY) * ky) }
+        guard !part.isNull,
+              let pixels = ScreenSpace.pixels(ofLocal: CGRect(origin: inPicture(part.origin),
+                                                              size: CGSize(width: part.width * kx, height: part.height * ky)),
+                                              scale: perPoint, imageWidth: picture.width, imageHeight: picture.height),
+              let cut = picture.cropping(to: pixels)
+        else { return nil }
+        guard !layers.isEmpty else { return cut }
+        let moved = layers.map { $0.mapped(inPicture) }
+        return await offTheCooperativePool { Self.draw(moved, over: cut, at: pixels.origin, scale: perPoint, display: picture) }
     }
 
     /// The pool is inside the call, as in `encode`: a 5K cut is one iteration of the caller's work.
-    static func draw(_ layers: [Annotation], over cut: CGImage, at origin: CGPoint, scale: CGFloat) -> CGImage? {
+    /// `display` is the whole picture the cut is part of, the cut at `origin` in it: a blur's blocks sit on the
+    /// display's pixels and a box that reaches past the cut still averages what is there, so the file holds the
+    /// blocks the screen drew.
+    static func draw(_ layers: [Annotation], over cut: CGImage, at origin: CGPoint, scale: CGFloat,
+                     display: CGImage) -> CGImage? {
         autoreleasepool {
-            var spaces = [CGColorSpace(name: CGColorSpace.sRGB)!]
-            if let own = cut.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
-            for space in spaces {
+            for space in Pixelate.spaces(for: cut) {
                 guard let context = CGContext(data: nil, width: cut.width, height: cut.height,
                                               bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
                 else { continue }
                 context.draw(cut, in: CGRect(x: 0, y: 0, width: cut.width, height: cut.height))
-                // Display-local points, top-left, to this bitmap's pixels, bottom-left.
+                context.setAllowsAntialiasing(true)
+                // The spotlights' one dim, under every other layer: a spotlight is no layer of its own here and draws nothing below.
+                context.saveGState()
                 context.translateBy(x: 0, y: CGFloat(cut.height))
                 context.scaleBy(x: scale, y: -scale)
                 context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
-                context.setAllowsAntialiasing(true)
-                for layer in layers {
+                Spotlights.draw(layers, within: CGRect(x: origin.x / scale, y: origin.y / scale,
+                                                       width: CGFloat(cut.width) / scale, height: CGFloat(cut.height) / scale),
+                                in: context)
+                context.restoreGState()
+                for (layer, number) in zip(layers, AnnotationStep.numbers(in: layers)) {
+                    if layer.tool == .spotlight { continue }
+                    if layer.tool == .blur {
+                        // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
+                        // A box with no pixel on the display is skipped; a box that has pixels and
+                        // got no tile makes the file refused (nil), so it is never written with that box undrawn.
+                        guard Pixelate.pixels(of: layer.frame, scale: scale, width: display.width, height: display.height) != nil
+                        else { continue }
+                        guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)
+                        else { return nil }
+                        place(tile, in: context, cutHeight: cut.height, origin: origin)
+                        continue
+                    }
+                    if layer.tool == .magnifier {
+                        // The lens is a picture of the display's pixels like the mosaic; one with nothing to show is drawn as the screen draws it: not at all.
+                        if let tile = Magnifier.tile(of: layer, over: display, scale: scale) {
+                            place(tile, in: context, cutHeight: cut.height, origin: origin)
+                        }
+                        continue
+                    }
                     context.saveGState()
+                    // The pencil's grain is a clip in the bitmap's own pixels, so it goes in before the points' transform.
+                    if layer.tool.isGrainy, let stroke = layer.stroke {
+                        let cutPixels = CGRect(origin: origin, size: CGSize(width: cut.width, height: cut.height))
+                        guard let grain = PencilGrain.mask(for: layer.points, width: stroke.width, scale: scale, pixels: cutPixels)
+                        else { context.restoreGState(); continue }
+                        context.clip(to: CGRect(x: grain.pixels.minX - origin.x,
+                                                y: CGFloat(cut.height) - (grain.pixels.maxY - origin.y),
+                                                width: grain.pixels.width, height: grain.pixels.height), mask: grain.grey)
+                    }
+                    // Display-local points, top-left, to this bitmap's pixels, bottom-left.
+                    context.translateBy(x: 0, y: CGFloat(cut.height))
+                    context.scaleBy(x: scale, y: -scale)
+                    context.translateBy(x: -origin.x / scale, y: -origin.y / scale)
+                    if layer.tool == .text || layer.tool == .emoji {
+                        AnnotationText.draw(layer, in: context)
+                        context.restoreGState()
+                        continue
+                    }
+                    if let number {
+                        AnnotationStep.draw(layer, number: number, in: context)
+                        context.restoreGState()
+                        continue
+                    }
                     context.addPath(layer.outline)
                     if let stroke = layer.stroke {
                         context.setLineWidth(stroke.width)
@@ -235,6 +421,17 @@ public final class CaptureSession: @unchecked Sendable {
         }
     }
 
+    /// A picture of whole pixels of the display (`Pixelate.Tile`) drawn into the cut's bitmap, which starts at `origin` in the display's pixels: one pixel
+    /// to one, on the bitmap's own grid, so nothing is resampled. A mosaic's tile is opaque; a lens's is transparent outside its circle.
+    private static func place(_ tile: Pixelate.Tile, in context: CGContext, cutHeight: Int, origin: CGPoint) {
+        context.saveGState()
+        context.setShouldAntialias(false)
+        context.interpolationQuality = .none
+        context.draw(tile.image, in: CGRect(x: tile.pixels.minX - origin.x, y: CGFloat(cutHeight) - (tile.pixels.maxY - origin.y),
+                                            width: tile.pixels.width, height: tile.pixels.height))
+        context.restoreGState()
+    }
+
     // MARK: - Delivering
 
     /// Copies and saves one picture; the editor's exits and the window and display
@@ -243,13 +440,77 @@ public final class CaptureSession: @unchecked Sendable {
     /// `fileEvenFromClipboard` is the editor's ⌘S: a person who pressed Save wants a
     /// file whatever "after a capture" says, and under the clipboard target the
     /// folder is the one the `.macOS` choice names.
+    ///
+    /// `original` is the shot an edit was opened from, and makes a save a **replacement**: the file is written
+    /// beside the original, in the original's format and whatever the save target says, and then takes its place
+    /// (`replace`). Without a save it is ignored: ⌘C on an edit copies and replaces nothing.
     public func deliver(_ image: CGImage, saves: Bool, copies: Bool,
-                        fileEvenFromClipboard: Bool = false) async -> Delivery {
+                        fileEvenFromClipboard: Bool = false, replacing original: WrittenShot? = nil) async -> Delivery {
         var delivery = Delivery()
         delivery.image = image
         await deliver(image, saves: saves, copies: copies, fileEvenFromClipboard: fileEvenFromClipboard,
-                      into: &delivery)
+                      replacing: saves ? original : nil, into: &delivery)
         return delivery
+    }
+
+    /// Every shot of a group on the clipboard in **one write** (`ShotPasteboard.copy(pngs:)`), in the order given.
+    /// A shot with a file is read back from it, as the single shot's Copy is. **All or none:** a shot that cannot
+    /// be read or encoded refuses the whole copy with `.encoding`, since a board holding fewer pictures than the
+    /// control counted would say nothing of the missing one.
+    ///
+    /// **One pass at a time, and a displaced one stops at its next picture.** A press while an earlier pass is still
+    /// reading stops that pass (`GroupPass`) and waits behind it on a queue of its own, so two never run side by
+    /// side. The task's cancellation stops it the same way, which the queue's block would not see. A pass that was
+    /// stopped refuses nothing and writes nothing.
+    ///
+    /// The pool is inside the loop: each picture decodes and encodes in its own, and a pool round the loop would
+    /// keep every one of them until the last.
+    public func copyAll(_ shots: [ShotSource]) async -> Delivery {
+        var delivery = Delivery()
+        let pass = GroupPass()
+        passes.withLock {
+            latestPass?.stop()
+            latestPass = pass
+        }
+        let pngs: [Data]? = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                groupQueue.async { continuation.resume(returning: Self.encodeAll(shots, until: pass)) }
+            }
+        } onCancel: { pass.stop() }
+        if pass.isStopped { return delivery }
+        guard let pngs, !pngs.isEmpty else {
+            HelmLog.shared.warn(category, "a group's picture could not be read or encoded")
+            delivery.refusals.append(.encoding)
+            return delivery
+        }
+        guard !Task.isCancelled else { return delivery }
+        switch pasteboard.copy(pngs: pngs) {
+        case .accepted: delivery.copied = true
+        case .refused:
+            HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
+            delivery.refusals.append(.pasteboard)
+        }
+        return delivery
+    }
+
+    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last.
+    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> [Data]? {
+        var all: [Data] = []
+        for shot in shots {
+            if pass.isStopped { return nil }
+            let png: Data? = autoreleasepool {
+                switch shot {
+                case .picture(let image): return encode(image, as: .png)
+                case .file(let url):
+                    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+                    return encode(image, as: .png)
+                }
+            }
+            guard let png else { return nil }
+            all.append(png)
+        }
+        return all
     }
 
     /// `saves` asks for a file and is answered by the setting: under the
@@ -257,11 +518,13 @@ public final class CaptureSession: @unchecked Sendable {
     /// on the board. The file is in the setting's format and the clipboard's copy
     /// is always PNG; a PNG is encoded once when both want one.
     private func deliver(_ image: CGImage, saves: Bool, copies: Bool, fileEvenFromClipboard: Bool = false,
-                         into delivery: inout Delivery) async {
+                         replacing original: WrittenShot? = nil, into delivery: inout Delivery) async {
         var current = settings()
         if fileEvenFromClipboard, current.saveTarget == .clipboard { current.saveTarget = .macOS }
-        let toFile = saves && current.saveTarget.savesAFile
-        let format = current.format
+        // An edit takes its original's name, so its bytes are in the format that name says, not the setting's.
+        let ownFormat = original.flatMap { shot in ShotFormat.allCases.first { $0.pathExtension == shot.url.pathExtension } }
+        let toFile = saves && (original != nil || current.saveTarget.savesAFile)
+        let format = ownFormat ?? current.format
         let png: Data?
         if copies || (toFile && format == .png) {
             png = await offTheCooperativePool({ Self.encode(image, as: .png) })
@@ -295,18 +558,98 @@ public final class CaptureSession: @unchecked Sendable {
             delivery.refusals.append(.encoding)
             return
         }
-        guard let folder = await resolvedFolder(for: current), !Task.isCancelled else { return }
-        let base = ShotNames.base(date: now(), naming: naming())
+        let folder: URL, base: String
+        if let original {
+            // Step one of a replacement: beside the original, under the first free name of the ladder, which begins at its own.
+            folder = original.url.deletingLastPathComponent()
+            base = original.url.deletingPathExtension().lastPathComponent
+        } else {
+            guard let resolved = await resolvedFolder(for: current) else { return }
+            folder = resolved.url
+            base = ShotNames.base(date: now(), naming: naming())
+        }
+        guard !Task.isCancelled else { return }
         let writer = writer
         let outcome = await offTheCooperativePool {
-            writer.write(bytes, into: folder.url, base: base, pathExtension: format.pathExtension)
+            writer.write(bytes, into: folder, base: base, pathExtension: format.pathExtension)
         }
         switch outcome {
-        case .written(let url):
-            delivery.files.append(url)
+        case .written(let shot):
+            delivery.written.append(shot)
+            guard let original else { return }
+            // A name in a format this module does not write is not a name its own bytes may take.
+            guard ownFormat != nil else { delivery.refusals.append(.notReplaced(.changed)); return }
+            await replace(original, with: shot, in: &delivery)
         case .refused(let reason):
-            HelmLog.shared.warn(category, "save refused: \(reason) in \(Redact.path(folder.url.path))")
-            delivery.refusals.append(.write(reason))
+            HelmLog.shared.warn(category, "save refused: \(reason) in \(Redact.path(folder.path))")
+            guard original != nil else { delivery.refusals.append(.write(reason)); return }
+            // The original's folder would not take the edit, so there is no "beside": the edit is saved where
+            // the settings save, as a new shot, and the original is left as it is.
+            let before = delivery.written.count
+            await deliver(image, saves: true, copies: false, fileEvenFromClipboard: true, into: &delivery)
+            if delivery.written.count > before { delivery.refusals.append(.notReplaced(.folderRefused)) }
+        }
+    }
+
+    // MARK: - Replacing the original
+
+    private struct NotTheFileTheShotWrote: Error {}
+
+    /// Steps two and three of a replacement; step one, the edit written beside the original under a name of its
+    /// own, is done and stays done whatever happens here. **No byte is written over a file and nothing is
+    /// removed but through `HelmTrash`:** the original goes to the Trash, and the edit then takes the name that
+    /// freed, by a move that fails on a name that is taken.
+    ///
+    /// The gate is `UserFileScope`: the question it asks, whether this belongs to the person, is the question
+    /// about a screenshot in a folder of theirs. The stored reading is `original.reading`, taken by the writer
+    /// from the descriptor it wrote through. **It is asked again inside the move itself,** as the first thing
+    /// `HelmTrash.remove`'s `trashing` does, after that function's own weighing and its re-reading of the
+    /// ancestry: a file that was renamed, replaced, written into or turned into a link since is not moved. What
+    /// this narrows and does not close is what `HelmTrash.remove` says of itself: one resolution of the path lies
+    /// between that `lstat` and `trashItem`'s own.
+    ///
+    /// Every refusal is in `delivery.refusals`, with the reason's own case: the original is left where it is, and the edit
+    /// beside it, except where `ReplaceRefusal` says otherwise.
+    /// A name taken between the two steps is not one: the original is in the Trash and the edit keeps its own name,
+    /// and the delivery says so by not being `replaced`, which claims the name. **The reading the shot carries on
+    /// is `edit.reading`, the descriptor's,** and is not taken again by `lstat` of the name after the claim (a
+    /// descriptor's reading is the object's, a name's is whoever stands there): another file may stand under the name between the two, and a reading of it would be the
+    /// next replacement's licence to trash a stranger. A rename changes neither inode, size nor time written.
+    private func replace(_ original: WrittenShot, with edit: WrittenShot, in delivery: inout Delivery) async {
+        // Asked right before the act: a delivery cancelled while the edit was written moves nothing.
+        guard !Task.isCancelled else { return }
+        let writer = writer, trash = trash, category = category
+        let path = original.url.path
+        let outcome: (refusal: ReplaceRefusal?, file: WrittenShot, named: Bool) = await offTheCooperativePool {
+            let scope = UserFileScope.partition([path])
+            var atTheMove = ShotReplacement.Verdict.same
+            let result = HelmTrash.remove(allowed: scope.allowed, outOfScope: scope.refused, module: category, trashing: { url in
+                atTheMove = ShotReplacement.verdict(stored: original.reading, now: writer.reading(of: url))
+                guard atTheMove == .same else { throw NotTheFileTheShotWrote() }
+                try trash.trash(url)
+            })
+            switch atTheMove {
+            case .missing: return (.missing, edit, false)
+            case .changed: return (.changed, edit, false)
+            case .same: break
+            }
+            guard result.refused.isEmpty, !result.removed.isEmpty else {
+                return (.trash(result.refused.first?.reason ?? .systemRefused), edit, false)
+            }
+            guard writer.claim(edit.url, as: original.url) else {
+                HelmLog.shared.warn(category, "the original's name was taken before the edit could have it; the edit keeps its own")
+                return (nil, edit, false)
+            }
+            // The reading of the object the module wrote, not of the name: another file may stand under the name by
+            // now, and the next edit's checks would then be answered by a stranger's reading.
+            return (nil, WrittenShot(url: original.url, reading: edit.reading), true)
+        }
+        delivery.written[delivery.written.count - 1] = outcome.file
+        if let refusal = outcome.refusal {
+            HelmLog.shared.warn(category, "the original was not replaced (\(refusal)); the edit is beside it")
+            delivery.refusals.append(.notReplaced(refusal))
+        } else {
+            delivery.replaced = outcome.named
         }
     }
 
@@ -354,6 +697,62 @@ public final class CaptureSession: @unchecked Sendable {
             }
         }
         return delivery
+    }
+
+    // MARK: - Reading text
+
+    /// What reading the text of an area came back with.
+    public enum AreaReading: Sendable, Equatable {
+        /// The lines in reading order, and where the picture they were read from lies on the display, which is
+        /// what turns a line's normalised box into a layer's points (`RecognizedBoxes`).
+        case read([RecognizedLine], RecognizedBoxes.Source)
+        /// The system could not read, or the area was no longer on the frozen frame.
+        case failed
+        /// The task was cancelled before the answer came, or while it was being waited for: **the answer is
+        /// dropped, not returned.** The caller ties the task to the editor, and an answer that comes after the
+        /// editor is gone puts no layer and no text anywhere.
+        case cancelled
+    }
+
+    /// The text of the selection, read from **the frame the file is cut from** — `FrozenDisplay.shot`, at the
+    /// pixels' own resolution, with none of the editor's layers on it — so a find and the blur that goes over it
+    /// land on the one picture. One reading at a time is the caller's to keep.
+    ///
+    /// The strings of a reading are somebody's words and are never logged here; a failure is logged as that.
+    public func readText(_ freeze: Freeze, display: DisplayID, local rect: CGRect) async -> AreaReading {
+        guard let found = part(of: freeze, display: display, local: rect) else {
+            HelmLog.shared.warn(category, "the area to read was not on the frozen frame")
+            return .failed
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        let reading = await textReader.read(found.cut)
+        guard !Task.isCancelled else { return .cancelled }
+        switch reading {
+        case .read(let lines): return .read(lines, RecognizedBoxes.Source(pixels: found.pixels, scale: found.frame.scale))
+        case .failed:
+            HelmLog.shared.warn(category, "the text of the picture could not be read")
+            return .failed
+        }
+    }
+
+    /// What copying the text of a reading came back with.
+    public enum TextCopy: Sendable, Equatable {
+        case copied
+        /// The reading held no text, so nothing was put on the clipboard.
+        case noText
+        case refused
+    }
+
+    /// The lines of a reading on the clipboard, one to a line (`CopiedText`). Nothing is put there when there is
+    /// no text, so an earlier copy is not replaced by an empty one.
+    public func copyText(_ lines: [RecognizedLine]) -> TextCopy {
+        guard let text = CopiedText.text(of: lines) else { return .noText }
+        switch pasteboard.copy(text: text) {
+        case .accepted: return .copied
+        case .refused:
+            HelmLog.shared.warn(category, "the clipboard refused the text")
+            return .refused
+        }
     }
 
     // MARK: - The shutter
@@ -407,7 +806,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// white — a clear picture and a half-transparent one both came out right
     /// with the flattening taken out — so this pins the ground rather than
     /// repairing a defect that was seen.)
-    static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
+    public static func encode(_ image: CGImage, as format: ShotFormat) -> Data? {
         autoreleasepool {
             let source: CGImage
             switch format {
@@ -434,10 +833,7 @@ public final class CaptureSession: @unchecked Sendable {
     /// space (a display's HDR or wide-gamut reading) cannot hold one, and a PNG
     /// of the same picture is fine, so the JPEG falls back rather than refuses.
     static func flattened(_ image: CGImage) -> CGImage? {
-        let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
-        var spaces = [srgb]
-        if let own = image.colorSpace, own.model == .rgb, own.supportsOutput { spaces.insert(own, at: 0) }
-        for space in spaces {
+        for space in Pixelate.spaces(for: image) {
             guard let context = CGContext(data: nil, width: image.width, height: image.height,
                                           bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                           bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)

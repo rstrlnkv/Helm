@@ -21,9 +21,8 @@ public struct RememberedSelection: Equatable, Sendable {
     public let display: String
     public let rect: CGRect
 
-    /// No display is a million points across; the bound keeps a hand-written
-    /// number from ever reaching a multiplication.
-    static let ceiling: Double = 1_000_000
+    /// The one ceiling of every stored coordinate (`StoredNumber`).
+    static let ceiling = StoredNumber.ceiling
     /// A selection narrower than this is not one anybody made.
     static let smallest: CGFloat = 1
     /// A UUID is 36 characters; a longer string is not one.
@@ -66,18 +65,10 @@ public struct RememberedSelection: Equatable, Sendable {
     public static func read(_ store: NamespacedStore) -> RememberedSelection? {
         let display = store.string(Key.display, default: "")
         guard !display.isEmpty,
-              let x = number(store, Key.x), let y = number(store, Key.y),
-              let width = number(store, Key.width), let height = number(store, Key.height)
+              let x = StoredNumber.read(store, Key.x), let y = StoredNumber.read(store, Key.y),
+              let width = StoredNumber.read(store, Key.width), let height = StoredNumber.read(store, Key.height)
         else { return nil }
         return RememberedSelection(display: display, x: x, y: y, width: width, height: height)
-    }
-
-    /// An integer is a number too — a property list written by hand holds
-    /// `<integer>` for a whole number — and anything else is not one.
-    private static func number(_ store: NamespacedStore, _ key: String) -> Double? {
-        guard let value = store.object(key) as? NSNumber,
-              CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
-        return value.doubleValue
     }
 
     public func write(to store: NamespacedStore) {

@@ -9,12 +9,12 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **Three corners of the pin's third pass that no earlier check reached:** the limit plate when the action row
-/// stands at the top of the display (the branch that puts the plate under the row), in the widest language on
+/// **Three corners of the pin's third pass that no earlier check reached:** the limit plate when the palette
+/// stands at the top of the display (the branch that puts the plate under the palette), in the widest language on
 /// a narrow area, and the picture's scale for a pin whose frame is not a 2x one, and after a scroll.
 ///
-/// Total failure of the subject prints: a plate that lies on the row or leaves the display when there is no room
-/// above the row, a layer that declares scale 2 on a 1x or 3x selection, a scrolled pin whose picture stays at its
+/// Total failure of the subject prints: a plate that lies on the palette or leaves the display when there is no room
+/// above the palette, a layer that declares scale 2 on a 1x or 3x selection, a scrolled pin whose picture stays at its
 /// own size inside a larger frame.
 @MainActor
 final class ThePinPlateAndPictureAtTheEdgesTests: XCTestCase {
@@ -31,34 +31,34 @@ final class ThePinPlateAndPictureAtTheEdgesTests: XCTestCase {
 
     private func check(_ area: CGRect, language: String) throws {
         let (overlay, display, view) = try refuse(area: area)
-        let row = try XCTUnwrap(overlay.chrome(on: display)?.actions, "the control: no action row")
-        let flipped = CGRect(x: row.minX, y: view.bounds.height - row.maxY, width: row.width, height: row.height)
+        let palette = try XCTUnwrap(overlay.chrome(on: display)?.palette, "the control: no palette")
+        let flipped = CGRect(x: palette.minX, y: view.bounds.height - palette.maxY, width: palette.width, height: palette.height)
         let plate = try XCTUnwrap(view.visiblePlates.first { $0.string == ScStr.pinLimit }, "\(language): the refusal was not shown")
-        XCTAssertFalse(plate.frame.intersects(flipped), "\(language) \(area): the plate \(plate.frame) lies on the row \(flipped)")
+        XCTAssertFalse(plate.frame.intersects(flipped), "\(language) \(area): the plate \(plate.frame) lies on the palette \(flipped)")
         XCTAssertTrue(view.bounds.contains(plate.frame), "\(language) \(area): the plate \(plate.frame) left the display \(view.bounds)")
     }
 
-    /// The row at the top of the display: no room above it, so the plate goes under it. The control makes sure the
-    /// row really stands where the branch is reached.
-    func testWithTheRowAtTheTopOfTheDisplayThePlateGoesUnderItAndStaysInside() throws {
-        // A selection ending within ~18 points of the top puts the row (8 below it) where less than the plate's
+    /// The palette at the top of the display: no room above it, so the plate goes under it. The control makes sure the
+    /// palette really stands where the branch is reached.
+    func testWithThePaletteAtTheTopOfTheDisplayThePlateGoesUnderItAndStaysInside() throws {
+        // A selection ending within ~12 points of the top puts the palette (14 below it) where less than the plate's
         // height and gaps is left above it.
-        for area in [CGRect(x: 100, y: 0, width: 400, height: 12), CGRect(x: 100, y: 0, width: 400, height: 8),
-                     CGRect(x: 0, y: 0, width: 300, height: 10), CGRect(x: 700, y: 0, width: 300, height: 10)] {
+        for area in [CGRect(x: 100, y: 0, width: 400, height: 8), CGRect(x: 100, y: 0, width: 400, height: 6),
+                     CGRect(x: 0, y: 0, width: 300, height: 5), CGRect(x: 700, y: 0, width: 300, height: 5)] {
             let (overlay, display, view) = try refuse(area: area)
-            let row = try XCTUnwrap(overlay.chrome(on: display)?.actions)
+            let palette = try XCTUnwrap(overlay.chrome(on: display)?.palette)
             let plate = try XCTUnwrap(view.visiblePlates.first { $0.string == ScStr.pinLimit })
-            let flipped = CGRect(x: row.minX, y: view.bounds.height - row.maxY, width: row.width, height: row.height)
+            let flipped = CGRect(x: palette.minX, y: view.bounds.height - palette.maxY, width: palette.width, height: palette.height)
             XCTAssertGreaterThan(flipped.maxY + HelmSpace.s2 + plate.frame.height + 4, view.bounds.maxY,
-                                 "the control: \(area) leaves room above the row \(flipped), the branch is not reached")
-            XCTAssertLessThanOrEqual(plate.frame.maxY, flipped.minY, "the plate \(plate.frame) is not under the row \(flipped)")
+                                 "the control: \(area) leaves room above the palette \(flipped), the branch is not reached")
+            XCTAssertLessThanOrEqual(plate.frame.maxY, flipped.minY, "the plate \(plate.frame) is not under the palette \(flipped)")
             XCTAssertGreaterThanOrEqual(plate.frame.minY, 0)
             rigged?.overlay.close()
         }
     }
 
     /// Every language, a narrow area near the left, the right, the bottom and the top of the display.
-    func testInEveryLanguageOnANarrowAreaNearAnEdgeThePlateIsInsideAndOffTheRow() throws {
+    func testInEveryLanguageOnANarrowAreaNearAnEdgeThePlateIsInsideAndOffThePalette() throws {
         let areas = [CGRect(x: 0, y: 300, width: 60, height: 40), CGRect(x: 940, y: 300, width: 60, height: 40),
                      CGRect(x: 480, y: 760, width: 40, height: 40), CGRect(x: 480, y: 0, width: 40, height: 40),
                      CGRect(x: 0, y: 0, width: 30, height: 30), CGRect(x: 970, y: 770, width: 30, height: 30)]
@@ -75,8 +75,8 @@ final class ThePinPlateAndPictureAtTheEdgesTests: XCTestCase {
         XCTAssertGreaterThan(widest, 250, "the control: the widest language was not met (\(widest))")
     }
 
-    /// The Esc question is where it was: at the pointer's offset, not by the row.
-    func testTheEscQuestionStaysAtThePointerAndNotByTheRow() throws {
+    /// The Esc question is where it was: at the pointer's offset, not by the palette.
+    func testTheEscQuestionStaysAtThePointerAndNotByThePalette() throws {
         let built = try OverlayRig.overlay(scale: 1, area: CGRect(x: 100, y: 100, width: 400, height: 300)) { _ in }
         rigged = built
         built.overlay.perform(.tool(.rectangle))

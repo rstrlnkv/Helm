@@ -1317,12 +1317,19 @@
 "Rectangle" = "矩形";
 "Oval" = "椭圆形";
 "Line" = "线条";
+"Shapes" = "形状";
+"Select" = "选择";
+"Pen" = "笔";
 "Pencil" = "铅笔";
-"Highlight" = "高亮标记";
+"Highlighter" = "马克笔";
 "Black" = "黑色";
 "Thin" = "细";
 "Medium" = "中";
 "Thick" = "粗";
+"Thickness" = "粗细";
+"Opacity" = "不透明度";
+"Thickness and Opacity…" = "粗细和不透明度…";
+"All Colours" = "所有颜色";
 "Filled" = "填充";
 "Undo" = "撤销";
 "Redo" = "重做";
@@ -1343,6 +1350,10 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "截屏功能需要此权限才能截取屏幕。Helm 不录制视频，也不录音——只是 macOS 把读取像素和录制用同一个开关管理。";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "录屏与系统录音已关闭。没有它，Helm 无法读取屏幕，截屏快捷键不会截取任何内容。";
 "Open Screen & System Audio Recording…" = "打开录屏与系统录音…";
+"Share…" = "共享…";
+"Replaced. The original is in the Trash." = "已替换。原文件在废纸篓中。";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "截屏在拍摄后被移动或更改。你的编辑已另存为单独的文件。";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "截屏在拍摄后被移动或更改，因此无法在此编辑。";
 "Sort By" = "排序方式";
 "Sort by Name" = "按名称排序";
 "Sort by Size" = "按大小排序";
@@ -1369,3 +1380,45 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "拖出的区域有手柄用来调整形状（区域很小时只在四角），方向键可将它（或所选的绘制对象）每次移动一个像素，按住 ⇧ 则移动十个像素。";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“置顶”会把截取的区域作为与截取时同样大小的浮动图片保持在其他窗口上方：可拖移，滚动可调整大小，按住 ⌥ 滚动可使其更淡或更清晰，点按它并按 Esc 可关闭。";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Helm 以前没见过的模块，例如截屏，在 Helm 为该类模块创建的分区已不存在时，会加入边栏中已放有最多同类模块的分区，而不是在你排好的边栏底部另起一个分区。";
+
+"Blur" = "模糊";
+"Text" = "文本";
+"Eraser" = "橡皮擦";
+"Ruler" = "标尺";
+"Steps" = "步骤";
+"Spotlight" = "聚光灯";
+"Crop" = "裁剪";
+
+"Capturing" = "截取";
+"Editor" = "编辑器";
+"Default colour" = "默认颜色";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "在选择颜色之前，每个工具使用各自的颜色：红色，马克笔为黄色。";
+"Tools in the palette" = "工具条中的工具";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "隐藏的工具会移到“⋯”菜单，并仍可用各自的快捷键调用。";
+"Lower right. Shots taken one after another stack up." = "显示在右下角。连续截取的屏幕截图会堆叠在一起。";
+
+"30 seconds" = "30秒";
+"Timer: %@" = "计时器：%@";
+"Put the Panel Back" = "将面板放回原处";
+
+"Magnifier" = "放大镜";
+"Emoji" = "表情符号";
+
+"Copy Text" = "拷贝文本";
+"Blur Emails and Phone Numbers" = "模糊邮件和电话号码";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "模糊 macOS 在图像中读到的电子邮件地址、电话号码、卡号和链接。人脸、手写内容及其他一切保持原样。";
+"Nothing was blurred. Check the picture yourself." = "没有模糊任何内容。请自行检查图像。";
+"Text copied" = "已拷贝文本";
+"No text was found" = "未找到文本";
+"The text could not be read" = "无法读取文本";
+
+"Eyedropper" = "吸管";
+"Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”." = "截屏的编辑器现在是选区旁的一个工具条，取代原来的两个条：“笔”“马克笔”“铅笔”“橡皮擦”“标尺”和“聚光灯”，以及 ⋯ 菜单，里面有“箭头”“形状”“文本”“步骤”“模糊”“裁剪”“选择”“放大镜”“表情符号”“保存”“共享…”“拷贝文本”和“模糊邮件和电话号码”。每种绘制工具各自保留粗细和不透明度，在弹出窗口（“粗细和不透明度…”）中设置，但“橡皮擦”和“聚光灯”两者都没有；颜色可以是任意颜色：系统的颜色面板或“吸管”。";
+"What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names." = "dev.16 那一行里称为“高亮标记”的，现在叫“马克笔”；“线条”“矩形”和“椭圆形”归入“形状”；“铅笔”和“箭头”名称不变。";
+"“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back." = "“置顶”暂不提供，编辑器及其菜单中都没有；dev.16 那一行对它的说明，在它回来之前不适用。";
+"Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”." = "截屏：“文本”在图片上放一行文字，“步骤”给事物编号，“聚光灯”把你所选部分以外的区域调暗，“裁剪”裁去图片的一部分，“模糊”用马赛克盖住图片的一部分，“橡皮擦”和“标尺”如其名所示，“放大镜”和“表情符号”则添加放大镜和表情符号。设置中的“工具条中的工具”决定哪些工具放在工具条里——其余的移到 ⋯ 菜单，仍响应各自的按键——设置现在有三个标签页，第一个是“截取”，第二个是“编辑器”。";
+"“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds." = "“拷贝文本”会把 Helm 在图片中读到的文字放到剪贴板，“模糊邮件和电话号码”会模糊它找到的电子邮件地址、电话号码、卡号和链接。";
+"Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”." = "选取区域或窗口的方式与 macOS 一致：拖移之前不会调暗任何内容，窗口会连同阴影一起截取，按住 ⌥ 则不含阴影。截取面板的工作方式与 ⇧⌘5 的相同，其计时器也新增“30秒”。";
+"The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20." = "截取后的缩略图是一个窗口：指向它时会显示它的操作，可以把图片从中拖出，编辑器 ⋯ 菜单里的“共享…”会在它旁边打开系统的共享面板。“编辑”会在已保存的图片上打开编辑器，“完成”会替换该文件——原件移到废纸篓。接连截取的图片会叠放，最多 20 张。";
+"Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order." = "在 Helm 全新生成的边栏中，截屏紧排在 Homebrew 之前；你排过的边栏则保持原有顺序。";
+"Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet." = "测试前要知道两件事：“模糊邮件和电话号码”尚不能可靠地隐藏私人数据——比最大方块还大的文字仍可能从马赛克中读回来，在较细设置下的“模糊”所盖住的小文字也一样；而且在 Helm 仍在读取图片时，“完成”会不带模糊就保存它，并且不作任何提示。此外，这次重新设计的很多地方还没有在真实屏幕上看过。";

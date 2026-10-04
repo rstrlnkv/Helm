@@ -40,7 +40,7 @@ final class TheMarkersCornerIsRoundInTheFileTests: XCTestCase {
                 let layer = Annotation(tool: .highlighter, start: points[0], end: points[3], points: points,
                                        style: AnnotationStyle(thickness: step))
                 let out = try await export(layer, scale: scale, name: "shots-corner-\(step.rawValue)-\(Int(scale))")
-                let width = step.marker
+                let width = step.points(for: .highlighter)
                 let round = layer.outline.copy(strokingWithWidth: width + 3, lineCap: .round, lineJoin: .round, miterLimit: 10)
                 let found = ink(out)
                 XCTAssertGreaterThan(found.count, Int(width * 100 * scale * scale / 2), "\(step) \(scale)x: the marker left no ink, so the test saw nothing")
@@ -64,7 +64,7 @@ final class TheMarkersCornerIsRoundInTheFileTests: XCTestCase {
             let layer = Annotation(tool: .highlighter, start: points[0], end: far, points: points,
                                    style: AnnotationStyle(thickness: step))
             let out = try await export(layer, scale: 1, name: "shots-corner30-\(step.rawValue)")
-            let width = step.marker
+            let width = step.points(for: .highlighter)
             let round = layer.outline.copy(strokingWithWidth: width + 3, lineCap: .round, lineJoin: .round, miterLimit: 10)
             let found = ink(out)
             XCTAssertGreaterThan(found.count, Int(width * 50), "\(step): the marker left no ink, so the test saw nothing")

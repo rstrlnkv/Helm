@@ -110,7 +110,8 @@ final class TheSelectionFrameComesAndGoesWithTheSelectionTests: XCTestCase {
             // The stroke is 3 points wide through the centre; the 3x3 around it is all the object.
             let around = (-1...1).flatMap { dx in (-1...1).map { dy in CGPoint(x: r.centre.x + CGFloat(dx), y: r.centre.y + CGFloat(dy)) } }
             let seen = try r.read(around)
-            let reddish = seen.filter { $0[0] > 200 && $0[1] < 60 && $0[2] < 60 }.count
+            // The pencil's grain is grey (ink 3...255 of 255, mean 0.65), so a pixel of the stroke is red to 150 on the other channels, not only at full ink.
+            let reddish = seen.filter { $0[0] > 200 && $0[1] < 150 && $0[2] < 150 }.count
             XCTAssertGreaterThanOrEqual(reddish, 3, "\(tool): the object's colour is not visible at the box centre: \(seen)")
         }
     }

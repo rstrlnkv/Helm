@@ -1317,12 +1317,19 @@
 "Rectangle" = "Rectangle";
 "Oval" = "Oval";
 "Line" = "Line";
+"Shapes" = "Shapes";
+"Select" = "Select";
+"Pen" = "Pen";
 "Pencil" = "Pencil";
-"Highlight" = "Highlight";
+"Highlighter" = "Marker";
 "Black" = "Black";
 "Thin" = "Thin";
 "Medium" = "Medium";
 "Thick" = "Thick";
+"Thickness" = "Thickness";
+"Opacity" = "Opacity";
+"Thickness and Opacity…" = "Thickness and Opacity…";
+"All Colours" = "All Colours";
 "Filled" = "Filled";
 "Undo" = "Undo";
 "Redo" = "Redo";
@@ -1343,6 +1350,10 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing.";
 "Open Screen & System Audio Recording…" = "Open Screen & System Audio Recording…";
+"Share…" = "Share…";
+"Replaced. The original is in the Trash." = "Replaced. The original is in the Trash.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "The screenshot was moved or changed after it was taken, so it cannot be edited here.";
 "Sort By" = "Sort By";
 "Sort by Name" = "Sort by Name";
 "Sort by Size" = "Sort by Size";
@@ -1369,3 +1380,45 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged.";
+
+"Blur" = "Blur";
+"Text" = "Text";
+"Eraser" = "Eraser";
+"Ruler" = "Ruler";
+"Steps" = "Steps";
+"Spotlight" = "Spotlight";
+"Crop" = "Crop";
+
+"Capturing" = "Capturing";
+"Editor" = "Editor";
+"Default colour" = "Default colour";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Until a colour is picked, each tool has its own: red, and yellow for the highlighter.";
+"Tools in the palette" = "Tools in the palette";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Hidden tools move to the ⋯ menu and still answer to their keys.";
+"Lower right. Shots taken one after another stack up." = "Lower right. Shots taken one after another stack up.";
+
+"30 seconds" = "30 seconds";
+"Timer: %@" = "Timer: %@";
+"Put the Panel Back" = "Put the Panel Back";
+
+"Magnifier" = "Magnifier";
+"Emoji" = "Emoji";
+
+"Copy Text" = "Copy Text";
+"Blur Emails and Phone Numbers" = "Blur Emails and Phone Numbers";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are.";
+"Nothing was blurred. Check the picture yourself." = "Nothing was blurred. Check the picture yourself.";
+"Text copied" = "Text copied";
+"No text was found" = "No text was found";
+"The text could not be read" = "The text could not be read";
+
+"Eyedropper" = "Eyedropper";
+"Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”." = "Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”.";
+"What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names." = "What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names.";
+"“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back." = "“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back.";
+"Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”." = "Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”.";
+"“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds." = "“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds.";
+"Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”." = "Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”.";
+"The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20." = "The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20.";
+"Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order." = "Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order.";
+"Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet." = "Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet.";

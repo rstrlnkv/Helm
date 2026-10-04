@@ -1317,12 +1317,19 @@
 "Rectangle" = "Rectangle";
 "Oval" = "Ovale";
 "Line" = "Ligne";
+"Shapes" = "Formes";
+"Select" = "Sélection";
+"Pen" = "Stylo";
 "Pencil" = "Crayon";
-"Highlight" = "Surbrillance";
+"Highlighter" = "Marqueur";
 "Black" = "Noir";
-"Thin" = "Fin";
-"Medium" = "Moyen";
-"Thick" = "Épais";
+"Thin" = "Fine";
+"Medium" = "Moyenne";
+"Thick" = "Épaisse";
+"Thickness" = "Épaisseur";
+"Opacity" = "Opacité";
+"Thickness and Opacity…" = "Épaisseur et opacité…";
+"All Colours" = "Toutes les couleurs";
 "Filled" = "Rempli";
 "Undo" = "Annuler";
 "Redo" = "Rétablir";
@@ -1343,6 +1350,10 @@
 "Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording." = "Nécessaire pour que Captures d’écran puisse capturer l’écran. Helm n’enregistre ni vidéo ni son — macOS n’a simplement qu’un seul réglage pour lire les pixels et pour enregistrer.";
 "Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing." = "L’enregistrement de l’écran et des sons du système est désactivé. Sans lui, Helm ne peut pas lire l’écran et les raccourcis de capture ne capturent rien.";
 "Open Screen & System Audio Recording…" = "Ouvrir Enregistrement de l’écran et des sons du système…";
+"Share…" = "Partager…";
+"Replaced. The original is in the Trash." = "Remplacée. L’original est dans la corbeille.";
+"The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "La capture a été déplacée ou modifiée après avoir été prise. Votre modification est enregistrée dans un fichier séparé.";
+"The screenshot was moved or changed after it was taken, so it cannot be edited here." = "La capture a été déplacée ou modifiée après avoir été prise, elle ne peut donc pas être modifiée ici.";
 "Sort By" = "Trier par";
 "Sort by Name" = "Trier par nom";
 "Sort by Size" = "Trier par taille";
@@ -1369,3 +1380,45 @@
 "The area you dragged has handles to reshape it — only at its corners when it is very small — and the arrow keys move it, or the selected drawing, one pixel at a time, ten with ⇧." = "La zone que vous avez tracée a des poignées pour la remodeler — seulement aux coins quand elle est très petite — et les touches fléchées la déplacent, ou déplacent le dessin sélectionné, d’un pixel à la fois, de dix avec ⇧.";
 "“Pin” keeps a captured area above your other windows as a floating picture the size you captured it; drag it, scroll to resize it, ⌥-scroll to make it fainter or clearer, and click it and press Esc to close it." = "«\U00A0Épingler\U00A0» garde une zone capturée au-dessus de vos autres fenêtres sous forme d’image flottante de la taille où vous l’avez capturée\U00A0: faites-la glisser, faites défiler pour la redimensionner, faites défiler avec ⌥ pour l’atténuer ou la renforcer, puis cliquez dessus et appuyez sur Esc pour la fermer.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Un module que Helm n’avait jamais vu, comme Captures d’écran, rejoint la section de la barre latérale qui réunit déjà la plupart des modules de son genre lorsque la section créée par Helm pour ce genre n’existe plus, au lieu d’ouvrir sa propre section en bas d’une barre latérale que vous avez organisée.";
+
+"Blur" = "Flou";
+"Text" = "Texte";
+"Eraser" = "Gomme";
+"Ruler" = "Règle";
+"Steps" = "Étapes";
+"Spotlight" = "Projecteur";
+"Crop" = "Recadrer";
+
+"Capturing" = "Capture";
+"Editor" = "Éditeur";
+"Default colour" = "Couleur par défaut";
+"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Tant qu’aucune couleur n’est choisie, chaque outil a la sienne\U00A0: rouge, et jaune pour le marqueur.";
+"Tools in the palette" = "Outils de la palette";
+"Hidden tools move to the ⋯ menu and still answer to their keys." = "Les outils masqués passent dans le menu «\U00A0⋯\U00A0» et répondent toujours à leurs touches.";
+"Lower right. Shots taken one after another stack up." = "En bas à droite. Plusieurs captures successives s’empilent.";
+
+"30 seconds" = "30\U00A0secondes";
+"Timer: %@" = "Minuteur\U00A0: %@";
+"Put the Panel Back" = "Remettre le panneau en place";
+
+"Magnifier" = "Loupe";
+"Emoji" = "Emoji";
+
+"Copy Text" = "Copier le texte";
+"Blur Emails and Phone Numbers" = "Flouter les e-mails et les téléphones";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Floute les adresses e-mail, les numéros de téléphone et de carte et les liens que macOS lit dans l’image. Les visages, l’écriture manuscrite et tout le reste restent tels quels.";
+"Nothing was blurred. Check the picture yourself." = "Rien n’a été flouté. Vérifiez l’image vous-même.";
+"Text copied" = "Texte copié";
+"No text was found" = "Aucun texte trouvé";
+"The text could not be read" = "Le texte n’a pas pu être lu";
+
+"Eyedropper" = "Pipette";
+"Screenshots’ editor is one palette at the selection instead of two bars: “Pen”, “Marker”, “Pencil”, “Eraser”, “Ruler” and “Spotlight”, and a ⋯ menu with “Arrow”, “Shapes”, “Text”, “Steps”, “Blur”, “Crop”, “Select”, “Magnifier”, “Emoji”, “Save”, “Share…”, “Copy Text” and “Blur Emails and Phone Numbers”. Each drawing tool keeps its own thickness and opacity, set in a pop-over (“Thickness and Opacity…”) — “Eraser” and “Spotlight” have neither, and a colour can be any colour: the system colour panel or the “Eyedropper”." = "L’éditeur de Captures d’écran est une palette à la sélection au lieu de deux barres\U00A0: «\U00A0Stylo\U00A0», «\U00A0Marqueur\U00A0», «\U00A0Crayon\U00A0», «\U00A0Gomme\U00A0», «\U00A0Règle\U00A0» et «\U00A0Projecteur\U00A0», et un menu ⋯ avec «\U00A0Flèche\U00A0», «\U00A0Formes\U00A0», «\U00A0Texte\U00A0», «\U00A0Étapes\U00A0», «\U00A0Flou\U00A0», «\U00A0Recadrer\U00A0», «\U00A0Sélection\U00A0», «\U00A0Loupe\U00A0», «\U00A0Emoji\U00A0», «\U00A0Enregistrer\U00A0», «\U00A0Partager…\U00A0», «\U00A0Copier le texte\U00A0» et «\U00A0Flouter les e-mails et les téléphones\U00A0». Chaque outil de dessin garde sa propre épaisseur et sa propre opacité, réglées dans une fenêtre contextuelle («\U00A0Épaisseur et opacité…\U00A0») — «\U00A0Gomme\U00A0» et «\U00A0Projecteur\U00A0» n’en ont aucune, et une couleur peut être n’importe laquelle\U00A0: le panneau des couleurs du système ou la «\U00A0Pipette\U00A0».";
+"What the dev.16 line named “Highlight” is now “Marker”, and “Line”, “Rectangle” and “Oval” are under “Shapes”; “Pencil” and “Arrow” keep their names." = "Ce que la ligne de dev.16 appelait «\U00A0Surbrillance\U00A0» s’appelle maintenant «\U00A0Marqueur\U00A0», et «\U00A0Ligne\U00A0», «\U00A0Rectangle\U00A0» et «\U00A0Ovale\U00A0» se trouvent sous «\U00A0Formes\U00A0»\U00A0; «\U00A0Crayon\U00A0» et «\U00A0Flèche\U00A0» gardent leur nom.";
+"“Pin” is not offered for now, neither in the editor nor in its menu; what the dev.16 line says about it does not apply until it comes back." = "«\U00A0Épingler\U00A0» n’est pas proposé pour le moment, ni dans l’éditeur ni dans son menu\U00A0; ce que la ligne de dev.16 en dit ne s’applique pas tant qu’il n’est pas revenu.";
+"Screenshots: “Text” puts a line of text on the picture, “Steps” numbers things, “Spotlight” dims all but the part you choose, “Crop” trims the picture, “Blur” covers part of it with a mosaic, “Eraser” and “Ruler” do what their names say, and “Magnifier” and “Emoji” add a magnifying glass and an emoji. “Tools in the palette” in Settings chooses which tools sit in the palette — the others move to the ⋯ menu and still answer to their keys — and Settings has three tabs now, the first “Capturing”, the second “Editor”." = "Captures d’écran\U00A0: «\U00A0Texte\U00A0» place une ligne de texte sur l’image, «\U00A0Étapes\U00A0» numérote les choses, «\U00A0Projecteur\U00A0» assombrit tout sauf la partie que vous choisissez, «\U00A0Recadrer\U00A0» rogne l’image, «\U00A0Flou\U00A0» en recouvre une partie d’une mosaïque, «\U00A0Gomme\U00A0» et «\U00A0Règle\U00A0» font ce que leur nom dit, et «\U00A0Loupe\U00A0» et «\U00A0Emoji\U00A0» ajoutent une loupe et un emoji. «\U00A0Outils de la palette\U00A0» dans les Réglages choisit quels outils figurent dans la palette — les autres passent dans le menu ⋯ et répondent toujours à leurs touches — et les Réglages ont maintenant trois onglets, le premier «\U00A0Capture\U00A0», le deuxième «\U00A0Éditeur\U00A0».";
+"“Copy Text” puts the text Helm reads in the picture on the clipboard, and “Blur Emails and Phone Numbers” puts a blur over the email addresses, phone numbers, card numbers and links it finds." = "«\U00A0Copier le texte\U00A0» place dans le presse-papiers le texte que Helm lit dans l’image, et «\U00A0Flouter les e-mails et les téléphones\U00A0» floute les adresses e-mail, les numéros de téléphone, les numéros de carte et les liens qu’il trouve.";
+"Choosing an area or a window works the way macOS does it: nothing is dimmed before you drag, a window is captured with its shadow, and ⌥ leaves the shadow out. The capture panel works like the one on ⇧⌘5, and its timer also offers “30 seconds”." = "Choisir une zone ou une fenêtre fonctionne comme dans macOS\U00A0: rien n’est assombri avant le tracé, une fenêtre est capturée avec son ombre, et ⌥ laisse l’ombre de côté. Le panneau de capture fonctionne comme celui de ⇧⌘5, et son minuteur propose aussi «\U00A030\U00A0secondes\U00A0».";
+"The thumbnail after a capture is one window: its actions show when you point at it, you can drag the picture out of it, and “Share…” in the editor’s ⋯ menu opens the system’s share sheet at it. “Edit” opens the editor on the saved picture, and “Done” replaces the file — the original goes to the Trash. Shots taken one after another stack up, up to 20." = "La vignette qui suit une capture est une seule fenêtre\U00A0: ses actions apparaissent quand vous la pointez, vous pouvez en faire glisser l’image, et «\U00A0Partager…\U00A0», dans le menu ⋯ de l’éditeur, ouvre la feuille de partage du système à cet endroit. «\U00A0Modifier\U00A0» ouvre l’éditeur sur l’image enregistrée, et «\U00A0Terminé\U00A0» remplace le fichier — l’original va à la corbeille. Les captures prises à la suite s’empilent, jusqu’à 20.";
+"Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order." = "Captures d’écran se place juste avant Homebrew dans une barre latérale que Helm construit à neuf\U00A0; une barre latérale que vous avez organisée garde son ordre.";
+"Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet." = "Deux choses à savoir avant de tester\U00A0: «\U00A0Flouter les e-mails et les téléphones\U00A0» n’est pas encore sûr pour masquer des données privées — un texte plus grand que son plus grand bloc peut encore être relu dans la mosaïque, comme un petit texte sous «\U00A0Flou\U00A0» à un réglage fin, et tant que Helm lit encore l’image, «\U00A0Terminé\U00A0» l’enregistre sans les flous et ne dit rien. Et une grande partie de cette refonte n’a pas encore été regardée sur un vrai écran.";

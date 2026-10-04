@@ -9,10 +9,10 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A countdown that was cancelled freezes nothing.** The timer's wait is a
-/// second of nothing, five or ten times, and the module can be switched off, the
-/// close control pressed or Esc typed inside any of them. What the press
-/// resumes into after the wait is a freeze of every screen and, on the area
-/// press, panels over all of them — for a capture nobody wants any more.
+/// second of nothing, as many times as the length is long, and the module can be
+/// switched off, the close control pressed or Esc typed inside any of them. What
+/// the press resumes into after the wait is a freeze of every screen, and then a
+/// file or the clipboard — for a capture nobody wants any more.
 ///
 /// The wait is the controller's `tick` seam, so a test holds it still: a gate
 /// the test opens *after* cancelling is the case that matters, because a wait
@@ -40,20 +40,23 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
                                                                   frame: CGRect(x: 0, y: 0, width: 10, height: 5),
                                                                   scale: 2, image: image))], windows: []))
         }
-        func window(_ id: UInt32, cursor: Bool) async -> WindowShot { .gone }
+        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
         var written: Int { lock.withLock { count } }
+        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
+        func reading(of url: URL) -> ShotReading? { nil }
+        func claim(_ written: URL, as name: URL) -> Bool { false }
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
             lock.withLock { count += 1 }
-            return .written(folder.appendingPathComponent(base + "." + pathExtension))
+            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
         }
     }
 
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private typealias Board = CountingBoard
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -86,8 +89,8 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
         let home = FileManager.default.temporaryDirectory
-        let session = CaptureSession(capture: capture, writer: disk, pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
+        let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
+                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
                                            session: session, presentOverlay: { _ in false },
