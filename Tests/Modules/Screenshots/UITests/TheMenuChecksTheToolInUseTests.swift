@@ -319,7 +319,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         delegate.menuNeedsUpdate?(menu)
         XCTAssertEqual(checked(), [ScStr.select], "third opening, nothing chosen")
         // And the titles after rebuilding are still the whole list, not a growing one.
-        XCTAssertEqual(menu.items.count, 13)
+        XCTAssertEqual(menu.items.count, 16)
     }
 
     /// A click on an item is the action the builder names, through the model's one door.

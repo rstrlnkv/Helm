@@ -120,7 +120,7 @@ final class ThePopoverSliderAndTheOpenMenusReturnKeyTests: XCTestCase {
         XCTAssertTrue(inks.contains("EditorSwatch("), "control: the pop-over makes swatches")
         XCTAssertFalse(inks.contains("blackTurnsWhiteInDark"), "the eight-inks pop-over sets the flag")
         let grid = SwiftSource.uncommented(try RepoSource.text(of: "Sources/Modules/Screenshots/UI/EditorPalette.swift"))
-        XCTAssertTrue(grid.contains("selected: model.lit == color, blackTurnsWhiteInDark: true"), "the grid's swatch does not set the flag")
+        XCTAssertTrue(grid.contains("selected: model.lit == AnnotationInk(color), blackTurnsWhiteInDark: true"), "the grid's swatch does not set the flag")
     }
 
     /// The menu's own keyboard use: arrows to an item and Return (or space) to take it is a choice, not a letter that matched

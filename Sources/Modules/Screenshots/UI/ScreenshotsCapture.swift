@@ -331,7 +331,10 @@ struct CapturedShot {
         case .ready(let shown):
             let editing = ShotEdit(shown: shown, original: shot)
             let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: store,
-                                         pinRoom: { [weak self] in self?.pins.hasRoom ?? false }) { [weak self] result in
+                                         pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
+                                         // The freeze here has the picture in it, so the text read and the boxes blurred are the picture's.
+                                         textTools: EditorTextTools(read: { [session] in await session.readText(shown.freeze, display: $0, local: $1) },
+                                                                    copy: { [session] in session.copyText($0) })) { [weak self] result in
                 self?.overlayFinished(result, freeze: shown.freeze, editing: editing)
             }
             self.overlay = overlay

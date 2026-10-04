@@ -68,6 +68,14 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         func uiSounds() -> RawSetting { RawSetting(nil) }
     }
 
+    /// Keeps the pictures it was asked to read, and finds nothing in them.
+    private final class RecordingReader: ScreenTextReading, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _images: [CGImage] = []
+        var images: [CGImage] { lock.withLock { _images } }
+        func read(_ image: CGImage) async -> TextReading { lock.withLock { _images.append(image) }; return .read([]) }
+    }
+
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
     private final class Opened { var pickers: [NSSharingServicePicker] = []; var closed: [NSSharingServicePicker] = [] }
 
@@ -118,7 +126,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         return frames
     }
 
-    private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
+    private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true, reader: ScreenTextReading = NoTextReader()) throws -> Scene {
         let frames = try groundFrames()
         let home = scratchDirectory("edit-ui")
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
@@ -131,7 +139,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
+                                     preferences: NoPreferences(), shutter: shutter, textReader: reader,
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)
@@ -303,6 +311,33 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     }
 
     // MARK: The editor is on the picture's rectangle and on its display
+
+    func testTheTextItemsReadThePictureBeingEditedAndNotTheRedScreenUnderIt() async throws {
+        let reader = RecordingReader()
+        let s = try scene(reader: reader)
+        _ = try await take(s)
+        let overlay = try await openEditor(s)
+        overlay.perform(.copyText)
+        await waitUntil("the picture was read") { !reader.images.isEmpty }
+        let read = try XCTUnwrap(reader.images.first)
+        XCTAssertLessThan(read.height, 800, "the whole screen was read, not the picture")
+        let colour = rgb(read, 3, 3)
+        XCTAssertGreaterThan(colour.2, 150, "what was read is not the bluish picture: \(colour)")
+        XCTAssertLessThan(colour.0, 120, "what was read has the red ground in it: \(colour)")
+    }
+
+    func testTheEyedropperPicksAPixelOfThePictureBeingEditedAndNotOfTheRedScreenUnderIt() async throws {
+        let s = try scene()
+        _ = try await take(s)
+        let overlay = try await openEditor(s)
+        overlay.perform(.eyedropper)
+        let id = s.display(of: overlay)
+        overlay.mouseDown(on: id, at: CGPoint(x: 500, y: 400), flags: [])
+        overlay.mouseUp(on: id)
+        let picked = try XCTUnwrap(overlay.palette.style.color, "nothing was picked")
+        XCTAssertGreaterThan(picked.blue, 0.55, "the pick is not the bluish picture's: \(picked)")
+        XCTAssertLessThan(picked.red, 0.5, "the pick is the red ground's: \(picked)")
+    }
 
     func testTheAreaStaysInsideThePictureWhereverTheDragStartsAndEnds() throws {
         let frames = try groundFrames()
