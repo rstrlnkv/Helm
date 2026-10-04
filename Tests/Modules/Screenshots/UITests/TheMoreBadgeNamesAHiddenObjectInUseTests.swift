@@ -100,6 +100,7 @@ final class TheMoreBadgeNamesAHiddenObjectInUseTests: XCTestCase {
     func testAGlyphToolKeepsItsOwnBadgeWhateverIsHidden() {
         for tool in AnnotationTool.allCases where !EditorPalette.rowTools.contains(tool) {
             let own = EditorPalette.objects.first { $0.tool == tool && $0.place != .row }?.symbol
+                ?? EditorPalette.afterSelect.first { $0.tool == tool }?.symbol
             for hidden in [Set<PaletteItem>(), Set(PaletteItem.allCases)] {
                 XCTAssertEqual(EditorPalette.moreBadge(for: model(tool: tool, hiding: hidden)), own, "\(tool), hidden \(hidden.count)")
             }
