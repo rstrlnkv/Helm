@@ -5,6 +5,7 @@ import Darwin
 import Foundation
 import HelmRuntime
 import ScreenCaptureKit
+import Vision
 
 // MARK: - The screen
 
@@ -448,6 +449,110 @@ public struct SystemShotPasteboard: ShotPasteboard {
         let board = NSPasteboard(name: name)
         board.clearContents()
         return board.writeObjects(items) ? .accepted : .refused
+    }
+
+    /// The same marking on text: what was read off a picture is as likely not to be meant to outlive the moment.
+    public func copy(text: String) -> PasteOutcome {
+        let board = NSPasteboard(name: name)
+        board.declareTypes([.string, Self.concealedType, Self.transientType], owner: nil)
+        guard board.setString(text, forType: .string) else { return .refused }
+        _ = board.setData(Data(), forType: Self.concealedType)
+        _ = board.setData(Data(), forType: Self.transientType)
+        return .accepted
+    }
+}
+
+// MARK: - Reading text
+
+/// Vision's text request for the lines of a picture, and `NSDataDetector` over each line for what is in it.
+///
+/// **Which of two ways, and why — measured, and asked again by `ScreenshotsTextReadingBenchmark`** (set
+/// `HELM_BENCH=1` and run `bash Scripts/test.sh --filter ScreenshotsTextReadingBenchmark`; it renders one picture of
+/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, reads it each way and prints the time,
+/// what each found and what it missed). The other way is `RecognizeDocumentsRequest` with its own data detector.
+/// On the window pictures (1× and 2×) the detector over the plain request found every place the documents request
+/// found and one more, a phone number spelled the Japanese way, and the two took about the same time; on the 5K
+/// pictures the two found about the same places, the plain request one more on the dark one. The detector over
+/// the plain request is taken, because it found no fewer places on any of the six pictures. What the measure also showed, and the engine does not hide: a 5K frame read whole read
+/// the small light-theme text far worse than the same text in a smaller picture did, with either request; and
+/// postal addresses were found on the smaller pictures (English and Russian were the languages tried) and not on
+/// that one, so they are not on the list (`PrivateKind`). The first read of a process loads the system's models
+/// and takes longer than the next.
+///
+/// **`minimumTextHeightFraction` is left at the request's default.** The benchmark reads each picture a third way
+/// with it set to 0 (the default is a fraction of the picture's height, a likely reason for the poor read of 5K light).
+/// On the Mac where it was tried, 0 found none of the 16 known places on the 5K light picture where the default
+/// found 3, 12 against 14 on the 5K dark one, and 15 against 16 on the 2× dark window; it was the same on the
+/// other three window pictures. So it is no remedy, and the setting that read more was the default.
+///
+/// What it finds of the kinds `PrivateKind` names is kept and the rest (dates, addresses, anything else the
+/// detector knows) is not looked for, so the engine never holds a match it will not act on. **A card number is not
+/// the detector's to find** — it knows none — and is found by Helm's rule (`CardNumbers`) in each line. A match is
+/// boxed by Vision at its own range in its own line, or at the whole line when Vision cannot box it: a box too
+/// wide hides more, and never less. **A find that wraps is blurred only on its first line:** the detector and the
+/// card rule see one line at a time, so the rest of a link, an e-mail address or a number that continues on the
+/// next line is not found and is not blurred. A match of a kind not on the list, and one whose range cannot be put
+/// back into its line, is dropped here, and nothing says so.
+///
+/// The phase `screenshots.recognize` wraps the request's `perform` and not the parsing; what is read out of its
+/// answer is done after it, off the cooperative pool on one thread, because each line's candidate, detector run and
+/// boxes are asked for one by one. The registry keeps one entry per label: two readings alive at once (a closed
+/// editor's reading still working when the next is asked) are one entry, and the first of them to end takes it away.
+/// The order is the request's, which is a reading order: in a picture of two columns the left one comes first. Nothing the picture says is logged: only that the request threw, and what kind of error.
+public struct VisionTextReader: ScreenTextReading {
+    public init() {}
+
+    public func read(_ image: CGImage) async -> TextReading {
+        var request = RecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.automaticallyDetectsLanguage = true
+        let observations: [RecognizedTextObservation]
+        do {
+            observations = try await HelmActivity.phase("screenshots.recognize") {
+                try await request.perform(on: image)
+            }
+        } catch {
+            HelmLog.shared.warn(ScreenshotsEngine.moduleID, "text recognition threw \(type(of: error))")
+            return .failed
+        }
+        let lines = await offTheCooperativePool { Self.lines(of: observations) }
+        HelmLog.shared.memory("screenshots.recognize")
+        return .read(lines)
+    }
+
+    private static let detectedTypes = NSTextCheckingResult.CheckingType.link.rawValue
+        | NSTextCheckingResult.CheckingType.phoneNumber.rawValue
+
+    static func lines(of observations: [RecognizedTextObservation]) -> [RecognizedLine] {
+        // A detector that cannot be made is a reading without matches, not a reading that failed: the lines are
+        // still the text, and the card rule below does not need it.
+        let detector = try? NSDataDetector(types: detectedTypes)
+        return observations.map { observation in
+            autoreleasepool {
+                let candidate = observation.topCandidates(1).first
+                let string = candidate?.string ?? observation.transcript
+                let lineBox = observation.boundingBox.cgRect
+                func box(of range: Range<String.Index>) -> CGRect {
+                    candidate?.boundingBox(for: range)?.boundingBox.cgRect ?? lineBox
+                }
+                var matches = CardNumbers.ranges(in: string).map { PrivateMatch(kind: .cardNumber, box: box(of: $0)) }
+                let whole = NSRange(string.startIndex..., in: string)
+                for found in detector?.matches(in: string, options: [], range: whole) ?? [] {
+                    guard let kind = kind(of: found), let range = Range(found.range, in: string) else { continue }
+                    matches.append(PrivateMatch(kind: kind, box: box(of: range)))
+                }
+                return RecognizedLine(string: string, box: lineBox, matches: matches)
+            }
+        }
+    }
+
+    /// The kinds the engine acts on; nil for every other. An e-mail address is a link to `mailto:` for the detector.
+    private static func kind(of match: NSTextCheckingResult) -> PrivateKind? {
+        switch match.resultType {
+        case .phoneNumber: .phoneNumber
+        case .link: match.url?.scheme?.lowercased() == "mailto" ? .emailAddress : .link
+        default: nil
+        }
     }
 }
 

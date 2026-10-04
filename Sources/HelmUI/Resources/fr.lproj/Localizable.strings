@@ -1408,3 +1408,11 @@
 /* Screenshots — stage12 track */
 "Magnifier" = "Loupe";
 "Emoji" = "Emoji";
+
+"Copy Text" = "Copier le texte";
+"Blur Emails and Phone Numbers" = "Flouter les e-mails et les téléphones";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Floute les adresses e-mail, les numéros de téléphone et de carte et les liens que macOS lit dans l’image. Les visages, l’écriture manuscrite et tout le reste restent tels quels.";
+"Nothing was blurred. Check the picture yourself." = "Rien n’a été flouté. Vérifiez l’image vous-même.";
+"Text copied" = "Texte copié";
+"No text was found" = "Aucun texte trouvé";
+"The text could not be read" = "Le texte n’a pas pu être lu";

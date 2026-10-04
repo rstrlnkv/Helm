@@ -1408,3 +1408,11 @@
 /* Screenshots — stage12 track */
 "Magnifier" = "Lupa";
 "Emoji" = "Emoji";
+
+"Copy Text" = "Copiar texto";
+"Blur Emails and Phone Numbers" = "Desfocar e-mails e telefones";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Desfoca endereços de e-mail, números de telefone e de cartão e links que o macOS lê na imagem. Rostos, escrita à mão e todo o resto ficam como estão.";
+"Nothing was blurred. Check the picture yourself." = "Nada foi desfocado. Confira você mesmo a imagem.";
+"Text copied" = "Texto copiado";
+"No text was found" = "Nenhum texto encontrado";
+"The text could not be read" = "Não foi possível ler o texto";

@@ -114,6 +114,7 @@ public final class CaptureSession: @unchecked Sendable {
     private let pasteboard: ShotPasteboard
     private let preferences: CapturePreferences
     private let shutterPort: ShutterPlaying
+    private let textReader: ScreenTextReading
     private let settings: () -> ScreenshotsSettings
     private let naming: () -> ShotNaming
     private let now: () -> Date
@@ -126,7 +127,7 @@ public final class CaptureSession: @unchecked Sendable {
     private var latestPass: GroupPass?
 
     public init(capture: ScreenCapturing, writer: ShotWriting, trash: ShotTrashing, pasteboard: ShotPasteboard,
-                preferences: CapturePreferences, shutter: ShutterPlaying,
+                preferences: CapturePreferences, shutter: ShutterPlaying, textReader: ScreenTextReading,
                 settings: @escaping () -> ScreenshotsSettings,
                 naming: @escaping () -> ShotNaming = { .english },
                 now: @escaping () -> Date = { Date() },
@@ -137,6 +138,7 @@ public final class CaptureSession: @unchecked Sendable {
         self.pasteboard = pasteboard
         self.preferences = preferences
         self.shutterPort = shutter
+        self.textReader = textReader
         self.settings = settings
         self.naming = naming
         self.now = now
@@ -218,12 +220,24 @@ public final class CaptureSession: @unchecked Sendable {
     /// the one with the pointer in it when the freeze took one. Nil when nothing
     /// of the selection is on the frame.
     public func crop(_ freeze: Freeze, display: DisplayID, local rect: CGRect) -> CGImage? {
+        part(of: freeze, display: display, local: rect)?.cut
+    }
+
+    /// The one place a selection becomes pixels of a frame: the frame, the whole pixels the selection covers on it
+    /// and the cut of `shot` there, so the file, the pin and a reading of the text are cut from the same picture.
+    private func part(of freeze: Freeze, display: DisplayID, local rect: CGRect) -> FramePart? {
         guard let frame = freeze.frames.first(where: { $0.id == display }),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
-                                              imageWidth: frame.image.width,
-                                              imageHeight: frame.image.height)
+                                              imageWidth: frame.image.width, imageHeight: frame.image.height),
+              let cut = frame.shot.cropping(to: pixels)
         else { return nil }
-        return frame.shot.cropping(to: pixels)
+        return FramePart(frame: frame, pixels: pixels, cut: cut)
+    }
+
+    private struct FramePart {
+        let frame: FrozenDisplay
+        let pixels: CGRect
+        let cut: CGImage
     }
 
     /// One window, **asked for again at the click**.
@@ -286,11 +300,8 @@ public final class CaptureSession: @unchecked Sendable {
     /// that what holds it (a pin) holds the selection and not the whole frozen display.
     public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
                           layers: [Annotation], detached: Bool = false) async -> CGImage? {
-        guard let frame = freeze.frames.first(where: { $0.id == display }),
-              let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
-                                              imageWidth: frame.image.width, imageHeight: frame.image.height),
-              let cut = frame.shot.cropping(to: pixels)
-        else { return nil }
+        guard let found = part(of: freeze, display: display, local: rect) else { return nil }
+        let (frame, pixels, cut) = (found.frame, found.pixels, found.cut)
         guard !layers.isEmpty || detached else { return cut }
         let scale = frame.scale
         let display = frame.shot
@@ -686,6 +697,62 @@ public final class CaptureSession: @unchecked Sendable {
             }
         }
         return delivery
+    }
+
+    // MARK: - Reading text
+
+    /// What reading the text of an area came back with.
+    public enum AreaReading: Sendable, Equatable {
+        /// The lines in reading order, and where the picture they were read from lies on the display, which is
+        /// what turns a line's normalised box into a layer's points (`RecognizedBoxes`).
+        case read([RecognizedLine], RecognizedBoxes.Source)
+        /// The system could not read, or the area was no longer on the frozen frame.
+        case failed
+        /// The task was cancelled before the answer came, or while it was being waited for: **the answer is
+        /// dropped, not returned.** The caller ties the task to the editor, and an answer that comes after the
+        /// editor is gone puts no layer and no text anywhere.
+        case cancelled
+    }
+
+    /// The text of the selection, read from **the frame the file is cut from** — `FrozenDisplay.shot`, at the
+    /// pixels' own resolution, with none of the editor's layers on it — so a find and the blur that goes over it
+    /// land on the one picture. One reading at a time is the caller's to keep.
+    ///
+    /// The strings of a reading are somebody's words and are never logged here; a failure is logged as that.
+    public func readText(_ freeze: Freeze, display: DisplayID, local rect: CGRect) async -> AreaReading {
+        guard let found = part(of: freeze, display: display, local: rect) else {
+            HelmLog.shared.warn(category, "the area to read was not on the frozen frame")
+            return .failed
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        let reading = await textReader.read(found.cut)
+        guard !Task.isCancelled else { return .cancelled }
+        switch reading {
+        case .read(let lines): return .read(lines, RecognizedBoxes.Source(pixels: found.pixels, scale: found.frame.scale))
+        case .failed:
+            HelmLog.shared.warn(category, "the text of the picture could not be read")
+            return .failed
+        }
+    }
+
+    /// What copying the text of a reading came back with.
+    public enum TextCopy: Sendable, Equatable {
+        case copied
+        /// The reading held no text, so nothing was put on the clipboard.
+        case noText
+        case refused
+    }
+
+    /// The lines of a reading on the clipboard, one to a line (`CopiedText`). Nothing is put there when there is
+    /// no text, so an earlier copy is not replaced by an empty one.
+    public func copyText(_ lines: [RecognizedLine]) -> TextCopy {
+        guard let text = CopiedText.text(of: lines) else { return .noText }
+        switch pasteboard.copy(text: text) {
+        case .accepted: return .copied
+        case .refused:
+            HelmLog.shared.warn(category, "the clipboard refused the text")
+            return .refused
+        }
     }
 
     // MARK: - The shutter

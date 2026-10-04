@@ -36,7 +36,7 @@ final class AHiddenObjectMovesToTheMenuTests: XCTestCase {
     private func titles(_ items: [EditorMenuItem]) -> [String] {
         items.map {
             switch $0 {
-            case .tool(let title, _, _, _), .action(let title, _, _, _), .submenu(let title, _, _): title
+            case .tool(let title, _, _, _), .action(let title, _, _, _), .submenu(let title, _, _), .reading(let title, _, _, _, _): title
             case .separator: "—"
             }
         }
@@ -49,7 +49,7 @@ final class AHiddenObjectMovesToTheMenuTests: XCTestCase {
             case .tool(let title, _, let isOn, _): isOn ? [title] : []
             case .action(let title, _, _, let isOn): isOn ? [title] : []
             case .submenu(let title, let isOn, let children): (isOn ? [title] : []) + checked(children)
-            case .separator: []
+            case .reading, .separator: []
             }
         }
     }

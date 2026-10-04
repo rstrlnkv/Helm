@@ -29,7 +29,7 @@ final class TheJPEGIsOursAndNeverReplacesTests: XCTestCase {
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = fixed
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: FakeTrash(folder: FakeWriter()), pasteboard: board,
-                                     preferences: FakePreferences(), shutter: FakeShutter(),
+                                     preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(),
                                      settings: { settings }, naming: { .english }, now: { fixed },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         return (session, capture, board)

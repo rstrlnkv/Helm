@@ -217,7 +217,7 @@ final class TheEraserLeavesTheAreaAndTheToolTests: XCTestCase {
                 case .tool(let title, _, let isOn, _): if isOn { checked.append(title) }
                 case .submenu(let title, let isOn, let children): if isOn { checked.append(title) }; walk(children)
                 case .action(let title, _, let isEnabled, _): if title == ScStr.thicknessAndOpacity { enabled = isEnabled }
-                case .separator: break
+                case .separator, .reading: break
                 }
             }
         }

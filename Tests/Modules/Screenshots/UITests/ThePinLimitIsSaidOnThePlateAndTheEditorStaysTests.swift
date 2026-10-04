@@ -138,7 +138,7 @@ final class ThePinLimitIsSaidOnThePlateAndTheEditorStaysTests: XCTestCase {
             func titles(_ items: [EditorMenuItem]) -> [String] {
                 items.flatMap { item -> [String] in
                     switch item {
-                    case .tool(let title, _, _, _), .action(let title, _, _, _): [title]
+                    case .tool(let title, _, _, _), .action(let title, _, _, _), .reading(let title, _, _, _, _): [title]
                     case .submenu(let title, _, let kids): [title] + titles(kids)
                     case .separator: []
                     }

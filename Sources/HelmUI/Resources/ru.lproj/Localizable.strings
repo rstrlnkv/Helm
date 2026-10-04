@@ -1408,3 +1408,11 @@
 /* Screenshots — stage12 track */
 "Magnifier" = "Лупа";
 "Emoji" = "Эмодзи";
+
+"Copy Text" = "Скопировать текст";
+"Blur Emails and Phone Numbers" = "Размыть почту и телефоны";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Размывает адреса почты, номера телефонов и карт и ссылки, которые macOS прочла на снимке. Лица, почерк и всё остальное остаются как есть.";
+"Nothing was blurred. Check the picture yourself." = "Ничего не размыто — проверьте снимок сами.";
+"Text copied" = "Текст скопирован";
+"No text was found" = "Текст не найден";
+"The text could not be read" = "Не удалось прочесть текст";

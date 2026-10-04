@@ -43,7 +43,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
                                    naming: @escaping () -> ShotNaming) -> CaptureSession {
         CaptureSession(capture: SCKCapture(store: store), writer: FileShotWriter(), trash: SystemShotTrash(),
                        pasteboard: SystemShotPasteboard(), preferences: SystemCapturePreferences(),
-                       shutter: SystemShutter(),
+                       shutter: SystemShutter(), textReader: VisionTextReader(),
                        settings: { ScreenshotsSettings.read(store) }, naming: naming)
     }
 

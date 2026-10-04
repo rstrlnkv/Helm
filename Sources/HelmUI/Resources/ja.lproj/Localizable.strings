@@ -1408,3 +1408,11 @@
 /* Screenshots — stage12 track */
 "Magnifier" = "ルーペ";
 "Emoji" = "絵文字";
+
+"Copy Text" = "テキストをコピー";
+"Blur Emails and Phone Numbers" = "メールアドレスと電話番号をぼかす";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "macOS が画像から読み取ったメールアドレス、電話番号、カード番号、リンクをぼかします。顔、手書き文字、その他はそのままです。";
+"Nothing was blurred. Check the picture yourself." = "ぼかしたものはありません。画像は自分で確認してください。";
+"Text copied" = "テキストをコピーしました";
+"No text was found" = "テキストが見つかりませんでした";
+"The text could not be read" = "テキストを読み取れませんでした";

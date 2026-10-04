@@ -32,6 +32,8 @@ import Module_Screenshots_Engine
     /// The objects the person took off the row (`PaletteItems`); they stand in the ⋯ menu instead. Read when the first
     /// area is released, so the palette is measured with the row it will have.
     @Published private(set) var hidden: Set<PaletteItem> = []
+    /// A reading of the area's text is under way: the ⋯ menu's two reading items are disabled until it ends.
+    @Published private(set) var reading = false
     /// ⋯ is drawn pressed from the moment before its menu opens until after it has closed.
     @Published var morePressed = false
     var perform: (EditorAction) -> Void = { _ in }
@@ -49,7 +51,7 @@ import Module_Screenshots_Engine
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
     func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, cropping: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil,
-              selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool) {
+              selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool, reading: Bool = false) {
         if self.tool != tool { self.tool = tool }
         if self.erasing != erasing { self.erasing = erasing }
         if self.ruler != ruler { self.ruler = ruler }
@@ -61,6 +63,7 @@ import Module_Screenshots_Engine
         if self.coloursOpen != coloursOpen { self.coloursOpen = coloursOpen }
         if self.canUndo != canUndo { self.canUndo = canUndo }
         if self.canRedo != canRedo { self.canRedo = canRedo }
+        if self.reading != reading { self.reading = reading }
     }
 
     func hide(_ items: Set<PaletteItem>) { if hidden != items { hidden = items } }

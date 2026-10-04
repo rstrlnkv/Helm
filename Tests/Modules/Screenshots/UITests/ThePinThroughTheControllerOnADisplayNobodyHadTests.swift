@@ -27,6 +27,7 @@ final class ThePinThroughTheControllerOnADisplayNobodyHadTests: XCTestCase {
         let count = Count()
         func copy(png: Data) -> PasteOutcome { count.bump(); return .accepted }
         func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         let count = Count()
@@ -86,7 +87,7 @@ final class ThePinThroughTheControllerOnADisplayNobodyHadTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         let home = scratchDirectory("pin-negative")
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: clipboard,
-                                     preferences: NoPreferences(), shutter: Shutter(),
+                                     preferences: NoPreferences(), shutter: Shutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let pins = PinBoard(present: { _ in }, screens: { [] })

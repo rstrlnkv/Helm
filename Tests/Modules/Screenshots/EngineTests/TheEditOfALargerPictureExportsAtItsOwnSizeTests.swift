@@ -427,7 +427,7 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
     func testTheOpeningOfAnEditRefusesWhatTheFreezeRefuses() async throws {
         let capture = FakeCapture()
         let session = CaptureSession(capture: capture, writer: FakeWriter(), trash: FakeTrash(folder: FakeWriter()), pasteboard: FakePasteboard(),
-                                     preferences: FakePreferences(), shutter: FakeShutter(), settings: { .defaults })
+                                     preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(), settings: { .defaults })
         let held = makeImage(width: 40, height: 30, blue: 255)
         capture.grant = .denied
         guard case .refused(.noPermission) = await session.openEdit(of: nil, held: held, on: nil) else { return XCTFail("opened without the grant") }

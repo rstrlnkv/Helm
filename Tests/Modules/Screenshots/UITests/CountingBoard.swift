@@ -13,4 +13,5 @@ final class CountingBoard: ShotPasteboard, @unchecked Sendable {
     var copies: Int { lock.withLock { count } }
     func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
     func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
+    func copy(text: String) -> PasteOutcome { .accepted }
 }

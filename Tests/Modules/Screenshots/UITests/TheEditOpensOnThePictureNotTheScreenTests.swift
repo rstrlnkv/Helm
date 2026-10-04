@@ -131,7 +131,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: shutter,
+                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)

@@ -136,7 +136,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         let pasteboard = FakePasteboard()
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
         let session = CaptureSession(capture: capture, writer: disk, trash: trashItems ?? trash, pasteboard: pasteboard,
-                                     preferences: FakePreferences(), shutter: FakeShutter(),
+                                     preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(),
                                      settings: { settings }, naming: { .english }, now: { fixed },
                                      locations: ScreenshotsLocations(home: folder, desktop: desktop ?? folder))
         let bytes = originalBytes ?? redBytes

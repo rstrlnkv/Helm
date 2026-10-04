@@ -17,6 +17,15 @@ enum OverlayResult {
     case cancelled
 }
 
+/// What the editor asks of the capture's session for the text of an area: the overlay holds the freeze, so a call names the display and the
+/// area only. A closure pair and not the session, as `pinRoom` is a closure: the overlay never owns what it asks.
+struct EditorTextTools {
+    var read: (DisplayID, CGRect) async -> CaptureSession.AreaReading
+    var copy: ([RecognizedLine]) -> CaptureSession.TextCopy
+    /// No session behind it: every reading fails, which is the one answer that cannot be mistaken for a reading.
+    static var none: EditorTextTools { EditorTextTools(read: { _, _ in .failed }, copy: { _ in .refused }) }
+}
+
 /// The freeze-frame overlay: one panel per display, all of them one selection
 /// machine.
 ///
@@ -156,8 +165,20 @@ enum OverlayResult {
     /// Whether another pin may open: asked at the ⋯ menu's Pin item (`.exit(.pin)`) and nowhere else, so the
     /// other exits leave at the limit as ever. The item is built only while `PinEntry.isOffered`.
     private let pinRoom: () -> Bool
-    /// The Pin item was refused for want of room, and the plate says so until the next input.
-    private var pinRefused = false
+    /// The Pin item was refused for want of room, and the plate says so until the next input. Every input sets it false, so
+    /// it also takes away the plate of a finished reading (`textPlate`), which stands until the same next input.
+    private var pinRefused = false { didSet { if !pinRefused { textPlate = nil } } }
+    private let textTools: EditorTextTools
+    /// A reading of the area's text that has not answered: what was asked of it, the task that waits, and the display and area it was
+    /// asked for. One at a time. It ends with its answer, with the editor's close, and with any change of the area under it
+    /// (`render`): its boxes were for the old area, so an answer for it is dropped. `serial` tells it from a later one.
+    private var reading: (serial: Int, ask: TextAsk, task: Task<Void, Never>, display: DisplayID, rect: CGRect)?
+    private var readingsBegun = 0
+    private enum TextAsk { case copy, blur }
+    /// What the last finished reading says, on the plate by the palette; until the next input. The plates' order, first that applies: the
+    /// refused pin, the Esc question that is still asked, this. An answer that comes while the pin's refusal is up takes the refusal down (it is
+    /// the later thing to say, and Pin can be pressed again); one that comes while the question is asked waits behind it.
+    private var textPlate: String?
     /// A nudge let go of the selected object and the arrow key that did it is still down: its repeats
     /// move nothing. Any key or palette click that reaches `perform` while no drag or reshape is under way
     /// clears it, a fresh arrow press (not `isARepeat`) included, so a key-up the overlay never sees cannot
@@ -175,11 +196,12 @@ enum OverlayResult {
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
          picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
-         selectionOnly: Bool = false,
+         textTools: EditorTextTools = .none, selectionOnly: Bool = false,
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.selectionOnly = selectionOnly
         self.pinRoom = pinRoom
+        self.textTools = textTools
         self.store = store
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
@@ -260,6 +282,8 @@ enum OverlayResult {
     func close() {
         openedMenu?.cancelTrackingWithoutAnimation()
         openedMenu = nil
+        reading?.task.cancel()
+        reading = nil
         onFinish = nil
         edit = nil
         popover = nil
@@ -774,6 +798,11 @@ enum OverlayResult {
                 style.filled.toggle()
             }
             remember()
+        case .copyText?, .blurPersonalText?:
+            // One reading at a time; the menu has both items disabled meanwhile, and a second ask that gets here anyway starts nothing.
+            guard !isRepeat, reading == nil else { return }
+            popover = nil
+            beginReading(action == .copyText ? .copy : .blur, display: current.display, rect: current.rect)
         case .delete?: current.layers.deleteSelected()
         case .undo?: current.layers.undo()
         case .redo?: current.layers.redo()
@@ -832,6 +861,48 @@ enum OverlayResult {
         rulerTurn = (turn.base, sum)
         strip.rotate(to: turn.base + sum)
         ruler = strip
+        render()
+    }
+
+    /// A reading of the area as the screen shows it (a pending crop's area, the picture without the layers), held by this overlay: the task is
+    /// cancelled by `close` and an answer that finds the editor closed, the area changed or another reading begun is dropped.
+    private func beginReading(_ ask: TextAsk, display: DisplayID, rect: CGRect) {
+        readingsBegun += 1
+        let serial = readingsBegun
+        let read = textTools.read
+        let task = Task { [weak self] in
+            let answer = await read(display, rect)
+            self?.answered(answer, serial: serial)
+        }
+        reading = (serial, ask, task, display, rect)
+        render()
+    }
+
+    private func answered(_ answer: CaptureSession.AreaReading, serial: Int) {
+        guard let held = reading, held.serial == serial, !held.task.isCancelled, var current = edit,
+              current.display == held.display, current.rect == held.rect else { return }
+        reading = nil
+        // The answer is the later thing to say: a refused pin's plate gives way to it.
+        if case .cancelled = answer {} else { pinRefused = false }
+        switch answer {
+        case .cancelled: break
+        case .failed: textPlate = ScStr.textUnreadable
+        case .read(let lines, let source):
+            switch held.ask {
+            case .copy:
+                switch textTools.copy(CopiedText.lines(lines, source: source, notUnder: current.layers.layers)) {
+                case .copied: textPlate = ScStr.textCopied
+                case .noText: textPlate = ScStr.noTextFound
+                // The clipboard said no: the text was read and nobody has it, and the one sentence for a text that did not arrive is this.
+                case .refused: textPlate = ScStr.textUnreadable
+                }
+            case .blur:
+                let finds = PersonalFinds.finds(in: lines, source: source, under: current.layers.layers)
+                let added = current.layers.insert(blurs: finds)
+                edit = current
+                textPlate = added == 0 ? ScStr.nothingBlurred : ScStr.blurred(added)
+            }
+        }
         render()
     }
 
@@ -905,11 +976,17 @@ enum OverlayResult {
     }
 
     private func render() {
+        // The area moved or was replaced under a reading: its boxes were for the old one.
+        if let held = reading, edit?.display != held.display || edit?.rect != held.rect {
+            held.task.cancel()
+            reading = nil
+        }
         if let edit {
             let held = edit.layers.selected
             emojiGrid.show(chosen: emoji)
             palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, cropping: crop != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
-                      popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo)
+                      popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo,
+                      reading: reading != nil)
         }
         for (id, entry) in panels {
             var scene = OverlayScene()
@@ -944,6 +1021,9 @@ enum OverlayResult {
                 } else if edit.layers.isArmed {
                     scene.plate = ScStr.confirmClose
                     if let pointer, pointer.display == id { scene.plateAt = pointer.point }
+                } else if let textPlate {
+                    scene.plate = textPlate
+                    scene.plateByActions = true
                 }
             } else if mode == .area, let preselected, preselected.display == id { scene.selection = preselected.rect }
             if mode == .window, let hovered { scene.highlight = windowPart(hovered, on: id) }

@@ -78,7 +78,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         store.set(SaveTarget.clipboard.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         stored?.write(to: store)
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), trash: NoTrash(), pasteboard: Board(),
-                                     preferences: NoPreferences(), shutter: NoShutter(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english })
         let opened = Opened()
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,

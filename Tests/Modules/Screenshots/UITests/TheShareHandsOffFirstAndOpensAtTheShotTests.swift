@@ -34,6 +34,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         func refuse() { lock.withLock { outcome = .refused } }
         func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1; return outcome } }
         func copy(pngs: [Data]) -> PasteOutcome { XCTFail("this test's board was never taught a group"); return .refused }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
@@ -123,7 +124,7 @@ final class TheShareHandsOffFirstAndOpensAtTheShotTests: XCTestCase {
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("share-handoff")
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: board,
-                                     preferences: NoPreferences(), shutter: NoShutter(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let toast = ShotToastRig.toast(clock)

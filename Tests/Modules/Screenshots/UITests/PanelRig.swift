@@ -70,6 +70,7 @@ enum PanelRig {
     struct Board: ShotPasteboard {
         func copy(png: Data) -> PasteOutcome { .accepted }
         func copy(pngs: [Data]) -> PasteOutcome { .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
@@ -146,7 +147,7 @@ enum PanelRig {
         for (key, value) in values { store.set(value, for: key) }
         let home = FileManager.default.temporaryDirectory
         let session = CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
+                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
                                            presentOverlay: { overlay in held.overlays += 1; held.overlay = overlay; return overlay.build() },

@@ -97,7 +97,7 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("pin-exit")
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, trash: NoTrash(), pasteboard: clipboard,
-                                     preferences: NoPreferences(), shutter: shutter,
+                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let pins = PinBoard(present: { _ in }, screens: {

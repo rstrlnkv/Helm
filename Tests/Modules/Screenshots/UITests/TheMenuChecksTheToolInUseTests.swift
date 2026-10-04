@@ -43,6 +43,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
             case .submenu(let title, _, let children): "submenu:\(title)[\(outline(children).joined(separator: ","))]"
             case .separator: "separator"
             case .action(let title, _, _, _): "action:\(title)"
+            case .reading(let title, _, _, _, _): "reading:\(title)"
             }
         }
     }
@@ -62,6 +63,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         ["tool:\(ScStr.tool(.arrow))",
          "submenu:\(ScStr.shapes)[tool:\(ScStr.tool(.rectangle)),tool:\(ScStr.tool(.ellipse)),tool:\(ScStr.tool(.line)),separator,action:\(ScStr.fill)]",
          "tool:\(ScStr.tool(.text))", "tool:\(ScStr.tool(.step))", "tool:\(ScStr.tool(.blur))", "tool:\(ScStr.crop)", "tool:\(ScStr.select)", "tool:\(ScStr.tool(.magnifier))", "tool:\(ScStr.tool(.emoji))", "action:\(ScStr.thicknessAndOpacity)", "separator", "action:\(ScStr.save)"] + (pinOffered ? ["action:\(ScStr.pin)"] : []) + ["action:\(ScStr.share)"]
+            + ["separator", "reading:\(ScStr.copyText)", "reading:\(ScStr.blurPersonalText)"]
     }
 
     func testTheOrderOfTheItemsAndTheSeparatorsIsTheListOfThisStage() {
@@ -117,10 +119,52 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
                               [ScStr.tool(.magnifier): .tool(.magnifier)], [ScStr.tool(.emoji): .tool(.emoji)]],
                        "re-choosing the chosen tool sends what choosing it sent (Q3)")
         XCTAssertEqual(tools(items).map(\.symbol), ["arrow.up.right", "rectangle", "circle", "line.diagonal", "textformat", "1.circle", "square.grid.3x3", "crop", "cursorarrow", "plus.magnifyingglass", "face.smiling"])
-        guard case .action(_, let save, let enabled, let saveOn)? = items.dropLast().last else { return XCTFail("the item before Share… is not Save: \(outline(items))") }
+        guard case .action(_, let save, let enabled, let saveOn)? = items.first(where: { if case .action(let title, _, _, _) = $0 { title == ScStr.save } else { false } }) else {
+            return XCTFail("no Save: \(outline(items))")
+        }
         XCTAssertEqual(save, .exit(.save))
         XCTAssertTrue(enabled)
         XCTAssertFalse(saveOn)
+    }
+
+    // MARK: - Copy Text and Blur Emails and Phone Numbers
+
+    /// Both stand behind a separator after Save (and Pin), in that order, whatever tool is chosen; they send their own actions, which have no key;
+    /// they are on while no reading runs and both off while one does; and the second carries the hint, the first none. Asked of the
+    /// NSMenu as well: its items are disabled and have the same tool tips.
+    func testTheTwoReadingItemsStandAfterASeparatorAndAreOffWhileAReadingRuns() throws {
+        AppLanguage.override = .en
+        for tool in Self.everyChoice {
+            let idle = model(tool: tool)
+            let items = EditorMenu.items(for: idle, pinOffered: true)
+            let last = Array(items.suffix(3))
+            XCTAssertEqual(last.first, .separator, "tool \(String(describing: tool))")
+            XCTAssertEqual(last.dropFirst().map { if case .reading(let title, _, _, _, _) = $0 { title } else { "?" } },
+                           ["Copy Text", "Blur Emails and Phone Numbers"], "tool \(String(describing: tool))")
+            guard case .reading(_, _, .copyText, true, nil) = last[1], case .reading(_, _, .blurPersonalText, true, let hint?) = last[2] else {
+                return XCTFail("tool \(String(describing: tool)): the items are not what they should be: \(last)")
+            }
+            XCTAssertEqual(hint, ScStr.blurPersonalTextHint)
+            XCTAssertEqual(EditorMenu.keyEquivalent(of: .copyText) + EditorMenu.keyEquivalent(of: .blurPersonalText), "", "no key")
+        }
+        let busy = EditorBarModel()
+        busy.show(tool: nil, style: .standard, canUndo: false, canRedo: false, reading: true)
+        var sent: [EditorAction] = []
+        busy.perform = { sent.append($0) }
+        let menu = EditorMenu.make(for: busy)
+        menu.delegate?.menuNeedsUpdate?(menu)
+        let reading = flat(menu).filter { [ScStr.copyText, ScStr.blurPersonalText].contains($0.title) }
+        XCTAssertEqual(reading.count, 2, "the control: both items are in the menu")
+        XCTAssertEqual(reading.map(\.isEnabled), [false, false], "a reading runs and the items are on")
+        XCTAssertEqual(reading.map(\.toolTip), [nil, ScStr.blurPersonalTextHint])
+        for item in reading { item.menu?.performActionForItem(at: item.menu?.index(of: item) ?? 0) }
+        XCTAssertEqual(sent, [], "a disabled item sent its action")
+        let idle = EditorMenu.make(for: model(tool: nil))
+        idle.delegate?.menuNeedsUpdate?(idle)
+        for item in flat(idle) where [ScStr.copyText, ScStr.blurPersonalText].contains(item.title) {
+            XCTAssertTrue(item.isEnabled, item.title)
+            XCTAssertNotNil(item.image, "\(item.title) has no symbol")
+        }
     }
 
     // MARK: - Thickness and Opacity…
@@ -221,6 +265,7 @@ final class TheMenuChecksTheToolInUseTests: XCTestCase {
         XCTAssertEqual(outline(shown).suffix(3), ["action:\(ScStr.save)", "action:\(ScStr.pin)", "action:\(ScStr.share)"],
                        "the item replaces the palette's cell, right after Save, and Share… stands last")
         guard case .action(_, let action, true, false)? = shown.dropLast().last else { return XCTFail("Pin is not a plain enabled item") }
+        XCTAssertEqual(outline(shown).dropLast(3).suffix(2), ["action:\(ScStr.save)", "action:\(ScStr.pin)"], "the item replaces the palette's cell, right after Save")
         XCTAssertEqual(action, .exit(.pin))
     }
 

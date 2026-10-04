@@ -37,6 +37,7 @@ final class PileBoard: ShotPasteboard, @unchecked Sendable {
             return .accepted
         }
     }
+    func copy(text: String) -> PasteOutcome { .accepted }
 }
 
 /// The Trash as a folder of the test's: what the session moves there is really moved, and listed; it can hold a
@@ -144,7 +145,7 @@ final class PileScene {
         store.set(true, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: PileNoPreferences(), shutter: PileShutter(),
+                                     preferences: PileNoPreferences(), shutter: PileShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)

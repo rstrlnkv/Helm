@@ -90,7 +90,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
         let home = FileManager.default.temporaryDirectory
         let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
+                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
                                            session: session, presentOverlay: { _ in false },

@@ -107,7 +107,7 @@ final class ThePinIsNotOfferedInV1Tests: XCTestCase {
                 switch item {
                 case .tool(let title, _, _, _): [title]
                 case .submenu(let title, _, let children): [title] + titles(children)
-                case .action(let title, _, _, _): [title]
+                case .action(let title, _, _, _), .reading(let title, _, _, _, _): [title]
                 case .separator: []
                 }
             }
@@ -117,7 +117,7 @@ final class ThePinIsNotOfferedInV1Tests: XCTestCase {
                 switch item {
                 case .tool(_, _, _, let action): [action]
                 case .submenu(_, _, let children): actions(children)
-                case .action(_, let action, _, _): [action]
+                case .action(_, let action, _, _), .reading(_, _, let action, _, _): [action]
                 case .separator: []
                 }
             }
