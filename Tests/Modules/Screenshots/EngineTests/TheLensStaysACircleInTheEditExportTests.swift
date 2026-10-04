@@ -26,8 +26,9 @@ final class TheLensStaysACircleInTheEditExportTests: XCTestCase {
     }
 
     private func placed(_ w: Int, _ h: Int, scale: CGFloat) throws -> PictureOnScreen {
-        let display = FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 100, height: 60), scale: scale,
-                                    image: solid(Int(100 * scale), Int(60 * scale), 1, 0, 0))
+        // 400×400 points: the room `PictureOnScreen.margin` keeps clear leaves 352 × 200 of it, and a strip is still a strip in it.
+        let display = FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 400, height: 400), scale: scale,
+                                    image: solid(Int(400 * scale), Int(400 * scale), 1, 0, 0))
         let freeze = Freeze(displays: [.image(display)], windows: [])
         return try XCTUnwrap(PictureOnScreen.place(solid(w, h, 1, 1, 1), over: freeze, on: nil), "\(w)×\(h) not placed")
     }
@@ -52,12 +53,13 @@ final class TheLensStaysACircleInTheEditExportTests: XCTestCase {
         return maxX < 0 ? nil : (maxX - minX + 1, maxY - minY + 1)
     }
 
-    /// Pictures whose rectangle on the 100 × 60-point display is a narrow strip (the shorter side 9 to 16 points, whole display
-    /// pixels at 1×, so the two ratios of the export differ by up to 5 %) and two that fit, as the controls.
+    /// Pictures whose rectangle on the 400 × 400-point display (352 × 200 points of it free of the margin) is a narrow strip (the
+    /// shorter side 9 to 16 points, whole display pixels at 1×, so the two ratios of the export differ by up to 5 %), one larger than
+    /// the display and one that fits with room to spare, as the controls.
     private static let pictures: [(w: Int, h: Int, scale: CGFloat, name: String)] = [
-        (1050, 6000, 1, "a tall strip, 10.5 points wide"), (950, 6000, 1, "a tall strip, 9.5 points wide"),
-        (6000, 570, 1, "a wide strip, 9.5 points high"), (6000, 950, 1, "a wide strip, 15.8 points high"),
-        (1601, 959, 2, "larger than the display"), (100, 60, 1, "as large as the display"),
+        (105, 2000, 1, "a tall strip, 10.5 points wide"), (95, 2000, 1, "a tall strip, 9.5 points wide"),
+        (3520, 95, 1, "a wide strip, 9.5 points high"), (3520, 158, 1, "a wide strip, 15.8 points high"),
+        (1601, 959, 2, "larger than the display"), (300, 150, 1, "fits the display with its margin"),
     ]
 
     /// A lens of the smallest size a drag keeps (8.2 points) and a larger one, on every picture: the file shows a lens (a layer

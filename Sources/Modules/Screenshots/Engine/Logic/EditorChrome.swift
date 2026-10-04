@@ -27,6 +27,9 @@ public struct EditorChrome: Equatable, Sendable {
     public static let popoverGap: CGFloat = 8
     /// The nearest the palette comes to the screen's edge, and the room kept free beyond it.
     public static let margin: CGFloat = 16
+    /// The palette's height, which every cell of it is centred in (`EditorPalette.height` is this): the engine keeps it, as it must know
+    /// what room a picture leaves for the palette (`PictureOnScreen.margin`) and cannot read the UI's.
+    public static let paletteHeight: CGFloat = 76
 
     /// `selection` is in the display's own points and `screen` is that display's size:
     /// the palette belongs to the display the selection is on, and no other. `popover` is the pop-over's size, nil

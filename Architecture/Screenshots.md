@@ -162,7 +162,7 @@ display pixels, as a layer's contents. A press with the text tool on bare pictur
 (`Sources/Modules/Screenshots/UI/OverlayTextField.swift`) in the panel at that point, in the font and ink the layer will have, and makes it the
 first responder, so while it is open the keys are the field's and `EditorKeys` sees none of them. The field is cut by the area like every layer
 (`OverlayTextField.clip`) and draws without font smoothing as the layer does. The ways out of the input go through
-`CaptureOverlay.endTyping`: Return, Enter and Esc, a press elsewhere, a right click, any palette action but a colour, a step or an opacity (which
+`CaptureOverlay.endTyping`: Return, Enter and Esc, a press elsewhere, a right click (not the one beside the picture of an Edit, which does nothing at all; Esc still ends the input there), any palette action but a colour, a step or an opacity (which
 restyle the field), an exit, and the panel ceasing to be key each place a non-empty text and drop an empty one, and the press of Esc that
 ended the input is not the one the Esc rule reads; `close` drops the record of the input without placing the text. When `hasMarkedText()` a
 key is handed to the input context and `onEnd` is not called; a live input method was not tried, the tests mark text by hand.
@@ -269,7 +269,7 @@ overlay's panel, placed by `EditorChrome` with the palette: centred on the cell 
 or above it when under is short, held on the display, and part of `EditorChrome.covers` so that a press on it is never
 a press on the picture, while the gap between the two is the picture's. Its two sliders edit the next object's style
 for the chosen tool (`EditorBarModel.picked`), the thickness on the tool's three steps and the opacity from 0.1 to 1,
-through `EditorAction.thickness` and `EditorAction.opacity` and so through `EditorMemory`. Esc and a right click close it
+through `EditorAction.thickness` and `EditorAction.opacity` and so through `EditorMemory`. Esc and a right click close it (not one beside the picture of an Edit, which does nothing)
 and do nothing else, as does a click outside it, which draws and moves nothing; putting the tool down closes it. It
 appears by a clipped, measured height under `HelmMotion.disclosure`. With an object selected a thickness pick also
 re-weights it, as before; whether it should is an open question of the owner's (the one line is in `CaptureOverlay.perform`).
@@ -287,12 +287,12 @@ The pop-over has a third row of two cells with no text: the wheel (`EditorAction
 (`EditorColourPanel`, behind `ColourPanelOpening` so that a test hands the overlay a fake), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
 `NSColorPanel.shared` raised above the overlay, and its reasons are in `EditorColourPanel`'s doc comment. The eyedropper is a mode of the overlay like the eraser and Crop (`CaptureOverlay.sampling`):
 while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
-frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click, another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.
+frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click on the picture (not beside it in an Edit, where it does nothing), another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.
 
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
 read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then the eyedropper, if on (the pick, or nothing, and the mode is over), then an area handle — offered only while the picture has no layer or Crop is on (`AreaFrame.offersHandles`, the one predicate the press and the drawn dots both read), and not where the selected object has a
-handle at that point, which is the object's — then, with the eraser on, the erase, whatever lies under the pointer, then the ruler's strip, where the area shows it, and otherwise the object and the tool. The area handles are round dots on
+handle at that point, which is the object's — then, with the eraser on, the erase, whatever lies under the pointer, then the ruler's strip, where the area shows it, and otherwise the object and the tool; opened on a picture, a press on the ground round it comes before the area's own drag and ends there, so no area starts beside the picture. The area handles are round dots on
 a dark edge where an object's are squares on the accent colour drawn over the area's where the two meet, and a dragged handle moves by the pointer's
 own travel so the area does not jump to the handle's centre; a drag past the opposite side mirrors the area,
 and the display bounds it; an object left wholly outside the area when the handle is let go is deselected (`AnnotationEditing.releaseIfOutside`). The area is not a layer: reshaping it is no undo step, the layers keep their
@@ -354,7 +354,7 @@ copies and saves by the save target as it always did, the copy key only copies, 
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
 whole display still arrives at `handOff` directly and does both, and the full-screen
-shortcut never comes through it. Esc and a right click are one door: with no layers they
+shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
@@ -380,8 +380,8 @@ the ring unchanged and at the window's trailing edge, which is the edge `ShotToa
 Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider;
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
 A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
-`Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display, and the overlay opens in the editor on the picture's own
-rectangle, which is also the bounds of its area; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
+`Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display less `PictureOnScreen.margin` (24 pt at the sides; above and below the palette, its gap and `EditorChrome`'s margin, each side capped at a quarter of the display's side, so that the palette is placed outside the picture and never stands on it) and centred on the whole display, and the overlay opens in the editor on the picture's own
+rectangle, which is also the bounds of its area; the shot stands like a window on the dimmed screen, with a shadow round it (black at 0.5, radius 24, drop 8, masked outside the picture; no rounding, which would cut pixels or the handles, and no border; the design system has no shadow token, so the numbers are the overlay's own, `CaptureOverlay`'s `cardShadowOpacity`, `cardShadowRadius` and `cardShadowDrop`), and a press on the screen beside it closes nothing and draws nothing; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
 carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
 write is not done (`ShotToastModel.drag(of:)`). The window's life is a clock that three holds stop, the pointer over the
 picture or the pile, the Share sheet, and the editor open on a shot taken from a group; it starts over with every new shot and is

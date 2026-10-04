@@ -90,7 +90,7 @@ struct EditorTextTools {
     private var erasing = false
     /// The eyedropper is on (`EditorAction.eyedropper`): the loupe follows the pointer over the area, and the next click on the area picks the
     /// pixel of the frozen picture under it as the colour (`PixelLoupe`, read from the frame and never from a layer). A mode of this overlay like
-    /// the eraser and Crop, nothing of it remembered; any other action, Esc, a right click, a press on the picture and `close` put it down.
+    /// the eraser and Crop, nothing of it remembered; any other action, Esc, a right click on the picture (or on any display when the overlay has no picture), a press on the picture and `close` put it down.
     /// A press on the palette is the palette's: its actions end the mode, its bare background does not.
     private var sampling = false
     /// The radius of the eraser's circle, in points of the display: what a drag meets and what the cursor draws.
@@ -401,7 +401,7 @@ struct EditorTextTools {
             // then the ruler's strip where the area shows it, and then a tool draws, a handle
             // resizes, an object is taken to be moved, and a click selects or lets go. What is
             // left is no tool and no layers, the old gesture, a new drag, which replaces the
-            // area only when it turns out to be one; on another display, with a tool or with
+            // area only when it turns out to be one (opened on a picture, a press beside it starts none); on another display, with a tool or with
             // layers, a press does nothing. The disarm is the click's own effect, kept either way.
             if display == current.display,
                let handle = AreaFrame.handle(of: current.rect, at: local, yieldingTo: current.layers.selected,
@@ -464,6 +464,8 @@ struct EditorTextTools {
             if let hovered { finish(.window(hovered.id, shadow: !flags.contains(.option))) }
         case .area:
             guard picture == nil || picture?.display == display, let bounds = displayBounds(display) else { return }
+            // Opened on a picture, the screen round it is only the ground it stands on: a press there starts no area and draws nothing.
+            if let picture, !picture.rect.contains(local) { render(); return }
             // The panel's overlay keeps the area that was drawn until a drag that is usable replaces it (`mouseUp`).
             replacedByDrag = selectionOnly ? (preselected ?? replacedByDrag) : nil
             preselected = nil
@@ -509,12 +511,19 @@ struct EditorTextTools {
         render()
     }
 
-    /// A right click leaves. Esc is the documented way out and it depends on the
+    /// A right click leaves, wherever it lands (`rightMouseDown(on:at:)` is the one that asks where). Esc is the documented way out and it depends on the
     /// panel being key; a full-screen overlay with no way out that needs no key
     /// is the one failure here that strands a person.
     func rightMouseDown() { escapeAsked() }
 
-    /// Esc and the right click are one door with one rule, `AnnotationEditing.escape`, and it is asked last. Before it, in this order, each press does
+    /// The right click at a point of a display. Opened on a picture, the one beside it is the ground's and does nothing (Esc, ✕ and Done are the
+    /// ways out); on the picture, and with no picture anywhere, it is `rightMouseDown()`.
+    func rightMouseDown(on display: DisplayID, at local: CGPoint) {
+        if let picture, picture.display != display || !picture.rect.contains(local) { return }
+        rightMouseDown()
+    }
+
+    /// Esc and the right click are one door with one rule (opened on a picture, a right click beside it never gets here), `AnnotationEditing.escape`, and it is asked last. Before it, in this order, each press does
     /// only its own thing and arms nothing: an open text input is ended, the eyedropper is put down, an open pop-over is closed, a held area handle puts the area back as the press
     /// took it, and with Crop on the area goes back as the mode found it (a selected object stays selected). Then the rule: at once with nothing to
     /// lose, and with layers a second press, whenever it comes; a selected object is let go of first, and that press asks nothing. A drag in
@@ -1034,6 +1043,7 @@ struct EditorTextTools {
             }
             else if let edit, edit.display == id {
                 scene.selection = edit.rect
+                if let picture, picture.display == id { scene.card = picture.rect }
                 scene.editing = drag == nil
                 if let reshaping, reshaping.display == id, let pointer, pointer.display == id {
                     scene.loupeAt = pointer.point
@@ -1118,6 +1128,8 @@ struct OverlayScene {
     var linesAcross = false
     /// The selection is dimmed around even with no width and no height: a drag that has moved and come back to its press.
     var dimsWhenEmpty = false
+    /// The picture the editor was opened on, in display-top-left points: it stands as a card on the dimmed screen, with a shadow round it.
+    var card: CGRect?
 }
 
 // MARK: - The panel
@@ -1177,6 +1189,11 @@ final class OverlayView: NSView {
 
     private let imageLayer = CALayer()
     private let dimLayer = CAShapeLayer()
+    /// The card's shadow, over the dim and under the picture's own edge: a black rectangle of the picture's size with a shadow, masked to what is
+    /// outside the picture, so it darkens nothing of the picture and clips nothing of it. No border, no rounding: the picture's pixels are drawn
+    /// square, and a rounded corner would cut them or the handles.
+    private let cardLayer = CAShapeLayer()
+    private let cardMask = CAShapeLayer()
     /// The spotlights' one dim (`Spotlights`): under every annotation's layer and over the picture, a layer of its own and
     /// not one per spotlight, so the dim does not add up where two spotlights meet.
     private let spotlightLayer = CAShapeLayer()
@@ -1321,6 +1338,13 @@ final class OverlayView: NSView {
         spotlightLayer.fillRule = .evenOdd
         spotlightLayer.fillColor = Spotlights.color
         dimLayer.fillColor = NSColor.black.withAlphaComponent(0.45).cgColor
+        cardLayer.fillColor = NSColor.black.cgColor
+        cardLayer.shadowColor = NSColor.black.cgColor
+        cardLayer.shadowOpacity = Float(Self.cardShadowOpacity)
+        cardLayer.shadowRadius = Self.cardShadowRadius
+        cardLayer.shadowOffset = CGSize(width: 0, height: -Self.cardShadowDrop)
+        cardMask.fillRule = .evenOdd
+        cardLayer.mask = cardMask
 
         // The window under the pointer is only filled, 28 % of the accent, and has no outline.
         highlightLayer.fillColor = NSColor.controlAccentColor.withAlphaComponent(0.28).cgColor
@@ -1350,13 +1374,15 @@ final class OverlayView: NSView {
         crosshairEdgeLayer.lineWidth = 2
 
         rulerLayer.isHidden = true
-        for sublayer in [imageLayer, spotlightLayer, dimLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
+        for sublayer in [imageLayer, spotlightLayer, dimLayer, cardLayer, highlightLayer, selectionLayer, frameLayer, areaHandleLayer, handleLayer, rulerLayer,
                          crosshairEdgeLayer, crosshairLayer, flashLayer,
                          coordinateLabel, sizeLabel, cornerLabel, loupeLayer] as [CALayer] {
             layer?.addSublayer(sublayer)
         }
         imageLayer.frame = bounds
         dimLayer.frame = bounds
+        cardLayer.frame = bounds
+        cardMask.frame = bounds
         spotlightLayer.frame = bounds
         flashLayer.frame = bounds
         for label in [coordinateLabel, sizeLabel, cornerLabel] { label.isHidden = true }
@@ -1368,6 +1394,12 @@ final class OverlayView: NSView {
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
+    /// The card's shadow: the design system has no shadow token (`HelmSurfaces.swift`'s is the icon plate's, by its size, and `HelmAppMark.swift` and `HelmBadge.swift` have one of their own each), so these are this
+    /// overlay's own, near the loupe's ring (`LoupeLayer` in `OverlayLoupe.swift`: 0.45, radius 9) and wider for a thing the size of a window.
+    private static let cardShadowOpacity: CGFloat = 0.5
+    private static let cardShadowRadius: CGFloat = 24
+    private static let cardShadowDrop: CGFloat = 8
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -1441,7 +1473,9 @@ final class OverlayView: NSView {
     /// The trackpad's rotate gesture: forwarded to `rotateRuler`, which turns the ruler when one is on the picture. Whether the
     /// non-activating panel is sent the gesture was not tried.
     override func rotate(with event: NSEvent) { live?.rotateRuler(by: CGFloat(event.rotation), phase: event.phase) }
-    override func rightMouseDown(with event: NSEvent) { live?.rightMouseDown() }
+    override func rightMouseDown(with event: NSEvent) {
+        live?.rightMouseDown(on: frozen.id, at: local(convert(event.locationInWindow, from: nil)))
+    }
     override func flagsChanged(with event: NSEvent) { live?.flagsChanged(event.modifierFlags) }
     override func keyDown(with event: NSEvent) { live?.keyDown(event) }
     override func keyUp(with event: NSEvent) { live?.keyUp(event) }
@@ -1528,6 +1562,18 @@ final class OverlayView: NSView {
             dimLayer.path = dim
         } else {
             dimLayer.path = nil
+        }
+
+        if let card = scene.card {
+            let rect = layerRect(card)
+            cardLayer.path = CGPath(rect: rect, transform: nil)
+            let outside = CGMutablePath()
+            outside.addRect(bounds)
+            outside.addRect(rect)
+            cardMask.path = outside
+        } else {
+            cardLayer.path = nil
+            cardMask.path = nil
         }
 
         highlightLayer.path = scene.highlight.map { WindowShape.path(for: layerRect($0)) }

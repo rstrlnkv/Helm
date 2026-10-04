@@ -241,12 +241,15 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
             let colour = rgb(file, x, y)
             XCTAssertTrue(isPicture(colour), "pixel (\(x), \(y)) is \(colour): the screen's ground or nothing is in the file, not the picture")
         }
-        // The overlay put the picture 108 points down (800 − 583 over two), 1.2 pixels of it to a point: the top edge of
-        // the rectangle drawn at y = 300 is at row (300 − 108) × 1.2 = 230.4 of the file, between x = 360 and 600.
+        // The overlay kept 24 points clear at the sides and 106 above and below (`PictureOnScreen.margin`: the palette's 76, the gap 14 and the margin 16), so the 1200×700 picture
+        // is reduced to 952 points across and stands 555 high, 122 points down (800 − 555 over two, rounded down), 1200 / 952 = 1.2605
+        // pixels of it to a point: the top edge of the rectangle drawn at y = 300 is at row (300 − 122) × 1.2605 = 224.4 of the
+        // file, between x = 360 and 600. The numbers are written out
+        // here and not read from the placement, so that a placement that moved would fail this and not follow it.
         let ink = (150..<320).filter { !isPicture(rgb(file, 480, $0), tolerance: 40) }
         XCTAssertFalse(ink.isEmpty, "the rectangle is not in the file at column 480")
         let top = ink.filter { $0 < 280 }
-        XCTAssertEqual(Double(top.reduce(0, +)) / Double(max(top.count, 1)), 230.4, accuracy: 4, "the top edge is not where it was drawn: \(top)")
+        XCTAssertEqual(Double(top.reduce(0, +)) / Double(max(top.count, 1)), 224.4, accuracy: 4, "the top edge is not where it was drawn: \(top)")
         XCTAssertTrue(isPicture(rgb(file, 480, 300)), "the inside of the rectangle was drawn over")
         XCTAssertTrue(isPicture(rgb(file, 480, 100)))
 

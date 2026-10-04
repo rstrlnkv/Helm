@@ -100,7 +100,7 @@ public struct Freeze: @unchecked Sendable {
 ///
 /// The overlay edits an area of a frozen display and knows nothing else, so the picture is drawn into the frame of
 /// one display, in the middle of it, one pixel of the picture to one pixel of the display, and the editor's area is
-/// the picture's own rectangle. **A picture larger than the display is drawn smaller and is not saved smaller:** the
+/// the picture's own rectangle. **A picture larger than the display less `margin` is drawn smaller and is not saved smaller:** the
 /// export draws the layers over `picture` itself (`CaptureSession.annotated(_:local:layers:)`), their points
 /// multiplied by `pixelsPerPoint`.
 public struct PictureOnScreen: @unchecked Sendable {
@@ -111,6 +111,11 @@ public struct PictureOnScreen: @unchecked Sendable {
     public let rect: CGRect
     /// The picture at its own size.
     public let picture: CGImage
+
+    /// The room kept clear round a picture on its display, in points: at the sides what the area's handles (a dot of 4.5 pt radius and a target of `AreaFrame.reach`, 10 pt, on its edge)
+    /// need, above and below what `EditorChrome.place` needs to stand the palette outside the area on either side, the palette,
+    /// the gap and the margin (`EditorChrome`'s own constants, so the two cannot drift). `place` passes it to `frame` as the inset; the tests write the 16 and the sum of `EditorChrome`'s three by hand, so that a wrong margin here turns them red.
+    public static let margin = CGSize(width: 24, height: EditorChrome.paletteHeight + EditorChrome.gap + EditorChrome.margin)
 
     /// The picture's pixels to one point of the screen: the display's scale while the picture fits, more when it
     /// was reduced. The two sides have ratios of their own, apart by the rounding of the reduced size to whole pixels
@@ -124,11 +129,18 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// of the picture:** the height up where the width decides, the width down where the height does. Rounded to
     /// nearest, a picture of 12 × 250 at 2× lost its last rows to an edit. Nil for a size with no area or one that
     /// is not a number.
-    public static func frame(pixels: CGSize, on display: CGSize, scale: CGFloat) -> CGRect? {
+    ///
+    /// `inset` is the room in points kept clear round the picture on every side (at most a quarter of the side), so that a picture as large as the display is
+    /// reduced to the display less it and stays centred on the whole display. The one caller in Sources passes `margin`; the default, no room, is the bare fit the tests of it ask for.
+    public static func frame(pixels: CGSize, on display: CGSize, scale: CGFloat, inset: CGSize = .zero) -> CGRect? {
         guard pixels.width.isFinite, pixels.height.isFinite, pixels.width >= 1, pixels.height >= 1,
               display.width.isFinite, display.height.isFinite, display.width >= 1, display.height >= 1,
               scale.isFinite, scale > 0
         else { return nil }
+        let whole = display
+        // The room is never more than a quarter of a side, so that a small display is not reduced to nothing by it.
+        let room = CGSize(width: min(inset.width * scale, whole.width / 4), height: min(inset.height * scale, whole.height / 4))
+        let display = CGSize(width: max(1, whole.width - 2 * room.width), height: max(1, whole.height - 2 * room.height))
         let width: CGFloat, height: CGFloat
         if pixels.width <= display.width, pixels.height <= display.height {
             (width, height) = (pixels.width.rounded(), pixels.height.rounded())
@@ -140,7 +152,7 @@ public struct PictureOnScreen: @unchecked Sendable {
             height = display.height
             width = min(display.width, max(1, (pixels.width * display.height / pixels.height).rounded(.down)))
         }
-        let x = ((display.width - width) / 2).rounded(.down), y = ((display.height - height) / 2).rounded(.down)
+        let x = ((whole.width - width) / 2).rounded(.down), y = ((whole.height - height) / 2).rounded(.down)
         return CGRect(x: x / scale, y: y / scale, width: width / scale, height: height / scale)
     }
 
@@ -151,7 +163,7 @@ public struct PictureOnScreen: @unchecked Sendable {
         let frames = freeze.frames
         guard let frame = frames.first(where: { $0.id == display }) ?? frames.first,
               let rect = Self.frame(pixels: CGSize(width: picture.width, height: picture.height),
-                                    on: CGSize(width: frame.image.width, height: frame.image.height), scale: frame.scale),
+                                    on: CGSize(width: frame.image.width, height: frame.image.height), scale: frame.scale, inset: Self.margin),
               let composed = compose(picture, over: frame.image, at: rect, scale: frame.scale)
         else { return nil }
         let shown = FrozenDisplay(id: frame.id, frame: frame.frame, scale: frame.scale, image: composed, uuid: frame.uuid)

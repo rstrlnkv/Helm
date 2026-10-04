@@ -12,7 +12,7 @@ import XCTest
 /// the screen showed would replace a 4000-pixel screenshot with a 1000-pixel one.
 ///
 /// Everything is read back out of the rendered picture: its size, where the ink of a stroke is and how thick, which
-/// pixels of the display are the picture and which are the ground. Display 100×60 points, at the scale each case says.
+/// pixels of the display are the picture and which are the ground. Display 100×60 points (one case 1000×800), at the scale each case says.
 ///
 /// Total failure of the subject prints: a file the size of the screen, a mark drawn off the place it was put, a stroke
 /// as thin as on the reduced picture, or a picture off the middle of the display.
@@ -43,10 +43,12 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
         return context.makeImage()!
     }
 
-    private func freeze(scale: CGFloat, ids: [UInt32] = [1]) -> Freeze {
-        let width = Int(100 * scale), height = Int(60 * scale)
+    /// A display of `points` (100×60 unless said): that one is smaller than the room `PictureOnScreen.margin` keeps clear, so a test
+    /// of the reduction itself gives a display the margin fits in, and `testTheRoomIsAtMostAQuarterOfASideSoATinyDisplayKeepsAPicture` is the tiny one.
+    private func freeze(scale: CGFloat, ids: [UInt32] = [1], points: CGSize = CGSize(width: 100, height: 60)) -> Freeze {
+        let width = Int(points.width * scale), height = Int(points.height * scale)
         return Freeze(displays: ids.enumerated().map { index, id in
-            .image(FrozenDisplay(id: DisplayID(id), frame: CGRect(x: 1000 * CGFloat(index), y: 0, width: 100, height: 60), scale: scale,
+            .image(FrozenDisplay(id: DisplayID(id), frame: CGRect(x: 1000 * CGFloat(index), y: 0, width: points.width, height: points.height), scale: scale,
                                  image: solid(width, height, 1, 0, 0)))
         }, windows: [])
     }
@@ -55,8 +57,9 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
 
     private func session() -> CaptureSession { Rig(home: scratchDirectory("shots-larger")).session }
 
-    private func placed(_ picture: CGImage, scale: CGFloat, file: StaticString = #filePath, line: UInt = #line) throws -> PictureOnScreen {
-        try XCTUnwrap(PictureOnScreen.place(picture, over: freeze(scale: scale), on: nil), "the picture was not placed", file: file, line: line)
+    private func placed(_ picture: CGImage, scale: CGFloat, points: CGSize = CGSize(width: 100, height: 60),
+                        file: StaticString = #filePath, line: UInt = #line) throws -> PictureOnScreen {
+        try XCTUnwrap(PictureOnScreen.place(picture, over: freeze(scale: scale, points: points), on: nil), "the picture was not placed", file: file, line: line)
     }
 
     /// One pixel of a picture as red, green, blue, read at (x, y) from the top left, in the picture's own colour space:
@@ -130,8 +133,8 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
     }
 
     /// The same defect over the sizes of real pictures on real displays (1440 × 900 points at 2×, and 1920 × 1080 at 1×):
-    /// how many of them the export does not return at their own size. The arithmetic of `PictureOnScreen` and of the cut,
-    /// on no image.
+    /// how many of them the export does not return at their own size. The arithmetic of `PictureOnScreen.frame` with no inset (the bare fit: `place` passes the margin, which the placement tests above
+    /// hold) and of the cut, on no image. It stays here because what it guards is the cut's size, which does not depend on the inset.
     func testHowManyRealSizesComeBackAtTheirOwnSizeOnRealDisplays() {
         var wrong: [String] = [], total = 0
         for (display, scale) in [(CGSize(width: 2880, height: 1800), CGFloat(2)), (CGSize(width: 1920, height: 1080), 1)] {
@@ -359,15 +362,29 @@ final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
         XCTAssertTrue(pixel(composed, 140, 60) == (255, 0, 0))
     }
 
+    /// A 1000×800-point display at 2×, the room kept clear 24 points at the sides and 106 above and below (`PictureOnScreen.margin`), so the
+    /// picture is reduced to what is left, 952 × 588 points at most, and stands in the middle of the whole display.
     func testAPictureTwiceTheDisplayIsReducedToFitAndKeepsItsProportions() throws {
+        let big = CGSize(width: 1000, height: 800)
+        let shown = try placed(solid(4000, 2000, 0, 0, 1), scale: 2, points: big)
+        XCTAssertEqual(shown.rect, CGRect(x: 24, y: 162, width: 952, height: 476), "2000 points wide at 2 pixels to a point; 952 are left of the display")
+        XCTAssertEqual(shown.pixelsPerPoint, 4000.0 / 952.0, accuracy: 1e-9)
+        XCTAssertEqual(shown.picture.width, 4000, "the picture itself is not reduced, only its place")
+        XCTAssertEqual(shown.picture.height, 2000)
+        let tall = try placed(solid(400, 2400, 0, 0, 1), scale: 2, points: big)
+        XCTAssertEqual(tall.rect.height, 588, "the height left of the display, 800 less 106 above and below")
+        XCTAssertEqual(tall.rect.width, 98, accuracy: 0.5)
+        XCTAssertEqual(tall.rect.midX, 500, accuracy: 0.5)
+        XCTAssertEqual(tall.rect.midY, 400, accuracy: 0.5)
+    }
+
+    /// The room is at most a quarter of a side: on the 100×60-point display it would be all of the height, and the picture
+    /// stands 52 × 26 points in the middle (24 clear at the sides, a quarter of the height above and below) and is not reduced to nothing.
+    func testTheRoomIsAtMostAQuarterOfASideSoATinyDisplayKeepsAPicture() throws {
         let shown = try placed(solid(800, 400, 0, 0, 1), scale: 2)
-        XCTAssertEqual(shown.rect, CGRect(x: 0, y: 5, width: 100, height: 50), "400 pixels wide at 4 pixels to a point would be 200 points")
-        XCTAssertEqual(shown.pixelsPerPoint, 8)
+        XCTAssertEqual(shown.rect, CGRect(x: 24, y: 17, width: 52, height: 26), "800×400 pixels on 100×60 points at 2×")
+        XCTAssertEqual(shown.pixelsPerPoint, 800.0 / 52.0, accuracy: 1e-9)
         XCTAssertEqual(shown.picture.width, 800)
-        let tall = try placed(solid(100, 600, 0, 0, 1), scale: 2)
-        XCTAssertEqual(tall.rect.height, 60)
-        XCTAssertEqual(tall.rect.width, 10, accuracy: 0.5)
-        XCTAssertEqual(tall.rect.midX, 50, accuracy: 0.5)
     }
 
     func testTheFrameOfANonPictureIsNil() {

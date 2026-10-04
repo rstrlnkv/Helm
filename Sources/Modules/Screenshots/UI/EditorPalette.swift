@@ -108,7 +108,7 @@ struct EditorPalette: View {
     private static let space = "palette"
 
     /// The capsule's height, which every cell is centred in.
-    static let height: CGFloat = 76
+    static let height: CGFloat = EditorChrome.paletteHeight
 
     enum Place { case row, menu, shapes }
 

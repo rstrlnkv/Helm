@@ -12,7 +12,8 @@ import XCTest
 /// it spans, how thick a stroke is, and that a picture that is not larger than the display is drawn as it always was.
 ///
 /// The pictures: a thin tall one and a wide short one, whose two ratios differ by tens of per cent (the rounding of the
-/// side that does not decide), and two larger than the display, on a 100 × 60-point display. The model has no rotation.
+/// side that does not decide), and two larger than the display, on a 400 × 400-point display (352 × 200 points of it are free of the margin
+/// `PictureOnScreen` keeps round a picture). The model has no rotation.
 ///
 /// Total failure of the subject prints: a mark that lands off its drawn place by tens of pixels, a stroke scaled on one axis,
 /// a tool the transform forgot.
@@ -29,8 +30,10 @@ final class TheMappedMarksLandWhereDrawnForEveryToolTests: XCTestCase {
     }
 
     private func freeze(scale: CGFloat) -> Freeze {
-        Freeze(displays: [.image(FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 100, height: 60), scale: scale,
-                                               image: solid(Int(100 * scale), Int(60 * scale), 1, 0, 0)))], windows: [])
+        // 400×400 points: the room `PictureOnScreen.margin` keeps clear leaves 352 × 200 of it (the height's room is a quarter of 400, 100 each way, less than the 106 asked), a place a picture of the sizes
+        // below is still reduced to (or, for the ones that fit, is not): a 100×60 display would leave 52 × 30 of it.
+        Freeze(displays: [.image(FrozenDisplay(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 400, height: 400), scale: scale,
+                                               image: solid(Int(400 * scale), Int(400 * scale), 1, 0, 0)))], windows: [])
     }
 
     private func placed(_ w: Int, _ h: Int, scale: CGFloat, file: StaticString = #filePath, line: UInt = #line) throws -> PictureOnScreen {
@@ -294,7 +297,8 @@ final class TheMappedMarksLandWhereDrawnForEveryToolTests: XCTestCase {
         var compared = 0, differing: [String] = []
         for scale in [CGFloat(1), 2, 3] {
             for (w, h) in [(100, 60), (80, 40), (333, 77), (201, 121), (1, 1), (299, 179), (150, 90), (97, 59), (61, 33)] {
-                guard CGFloat(w) <= 100 * scale, CGFloat(h) <= 60 * scale else { continue }
+                // What a picture may be to fit: the display (400×400 points) less 24 points at the sides and, above and below, the room the palette needs (106), which a quarter of the side (100) caps: 352 × 200 free.
+                guard CGFloat(w) <= 352 * scale, CGFloat(h) <= 200 * scale else { continue }
                 let shown = try placed(w, h, scale: scale)
                 XCTAssertEqual(shown.pixelsPerPoint, scale, "the control: \(w)×\(h) at \(scale)× fits, one pixel to a pixel")
                 let layers = Self.strokeTools.enumerated().map { index, tool in
