@@ -122,7 +122,11 @@ import Module_Screenshots_Engine
 /// freeze excludes Helm's own windows, so the panel is in no shot.
 ///
 /// It is dragged by its empty glass and stands where it was left, as a move from the place it opens in
-/// (`PanelPlace`), written when it closes.
+/// (`PanelPlace`), written when it closes. **It ends at the gear while there is nothing to capture and is wider by
+/// Capture when there is** (`CapturePanelView.trailing`): the window follows its content's width with its **leading
+/// edge fixed**, because ✕ and the cells are under the pointer and only Capture is new, on the right; a fixed centre
+/// would slide every cell by half of it. The move is stored against the panel at its width without Capture (`restWidth`),
+/// so the place it opens in does not depend on the width it was left at.
 @MainActor final class CapturePanel {
     let model: CapturePanelModel
     private let store: NamespacedStore
@@ -133,6 +137,14 @@ import Module_Screenshots_Engine
     private var moved = false
     private var placing = false
     private var moveObserver: NSObjectProtocol?
+
+    /// The width the content has with nothing to capture, measured once on a probe in Area mode: it does not depend on
+    /// the timer, a countdown or the language of a run, and the place is judged at it whatever the panel's width now.
+    private lazy var restWidth: CGFloat = {
+        let probe = CapturePanelModel(store: NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore()))
+        probe.choose(.area)
+        return NSHostingView(rootView: CapturePanelView(model: probe)).fittingSize.width
+    }()
 
     /// `.statusBar`, the toast's, and one above `.screenSaver`, the overlay's, while selecting. Not private: a test
     /// reads the ladder through it and puts no window on a screen.
@@ -186,6 +198,10 @@ import Module_Screenshots_Engine
         }
         let host = FirstMouseHostingView(rootView: CapturePanelView(model: model))
         host.sizingOptions = [.intrinsicContentSize]
+        host.sizeChanged = { [weak self, weak panel] in
+            guard let self, let panel else { return }
+            self.fit(panel)
+        }
         panel.contentView = host
         moveObserver = NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: panel,
                                                               queue: .main) { [weak self] _ in
@@ -202,13 +218,33 @@ import Module_Screenshots_Engine
         if let host = panel.contentView { panel.setContentSize(host.fittingSize) }
         placing = true
         defer { placing = false }
-        panel.setFrameOrigin(PanelPlace.origin(size: panel.frame.size, offset: model.settings.panelOffset, in: visible))
+        var origin = PanelPlace.origin(size: restSize(of: panel), offset: model.settings.panelOffset, in: visible)
+        // Judged at the width without Capture; the panel as wide as it is now must still be whole on the screen.
+        origin.x = min(origin.x, max(visible.minX, visible.maxX - panel.frame.width))
+        panel.setFrameOrigin(origin)
     }
+
+    /// The content's width changed (Capture came or went): the window takes it with its leading edge where it was, drawn
+    /// inside the screen's `visibleFrame` if that edge would leave the right end of it. Not a move by the person.
+    private func fit(_ panel: NSPanel) {
+        guard let host = panel.contentView else { return }
+        let width = host.fittingSize.width
+        guard abs(width - panel.frame.width) > 0.5 else { return }
+        placing = true
+        defer { placing = false }
+        var frame = panel.frame
+        frame.size.width = width
+        if let visible = panel.screen?.visibleFrame, frame.maxX > visible.maxX { frame.origin.x = max(visible.minX, visible.maxX - width) }
+        panel.setFrame(frame, display: true)
+    }
+
+    /// The panel's size as the place is judged: its height, and the width it has without Capture.
+    private func restSize(of panel: NSPanel) -> CGSize { CGSize(width: restWidth, height: panel.frame.height) }
 
     /// The panel's move from its place, on the screen it stands on, written once it has been dragged.
     private func rememberPlace(of panel: NSPanel) {
         guard moved, let visible = panel.screen?.visibleFrame else { return }
-        model.remember(place: PanelPlace.offset(of: panel.frame.origin, size: panel.frame.size, in: visible))
+        model.remember(place: PanelPlace.offset(of: panel.frame.origin, size: restSize(of: panel), in: visible))
         moved = false
     }
 }
@@ -218,6 +254,12 @@ import Module_Screenshots_Engine
 /// holds the keyboard), and a view that refuses first mouse spends that click
 /// on becoming key — so ✕ would need two presses while a countdown runs.
 final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    /// The content's natural size changed; the panel that holds it follows (`CapturePanel.fit`).
+    var sizeChanged: () -> Void = {}
+    override func invalidateIntrinsicContentSize() {
+        super.invalidateIntrinsicContentSize()
+        sizeChanged()
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 

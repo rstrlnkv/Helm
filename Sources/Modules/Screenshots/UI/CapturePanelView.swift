@@ -7,7 +7,7 @@ import Module_Screenshots_Engine
 /// The panel's content, in macOS's order and with macOS's look: ✕ in a grey circle, the three modes, the timer with its
 /// down-arrow, the gear, Capture. Large glyphs in the secondary ink, the chosen cell's in the primary, between hairline
 /// dividers. A cell's name is its tooltip and its VoiceOver label (`GlassCell`); Capture is a text button and names
-/// itself. There is no switch for recording and no room kept for one.
+/// itself, and only over something to take. There is no switch for recording and no room kept for one.
 ///
 /// While a countdown runs the ring takes Capture's place and the cells stand back at 35 %; ✕ stays at full strength and
 /// answers. It is outside what is dimmed: a container at an opacity takes everything in it out of hit-testing.
@@ -25,7 +25,7 @@ struct CapturePanelView: View {
     static let cellWidth: CGFloat = 44
     static let cellHeight: CGFloat = 35
     static let height: CGFloat = 49
-    /// The timer cell is as wide before the seconds are shown in it as after, so the panel does not change its width.
+    /// The timer cell is as wide before the seconds are shown in it as after, so the timer does not change the panel's width.
     static let timerWidth: CGFloat = 66
     /// SF Symbols at the light weight, sized by their ink (the drawn pixels, not the image's frame with its margins),
     /// measured on an `NSImage` bitmap: at 24 pt a screen, a window and an area are 28 x 22 pt of ink; at 21 the gear
@@ -43,13 +43,17 @@ struct CapturePanelView: View {
                 modeControl(.area, symbol: "rectangle.dashed", name: ScStr.panelArea)
             }
             .modifier(Dimmed(counting: model.counting))
-            divider(shown: true)
-            HStack(spacing: HelmSpace.s2) {
-                timerCell
-                gearCell
+            divider
+            // The gap before `trailing` is its own padding (`.padding(.leading)`), so the row adds none
+            // on top of it when `trailing` is there.
+            HStack(spacing: 0) {
+                HStack(spacing: HelmSpace.s2) {
+                    timerCell
+                    gearCell
+                }
+                .modifier(Dimmed(counting: model.counting))
+                trailing
             }
-            .modifier(Dimmed(counting: model.counting))
-            trailing
         }
         .padding(.horizontal, HelmSpace.s4)
         .frame(height: Self.height)
@@ -68,10 +72,9 @@ struct CapturePanelView: View {
         }
     }
 
-    /// 1 pt wide and 22 tall, with 5 pt each side besides the panel's own spacing. Shown whenever Capture or the ring is,
-    /// and laid out always: the panel is as wide with nothing to take as with something.
-    private func divider(shown: Bool) -> some View {
-        Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: 22).padding(.horizontal, 5).opacity(shown ? 1 : 0)
+    /// 1 pt wide and 22 tall, with 5 pt each side besides the panel's own spacing.
+    private var divider: some View {
+        Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: 22).padding(.horizontal, 5)
             // Glass like the rest between the cells: a press on it moves the panel.
             .allowsHitTesting(false)
     }
@@ -126,24 +129,27 @@ struct CapturePanelView: View {
         menu.popUp(positioning: nil, at: NSPoint(x: cell.minX, y: y), in: host)
     }
 
-    /// The button, and — while a countdown runs — the ring laid over it, after a divider. **The button and the divider
-    /// stay in the layout, unseen and unpressable, whether or not there is anything to take**, so the content is exactly
-    /// as wide counting as idle, with a target as without, in every language, and ✕ and the panel's edges stay where the
-    /// pointer found them: a panel that grew a button under the pointer would move the cells it was crossing. The button
-    /// measures itself.
+    /// A divider and the button, and — while a countdown runs — the ring laid over the button. **They are in the layout
+    /// only while there is something to take (`showsCapture`) or a countdown runs:** with nothing to capture the glass
+    /// ends at the gear, and the panel is wider by this when there is (`CapturePanel` widens the window with its leading
+    /// edge fixed, so ✕ and the cells stay under the pointer). A countdown keeps the room whatever `showsCapture` says,
+    /// since the target is let go when it starts and the ring takes the place the button had. The button measures itself.
     @ViewBuilder private var trailing: some View {
-        let offered = model.showsCapture && !model.counting
-        HStack(spacing: HelmSpace.s2) {
-            divider(shown: offered || model.counting)
-            ZStack {
-                Button(ScStr.captureButton) { model.capture(model.mode) }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .disabled(!offered)
-                    .opacity(offered ? 1 : 0)
-                    .accessibilityHidden(!offered)
-                if let seconds = model.countdown { ring(seconds) }
+        if model.showsCapture || model.counting {
+            let offered = model.showsCapture && !model.counting
+            HStack(spacing: HelmSpace.s2) {
+                divider
+                ZStack {
+                    Button(ScStr.captureButton) { model.capture(model.mode) }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                        .disabled(!offered)
+                        .opacity(offered ? 1 : 0)
+                        .accessibilityHidden(!offered)
+                    if let seconds = model.countdown { ring(seconds) }
+                }
             }
+            .padding(.leading, HelmSpace.s2)
         }
     }
 

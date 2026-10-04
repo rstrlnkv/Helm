@@ -26,6 +26,8 @@ final class TheBarDrawsInEveryLanguageTests: XCTestCase {
     private func model(countdown: Int? = nil) -> CapturePanelModel {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         let model = CapturePanelModel(store: store)
+        // A countdown begins from a picked target, so the idle bar it is compared with is the one that offers Capture.
+        model.hasTarget = true
         model.countdown = countdown
         return model
     }

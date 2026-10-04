@@ -193,8 +193,11 @@ struct CapturedShot {
 
     /// Counts down on the bar, and **asks after every wait whether it was
     /// cancelled**: a wait that ends normally is not evidence that nobody
-    /// pressed Esc during it.
+    /// pressed Esc during it. A task cancelled before its body began still runs
+    /// up to its first wait, so it asks first: `cancel` has closed the bar, and
+    /// nothing else would clear what it wrote there.
     private func countdown(_ seconds: Int) async throws {
+        try Task.checkCancellation()
         bar.model.countdownLength = seconds
         for remaining in stride(from: seconds, to: 0, by: -1) {
             bar.model.countdown = remaining
@@ -220,6 +223,8 @@ struct CapturedShot {
         copyTask?.cancel()
         copyTask = nil
         bar.close()
+        // A ring that ran out leaves its length for the shot's close; one cut short has no next turn to clear it.
+        bar.model.countdownLength = 0
         overlay?.close()
         overlay = nil
         flashing?.close()
@@ -363,9 +368,13 @@ struct CapturedShot {
         if picked {
             picking = false
             bar.selecting = false
-            bar.model.hasTarget = false
             let seconds = ScreenshotsSettings.read(store).timer.seconds
             if seconds > 0, let wait = timedShot(of: result, freeze: freeze) {
+                // The ring takes the button's room in the same turn the target lets go: the task below starts a turn
+                // later, and a panel narrowed in between would widen again under the pointer.
+                bar.model.countdownLength = seconds
+                bar.model.countdown = seconds
+                bar.model.hasTarget = false
                 overlay?.close()
                 overlay = nil
                 deliveryTask = Task {
@@ -377,6 +386,7 @@ struct CapturedShot {
                 }
                 return
             }
+            bar.model.hasTarget = false
             bar.close()
         }
         // The panels stay for the flash of a shot that is taken (and close at once for the rest); the delivery

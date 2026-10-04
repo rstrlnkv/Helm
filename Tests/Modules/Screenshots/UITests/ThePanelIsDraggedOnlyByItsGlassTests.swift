@@ -1,5 +1,6 @@
 import AppKit
 import HelmRuntime
+import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -7,7 +8,7 @@ import Module_Screenshots_Engine
 /// **A press on the panel's empty glass moves the panel; a press on a cell is a press and never the start of a drag.**
 /// What `hitTest` answers along the panel's middle line, one point at a time: the cells are runs that no drag handle
 /// answers, the glass between them and around them is the handle (`WindowDragHandle.DragView`, which hands the press to
-/// `performDrag`), the room Capture takes is the handle while there is nothing to take and a button once there is, and
+/// `performDrag`), Capture's room is the glass's end with nothing to take and a button once there is, and
 /// the window is not movable by its background (that would make every cell a handle). The panel is laid out and never
 /// ordered in.
 @MainActor
@@ -71,7 +72,8 @@ final class ThePanelIsDraggedOnlyByItsGlassTests: XCTestCase {
         for (first, second) in zip(runs, runs.dropFirst()) {
             XCTAssertTrue(row[first.upperBound..<second.lowerBound].allSatisfy { $0 }, "the glass between two cells is not the handle")
         }
-        XCTAssertTrue(row[(runs.last?.upperBound ?? 0)...].dropLast(12).allSatisfy { $0 }, "the room Capture will take is dead glass while there is nothing to take, and a press there does not move the panel")
+        // The last run is cut at the corner's 12 points, so the gear's far edge is its near edge and its width.
+        XCTAssertEqual((runs.last?.lowerBound ?? 0) + Int(CapturePanelView.cellWidth), row.count - Int(HelmSpace.s4), "with nothing to take the glass ends at the gear: there is no room for Capture")
         let top = line(p, y: 2), bottom = line(p, y: p.host.bounds.height - 2)
         XCTAssertTrue(top[16..<(top.count - 16)].allSatisfy { $0 }, "the glass above the cells does not move the panel")
         XCTAssertTrue(bottom[16..<(bottom.count - 16)].allSatisfy { $0 }, "the glass below the cells does not move the panel")
@@ -85,15 +87,16 @@ final class ThePanelIsDraggedOnlyByItsGlassTests: XCTestCase {
         XCTAssertTrue(handle.acceptsFirstMouse(for: nil), "the first press on the glass is spent on making the panel key")
     }
 
-    func testCaptureIsAButtonOnlyWhereItIsOfferedAndTheRoomIsTheHandleOtherwise() throws {
+    func testCaptureIsAButtonOnlyWhereItIsOfferedAndTheGlassEndsAtTheGearOtherwise() throws {
         let p = try panel()
         let idle = line(p)
-        let room = idle.count - 24
-        XCTAssertTrue(idle[room], "the room for Capture is no handle while there is no target")
+        XCTAssertEqual(cells(idle).count, 6, "the gear is the last cell with nothing to take: \(cells(idle))")
+        let narrow = p.host.bounds.width
         p.capture.model.hasTarget = true
         settle(p.panel)
         let offered = line(p)
-        XCTAssertFalse(offered[room], "a button that is offered lies on glass that drags the panel")
+        XCTAssertGreaterThan(p.host.bounds.width, narrow + 40, "Capture's room did not come with the target")
+        XCTAssertFalse(offered[offered.count - 24], "a button that is offered lies on glass that drags the panel")
         XCTAssertEqual(cells(offered).count, 7, "Capture is not a cell of its own once there is a target: \(cells(offered))")
     }
 
@@ -110,17 +113,19 @@ final class ThePanelIsDraggedOnlyByItsGlassTests: XCTestCase {
         XCTAssertTrue(counting[close].allSatisfy { !$0 }, "a press on ✕ while the ring runs reaches the drag handle, not ✕: \(cells(counting)) against \(idle)")
     }
 
-    func testThePanelIsAsWideCountingAsIdleAndWithATargetAsWithout() throws {
+    func testTheCountdownDoesNotChangeTheWidthItFound() throws {
         let p = try panel()
-        let idle = p.host.fittingSize
         p.capture.model.hasTarget = true
         settle(p.panel)
-        XCTAssertEqual(p.host.fittingSize.width, idle.width, accuracy: 0.5, "the panel grew a button under the pointer")
+        let offered = p.host.fittingSize
         p.capture.model.countdown = 4
         p.capture.model.countdownLength = 30
         settle(p.panel)
-        XCTAssertEqual(p.host.fittingSize.width, idle.width, accuracy: 0.5, "the ring changed the width")
-        XCTAssertEqual(p.host.fittingSize.height, idle.height, accuracy: 0.5)
+        XCTAssertEqual(p.host.fittingSize.width, offered.width, accuracy: 0.5, "the ring changed the width")
+        XCTAssertEqual(p.host.fittingSize.height, offered.height, accuracy: 0.5)
+        p.capture.model.hasTarget = false
+        settle(p.panel)
+        XCTAssertEqual(p.host.fittingSize.width, offered.width, accuracy: 0.5, "letting the target go under the ring took its room")
     }
 
     func testNothingOutsideThePanelAnswersAndNothingInsideItAnswersNothing() throws {
