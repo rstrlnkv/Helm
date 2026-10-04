@@ -79,9 +79,14 @@ final class ShotDragView: NSView, NSDraggingSource {
         if window != nil { onWindow(self) }
     }
 
+    /// **One area for the view's life.** `.inVisibleRect` keeps it on the view's rect through every change of frame, so
+    /// there is nothing to rebuild; AppKit calls this on each such change. Measured: without the guard the area was
+    /// rebuilt 7-12 times while the capsule came up over a shot lower or narrower than it (`ShotToast.picture`'s zone),
+    /// 0 with it. Inferred, not measured (no test has a real pointer): that a rebuilt area under a still pointer is an
+    /// exit, which takes the capsule away and starts the zone's change over.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
-        for area in trackingAreas { removeTrackingArea(area) }
+        guard trackingAreas.isEmpty else { return }
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
     }
