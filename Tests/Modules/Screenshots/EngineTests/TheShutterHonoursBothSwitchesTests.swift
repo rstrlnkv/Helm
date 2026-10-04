@@ -44,7 +44,7 @@ final class TheShutterHonoursBothSwitchesTests: XCTestCase {
             displays: [Rig.display(1), Rig.display(2, origin: CGPoint(x: 100, y: 0))], windows: []))
         let atPlay = Probe(rig.writer)
         let session = CaptureSession(capture: rig.capture, writer: rig.writer, pasteboard: rig.pasteboard,
-                                     preferences: rig.preferences, shutter: atPlay,
+                                     preferences: rig.preferences, shutter: atPlay, textReader: rig.reader,
                                      settings: { .defaults }, naming: { .english },
                                      locations: ScreenshotsLocations(home: rig.home, desktop: rig.desktop))
         _ = await session.captureScreens()

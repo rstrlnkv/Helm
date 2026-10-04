@@ -219,6 +219,29 @@ enum ScStr {
     static var pin: String { L("Pin") }
     /// The plate at the limit of open pins; no number, so no table.
     static var pinLimit: String { L("Too many pins are open — close one first") }
+    /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
+    /// (Text kopieren, Copiar texto, Copier le texte, テキストをコピー, Copiar texto, Скопировать текст, 拷贝文本; its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it).
+    static var copyText: String { L("Copy Text") }
+    /// What it blurs is the four kinds in the hint: the name says less than the item does.
+    static var blurPersonalText: String { L("Blur Emails and Phone Numbers") }
+    /// The item's hint: the whole list of what is found, and what is not. A kind added later is a new key.
+    static var blurPersonalTextHint: String {
+        L("Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are.")
+    }
+    /// The plates after a reading say what was **done**, never what the picture now is: no word for safe, hidden or clean, and a zero is not good news.
+    static var nothingBlurred: String { L("Nothing was blurred. Check the picture yourself.") }
+    static var textCopied: String { L("Text copied") }
+    static var noTextFound: String { L("No text was found") }
+    static var textUnreadable: String { L("The text could not be read") }
+    /// A count after a colon takes no form of a noun, so no plural helper; the digits are grouped as the language groups them.
+    static func blurred(_ count: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let n = HelmBytes.grouped(count, language: language.rawValue)
+        return L("Blurred: \(n). Check the rest yourself.",
+                 [.ru: "Размыто мест: \(n). Остальное проверьте сами.", .es: "Desenfocado: \(n). Revisa tú el resto.",
+                  .fr: "Flouté\u{00A0}: \(n). Vérifiez le reste vous-même.", .de: "Weichgezeichnet: \(n). Prüfe den Rest selbst.",
+                  .ja: "ぼかした箇所：\(n)。残りは自分で確認してください。", .zh: "已模糊：\(n) 处。其余请自行检查。",
+                  .pt: "Desfocado: \(n). Confira você mesmo o resto."], language: language)
+    }
     /// What a screen reader calls a pin.
     static var pinnedScreenshot: String { L("Pinned screenshot") }
 

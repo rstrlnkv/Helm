@@ -31,6 +31,7 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         private var count = 0
         var copies: Int { lock.withLock { count } }
         func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
@@ -99,7 +100,7 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("pin-exit")
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, pasteboard: clipboard,
-                                     preferences: NoPreferences(), shutter: shutter,
+                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let pins = PinBoard(present: { _ in }, screens: {

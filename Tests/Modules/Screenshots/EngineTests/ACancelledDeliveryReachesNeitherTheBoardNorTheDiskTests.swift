@@ -22,6 +22,7 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
             withUnsafeCurrentTask { $0?.cancel() }
             return .accepted
         }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
 
     /// Cancelled before the delivery began: nothing is copied and nothing is written.
@@ -51,7 +52,7 @@ final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase 
         let board = CancellingBoard(), writer = FakeWriter()
         let session = CaptureSession(
             capture: FakeCapture(), writer: writer, pasteboard: board, preferences: FakePreferences(),
-            shutter: FakeShutter(), settings: { .defaults }, naming: { .english },
+            shutter: FakeShutter(), textReader: FakeTextReader(), settings: { .defaults }, naming: { .english },
             now: { Date(timeIntervalSince1970: 1_790_000_000) },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
         _ = await Task {

@@ -29,7 +29,10 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
             .written(folder.appendingPathComponent(base + "." + pathExtension))
         }
     }
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private struct Board: ShotPasteboard {
+        func copy(png: Data) -> PasteOutcome { .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
+    }
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -75,7 +78,7 @@ final class TheRememberedSelectionBelongsToTheBarsAreaTests: XCTestCase {
         store.set(SaveTarget.clipboard.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         stored?.write(to: store)
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), pasteboard: Board(),
-                                     preferences: NoPreferences(), shutter: NoShutter(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english })
         let opened = Opened()
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,

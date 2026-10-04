@@ -205,6 +205,41 @@ kept inside the new area. **Esc gives it back** (and so do choosing a tool, the 
 rule, so the next one is its first; Esc while a handle is held still only puts that drag back. The other exits deliver the area as the screen shows it. The layers keep their coordinates, an object left outside
 is let go of at the release (`AnnotationEditing.releaseIfOutside`), and the blur and the spotlights' dim follow the area as they do for any reshape.
 
+Two items of the ⋯ menu read the text of the area, after a separator behind Save (and Pin): **Copy Text** and **Blur Emails and Phone Numbers**
+(`EditorAction.copyText` and `EditorAction.blurPersonalText`, no keys; `EditorMenuItem.reading` carries their symbols and, for the second, the hint, which is the item's tool tip).
+The reader is a port, `ScreenTextReading` in `Sources/Modules/Screenshots/Engine/Ports.swift`, answering `.read(lines)` or `.failed`, and `VisionTextReader` is its system
+side: Vision's text request for the lines and `NSDataDetector` over each line for what is in it. The registry's phase `screenshots.recognize` wraps the request's `perform`; the parsing of its answer
+is the hop off the cooperative pool and is not inside the phase, and the registry keeps one entry per label, so two readings alive at once are one entry.
+Why that way and not the documents request, and why `minimumTextHeightFraction` stays at its default, is the header of `VisionTextReader` and what `ScreenshotsTextReadingBenchmark` measures again on request. `.read([])` has several causes the engine
+cannot tell apart (no text, text too small, a script the recogniser does not read), and none of them is "there is nothing there": no caller says the second. What is read is
+`CaptureSession.readText`: the pixels of the area cut from the frozen frame the file is cut from (`FrozenDisplay.shot`), at their own resolution and with none of the layers on them, so a find and the blur over it land
+on one picture. The strings of a reading are somebody's words and are never logged; the clipboard they go to carries the same two markers a picture's does (`SystemShotPasteboard`).
+
+**What is found is the whole list the hint names, and nothing else:** an e-mail address, a phone number, a card number and a link (`PrivateKind`, `PersonalFinds`). A postal address
+is not on it: the measure found them on smaller pictures in English and Russian and not on a 5K one, and no other language was tried, so the item does not promise them. The system knows no card, so a card is Helm's own rule,
+`CardNumbers`: thirteen to nineteen digits in whole groups divided by one or two spaces (the no-break, narrow, thin, figure and ideographic ones too) or a single hyphen, non-breaking hyphen or en dash, that pass the Luhn check, one line at a time, so a number wrapped over two lines is not found and a number glued
+to other digits is not taken for one. **A find that wraps is blurred only on its first line,** a link, an e-mail address or a phone number as much as a card: the detector runs on one line at a time, and a rule that
+carried a match on to the next line by where that line starts would blur the first word after every link that ends a line, so it was not built. A find is a box padded and rounded outward to the mosaic's grid (`RecognizedBoxes`), made to hide a string and not to outline it, with the step its text's height calls for
+(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box the mosaic cannot make, one pixel, grows inward to two or the find is dropped);
+a find lying wholly under a blur already placed whose block is at least the step it would get, or inside another find, is not made again, so a blur of the person's own with lower blocks than the text is no cover. One reading makes at most 500 boxes
+(`PersonalFinds.limit`), and the plate says `Blurred: 500` at the cap as it does for exactly 500 finds: at that number the rest may not have been blurred. **Nothing runs by itself:** the finds go in as ordinary blur layers (`AnnotationEditing.insert(blurs:)`), all of
+them one undo step, which the person sees before Done and can delete or add to, and no setting and no save does it for them.
+
+**The plates say what was done, never what the picture now is.** After a blur the plate is `Blurred: N. Check the rest yourself.` or `Nothing was blurred. Check the picture yourself.`; no plate of the
+two items says "safe", "hidden", "protected" or "no personal data" or carries a check mark (and `LabelLayer` draws every plate white on translucent black, so none is green), because a card number the rule missed is a leak nobody sees and no line would say so
+(`ThePlatesAfterBlurringNeverSayItIsSafeTests`; its word lists are a tripwire, and the sentences asserted whole are the guard). They use the plate the Esc question and the refused pin use, by the
+palette, and stand until the next input, which `CaptureOverlay` takes away with the refusal's own flag. **The order of the plates, first that applies:** the refused pin, the Esc question while it is still asked, the answer of a reading. An answer
+that comes while the pin's refusal is up takes the refusal down and shows (it is the later thing to say); one that comes while the Esc question is asked waits behind it and shows once the question is gone.
+
+**Text the person covered is not copied** (default taken, the safe direction, in one place: `CopiedText.lines(_:source:notUnder:)`). The reading is of the frame without the layers, so words under a blur, a filled rectangle or ellipse or a step's circle are in it; a line whose box lies wholly or
+partly under one of those layers is left out of the copy (the rectangle round the layer counts, so an ellipse's corners too), and a copy whose every line is covered says `No text was found`. Blur Emails and Phone Numbers needs no such rule: its finds go over
+the text. Reversing the default is that one function.
+
+**The reading is the overlay's.** `CaptureOverlay` is handed `EditorTextTools`, a pair of closures over the session (`CaptureController` binds the freeze and the session), and holds the one task: while it
+runs both items are disabled (`EditorBarModel.reading`) and a second choice starts nothing. Typing ends first, as before any action; a pending crop is read as the area the screen shows. The answer is
+dropped, with no layer, no copy and no plate, when the editor was closed (`close` cancels the task), when the area has changed under it (any change of the area ends the reading in `render`, since its boxes were for
+the old one) or when another reading has begun since (`serial`). A reading that fails, or a clipboard that refuses the text, says `The text could not be read`.
+
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for: Return

@@ -89,6 +89,7 @@ final class ThePinMeetsAFrameThatMovedUnderItAndAPictureThatBorrowedTests: XCTes
     private final class Board: ShotPasteboard, @unchecked Sendable {
         let count = Count()
         func copy(png: Data) -> PasteOutcome { count.bump(); return .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         let count = Count()
@@ -131,7 +132,7 @@ final class ThePinMeetsAFrameThatMovedUnderItAndAPictureThatBorrowedTests: XCTes
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         let home = scratchDirectory("pin-detached-controller")
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: Disk(), pasteboard: Board(),
-                                     preferences: NoPreferences(), shutter: Shutter(),
+                                     preferences: NoPreferences(), shutter: Shutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let pins = PinBoard(present: { _ in }, screens: { [] })

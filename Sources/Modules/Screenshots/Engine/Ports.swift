@@ -89,8 +89,68 @@ public enum PasteOutcome: Sendable, Equatable {
     case accepted, refused
 }
 
+/// The clipboard. **Every entry marks what it puts there as not for a clipboard history** (see
+/// `SystemShotPasteboard`): a picture of a screen and the words read off one are the same kind of thing, and
+/// both are often what a person did not mean to keep.
 public protocol ShotPasteboard: Sendable {
     func copy(png: Data) -> PasteOutcome
+    /// Text read off a picture. Never recorded anywhere by the engine: it is somebody's words.
+    func copy(text: String) -> PasteOutcome
+}
+
+/// What a match found in a line of text is. This list is what the blur that finds personal text blurs, and the
+/// hint of its menu item names exactly it: a postal address is not here, because it was not measured to be found
+/// in every language, and a kind the reader finds that is not here is dropped by the reader.
+public enum PrivateKind: Sendable, Equatable {
+    case emailAddress, phoneNumber, cardNumber, link
+}
+
+/// One match inside a line, and where it is: `box` is in Vision's normalised coordinates of the picture that
+/// was read, the origin at its **lower** left, each side a fraction of the picture's.
+/// The engine acts alike on every kind (each is one blur), so `kind` is the reading's account of what was found and
+/// is read by the tests and the benchmark, not by a branch in `Sources`; it stays for the next one that must tell them apart.
+/// **A find that wraps over two lines is one match on its first line only** (see `VisionTextReader`).
+public struct PrivateMatch: Sendable, Equatable {
+    public let kind: PrivateKind
+    public let box: CGRect
+
+    public init(kind: PrivateKind, box: CGRect) {
+        self.kind = kind
+        self.box = box
+    }
+}
+
+/// One line of text as the system read it, with the matches found in it. `box` is normalised like a match's.
+/// Never in a log line and never stored: `string` is somebody's words.
+public struct RecognizedLine: Sendable, Equatable {
+    public let string: String
+    public let box: CGRect
+    public let matches: [PrivateMatch]
+
+    public init(string: String, box: CGRect, matches: [PrivateMatch] = []) {
+        self.string = string
+        self.box = box
+        self.matches = matches
+    }
+}
+
+/// What reading a picture's text came back with.
+public enum TextReading: Sendable, Equatable {
+    /// The lines, **in reading order**. An empty list is a reading that found nothing.
+    case read([RecognizedLine])
+    /// The system could not be asked, or did not answer.
+    case failed
+}
+
+/// The system's text recognition, as far as the engine is concerned.
+///
+/// **`.read([])` has several causes and the engine cannot tell them apart:** a picture with no text in it, text
+/// too small or too faint for the recogniser, a script or language it does not read, text that is a photograph
+/// of text. All of them are "nothing was found", and none is "there is nothing there" — a caller never says the
+/// second. `.failed` is the request throwing, being cancelled, or the system's models not being there. The
+/// call may take long the first time on a Mac, and it is awaited off the cooperative pool.
+public protocol ScreenTextReading: Sendable {
+    func read(_ image: CGImage) async -> TextReading
 }
 
 /// A preference value that could be anything at all, carried across a queue.

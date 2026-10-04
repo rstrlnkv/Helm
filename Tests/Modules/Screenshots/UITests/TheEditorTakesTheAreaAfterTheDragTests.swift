@@ -20,6 +20,7 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         private var count = 0
         var copies: Int { lock.withLock { count } }
         func copy(png: Data) -> PasteOutcome { lock.withLock { count += 1 }; return .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
     }
     private final class Disk: ShotWriting, @unchecked Sendable {
         private let lock = NSLock()
@@ -332,7 +333,7 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = FileManager.default.temporaryDirectory
         let session = CaptureSession(capture: Frames(freeze: freeze), writer: disk, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: NoShutter(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,

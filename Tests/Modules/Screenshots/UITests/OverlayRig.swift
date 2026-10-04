@@ -4,6 +4,12 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
+/// The text-reading port of a session whose test reads no text: it answers `.failed`, the one answer that
+/// cannot be mistaken for a reading, so a test that did read through it would say so.
+struct NoTextReader: ScreenTextReading {
+    func read(_ image: CGImage) async -> TextReading { .failed }
+}
+
 /// The overlay refuses to build when the freeze does not carry a frame for every real screen, so a fixture
 /// that builds one frame passes on a one-display Mac and is red on a three-display one.
 /// `blankFrames(besides:)` is the rest of the desk: one blank frame per other real screen, far from the first.
@@ -45,11 +51,11 @@ enum OverlayRig {
 
     /// An overlay over every real screen, each 1000×800 points at `scale`, an `area` released on the first.
     /// `pinRoom` is the answer the overlay is given to "may another pin open" (task 12).
-    static func overlay(scale: CGFloat, area: CGRect, pinRoom: @escaping () -> Bool = { true },
+    static func overlay(scale: CGFloat, area: CGRect, pinRoom: @escaping () -> Bool = { true }, textTools: EditorTextTools = .none,
                         onResult: @escaping (OverlayResult) -> Void) throws
         -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
         let frames = try frames(scale: scale)
-        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, pinRoom: pinRoom, onFinish: onResult)
+        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, pinRoom: pinRoom, textTools: textTools, onFinish: onResult)
         XCTAssertTrue(built.build())
         let display = try XCTUnwrap(frames.first?.id)
         built.mouseDown(on: display, at: area.origin, flags: [])

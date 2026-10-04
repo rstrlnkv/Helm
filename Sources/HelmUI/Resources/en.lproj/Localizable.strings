@@ -1385,3 +1385,10 @@
 "Steps" = "Steps";
 "Spotlight" = "Spotlight";
 "Crop" = "Crop";
+"Copy Text" = "Copy Text";
+"Blur Emails and Phone Numbers" = "Blur Emails and Phone Numbers";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are.";
+"Nothing was blurred. Check the picture yourself." = "Nothing was blurred. Check the picture yourself.";
+"Text copied" = "Text copied";
+"No text was found" = "No text was found";
+"The text could not be read" = "The text could not be read";

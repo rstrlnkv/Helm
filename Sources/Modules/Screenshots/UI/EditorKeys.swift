@@ -46,6 +46,9 @@ enum EditorAction: Equatable {
     /// ⌫ and ⌦: the selected object goes; with none selected it asks nothing.
     case delete
     case exit(EditorExit)
+    /// The ⋯ menu's Copy Text and Blur Emails and Phone Numbers, no keys: each reads the area as the screen shows it and acts on the
+    /// answer when it comes (`CaptureOverlay.beginReading`); both are in the menu and disabled while a reading runs.
+    case copyText, blurPersonalText
     /// An arrow: `pixels` of the display's own pixels along a direction, each component -1, 0 or 1.
     /// The selected object moves, or the area when none is selected.
     case nudge(dx: Int, dy: Int, pixels: Int)

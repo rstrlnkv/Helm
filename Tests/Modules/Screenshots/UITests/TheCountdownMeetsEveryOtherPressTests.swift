@@ -47,7 +47,10 @@ final class TheCountdownMeetsEveryOtherPressTests: XCTestCase {
         }
     }
 
-    private struct Board: ShotPasteboard { func copy(png: Data) -> PasteOutcome { .accepted } }
+    private struct Board: ShotPasteboard {
+        func copy(png: Data) -> PasteOutcome { .accepted }
+        func copy(text: String) -> PasteOutcome { .accepted }
+    }
     private struct NoPreferences: CapturePreferences {
         func location() -> RawSetting { RawSetting(nil) }
         func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
@@ -100,7 +103,7 @@ final class TheCountdownMeetsEveryOtherPressTests: XCTestCase {
         store.set(timer.seconds, for: ScreenshotsSettings.Key.timer)
         let home = FileManager.default.temporaryDirectory
         let session = CaptureSession(capture: capture, writer: disk, pasteboard: Board(), preferences: NoPreferences(),
-                                     shutter: NoShutter(), settings: { ScreenshotsSettings.read(store) },
+                                     shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
                                            session: session,

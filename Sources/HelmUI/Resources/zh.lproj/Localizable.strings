@@ -1385,3 +1385,10 @@
 "Steps" = "步骤";
 "Spotlight" = "聚光灯";
 "Crop" = "裁剪";
+"Copy Text" = "拷贝文本";
+"Blur Emails and Phone Numbers" = "模糊邮件和电话号码";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "模糊 macOS 在图像中读到的电子邮件地址、电话号码、卡号和链接。人脸、手写内容及其他一切保持原样。";
+"Nothing was blurred. Check the picture yourself." = "没有模糊任何内容。请自行检查图像。";
+"Text copied" = "已拷贝文本";
+"No text was found" = "未找到文本";
+"The text could not be read" = "无法读取文本";

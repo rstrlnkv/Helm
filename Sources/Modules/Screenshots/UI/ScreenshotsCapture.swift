@@ -197,7 +197,9 @@ struct CapturedShot {
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
             let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store,
-                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false }) { [weak self] result in
+                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
+                                    textTools: EditorTextTools(read: { [session] in await session.readText(freeze, display: $0, local: $1) },
+                                                               copy: { [session] in session.copyText($0) })) { [weak self] result in
                 self?.overlayFinished(result, freeze: freeze)
             }
             self.overlay = overlay

@@ -1385,3 +1385,10 @@
 "Steps" = "Schritte";
 "Spotlight" = "Spotlight";
 "Crop" = "Zuschneiden";
+"Copy Text" = "Text kopieren";
+"Blur Emails and Phone Numbers" = "E-Mails und Telefonnummern weichzeichnen";
+"Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are." = "Zeichnet E-Mail-Adressen, Telefon- und Kartennummern und Links weich, die macOS im Bild liest. Gesichter, Handschrift und alles Übrige bleiben, wie sie sind.";
+"Nothing was blurred. Check the picture yourself." = "Nichts weichgezeichnet. Prüfe das Bild selbst.";
+"Text copied" = "Text kopiert";
+"No text was found" = "Kein Text gefunden";
+"The text could not be read" = "Der Text konnte nicht gelesen werden";

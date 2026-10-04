@@ -126,17 +126,74 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
     private let lock = NSLock()
     private var _accepts = true
     private var _copies: [Data] = []
+    private var _texts: [String] = []
     var accepts: Bool {
         get { lock.withLock { _accepts } }
         set { lock.withLock { _accepts = newValue } }
     }
     var copies: [Data] { lock.withLock { _copies } }
+    /// The text of each copy that was taken, in order.
+    var texts: [String] { lock.withLock { _texts } }
     func copy(png: Data) -> PasteOutcome {
         lock.withLock {
             guard _accepts else { return .refused }
             _copies.append(png)
             return .accepted
         }
+    }
+    func copy(text: String) -> PasteOutcome {
+        lock.withLock {
+            guard _accepts else { return .refused }
+            _texts.append(text)
+            return .accepted
+        }
+    }
+}
+
+/// Reads what it was told to and counts the pictures it was handed — it keeps them, so a test can ask which
+/// picture a reading was made of. It answers at once; `held` makes it wait for `release()` first, which is
+/// how a test has a reading still in flight when the editor goes away.
+final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _reading: TextReading = .read([])
+    private var _images: [CGImage] = []
+    private var _held = false
+    private var _waiting: [CheckedContinuation<Void, Never>] = []
+
+    var reading: TextReading {
+        get { lock.withLock { _reading } }
+        set { lock.withLock { _reading = newValue } }
+    }
+    var held: Bool {
+        get { lock.withLock { _held } }
+        set { lock.withLock { _held = newValue } }
+    }
+    /// The pictures each call was handed, in order.
+    var images: [CGImage] { lock.withLock { _images } }
+    var calls: Int { lock.withLock { _images.count } }
+
+    func read(_ image: CGImage) async -> TextReading {
+        // The picture is kept and the wait begun in one step, so a `release()` cannot fall between them.
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let answersNow = lock.withLock { () -> Bool in
+                _images.append(image)
+                guard _held else { return true }
+                _waiting.append(continuation)
+                return false
+            }
+            if answersNow { continuation.resume() }
+        }
+        return lock.withLock { _reading }
+    }
+
+    /// Lets every call that is waiting answer.
+    func release() {
+        let waiting = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            _held = false
+            defer { _waiting = [] }
+            return _waiting
+        }
+        waiting.forEach { $0.resume() }
     }
 }
 
@@ -180,6 +237,7 @@ struct Rig {
     let pasteboard = FakePasteboard()
     let preferences = FakePreferences()
     let shutter = FakeShutter()
+    let reader = FakeTextReader()
     let home: URL
     let desktop: URL
     var settings: ScreenshotsSettings = .defaults
@@ -191,7 +249,7 @@ struct Rig {
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
         session = CaptureSession(
-            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences, shutter: shutter,
+            capture: capture, writer: writer, pasteboard: pasteboard, preferences: preferences, shutter: shutter, textReader: reader,
             settings: { settings }, naming: { .english }, now: { fixed },
             locations: ScreenshotsLocations(home: home, desktop: desktop))
     }

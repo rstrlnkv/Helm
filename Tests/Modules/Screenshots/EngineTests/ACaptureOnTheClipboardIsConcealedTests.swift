@@ -41,4 +41,36 @@ final class ACaptureOnTheClipboardIsConcealedTests: XCTestCase {
         XCTAssertEqual(board.data(forType: .png), Data([2]))
         XCTAssertEqual(board.pasteboardItems?.count, 1)
     }
+
+    /// **The text read off a picture is marked the same way**, and is still text that pastes.
+    func testTheTextCopyIsMarkedConcealedAndTransientAndStillPastes() throws {
+        let port = SystemShotPasteboard(named: board.name)
+        XCTAssertEqual(port.copy(text: "line one\nline two"), .accepted)
+        let types = Set(try XCTUnwrap(board.types))
+        XCTAssertEqual(board.string(forType: .string), "line one\nline two", "the subject: the text is on the board")
+        XCTAssertTrue(types.contains(NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")),
+                      "a clipboard manager would record this text: \(types)")
+        XCTAssertTrue(types.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")), "\(types)")
+    }
+
+    /// A text replaces a picture whole and the other way round: nothing of the first stays to be pasted.
+    func testATextAndAPictureReplaceEachOtherWhole() throws {
+        let port = SystemShotPasteboard(named: board.name)
+        XCTAssertEqual(port.copy(png: Data([1])), .accepted)
+        XCTAssertEqual(port.copy(text: "words"), .accepted)
+        XCTAssertNil(board.data(forType: .png), "the picture is gone")
+        XCTAssertEqual(board.string(forType: .string), "words")
+        XCTAssertEqual(port.copy(png: Data([2])), .accepted)
+        XCTAssertNil(board.string(forType: .string), "the text is gone")
+        XCTAssertEqual(board.data(forType: .png), Data([2]))
+        XCTAssertEqual(board.pasteboardItems?.count, 1)
+    }
+
+    /// Text of any script goes through whole.
+    func testTextOfAnyScriptIsKeptWhole() {
+        let port = SystemShotPasteboard(named: board.name)
+        let text = "Звоните +7 (916) 123-45-67\n日本語の段落です。"
+        XCTAssertEqual(port.copy(text: text), .accepted)
+        XCTAssertEqual(board.string(forType: .string), text)
+    }
 }

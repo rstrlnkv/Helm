@@ -194,6 +194,34 @@ public struct AnnotationEditing: Sendable {
         return true
     }
 
+    /// The boxes `PersonalFinds` made, put on the picture as ordinary blur layers — each the person's to move or
+    /// delete — **in one undo step** however many: the list is recorded once and a single undo takes them all. A box
+    /// is kept to the area and one that is no longer a box there (nothing of it in the area, or under a point wide) is
+    /// left out; each layer has its own step. Nothing else changes: no layer is touched and the selection is let
+    /// go of. Returns how many layers went in; none is no step, and so is an edit under the pointer or a move
+    /// still open, which the list belongs to.
+    @discardableResult
+    public mutating func insert(blurs placed: [RecognizedBoxes.Placed]) -> Int {
+        disarm()
+        guard !held, draft == nil else { return 0 }
+        var added: [Annotation] = []
+        for box in placed {
+            guard [box.rect.minX, box.rect.minY, box.rect.width, box.rect.height].allSatisfy(\.isFinite) else { continue }
+            let rect = box.rect.intersection(bounds)
+            guard !rect.isNull else { continue }
+            let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX, y: rect.minY),
+                                   end: CGPoint(x: rect.maxX, y: rect.maxY),
+                                   style: AnnotationStyle(thickness: box.step), id: nextID + added.count)
+            if layer.isUsable { added.append(layer) }
+        }
+        guard !added.isEmpty else { return 0 }
+        nextID += added.count
+        record(layers)
+        layers.append(contentsOf: added)
+        selectedID = nil
+        return added.count
+    }
+
     /// `shift` is the flag of **this** event, never one kept from the press: no release
     /// is guaranteed, so a kept flag could square every later shape.
     public mutating func drag(to raw: CGPoint, shift: Bool) {
