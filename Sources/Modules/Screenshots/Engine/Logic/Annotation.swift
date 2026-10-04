@@ -248,9 +248,22 @@ public struct Annotation: Sendable, Equatable {
         return Annotation(tool: tool, start: move(start), end: move(end), points: points.map(move), style: style, text: text, id: id)
     }
 
-    /// The same object with every point of its geometry taken through `transform`.
+    /// The same object with every point of its geometry taken through `transform`. A lens is a circle (its box a square, which
+    /// `constrained` and `resized` keep): its centre goes through `transform` and its half-diagonal is scaled by the larger of the
+    /// transform's two axis factors, so a transform of two different factors cannot make it an ellipse nor take a lens that was
+    /// usable under the minimum; what then lies past the picture's edge is clipped by the cut, as a lens at the edge of a picture
+    /// is on the screen. A box that is no square is no lens the editor makes and goes by its corners like any other.
     func mapped(_ transform: (CGPoint) -> CGPoint) -> Annotation {
-        Annotation(tool: tool, start: transform(start), end: transform(end), points: points.map(transform), style: style, text: text, id: id)
+        if tool == .magnifier, abs(abs(end.x - start.x) - abs(end.y - start.y)) < 1e-6 {
+            let middle = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+            let centre = transform(middle), alongX = transform(CGPoint(x: middle.x + 1, y: middle.y)), alongY = transform(CGPoint(x: middle.x, y: middle.y + 1))
+            let factor = max(abs(alongX.x - centre.x), abs(alongY.y - centre.y))
+            func scaled(_ point: CGPoint) -> CGPoint {
+                CGPoint(x: centre.x + (point.x - middle.x) * factor, y: centre.y + (point.y - middle.y) * factor)
+            }
+            return Annotation(tool: tool, start: scaled(start), end: scaled(end), points: points.map(scaled), style: style, text: text, id: id)
+        }
+        return Annotation(tool: tool, start: transform(start), end: transform(end), points: points.map(transform), style: style, text: text, id: id)
     }
 
     /// The object with `handle` taken to `pointer`; nil when the object has no such handle.
