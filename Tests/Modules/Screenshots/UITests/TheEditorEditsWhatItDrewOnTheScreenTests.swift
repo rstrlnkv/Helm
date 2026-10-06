@@ -10,8 +10,8 @@ import Module_Screenshots_Engine
 
 /// **Select, move, resize, recolour and delete, as the person does them on the picture:** a click
 /// selects whatever the tool, the handles are drawn on the selection, ⌫ and ⌦ delete by key code on
-/// a Russian layout, Esc lets go before it asks, a pick recolours the selected and is the next
-/// object's too, the file is the edited list, and only what changed is rebuilt on a pointer event.
+/// a Russian layout, Esc lets go before it asks, a pick recolours the selected and is that
+/// tool's alone, not the next object of another, the file is the edited list, and only what changed is rebuilt on a pointer event.
 /// Panels are built and never ordered in.
 @MainActor
 final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
@@ -148,10 +148,10 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
         XCTAssertEqual(layers[0].style.color, .blue)
     }
 
-    func testAPickRecoloursTheSelectedAndIsTheNextObjectsToo() throws {
+    func testAPickRecoloursTheSelectedAndIsItsToolsAlone() throws {
         let (id, view) = try build()
         draw(id, .rectangle, from: CGPoint(x: 150, y: 150), to: CGPoint(x: 300, y: 250))
-        overlay?.perform(.color(.green)) // nothing selected: only the next object's
+        overlay?.perform(.color(.green)) // nothing selected: the rectangle's, the tool in hand
         drag(id, from: CGPoint(x: 220, y: 150), through: [])
         XCTAssertEqual(view.drawnHandles.count, 4)
         overlay?.perform(.color(.purple))
@@ -161,9 +161,9 @@ final class TheEditorEditsWhatItDrewOnTheScreenTests: XCTestCase {
         overlay?.keyDown(key(36, "\r"))
         let layers = try delivered()
         XCTAssertEqual(layers[0].style, AnnotationStyle(color: .purple, thickness: .thick, filled: true), "the selected was not recoloured")
-        // The colour and the fill are every tool's; the step is the rectangle's own, so the line opens on its middle one.
-        XCTAssertEqual(layers[1].style, AnnotationStyle(color: .purple, thickness: .medium, filled: true),
-                       "the pick did not carry to the next object, or the rectangle's step did")
+        // The fill is every tool's; the colour and the step are the rectangle's own, so the line opens on its own colour and middle step.
+        XCTAssertEqual(layers[1].style, AnnotationStyle(color: nil, thickness: .medium, filled: true),
+                       "the rectangle's colour or step carried to the line, or the fill did not")
     }
 
     func testThePaletteShowsTheSelectedObjectsStyleAndGoesBackToThePickOnLettingGo() throws {

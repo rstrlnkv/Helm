@@ -1392,7 +1392,7 @@
 "Capturing" = "Capturing";
 "Editor" = "Editor";
 "Default colour" = "Default colour";
-"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Until a colour is picked, each tool has its own: red, and yellow for the highlighter.";
+"Each tool starts with this colour until one is picked for it in the editor." = "Each tool starts with this colour until one is picked for it in the editor.";
 "Tools in the palette" = "Tools in the palette";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Hidden tools move to the ⋯ menu and still answer to their keys.";
 "Lower right. Shots taken one after another stack up." = "Lower right. Shots taken one after another stack up.";

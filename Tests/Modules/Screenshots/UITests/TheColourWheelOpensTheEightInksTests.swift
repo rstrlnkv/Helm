@@ -11,7 +11,7 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **The colour wheel is a control named «All Colours»: it opens a pop-over of all eight inks under it, a pick sets the
-/// one colour every tool shares and closes it, and a colour the grid has no swatch for shows in the wheel's centre.**
+/// colour of the tool in hand and closes it, and a colour the grid has no swatch for shows in the wheel's centre.**
 ///
 /// `Architecture/Screenshots.md`, the colour grid and wheel: the grid holds red, yellow, blue, green, black; orange,
 /// purple and white are only in the pop-over, and when one of them (or any other colour outside the grid, which the pop-over's wheel test below draws) is the colour it is seen in the centre of the wheel's cell, with no ring
@@ -327,7 +327,7 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         XCTAssertTrue(chrome.covers(CGPoint(x: popover.midX, y: popover.midY)))
     }
 
-    /// The colour is every tool's, and with Select the grid's swatches still work: so does the wheel.
+    /// With Select the grid's swatches still work: so does the wheel.
     func testTheWheelOpensWithNoToolChosenToo() throws {
         _ = try build()
         let overlay = try XCTUnwrap(overlay)
@@ -335,7 +335,7 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         XCTAssertTrue(overlay.coloursAreOpen, "no tool chosen: the thickness one has nothing to set, the colour does")
     }
 
-    func testAPickSetsTheSharedColourPersistsItAndClosesThePopover() throws {
+    func testAPickSetsTheToolInHandsColourPersistsItAndClosesThePopover() throws {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         _ = try build(store: store)
         let overlay = try XCTUnwrap(overlay)
@@ -344,9 +344,9 @@ final class TheColourWheelOpensTheEightInksTests: XCTestCase {
         overlay.perform(.color(.orange))
         XCTAssertFalse(overlay.coloursAreOpen, "a pick left the pop-over open")
         XCTAssertEqual(overlay.palette.style.color, .orange)
-        XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .orange, "the pick is in the store, `editorColor`, for the next editor")
+        XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .orange, "the pick is in the store, `editorInkByTool`, for the next editor")
         overlay.perform(.tool(.highlighter))
-        XCTAssertEqual(overlay.palette.style.color, .orange, "the colour is every tool's, not the Pen's")
+        XCTAssertNil(overlay.palette.style.color, "the colour is the Pen's, not every tool's")
         _ = try openColours(overlay)
         overlay.perform(.color(.blue))
         XCTAssertFalse(overlay.coloursAreOpen)

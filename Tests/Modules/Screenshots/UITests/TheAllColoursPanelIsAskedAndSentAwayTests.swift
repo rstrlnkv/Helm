@@ -96,17 +96,20 @@ final class TheAllColoursPanelIsAskedAndSentAwayTests: XCTestCase {
         XCTAssertNotEqual(panel.opened.first, AnnotationInk.black, "control: the highlighter's own default is not a stand-in")
     }
 
-    func testAColourFromThePanelIsTheEditorsColourForEveryToolAndIsKept() throws {
+    func testAColourFromThePanelIsTheToolInHandsAloneAndIsKept() throws {
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         let panel = FakeColourPanel()
         let id = try build(panel: panel, store: store)
+        overlay?.perform(.tool(.pen))
+        overlay?.perform(.color(.orange))
         overlay?.perform(.tool(.rectangle))
         overlay?.perform(.allColours)
         let picked = try XCTUnwrap(AnnotationInk(red: 0.2, green: 0.4, blue: 0.6))
         panel.pick(picked)
         XCTAssertEqual(overlay?.palette.style.color, picked)
         XCTAssertEqual(EditorMemory.read(store).style(for: .rectangle).color, picked, "kept for the next editor")
-        XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, picked, "every tool's")
+        XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .orange, "the Pen was orange first and the panel's colour took it from the Pen")
+        XCTAssertNil(EditorMemory.read(store).style(for: .line).color, "the panel's colour reached the Line")
         overlay?.mouseDown(on: id, at: CGPoint(x: 350, y: 150), flags: [])
         overlay?.mouseDragged(on: id, at: CGPoint(x: 450, y: 250), flags: [])
         overlay?.mouseUp(on: id)

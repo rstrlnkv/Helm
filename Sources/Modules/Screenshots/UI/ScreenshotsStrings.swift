@@ -136,7 +136,7 @@ enum ScStr {
     /// `Colour` is already the adjective of «Colour» printing, so the row has its own key.
     static var defaultColour: String { L("Default colour") }
     static var defaultColourNote: String {
-        L("Until a colour is picked, each tool has its own: red, and yellow for the highlighter.")
+        L("Each tool starts with this colour until one is picked for it in the editor.")
     }
     static var toolsInPalette: String { L("Tools in the palette") }
     /// The ⋯ is the menu button's own name; each language's table quotes it as that language does.

@@ -1392,7 +1392,7 @@
 "Capturing" = "Captura";
 "Editor" = "Editor";
 "Default colour" = "Color predeterminado";
-"Until a colour is picked, each tool has its own: red, and yellow for the highlighter." = "Mientras no se elija un color, cada herramienta usa el suyo: rojo, y amarillo para el marcador.";
+"Each tool starts with this colour until one is picked for it in the editor." = "Cada herramienta empieza con este color hasta que se elige uno propio en el editor.";
 "Tools in the palette" = "Herramientas de la paleta";
 "Hidden tools move to the ⋯ menu and still answer to their keys." = "Las herramientas ocultas pasan al menú “⋯” y siguen respondiendo a sus teclas.";
 "Lower right. Shots taken one after another stack up." = "Abajo a la derecha. Varias capturas seguidas se apilan.";

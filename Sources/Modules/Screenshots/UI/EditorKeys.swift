@@ -49,7 +49,7 @@ enum EditorAction: Equatable {
     /// points (the cell that asked); opening one that is open closes it, and with no tool chosen nothing opens.
     case thicknessAndOpacity(anchorX: CGFloat)
     /// Opens the colours pop-over, all eight inks, the same way under the colour wheel's cell: the one at a time with
-    /// the thickness pop-over, and open with no tool chosen too, since the colour is every tool's.
+    /// the thickness pop-over, and open with no tool chosen too, where a pick is the selected object's tool's or the tool last in hand's.
     case colours(anchorX: CGFloat)
     case toggleFill
     case undo, redo

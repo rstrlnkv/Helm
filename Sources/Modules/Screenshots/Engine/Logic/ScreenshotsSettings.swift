@@ -140,11 +140,14 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let panelOffsetY = "panelOffsetY"
         /// The editor's memory, read by `EditorMemory` and not by `ScreenshotsSettings`.
         public static let editorTool = "editorTool"
-        /// Retired as a write, read only while `editorInk` is absent: the swatch's name, before any colour could be
-        /// picked. Never re-keyed and never removed.
+        /// The swatch's name, which the Settings row writes: the colour a tool starts with until it has its own: the editor
+        /// reads it only while `editorInk` is absent, the Settings row always. Never re-keyed.
         public static let editorColor = "editorColor"
-        /// The shared colour as `[red, green, blue]`, sRGB 0…1 (`AnnotationInk`).
+        /// The colour every tool had before each kept its own, `[red, green, blue]`, sRGB 0…1 (`AnnotationInk`): written no
+        /// more, read as the start of a tool with no entry in `editorInkByTool`; the Settings row's pick removes it (a pick in the editor never writes it).
         public static let editorInk = "editorInk"
+        /// Tool raw value → `[red, green, blue]`, each tool's own colour (`EditorMemory`).
+        public static let editorInkByTool = "editorInkByTool"
         /// Retired, not read: one step for every tool, before each tool had its own. Never reused.
         public static let editorThickness = "editorThickness"
         /// Tool raw value → step 0…2, and tool raw value → opacity, each tool's own (`EditorMemory`).

@@ -121,7 +121,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
 /// boxes, whether they are filled. An object keeps the style it was begun with.
 public struct AnnotationStyle: Sendable, Equatable {
     /// Nil until a colour is picked: each tool then has its own — red, and yellow for
-    /// the marker. Once one is picked it is every tool's, the marker's included.
+    /// the marker. Once one is picked it is that one tool's.
     public var color: AnnotationInk?
     public var thickness: AnnotationThickness
     public var filled: Bool
