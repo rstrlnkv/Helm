@@ -82,12 +82,16 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
         settle()
     }
 
-    /// The window as the owner reads it under `.windowTitle`: the page's own
-    /// name, drawn, with no subtitle left from anywhere.
+    /// The window as the owner reads it under `.windowTitle`: the page's name
+    /// (Settings, the one About shares with General and Log), drawn, with no
+    /// subtitle left from anywhere. It is not the window's own fallback name, so
+    /// a title the page lost is not read as one it kept.
     private func assertAboutUnderWindowTitle(_ label: String,
                                              file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertEqual(window?.title, AppStr.aboutHelm,
-                       "\(label): the window is not titled with About's own name", file: file, line: line)
+        XCTAssertEqual(window?.title, AppStr.settingsPane,
+                       "\(label): the window is not titled with the Settings name", file: file, line: line)
+        XCTAssertNotEqual(window?.title, AppStr.settingsWindowTitle,
+                          "\(label): the window fell back to its own name", file: file, line: line)
         XCTAssertEqual(window?.titleVisibility, .visible,
                        "\(label): under .windowTitle the title must be drawn", file: file, line: line)
         XCTAssertEqual(window?.subtitle, "",
@@ -106,7 +110,8 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
         // Under `.moduleName` the title is not drawn, but it is still what the
         // Window menu and Mission Control call the window.
         XCTAssertEqual(window?.titleVisibility, .hidden, "moduleName: the title bar must not draw the title")
-        XCTAssertEqual(window?.title, AppStr.aboutHelm, "moduleName: the window's own name for About")
+        XCTAssertEqual(window?.title, AppStr.settingsPane, "moduleName: the window is not titled Settings on About")
+        XCTAssertNotEqual(window?.title, AppStr.settingsWindowTitle, "moduleName: About fell back to the window's name")
 
         AppSettings.pageBarStyle = .windowTitle
         settle()
@@ -148,7 +153,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
 
     /// A module with a status puts it in the subtitle under `.windowTitle`;
     /// About has none, so arriving from that module must clear it rather than
-    /// carry «Not running» under «About Helm».
+    /// carry «Not running» under «Settings».
     func testArrivingFromAModuleWithAStatusLeavesNoSubtitleOnAbout() throws {
         try open(liveKeepAwake: true)
         try select(.module(Self.keepAwake))
@@ -187,9 +192,9 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
     /// pane was unmounted in between. `helmIdlesOffScreen` unmounts on an
     /// occlusion change, and a test process is sent none, so this posts the one
     /// AppKit posts — and measured, the window's title and `model.pageTitle`
-    /// stayed «О Helm» while hidden, so either the unmount did not happen here
+    /// stayed the page's name while hidden, so either the unmount did not happen here
     /// or it withdrew nothing. What it does prove is the person's reading: the
-    /// window reopened on About carries About's name.
+    /// window reopened on About carries the name About publishes.
     func testClosingAndReopeningTheWindowOnAboutKeepsItsName() throws {
         try open()
         try select(.about)
@@ -206,7 +211,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
     /// A minimised window is named by its title in the Dock and in the Window
     /// menu, and it is not visible, which is the state `helmIdlesOffScreen`
     /// reads — so the name must survive the page being off screen.
-    func testAMinimisedWindowOnAboutIsStillNamedAbout() throws {
+    func testAMinimisedWindowOnAboutIsStillNamedSettings() throws {
         try open()
         try select(.about)
         let window = try XCTUnwrap(self.window)
@@ -217,7 +222,8 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
         // The subject: the window really is minimised and not visible.
         XCTAssertTrue(window.isMiniaturized, "the window did not minimise; the case proves nothing")
         XCTAssertFalse(window.isVisible, "a minimised window read as visible; the case proves nothing")
-        XCTAssertEqual(window.title, AppStr.aboutHelm, "the minimised window lost About's name")
+        XCTAssertEqual(window.title, AppStr.settingsPane, "the minimised window lost the Settings name")
+        XCTAssertNotEqual(window.title, AppStr.settingsWindowTitle, "the minimised window fell back to the window's name")
         window.deminiaturize(nil)
         settle(1.5)
         assertAboutUnderWindowTitle("About after the window came back from the Dock")
@@ -231,8 +237,8 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
     private func expectedTitle(_ page: SettingsSelection) -> String {
         switch page {
         case .general: return AppStr.settingsPane
-        case .about: return AppStr.aboutHelm
-        case .log: return AppStr.logPane
+        case .about: return AppStr.settingsPane
+        case .log: return AppStr.settingsPane
         case .module(let id):
             // An id no descriptor answers falls back to General's page
             // (`SettingsDetail`), and so to General's name.
@@ -242,12 +248,17 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
 
     func testAnUnknownModuleIdIsTitledByThePageActuallyDrawn() throws {
         try open()
-        try select(.about)
+        // From a module page, whose name is not the Settings name: from About the
+        // stale name and the fallback's would be one string and nothing here
+        // could tell them apart.
+        let previous = try XCTUnwrap(ModuleRegistry.all.first, "no module to arrive from")
+        try select(.module(previous.idRaw))
+        XCTAssertEqual(window?.title, previous.moduleMetadata.name, "the module page did not name the window")
         let stale = SettingsSelection.module("helm.no-such-module")
         try select(stale)
         XCTAssertEqual(window?.title, expectedTitle(stale),
                        "a selection that outlived its module: titled by a page that is not on screen")
-        XCTAssertNotEqual(window?.title, AppStr.aboutHelm, "the previous page's name stayed on the window")
+        XCTAssertNotEqual(window?.title, previous.moduleMetadata.name, "the previous page's name stayed on the window")
     }
 
     // MARK: - About with no window bar
@@ -272,7 +283,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
         host2.frame = NSRect(x: 0, y: 0, width: 700, height: 700)
         host2.layoutSubtreeIfNeeded()
         RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.2))
-        XCTAssertEqual(barred.seen.last ?? nil, HelmPageTitle(title: AppStr.aboutHelm, subtitle: nil),
+        XCTAssertEqual(barred.seen.last ?? nil, HelmPageTitle(title: AppStr.settingsPane, subtitle: nil),
                        "About under a bar did not publish its name; the case above proves nothing")
     }
 }

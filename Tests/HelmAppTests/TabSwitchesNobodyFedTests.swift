@@ -20,7 +20,8 @@ import Module_Hosts_Engine
 /// What the shared guard cannot see, and this file feeds:
 ///
 /// - **The Log page**, which is not in `ModuleRegistry` and so is never mounted
-///   there, though it declares All / Warnings / Errors into the same toolbar.
+///   there, though, built with no Settings tabs, it declares its three level
+///   tabs into the same toolbar.
 /// - **Homebrew with the console open, with outdated packages, with a selection
 ///   below `HomebrewSplit`'s threshold** — the three states in which the page's
 ///   two remaining curves (`showsConsole`, `hb.selected == nil`) could ride a

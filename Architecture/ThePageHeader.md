@@ -15,7 +15,7 @@ token and how a generation number keeps an outgoing mount's late write from
 overwriting the page on screen. A page that never calls it shows the name, and
 under `PageBarStyle.moduleName` a status-bearing page's status, and nothing else;
 that is not an error state. `command grep -rln '\.helmWindowToolbar(' Sources`
-lists the pages that publish.
+lists the files that publish.
 
 ## The bar's zones
 
@@ -24,8 +24,7 @@ its name, drawn only under `PageBarStyle.moduleName`); a flexible space; the tab
 centred; a flexible space; **one** custom-view item for the whole action capsule;
 the search field. A status-bearing page draws the shared name-only bar instead —
 separator, name, a flexible space, `helm.status` at the trailing edge — and under
-`PageBarStyle.moduleName` that bar always lists `helm.status`, drawing nothing on a page with no status, so General,
-About and every status-less module that draws it never see that item move
+`PageBarStyle.moduleName` that bar always lists `helm.status`, drawing nothing on a page with no status, so every status-less module that draws it never sees that item move
 (`SettingsToolbar.identifiers`, `StatusZoneView`).
 
 **The actions are one `NSToolbarItem`, not one per action.** The tabs and the

@@ -694,13 +694,19 @@ private struct SettingsDetail: View {
 
     @ViewBuilder
     private var content: some View {
+        let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
+                                          selectedTab: SettingsTabs.binding($model.selection))
         switch model.selection {
         case .none, .general:
+            // The keys are the ones `SettingsToolbar.pageKey` answers for the
+            // page; General and About put nothing in their bar but the tabs.
             MenuBarSettingsView()
+                .helmWindowToolbar(tabs, token: "general")
         case .about:
             AboutHelmView()
+                .helmWindowToolbar(tabs, token: "about")
         case .log:
-            LogView()
+            LogView(settingsTabs: tabs)
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
                 ModuleDetailView(host: model.host, descriptor: descriptor, id: id)

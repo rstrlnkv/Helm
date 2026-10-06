@@ -457,24 +457,24 @@ import HelmUI
         let status: (word: String, active: Bool)?
     }
 
-    /// The same symbol, tint and name the sidebar draws for this row
-    /// (`SettingsWindow.SettingsSidebar`) — read off `currentSelection` and
+    /// The symbol, tint and name of the page on screen: a module's are the ones
+    /// the sidebar draws for its row (`SettingsSidebar` in `SettingsWindow.swift`), and
+    /// General, Log and About share Settings' — read off `currentSelection` and
     /// `ModuleRegistry` rather than off `model.pageTitle`, which the
     /// `.moduleName` bar style deliberately carries with no subtitle and no
     /// symbol (`PageBarStyle.swift`'s own `PageBarContent`): that preference
     /// is what sets the *window's* title for `.windowTitle` style, and this
     /// is a second, independent reading for the toolbar's own name item.
     private func pageIdentity() -> PageIdentity {
+        // One name over the three tabs, so the bar's plate stays put under them.
+        let settings = PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
         switch currentSelection {
-        case .none, .general:
-            return PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
-        case .about:
-            return PageIdentity(symbol: "info.circle", tint: .gray, title: AppStr.aboutHelm, status: nil)
-        case .log:
-            return PageIdentity(symbol: "text.alignleft", tint: .gray, title: AppStr.logPane, status: nil)
+        case .none, .general: return settings
+        case .about: return settings
+        case .log: return settings
         case .module(let id):
             guard let descriptor = ModuleRegistry.descriptor(id) else {
-                return PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
+                return settings
             }
             return PageIdentity(symbol: descriptor.moduleMetadata.sfSymbol,
                                 tint: descriptor.moduleTint.colour,

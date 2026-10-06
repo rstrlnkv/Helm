@@ -16,6 +16,11 @@ import XCTest
 /// `window` and `model`, one page at a time; the title asserted is the one the
 /// window itself carries, not the preference. Every language, since the title
 /// is a lookup.
+///
+/// General, Log and About are the three tabs of one page and carry one name,
+/// Settings; a module page carries its own. What the check still tells apart is
+/// a page that is titled from one that fell back to the window's own name, which
+/// is why those two must be two strings in every language.
 @MainActor
 final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
 
@@ -63,6 +68,8 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
     }
 
     private func assertTitle(_ page: SettingsSelection, is expected: String, _ label: String) throws {
+        XCTAssertNotEqual(expected, AppStr.settingsWindowTitle,
+                          "\(label): the page's name and the window's own name are one string, so a fallback cannot be told from a title")
         let model = try XCTUnwrap(self.model)
         model.selection = page
         settle()
@@ -77,8 +84,8 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
         AppLanguage.each { language in
             do {
                 try assertTitle(.general, is: AppStr.settingsPane, "\(language) General")
-                try assertTitle(.about, is: AppStr.aboutHelm, "\(language) About")
-                try assertTitle(.log, is: AppStr.logPane, "\(language) Log")
+                try assertTitle(.about, is: AppStr.settingsPane, "\(language) About")
+                try assertTitle(.log, is: AppStr.settingsPane, "\(language) Log")
                 for descriptor in ModuleRegistry.all {
                     try assertTitle(.module(descriptor.idRaw), is: descriptor.moduleMetadata.name,
                                     "\(language) \(descriptor.idRaw)")

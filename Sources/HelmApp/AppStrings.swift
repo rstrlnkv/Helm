@@ -61,6 +61,9 @@ enum AppStr {
     }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings") }
+    /// The first of the Settings page's three tabs. Not "General": that word is
+    /// a glyph category's name, another meaning, and the table is keyed by English.
+    static var settingsTabGeneral: String { L("Basics") }
     /// The light/dark control, which macOS itself calls «Appearance» — the same
     /// word as the section it now sits in. A section and its first row reading
     /// identically is how a person stops seeing the heading at all, so the row

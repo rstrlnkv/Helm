@@ -109,7 +109,7 @@ final class LogPageUnderHandSource: @unchecked Sendable {
 }
 
 /// The Log page rendered offscreen in a named appearance, with its own controls
-/// in reach. The controls are the window's: the page declares its level tabs,
+/// in reach. The controls are the window's: the page, built with no Settings tabs, declares its level tabs,
 /// its capsule and its search into a `HelmWindowToolbarChannel`, and this reads
 /// them back from it and presses them the way the toolbar does — the tab's
 /// binding is set, the action's `perform` is called — so a press here goes down

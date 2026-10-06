@@ -47,6 +47,12 @@ struct LogView: View {
     var source: () -> [LogEntry] = { HelmLog.shared.recentEntries() }
     var storedLog: () -> Bool = { HelmLog.anyFileExists() }
 
+    /// The Settings page's tabs, when the page is shown as one of them. They
+    /// take the bar's one switcher slot, and the level filter that stands there
+    /// when none are handed becomes the first action, before the module filter.
+    /// Nil leaves the bar as it is.
+    var settingsTabs: HelmPageToolbarContent?
+
     /// Polled rather than subscribed. A log has no interesting event to observe
     /// — it has a tail — and one timer that exists while the page is on screen
     /// is cheaper to reason about than a stream that has to be finished.
@@ -119,7 +125,7 @@ struct LogView: View {
         // the header in the window's toolbar is drawn by `helmToolbarBackdrop`
         // a window away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
-        .helmPageBar(title: AppStr.logPane)
+        .helmPageBar(title: AppStr.settingsPane)
         // The token is the page's own key, the one `SettingsToolbar.pageKey`
         // answers for `.log`. Declared unconditionally: the toolbar swaps a
         // whole bar when the *shape* of what a page declares changes, and this
@@ -142,15 +148,47 @@ struct LogView: View {
 
     // MARK: - The window's toolbar
 
-    /// The three tabs and the level each one means. One declaration, so the
-    /// toolbar's segments and the filter they set cannot disagree.
-    private static let levelTabs: [(id: String, level: LogLevel)] = [
-        ("all", .info), ("warn", .warn), ("error", .error),
-    ]
+    /// The three levels by id. One declaration, so the toolbar's segments, the
+    /// level menu's items and the filter they set cannot disagree.
+    private static var levelTabs: [(id: String, level: LogLevel, title: String, symbol: String)] {
+        [("all", .info, AppStr.logLevelAll, "list.bullet"),
+         ("warn", .warn, AppStr.logLevelWarnings, "exclamationmark.triangle"),
+         ("error", .error, AppStr.logLevelErrors, "xmark.octagon")]
+    }
 
-    /// **What the page asks of the window's toolbar**, in one place: the level
-    /// as the centred tabs, then the capsule — module filter, Follow, Copy and
-    /// the «More actions» menu — and the search.
+    /// The level in force, as one of the three.
+    private var levelInForce: (id: String, level: LogLevel, title: String, symbol: String) {
+        Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
+    }
+
+    /// **What the page asks of the window's toolbar**, in one place:
+    /// `levelToolbarContent` as it stands when no tabs were handed; with
+    /// `settingsTabs`, those tabs centred and the level as the first action of
+    /// the capsule.
+    private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
+        var content = levelToolbarContent(page)
+        guard let settingsTabs else { return content }
+        content.tabs = settingsTabs.tabs
+        content.selectedTab = settingsTabs.selectedTab
+        content.actions.insert(levelAction, at: 0)
+        return content
+    }
+
+    /// The level filter as an action: its title is the level in force, its
+    /// items are the three levels, the same words the tabs say.
+    private var levelAction: HelmToolbarAction {
+        HelmToolbarAction(
+            id: "level",
+            title: levelInForce.title,
+            symbol: "list.bullet",
+            menu: Self.levelTabs.map { tab in
+                HelmToolbarMenuItem(id: tab.id, title: tab.title,
+                                    isOn: tab.level == minimumLevel) { minimumLevel = tab.level }
+            })
+    }
+
+    /// The level as the centred tabs, then the capsule — module filter, Follow,
+    /// Copy and the «More actions» menu — and the search.
     ///
     /// Follow is a toggle with a face: its state is its glyph (an open eye when
     /// following, a slashed one when not) and never a tint. The old glyph button
@@ -158,15 +196,11 @@ struct LogView: View {
     /// state carried by colour alone is not read by everyone. Its word is in the
     /// tooltip and the accessibility label, as it always was, and what it is
     /// doing is the accessibility value.
-    private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
+    private func levelToolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: "all", title: AppStr.logLevelAll, symbol: "list.bullet"),
-                   HelmToolbarTab(id: "warn", title: AppStr.logLevelWarnings,
-                                  symbol: "exclamationmark.triangle"),
-                   HelmToolbarTab(id: "error", title: AppStr.logLevelErrors,
-                                  symbol: "xmark.octagon")],
+            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
             selectedTab: Binding(
-                get: { Self.levelTabs.first { $0.level == minimumLevel }?.id ?? "all" },
+                get: { levelInForce.id },
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),
             actions: [
                 // Built from what has arrived, so it names the modules that
