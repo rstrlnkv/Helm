@@ -227,16 +227,23 @@ import HelmUI
 
     /// **What the bar's first item is: the sidebar's tracking separator
     /// (`.sidebarSeparator`, the default), or no tracking item at all
-    /// (`.spacer`).** Only `.sidebarSeparator` is constructed in the tree. A
-    /// `.spacer` bar starts with its name: `buildBar` always passes
-    /// `hasSpacer: false` to `identifiers`, so nothing is listed in front.
+    /// (`.spacer`).** `SettingsWindow` constructs `.sidebarSeparator`; `.spacer`
+    /// is constructed by tests alone. A `.spacer` bar starts with the spacer
+    /// where the pane leaves room for one (`leadingSpacer`, recomputed by
+    /// `leadMoved()`), and where it does not, or before the pane has been told,
+    /// with whatever `identifiers` lists next: its name under `.moduleName`.
     enum Lead { case sidebarSeparator, spacer }
     private let lead: Lead
+    /// Called each time `show(_:key:)` assigns a bar to a window that was not
+    /// showing that bar, never from `init` and never without a window. Held
+    /// for the toolbar's life: capture the receiver weakly. Called after the
+    /// bar is the attached one. A receiver is to ask for a layout, not force
+    /// one; nothing under `Sources/` passes a receiver.
+    private let barAttached: () -> Void
 
     private static let nameID = NSToolbarItem.Identifier("helm.name")
-    /// Listed by `identifiers` only for `.spacer` with `hasSpacer: true`, which
-    /// only tests pass; `toolbar(_:itemForItemIdentifier:…)` builds no item for
-    /// it (`default: return nil`).
+    /// Listed by `identifiers` only for `.spacer` with `hasSpacer: true`;
+    /// `makeSpacerItem` builds its item.
     private static let spacerID = NSToolbarItem.Identifier("helm.leadingSpacer")
     /// **The module's status, at the bar's trailing edge — the owner,
     /// 2026-09-28: «Давай вернем его в правую часть».** Only ever appended
@@ -256,9 +263,11 @@ import HelmUI
     /// merely draws adjacent to one another.
     private static let actionsID = NSToolbarItem.Identifier("helm.actions")
 
-    init(model: SettingsModel, channel: HelmWindowToolbarChannel, lead: Lead = .sidebarSeparator) {
+    init(model: SettingsModel, channel: HelmWindowToolbarChannel, lead: Lead = .sidebarSeparator,
+         barAttached: @escaping () -> Void = {}) {
         self.model = model
         self.lead = lead
+        self.barAttached = barAttached
         self.channel = channel
         super.init()
         channel.onChange = { [weak self] in self?.refresh() }
@@ -406,7 +415,8 @@ import HelmUI
         item.view = hosting
     }
 
-    /// **A language, label-style or page-bar change** — every one of them can
+    /// **A language, label-style or page-bar change, or the leading spacer
+    /// appearing or leaving (`leadMoved()`)** — every one of them can
     /// move the room the tabs need (a longer word, a name zone that appears
     /// or disappears) without the selection itself moving, so the attached
     /// bar's own settle has to run again. Nothing here invalidates the tabs'
@@ -418,10 +428,121 @@ import HelmUI
     /// call.
     private func refreshAndResettle() {
         refresh()
-        if let key = attachedPageKey {
-            let bar = key == Self.nameOnlyKey ? nameOnlyBar : pageBars[key]
-            if let bar { scheduleSettle(bar) }
+        if let bar = attachedBar { scheduleSettle(bar) }
+    }
+
+    // MARK: - Where the pane is
+
+    /// Where the pane stands, as this class takes it: both numbers finite and
+    /// not below zero. Meant for the card's frame (`ShellContentView`'s
+    /// `cardMoved`); nothing connects the two.
+    private struct Pane: Equatable {
+        let leading: CGFloat
+        let width: CGFloat
+    }
+
+    /// `nil` until the first `paneMoved`. Nothing clears it: it is the last
+    /// position told, not a value of one visit.
+    private var pane: Pane?
+
+    /// Where the toolbar starts its items before any bar has been read: 92.5,
+    /// measured at a 200 pt sidebar on macOS 27.2 only, on no other width and
+    /// no other system.
+    nonisolated static let itemsStartSeed: CGFloat = 92.5
+
+    /// Where the attached bar's spacer starts, or its name where the bar has
+    /// no spacer, in window coordinates — the seed until `readItemsStart()`
+    /// has a view to read. Under `.sidebarSeparator` it is never read and
+    /// stays the seed.
+    private(set) var itemsStart: CGFloat = SettingsToolbar.itemsStartSeed
+
+    /// The width of the bar's leading spacer, `nil` where it has none. Only
+    /// `.spacer` bars carry one, and only where the pane leaves room
+    /// (`spacerWidth`); always `nil` under `.sidebarSeparator`, so such a bar
+    /// is never rebuilt by a report. Written only by `leadMoved()`.
+    private(set) var leadingSpacer: CGFloat?
+
+    var hasSpacer: Bool { leadingSpacer != nil }
+
+    /// Told where the pane is; tests alone call it, nothing under `Sources/`
+    /// does. Returns whether anything was stored: the same pair as the last
+    /// one is refused, so a layout that moved neither number (a height-only
+    /// change) arms no settle.
+    ///
+    /// Both numbers are normalised before the comparison, so a NaN does not
+    /// differ from itself. Not-a-number, infinite or below zero means for
+    /// `width` no room (the tabs fold; +inf is not sent to the upper bound,
+    /// where a huge room would unfold them into overflow), and for `leading`
+    /// 0, for which `spacerWidth` answers nil while the items start at or past
+    /// `nameInset`.
+    @discardableResult
+    func paneMoved(leading: CGFloat, width: CGFloat) -> Bool {
+        let next = Pane(leading: leading.clampedIfFinite(to: 0...CGFloat.greatestFiniteMagnitude) ?? 0,
+                        width: width.clampedIfFinite(to: 0...CGFloat.greatestFiniteMagnitude) ?? 0)
+        guard next != pane else { return false }
+        pane = next
+        _ = readItemsStart()
+        leadMoved()
+        return true
+    }
+
+    /// Re-reads where the attached bar's spacer starts, else its name: that
+    /// view's leading edge in window coordinates. Assumed, not measured: the
+    /// view's edge is the item's start plus 0.5, for the spacer and for the
+    /// name alike. Reads nothing, and the stored value stays, under
+    /// `.sidebarSeparator`, and under `.spacer` while the window is not
+    /// visible: an unshown window's name view read 879.5 in a test run.
+    /// Assumed, not tried: that nothing had laid that toolbar out, and that
+    /// `isVisible` is the gate that tells; no test reads on a visible window.
+    /// Nor while no bar is attached, the view has no window or no width, or
+    /// the answer is not a position. Returns whether the stored value moved.
+    private func readItemsStart() -> Bool {
+        guard lead == .spacer, window?.isVisible == true, let bar = attachedBar,
+              let view = bar.spacerItem?.view ?? bar.nameItem?.view,
+              view.window != nil, view.frame.width > 0 else { return false }
+        let start = view.convert(view.bounds, to: nil).minX
+        guard start.isFinite, start >= 0, start != itemsStart else { return false }
+        itemsStart = start
+        return true
+    }
+
+    /// Recomputes `leadingSpacer`. Whether the bar has one flipping rebuilds
+    /// the bar (`ShapeSignature.hasSpacer`); a moved width only changes the
+    /// attached bar's constraint. The settle is armed again either way, under
+    /// `.sidebarSeparator` too, where nothing of the bar moved. Returns
+    /// whether the spacer appeared or left, which is when the attached bar was
+    /// replaced.
+    @discardableResult
+    private func leadMoved() -> Bool {
+        let next = lead == .spacer
+            ? pane.flatMap { Self.spacerWidth(paneLeading: $0.leading, itemsStart: itemsStart) }
+            : nil
+        let flipped = (next == nil) != (leadingSpacer == nil)
+        leadingSpacer = next
+        if flipped {
+            refreshAndResettle()
+            return true
         }
+        attachedBar?.spacerWidth?.constant = next ?? 0
+        scheduleSettleForAttachedBar()
+        return false
+    }
+
+    /// An empty view of the spacer's width. The height of 28 is assumed, not
+    /// tried: that an item with no height collapses.
+    private func makeSpacerItem(_ bar: PageBar) -> NSToolbarItem {
+        let item = NSToolbarItem(itemIdentifier: Self.spacerID)
+        let view = NSView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        let width = view.widthAnchor.constraint(equalToConstant: leadingSpacer ?? 0)
+        width.isActive = true
+        view.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        view.setAccessibilityElement(false)
+        item.view = view
+        item.isBordered = false
+        bar.spacerItem = item
+        bar.spacerWidth = width
+        return item
     }
 
     deinit {
@@ -654,7 +775,7 @@ import HelmUI
     /// why a stale shape always gets a brand new toolbar object rather than a
     /// mutated one.
     private func obtainBar(for key: String, content: HelmPageToolbarContent?, live: Bool) -> PageBar {
-        let shape = ShapeSignature(content: content)
+        let shape = ShapeSignature(content: content, hasSpacer: hasSpacer)
         if let existing = pageBars[key], existing.shape == shape {
             existing.content = content
             existing.isLive = live
@@ -668,7 +789,7 @@ import HelmUI
     }
 
     private func obtainNameOnlyBar() -> PageBar {
-        let shape = ShapeSignature(content: nil)
+        let shape = ShapeSignature(content: nil, hasSpacer: hasSpacer)
         if let existing = nameOnlyBar, existing.shape == shape { return existing }
         if let stale = nameOnlyBar { barsByToolbarID[ObjectIdentifier(stale.toolbar)] = nil }
         let bar = buildBar(label: Self.nameOnlyKey, content: nil, shape: shape)
@@ -695,8 +816,7 @@ import HelmUI
         toolbar.autosavesConfiguration = false
         toolbar.displayMode = .iconOnly
         toolbar.allowsDisplayModeCustomization = false
-        let list = Self.identifiers(content: content, style: shape.pageBarStyle,
-                                    lead: lead, hasSpacer: false)
+        let list = barIdentifiers(content: content, style: shape.pageBarStyle)
         bar.identifiers = list
         toolbar.itemIdentifiers = list
         toolbar.centeredItemIdentifiers = Self.centredIdentifiers(shape)
@@ -717,7 +837,10 @@ import HelmUI
     private func show(_ bar: PageBar, key: String) -> Bool {
         let alreadyShowing = attachedPageKey == key && window?.toolbar === bar.toolbar
         if !alreadyShowing {
-            window?.toolbar = bar.toolbar
+            // A cached bar's constant may be stale: the cache key knows only
+            // whether a spacer exists, not its width.
+            bar.spacerWidth?.constant = leadingSpacer ?? 0
+            if let window { window.toolbar = bar.toolbar }
             attachedPageKey = key
             // M3's own net watches whichever bar is now on screen — only that
             // one can overflow at all.
@@ -728,6 +851,10 @@ import HelmUI
         // republish on the same bar can still move the room the tabs need
         // (an action's own visibility flipping the capsule's width).
         scheduleSettle(bar)
+        // Last, once the bar is the attached one in every respect: a receiver
+        // that reaches `paneMoved` synchronously finds this bar attached, its
+        // watch and its settle armed. Only when a window took the bar.
+        if !alreadyShowing, window != nil { barAttached() }
         return !alreadyShowing
     }
 
@@ -877,6 +1004,12 @@ import HelmUI
         return list
     }
 
+    /// This bar's list: `identifiers` with this toolbar's lead and whether the
+    /// pane leaves room for a spacer. Internal so a test reads it without a window.
+    func barIdentifiers(content: HelmPageToolbarContent?, style: PageBarStyle) -> [NSToolbarItem.Identifier] {
+        Self.identifiers(content: content, style: style, lead: lead, hasSpacer: hasSpacer)
+    }
+
     /// How far past the pane's leading edge the spacer's end lands: the
     /// distance the name keeps from it. This function's own number.
     nonisolated private static let nameInset: CGFloat = 16
@@ -891,8 +1024,7 @@ import HelmUI
     /// either side, or a pane leading below zero, answers nil, and so does a
     /// width that is not finite: a width computed from them would be a guess.
     /// When it answers, the width is finite and above zero. No ceiling: the
-    /// sidebar's own range is its owner's business. No code in the tree calls
-    /// it yet except tests.
+    /// sidebar's own range is its owner's business. `leadMoved()` calls it.
     nonisolated static func spacerWidth(paneLeading: CGFloat, itemsStart: CGFloat) -> CGFloat? {
         guard paneLeading.isFinite, paneLeading >= 0, itemsStart.isFinite else { return nil }
         let width = paneLeading + nameInset - itemsStart
@@ -945,6 +1077,7 @@ import HelmUI
                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         guard let bar = barsByToolbarID[ObjectIdentifier(toolbar)] else { return nil }
         switch identifier {
+        case Self.spacerID: return makeSpacerItem(bar)
         case Self.nameID: return makeNameItem(bar)
         case Self.statusID: return makeStatusItem(bar)
         case Self.tabsID: return makeTabsItem(bar)
@@ -1432,11 +1565,14 @@ import HelmUI
     }
 
     /// **A sibling with no size of its own, never the view being measured**
-    /// (`CLAUDE.md`'s own rule for a geometry reading): the detail pane's own
+    /// (`CLAUDE.md`'s own rule for a geometry reading): the pane's width once
+    /// `paneMoved(leading:width:)` has told it, else the detail pane's own
     /// width when this window's content is the split view it always is
     /// (`SettingsSplitViewController`), or the window's whole content layout
     /// rect for a window under test that mounts the toolbar without one.
-    private func offeredRoom() -> CGFloat {
+    /// Internal so a test reads it without a window.
+    func offeredRoom() -> CGFloat {
+        if let pane { return pane.width }
         guard let window else { return 0 }
         if let split = window.contentViewController as? NSSplitViewController,
            let detail = split.splitViewItems.last {
@@ -1629,20 +1765,20 @@ import HelmUI
     /// snapshot gate keeps the offscreen ink measurement to the resizes that
     /// moved something it reads.
     private func windowDidResize() {
+        if readItemsStart() { leadMoved() }
         patchAttachedName()
         scheduleSettleForAttachedBar()
     }
 
     private func scheduleSettleForAttachedBar() {
-        guard let key = attachedPageKey else { return }
-        let bar = key == Self.nameOnlyKey ? nameOnlyBar : pageBars[key]
-        if let bar { scheduleSettle(bar) }
+        if let bar = attachedBar { scheduleSettle(bar) }
     }
 
     /// Re-arms the one settle timer for `bar` — called from M2, from the
     /// search field ending its own editing, from a window or split-view
     /// resize, after every `show()` and after a language, label-style or
-    /// page-bar change (`refreshAndResettle()`).
+    /// page-bar change (`refreshAndResettle()`) and after a pane report that
+    /// moved the spacer's width (`leadMoved()`).
     private func scheduleSettle(_ bar: PageBar) {
         settleWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self, weak bar] in
@@ -2414,6 +2550,9 @@ import HelmUI
         guard let key = attachedPageKey,
               key == Self.nameOnlyKey ? bar === nameOnlyBar : pageBars[key] === bar
         else { return }
+        // A flip replaced the bar; the pass would go on over the discarded one,
+        // and `refreshAndResettle()` has armed the new bar's own settle.
+        if readItemsStart(), leadMoved() { return }
         // **A search item is not a precondition for the tabs prediction
         // below — only for the search-specific gates in front of it.**
         // Before this pass, a page whose shape carried tabs but no search
@@ -3563,8 +3702,13 @@ private struct ShapeSignature: Equatable {
     /// Read by `SettingsToolbar.centredIdentifiers(_:)` — the actions id list
     /// above cannot say it, since an entry keeps its id whatever its kind.
     let hasSegmentedAction: Bool
+    /// Whether the bar lists the leading spacer. Not a page's own: every page's
+    /// bar changes shape together, and a moved width of the same spacer
+    /// changes none.
+    let hasSpacer: Bool
 
-    init(content: HelmPageToolbarContent?) {
+    init(content: HelmPageToolbarContent?, hasSpacer: Bool) {
+        self.hasSpacer = hasSpacer
         pageBarStyle = AppSettings.pageBarStyle
         tabIDs = content?.tabs.map(\.id) ?? []
         actionIDs = content?.actions.map(\.id) ?? []
@@ -3607,6 +3751,10 @@ private final class PageBar {
     /// from the bar.
     var isInteractive = true
     var identifiers: [NSToolbarItem.Identifier] = []
+    /// Only on a bar whose list carries the leading spacer, once AppKit has
+    /// asked for the item; `spacerWidth` is the constraint on its own view.
+    var spacerItem: NSToolbarItem?
+    var spacerWidth: NSLayoutConstraint?
 
     var nameItem: NSToolbarItem?
     var nameHost: NSHostingView<NameZoneView>?

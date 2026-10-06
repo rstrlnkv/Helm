@@ -1,4 +1,5 @@
 import AppKit
+import HelmTestSupport
 import HelmUI
 import SwiftUI
 import XCTest
@@ -6,13 +7,15 @@ import XCTest
 
 /// **`SettingsToolbar.identifiers` leads with what its `lead` says: the sidebar's
 /// tracking separator for `.sidebarSeparator`, nothing or the leading spacer for
-/// `.spacer`; the `.sidebarSeparator` bar stays exactly what it was.** In the
-/// tree only `.sidebarSeparator` is constructed; `.spacer` and `hasSpacer: true`
-/// are reached by these tests alone.
+/// `.spacer`; the `.sidebarSeparator` bar stays exactly what it was.** The window
+/// constructs `.sidebarSeparator`; `.spacer` is constructed by tests alone, here and in `TheBarTellsItsShellWhenItIsAttachedTests`.
 ///
-/// No window, no `NSWindow`, no screen: `SettingsToolbar.identifiers` and
-/// `SettingsToolbar.spacerWidth` are pure, and the content shapes are plain
-/// values.
+/// The tests above the mark "a toolbar told where the pane is" need no window, no `NSWindow`, no screen:
+/// `SettingsToolbar.identifiers` and `SettingsToolbar.spacerWidth` are pure, and
+/// the content shapes are plain values. Those between it and the mark "what only a visible window can run, read from the source" build a `SettingsToolbar`
+/// with no window and tell it where the pane is through `paneMoved(leading:width:)`;
+/// they read its lists and numbers (`barIdentifiers`, `leadingSpacer`, `hasSpacer`,
+/// `itemsStart`, `offeredRoom`), and still no window exists. Those below that mark read `SettingsToolbar.swift` as text.
 ///
 /// The `.sidebarSeparator` lists below are pinned LITERALLY, read from
 /// `SettingsToolbar.identifiers(content:style:)` as it stood at c753c864
@@ -251,5 +254,166 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
             let w = SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: i)
             XCTAssertNil(w, "a pane leading of \(p) with items at \(i) got a \(w ?? 0) pt spacer")
         }
+    }
+
+    // MARK: - a toolbar told where the pane is (no window)
+
+    private func makeToolbar(lead: SettingsToolbar.Lead) -> SettingsToolbar {
+        SettingsToolbar(model: SettingsModel(host: ModuleHost.shared),
+                        channel: HelmWindowToolbarChannel(), lead: lead)
+    }
+
+    /// Total failure prints: "the bar has no spacer at sidebar 200: the page's name sits over the sidebar,
+    /// not on the card; got <list>" / "a spacer of <w> at the rail: the name lands past where the bar could put it".
+    func testTheBarCarriesASpacerOnlyWhereThePaneLeavesRoom() {
+        let toolbar = makeToolbar(lead: .spacer)
+        toolbar.paneMoved(leading: 200, width: 856)
+        let at200 = toolbar.barIdentifiers(content: nil, style: .moduleName)
+        XCTAssertEqual(raw(at200), raw([Self.spacer, Self.name, Self.flex, Self.status]),
+                       "the bar has no spacer at sidebar 200: the page's name sits over the sidebar, not on the card; got \(raw(at200))")
+        XCTAssertEqual(toolbar.leadingSpacer ?? -1, 123.5, accuracy: 0.0001,
+                       "the spacer at sidebar 200 is \(String(describing: toolbar.leadingSpacer)), not 123.5: the name does not land 16 pt past the pane's edge")
+        toolbar.paneMoved(leading: 56, width: 1000)
+        let at56 = toolbar.barIdentifiers(content: nil, style: .moduleName)
+        XCTAssertEqual(raw(at56), raw([Self.name, Self.flex, Self.status]),
+                       "the bar keeps a spacer at the rail: the name lands past where the bar could put it; got \(raw(at56))")
+        XCTAssertNil(toolbar.leadingSpacer,
+                     "a spacer of \(String(describing: toolbar.leadingSpacer)) at the rail: the name lands past where the bar could put it")
+    }
+
+    /// Total failure prints: "a bar nobody told where the pane is carries a spacer of <w>" (or reads another
+    /// seed, or offers room before there is a pane).
+    func testBeforeThePaneIsToldTheBarCarriesNoSpacerAndStartsFromTheSeed() {
+        let toolbar = makeToolbar(lead: .spacer)
+        XCTAssertFalse(toolbar.hasSpacer,
+                       "a bar nobody told where the pane is carries a spacer of \(String(describing: toolbar.leadingSpacer))")
+        XCTAssertEqual(toolbar.itemsStart, 92.5, accuracy: 0.0001,
+                       "a bar nobody measured starts its items at \(toolbar.itemsStart), not at the seed 92.5")
+        XCTAssertEqual(SettingsToolbar.itemsStartSeed, 92.5, accuracy: 0.0001,
+                       "the seed is \(SettingsToolbar.itemsStartSeed), not 92.5")
+        XCTAssertEqual(toolbar.offeredRoom(), 0, accuracy: 0.0001,
+                       "a bar with no window and no pane offers room \(toolbar.offeredRoom()), not 0: the tabs unfold into room nobody measured")
+    }
+
+    /// Total failure prints: "the bar measures room <x>, not the pane's 856: the tabs unfold against the whole
+    /// window, sidebar included".
+    func testTheRoomIsThePaneOnceThePaneIsTold() {
+        let toolbar = makeToolbar(lead: .spacer)
+        toolbar.paneMoved(leading: 200, width: 856)
+        XCTAssertEqual(toolbar.offeredRoom(), 856, accuracy: 0.0001,
+                       "the bar measures room \(toolbar.offeredRoom()), not the pane's 856: the tabs unfold against the whole window, sidebar included")
+        toolbar.paneMoved(leading: 56, width: 1000)
+        XCTAssertEqual(toolbar.offeredRoom(), 1000, accuracy: 0.0001,
+                       "the bar measures room \(toolbar.offeredRoom()), not the pane's 1000: the tabs unfold against the whole window, sidebar included")
+    }
+
+    /// Total failure prints: "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be
+    /// rebuilt on every report".
+    func testTheSeparatorLeadNeverCarriesASpacerWhateverItIsTold() {
+        let toolbar = makeToolbar(lead: .sidebarSeparator)
+        toolbar.paneMoved(leading: 200, width: 856)
+        XCTAssertFalse(toolbar.hasSpacer,
+                       "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be rebuilt on every report")
+        let list = toolbar.barIdentifiers(content: nil, style: .moduleName)
+        XCTAssertEqual(raw(list), raw([Self.sep, Self.name, Self.flex, Self.status]),
+                       "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be rebuilt on every report; got \(raw(list))")
+        XCTAssertEqual(toolbar.offeredRoom(), 856, accuracy: 0.0001,
+                       "a separator-led bar measures room \(toolbar.offeredRoom()), not the pane's 856, once the pane is told")
+    }
+
+    /// Both signs of infinity are required: +infinity must not become the upper bound of a room.
+    /// Total failure prints: "a pane width of <w> reads as room <x>: the tabs unfold into room nobody measured" /
+    /// "a pane leading of <p> carries a spacer of <w>: a position nobody measured moves the name".
+    func testAPaneThatIsNotANumberIsNoRoomAndNoSpacer() {
+        for width: CGFloat in [.nan, .infinity, -.infinity, -1] {
+            let toolbar = makeToolbar(lead: .spacer)
+            toolbar.paneMoved(leading: 200, width: width)
+            XCTAssertEqual(toolbar.offeredRoom(), 0, accuracy: 0.0001,
+                           "a pane width of \(width) reads as room \(toolbar.offeredRoom()): the tabs unfold into room nobody measured")
+        }
+        for leading: CGFloat in [.nan, .infinity, -.infinity, -1] {
+            let toolbar = makeToolbar(lead: .spacer)
+            toolbar.paneMoved(leading: leading, width: 856)
+            XCTAssertFalse(toolbar.hasSpacer,
+                           "a pane leading of \(leading) carries a spacer of \(String(describing: toolbar.leadingSpacer)): a position nobody measured moves the name")
+        }
+    }
+
+    /// The second `.nan` pair is refused only when the comparison stands after the normalisation.
+    /// Total failure prints: "the same pane was stored twice: every layout that moved nothing re-arms a settle".
+    func testTheSamePaneToldTwiceIsRefused() {
+        let toolbar = makeToolbar(lead: .spacer)
+        XCTAssertTrue(toolbar.paneMoved(leading: 200, width: 856), "a first pane was not stored")
+        XCTAssertFalse(toolbar.paneMoved(leading: 200, width: 856),
+                       "the same pane was stored twice: every layout that moved nothing re-arms a settle")
+        XCTAssertTrue(toolbar.paneMoved(leading: 200, width: 855),
+                       "a pane whose width moved was refused: the bar keeps measuring the old room")
+        let other = makeToolbar(lead: .spacer)
+        other.paneMoved(leading: .nan, width: .nan)
+        XCTAssertFalse(other.paneMoved(leading: .nan, width: .nan),
+                       "the same pane was stored twice: not-a-number differs from itself, so every layout that moved nothing re-arms a settle")
+    }
+
+    /// A negative. Its positive pair is the first test of `TheBarTellsItsShellWhenItIsAttachedTests`.
+    /// Total failure prints: "barAttached was called <n> times with no window: the shell is told of a toolbar
+    /// nobody assigned".
+    func testWithoutAWindowNoBarIsEverAttached() {
+        var calls = 0
+        let model = SettingsModel(host: ModuleHost.shared)
+        let toolbar = SettingsToolbar(model: model,
+                                      channel: HelmWindowToolbarChannel(), lead: .spacer,
+                                      barAttached: { calls += 1 })
+        model.selection = .about
+        model.selection = .general
+        toolbar.paneMoved(leading: 200, width: 856)
+        toolbar.paneMoved(leading: 56, width: 1000)
+        XCTAssertEqual(calls, 0,
+                       "barAttached was called \(calls) times with no window: the shell is told of a toolbar nobody assigned")
+    }
+
+    /// Two toolbars over one model: where the pane is belongs to the toolbar that was told, not to the model
+    /// they share. Total failure prints: "a pane told to one toolbar reached the other".
+    func testTwoToolbarsOverOneModelKeepTheirOwnPane() {
+        let model = SettingsModel(host: ModuleHost.shared)
+        let first = SettingsToolbar(model: model, channel: HelmWindowToolbarChannel(), lead: .spacer)
+        let second = SettingsToolbar(model: model, channel: HelmWindowToolbarChannel(), lead: .spacer)
+        first.paneMoved(leading: 200, width: 856)
+        model.selection = .about
+        XCTAssertTrue(first.hasSpacer, "the toolbar that was told lost its spacer")
+        XCTAssertFalse(second.hasSpacer, "a pane told to one toolbar reached the other: it carries a spacer")
+        XCTAssertEqual(second.offeredRoom(), 0, "a pane told to one toolbar reached the other: room \(second.offeredRoom())")
+        XCTAssertTrue(second.paneMoved(leading: 200, width: 856),
+                      "the second toolbar refused a pane the first had stored: the last pane is shared")
+    }
+
+    // MARK: - what only a visible window can run, read from the source
+
+    /// The code of one function of `SettingsToolbar.swift`, comments and strings gone, white space collapsed.
+    private func collapsedBody(of name: String) throws -> String {
+        let code = SwiftSource.code(try RepoSource.text(of: "Sources/HelmApp/SettingsToolbar.swift"))
+        let bodies = SwiftSource.bodiesNamed(name, in: code)
+        XCTAssertEqual(bodies.count, 1, "SettingsToolbar.swift declares \(bodies.count) functions named \(name), not one")
+        return (bodies.first ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    /// A source reading, because the gate's `lead` half acts only where `isVisible` is true and no test here
+    /// shows a window: under `.sidebarSeparator` an unshown window reads nothing either way. Total failure
+    /// prints: "readItemsStart() does not open with the lead gate: <first 80 characters of its body>".
+    func testReadItemsStartOpensWithTheLeadGateSoASeparatorLedBarIsNeverRead() throws {
+        let body = try collapsedBody(of: "readItemsStart")
+        XCTAssertTrue(body.hasPrefix("guard lead == .spacer, "),
+                      "readItemsStart() does not open with the lead gate: \(body.prefix(80))")
+    }
+
+    /// A source reading: a flip from inside `settle` needs a visible window to run. Total failure prints:
+    /// "settle(_:) does not return when leadMoved() flipped the bar: <first 200 characters of its body>" / "leadMoved()
+    /// does not answer whether it flipped: <last 120 characters of its body>".
+    func testSettleGivesUpTheDiscardedBarWhenTheSpacerFlipsIt() throws {
+        let body = try collapsedBody(of: "settle")
+        XCTAssertTrue(body.contains("if readItemsStart(), leadMoved() { return }"),
+                      "settle(_:) does not return when leadMoved() flipped the bar: \(body.prefix(200))")
+        let moved = try collapsedBody(of: "leadMoved")
+        XCTAssertTrue(moved.contains("refreshAndResettle() return true") && moved.hasSuffix("return false"),
+                      "leadMoved() does not answer whether it flipped: \(moved.suffix(120))")
     }
 }
