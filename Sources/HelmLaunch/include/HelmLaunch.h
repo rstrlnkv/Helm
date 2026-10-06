@@ -46,4 +46,34 @@ extern NSString *const HelmLaunchExceptionNameKey;
 /// promises to survive. Nothing but Objective-C stands between these braces.
 BOOL HelmLaunchTask(NSTask *task, NSError * _Nullable * _Nullable error);
 
+/// The number an object answers for `key`, or nil where it gave none.
+///
+/// **The method that is invoked is the one that was examined.** The selector
+/// named `key` is looked up on the object, its signature is read, and only a
+/// method with no arguments and a `double` or `float` answer is called, directly
+/// with that return type and nothing in between: no `get<Key>` or `is<Key>`
+/// variant can answer in its place. What comes back is that method's number,
+/// wrapped as it is.
+///
+/// **What collapses into nil:** the object does not respond to `key`; the method
+/// of that name is not shaped as a getter of a floating-point number, so an
+/// integer, a Boolean, an object or a void answer from it is refused and it is
+/// not invoked; or something was thrown, an `NSException` or anything else.
+///
+/// A caller that must tell the first from the rest asks `respondsToSelector:`
+/// itself before the call. No error is carried out: an exception's reason could
+/// hold anything, and nothing here would act on its name.
+///
+/// What is not caught is a signal: one raised inside an accessor goes past the
+/// `@try`.
+///
+/// The `@try` is in Objective-C for the reason `HelmLaunchTask` gives: a raise
+/// from the accessor passes a Swift `catch`. For the return-type half of the
+/// shape test, for the methods that are not invoked, for the catch-all and for
+/// the answer coming from the examined method rather than a `get<Key>` variant
+/// the evidence in this tree is the test family of `WindowCorner`, run against
+/// stand-in objects; the argument count is tested by nothing. Not measured
+/// against any system class's private accessor.
+NSNumber * _Nullable HelmReadNumber(NSObject *object, NSString *key);
+
 NS_ASSUME_NONNULL_END
