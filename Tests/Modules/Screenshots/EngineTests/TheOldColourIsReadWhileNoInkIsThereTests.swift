@@ -3,12 +3,12 @@ import HelmRuntime
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **The colour of an older Helm is read for as long as no ink has been written, and never written again; a stored ink that cannot
-/// be read is no colour, and is not mended by the colour before it.** `editorColor` was the swatch's name, `editorInk` is three sRGB
-/// numbers. The reader asks the new key first; only a key that is *absent* sends it to the old one. A key that is there and damaged
+/// **The colour of an older Helm is read as the start of a tool with no colour of its own, for as long as no `editorInk` is there, and a pick in the editor never writes it; a stored ink that cannot
+/// be read is no colour, and is not mended by the colour before it.** `editorColor` is the swatch's name (the Settings row writes it), `editorInk` is three sRGB
+/// numbers. The reader asks `editorInk` first; only a key that is *absent* sends it to the old one. A key that is there and damaged
 /// is a property list somebody wrote, and a colour from before it would be a guess shown as the person's pick. A read writes nothing:
 /// the store compared whole, before and after, so a write of any key is seen, not only of the two named.
-final class TheOldColourIsReadUntilAnInkIsWrittenTests: XCTestCase {
+final class TheOldColourIsReadWhileNoInkIsThereTests: XCTestCase {
 
     private typealias Key = ScreenshotsSettings.Key
 
@@ -22,19 +22,20 @@ final class TheOldColourIsReadUntilAnInkIsWrittenTests: XCTestCase {
     func testTheOldNameIsReadWhileNoInkIsThere() {
         let (store, _) = made([Key.editorColor: "blue"])
         XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .blue)
-        XCTAssertEqual(EditorMemory.read(store).style(for: .highlighter).color, .blue, "every tool's")
+        XCTAssertEqual(EditorMemory.read(store).style(for: .highlighter).color, .blue, "a tool with no ink of its own starts with it")
         for color in AnnotationColor.allCases {
             XCTAssertEqual(EditorMemory.read(made([Key.editorColor: color.rawValue]).0).style(for: .arrow).color, AnnotationInk(color), "\(color)")
         }
     }
 
-    func testAnInkIsWrittenAsThreeNumbersAndTheOldKeyIsLeftAsItWas() throws {
+    func testAnInkIsWrittenForTheToolAsThreeNumbersAndTheOldKeyIsLeftAsItWas() throws {
         let (store, backing) = made([Key.editorColor: "blue"])
         let ink = try XCTUnwrap(AnnotationInk(red: 0.2, green: 0.4, blue: 0.6))
         EditorMemory.remember(style: AnnotationStyle(color: ink, thickness: .thick, filled: true), for: .arrow, in: store)
-        let written = try XCTUnwrap(store.object(Key.editorInk) as? [Double], "the ink is not a list of numbers: \(String(describing: store.object(Key.editorInk)))")
+        let written = try XCTUnwrap((store.object(Key.editorInkByTool) as? [String: [Double]])?["arrow"], "the ink is not a list of numbers: \(String(describing: store.object(Key.editorInkByTool)))")
         XCTAssertEqual(written, [0.2, 0.4, 0.6])
-        XCTAssertEqual(store.object(Key.editorColor) as? String, "blue", "the old key was written over; it is for the Helm that wrote it")
+        XCTAssertNil(store.object(Key.editorInk), "a pick wrote the shared ink")
+        XCTAssertEqual(store.object(Key.editorColor) as? String, "blue", "a pick in the editor wrote `editorColor`")
         XCTAssertEqual(backing.raw.keys.filter { $0.contains("editorColor") }.count, 1)
         XCTAssertEqual(EditorMemory.read(store).style(for: .arrow).color, ink, "and the next read is the ink")
     }
@@ -43,8 +44,8 @@ final class TheOldColourIsReadUntilAnInkIsWrittenTests: XCTestCase {
         for color in AnnotationColor.allCases {
             let (store, _) = made()
             EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(color)), for: .pen, in: store)
-            XCTAssertNil(store.object(Key.editorColor), "\(color): a swatch's pick wrote the retired name")
-            XCTAssertEqual((store.object(Key.editorInk) as? [Double])?.count, 3, "\(color)")
+            XCTAssertNil(store.object(Key.editorColor), "\(color): a swatch's pick in the editor wrote `editorColor`")
+            XCTAssertEqual(((store.object(Key.editorInkByTool) as? [String: [Double]])?["pen"])?.count, 3, "\(color)")
             XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, AnnotationInk(color), "\(color)")
         }
     }
@@ -103,10 +104,12 @@ final class TheOldColourIsReadUntilAnInkIsWrittenTests: XCTestCase {
     func testPuttingNoColourDownWritesNoInk() {
         let (store, backing) = made([Key.editorColor: "blue"])
         EditorMemory.remember(style: AnnotationStyle(color: nil, thickness: .thin, filled: false), for: .pen, in: store)
-        XCTAssertNil(store.object(Key.editorInk), "no colour is picked and an ink was written")
+        XCTAssertNil(store.object(Key.editorInkByTool), "no colour is picked and an ink was written")
         XCTAssertEqual(store.object(Key.editorColor) as? String, "blue")
         XCTAssertEqual(EditorMemory.read(store).style(for: .pen).color, .blue, "the old colour is still the one read")
-        XCTAssertFalse(backing.raw.keys.contains { $0.hasSuffix(Key.editorInk) }, "control: the walk of the keys sees the namespaced name")
+        func spelled(_ key: String) -> String { "module.\(ScreenshotsEngine.moduleID).\(key)" }
+        XCTAssertTrue(backing.raw.keys.contains(spelled(Key.editorColor)), "control: this is how the backing spells a key of the store")
+        XCTAssertFalse(backing.raw.keys.contains(spelled(Key.editorInk)), "no colour put down, and `editorInk` was written")
     }
 
     func testAnInkAndNoOldKeyAreReadWhole() throws {

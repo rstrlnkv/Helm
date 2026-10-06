@@ -4,10 +4,10 @@ import HelmRuntime
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **Each tool keeps its own thickness and opacity; the colour and the fill stay everybody's.**
+/// **Each tool keeps its own thickness and opacity; the fill stays everybody's, and the colour has a test of its own.**
 /// The points of a step come from one table, `AnnotationThickness.points(for:)`, and the numbers below are
 /// the owner's, spelled out here and read from nowhere in the tree, so a table that drifts fails against
-/// them and not against itself. What is remembered is two tables in the store, read by walking the tools
+/// them and not against itself. What is remembered is three tables in the store (the colour's is read in `EachToolKeepsItsOwnColourTests`), read by walking the tools
 /// there are, never by walking the table.
 final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
@@ -94,19 +94,20 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
         }
     }
 
-    func testTheColourAndTheFillAreEveryToolsAndTheTwoTablesAreWhatIsStored() {
+    func testTheFillIsEveryToolsAndTheTablesAreWhatIsStored() {
         let disk = backing()
         EditorMemory.remember(style: AnnotationStyle(color: .purple, thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: store(disk))
         EditorMemory.remember(style: AnnotationStyle(color: .purple, thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: store(disk))
         let fresh = EditorMemory.read(store(disk))
         for tool in AnnotationTool.allCases {
-            XCTAssertEqual(fresh.style(for: tool).color, .purple, "\(tool): the colour is not shared")
+            XCTAssertEqual(fresh.style(for: tool).color, tool == .pen || tool == .highlighter ? .purple : nil, "\(tool): the colour is its own")
             XCTAssertTrue(fresh.style(for: tool).filled, "\(tool): the fill is not shared")
         }
-        // A pick on one tool moves the shared colour for all, and the other tools' steps stay.
+        // A pick on one tool moves that tool's colour only (`EachToolKeepsItsOwnColourTests`), and the other tools' steps stay.
         EditorMemory.remember(style: AnnotationStyle(color: .green, thickness: .medium, filled: false, opacity: 1), for: .arrow, in: store(disk))
         let after = EditorMemory.read(store(disk))
-        XCTAssertEqual(after.style(for: .pen).color, .green)
+        XCTAssertEqual(after.style(for: .pen).color, .purple)
+        XCTAssertEqual(after.style(for: .arrow).color, .green)
         XCTAssertEqual(after.style(for: .pen).thickness, .thick)
         XCTAssertEqual(after.style(for: .highlighter).opacity, 0.3)
         XCTAssertEqual(store(disk).intTable("editorThicknessByTool"), ["pen": 2, "highlighter": 0, "arrow": 1])

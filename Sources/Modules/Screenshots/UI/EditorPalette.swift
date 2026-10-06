@@ -20,6 +20,8 @@ import Module_Screenshots_Engine
     /// the colour and the fill apply to is its tool and not the picked one.
     @Published private(set) var selectedTool: AnnotationTool?
     @Published private(set) var style = AnnotationStyle.standard
+    /// Each tool's own pick, which tints its cell in the row: the tool in hand's `style` is one tool's.
+    @Published private(set) var memory = EditorMemory()
     /// What the next object is drawn with, whatever is selected: the pop-over's sliders show and set this, where `style`
     /// is the selected object's while there is one.
     @Published private(set) var picked = AnnotationStyle.standard
@@ -50,13 +52,14 @@ import Module_Screenshots_Engine
 
     /// A value the palette already shows is not published again: the overlay renders on every pointer move.
     /// `picked` is the next object's style, which is `style` unless an object is selected.
-    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, cropping: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil,
+    func show(tool: AnnotationTool?, erasing: Bool = false, ruler: Bool = false, cropping: Bool = false, style: AnnotationStyle, picked: AnnotationStyle? = nil, memory: EditorMemory = EditorMemory(),
               selectedTool: AnnotationTool? = nil, popoverOpen: Bool = false, coloursOpen: Bool = false, canUndo: Bool, canRedo: Bool, reading: Bool = false) {
         if self.tool != tool { self.tool = tool }
         if self.erasing != erasing { self.erasing = erasing }
         if self.ruler != ruler { self.ruler = ruler }
         if self.cropping != cropping { self.cropping = cropping }
         if self.selectedTool != selectedTool { self.selectedTool = selectedTool }
+        if self.memory != memory { self.memory = memory }
         if self.style != style { self.style = style }
         if self.picked != (picked ?? style) { self.picked = picked ?? style }
         if self.popoverOpen != popoverOpen { self.popoverOpen = popoverOpen }
@@ -230,7 +233,7 @@ struct EditorPalette: View {
         return GlassCell(name: ScStr.tool(tool), selected: chosen, look: .bare, width: PaletteObject.width(for: .tool(tool)), height: Self.height) {
             model.perform(Self.action(forClickOn: tool, chosen: chosen ? tool : nil, anchorX: model.cellMidX[tool] ?? 0))
         } icon: {
-            PaletteObject(tool: tool, ink: Color(cgColor: model.style.ink(for: tool).cgColor), raised: chosen)
+            PaletteObject(tool: tool, ink: Color(cgColor: model.memory.style(for: tool).ink(for: tool).cgColor), raised: chosen)
         }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).midX } action: { model.cellMidX[tool] = $0 }
     }

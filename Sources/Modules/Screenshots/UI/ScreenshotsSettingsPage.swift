@@ -372,6 +372,8 @@ struct ScreenshotsSettingsPage: View {
                         EditorSwatch(color: color, selected: ink == color) {
                             ink = color
                             store.set(color.rawValue, for: ScreenshotsSettings.Key.editorColor)
+                            // The shared ink of before each tool kept its own would be read first and hide this pick.
+                            store.set(nil, for: ScreenshotsSettings.Key.editorInk)
                         }
                     }
                 }

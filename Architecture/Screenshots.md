@@ -212,19 +212,21 @@ are one vocabulary, `EditorAction`, performed by `CaptureOverlay.perform`, so a 
 however it was asked for. What the next object is drawn with — a colour (an `AnnotationInk`: three sRGB numbers, the eight swatches of `AnnotationColor` and any other), fill for the
 boxes, and each tool's own one of three thicknesses and its opacity (the pen's steps are not the marker's: one table,
 `AnnotationThickness.points(for:)`, which the stroke and the arrow's head both read) — is an `AnnotationStyle` the
-object is begun with; a colour never picked leaves each tool its own (red, and yellow for the marker), the colour and
-fill are every tool's and the step and opacity are the tool's, and the last tool and style are read once, at the
-first release of a capture, and written at each pick by `EditorMemory`. The step and the opacity are two tables in the store,
+object is begun with; a colour never picked leaves each tool its own (red, and yellow for the marker), the fill is
+every tool's and the colour, the step and the opacity are the tool's, and the last tool and style are read once, at the
+first release of a capture, and written at each pick by `EditorMemory`. The colour, the step and the opacity are three tables in the store,
 keyed by the tool's raw value and read by walking the tools there are; every stored value is bounded, and the one
 step of the days before the tables is retired, neither read nor migrated.
-The colour is kept under `editorInk` as three numbers; `editorColor`, the swatch's name of the days before, is read only while `editorInk` has never been written, never written again
-and never removed, and an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
+The colour table, `editorInkByTool`, holds three numbers per tool. A tool with no entry in it starts with the colour every tool shared
+before: `editorInk`, three numbers, or, while `editorInk` is absent, the swatch `editorColor` names. Neither is written by a pick in the editor, so a pick
+on one tool never reaches the tools that have no entry yet; an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
+A pick with an object selected is the object's tool's, and with none selected the tool last in hand's.
 
 The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
 through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
 The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
 (`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once
-both are read as off). The Editor tab holds the default colour, the one `editorColor` key the palette writes too, and
+both are read as off). The Editor tab holds the default colour, which is `editorColor`, the start of a tool with no colour of its own (a pick on it also removes `editorInk`, which would be read first), and
 «Tools in the palette»: a list of the row's objects, `EditorPalette.rowKinds` (the pens, the eraser, the ruler and the spotlight), each a checkbox. What it writes is
 `paletteChoices`, a table from `PaletteItem`'s raw value to shown or hidden, only the person's own picks
 (`PaletteItems`, read per case, so an entry that is no Bool costs the others nothing): an item with no pick takes its default, so an object added later is shown for a person who had already
@@ -235,7 +237,7 @@ its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:
 
 The palette carries the pen, the marker, the pencil, the eraser, the ruler and the spotlight as objects, in that order, each drawn by `PaletteObject`
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
-that is a template layer filled with the live ink colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
+that is a template layer filled with its own tool's colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
 filter and no text, because macOS drops a filter without a word (`ThePaletteArtworkCarriesNoFilterTests`); the attribution of the pen, the marker, the pencil, the eraser and the ruler is in `NOTICE.md`; the spotlight's shape was drawn for Helm and its body and band fills are the pen's from the same file.
 The eraser is a mode of the editor and no `AnnotationTool` (`EditorAction.erase`, key E, `EditorKeys.eraserKeyCode`): the chosen tool stays chosen
@@ -279,7 +281,7 @@ The palette's colour grid holds five inks (red, yellow, blue, green, black); the
 pop-over (`Sources/Modules/Screenshots/UI/EditorColoursPopover.swift`): all eight inks, `EditorColoursPopover.inks`, in
 the order `AnnotationColor` lists them, which no mockup draws and the owner may change in that one line. It is placed,
 closed and revealed as the thickness one is, through the one `popoverCard` card and `CaptureOverlay`'s one `popover`, so
-only one is open at a time; unlike it, it opens with no tool chosen, since the colour is every tool's. A swatch sends
+only one is open at a time; unlike it, it opens with no tool chosen, where a pick is the tool last in hand's or the selected object's. A swatch sends
 `EditorAction.color` and the pick closes it. While the colour is any the grid has no swatch
 for (orange, purple, white, or one picked on the system's panel or from the picture), the wheel's centre shows it and no grid swatch is ringed.
 

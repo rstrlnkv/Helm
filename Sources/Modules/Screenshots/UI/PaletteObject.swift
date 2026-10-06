@@ -3,7 +3,7 @@ import HelmUI
 import Module_Screenshots_Engine
 
 /// One object of the editor's palette — the pen, the marker, the pencil, the eraser, the ruler or the spotlight — drawn from the layers of
-/// `PaletteObjects.xcassets`: the body, the tip's silhouette filled with the live ink colour (a template image, so the
+/// `PaletteObjects.xcassets`: the body, the tip's silhouette filled with its own tool's colour (a template image, so the
 /// colour is the palette's and not a recoloured picture), and the tip's highlight over it; the eraser, the ruler and the spotlight have a body only. The artwork carries no
 /// shadow, because macOS drops an SVG filter without a word; the two drop shadows of the source files (down 2 and 4 pt,
 /// blur σ 2 and 4) are two native `.shadow`s here.

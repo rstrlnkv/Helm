@@ -3,8 +3,8 @@ import HelmUI
 import Module_Screenshots_Engine
 
 /// The colours pop-over, under the palette's colour wheel: all eight inks in two rows of four and a third row of two cells, the wheel (`.allColours`) and the eyedropper (`.eyedropper`), on the card, glass and
-/// reveal of `popoverCard` that the thickness and opacity pop-over wears. A swatch sends `.color`, the one colour every
-/// tool shares, and the overlay closes the pop-over on the pick. No frame of `palette-frames/` draws it: the order is the
+/// reveal of `popoverCard` that the thickness and opacity pop-over wears. A swatch sends `.color`, the colour of the tool
+/// in hand, and the overlay closes the pop-over on the pick. No frame of `palette-frames/` draws it: the order is the
 /// spectrum `AnnotationColor` lists, and it is `inks` alone that says so.
 struct EditorColoursPopover: View {
     @ObservedObject var model: EditorBarModel

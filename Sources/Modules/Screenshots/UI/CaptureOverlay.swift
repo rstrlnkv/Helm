@@ -118,9 +118,9 @@ struct EditorTextTools {
     /// What the next object is drawn with; picked on the palette, read from the store when
     /// the first area is released, and kept across the areas of one capture.
     private var style = AnnotationStyle.standard
-    /// The tool whose own step and opacity `style` carries: the last one picked, and the pen before any.
+    /// The tool whose own colour, step and opacity `style` carries: the last one picked, and the pen before any.
     private var styleTool = AnnotationTool.pen
-    /// What the store holds, kept beside it so that a tool's own step and opacity come back
+    /// What the store holds, kept beside it so that a tool's own colour, step and opacity come back
     /// when the tool does, in a test with no store as well.
     private var memory = EditorMemory()
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
@@ -765,7 +765,7 @@ struct EditorTextTools {
             erasing = false
             popover = nil
             if let store { EditorMemory.remember(tool: current.tool, in: store) }
-            // Each tool is drawn with its own step and opacity, and every tool with the one colour and fill.
+            // Each tool is drawn with its own colour, step and opacity, and every tool with the one fill.
             if let picked = current.tool { styleTool = picked; style = memory.style(for: picked) }
         case .erase?:
             // The key again puts the eraser down, as a tool's does; the tool chosen under it is as it was, and the store is not asked.
@@ -807,12 +807,15 @@ struct EditorTextTools {
             erasing = false
             popover = nil
             if let store { EditorMemory.remember(tool: nil, in: store) }
-        // A pick is the next object's and, with one selected, that object's too.
+        // A pick is one tool's: the selected object's, else the tool in hand's (below).
         case .color(let color)?:
             if coloursAreOpen { popover = nil }
-            style.color = color
+            // The pick is its owner's: the selected object's tool, else the tool last in hand (which is also what Select with
+            // nothing selected, the eraser, the ruler and Crop leave it as). Another tool's pick is not the one in hand's.
+            let owner = current.layers.selected?.tool ?? styleTool
+            if owner == styleTool { style.color = color }
             current.layers.recolor(color)
-            remember()
+            remember(colour: color, for: owner)
         case .thickness(let step)?:
             style.thickness = step
             // Q6, parked for the owner: with an object selected while the pop-over edits, a thickness pick also
@@ -828,7 +831,7 @@ struct EditorTextTools {
             // A second request closes it; with no tool chosen, the spotlight, which has no steps, or the eraser on, there is nothing whose steps it could set.
             popover = current.tool != nil && current.tool != .spotlight && !erasing && !thicknessIsOpen ? (.thickness, anchorX) : nil
         case .colours(let anchorX)?:
-            // Opened with no tool chosen too: the colour is every tool's. The other pop-over gives way to it.
+            // Opened with no tool chosen too: a pick is then the selected object's tool's, or the tool last in hand's. The other pop-over gives way to it.
             popover = coloursAreOpen ? nil : (.colours, anchorX)
         case .toggleFill?:
             // With a box selected the fill is flipped from that box's own state, and the pick follows it.
@@ -1010,6 +1013,17 @@ struct EditorTextTools {
                                   anchorX: bare.palette.minX + open.anchorX)
     }
 
+    /// A colour picked for the selected object of another tool than `styleTool` is that tool's: its own colour is written, the other
+    /// picks (step, opacity) are what it had, and the fill is the shared one.
+    private func remember(colour: AnnotationInk, for owner: AnnotationTool) {
+        guard owner != styleTool else { return remember() }
+        var picked = memory.style(for: owner)
+        picked.color = colour
+        picked.filled = style.filled
+        memory.note(style: picked, for: owner)
+        if let store { EditorMemory.remember(style: picked, for: owner, in: store) }
+    }
+
     /// `style` is the pick of `styleTool`: kept beside the store and written to it.
     private func remember() {
         memory.note(style: style, for: styleTool)
@@ -1025,7 +1039,7 @@ struct EditorTextTools {
         if let edit {
             let held = edit.layers.selected
             emojiGrid.show(chosen: emoji)
-            palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, cropping: crop != nil, style: held?.style ?? style, picked: style, selectedTool: held?.tool,
+            palette.show(tool: edit.tool, erasing: erasing, ruler: ruler != nil, cropping: crop != nil, style: held?.style ?? style, picked: style, memory: memory, selectedTool: held?.tool,
                       popoverOpen: thicknessIsOpen, coloursOpen: coloursAreOpen, canUndo: edit.layers.canUndo, canRedo: edit.layers.canRedo,
                       reading: reading != nil)
         }
