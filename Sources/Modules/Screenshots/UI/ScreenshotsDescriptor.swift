@@ -14,6 +14,7 @@ import Module_Screenshots_Engine
         inertWithout: [.screenRecording]) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .screenshots
+    public static let glyph: ShellGlyph = .screenshots
 
     private var store: NamespacedStore?
 

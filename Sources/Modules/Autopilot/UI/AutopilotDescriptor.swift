@@ -21,6 +21,7 @@ import SwiftUI
         welcomeOffer: ApStr.tourOffer) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .autopilot
+    public static let glyph: ShellGlyph = .autopilot
     /// Folders and their rules span the pane; the header must not centre itself
     /// on the 744 pt form column.
     public var pageBleeds: Bool { true }

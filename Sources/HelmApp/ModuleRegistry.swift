@@ -33,4 +33,5 @@ extension ModuleDescriptor {
     var moduleMetadata: HelmContract.ModuleMetadata { type(of: self).metadata }
     var moduleCategory: HelmUI.ModuleCategory { type(of: self).category }
     var moduleTint: HelmUI.ModuleTint { type(of: self).tint }
+    var moduleGlyph: HelmUI.ShellGlyph { type(of: self).glyph }
 }

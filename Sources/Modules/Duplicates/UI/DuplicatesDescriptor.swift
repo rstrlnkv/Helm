@@ -11,6 +11,7 @@ import SwiftUI
         sfSymbol: "doc.on.doc", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .duplicates
+    public static let glyph: ShellGlyph = .duplicates
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 

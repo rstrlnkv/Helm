@@ -34,6 +34,7 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
                                              sfSymbol: "gear", permissions: [])
         static let category: ModuleCategory = .utilities
         static let tint: ModuleTint = .keyboard
+        static let glyph: ShellGlyph = .disk
 
         var attached = 0
         var detached = 0

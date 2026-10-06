@@ -11,6 +11,7 @@ import Module_Uninstaller_Engine
         sfSymbol: "trash", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .uninstaller
+    public static let glyph: ShellGlyph = .trash
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 
