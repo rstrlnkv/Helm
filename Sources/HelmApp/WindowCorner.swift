@@ -39,8 +39,9 @@ import HelmRuntime
 /// so that they can be called from tests, not because another thread may call
 /// them.
 ///
-/// This type has no caller yet. Whoever writes the line owns one `Journal` per
-/// window object.
+/// `ShellContentView` reads the corner in its `layout()` and writes the line.
+/// Whoever writes the line owns one `Journal` for the window it is in, and
+/// starts a new one when it moves to another window object.
 nonisolated struct WindowCorner: Equatable {
 
     /// Which reading said the radius.
@@ -68,8 +69,9 @@ nonisolated struct WindowCorner: Equatable {
     /// Printed in the line, never fed to the card.
     nonisolated static let alsoPrinted = ["_topCornerRadius", "_bottomCornerRadius"]
 
-    /// The defaults key a person may have set. Nothing in `Sources` reads it yet:
-    /// whoever reads it hands the value to `logLine` as `override`, which prints it.
+    /// The defaults key a person may have set. `ShellContentView` reads it when
+    /// it writes a line and hands the value to `logLine` as `override`, which
+    /// prints it.
     nonisolated static let overrideKey = "NSConvolutionOverride1"
 
     /// One ceiling for every reading. Not a design number: it keeps a huge
@@ -77,7 +79,7 @@ nonisolated struct WindowCorner: Equatable {
     /// anybody has named (26, stated on the web, measured by nobody).
     nonisolated static let believable: ClosedRange<CGFloat> = 0...64
 
-    /// The log category for the line; nothing in `Sources` reads it yet.
+    /// The log category `ShellContentView` writes the line under.
     nonisolated static let logCategory = "window"
 
     // MARK: - the guess
@@ -132,13 +134,16 @@ nonisolated struct WindowCorner: Equatable {
     /// method of another shape, which is not invoked, or a throw. That
     /// difference is what a machine nobody measured exists to tell. `override` is
     /// handed in and printed when it is a number, `-` for nil, and `not a number`
-    /// for anything else: no foreign text enters the line.
+    /// for anything else: no foreign text enters the line. `publicReading` is what
+    /// `read` was handed: a guess line says `no public reading` for nil and prints
+    /// the number, `nan` and `inf` included, for one that was handed in and did not
+    /// answer.
     ///
     /// The object is a window and the call is for the main thread. Only the
     /// question "does it respond" is asked in Swift, with `responds(to:)`; every
     /// value is read through `HelmReadNumber`.
-    nonisolated static func logLine(_ corner: WindowCorner, chrome: Chrome, window: NSObject?,
-                                    override: Any?, system: OperatingSystemVersion) -> String {
+    nonisolated static func logLine(_ corner: WindowCorner, publicReading: CGFloat?, chrome: Chrome,
+                                    window: NSObject?, override: Any?, system: OperatingSystemVersion) -> String {
         let card = ShellGeometry.cardRadius(windowRadius: corner.radius)
         let toolbar = chrome.hasToolbar ? "toolbar yes" : "toolbar no"
         let shown: String
@@ -156,7 +161,8 @@ nonisolated struct WindowCorner: Equatable {
         case .guess:
             let with = chrome.hasToolbar ? "with a toolbar" : "without a toolbar"
             let standing = chrome.systemMajor == 27 ? "measured on 27.2" : "from the web, unmeasured"
-            return "corner not read: no public reading, \(selector) \(printed(window, selector)); "
+            let heard = publicReading.map { "public reading \(Double($0))" } ?? "no public reading"
+            return "corner not read: \(heard), \(selector) \(printed(window, selector)); "
                 + "guessed \(Double(corner.radius)) for macOS \(chrome.systemMajor) \(with) (\(standing)); "
                 + "card \(Double(card)); \(tail)"
         case .none:

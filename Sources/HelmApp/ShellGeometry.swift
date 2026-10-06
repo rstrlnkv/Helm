@@ -21,7 +21,6 @@ import HelmRuntime
 /// `inset` is the owner's fixed gap. `railWidth`, `defaultSidebarWidth`,
 /// `sidebarRange`, `capsuleSize`, `capsuleShift`, `capsulePad` and `hoverMargin`
 /// are the owner's numbers too, tuned by eye on a running window, not measured.
-/// This type has no caller yet.
 enum ShellGeometry {
 
     /// The gap between the window's edge and the card on the three sides the

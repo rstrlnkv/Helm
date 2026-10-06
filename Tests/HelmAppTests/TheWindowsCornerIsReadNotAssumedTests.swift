@@ -347,13 +347,13 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
     // MARK: - the line
 
     func testALineForARungOneOrTwoNamesTheRungAndPrintsTheThreeNumbersAsTheyCame() {
-        let line = WindowCorner.logLine(Self.corner(16, .publicAPI), chrome: Self.chrome(27, toolbar: true),
+        let line = WindowCorner.logLine(Self.corner(16, .publicAPI), publicReading: nil, chrome: Self.chrome(27, toolbar: true),
                                         window: ThreeKeyWindow(), override: nil, system: Self.system(27, 2, 0))
         XCTAssertEqual(line,
                        "corner 16.0 by public; card 12.0; toolbar yes; _cornerRadius 16.0, _topCornerRadius 16.0, _bottomCornerRadius 16.0; override -; macOS 27.2.0",
                        "the line a person reads for a public reading changed")
 
-        let window = WindowCorner.logLine(Self.corner(26, .windowSelector), chrome: Self.chrome(26, toolbar: false),
+        let window = WindowCorner.logLine(Self.corner(26, .windowSelector), publicReading: nil, chrome: Self.chrome(26, toolbar: false),
                                           window: AnsweringWindow(), override: nil, system: Self.system(26, 4, 1))
         XCTAssertTrue(window.hasPrefix("corner 26.0 by window selector; card 22.0; toolbar no; "),
                       "the line for the window's own number does not name its rung and the card: \(window)")
@@ -363,19 +363,19 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
     }
 
     func testALineForAGuessSaysSoAndSaysWhereTheNumberCameFrom() {
-        let on26 = WindowCorner.logLine(Self.corner(26, .guess), chrome: Self.chrome(26, toolbar: true),
+        let on26 = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: Self.chrome(26, toolbar: true),
                                         window: NSObject(), override: nil, system: Self.system(26, 4, 1))
         XCTAssertEqual(on26,
                        "corner not read: no public reading, _cornerRadius absent; guessed 26.0 for macOS 26 with a toolbar (from the web, unmeasured); card 22.0; override -; macOS 26.4.1",
                        "a guess was drawn and the line does not call it one, or does not say where it came from")
 
-        let noBar = WindowCorner.logLine(Self.corner(16, .guess), chrome: Self.chrome(26, toolbar: false),
+        let noBar = WindowCorner.logLine(Self.corner(16, .guess), publicReading: nil, chrome: Self.chrome(26, toolbar: false),
                                          window: NSObject(), override: nil, system: Self.system(26, 0, 0))
         for phrase in ["not read", "guessed 16.0 for macOS 26 without a toolbar", "from the web, unmeasured", "card 12.0"] {
             XCTAssertTrue(noBar.contains(phrase), "a guess was drawn and the line lacks \"\(phrase)\": \(noBar)")
         }
 
-        let on27 = WindowCorner.logLine(Self.corner(16, .guess), chrome: Self.chrome(27, toolbar: true),
+        let on27 = WindowCorner.logLine(Self.corner(16, .guess), publicReading: nil, chrome: Self.chrome(27, toolbar: true),
                                         window: NSObject(), override: nil, system: Self.system(27, 2, 0))
         for phrase in ["not read", "guessed 16.0 for macOS 27 with a toolbar", "(measured on 27.2)"] {
             XCTAssertTrue(on27.contains(phrase), "a guess was drawn and the line lacks \"\(phrase)\": \(on27)")
@@ -384,7 +384,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
     }
 
     func testALineForNothingToGuessFromSaysTheCardIsSquare() {
-        let line = WindowCorner.logLine(Self.corner(0, .none), chrome: Self.chrome(28, toolbar: false),
+        let line = WindowCorner.logLine(Self.corner(0, .none), publicReading: nil, chrome: Self.chrome(28, toolbar: false),
                                         window: NSObject(), override: nil, system: Self.system(28, 0, 0))
         XCTAssertTrue(line.hasPrefix("corner not read and nothing to guess from for macOS 28 without a toolbar; card square; "),
                       "a square card was drawn and the line does not say there was nothing to guess from: \(line)")
@@ -395,9 +395,9 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
     func testALineTellsAbsentFromRespondingWithNoNumber() {
         let chrome = Self.chrome(26, toolbar: true)
         let os = Self.system(26, 4, 1)
-        let absent = WindowCorner.logLine(Self.corner(26, .guess), chrome: chrome, window: NSObject(),
+        let absent = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome, window: NSObject(),
                                           override: nil, system: os)
-        let silent = WindowCorner.logLine(Self.corner(26, .guess), chrome: chrome, window: StringAnswering(),
+        let silent = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome, window: StringAnswering(),
                                           override: nil, system: os)
         XCTAssertTrue(absent.contains("_cornerRadius absent"), "an object without the key is not told as absent: \(absent)")
         XCTAssertTrue(silent.contains("_cornerRadius -"),
@@ -405,7 +405,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         XCTAssertFalse(silent.contains("_cornerRadius absent"), "an object that responds was told as absent: \(silent)")
         XCTAssertNotEqual(absent, silent, "absent and responding-with-no-number print the same line")
 
-        let nobody = WindowCorner.logLine(Self.corner(26, .guess), chrome: chrome, window: nil,
+        let nobody = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome, window: nil,
                                           override: nil, system: os)
         XCTAssertTrue(nobody.contains("_cornerRadius absent"), "no window is not told as absent: \(nobody)")
     }
@@ -414,7 +414,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         let chrome = Self.chrome(26, toolbar: true)
         let os = Self.system(26, 4, 1)
         func line(_ override: Any?) -> String {
-            WindowCorner.logLine(Self.corner(26, .guess), chrome: chrome, window: NSObject(),
+            WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome, window: NSObject(),
                                  override: override, system: os)
         }
         XCTAssertTrue(line(nil).contains("override -;"), "no override did not print '-': \(line(nil))")
@@ -430,7 +430,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         let long = String(repeating: "ZZZZ", count: 1000)
         let foreign: [(Any, String)] = [("FOREIGN\nTEXT", "FOREIGN"), (long, "ZZZZ"), (["FOREIGNARRAY", 1] as [Any], "FOREIGNARRAY")]
         for (override, marker) in foreign {
-            let line = WindowCorner.logLine(Self.corner(26, .guess), chrome: chrome, window: NSObject(),
+            let line = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome, window: NSObject(),
                                             override: override, system: os)
             XCTAssertTrue(line.contains("override not a number;"), "a foreign override was not told as 'not a number': \(line.prefix(300))")
             XCTAssertFalse(line.contains(marker), "foreign text entered the line: \(line.prefix(300))")
@@ -467,7 +467,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         let chrome = Self.sixteenGuess
         var lines: [String] = []
         for _ in 0..<3 {
-            lines.append(WindowCorner.logLine(Self.corner(16, .guess), chrome: chrome, window: window,
+            lines.append(WindowCorner.logLine(Self.corner(16, .guess), publicReading: nil, chrome: chrome, window: window,
                                               override: nil, system: os))
         }
         XCTAssertEqual(lines.count, 3)
@@ -479,12 +479,12 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         XCTAssertEqual(Set(lines).count, 1, "the same raising window printed different lines: \(lines)")
 
         for rung in [WindowCorner.Rung.publicAPI, .windowSelector] {
-            let line = WindowCorner.logLine(Self.corner(16, rung), chrome: chrome, window: window,
+            let line = WindowCorner.logLine(Self.corner(16, rung), publicReading: nil, chrome: chrome, window: window,
                                             override: nil, system: os)
             XCTAssertTrue(line.contains("_cornerRadius -, _topCornerRadius absent, _bottomCornerRadius absent"),
                           "a rung-\(rung) line for a raising window lost a key: \(line)")
         }
-        let none = WindowCorner.logLine(Self.corner(0, .none), chrome: Self.chrome(28, toolbar: true), window: window,
+        let none = WindowCorner.logLine(Self.corner(0, .none), publicReading: nil, chrome: Self.chrome(28, toolbar: true), window: window,
                                         override: nil, system: Self.system(28, 0, 0))
         XCTAssertTrue(none.contains("_cornerRadius -;"), none)
     }
@@ -498,7 +498,7 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
             // The ladder refuses it, and the line is built for that very read.
             let read = WindowCorner.read(publicReading: nil, from: window, chrome: chrome)
             XCTAssertEqual(read, Self.corner(16, .guess), "the answer \(answer) was not refused by the ladder")
-            let line = WindowCorner.logLine(read, chrome: chrome, window: window, override: nil, system: os)
+            let line = WindowCorner.logLine(read, publicReading: nil, chrome: chrome, window: window, override: nil, system: os)
             XCTAssertTrue(line.contains("no public reading, _cornerRadius \(slot);"),
                           "the window answered \(answer) and the slot did not show \(slot): \(line)")
             XCTAssertFalse(line.contains("_cornerRadius absent"), "an answered \(answer) was told as absent: \(line)")
@@ -572,18 +572,36 @@ final class TheWindowsCornerIsReadNotAssumedTests: XCTestCase {
         let chrome = Self.sixteenGuess
         let os = Self.system(26, 4, 1)
         for window in [DoubleWithGetInteger(), DoubleWithGetVoid(), DoubleWithGetString()] as [NSObject] {
-            let line = WindowCorner.logLine(Self.corner(26, .windowSelector), chrome: chrome, window: window,
+            let line = WindowCorner.logLine(Self.corner(26, .windowSelector), publicReading: nil, chrome: chrome, window: window,
                                             override: nil, system: os)
             XCTAssertTrue(line.contains("_cornerRadius 26.0, _topCornerRadius absent"),
                           "the slot printed for _cornerRadius did not come from the examined method on \(type(of: window)): \(line)")
-            let guess = WindowCorner.logLine(Self.corner(16, .guess), chrome: chrome, window: window,
+            let guess = WindowCorner.logLine(Self.corner(16, .guess), publicReading: nil, chrome: chrome, window: window,
                                              override: nil, system: os)
             XCTAssertTrue(guess.contains("no public reading, _cornerRadius 26.0;"),
                           "the guess line's slot did not come from the examined method on \(type(of: window)): \(guess)")
         }
         let void = DoubleWithGetVoid()
-        _ = WindowCorner.logLine(Self.corner(26, .windowSelector), chrome: chrome, window: void, override: nil, system: os)
+        _ = WindowCorner.logLine(Self.corner(26, .windowSelector), publicReading: nil, chrome: chrome, window: void, override: nil, system: os)
         XCTAssertFalse(void.gotRan, "building the line invoked get_cornerRadius, a method nobody examined")
+    }
+
+    func testAGuessLineSaysWhatThePublicReadingWasWhenOneWasHandedIn() {
+        let chrome = Self.chrome(26, toolbar: true)
+        let os = Self.system(26, 4, 1)
+        let handedIn: [(CGFloat, String)] = [(.nan, "nan"), (.infinity, "inf"), (-.infinity, "-inf")]
+        for (reading, word) in handedIn {
+            let line = WindowCorner.logLine(Self.corner(26, .guess), publicReading: reading, chrome: chrome,
+                                            window: nil, override: nil, system: os)
+            XCTAssertTrue(line.hasPrefix("corner not read: public reading \(word), _cornerRadius absent;"),
+                          "a public reading of \(word) was handed in and the line does not say so: \(line)")
+            XCTAssertFalse(line.contains("no public reading"),
+                           "a public reading of \(word) was handed in and the line says there was none: \(line)")
+        }
+        let none = WindowCorner.logLine(Self.corner(26, .guess), publicReading: nil, chrome: chrome,
+                                        window: nil, override: nil, system: os)
+        XCTAssertTrue(none.hasPrefix("corner not read: no public reading, _cornerRadius absent;"),
+                      "no public reading handed in no longer reads 'no public reading': \(none)")
     }
 
     func testTheKeysAndTheRungNamesAreSpelledOnce() {
