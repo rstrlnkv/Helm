@@ -225,7 +225,19 @@ import HelmUI
     /// fallen back from it a single time.
     private var fellBackToNameOnly: Set<String> = []
 
+    /// **What the bar's first item is: the sidebar's tracking separator
+    /// (`.sidebarSeparator`, the default), or no tracking item at all
+    /// (`.spacer`).** Only `.sidebarSeparator` is constructed in the tree. A
+    /// `.spacer` bar starts with its name: `buildBar` always passes
+    /// `hasSpacer: false` to `identifiers`, so nothing is listed in front.
+    enum Lead { case sidebarSeparator, spacer }
+    private let lead: Lead
+
     private static let nameID = NSToolbarItem.Identifier("helm.name")
+    /// Listed by `identifiers` only for `.spacer` with `hasSpacer: true`, which
+    /// only tests pass; `toolbar(_:itemForItemIdentifier:…)` builds no item for
+    /// it (`default: return nil`).
+    private static let spacerID = NSToolbarItem.Identifier("helm.leadingSpacer")
     /// **The module's status, at the bar's trailing edge — the owner,
     /// 2026-09-28: «Давай вернем его в правую часть».** Only ever appended
     /// on the shared name-only bar, under `.moduleName` (`identifiers()`):
@@ -244,8 +256,9 @@ import HelmUI
     /// merely draws adjacent to one another.
     private static let actionsID = NSToolbarItem.Identifier("helm.actions")
 
-    init(model: SettingsModel, channel: HelmWindowToolbarChannel) {
+    init(model: SettingsModel, channel: HelmWindowToolbarChannel, lead: Lead = .sidebarSeparator) {
         self.model = model
+        self.lead = lead
         self.channel = channel
         super.init()
         channel.onChange = { [weak self] in self?.refresh() }
@@ -682,7 +695,8 @@ import HelmUI
         toolbar.autosavesConfiguration = false
         toolbar.displayMode = .iconOnly
         toolbar.allowsDisplayModeCustomization = false
-        let list = Self.identifiers(content: content, style: shape.pageBarStyle)
+        let list = Self.identifiers(content: content, style: shape.pageBarStyle,
+                                    lead: lead, hasSpacer: false)
         bar.identifiers = list
         toolbar.itemIdentifiers = list
         toolbar.centeredItemIdentifiers = Self.centredIdentifiers(shape)
@@ -794,17 +808,19 @@ import HelmUI
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.graceInterval, execute: work)
     }
 
-    /// `[.sidebarTrackingSeparator?, name, .flexibleSpace, tabs,
+    /// `[first, name, .flexibleSpace, tabs,
     /// .flexibleSpace, action…, search]` — the owner's own zones, left to
-    /// right. The tracking separator is always first: this window's
+    /// right. The first item is the lead's: under `.sidebarSeparator` the
+    /// tracking separator (`hasSpacer` is ignored there, so the list is this one
+    /// whatever else is asked), under `.spacer` `helm.leadingSpacer` when
+    /// `hasSpacer` and nothing otherwise. This window's
     /// `.fullSizeContentView` style mask plus its real sidebar item are
     /// exactly the shape `NSToolbarSidebarTrackingSeparatorItemIdentifier`'s
     /// own header names ("automatically configures it to track the divider
     /// of the sidebar if one is discovered … windows with
-    /// `NSWindowStyleMaskFullSizeContentView`"), so it is never conditional
-    /// here — only the name item, and the name-only bar's own trailing status
-    /// zone, are, on the page-bar style (`style == .moduleName` gates both,
-    /// below). A hidden action
+    /// `NSWindowStyleMaskFullSizeContentView`"). The name item, and the
+    /// name-only bar's own trailing status zone, are conditional on the
+    /// page-bar style (`style == .moduleName` gates both, below). A hidden action
     /// never removes this list's one `helm.actions` entry — which declared
     /// actions actually draw is the capsule's own model
     /// (`HelmToolbarAction.isVisible`), not `NSToolbarItem.isHidden`, which
@@ -817,9 +833,16 @@ import HelmUI
     /// (Keep Awake, VPN, Keyboard) draws the name-only bar and its status
     /// rides the trailing edge (`makeStatusItem`'s header says why the item is
     /// always listed there and what it draws when there is nothing to say).
-    private static func identifiers(content: HelmPageToolbarContent?,
-                                    style: PageBarStyle) -> [NSToolbarItem.Identifier] {
-        var list: [NSToolbarItem.Identifier] = [.sidebarTrackingSeparator]
+    ///
+    /// The rest of the list is the same under either lead. Internal, not
+    /// private, so a test reads the list without a window.
+    static func identifiers(content: HelmPageToolbarContent?, style: PageBarStyle,
+                            lead: Lead, hasSpacer: Bool) -> [NSToolbarItem.Identifier] {
+        var list: [NSToolbarItem.Identifier] = []
+        switch lead {
+        case .sidebarSeparator: list.append(.sidebarTrackingSeparator)
+        case .spacer: if hasSpacer { list.append(spacerID) }
+        }
         if style == .moduleName { list.append(nameID) }
         guard let content, !content.tabs.isEmpty || !content.actions.isEmpty || content.search != nil
         else {
@@ -852,6 +875,28 @@ import HelmUI
         if !content.actions.isEmpty { list.append(actionsID) }
         if content.search != nil { list.append(searchID) }
         return list
+    }
+
+    /// How far past the pane's leading edge the spacer's end lands: the
+    /// distance the name keeps from it. This function's own number.
+    nonisolated private static let nameInset: CGFloat = 16
+
+    /// **The width of the spacer whose end lands `nameInset` past the pane's
+    /// leading edge, given where the toolbar can start its items** — nil where
+    /// none is needed or none is possible: the items already start at or past
+    /// that point (seen once on macOS 27.2, not reproducible by a command in
+    /// the tree: a too-narrow spacer is centred in an item wider than itself,
+    /// so it moves the name further than its width; hence nil rather than a
+    /// sliver), or an input is not a position. Not-a-number or infinite on
+    /// either side, or a pane leading below zero, answers nil, and so does a
+    /// width that is not finite: a width computed from them would be a guess.
+    /// When it answers, the width is finite and above zero. No ceiling: the
+    /// sidebar's own range is its owner's business. No code in the tree calls
+    /// it yet except tests.
+    nonisolated static func spacerWidth(paneLeading: CGFloat, itemsStart: CGFloat) -> CGFloat? {
+        guard paneLeading.isFinite, paneLeading >= 0, itemsStart.isFinite else { return nil }
+        let width = paneLeading + nameInset - itemsStart
+        return width.isFinite && width > 0 ? width : nil
     }
 
     /// **What AppKit centres: the tabs, and the actions capsule with them
@@ -2931,7 +2976,7 @@ import HelmUI
         // flagged here, spent once this bar is actually attached.
         if !windowAppearsActive { bar.actionsGlassNeedsFirstAttachCorrection = true }
         // **`content.search == nil` is "the capsule is this bar's own last
-        // item"** — `identifiers(content:style:)` never puts anything after
+        // item"** — `identifiers(content:style:lead:hasSpacer:)` never puts anything after
         // `helm.actions` but `helm.search`, and `ShapeSignature.hasSearch`
         // rebuilds the whole bar, this item included, the moment that
         // changes — so this reads once, at construction, rather than on every

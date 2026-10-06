@@ -234,7 +234,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         tabs.append(HelmToolbarTab(id: "mechanismFixtureExtra", title: L("Settings"), symbol: "gearshape"))
         // One action, not Homebrew's own two — the capsule reserves width for
         // every *declared* action regardless of visibility (`identifiers(content:
-        // style:)`'s own header), so Homebrew's hidden `upgradeAll` still
+        // style:lead:hasSpacer:)`'s own header), so Homebrew's hidden `upgradeAll` still
         // costs room here; measured with it kept, the four tabs plus that
         // reserve rest folded to one segment already, which is not this
         // test's own scenario (`scratchpad/refit/`).
@@ -1194,7 +1194,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// **`.windowTitle` draws the page's name as the window's own inline
     /// title (`SettingsWindow.applyTitle(_:)`) rather than as a toolbar
     /// item, so `bar.nameItem` is `nil` for the whole life of a bar built
-    /// under it** (`identifiers(content:style:)`'s own `if style ==
+    /// under it** (`identifiers(content:style:lead:hasSpacer:)`'s own `if style ==
     /// .moduleName { list.append(nameID) }`). Before this test's own fix,
     /// `currentToolbarSlack(_:)` read that absence as "no anchor" and
     /// `predictedSlack(bar:tabsWidth:)` fell through to the `offeredRoom()`
