@@ -462,6 +462,18 @@ enum AppStr {
     static var moduleBlockedByPermission: String {
         L("Switched on, but macOS is withholding what it needs")
     }
+
+    /// The value a blocked module's row carries after its name, so it names no
+    /// subject of its own.
+    static var moduleRowBlockedByPermission: String {
+        L("macOS is withholding a needed permission")
+    }
+
+    /// The chevron beside the sidebar's foot row, and the row that takes its
+    /// place when the sidebar is narrowed to its glyphs.
+    static var hideSidebar: String { L("Hide Sidebar") }
+    static var showSidebar: String { L("Show Sidebar") }
+
     // MARK: - The live log
 
     static var logPane: String { L("Log") }

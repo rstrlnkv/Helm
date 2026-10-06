@@ -1,3 +1,4 @@
+import HelmRuntime
 import SwiftUI
 
 /// Helm's own set of single-colour shapes, one per module and two that no
@@ -175,31 +176,47 @@ public enum ShellGlyph: CaseIterable, Hashable, Sendable {
 /// glyph's own layers and not to what is behind it. An off-screen render does
 /// not show the cut stopping at the glyph, and no window has shown either
 /// answer.
-struct ShellGlyphView: View {
+public struct ShellGlyphView: View {
     private let glyph: ShellGlyph
     private let filled: Bool
     private let size: CGFloat
 
-    init(_ glyph: ShellGlyph, filled: Bool, size: CGFloat) {
+    public init(_ glyph: ShellGlyph, filled: Bool, size: CGFloat) {
         self.glyph = glyph
         self.filled = filled
         self.size = size
     }
 
-    var body: some View {
-        let scale = CGAffineTransform(scaleX: size / ShellGlyph.grid, y: size / ShellGlyph.grid)
-        let pen = StrokeStyle(lineWidth: 2 * size / ShellGlyph.grid, lineCap: .round, lineJoin: .round)
-        ZStack {
-            glyph.extra.applying(scale).stroke(style: pen)
-            glyph.body.applying(scale).stroke(style: pen)
-            if filled {
-                glyph.body.applying(scale).fill()
-                glyph.detail.applying(scale).stroke(style: pen).blendMode(.destinationOut)
-            } else {
-                glyph.detail.applying(scale).stroke(style: pen)
+    /// The largest side a glyph is drawn at, far beyond the size any caller asks
+    /// for; it exists so an infinite size has an answer.
+    nonisolated static let largest: CGFloat = 1024
+
+    /// The side that is drawn for a size asked for. **A size that is not a
+    /// number or is negative draws nothing**, because there is no glyph to
+    /// show for a size nobody can name and none can be smaller than nothing; 0
+    /// draws nothing too. An infinite size is a size, only a huge one, and
+    /// draws at `largest`, which is the answer a bound gives a value past it.
+    nonisolated static func side(for size: CGFloat) -> CGFloat {
+        size.clamped(to: 0...largest, whenNotANumber: 0)
+    }
+
+    public var body: some View {
+        let side = Self.side(for: size)
+        if side > 0 {
+            let scale = CGAffineTransform(scaleX: side / ShellGlyph.grid, y: side / ShellGlyph.grid)
+            let pen = StrokeStyle(lineWidth: 2 * side / ShellGlyph.grid, lineCap: .round, lineJoin: .round)
+            ZStack {
+                glyph.extra.applying(scale).stroke(style: pen)
+                glyph.body.applying(scale).stroke(style: pen)
+                if filled {
+                    glyph.body.applying(scale).fill()
+                    glyph.detail.applying(scale).stroke(style: pen).blendMode(.destinationOut)
+                } else {
+                    glyph.detail.applying(scale).stroke(style: pen)
+                }
             }
+            .compositingGroup()
+            .frame(width: side, height: side)
         }
-        .compositingGroup()
-        .frame(width: size, height: size)
     }
 }
