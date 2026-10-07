@@ -25,7 +25,7 @@ import XCTest
 /// **Read off the rendering, because there is nothing else to read.** On
 /// macOS 27.2 a menu-style `Picker` in a grouped `Form` is drawn by SwiftUI
 /// itself: the page's view tree holds no `NSPopUpButton` and nothing named
-/// like one (walked 2026-09-27 on this Mac, the whole 1449 pt form scrolled
+/// like one (walked 2026-09-27 on this Mac, the whole form scrolled
 /// through), and
 /// an `NSHostingView`'s accessibility children are empty in a test process
 /// (`KeyboardReachableControlsTests`' header). So the pane is rendered in
@@ -67,9 +67,12 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
         }
     }
 
-    /// The form's own scroll view — the pane's, not the sidebar's list.
+    /// The form's own scroll view — the pane's, not the sidebar's. The sidebar
+    /// is a SwiftUI `ScrollView` too (`ShellSidebar`) and comes first in the
+    /// window, so the window is not searched: only what lies under the pane.
     private func form(_ window: NSWindow) -> NSScrollView? {
-        window.contentView?.everyView(ofType: NSScrollView.self).first { $0.appKitClassName == "HostingScrollView" }
+        return SettingsWindowParts.pane(of: window)?.everyView(ofType: NSScrollView.self)
+            .first { $0.appKitClassName == "HostingScrollView" }
     }
 
     /// Every line of text Vision reads in what `view` draws right now.
