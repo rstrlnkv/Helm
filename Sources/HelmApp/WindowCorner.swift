@@ -9,7 +9,11 @@ import HelmRuntime
 /// says where it came from and `logLine` says it in words.
 ///
 /// The rungs, first answer wins:
-/// 1. the public reading, handed in by the caller, when it is a number;
+/// 1. the public reading, handed in by the caller, when it is a number. `read`
+///    takes a zero it is handed as an answer; the caller drops a zero first
+///    unless the window is shown, visible or miniaturised (`publicAnswer`),
+///    because the probe answered 0 in a window that had been built and laid out
+///    and not shown, while a rung below it answered a corner;
 /// 2. the window's own `_cornerRadius`, a non-public selector, read through
 ///    `HelmReadNumber` so that an absent selector, a method of that name that is
 ///    not a getter of a floating-point number and an accessor that throws all
@@ -115,6 +119,20 @@ nonisolated struct WindowCorner: Equatable {
             return WindowCorner(radius: guessed, rung: .guess)
         }
         return WindowCorner(radius: 0, rung: .none)
+    }
+
+    /// **The public reading as `read` may take it:** a zero is dropped to nil while
+    /// the window is not shown, because there it is not the window's corner;
+    /// once the window is shown a zero stays an answer, as a borderless window's
+    /// is. A non-zero reading is an answer shown or not. `windowIsShown` is
+    /// `isVisible || isMiniaturized` of the window: `isVisible` is false for a
+    /// window ordered out and for a miniaturised one, which has been shown, and an
+    /// occluded one is visible (read in `NSWindow`'s documentation, not measured).
+    /// A reading that `believable` holds to zero counts as a zero.
+    nonisolated static func publicAnswer(_ reading: CGFloat?, windowIsShown: Bool) -> CGFloat? {
+        guard let reading else { return nil }
+        if !windowIsShown, reading.clampedIfFinite(to: believable) == 0 { return nil }
+        return reading
     }
 
     /// The number `window` answers for `key`, as it came.

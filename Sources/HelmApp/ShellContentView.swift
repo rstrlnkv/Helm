@@ -20,7 +20,8 @@ import HelmRuntime
 ///
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
-/// `viewDidMoveToWindow`, `sidebarWidth`'s setter and `barWasAttached()`. Events
+/// `viewDidMoveToWindow`, the window's occlusion notification, `sidebarWidth`'s
+/// setter and `barWasAttached()`. Events
 /// only ask (`needsLayout = true`).
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
@@ -56,6 +57,11 @@ final class ShellContentView: NSView {
     /// back into the same window keeps its journal and its bound, and only a
     /// different window starts a new one.
     private weak var journalWindow: NSWindow?
+    /// Asks for a layout when the window's occlusion state changes; removed
+    /// whenever the view leaves a window, and in `deinit`. Read in `deinit`,
+    /// which Swift 6 treats as nonisolated even on a `@MainActor` class, as
+    /// `SettingsToolbar.swift`'s `languageWatch` is.
+    nonisolated(unsafe) private var shownObserver: NSObjectProtocol?
     private let system = ProcessInfo.processInfo.operatingSystemVersion
 
     /// Nil below macOS 27, where there is no public reading.
@@ -109,6 +115,10 @@ final class ShellContentView: NSView {
 
     required init?(coder: NSCoder) { fatalError("ShellContentView is built in code") }
 
+    deinit {
+        if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
+    }
+
     // MARK: - fill
 
     override func viewDidChangeEffectiveAppearance() {
@@ -128,6 +138,20 @@ final class ShellContentView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
+        shownObserver = nil
+        if let window {
+            // Assumed, not measured: that ordering a window in posts this
+            // notification. It is listened for because a borderless window's
+            // corner is 0 before and after it is shown, so the probe's radii do
+            // not change and nothing else would ask for the layout that takes
+            // its zero.
+            shownObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.needsLayout = true }
+            }
+        }
         if let window, window !== journalWindow {
             journal = WindowCorner.Journal()
             journalWindow = window
@@ -158,12 +182,17 @@ final class ShellContentView: NSView {
 
     /// The probe's largest corner, nil where there is no probe, no window or no
     /// answer. Outside a window the probe answers 0.0, measured on 27.2, which
-    /// is not a corner: it must not reach `read` as one. Not-a-number is read as
-    /// "did not answer" by `read`.
+    /// is not a corner: it must not reach `read` as one. A window built and laid
+    /// out and not shown answered 0.0 too, so a zero from it is dropped
+    /// (`WindowCorner.publicAnswer`) and a lower rung answers while it is not
+    /// shown. The window's occlusion notification asks for a layout, which reads
+    /// again; that showing the window posts one is assumed, not measured.
+    /// Not-a-number is read as "did not answer" by `read`.
     private var publicReading: CGFloat? {
-        guard window != nil else { return nil }
+        guard let window else { return nil }
         if #available(macOS 27.0, *), let probe, let radii = probe.effectiveCornerRadii {
-            return max(radii.topLeft, radii.topRight, radii.bottomLeft, radii.bottomRight)
+            return WindowCorner.publicAnswer(max(radii.topLeft, radii.topRight, radii.bottomLeft, radii.bottomRight),
+                                             windowIsShown: window.isVisible || window.isMiniaturized)
         }
         return nil
     }
