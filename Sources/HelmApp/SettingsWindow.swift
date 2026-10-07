@@ -574,9 +574,16 @@ private struct ModuleDetailView: View {
     ///
     /// Whether a module exists at all is a settings question, and it is asked
     /// where the sidebar is arranged.
+    ///
+    /// The page's name is a preference on its content, and a chain hung on no
+    /// view publishes none. A module that is enabled in the store and not live
+    /// draws nothing of its own, so the `Color.clear` is what still names the
+    /// window after it.
     @ViewBuilder private var page: some View {
         if let live = host.liveModule(id) {
             descriptor.settingsPage(live.vm)
+        } else {
+            Color.clear
         }
     }
 }
