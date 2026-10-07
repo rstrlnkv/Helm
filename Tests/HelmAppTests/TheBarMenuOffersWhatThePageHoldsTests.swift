@@ -377,7 +377,12 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         AppLanguage.each { language in
             let titles = opened(menu).filter { !$0.isSeparatorItem }.map(\.title)
             let file = table(language)
-            let want = keys.map { key in language == .en ? key : (file[key] ?? "«\(key)» missing from the file") }
+            // AppKit hands a menu item's title back with U+00A0 turned into U+0020 (measured
+            // on macOS 27.2 through init(title:), the setter and a section header; U+202F and
+            // U+2009 survive), so the German "Liquid\U00A0Glass" reads back with a plain space.
+            let want = keys.map { key in
+                language == .en ? key : (file[key]?.replacingOccurrences(of: "\u{00A0}", with: " ") ?? "«\(key)» missing from the file")
+            }
             XCTAssertEqual(titles, want, "\(language.rawValue): the menu reads \(titles)")
             if language != .en {
                 for key in ["With Icon", "Without Icon", "Always Collapse Search"] {
