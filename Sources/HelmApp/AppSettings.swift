@@ -79,6 +79,24 @@ extension Notification.Name {
         }
     }
 
+    /// The stored look of the settings window's bar (`HelmBarAppearance`):
+    /// flat unless Liquid Glass is stored.
+    /// Nothing unattended reads it, so it is not sealed; the two functions
+    /// take the store so a test reads and writes a scratch one.
+    static var barAppearance: HelmBarAppearance {
+        get { barAppearance(in: store) }
+        set { setBarAppearance(newValue, in: store) }
+    }
+
+    static func barAppearance(in store: NamespacedStore) -> HelmBarAppearance {
+        HelmBarAppearance(stored: store.string(HelmBarAppearance.storageKey, default: ""))
+    }
+
+    static func setBarAppearance(_ value: HelmBarAppearance, in store: NamespacedStore) {
+        store.set(value.rawValue, for: HelmBarAppearance.storageKey)
+        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+    }
+
     /// **Whether the settings window's search rests as AppKit's magnifier at
     /// every width**, rather than as a field wherever the bar has room for
     /// one — chosen from the toolbar's own right-click menu

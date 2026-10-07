@@ -21,6 +21,10 @@ public enum HelmSurface {
     /// material here was glass drawn on glass, which is the one thing Liquid
     /// Glass asks a design not to do, and its shadow carried nothing.
     public static let panelSelection = Color.primary.opacity(0.12)
+    /// The plate `HelmBarAppearance.flat` is named for.
+    public static let barPlate = Color.primary.opacity(0.05)
+    /// The pick on `barPlate`.
+    public static let barPick = Color.primary.opacity(0.10)
 }
 
 public extension View {

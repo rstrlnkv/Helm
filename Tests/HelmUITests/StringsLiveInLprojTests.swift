@@ -239,6 +239,11 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Video": [.de],
         "VPN": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],
+        // Apple's own name for its material. macOS keeps it Latin in all eight
+        // languages (`Appearance.appex`, key `Liquid Glass`); German alone
+        // spells it with a no-break space between the words, so German is a
+        // different string and not an identity.
+        "Liquid Glass": [.ru, .es, .fr, .ja, .zh, .pt],
     ]
 
     func testNoTranslationIsJustTheEnglishAgainUnlessItIsMeantTo() throws {

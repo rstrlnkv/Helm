@@ -29,6 +29,10 @@ enum AppStr {
     static var pageBar: String { L("Page header") }
     static var pageBarWithIcon: String { L("With Icon") }
     static var pageBarWithoutIcon: String { L("Without Icon") }
+    /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
+    /// macOS's own name for its material, spelled as System Settings spells it.
+    static var barAppearanceFlat: String { L("Flat") }
+    static var barAppearanceLiquidGlass: String { L("Liquid Glass") }
     /// The toolbar menu's switch for resting the search as its magnifier at
     /// every width (`AppSettings.alwaysCollapseSearch`) — shaped like Music's
     /// own "Always Show Artwork"; "Search" is AppKit's own word for the field.

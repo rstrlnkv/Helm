@@ -1,5 +1,13 @@
 {
   "colours" : {
+    "bar-pick" : {
+      "dark" : "rgba(255, 255, 255, 0.085)",
+      "light" : "rgba(0, 0, 0, 0.085)"
+    },
+    "bar-plate" : {
+      "dark" : "rgba(255, 255, 255, 0.042)",
+      "light" : "rgba(0, 0, 0, 0.042)"
+    },
     "hairline" : {
       "dark" : "rgba(255, 255, 255, 0.085)",
       "light" : "rgba(0, 0, 0, 0.085)"
@@ -200,6 +208,8 @@
     }
   },
   "inks" : {
+    "bar-pick" : 0.10000000000000001,
+    "bar-plate" : 0.050000000000000003,
     "hairline" : 0.10000000000000001,
     "mark-separator" : 0.5,
     "panel-selection" : 0.12,
