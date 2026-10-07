@@ -79,13 +79,12 @@ public final class HelmToolbarActionsModel {
         case menu([MenuEntry])
         /// The closure-free twin of `.segmented` — the switcher only needs
         /// its own options and which one is current; a picked option reaches
-        /// `SettingsToolbar` through `pressItem`, the same route a `.menu`
+        /// the model's owner through `pressItem`, the same route a `.menu`
         /// item's own press already takes. `reserveWidth` is carried rather
-        /// than computed here: only `SettingsToolbar.actionEntries(for:)`,
-        /// in `HelmApp`, has a real toolbar and window to attach a measuring
-        /// switcher to (`reserveWidth(_:)`'s own header, below, says why a
-        /// detached one will not do), and this module may not reach across
-        /// that boundary to ask for one.
+        /// than computed here: `HelmApp` measures it, through a measurer of its
+        /// own (`SettingsToolbar.actionEntries(for:)` and
+        /// `ShellBarActions.entries(for:appearance:)`), and this module may not
+        /// reach across that boundary to ask for one.
         case segmented([SegmentEntry], selectedID: String, reserveWidth: CGFloat)
     }
 
@@ -132,7 +131,8 @@ public final class HelmToolbarActionsModel {
     /// a genuinely different module, reads this to decide whether the
     /// visible set actually moved before writing it again.
     public private(set) var visibleIDs: [String] = []
-    /// Mirrors a frozen `PageBar`'s own inertness (`SettingsToolbar.freeze`)
+    /// Mirrors a frozen `PageBar`'s own inertness (`SettingsToolbar.freeze`),
+    /// and a dimmed page's in `ShellBarActions.show`
     /// — a custom-view item has no `NSToolbarItem.isEnabled` of its own to
     /// dim, so this is how that fact reaches the buttons this model feeds.
     /// Not `public`, on the same grounds as `declared` above: only this
@@ -146,10 +146,11 @@ public final class HelmToolbarActionsModel {
     /// `windowDid…` methods, has the reading and where it was taken).
     /// **Not** SwiftUI's `controlActiveState`: that reads `.inactive` in two
     /// of those states — a nonactivating panel taking key while this window
-    /// stays main, and a sheet — where AppKit's platter stays lit. Read only
-    /// by `HelmToolbarActionsCapsule.glyph(_:)` and the `disabledGlyphOpacity`
+    /// stays main, and a sheet — where AppKit's platter stays lit. Read by
+    /// `HelmToolbarActionsCapsule.glyph(_:)` and the `disabledGlyphOpacity`
     /// it calls, to dim a plain `Label`'s ink the same amount AppKit's own
-    /// toolbar button glyph dims by — the
+    /// toolbar button glyph dims by, and by `backing(_:for:)`, to dim a flat
+    /// plate with its content where the caller handed numbers in — the
     /// capsule's *glass* needs no such value: it follows AppKit's own active
     /// appearance, which in a real app equals `isKeyWindow || isMainWindow`,
     /// proven by pinning this environment key on a live capsule and reading
@@ -160,8 +161,8 @@ public final class HelmToolbarActionsModel {
     private(set) var appearsActive = true
 
     /// Never observed by SwiftUI, and never anything but data going the
-    /// other way: `id` in, nothing back. Set once, at construction, by
-    /// `SettingsToolbar.makeActionsItem`.
+    /// other way: `id` in, nothing back. Set once by whoever owns the model:
+    /// `SettingsToolbar.makeActionsItem`, or `ShellBarActions`' initialiser.
     @ObservationIgnored public var press: (String) -> Void = { _ in }
     /// The `.menu` twin of `press`: the entry's own `id`, then the pressed
     /// item's — nothing back, on the same grounds.
@@ -197,7 +198,8 @@ public final class HelmToolbarActionsModel {
     /// Called by `SettingsToolbar.setWindowAppearsActive(_:)`, itself fed by
     /// `SettingsWindow`'s own direct read of the window's `isKeyWindow` and
     /// `isMainWindow` — see this type's own `appearsActive` header for why
-    /// the value crosses in from there rather than being read here.
+    /// the value crosses in from there rather than being read here;
+    /// `ShellBarActions.show` calls it too, with the activity its bar hands it.
     public func setAppearsActive(_ value: Bool) {
         guard appearsActive != value else { return }
         appearsActive = value
@@ -208,6 +210,7 @@ public final class HelmToolbarActionsModel {
 /// `NSHostingView` with no AppKit border of its own (`isBordered = false`):
 /// a bordered item wraps its view in a second glass, measured, so the
 /// capsule's own `.glassEffect` would sit inside another one.
+/// `ShellBarActions` hosts it too, in no toolbar item.
 ///
 /// **Why `body` does not read `\.controlActiveState`, and does not override
 /// it either.** A Helm Dev probe saw no movement in `\.controlActiveState`
@@ -343,27 +346,56 @@ public struct HelmToolbarActionsCapsule: View {
     static let disabledInactiveGlyphOpacityDark: Double = 0.35
     static let disabledInactiveGlyphOpacityLight: Double = 0.50
 
-    /// Non-zero exactly when this capsule is the bar's own last item (no
+    /// Non-zero exactly when this capsule is a toolbar's own last item (no
     /// search follows it) — see `edgeMargin`'s own header for the measurement
-    /// this closes.
+    /// this closes. `ShellBarActions` leaves it at 0: its bar's layout owns the margin.
     public let trailingInset: CGFloat
 
-    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0) {
-        self.model = model
-        self.trailingInset = trailingInset
+    /// **The two numbers a flat capsule dims by in a window that is not active,
+    /// one per appearance.** The caller owns them (the name zone's, which
+    /// `HelmApp` can reach and this module cannot); nil leaves the capsule on
+    /// `inactiveGlyphOpacityDark` / `inactiveGlyphOpacityLight`, AppKit's own.
+    public struct InactiveInk: Equatable, Sendable {
+        public let dark: Double
+        public let light: Double
+
+        public init(dark: Double, light: Double) {
+            self.dark = dark
+            self.light = light
+        }
     }
 
-    /// `inactiveGlyphOpacityDark` or `inactiveGlyphOpacityLight`, picked by
-    /// `colorScheme`, read here where the value is drawn rather than cached.
+    private let flatInactiveInk: InactiveInk?
+
+    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0,
+                flatInactiveInk: InactiveInk? = nil) {
+        self.model = model
+        self.trailingInset = trailingInset
+        self.flatInactiveInk = flatInactiveInk
+    }
+
+    /// **How far an inactive window dims the capsule's ink.** Under `.flat` with
+    /// numbers handed in, those; otherwise `inactiveGlyphOpacityDark` or
+    /// `inactiveGlyphOpacityLight`, picked by the scheme. Static, so a test asks it
+    /// without drawing.
+    static func inactiveOpacity(appearance: HelmBarAppearance, dark: Bool,
+                                flatInactiveInk: InactiveInk?) -> Double {
+        if appearance == .flat, let ink = flatInactiveInk { return dark ? ink.dark : ink.light }
+        return dark ? inactiveGlyphOpacityDark : inactiveGlyphOpacityLight
+    }
+
+    /// `inactiveOpacity(appearance:dark:flatInactiveInk:)` for the scheme and the
+    /// look this capsule draws in, read here where the value is drawn rather than cached.
     private var inactiveGlyphOpacity: Double {
-        colorScheme == .dark ? Self.inactiveGlyphOpacityDark : Self.inactiveGlyphOpacityLight
+        Self.inactiveOpacity(appearance: appearance, dark: colorScheme == .dark,
+                             flatInactiveInk: flatInactiveInk)
     }
 
     /// The disabled twin of `inactiveGlyphOpacity`, above — one of the four
     /// `disabled…GlyphOpacity…` constants, picked by `colorScheme` and by
-    /// `model.appearsActive` the same way `inactiveGlyphOpacity` is picked by
-    /// `colorScheme` alone; see those constants' own header for why a
-    /// disabled entry needs both.
+    /// `model.appearsActive`, where `inactiveGlyphOpacity` is picked by
+    /// `colorScheme`, the look and the numbers handed in; see those constants'
+    /// own header for why a disabled entry needs both.
     private var disabledGlyphOpacity: Double {
         if colorScheme == .dark {
             return model.appearsActive ? Self.disabledGlyphOpacityDark : Self.disabledInactiveGlyphOpacityDark
@@ -559,7 +591,11 @@ public struct HelmToolbarActionsCapsule: View {
     /// `flatFill(for:)` where there is one, nothing otherwise.** Under `.flat` the
     /// container around the entries holds no glass; that it then draws
     /// nothing, and that the entries' appearing and leaving reads acceptably
-    /// without the glass morph, were not seen on a screen.
+    /// without the glass morph, were not seen on a screen. **A flat plate dims with
+    /// its content as one unit in an inactive window**, by `inactiveGlyphOpacity`, the
+    /// way `ShellBarPlate` dims its fill and its control — but only where the caller
+    /// handed numbers in (`flatInactiveInk`); that this reads right on a screen was
+    /// not seen.
     @ViewBuilder
     private func backing(_ content: some View, for entry: HelmToolbarActionsModel.Entry) -> some View {
         switch appearance {
@@ -573,7 +609,13 @@ public struct HelmToolbarActionsCapsule: View {
                         ? .matchedGeometry : .identity)
         case .flat:
             if let fill = Self.flatFill(for: entry.kind) {
-                content.background(Capsule().fill(fill))
+                if flatInactiveInk != nil {
+                    content.background(Capsule().fill(fill))
+                        .compositingGroup()
+                        .opacity(model.appearsActive ? 1 : inactiveGlyphOpacity)
+                } else {
+                    content.background(Capsule().fill(fill))
+                }
             } else {
                 content
             }
@@ -610,8 +652,7 @@ public struct HelmToolbarActionsCapsule: View {
     /// ever puts it in — no word ever reaches what is drawn, so the reserve
     /// tracks the symbol set rather than the current language — so its
     /// reserve is carried on the entry itself as `EntryKind.segmented`'s own
-    /// `reserveWidth`, measured by `SettingsToolbar.actionEntries(for:)`, in
-    /// `HelmApp`, rather than computed here.
+    /// `reserveWidth`, measured in `HelmApp`, rather than computed here.
     ///
     /// **Measured attached, per glyph set** — each pair's own reserve tracks
     /// what it draws rather than one number standing in for all of them
@@ -621,12 +662,13 @@ public struct HelmToolbarActionsCapsule: View {
     /// prediction uses (`SettingsToolbar.switcherWidth(tabs:style:selectedID:)`),
     /// whose own header has what a bare hosting view got wrong for the tabs —
     /// mounting the same segments, non-compact and in `.icons`, the one style
-    /// `entryContent(_:)` ever draws a `.segmented` entry in. This module
-    /// cannot import `HelmApp` to reach that rig itself — `Package.swift`'s
-    /// own target graph has `HelmApp` depend on `HelmUI`
-    /// (`Package.swift:137-143`), and the reverse edge would be a cycle —
-    /// which is why the number crosses as plain data on the entry rather than
-    /// being asked for here.
+    /// `entryContent(_:)` ever draws a `.segmented` entry in.
+    /// `ShellBarActions.segmentedReserveWidth(_:appearance:)` is a second measurer: it mounts
+    /// the switcher in a detached hosting view, in the look the capsule draws in, because the
+    /// bar it serves has no toolbar item to attach to. This module cannot import `HelmApp` to
+    /// reach either itself — `Package.swift`'s own target graph has `HelmApp` depend on
+    /// `HelmUI` (the `HelmApp` target's `dependencies:` in `host`), and the reverse edge would be a cycle — which is
+    /// why the number crosses as plain data on the entry rather than being asked for here.
     ///
     /// Not `private`, on the same grounds as `model` above: it is what
     /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` reads, through
@@ -636,10 +678,22 @@ public struct HelmToolbarActionsCapsule: View {
     /// `.segmented` entry's own extra width as if it were the inset.
     @MainActor
     func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
-        if case .segmented(_, _, let reserveWidth) = entry.kind {
-            return reserveWidth
-        }
-        return Self.side
+        Self.reserveWidth(for: entry)
+    }
+
+    /// **The width of the capsule's reserve for these entries** — every declared entry's
+    /// `reserveWidth(_:)` laid end to end, which is what the hidden back layer in `body`
+    /// is. Static and plain arithmetic, so a caller that must answer a width synchronously
+    /// asks it without drawing the capsule.
+    @MainActor
+    public static func reserveWidth(of entries: [HelmToolbarActionsModel.Entry]) -> CGFloat {
+        entries.reduce(0) { $0 + reserveWidth(for: $1) }
+    }
+
+    @MainActor
+    private static func reserveWidth(for entry: HelmToolbarActionsModel.Entry) -> CGFloat {
+        if case .segmented(_, _, let reserveWidth) = entry.kind { return reserveWidth }
+        return side
     }
 
     /// **The glyph every kind shares.** The frame and the hit shape sit on it
