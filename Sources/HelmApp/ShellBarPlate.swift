@@ -17,19 +17,21 @@ import SwiftUI
 /// an inactive plate dims by the number the name zone dims by, and it dims the
 /// plate and its content as one unit.
 ///
-/// **Measured on 27.2 in a standalone bench app's key window, not on this
-/// plate:** outside a toolbar an `.extraLarge` stock segmented control draws
-/// a capsule track of its own, the selected segment an accent capsule when
-/// the window is key and a grey one when it is not; and a bare
-/// `NSGlassEffectView` on the window's background loses its rim highlight by
-/// itself when its window is neither key nor main, its body dimming a little.
+/// **Measured on 27.2 in a standalone bench app's window, key and then not key,
+/// in the dark appearance, not on this plate:** outside a toolbar an
+/// `.extraLarge` stock segmented control draws a capsule track of its own, the
+/// selected segment an accent capsule when the window is key and a grey one
+/// when it is not; and a bare `NSGlassEffectView` on the window's background
+/// loses its rim highlight by itself when its window is neither key nor main,
+/// its body dimming a little.
 /// The plate does not lean on the second: on the inactive edge it removes the
 /// glass and draws the fill. **Not seen on a screen:** this plate with a
 /// control on it — how the stock control's own track reads on the glass, that
 /// the flat cell's fixed inks do not dim by themselves in an inactive window
-/// (the reason the flat plate takes the name zone's number there and the
-/// glass plate keeps 1), and that a fill at `barPlate` is what AppKit's
-/// inactive platter looks like.
+/// (the reason the flat plate takes the name zone's number there); that a
+/// stock control dims its own ink there (the reason the glass plate keeps 1 —
+/// the bench recorded its selection capsule turning grey, not its ink); and
+/// that a fill at `barPlate` is what AppKit's inactive platter looks like.
 ///
 /// **The shape is the same in every state:** a continuous corner of half the
 /// height, on the layer, and on the glass view when there is one; the layer

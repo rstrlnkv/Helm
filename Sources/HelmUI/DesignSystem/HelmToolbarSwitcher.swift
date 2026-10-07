@@ -78,8 +78,9 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// SwiftUI, and none of it was.
 ///
 /// Under `HelmBarAppearance.flat` the control keeps its class and wears
-/// `HelmFlatSegmentedCell`, which draws by hand again and has none of that
-/// glass.
+/// `HelmFlatSegmentedCell`, which draws by hand again and asks for none of that
+/// glass; whether AppKit still draws any of its own under it was not seen on a
+/// screen (the cell's header).
 ///
 /// What the system control had to be told: `segmentDistribution = .fit`, which
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
@@ -405,10 +406,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
-    /// **The one place the cell is chosen, and the one place in `Sources` whose code names
-    /// `HelmFlatSegmentedCell`.** `.flat` installs it when the control does
-    /// not wear it; `.liquidGlass` installs the system's `NSSegmentedCell`
-    /// only when the control wears the flat one, so a control never dressed
+    /// **The one place the cell is chosen, and the one place in `Sources` whose
+    /// code names `HelmFlatSegmentedCell`.** `.flat` installs it when the
+    /// control does not wear it; `.liquidGlass` installs the system's
+    /// `NSSegmentedCell` only when the control wears the flat one, so a control never dressed
     /// flat is not touched at all. A cell swap wipes what the control held
     /// (measured on a bare control: segment count 0, target nil, size
     /// regular), so everything `makeNSView` writes is written again here and
@@ -654,8 +655,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// (a composite, not a template), are drawn at full strength.
 ///
 /// **Measured on 27.2:** a subclass's `drawSegment` is called through
-/// `cacheDisplay`, windowless and in a window never ordered in; and in a key
-/// window of a standalone bench app a cell that overrode only `drawSegment`
+/// `cacheDisplay`, windowless; and in a standalone bench app's window, key and
+/// then not key, in the dark appearance, a cell that overrode only `drawSegment`
 /// had its paint on screen, with the system's own selection capsule (accent
 /// when key, grey when not) still drawn under the selected segment. This cell
 /// also overrides `draw(withFrame:in:)` and never calls the system's.

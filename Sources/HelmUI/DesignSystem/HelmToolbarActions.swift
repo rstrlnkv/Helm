@@ -390,8 +390,8 @@ public struct HelmToolbarActionsCapsule: View {
             GlassEffectContainer(spacing: HelmSpace.s4) {
                 HStack(spacing: 0) {
                     ForEach(visible, id: \.id) { entry in
-                        // **Under `.liquidGlass` every kind takes the same glass shape, `.segmented`
-                        // included — but not the same `interactive()`.** It
+                        // **Under `.liquidGlass` every kind takes the same glass shape,
+                        // `.segmented` included — but not the same `interactive()`.** It
                         // used to skip the glass entirely on the assumption
                         // that AppKit already drew Liquid Glass around a
                         // segmented control wherever it sat — measured false
@@ -589,9 +589,10 @@ public struct HelmToolbarActionsCapsule: View {
     }
 
     /// **The one thing withheld from a `.segmented` entry's glass — see
-    /// `body`'s own comment, above its call of `backing(_:for:)`, for the reading behind
-    /// this.** Every other kind keeps `.interactive()`; a `.segmented` entry
-    /// is the one whose content is a wrapped `NSSegmentedControl`, and the
+    /// `body`'s own comment, above its call of `backing(_:for:)`, for the
+    /// reading behind this.** Every other kind keeps `.interactive()`; a
+    /// `.segmented` entry is the one whose content is a wrapped
+    /// `NSSegmentedControl`, and the
     /// SDK's own exported symbols read `.interactive()` as laying a second,
     /// SwiftUI-only press recogniser over whatever the glass wraps — not
     /// measured at runtime on this control, where withholding it removed the
