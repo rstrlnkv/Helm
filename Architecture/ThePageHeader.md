@@ -55,7 +55,7 @@ The tabs have one form, `HelmToolbarSwitcher`
 `ToolbarSwitcherStyle`, which the bar's right-click menu changes for all of them;
 its `compact` flag folds it to the current tab before AppKit would push the strip
 into its overflow menu, and `SettingsToolbar`'s "Folding the tabs" section decides
-when. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
+when. `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
 the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the glass lens draws the
 dot on a real screen was not measured. The search field is an `NSSearchToolbarItem` carrying an `NSSearchField`
 `SettingsToolbar` builds itself (`makeSearchItem`): Return, and only Return, runs a
@@ -67,7 +67,7 @@ rests as AppKit's magnifier at every width, through one rest predicate
 
 The bar has one right-click menu (`ShellBarMenu`), filled the same way for the toolbar and for `ShellPageBar`,
 which nothing in `Sources/` constructs. It has an Appearance section (Flat, Liquid Glass) on every page, and
-General mirrors it in the row "Toolbar style"; no bar draws by that setting. The toolbar's menu is answered by
+General mirrors it in the row "Toolbar style"; `ShellPageBar` hands the setting to its zones, and since nothing in `Sources/` constructs that bar, no bar on a screen draws by it. The toolbar's menu is answered by
 the same local monitor as the magnifier press, so a Control-click on the collapsed
 magnifier has one owner; the same menu is each centre switcher's `NSView.menu`,
 which is what VoiceOver opens.

@@ -141,8 +141,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     /// **What the control actually shows.** One segment — the current
     /// selection — when `compact`, all of them otherwise; an empty
-    /// `segments` or a selection none of them names (should not happen, but
-    /// `fill` below has to answer every index safely regardless) folds to no
+    /// `segments` or a selection none of them names (`fill` below
+    /// has to answer every index safely regardless) folds to no
     /// segment at all rather than trapping.
     private var displaySegments: [HelmSwitcherSegment<Value>] {
         guard compact else { return segments }
@@ -471,6 +471,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         if let selected, segments.indices.contains(selected), control.selectedSegment != selected {
             control.setSelected(true, forSegment: selected)
         }
+        // No index at all clears the selection: a press AppKit has already lit must not stay lit when the
+        // selection names no segment. Through `selectedSegment`, not a second `setSelected(`, which
+        // `TheSwitcherRefusesASegmentThatIsNotThereTests` counts.
         if selected == nil, control.selectedSegment != -1 { control.selectedSegment = -1 }
     }
 

@@ -23,10 +23,10 @@ import SwiftUI
 /// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
-/// nobody having set a look gets, and the actions capsule is built that way
-/// (the settings bar's items,
-/// and the tests that mount it bare), so for it `liquidGlass` is the drawing
-/// that existed before the setting did.
+/// nobody having set a look gets. The settings bar's items and the tests
+/// that mount the actions capsule bare build it that way, so for them
+/// `liquidGlass` is the drawing that existed before the setting did;
+/// `ShellBarActions` is the one builder in `Sources/` that sets a look on it.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {

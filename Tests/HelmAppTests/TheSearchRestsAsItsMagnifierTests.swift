@@ -157,16 +157,6 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
 
     // MARK: - The zone on a real bar
 
-    /// A zone that holds no view and measures nothing: the bar's tabs and actions places.
-    @MainActor
-    private final class MuteZone: ShellBarZone {
-        var view: NSView? { nil }
-        var measuresMoved: (() -> Void)?
-        func show(_ state: ShellBarZoneState) {}
-        func measure(into measures: inout ShellPageBarView.Measures) {}
-        func apply(_ verdicts: ShellPageBarView.Verdicts) {}
-    }
-
     private var savedCollapse: Any?
     private var savedPageBar: Any?
     private var savedBarAppearance: Any?
@@ -284,8 +274,8 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
         let zone = ShellBarSearch(titlebarIsTransparent: true)
-        let tabsZone: any ShellBarZone = tabs ? TabsZone() : MuteZone()
-        let bar = ShellPageBar(model: model, channel: channel, tabs: tabsZone, actions: MuteZone(),
+        let tabsZone: any ShellBarZone = tabs ? TabsZone() : MuteBarZone()
+        let bar = ShellPageBar(model: model, channel: channel, tabs: tabsZone, actions: MuteBarZone(),
                                search: zone, titlebarIsTransparent: true)
         bar.graceInterval = 30
         var window: NSWindow?
@@ -723,6 +713,28 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         XCTAssertEqual(page.submits, [], "ending the first page's session ran its onSubmit")
         XCTAssertEqual(other.writes, 0, "ending the first page's session wrote the other page's binding")
         XCTAssertEqual(other.submits, [], "ending the first page's session ran the other page's onSubmit")
+    }
+
+    func testAnEditSurvivesTheWindowsActivityChangeAfterThePageRewroteItsOwnText() {
+        let page = Page()
+        let rig = makeRig(page: page, setting: false, inWindow: true)
+        _ = rig.window?.makeFirstResponder(rig.zone.field)
+        XCTAssertNotNil(rig.zone.field.currentEditor(), "precondition: the field took no editor")
+        XCTAssertTrue(type("ab", into: rig.zone.field), "precondition: no editor to type into")
+        XCTAssertEqual(page.text, "ab", "precondition: typing did not reach the binding")
+
+        page.text = "zzz"
+        declare(rig, page: page)
+        settle(rig)
+        XCTAssertNotNil(rig.zone.field.currentEditor(), "precondition: the page's write ended the session")
+        XCTAssertEqual(rig.zone.field.stringValue, "ab", "precondition: the page's write moved the text")
+
+        rig.bar.setWindowAppearsActive(false)
+        rig.bar.setWindowAppearsActive(true)
+        settle(rig)
+        XCTAssertNotNil(rig.zone.field.currentEditor(), "the window's activity change ended the session")
+        XCTAssertEqual(rig.zone.field.stringValue, "ab", "the window's activity change overwrote what was typed")
+        XCTAssertEqual(page.submits, [], "the window's activity change ran onSubmit")
     }
 
     func testTheSettingTurnedOnMidEditLeavesTheFieldUntilTheEditEnds() {

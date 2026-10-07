@@ -117,6 +117,7 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
 
     private var search: HelmToolbarSearch?
     private var isLive = false
+    private var shownKey: String?   // the page key of the last `show`; nil with no content
     private var isFolded = false
     // Read in `deinit`, which Swift 6 treats as nonisolated even on a `@MainActor` class.
     nonisolated(unsafe) private var pressMonitor: Any?
@@ -173,6 +174,7 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
     // MARK: - ShellBarZone
 
     func show(_ state: ShellBarZoneState) {
+        defer { shownKey = state.pageKey }
         guard let new = state.content?.search else {
             endEdit()
             search = nil
@@ -180,10 +182,9 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
         }
         if !state.isLive {
             endEdit()
-        } else if !state.animated, field.currentEditor() != nil, field.stringValue != new.text.wrappedValue {
-            // The session belonged to another page. A re-show of the same page that is not animated and finds
-            // the field's text different from the page's also ends the session: the state carries no page
-            // identity to tell the two apart.
+        } else if state.pageKey != shownKey, field.currentEditor() != nil {
+            // The session belonged to another page: the key is the page's identity, so a re-show of the same
+            // page keeps it, whatever the page wrote into its own text meanwhile.
             endEdit()
         }
         search = new

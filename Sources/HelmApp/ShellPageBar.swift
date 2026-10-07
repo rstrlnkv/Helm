@@ -13,6 +13,7 @@ struct ShellBarZoneState {
     var appearsActive: Bool                // the window's isKeyWindow || isMainWindow, as handed in
     var appearance: HelmBarAppearance
     var animated: Bool                     // true only when this same page's bar was already shown
+    var pageKey: String? = nil             // `ShellPageBar.pageKey(for:)` of the page shown; nil with no content
 }
 
 /// One zone with behaviour of its own: tabs, actions or search.
@@ -446,7 +447,8 @@ struct ShellBarZoneState {
         shownDimmed = isDimmed
         let state = ShellBarZoneState(content: content, isLive: isLive, isDimmed: isDimmed,
                                       appearsActive: appearsActive, appearance: barAppearance,
-                                      animated: animated)
+                                      animated: animated,
+                                      pageKey: content == nil ? nil : Self.pageKey(for: currentSelection))
         tabs.show(state)
         view.setView(tabs.view, for: .tabs)
         actions.show(state)

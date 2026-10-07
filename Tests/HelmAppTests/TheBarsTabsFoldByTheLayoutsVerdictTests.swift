@@ -615,21 +615,12 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
 
     // MARK: - 7. No pass of its own
 
-    @MainActor
-    private final class InertZone: ShellBarZone {
-        var view: NSView?
-        var measuresMoved: (() -> Void)?
-        func show(_ state: ShellBarZoneState) {}
-        func measure(into measures: inout ShellPageBarView.Measures) {}
-        func apply(_ verdicts: ShellPageBarView.Verdicts) {}
-    }
-
     func testTheZoneAsksForNoPassOfItsOwn() throws {
         let zone = ShellBarTabs(titlebarIsTransparent: true, labelStyle: { .text })
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
-        let bar = ShellPageBar(model: model, channel: channel, tabs: zone, actions: InertZone(),
-                               search: InertZone(), titlebarIsTransparent: true)
+        let bar = ShellPageBar(model: model, channel: channel, tabs: zone, actions: MuteBarZone(),
+                               search: MuteBarZone(), titlebarIsTransparent: true)
         var calls = 0
         zone.measuresMoved = { calls += 1 }
 

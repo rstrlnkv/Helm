@@ -46,16 +46,6 @@ final class TheBarsMenuOffersAppearanceOnEveryPageTests: XCTestCase {
 
     // MARK: - Rig
 
-    /// A zone that shows nothing and measures nothing: the port's states only.
-    @MainActor
-    private final class MuteZone: ShellBarZone {
-        var view: NSView?
-        var measuresMoved: (() -> Void)?
-        func show(_ state: ShellBarZoneState) {}
-        func measure(into measures: inout ShellPageBarView.Measures) {}
-        func apply(_ verdicts: ShellPageBarView.Verdicts) {}
-    }
-
     private enum Kind: CaseIterable, CustomStringConvertible {
         case tabsAndSearch, tabsOnly, searchOnly, nameOnly
         var hasTabs: Bool { self == .tabsAndSearch || self == .tabsOnly }
@@ -191,13 +181,32 @@ final class TheBarsMenuOffersAppearanceOnEveryPageTests: XCTestCase {
         XCTAssertEqual(hearing.count, 2, "going back announced \(hearing.count - 1) more times, not one")
     }
 
+    // MARK: - A string that names no choice
+
+    func testAnUnknownTabLabelsValueWritesNothing() {
+        let items = menuItems(.tabsOnly)
+        guard let header = items.firstIndex(where: { $0.isSectionHeader && $0.title == AppStr.tabLabels }),
+              let item = items[(header + 1)...].prefix(while: { !$0.isSeparatorItem && !$0.isSectionHeader }).first
+        else { return XCTFail("no Tab labels item to press: nothing was written and nothing was refused") }
+        // An unknown string reads as `.text`, so the stored value starts at another one.
+        AppSettings.toolbarSwitcherStyle = .icons
+        XCTAssertEqual(AppSettings.toolbarSwitcherStyle, .icons, "precondition: the starting style was not stored")
+        item.representedObject = "no-such-style"
+        XCTAssertNil(ToolbarSwitcherStyle(rawValue: "no-such-style"), "precondition: the string names a style")
+
+        XCTAssertTrue(press(item), "the Tab labels item found nobody to answer it")
+        XCTAssertEqual(AppSettings.store.string(ToolbarSwitcherStyle.storageKey, default: ""), "icons",
+                       "an unknown value was written over the stored tab labels")
+        XCTAssertEqual(AppSettings.toolbarSwitcherStyle, .icons, "an unknown value changed the tab labels")
+    }
+
     // MARK: - The new bar's menu
 
     func testTheNewBarsMenuIsFilledFromWhatTheBarShows() {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
-        let bar = ShellPageBar(model: model, channel: channel, tabs: MuteZone(), actions: MuteZone(),
-                               search: MuteZone(), titlebarIsTransparent: true)
+        let bar = ShellPageBar(model: model, channel: channel, tabs: MuteBarZone(), actions: MuteBarZone(),
+                               search: MuteBarZone(), titlebarIsTransparent: true)
         guard let menu = bar.view.menu else {
             return XCTFail("the bar's view carries no menu: a right-click opens nothing")
         }
