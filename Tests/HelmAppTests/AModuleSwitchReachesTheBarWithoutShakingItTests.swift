@@ -17,13 +17,14 @@ import Module_VPN_UI
 /// cases never asked:
 ///
 /// - A switch of some other module while a tab page is showing (Homebrew's
-///   shape: tabs, actions, search) — the menu-bar panel's «Turn On»
+///   shape: tabs, actions, search) — the menu-bar panel's «Turn on»
 ///   (`PanelChrome.swift`) and the sidebar composer's toggle both reach it with
 ///   the settings window open — must attach no new toolbar, rewrite no
 ///   identifier, reseat no item, evict nothing and move no fold, at a pane
 ///   where the tabs are full and at one where they are folded.
 /// - The page's own module flipped off and on faster than its page can
-///   withdraw and redeclare must end on the page's own bar, live.
+///   withdraw and redeclare must leave the shared name-only bar this rig shows at General (where the
+///   selection goes for good) still, and the page selected again must have its own bar, live.
 /// - A `SettingsToolbar` let go of — including in the middle of the very post
 ///   it observes — must neither be kept alive by its observers nor answer one.
 ///
@@ -227,8 +228,8 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
 
     // MARK: - 1. Another module's switch, under a tab page
 
-    /// **Keep Awake switched off and on six times while a Homebrew-shaped page
-    /// is on screen**, at a pane where the tabs are full (English, 1060) and
+    /// **VPN switched off and on six times while a Homebrew-shaped page, held
+    /// by Keep Awake (which stays on), is on screen**, at a pane where the tabs are full (English, 1060) and
     /// one where they are folded (Russian, 560). The bar is read after every
     /// single switch, before anything settles, and again after the settle
     /// each switch schedules — a blink that comes and goes inside one
@@ -240,8 +241,8 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
                 ModuleHost.shared.shutdown()
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
                 let reads = Reads()
-                let rig = mountSplit(pane: pane, selection: .module("test.tabPage"))
-                rig.channel.declare(tabPageContent(reads), token: "test.tabPage",
+                let rig = mountSplit(pane: pane, selection: .module(Self.keepAwake))
+                rig.channel.declare(tabPageContent(reads), token: Self.keepAwake,
                                     generation: rig.channel.nextGeneration())
                 settle(rig.window, turns: 40)
                 let before = state(rig.window)
@@ -262,7 +263,7 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
                 let readsBefore = reads.count
                 var seen: [String] = []
                 for round in 0..<6 {
-                    ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), round % 2 == 1)
+                    ModuleHost.shared.setEnabled(VPNDescriptor(), round % 2 == 1)
                     let now = state(rig.window)
                     if now != before { seen.append("round \(round), at once: \(now)") }
                     settle(rig.window, turns: 12)
@@ -363,18 +364,31 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
 
     // MARK: - 3. The page's own module, flipped faster than the page follows
 
-    /// **Off and on again, in the order the app delivers it** — the post from
-    /// `ModuleHost.setEnabled` first and synchronously, the page's withdraw or
-    /// redeclare a turn later — eight times, inside the grace period; then
-    /// the same flip with no withdraw at all (the page's re-render coalesced);
-    /// then one that outlives the grace period. Each must end on the page's
-    /// own bar, the same toolbar object it had, with its controls live.
+    /// **Off and on again.** The first switch-off is in the order the app
+    /// delivers it — the post from `ModuleHost.setEnabled` first and
+    /// synchronously, the page's withdraw after it. Every declare in the eight
+    /// rounds, the first one's included, and the seven later withdraws land
+    /// under a selection that is already General: the app sends none of those,
+    /// because the page is no longer mounted (`SettingsDetail`), so they are
+    /// stray writes the bar must ignore. The eight flips after them are the two
+    /// posts alone, which the app does send with General selected. Then one
+    /// switch-off held longer than `SettingsToolbar.graceInterval`; no grace is
+    /// armed on this route, so that wait tells nothing apart. A module that is off reads as
+    /// General (`ShellSidebarRows.settled`, applied by `SettingsModel` at every
+    /// change of `live`) and nothing brings the selection back, so the first
+    /// switch-off moves the selection to General for good. What the bar owes
+    /// is that, from then on, the flips shake nothing: it is the bar the rig
+    /// shows at General after the first switch — the shared name-only one,
+    /// since nothing here declares General's tabs as `SettingsDetail` does in
+    /// the app — and the same toolbar with the same items after every later one, and the selection is still General at the end. Then
+    /// the person selects the module again, the page declares afresh, and the
+    /// bar equals the one the page had at the start, with its controls live.
     ///
     /// Keep Awake's id stands for a tab page here: `SettingsToolbar` keys the
     /// bar on the page and asks the host only whether that id is live, so a
     /// real descriptor is what `isModuleSwitchedOff()` needs and the content
     /// is what the channel carries.
-    func testThePagesOwnModuleFlippedFastEndsLiveOnItsOwnBar() {
+    func testThePagesOwnModuleSwitchedOffLeavesTheSharedNameOnlyBarStillAndReselectingItRestoresItsBar() {
         AppLanguage.only(.en) {
             ModuleHost.shared.shutdown()
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
@@ -387,8 +401,12 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
             XCTAssertEqual(live.segments, 3, "the page's bar is not the one attached — \(live)")
             XCTAssertEqual(live.actionsInteractive, true, "the page's bar is not live to begin with")
 
-            // Inside the grace period.
-            for _ in 0..<8 {
+            // Eight fast flips. The first round moves the selection to
+            // General; the bar it settles on (the shared name-only bar this
+            // rig shows at General) is the one every later round must leave
+            // untouched.
+            var general: BarState?
+            for round in 0..<8 {
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
                 rig.channel.withdraw(token: Self.keepAwake, generation: generation)
                 settle(rig.window, turns: 2)
@@ -396,9 +414,23 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
                 generation = rig.channel.nextGeneration()
                 rig.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
                 settle(rig.window, turns: 2)
+                if round == 0 {
+                    settle(rig.window, turns: 30)
+                    general = state(rig.window)
+                    XCTAssertEqual(rig.model.selection, .general,
+                                   "switched off under its own page and the selection did not move to General")
+                    XCTAssertTrue(general?.identifiers.contains("helm.status") == true
+                                  && general?.identifiers.contains("helm.tabs") == false,
+                                  "the first switch-off did not leave the shared name-only bar this rig shows at General — \(String(describing: general))")
+                    XCTAssertNotEqual(general, live, "the shared name-only bar this rig shows at General is the page's bar")
+                } else if let general {
+                    let now = state(rig.window)
+                    XCTAssertEqual(now, general, "round \(round) moved the shared name-only bar this rig shows at General")
+                }
             }
             settle(rig.window, turns: 30)
-            XCTAssertEqual(state(rig.window), live, "eight fast flips inside the grace period")
+            XCTAssertEqual(state(rig.window), general, "eight fast flips with the rig's own withdraw and declare")
+            XCTAssertEqual(rig.model.selection, .general, "a switch-on brought the selection back by itself")
 
             // No withdraw at all between the two posts.
             for _ in 0..<8 {
@@ -406,12 +438,18 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
             }
             settle(rig.window, turns: 30)
-            XCTAssertEqual(state(rig.window), live, "eight flips the page never withdrew for")
+            XCTAssertEqual(state(rig.window), general, "eight flips the page never withdrew for")
 
-            // Off long enough to fall back, then on again.
+            // Off, and held longer than `SettingsToolbar.graceInterval`. No
+            // grace is armed on this route — the selection is already General
+            // and this rig caches no bar for it — so the wait tells nothing
+            // apart: deleting `assignNameOnly()` from `armGrace`'s closure
+            // leaves this family green. What is read is that the bar still
+            // carries `helm.status` and says nothing about the module that
+            // is off.
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
             rig.channel.withdraw(token: Self.keepAwake, generation: generation)
-            let fellBack = expectation(description: "grace period runs out")
+            let fellBack = expectation(description: "longer than the grace interval")
             DispatchQueue.main.asyncAfter(deadline: .now() + SettingsToolbar.graceInterval + 0.3) {
                 fellBack.fulfill()
             }
@@ -419,14 +457,20 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
             settle(rig.window, turns: 5)
             let off = state(rig.window)
             XCTAssertTrue(off.identifiers.contains("helm.status"),
-                          "switched off past the grace period and still not on the shared bar — \(off)")
+                          "switched off, held longer than the grace interval, and the bar carries no helm.status — \(off)")
             XCTAssertNil(statusHost(rig.window.toolbar)?.rootView.status,
                          "the shared bar says a status for a module that is off")
+
+            // On again, and the person selects it again: the page declares
+            // afresh, as the rig does it, and the bar is the page's own.
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
+            settle(rig.window, turns: 5)
+            XCTAssertEqual(rig.model.selection, .general, "a switch-on brought the selection back by itself")
+            rig.model.selection = .module(Self.keepAwake)
             generation = rig.channel.nextGeneration()
             rig.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
-            settle(rig.window, turns: 30)
-            XCTAssertEqual(state(rig.window), live, "back on after a fall-back")
+            settle(rig.window, turns: 40)
+            XCTAssertEqual(state(rig.window), live, "the module selected again does not show its own bar")
             _ = rig
         }
     }
