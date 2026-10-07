@@ -371,10 +371,11 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     // MARK: - 4. What only the source can say
 
     private static let toolbarFile = "Sources/HelmApp/SettingsToolbar.swift"
+    private static let zonesFile = "Sources/HelmApp/ShellBarZones.swift"
 
-    private func body(of marker: String, until end: String) throws -> Substring {
-        let source = SwiftSource.uncommented(try RepoSource.text(of: Self.toolbarFile))
-        let start = try XCTUnwrap(source.range(of: marker), "\(marker) is gone from \(Self.toolbarFile)")
+    private func body(of marker: String, until end: String, in file: String) throws -> Substring {
+        let source = SwiftSource.uncommented(try RepoSource.text(of: file))
+        let start = try XCTUnwrap(source.range(of: marker), "\(marker) is gone from \(file)")
         let rest = source[start.upperBound...]
         let stop = rest.range(of: end)?.lowerBound ?? rest.endIndex
         return rest[..<stop]
@@ -388,7 +389,7 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     /// guard's `…AccessibilityHidden…` case reads only `rootView.status` and
     /// stays green with the modifier deleted.
     func testTheEmptyStatusIsKeptOutOfVoiceOverInTheOnlyPlaceItCanBeRead() throws {
-        let view = try body(of: "struct StatusZoneView: View", until: "\n}\n")
+        let view = try body(of: "struct StatusZoneView: View", until: "\n}\n", in: Self.zonesFile)
         XCTAssertTrue(view.contains(".accessibilityHidden(status == nil)"), """
             StatusZoneView no longer hides itself from VoiceOver when there is no status — an \
             empty toolbar item on General, About and Log reads aloud as an unnamed element
@@ -400,7 +401,7 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     /// has room (measured: `.low` left `isVisible` true at the narrowest pane
     /// in all eight languages), so the rule is held where it is written.
     func testTheStatusItemCarriesNoVisibilityPriority() throws {
-        let maker = try body(of: "private func makeStatusItem(", until: "\n    }\n")
+        let maker = try body(of: "private func makeStatusItem(", until: "\n    }\n", in: Self.toolbarFile)
         XCTAssertFalse(maker.contains("visibilityPriority"), """
             makeStatusItem sets a visibility priority on helm.status — the owner's rule is that \
             nothing on this bar is ever offered to the overflow menu
