@@ -50,7 +50,13 @@ import HelmUI
 /// stays inside the plate and its ink sits at the plate's middle;
 /// `TheBarsInkSitsInTheMiddleOfTheBarTests.testThePlaceholderAndTheMagnifierEachSitAtThePlatesMiddle` reads the
 /// placeholder's and the magnifier's ink within 1.5 pt of the middle of a 36 pt plate, in both appearances, in
-/// the window's own bitmap.
+/// the window's own bitmap. An unbezeled field hands its editor the whole bounds, not the rectangle the resting
+/// label draws in, so the typed text would begin 25.5 pt left of the placeholder, over the magnifier; the field's
+/// cell (`Cell`) gives the editor `searchTextRect(forBounds:)` instead, and
+/// `TheTypedTextStartsWhereThePlaceholderDidTests` reads the typed ink beginning within 1 pt of the placeholder's
+/// and none of it over the magnifier, in both appearances. That rectangle runs 2 pt under the clear button's
+/// left edge, as the resting label does (read from a bare field's `searchTextRect(forBounds:)` and
+/// `cancelButtonRect(forBounds:)`; no test reads the right edge).
 /// Assumed, not measured: that
 /// Return is the only way a non-empty string reaches the field's action (`sendsWholeSearchString` on,
 /// `sendsActionOnEndEditing` off), and that `makeFirstResponder(field)` on a field just unhidden in the same
@@ -61,8 +67,25 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
     /// The field's own height, centred in the plate: an unbezeled field's intrinsic height at every control size.
     private static let fieldHeight: CGFloat = 16
 
+    /// A search cell that gives the field editor the rectangle the resting label draws in: an unbezeled field
+    /// hands its editor the whole bounds, which puts the typed text over the magnifier and under the clear button.
+    private final class Cell: NSSearchFieldCell {
+        override func edit(withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, event: NSEvent?) {
+            super.edit(withFrame: searchTextRect(forBounds: rect), in: controlView, editor: editor, delegate: delegate, event: event)
+        }
+
+        override func select(withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, start: Int, length: Int) {
+            super.select(withFrame: searchTextRect(forBounds: rect), in: controlView, editor: editor, delegate: delegate, start: start, length: length)
+        }
+    }
+
     /// A search field that reports that it became first responder, and answers the bar's menu while resting.
     private final class Field: NSSearchField {
+        override class var cellClass: AnyClass? {
+            get { Cell.self }
+            set {}
+        }
+
         var didBecomeFirstResponder: (() -> Void)?
 
         override func becomeFirstResponder() -> Bool {
