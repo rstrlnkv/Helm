@@ -39,7 +39,8 @@ struct ShellBarZoneState {
 
 /// **The controller of the page bar: it hears the page's channel, the selection and the settings, and tells
 /// the bar's three zones what to show.** It owns the page's name and its status (two hosted views, one
-/// snapshot), the activity flag and the grace; the zones own their own controls.
+/// snapshot), the activity flag and the grace; the zones own their own controls. It writes the bar view's
+/// accessibility label, the page's name, on every draw.
 ///
 /// **After the controller is released nothing answers a notification, a channel change or a selection: every
 /// observer is removed in `deinit` and every closure it handed out holds it weakly.**
@@ -452,8 +453,9 @@ struct ShellBarZoneState {
         view.setView(search.view, for: .search)
     }
 
-    /// Writes the name's and the status's hosts for `identity` and recollects the measures when what they draw
-    /// moved. Internal so a test draws a status without switching a module on.
+    /// Writes the bar's, the name's and the status's accessibility labels on every call, and the name's and
+    /// the status's hosts for `identity` when what they draw moved, recollecting the measures then. Internal so a test
+    /// draws a status without switching a module on.
     func draw(_ identity: Identity) {
         if drawIdentity(identity) { collect() }
     }
@@ -461,6 +463,13 @@ struct ShellBarZoneState {
     /// - Returns: whether the snapshot changed, which is when the widths and the hosts' views moved.
     @discardableResult
     private func drawIdentity(_ identity: Identity) -> Bool {
+        // Written before the equality guard so a label never lags the page; a host built below gets its label
+        // when it is built, since no host exists yet on the first pass.
+        let statusWord = identity.status?.word ?? ""
+        // This line decides the bar's accessibility label: the page's name.
+        view.setAccessibilityLabel(identity.title)
+        nameHost?.setAccessibilityLabel(identity.title)
+        statusHost?.setAccessibilityLabel(statusWord)
         let next = Snapshot(identity: identity, style: pageBarStyle, content: shownContent,
                             iconStyle: sidebarStyle, appearsActive: appearsActive,
                             titlebarIsTransparent: titlebarIsTransparent)
@@ -473,6 +482,7 @@ struct ShellBarZoneState {
                                     titlebarIsTransparent: next.titlebarIsTransparent)
             let host = nameHost ?? makeHost(root)
             host.rootView = root
+            host.setAccessibilityLabel(identity.title)
             nameHost = host
             nameWidth = host.fittingSize.width
             view.setView(host, for: .name)
@@ -490,6 +500,7 @@ struct ShellBarZoneState {
                                                             boxMargin: ShellBarLayout.statusTrailing))
             let host = statusHost ?? makeHost(root)
             host.rootView = root
+            host.setAccessibilityLabel(statusWord)
             statusHost = host
             statusWidth = host.fittingSize.width
             view.setView(host, for: .status)

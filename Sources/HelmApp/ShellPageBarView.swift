@@ -1,9 +1,12 @@
 import AppKit
 
 /// **Places the bar's five zones where `ShellBarLayout` says.** It measures
-/// nothing and reads neither the window nor a setting: every number but its own width is
-/// given to it, in `measures` and `place`, and every zone's view is handed in through
-/// `setView(_:for:)`. It sets no height of its own.
+/// nothing: every number but its own width is given to it, in `measures` and
+/// `place`, and every zone's view is handed in through `setView(_:for:)`. It sets
+/// no height of its own. It reads one setting, the system's double-click action, and
+/// touches its window only in `mouseDown(with:)`, where it asks the window to drag on a
+/// press and to zoom, to minimize or nothing on a double click. It is an accessibility group (role toolbar) of the
+/// zones it shows; its label is written by whoever owns it.
 ///
 /// **One pass, in this order.** `layout()` builds one `ShellBarLayout.Input`
 /// from the bar's width, `measures` and `place`, asks `ShellBarLayout.frames`
@@ -75,6 +78,8 @@ final class ShellPageBarView: NSView {
 
     init() {
         super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.toolbar)
     }
 
     required init?(coder: NSCoder) { fatalError("ShellPageBarView is built in code") }
@@ -99,6 +104,69 @@ final class ShellPageBarView: NSView {
     }
 
     func view(for zone: Zone) -> NSView? { views[zone] }
+
+    // MARK: - Accessibility and the window's handle
+
+    /// The zones that hold a view which is not hidden, left to right: `accessibilityChildren()` is built from
+    /// their views. A zone with no view, and a zone whose frame the layout gave no width, are out.
+    var reachableZones: [Zone] {
+        Zone.allCases.filter { views[$0].map { !$0.isHidden } ?? false }
+    }
+
+    /// The unignored accessibility elements of the reachable zones' views, in zone order: a view that is
+    /// itself an element stands as itself, any other is replaced by the elements inside it. A hidden view is
+    /// not among them.
+    override func accessibilityChildren() -> [Any]? {
+        NSAccessibility.unignoredChildren(from: reachableZones.compactMap { views[$0] })
+    }
+
+    /// The zones whose views are the window's handle: a point on them answers the bar, not the view. This
+    /// line decides that the page's name and the status word both count as handle; take `.status` out and a
+    /// status view that claims the point answers itself.
+    private static let handleZones: Set<Zone> = [.name, .status]
+
+    /// A point on a handle zone's view, or on anything inside it, answers the bar whatever that view would
+    /// answer; a point on any other zone's view answers what `super` answers.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let hit = super.hitTest(point) else { return nil }
+        for zone in Self.handleZones {
+            if let view = views[zone], hit === view || hit.isDescendant(of: view) { return self }
+        }
+        return hit
+    }
+
+    override var mouseDownCanMoveWindow: Bool { true }
+
+    /// What a double click on the bar asks of the window, after the system's title-bar setting.
+    enum DoubleClick: Equatable { case zoom, minimize, nothing }
+
+    /// The title bar's double-click action from the stored `AppleActionOnDoubleClick` string. An absent value
+    /// and every spelling not known here answer zoom. That the system's own title bar zooms with no value
+    /// stored, and the spellings "Minimize" and "None", are taken as given: only the key's absence was read
+    /// (`defaults read -g AppleActionOnDoubleClick`), no test reads a real setting and nobody has tried them
+    /// by hand.
+    nonisolated static func doubleClick(stored: String?) -> DoubleClick {
+        switch stored {
+        case "Minimize": .minimize
+        case "None": .nothing
+        default: .zoom
+        }
+    }
+
+    /// A double click asks the window for the title bar's action, any other press asks it to
+    /// drag. That a press moves the window and that a double click zooms it are known to no test and have not
+    /// been tried by hand.
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            switch Self.doubleClick(stored: UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick")) {
+            case .zoom: window?.performZoom(nil)
+            case .minimize: window?.performMiniaturize(nil)
+            case .nothing: break
+            }
+        } else {
+            window?.performDrag(with: event)
+        }
+    }
 
     override func layout() {
         super.layout()
