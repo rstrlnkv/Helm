@@ -354,9 +354,10 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
     // MARK: - A page route
 
-    /// **Keep Awake active → General → VPN → Keep Awake, on one shared bar.**
+    /// **Keep Awake active → General → VPN → Keep Awake, on the name-only bar,
+    /// with General's own tabbed bar between.**
     /// The badge leaves an inset behind for a status with a different box and
-    /// ink; VPN's quiet word has to get its own, General has nothing to draw,
+    /// ink; VPN's quiet word has to get its own, General's bar lists no status,
     /// and the badge on the way back has to get its own again.
     func testAPageRouteReDerivesTheInsetAtEveryStop() throws {
         inEnglish {
@@ -368,9 +369,12 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
             model.selection = .general
             settle(window)
-            let empty = try XCTUnwrap(statusHost(window), "General: no helm.status host")
-            XCTAssertNil(empty.rootView.status, "General: helm.status carries a status")
-            XCTAssertNil(gaps(empty, in: window), "General: helm.status drew something")
+            // General carries its three tabs (`SettingsTabs.all`, shown by `SettingsWindow`'s detail content),
+            // and a bar with tabs lists no `helm.status` — the subject first,
+            // then the absence.
+            XCTAssertNotNil(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.tabs" },
+                            "General: its bar with the three tabs is not on the window, so the line below proves nothing")
+            XCTAssertNil(statusHost(window), "General: a bar that carries tabs lists helm.status")
 
             model.selection = .module(Self.vpn)
             settle(window)
