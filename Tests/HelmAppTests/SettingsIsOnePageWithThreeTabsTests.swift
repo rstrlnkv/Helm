@@ -251,7 +251,9 @@ final class SettingsIsOnePageWithThreeTabsTests: XCTestCase {
     // MARK: - The name
 
     /// `.about` and `.log` answer what `.general` answers, so the bar's name
-    /// plate does not change under the tabs.
+    /// plate does not change under the tabs. This reads the old bar's
+    /// `pageIdentity`; the shell's bar answers the same rule by value in
+    /// `ThePageBarFollowsItsPageTests.testGeneralLogAndAboutAreOneSettingsPage`.
     func testTheBarsNameStaysSettingsOnLogAndAbout() throws {
         let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/SettingsToolbar.swift"))
         let bodies = SwiftSource.bodiesNamed("pageIdentity", in: source)

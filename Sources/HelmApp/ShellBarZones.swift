@@ -174,7 +174,7 @@ extension StatusZoneView {
     /// by `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests` (box margin 4 pt
     /// at 1060 pt): the 8 pt of a bordered item less the
     /// `HelmToolbarActionsCapsule.edgeMargin` an unbordered one is short.
-    private static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
+    static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
 
     /// Where the drawing lies inside its own box, in points from the box's
     /// top and from its trailing edge — read off one offscreen render of the
@@ -225,18 +225,21 @@ extension StatusZoneView {
     /// **The inset that puts the drawn right edge as far from the window's
     /// right edge as the drawn top is from its top.** The top gap is what
     /// AppKit's centring leaves: `(barHeight - box) / 2` above the box, plus
-    /// the ink's own offset inside it (`Ink.top`); `barHeight` is the window
-    /// frame less its content layout rect (`SettingsToolbar.barHeight`). The
-    /// right gap is `boxMargin` (AppKit's own margin), this inset and the
-    /// ink's own trailing bearing, so the inset is the top gap less the other
-    /// two.
+    /// the ink's own offset inside it (`Ink.top`); `barHeight` is the height
+    /// of the bar the box is centred in: the window frame less its content
+    /// layout rect for the toolbar (`SettingsToolbar.barHeight`),
+    /// `ShellBarLayout.height` for the shell's bar. The right gap is
+    /// `boxMargin` (AppKit's own margin), this inset and the ink's own
+    /// trailing bearing, so the inset is the top gap less the other two. A host that sits flush against its bar's edge, with no AppKit margin
+    /// between, passes `boxMargin: 0`.
     ///
     /// A not-a-number bar height (no window yet reads as none at all) and an
     /// unreadable render both keep `HelmToolbarActionsCapsule.edgeMargin`,
     /// the inset this item had before it followed the top; a result outside
     /// `0…barHeight` is clamped, a not-a-number to 0 — no inset is the
     /// nearer of the two wrong answers, an inset that eats the bar is not.
-    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?) -> CGFloat {
+    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?,
+                              boxMargin: CGFloat = StatusZoneView.boxMargin) -> CGFloat {
         guard let status, let barHeight, barHeight.isFinite, barHeight > 0,
               let ink = ink(of: status) else { return HelmToolbarActionsCapsule.edgeMargin }
         let topGap = (barHeight - ink.boxHeight) / 2 + ink.top
