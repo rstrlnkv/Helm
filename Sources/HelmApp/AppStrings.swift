@@ -22,7 +22,7 @@ enum AppStr {
     }
     /// The Appearance row choosing how a page's header sits in the window's
     /// toolbar, and its two answers (`PageBarStyle`) — the same three words
-    /// head the toolbar's own right-click menu (`SettingsToolbar.barMenuItems`).
+    /// head the toolbar's own right-click menu (`ShellBarMenu.items`).
     /// The owner's own words for the two shapes: the module's plate and name,
     /// or AppKit's plain window title — with its icon or without it. Title
     /// case, like AppKit's own items beside them ("Icon Only").
@@ -33,6 +33,9 @@ enum AppStr {
     /// macOS's own name for its material, spelled as System Settings spells it.
     static var barAppearanceFlat: String { L("Flat") }
     static var barAppearanceLiquidGlass: String { L("Liquid Glass") }
+    /// The General row choosing between them (`BarAppearanceRow`); the bar's menu heads the same two
+    /// answers with `appearance`.
+    static var barAppearanceTitle: String { L("Toolbar style") }
     /// The toolbar menu's switch for resting the search as its magnifier at
     /// every width (`AppSettings.alwaysCollapseSearch`) — shaped like Music's
     /// own "Always Show Artwork"; "Search" is AppKit's own word for the field.

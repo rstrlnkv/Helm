@@ -65,8 +65,10 @@ rests as AppKit's magnifier at every width, through one rest predicate
 
 ## The bar's menu and style
 
-The bar has one right-click menu (`SettingsToolbar.barMenuItems`), answered by the
-same local monitor as the magnifier press, so a Control-click on the collapsed
+The bar has one right-click menu (`ShellBarMenu`), filled the same way for the toolbar and for `ShellPageBar`,
+which nothing in `Sources/` constructs. It has an Appearance section (Flat, Liquid Glass) on every page, and
+General mirrors it in the row "Toolbar style"; no bar draws by that setting. The toolbar's menu is answered by
+the same local monitor as the magnifier press, so a Control-click on the collapsed
 magnifier has one owner; the same menu is each centre switcher's `NSView.menu`,
 which is what VoiceOver opens.
 

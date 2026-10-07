@@ -40,7 +40,8 @@ struct ShellBarZoneState {
 /// **The controller of the page bar: it hears the page's channel, the selection and the settings, and tells
 /// the bar's three zones what to show.** It owns the page's name and its status (two hosted views, one
 /// snapshot), the activity flag and the grace; the zones own their own controls. It writes the bar view's
-/// accessibility label, the page's name, on every draw.
+/// accessibility label, the page's name, on every draw. It is the delegate of the bar view's right-click menu
+/// and fills it from the page it shows (`ShellBarMenu`).
 ///
 /// **After the controller is released nothing answers a notification, a channel change or a selection: every
 /// observer is removed in `deinit` and every closure it handed out holds it weakly.**
@@ -199,6 +200,7 @@ struct ShellBarZoneState {
             zone.measuresMoved = { [weak self] in self?.zoneMeasuresMoved() }
         }
         view.verdictsChanged = { [weak self] verdicts in self?.verdictsChanged(verdicts) }
+        view.menu = ShellBarMenu.menu(delegate: self)
 
         let names: [Notification.Name] = [
             .helmLanguageChanged, .helmPageBarStyleChanged, .helmToolbarSwitcherStyleChanged,
@@ -554,5 +556,14 @@ struct ShellBarZoneState {
         view.setView(tabs.view, for: .tabs)
         view.setView(actions.view, for: .actions)
         view.setView(search.view, for: .search)
+    }
+}
+
+extension ShellPageBar: NSMenuDelegate {
+    /// The bar's menu, filled from what the bar shows at the moment it opens. The bar's view holds the menu;
+    /// the menu holds its delegate weakly.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === view.menu else { return }
+        ShellBarMenu.fill(menu, showing: shownContent)
     }
 }

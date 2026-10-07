@@ -9,7 +9,7 @@ import XCTest
 /// **The settings toolbar's own right-click menu, read the way AppKit reads it
 /// — through the bar on screen, not through the builder.**
 ///
-/// `SettingsToolbar.barMenuItems` is a static a test could call with any
+/// `ShellBarMenu.items` is a static a test could call with any
 /// arguments it liked; what a person gets is whatever `menuNeedsUpdate(_:)`
 /// hands it from the bar that is attached at the moment the menu opens. So
 /// every case here mounts a real bar, reaches the one menu instance through
@@ -34,20 +34,24 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     private var savedPageBar: Any?
     private var savedSwitcher: Any?
     private var savedCollapse: Any?
+    private var savedAppearance: Any?
 
     override func setUp() async throws {
         savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
         savedSwitcher = AppSettings.store.object(ToolbarSwitcherStyle.storageKey)
         savedCollapse = AppSettings.store.object(Self.collapseKey)
+        savedAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
         AppSettings.pageBarStyle = .moduleName
         AppSettings.toolbarSwitcherStyle = .text
         AppSettings.alwaysCollapseSearch = false
+        AppSettings.barAppearance = .flat
     }
 
     override func tearDown() async throws {
         AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
         AppSettings.store.set(savedSwitcher, for: ToolbarSwitcherStyle.storageKey)
         AppSettings.store.set(savedCollapse, for: Self.collapseKey)
+        AppSettings.store.set(savedAppearance, for: HelmBarAppearance.storageKey)
     }
 
     // MARK: - Rig
@@ -177,7 +181,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     }
 
     private func expectedShape(_ kind: Kind, pageBar: PageBarStyle, labels: ToolbarSwitcherStyle,
-                               collapse: Bool) -> [String] {
+                               appearance: HelmBarAppearance, collapse: Bool) -> [String] {
         func tick(_ on: Bool) -> String { on ? " ✓" : "" }
         var lines = ["[\(L("Page header"))]",
                      L("With Icon") + tick(pageBar == .moduleName),
@@ -186,6 +190,9 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
             lines += ["—", "[\(L("Tab labels"))]"]
             lines += ToolbarSwitcherStyle.allCases.map { $0.label + tick($0 == labels) }
         }
+        lines += ["—", "[\(L("Appearance"))]",
+                  L("Flat") + tick(appearance == .flat),
+                  L("Liquid Glass") + tick(appearance == .liquidGlass)]
         if kind == .tabsAndSearch || kind == .searchOnly {
             lines += ["—", L("Always Collapse Search") + tick(collapse)]
         }
@@ -217,9 +224,9 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
 
     // MARK: - What each kind of page is offered
 
-    /// **Every kind of page, reached in turn through one menu instance**: the
-    /// page header everywhere, the tabs' labels only where there are tabs,
-    /// Always Collapse Search only where there is a search field — and each
+    /// **Every kind of page, reached in turn through one menu instance**: the page header and Appearance
+    /// everywhere, the tabs' labels only where there are tabs, Always Collapse Search
+    /// only where there is a search field — and each
     /// section present exactly once, whatever page the menu last opened on.
     func testEachKindOfPageIsOfferedWhatItHoldsAndNothingElse() {
         let rig = mount()
@@ -234,7 +241,8 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         for (step, kind) in order.enumerated() {
             show(kind, on: rig, token: "test.barMenu.\(kind).\(step)")
             let got = shape(opened(menu))
-            XCTAssertEqual(got, expectedShape(kind, pageBar: .moduleName, labels: .text, collapse: false), """
+            XCTAssertEqual(got, expectedShape(kind, pageBar: .moduleName, labels: .text, appearance: .flat,
+                                                     collapse: false), """
                 step \(step), a \(kind) page: the bar's menu offered \(got)
                 """)
         }
@@ -255,10 +263,11 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         _ = opened(menu)
         for pageBar in PageBarStyle.allCases {
             for labels in ToolbarSwitcherStyle.allCases {
-                for collapse in [false, true, false] {
+                for (collapse, appearance) in zip([false, true, false], HelmBarAppearance.allCases + [.flat]) {
                     AppSettings.pageBarStyle = pageBar
                     AppSettings.toolbarSwitcherStyle = labels
                     AppSettings.alwaysCollapseSearch = collapse
+                    AppSettings.barAppearance = appearance
                     pump(rig.window, turns: 3)
                     guard let fresh = switcher(rig.window)?.menu else {
                         XCTFail("\(pageBar)/\(labels)/\(collapse): the switcher lost its menu")
@@ -267,8 +276,8 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
                     XCTAssertTrue(fresh === menu, "\(pageBar)/\(labels): a rebuilt bar carries another menu")
                     let got = shape(opened(fresh))
                     XCTAssertEqual(got, expectedShape(.tabsAndSearch, pageBar: pageBar, labels: labels,
-                                                      collapse: collapse), """
-                        with \(pageBar), \(labels), collapse \(collapse) the menu read \(got)
+                                                      appearance: appearance, collapse: collapse), """
+                        with \(pageBar), \(labels), \(appearance), collapse \(collapse) the menu read \(got)
                         """)
                 }
             }
@@ -320,6 +329,17 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
             pump(rig.window, turns: 3)
         }
 
+        let labelsBefore = AppSettings.toolbarSwitcherStyle
+        for (title, choice) in [(L("Liquid Glass"), HelmBarAppearance.liquidGlass), (L("Liquid Glass"), .liquidGlass),
+                                (L("Flat"), .flat)] {
+            guard let menu = switcher(rig.window)?.menu else { return XCTFail("no switcher menu") }
+            choose(title, in: menu, "Appearance \(title)")
+            XCTAssertEqual(AppSettings.barAppearance, choice, "«\(title)» chose something else")
+            XCTAssertEqual(AppSettings.pageBarStyle, .moduleName, "«\(title)» moved the page header")
+            XCTAssertEqual(AppSettings.toolbarSwitcherStyle, labelsBefore, "«\(title)» moved the tab labels")
+            pump(rig.window, turns: 3)
+        }
+
         guard let menu = switcher(rig.window)?.menu else { return XCTFail("no switcher menu") }
         choose(L("Always Collapse Search"), in: menu, "Always Collapse Search")
         XCTAssertTrue(AppSettings.alwaysCollapseSearch, "Always Collapse Search did not turn on")
@@ -352,7 +372,8 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
         let keys = ["Page header", "With Icon", "Without Icon", "Tab labels"]
-            + ["Text Only", "Icon Only", "Icon and Text"] + ["Always Collapse Search"]
+            + ["Text Only", "Icon Only", "Icon and Text"] + ["Appearance", "Flat", "Liquid Glass"]
+            + ["Always Collapse Search"]
         AppLanguage.each { language in
             let titles = opened(menu).filter { !$0.isSeparatorItem }.map(\.title)
             let file = table(language)

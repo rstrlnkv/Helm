@@ -3358,74 +3358,7 @@ import HelmUI
     /// `NSView.menu` (`helmSwitcherView`), which is what VoiceOver's "show
     /// menu" opens on a focused switcher — one menu whichever way it is
     /// reached.
-    private lazy var barMenu: NSMenu = {
-        let menu = NSMenu(title: AppStr.pageBar)
-        menu.autoenablesItems = false
-        menu.delegate = self
-        return menu
-    }()
-
-    /// **What the bar's menu offers, left to right as the bar reads**: the
-    /// page header on every page; the tabs' label style only where the page
-    /// has tabs; Always Collapse Search only where it has a search field,
-    /// even one disabled right now. Absent rather than dimmed where it does
-    /// not apply — a context menu hides what cannot act (HIG, context menus),
-    /// the same answer the tabs' own row already gave on a page without tabs.
-    /// `tabLabels` and `alwaysCollapseSearch` are nil for a page without that
-    /// part. `static` so a test reads the items without raising a menu.
-    static func barMenuItems(pageBarStyle: PageBarStyle, tabLabels: ToolbarSwitcherStyle?,
-                             alwaysCollapseSearch: Bool?, target: AnyObject?) -> [NSMenuItem] {
-        var items: [NSMenuItem] = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]
-        for (choice, title) in [(PageBarStyle.moduleName, AppStr.pageBarWithIcon),
-                                (PageBarStyle.windowTitle, AppStr.pageBarWithoutIcon)] {
-            let item = NSMenuItem(title: title, action: #selector(barMenuChosePageBar(_:)), keyEquivalent: "")
-            item.target = target
-            item.representedObject = choice.rawValue
-            item.state = choice == pageBarStyle ? .on : .off
-            items.append(item)
-        }
-        if let tabLabels {
-            items.append(.separator())
-            items.append(NSMenuItem.sectionHeader(title: AppStr.tabLabels))
-            for choice in ToolbarSwitcherStyle.allCases {
-                let item = NSMenuItem(title: choice.label, action: #selector(barMenuChoseTabLabels(_:)),
-                                      keyEquivalent: "")
-                item.target = target
-                item.representedObject = choice.rawValue
-                item.state = choice == tabLabels ? .on : .off
-                items.append(item)
-            }
-        }
-        if let alwaysCollapseSearch {
-            items.append(.separator())
-            let item = NSMenuItem(title: AppStr.alwaysCollapseSearch,
-                                  action: #selector(barMenuToggledCollapseSearch(_:)), keyEquivalent: "")
-            item.target = target
-            item.state = alwaysCollapseSearch ? .on : .off
-            items.append(item)
-        }
-        for item in items where !item.isSeparatorItem { item.isEnabled = true }
-        return items
-    }
-
-    // Each only writes the setting; the setting's own notification is what
-    // reaches the bar, the same path General's Appearance row takes.
-    @objc private func barMenuChosePageBar(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let choice = PageBarStyle(rawValue: raw),
-              choice != AppSettings.pageBarStyle else { return }
-        AppSettings.pageBarStyle = choice
-    }
-
-    @objc private func barMenuChoseTabLabels(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String else { return }
-        let choice = ToolbarSwitcherStyle(stored: raw)
-        guard choice != AppSettings.toolbarSwitcherStyle else { return }
-        AppSettings.toolbarSwitcherStyle = choice
-    }
-
-    @objc private func barMenuToggledCollapseSearch(_ sender: NSMenuItem) {
-        AppSettings.alwaysCollapseSearch.toggle()
-    }
+    private lazy var barMenu: NSMenu = ShellBarMenu.menu(delegate: self)
 
     // MARK: - Search
 
@@ -3623,21 +3556,10 @@ import HelmUI
 }
 
 extension SettingsToolbar: NSMenuDelegate {
-    /// The bar's menu, filled for the bar on screen at the moment it opens —
-    /// a page switch, a setting changed in General or a language change
-    /// since the last time has nothing else to rebuild it by.
+    /// The bar's menu, filled for the bar on screen at the moment it opens (`ShellBarMenu.fill(_:showing:)`).
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu === barMenu else { return }
-        let content = attachedBar?.content
-        let hasTabs = !(content?.tabs.isEmpty ?? true)
-        let hasSearch = content?.search != nil
-        menu.removeAllItems()
-        for item in Self.barMenuItems(pageBarStyle: AppSettings.pageBarStyle,
-                                      tabLabels: hasTabs ? AppSettings.toolbarSwitcherStyle : nil,
-                                      alwaysCollapseSearch: hasSearch ? AppSettings.alwaysCollapseSearch : nil,
-                                      target: self) {
-            menu.addItem(item)
-        }
+        ShellBarMenu.fill(menu, showing: attachedBar?.content)
     }
 }
 

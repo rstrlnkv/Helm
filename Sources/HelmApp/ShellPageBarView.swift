@@ -6,7 +6,7 @@ import AppKit
 /// no height of its own. It reads one setting, the system's double-click action, and
 /// touches its window only in `mouseDown(with:)`, where it asks the window to drag on a
 /// press and to zoom, to minimize or nothing on a double click. It is an accessibility group (role toolbar) of the
-/// zones it shows; its label is written by whoever owns it.
+/// zones it shows; its label is written by whoever owns it, and so is its menu.
 ///
 /// **One pass, in this order.** `layout()` builds one `ShellBarLayout.Input`
 /// from the bar's width, `measures` and `place`, asks `ShellBarLayout.frames`

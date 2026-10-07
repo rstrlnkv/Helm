@@ -230,7 +230,7 @@ private struct HelmPageBarStyleTracker: ViewModifier {
             // from `AppSettings.pageBarStyle` at its own init:
             // `GeneralSettingsPage`'s picker (`pageBarStyle`) reads the
             // setting that way, so a style chosen through the bar's own
-            // right-click menu (`SettingsToolbar.barMenuChosePageBar`) left
+            // right-click menu (`ShellBarMenu.Actions.chosePageBar`) left
             // that picker showing the old choice until the page was left and
             // reopened. Measured (engineer, 2026-09-28): dropping this `.id`
             // fails `TheGeneralPickerFollowsTheBarMenuTests

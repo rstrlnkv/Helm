@@ -8,7 +8,7 @@ import XCTest
 ///
 /// It used to be the switcher's own menu; the owner's toolbar menu
 /// (2026-09-27) folded it into one menu for the whole bar
-/// (`SettingsToolbar.barMenuItems`), where it is the "Tab labels" section on a
+/// (`ShellBarMenu.items`), where it is the "Tab labels" section on a
 /// page that has tabs. What it must still do is what it did: offer every style
 /// once, tick the current one, and carry the style each item stands for.
 @MainActor
@@ -16,8 +16,8 @@ final class TheSwitcherMenuOffersEveryLabelStyleTests: XCTestCase {
 
     /// The items under the "Tab labels" header, up to the next separator.
     private func section(current: ToolbarSwitcherStyle) -> [NSMenuItem] {
-        let items = SettingsToolbar.barMenuItems(pageBarStyle: .moduleName, tabLabels: current,
-                                                 alwaysCollapseSearch: nil, target: nil)
+        let items = ShellBarMenu.items(pageBarStyle: .moduleName, tabLabels: current,
+                                       appearance: .flat, alwaysCollapseSearch: nil)
         guard let header = items.firstIndex(where: { $0.isSectionHeader && $0.title == AppStr.tabLabels })
         else { return [] }
         return Array(items[(header + 1)...].prefix { !$0.isSeparatorItem && !$0.isSectionHeader })
