@@ -111,6 +111,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// identity across the flip is why — a torn-down-and-rebuilt control
     /// would re-pin its own toolbar metric (`hasPinnedMetric`'s own doc, one
     /// paragraph down) and lose the item AppKit had already inserted.
+    /// `ShellBarTabs` mounts two switchers instead, one of each form, and never
+    /// flips this on a mounted control: outside a toolbar there is no item to lose.
     private let compact: Bool
     /// The control's own `NSView.menu` — see this type's own header: the
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
@@ -348,7 +350,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // **A dot is an image, and an image cannot be read back** (`symbolsChanged`'s own reason), so what was
             // drawn is kept and compared.
             let attentionChanged = context.coordinator.lastAttention != shown.map(\.needsAttention)
-            let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? false
+            let selectionMoved = selectedIndex.map { control.selectedSegment != $0 } ?? (control.selectedSegment != -1)
             // Nothing structural changed, so this is the cheap path: when the
             // words and the selection both already read right — the first
             // update after `makeNSView` pre-populated the control, which is
@@ -469,6 +471,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         if let selected, segments.indices.contains(selected), control.selectedSegment != selected {
             control.setSelected(true, forSegment: selected)
         }
+        if selected == nil, control.selectedSegment != -1 { control.selectedSegment = -1 }
     }
 
     /// **The segment's image, and the dot in it.** AppKit draws a segment's label and its image together and puts the
@@ -564,7 +567,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         /// Its own flag rather than a reading of the fill gating above,
         /// because the two answer different questions: that one asks whether
         /// the segments need rewriting, this one whether the control has ever
-        /// been given a size class. Folding to `compact` does not touch this
+        /// been given a size class. Under `SettingsToolbar`, folding to `compact` does not touch this
         /// at all — it is the same control, the same coordinator and the
         /// same pin, which is the whole reason the fold reuses this view
         /// rather than swapping in a different one (`compact`'s own doc, on
@@ -651,8 +654,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// as `height` and the width as the picks plus the insets).
 ///
 /// A disabled control draws its words and template glyphs in
-/// `tertiaryLabelColor`; the pick, and a glyph that carries the attention dot
-/// (a composite, not a template), are drawn at full strength.
+/// `tertiaryLabelColor`, and the pick and a glyph that carries the attention dot
+/// (a composite, not a template) at the strength that ink has against
+/// `labelColor`: the alpha of the one over the alpha of the other, resolved when
+/// drawn.
 ///
 /// **Measured on 27.2:** a subclass's `drawSegment` is called through
 /// `cacheDisplay`, windowless; and in a standalone bench app's window, key and
@@ -695,6 +700,20 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
     private func ink(selected: Bool) -> NSColor {
         guard isEnabled else { return .tertiaryLabelColor }
         return selected ? .labelColor : .secondaryLabelColor
+    }
+
+    /// What a disabled cell draws everything it does not ink at: the alpha of
+    /// `tertiaryLabelColor` over the alpha of `labelColor`, both resolved in sRGB
+    /// in the appearance being drawn in. 1 while enabled.
+    private func strength() -> CGFloat {
+        guard !isEnabled else { return 1 }
+        var ratio: CGFloat = 1
+        NSAppearance.currentDrawing().performAsCurrentDrawingAppearance {
+            let label = NSColor.labelColor.usingColorSpace(.sRGB)?.alphaComponent ?? 0
+            let tertiary = NSColor.tertiaryLabelColor.usingColorSpace(.sRGB)?.alphaComponent ?? 0
+            if label > 0 { ratio = tertiary / label }
+        }
+        return ratio
     }
 
     private func glyphSize(_ image: NSImage) -> NSSize {
@@ -741,7 +760,8 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
         let selected = isSelected(forSegment: segment)
         if selected {
             let pick = frame.insetBy(dx: 0, dy: (frame.height - Self.pill) / 2)
-            NSColor(HelmSurface.barPick).setFill()
+            let fill = NSColor(HelmSurface.barPick).usingColorSpace(.sRGB) ?? NSColor(HelmSurface.barPick)
+            fill.withAlphaComponent(fill.alphaComponent * strength()).setFill()
             NSBezierPath(roundedRect: pick, xRadius: pick.height / 2, yRadius: pick.height / 2).fill()
         }
         let ink = ink(selected: selected)
@@ -750,7 +770,7 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
             let size = glyphSize(image)
             let rect = NSRect(x: x, y: frame.midY - size.height / 2, width: size.width, height: size.height)
             let shown = image.isTemplate ? Self.tinted(image, with: ink) : image
-            shown.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1,
+            shown.draw(in: rect, from: .zero, operation: .sourceOver, fraction: image.isTemplate ? 1 : strength(),
                        respectFlipped: true, hints: nil)
             x += size.width + HelmSpace.s3
         }

@@ -10,7 +10,7 @@ import XCTest
 ///
 /// No window is ordered: the hosting view is laid out windowless, and the capsule rows mount through
 /// `MountedRender`, whose window is never ordered in. What is read back is the cell's class, the
-/// control's fitting height, its segments and its action. **Not seen on a screen:** this cell. Measured on 27.2
+/// control's fitting height, its segments and its action, and for the flat cell the alpha of one row of its own drawing through `cacheDisplay`. **Not seen on a screen:** this cell. Measured on 27.2
 /// in a standalone bench app's window, key and then not key, in the dark appearance, was only that a cell
 /// overriding `drawSegment` alone has its paint on screen, with the system's selection capsule still under the
 /// selected segment; whether that capsule shows under this cell's pick, and this cell's exact widths, were not.
@@ -31,10 +31,13 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
         let selected: Int
         let compact: Bool
         let appearance: HelmBarAppearance?
+        var enabled = true
+        /// The segment that carries the attention dot, if any.
+        var dot: Int? = nil
 
         var body: some View {
             let segments = Self.words.enumerated().map { index, word in
-                HelmSwitcherSegment(index, word, symbol: "circle")
+                HelmSwitcherSegment(index, word, symbol: "circle", needsAttention: dot == index)
             }
             Group {
                 if let appearance {
@@ -46,6 +49,7 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
                 }
             }
             .environment(\.helmSwitcherStyle, .text)
+            .disabled(!enabled)
         }
     }
 
@@ -270,5 +274,101 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
             XCTAssertEqual(right.0 - left.1, inset, "two picks are not one inset apart: \(drawn)")
         }
         XCTAssertEqual((drawn.last?.1 ?? -1) + inset, Int(size.width.rounded()), "the last pick does not end at the inset")
+    }
+
+    /// **A disabled flat strip draws the pick and the dot at the strength its words are drawn at.** The words
+    /// and the template glyphs are inked in `tertiaryLabelColor`; the pick is `barPick`'s fill and the dot is a
+    /// non-template image, and neither takes that ink. Read through `cacheDisplay` at the middle row, in each
+    /// appearance named on the host: the pick left of the word of segment 0, and the strongest alpha in the six
+    /// points after the side padding of segment 2, where the dot is (the text style draws the dot alone as that
+    /// segment's image). The strength expected is the alpha of `tertiaryLabelColor` over the alpha of
+    /// `labelColor`, each resolved here in the appearance under test.
+    func testADisabledFlatControlDrawsItsPickAndItsDotAtTheDisabledInksStrength() throws {
+        func alpha(of color: NSColor, in name: NSAppearance.Name) throws -> CGFloat {
+            var resolved: NSColor?
+            try XCTUnwrap(NSAppearance(named: name)).performAsCurrentDrawingAppearance {
+                resolved = color.usingColorSpace(.sRGB)
+            }
+            return try XCTUnwrap(resolved, "the colour did not resolve in \(name.rawValue)").alphaComponent
+        }
+
+        func mount(enabled: Bool, in name: NSAppearance.Name) throws -> NSSegmentedControl {
+            let host = host(Mounted(selected: 0, compact: false, appearance: .flat, enabled: enabled, dot: 2))
+            host.appearance = NSAppearance(named: name)
+            host.layoutSubtreeIfNeeded()
+            let control = try control(in: host)
+            XCTAssertTrue(isFlat(control), "precondition: not flat (\(name.rawValue), enabled \(enabled))")
+            XCTAssertEqual(control.isEnabled, enabled, "the control's enabled state is not what the row set")
+            XCTAssertEqual(control.segmentCount, Mounted.words.count, "precondition: the control is not filled")
+            control.frame = NSRect(origin: .zero, size: control.fittingSize)
+            control.layoutSubtreeIfNeeded()
+            return control
+        }
+
+        /// One row of alpha values across the control, and how many pixels one point is.
+        func middleRow(_ control: NSSegmentedControl, selected: Int) throws -> (row: [CGFloat], scale: CGFloat) {
+            control.selectedSegment = selected
+            let rep = try XCTUnwrap(control.bitmapImageRepForCachingDisplay(in: control.bounds))
+            control.cacheDisplay(in: control.bounds, to: rep)
+            let y = rep.pixelsHigh / 2
+            let row = (0..<rep.pixelsWide).map { rep.colorAt(x: $0, y: y)?.alphaComponent ?? -1 }
+            return (row, CGFloat(rep.pixelsWide) / control.bounds.width)
+        }
+
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let label = try alpha(of: .labelColor, in: name)
+            let tertiary = try alpha(of: .tertiaryLabelColor, in: name)
+            let strength = tertiary / label
+            XCTAssertGreaterThan(strength, 0.1, "\(name.rawValue): the strength read back as no dimming at all")
+            XCTAssertLessThan(strength, 0.6, "\(name.rawValue): the strength read back as hardly dimming")
+
+            let on = try mount(enabled: true, in: name)
+            let off = try mount(enabled: false, in: name)
+
+            // Where segment 2 starts: the pick's left edge when it is selected, which is the same enabled or not.
+            let bare = try middleRow(on, selected: -1)
+            let picked = try middleRow(on, selected: 2)
+            let moved = bare.row.indices.filter { abs(bare.row[$0] - picked.row[$0]) > 0.005 }
+            let segment2 = try XCTUnwrap(moved.first, "\(name.rawValue): segment 2 drew no pick, so its place is unknown")
+            let scale = bare.scale
+
+            // The pick, left of segment 0's word.
+            let pickX = Int((HelmFlatSegmentedCell.inset + 4) * scale)
+            let pickOn = try middleRow(on, selected: 0).row[pickX]
+            let pickOff = try middleRow(off, selected: 0).row[pickX]
+            XCTAssertGreaterThan(pickOn, 0.05, """
+                \(name.rawValue): the enabled pick drew nothing at x \(pickX) (alpha \(pickOn)): the ratio below \
+                would be read off an empty pixel
+                """)
+            XCTAssertEqual(pickOff / pickOn, strength, accuracy: 0.05, """
+                \(name.rawValue): the disabled pick is drawn at \(pickOff / pickOn) of the enabled one, not at the \
+                disabled ink's strength \(strength)
+                """)
+
+            // The dot: six points after the side padding of segment 2.
+            let from = segment2 + Int(HelmFlatSegmentedCell.sidePadding * scale)
+            let to = from + Int(6 * scale)
+            func strongest(_ control: NSSegmentedControl) throws -> CGFloat {
+                let row = try middleRow(control, selected: 0).row
+                return row[from..<min(to, row.count)].max() ?? -1
+            }
+            let dotOn = try strongest(on)
+            let dotOff = try strongest(off)
+            XCTAssertGreaterThan(dotOn, 0.9, """
+                \(name.rawValue): the enabled dot is not where the row looks (strongest alpha \(dotOn) in \
+                columns \(from)..<\(to)): the disabled reading below would be read off nothing
+                """)
+            XCTAssertGreaterThan(dotOff, 0.2, "\(name.rawValue): the disabled dot vanished (alpha \(dotOff))")
+            XCTAssertLessThan(dotOff, 0.4, """
+                \(name.rawValue): the disabled dot is drawn at alpha \(dotOff), not at the disabled ink's strength \
+                (about \(strength))
+                """)
+            // The two appearances' strengths differ by about 0.014, which the 0.05 above cannot tell apart; the dot is
+            // drawn at full alpha enabled, so its disabled alpha reads the strength to within one 8-bit step.
+            XCTAssertEqual(dotOff / dotOn, strength, accuracy: 0.006, """
+                \(name.rawValue): the disabled dot is drawn at \(dotOff / dotOn) of the enabled one, not at this \
+                appearance's strength \(strength)
+                """)
+        }
     }
 }

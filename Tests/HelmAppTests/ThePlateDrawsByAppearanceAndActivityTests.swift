@@ -7,7 +7,7 @@ import XCTest
 
 /// **The plate behind a group of a bar's controls draws by the look it is handed and by whether its window is
 /// active: Liquid Glass while active under the glass look, otherwise a tint of `HelmSurface.barPlate`
-/// that dims as one unit under the flat look.**
+/// that dims as one unit whenever the window is inactive.**
 ///
 /// No window is ordered anywhere; the plate belongs to no window and its appearance is named on the
 /// view, so the answer does not depend on this Mac's setting. What the rows read back:
@@ -17,14 +17,15 @@ import XCTest
 /// - that the file asks no stored setting.
 ///
 /// **Not seen on a screen:** the plate with a control on it. Measured on 27.2 in a standalone bench app's
-/// window, key and then not key, in the dark appearance, and not on this plate: an `.extraLarge` stock segmented
-/// control outside a toolbar draws a capsule track of its own, and a bare `NSGlassEffectView` on the window's
-/// background loses its rim highlight by itself when its window is neither key nor main. Assumed: that the flat
-/// cell's fixed inks do not dim by themselves in an inactive window (the reason the flat plate takes the name
-/// zone's number there); that a stock control dims its own ink there (the reason the glass plate keeps
-/// `alphaValue` 1 — the bench recorded its selection capsule turning grey, not its ink); and that a fill at
-/// `barPlate` is what AppKit's inactive platter looks like. The rows prove what the plate's views and layer hold,
-/// not what a person sees.
+/// window, key and then not key, in the dark appearance, and not on this plate: an `.extraLarge` stock segmented control outside a
+/// toolbar draws a capsule track of its own; a bare `NSGlassEffectView` on the window's background loses its rim
+/// highlight by itself when its window is neither key nor main; and the brightest pixel of an unselected label of
+/// a `.regular` stock segmented control read 229.3 with the window key and 229.3 with it not key, so a stock
+/// control does not dim its own ink in an inactive window, only its selection capsule turns grey. That is why an
+/// inactive plate dims by the name zone's number under both looks. Assumed: that the flat cell's fixed inks do not
+/// dim by themselves in an inactive window, and that a fill at `barPlate` is what AppKit's inactive platter looks
+/// like; unseen: how the dimmed glass plate reads beside the name. The rows prove what the plate's views and layer
+/// hold, not what a person sees.
 @MainActor
 final class ThePlateDrawsByAppearanceAndActivityTests: XCTestCase {
 
@@ -129,7 +130,7 @@ final class ThePlateDrawsByAppearanceAndActivityTests: XCTestCase {
                 }
             }
 
-            let dimmed = state.look == .flat && !state.active
+            let dimmed = !state.active
             let wantAlpha = dimmed
                 ? CGFloat(helmNameZoneInactiveOpacity(dark: state.dark, titlebarIsTransparent: state.transparent))
                 : 1
@@ -175,8 +176,10 @@ final class ThePlateDrawsByAppearanceAndActivityTests: XCTestCase {
         check("glass active", glassCount: 1)
         plate.isActive = false
         check("glass inactive", glassCount: 0)
+        XCTAssertLessThan(plate.alphaValue, 1, "glass inactive does not dim: the ink stays at full strength on the fill")
         plate.isActive = true
         check("glass active again", glassCount: 1)
+        XCTAssertEqual(plate.alphaValue, 1, accuracy: 0.0001, "glass active after inactive does not return to 1")
         plate.barAppearance = .flat
         check("flat active again", glassCount: 0)
         plate.isActive = false

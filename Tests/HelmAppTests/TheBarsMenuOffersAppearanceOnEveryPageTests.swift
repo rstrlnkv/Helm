@@ -298,7 +298,7 @@ final class TheBarsMenuOffersAppearanceOnEveryPageTests: XCTestCase {
         }
         XCTAssertEqual(read, AppLanguage.allCases.count, "not every language's file was read")
         AppLanguage.only(.ru) {
-            XCTAssertEqual(AppStr.barAppearanceTitle, "Оформление тулбара", "ru: the title is not the owner's words")
+            XCTAssertEqual(AppStr.barAppearanceTitle, "Оформление панели инструментов", "ru: the title is not the owner's words")
         }
     }
 }
