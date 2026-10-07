@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// All four were drawn side by side in the mockup (2026-09-17) and the owner
 /// took all four, as a choice made by right-clicking the toolbar (the bar's
-/// own menu, `SettingsToolbar.barMenuItems`, under "Tab labels"):
+/// own menu, `ShellBarMenu.items`, under "Tab labels"):
 ///
 /// - `text` — each segment as wide as its word, a hairline between two
 ///   unselected ones. The system segmented control split the capsule into
@@ -77,6 +77,10 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// carries that glass from segment to segment. None of it can be imitated from
 /// SwiftUI, and none of it was.
 ///
+/// Under `HelmBarAppearance.flat` the control keeps its class and wears
+/// `HelmFlatSegmentedCell`, which draws by hand again and has none of that
+/// glass.
+///
 /// What the system control had to be told: `segmentDistribution = .fit`, which
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
 /// Homebrew in Russian, «Поиск» in a field three times its size.
@@ -111,17 +115,23 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
     /// something else (the actions capsule's, the measuring rig's).
     private let menu: NSMenu?
+    /// **Which look the strip is drawn in — an input, not the environment's
+    /// value.** `.liquidGlass` is the system's own cell and is what a caller
+    /// that says nothing gets, so a control never asked for the flat look is
+    /// never touched (`dress`); `.flat` swaps in `HelmFlatSegmentedCell`.
+    private let appearance: HelmBarAppearance
 
     @Environment(\.helmSwitcherStyle) private var style
     @Environment(\.isEnabled) private var isEnabled
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>],
-                compact: Bool = false, menu: NSMenu? = nil) {
+                compact: Bool = false, menu: NSMenu? = nil, appearance: HelmBarAppearance = .liquidGlass) {
         self.name = name
         self.segments = segments
         self._selection = selection
         self.compact = compact
         self.menu = menu
+        self.appearance = appearance
     }
 
     public func makeCoordinator() -> Coordinator { Coordinator() }
@@ -152,6 +162,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         control.target = context.coordinator
         control.action = #selector(Coordinator.picked(_:))
         context.coordinator.watch(control)
+        Self.dress(control, as: appearance, coordinator: context.coordinator)
+        context.coordinator.lastAppearance = appearance
         Self.fill(control, segments: displaySegments, style: style,
                   selected: displaySelectedIndex, compact: compact)
         context.coordinator.lastStyle = style
@@ -185,6 +197,14 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             selection = segments[index].value
         }
         context.coordinator.compact = compact
+
+        // A look that changed swaps the cell here, before `isInitial` below
+        // is read: the swap empties the control, which is what sends this
+        // update down the structural branch to refill it.
+        if context.coordinator.lastAppearance != appearance {
+            Self.dress(control, as: appearance, coordinator: context.coordinator)
+            context.coordinator.lastAppearance = appearance
+        }
 
         // **The metric the bar will promote it to, taken before the first
         // measurement is made in the old one.** AppKit promotes the control as
@@ -224,6 +244,14 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         // the bar decides its own metric, and a writer that ran every time
         // would fight a promotion to any other size rather than anticipate
         // this one.
+        //
+        // **That holds for a control whose cell was never swapped.** `dress`
+        // writes `.extraLarge` itself after every swap, because a swap
+        // resets the control to `.regular` (measured on a bare control:
+        // segments gone, target nil, size regular), and the flat cell's
+        // height does not read the metric. Not measured: a flat control
+        // inside a toolbar — whether the bar still promotes a control whose
+        // cell was swapped, and whether `dress`'s write fights that promotion.
         if !context.coordinator.hasPinnedMetric {
             context.coordinator.hasPinnedMetric = true
             control.controlSize = .extraLarge
@@ -377,6 +405,33 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
+    /// **The one place the cell is chosen, and the one place in `Sources` whose code names
+    /// `HelmFlatSegmentedCell`.** `.flat` installs it when the control does
+    /// not wear it; `.liquidGlass` installs the system's `NSSegmentedCell`
+    /// only when the control wears the flat one, so a control never dressed
+    /// flat is not touched at all. A cell swap wipes what the control held
+    /// (measured on a bare control: segment count 0, target nil, size
+    /// regular), so everything `makeNSView` writes is written again here and
+    /// the caller refills the segments. Nobody has seen the flat cell drawn in
+    /// a window.
+    private static func dress(_ control: NSSegmentedControl, as appearance: HelmBarAppearance,
+                              coordinator: Coordinator) {
+        switch appearance {
+        case .flat:
+            guard !(control.cell is HelmFlatSegmentedCell) else { return }
+            control.cell = HelmFlatSegmentedCell()
+        case .liquidGlass:
+            guard control.cell is HelmFlatSegmentedCell else { return }
+            control.cell = NSSegmentedCell()
+        }
+        control.segmentStyle = .automatic
+        control.segmentDistribution = .fit
+        control.trackingMode = .selectOne
+        control.target = coordinator
+        control.action = #selector(Coordinator.picked(_:))
+        control.controlSize = .extraLarge
+    }
+
     /// The segments as the chosen style shows them — each segment's word,
     /// glyph, tooltip, width and menu indicator, and the selection. Written
     /// once by `makeNSView`, then by `updateNSView` only on an update that
@@ -488,6 +543,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var tabsMenu: NSMenu?
         var compact = false
         var lastStyle: ToolbarSwitcherStyle?
+        var lastAppearance: HelmBarAppearance?
         var lastCompact: Bool?
         /// The segments' own names as of the last fill — read regardless of
         /// `lastStyle`, because a glyph-only style draws none of them: the
@@ -581,6 +637,152 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         @objc func pickedFromMenu(_ sender: NSMenuItem) {
             guard let index = sender.representedObject as? Int else { return }
             pick(index)
+        }
+    }
+}
+
+/// **The segmented cell of the flat look: no bezel, a capsule of
+/// `HelmSurface.barPick` under the selected segment, the word in 13 pt
+/// medium.** It reads each segment's label, image and menu indicator from the
+/// control's own per-segment state, so what `fill` writes, the dot and the
+/// refill rule stay one. `cellSize` is its own, so the control's fitting size
+/// follows it (`TheSwitcherDrawsFlatOnlyWhereAskedTests` reads the height back
+/// as `height` and the width as the picks plus the insets).
+///
+/// A disabled control draws its words and template glyphs in
+/// `tertiaryLabelColor`; the pick, and a glyph that carries the attention dot
+/// (a composite, not a template), are drawn at full strength.
+///
+/// **Measured on 27.2:** a subclass's `drawSegment` is called through
+/// `cacheDisplay`, windowless and in a window never ordered in; and in a key
+/// window of a standalone bench app a cell that overrode only `drawSegment`
+/// had its paint on screen, with the system's own selection capsule (accent
+/// when key, grey when not) still drawn under the selected segment. This cell
+/// also overrides `draw(withFrame:in:)` and never calls the system's.
+/// **Not seen on a screen:** this cell itself — whether the system's
+/// selection capsule shows under its pick, the exact widths, the pick's
+/// geometry, the dot and the fold's arrow, and that a press lands on the
+/// segment drawn there (the system's own hit-testing was not made to follow
+/// `segmentWidth`).
+final class HelmFlatSegmentedCell: NSSegmentedCell {
+    /// The pick's height; the bar's own control is `height` high.
+    static let pill: CGFloat = 32
+    /// The space between the cell's edge and the pick, and between two segments.
+    static let inset: CGFloat = HelmSpace.s1
+    /// The space either side of a segment's content.
+    static let sidePadding: CGFloat = 14
+    static let height: CGFloat = pill + 2 * inset
+
+    private static let font = NSFont.systemFont(ofSize: 13, weight: .medium)
+    /// The longest side a glyph is drawn at.
+    private static let glyphSide: CGFloat = 16
+    /// The menu indicator's width and height, and its stroke.
+    private static let arrow = NSSize(width: 8, height: 4)
+    private static let arrowStroke: CGFloat = 1.5
+
+    override var cellSize: NSSize {
+        var width = 2 * Self.inset
+        for index in 0..<segmentCount { width += segmentWidth(index) }
+        width += Self.inset * CGFloat(max(segmentCount - 1, 0))
+        return NSSize(width: width, height: Self.height)
+    }
+
+    private func attributes(selected: Bool) -> [NSAttributedString.Key: Any] {
+        [.font: Self.font, .foregroundColor: ink(selected: selected)]
+    }
+
+    private func ink(selected: Bool) -> NSColor {
+        guard isEnabled else { return .tertiaryLabelColor }
+        return selected ? .labelColor : .secondaryLabelColor
+    }
+
+    private func glyphSize(_ image: NSImage) -> NSSize {
+        let longest = max(image.size.width, image.size.height)
+        guard longest > Self.glyphSide else { return image.size }
+        let scale = Self.glyphSide / longest
+        return NSSize(width: image.size.width * scale, height: image.size.height * scale)
+    }
+
+    /// What one segment holds, left to right: the image, the word, the arrow.
+    private func contentWidth(_ segment: Int) -> CGFloat {
+        var parts: [CGFloat] = []
+        if let image = image(forSegment: segment) { parts.append(glyphSize(image).width) }
+        if let word = label(forSegment: segment), !word.isEmpty {
+            parts.append(ceil((word as NSString).size(withAttributes: [.font: Self.font]).width))
+        }
+        if showsArrow(segment) { parts.append(Self.arrow.width) }
+        return parts.reduce(0, +) + HelmSpace.s3 * CGFloat(max(parts.count - 1, 0))
+    }
+
+    /// The menu indicator is the control's own per-segment state; the cell has
+    /// no reading of it.
+    private func showsArrow(_ segment: Int) -> Bool {
+        (controlView as? NSSegmentedControl)?.showsMenuIndicator(forSegment: segment) ?? false
+    }
+
+    /// A width set on the segment wins; 0 is as wide as the content.
+    private func segmentWidth(_ segment: Int) -> CGFloat {
+        let set = width(forSegment: segment)
+        return set > 0 ? set : contentWidth(segment) + 2 * Self.sidePadding
+    }
+
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
+        var x = cellFrame.minX + Self.inset
+        for index in 0..<segmentCount {
+            let width = segmentWidth(index)
+            drawSegment(index, inFrame: NSRect(x: x, y: cellFrame.minY, width: width, height: cellFrame.height),
+                        with: controlView)
+            x += width + Self.inset
+        }
+    }
+
+    override func drawSegment(_ segment: Int, inFrame frame: NSRect, with controlView: NSView) {
+        let selected = isSelected(forSegment: segment)
+        if selected {
+            let pick = frame.insetBy(dx: 0, dy: (frame.height - Self.pill) / 2)
+            NSColor(HelmSurface.barPick).setFill()
+            NSBezierPath(roundedRect: pick, xRadius: pick.height / 2, yRadius: pick.height / 2).fill()
+        }
+        let ink = ink(selected: selected)
+        var x = frame.minX + (frame.width - contentWidth(segment)) / 2
+        if let image = image(forSegment: segment) {
+            let size = glyphSize(image)
+            let rect = NSRect(x: x, y: frame.midY - size.height / 2, width: size.width, height: size.height)
+            let shown = image.isTemplate ? Self.tinted(image, with: ink) : image
+            shown.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1,
+                       respectFlipped: true, hints: nil)
+            x += size.width + HelmSpace.s3
+        }
+        if let word = label(forSegment: segment), !word.isEmpty {
+            let text = NSAttributedString(string: word, attributes: attributes(selected: selected))
+            let size = text.size()
+            text.draw(at: NSPoint(x: x, y: frame.midY - size.height / 2))
+            x += ceil(size.width) + HelmSpace.s3
+        }
+        if showsArrow(segment) {
+            let top = frame.midY - Self.arrow.height / 2
+            // The arrow points down on screen, whichever way the view's y runs.
+            let base = controlView.isFlipped ? top : top + Self.arrow.height
+            let apex = controlView.isFlipped ? top + Self.arrow.height : top
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: x, y: base))
+            path.line(to: NSPoint(x: x + Self.arrow.width / 2, y: apex))
+            path.line(to: NSPoint(x: x + Self.arrow.width, y: base))
+            path.lineWidth = Self.arrowStroke
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            ink.setStroke()
+            path.stroke()
+        }
+    }
+
+    /// A template glyph in the ink it is drawn with, resolved when drawn.
+    private static func tinted(_ image: NSImage, with ink: NSColor) -> NSImage {
+        NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect)
+            ink.set()
+            rect.fill(using: .sourceIn)
+            return true
         }
     }
 }

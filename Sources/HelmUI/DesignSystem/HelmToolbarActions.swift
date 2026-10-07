@@ -265,6 +265,9 @@ public struct HelmToolbarActionsCapsule: View {
     /// Which glyph-dim constant applies — see `inactiveGlyphOpacity`'s and
     /// `disabledGlyphOpacity`'s own headers.
     @Environment(\.colorScheme) private var colorScheme
+    /// Which look the entries are backed in: glass unless the environment says flat
+    /// (`HelmBarAppearance`, on why the environment's default is the glass).
+    @Environment(\.helmBarAppearance) private var appearance
 
     /// **The margin an `isBordered = false` custom-view item is short of an
     /// AppKit-drawn one, when it is the toolbar's own last item.** Measured
@@ -387,7 +390,7 @@ public struct HelmToolbarActionsCapsule: View {
             GlassEffectContainer(spacing: HelmSpace.s4) {
                 HStack(spacing: 0) {
                     ForEach(visible, id: \.id) { entry in
-                        // **Every kind takes the same glass shape, `.segmented`
+                        // **Under `.liquidGlass` every kind takes the same glass shape, `.segmented`
                         // included — but not the same `interactive()`.** It
                         // used to skip the glass entirely on the assumption
                         // that AppKit already drew Liquid Glass around a
@@ -501,14 +504,8 @@ public struct HelmToolbarActionsCapsule: View {
                         // segment centres are 76.8–77.2 pt apart), so the
                         // same tracking lands fewer frames inside the
                         // narrower gap it measures.
-                        entryContent(entry)
-                            .disabled(!entry.isEnabled || !model.isInteractive)
-                            .glassEffect(glass(for: entry.kind))
-                            .glassEffectID(entry.id, in: glassSpace)
-                            .glassEffectUnion(id: "actions", namespace: glassSpace)
-                            .glassEffectTransition(
-                                HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
-                                    ? .matchedGeometry : .identity)
+                        backing(entryContent(entry).disabled(!entry.isEnabled || !model.isInteractive),
+                                for: entry)
                     }
                 }
             }
@@ -528,8 +525,8 @@ public struct HelmToolbarActionsCapsule: View {
         model.declared.filter { model.visibleIDs.contains($0.id) }
     }
 
-    /// **One entry's own content, before the uniform glass wrap in `body`
-    /// above is applied to it.** A `.segmented` entry is the switcher itself,
+    /// **One entry's own content, before `backing(_:for:)` below puts glass or a
+    /// flat plate behind it.** A `.segmented` entry is the switcher itself,
     /// fixed to `.icons` — see that branch's own comment for why it is never
     /// the environment's or the tabs' style — every other kind is
     /// `entryControl(_:)`, with its own tooltip; a `.segmented` entry needs
@@ -541,7 +538,8 @@ public struct HelmToolbarActionsCapsule: View {
             HelmToolbarSwitcher(entry.title,
                 selection: Binding(get: { selectedID },
                                    set: { model.pressItem(entry.id, $0) }),
-                segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
+                segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
+                appearance: appearance)
                 // **Always glyphs — never the environment's or the tabs'
                 // label style.** The owner's own rule for this action: unlike
                 // the centre tabs, a `.segmented` action in the capsule has no
@@ -556,8 +554,42 @@ public struct HelmToolbarActionsCapsule: View {
         }
     }
 
+    /// **What sits behind one entry: the glass chain `body`'s comment above
+    /// the call describes, under `.liquidGlass`; under `.flat` a capsule of
+    /// `flatFill(for:)` where there is one, nothing otherwise.** Under `.flat` the
+    /// container around the entries holds no glass; that it then draws
+    /// nothing, and that the entries' appearing and leaving reads acceptably
+    /// without the glass morph, were not seen on a screen.
+    @ViewBuilder
+    private func backing(_ content: some View, for entry: HelmToolbarActionsModel.Entry) -> some View {
+        switch appearance {
+        case .liquidGlass:
+            content
+                .glassEffect(glass(for: entry.kind))
+                .glassEffectID(entry.id, in: glassSpace)
+                .glassEffectUnion(id: "actions", namespace: glassSpace)
+                .glassEffectTransition(
+                    HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion)
+                        ? .matchedGeometry : .identity)
+        case .flat:
+            if let fill = Self.flatFill(for: entry.kind) {
+                content.background(Capsule().fill(fill))
+            } else {
+                content
+            }
+        }
+    }
+
+    /// **The plate a flat entry sits on.** Only a `.segmented` entry has one:
+    /// its pick is drawn on it, and a pick with nothing under it has nothing
+    /// to be picked out of. A button, a toggle and a menu are drawn bare.
+    static func flatFill(for kind: HelmToolbarActionsModel.EntryKind) -> Color? {
+        if case .segmented = kind { return HelmSurface.barPlate }
+        return nil
+    }
+
     /// **The one thing withheld from a `.segmented` entry's glass — see
-    /// `body`'s own comment, above the call site, for the reading behind
+    /// `body`'s own comment, above its call of `backing(_:for:)`, for the reading behind
     /// this.** Every other kind keeps `.interactive()`; a `.segmented` entry
     /// is the one whose content is a wrapped `NSSegmentedControl`, and the
     /// SDK's own exported symbols read `.interactive()` as laying a second,

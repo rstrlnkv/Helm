@@ -5,9 +5,11 @@ import SwiftUI
 ///
 /// One stored value, flat unless the other is stored:
 ///
-/// - `flat` — named for the plate, `HelmSurface.barPlate`, and the pick on
-///   it, `HelmSurface.barPick`.
-/// - `liquidGlass` — named for the system's own glass.
+/// - `flat` — a tint of `HelmSurface.barPlate` under a group, and
+///   `HelmFlatSegmentedCell` drawing the pick, `HelmSurface.barPick`, on it.
+/// - `liquidGlass` — the system's own glass under a group and the system's
+///   own segmented cell. What nothing says is this look, so a control built
+///   without being told a look draws as it always did.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice
@@ -17,6 +19,13 @@ import SwiftUI
 /// **Unknown reads flat.** `init(stored:)` answers `.flat` for nothing stored
 /// and for any spelling it does not know, so a case retired later, or a value
 /// written by a newer build, still reads as a look that exists.
+///
+/// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
+/// `flat`: it is the value read back for a person who chose nothing. The environment's, below,
+/// is `liquidGlass`: it is what a view mounted with nobody having set a look
+/// gets, and the actions capsule is built that way (the settings bar's items,
+/// and the tests that mount it bare), so for it `liquidGlass` is the drawing
+/// that existed before the setting did.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {
@@ -35,5 +44,6 @@ public extension Notification.Name {
 }
 
 public extension EnvironmentValues {
-    @Entry var helmBarAppearance: HelmBarAppearance = .flat
+    /// `liquidGlass`, not the stored default: see `HelmBarAppearance`.
+    @Entry var helmBarAppearance: HelmBarAppearance = .liquidGlass
 }
