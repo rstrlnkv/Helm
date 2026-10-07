@@ -8,7 +8,7 @@ import HelmUI
 /// they write.
 ///
 /// Each tab is a `SettingsSelection` of its own, and each of the three pages
-/// has a bar under its own key (`SettingsToolbar.pageKey`): Log declares its
+/// has a bar under its own key (`ShellPageBar.pageKey(for:)`): Log declares its
 /// own, and `SettingsDetail` declares General's and About's; what
 /// they share is this list, so the switcher reads the same on all three.
 enum SettingsTabs {

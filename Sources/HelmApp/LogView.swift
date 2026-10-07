@@ -126,10 +126,8 @@ struct LogView: View {
         // a window away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
-        // The token is the page's own key, the one `SettingsToolbar.pageKey`
-        // answers for `.log`. Declared unconditionally: the toolbar swaps a
-        // whole bar when the *shape* of what a page declares changes, and this
-        // page's shape never does.
+        // The token is the page's own key, the one `ShellPageBar.pageKey(for:)`
+        // answers for `.log`. Declared unconditionally: this page's shape never changes.
         .helmWindowToolbar(toolbarContent(page), token: "log")
         .onAppear {
             refresh()

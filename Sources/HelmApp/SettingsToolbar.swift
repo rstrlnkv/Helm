@@ -227,7 +227,7 @@ import HelmUI
 
     /// **What the bar's first item is: the sidebar's tracking separator
     /// (`.sidebarSeparator`, the default), or no tracking item at all
-    /// (`.spacer`).** `SettingsWindow` constructs `.spacer`; `.sidebarSeparator`
+    /// (`.spacer`).** Nothing in `Sources/` constructs `.spacer`; the class's own tests do. `.sidebarSeparator`
     /// is for the test rigs that still mount a split view. A `.spacer` bar starts with the spacer
     /// where the pane leaves room for one (`leadingSpacer`, recomputed by
     /// `leadMoved()`), and where it does not, or before the pane has been told,
@@ -238,7 +238,7 @@ import HelmUI
     /// showing that bar, never from `init` and never without a window. Held
     /// for the toolbar's life: capture the receiver weakly. Called after the
     /// bar is the attached one. A receiver is to ask for a layout, not force
-    /// one; `SettingsWindow` passes the shell's `barWasAttached()`.
+    /// one.
     private let barAttached: () -> Void
 
     private static let nameID = NSToolbarItem.Identifier("helm.name")
@@ -434,7 +434,7 @@ import HelmUI
     // MARK: - Where the pane is
 
     /// Where the pane stands, as this class takes it: both numbers finite and
-    /// not below zero. The card's frame, handed over by `SettingsWindow` from the controller's `cardMoved`.
+    /// not below zero. The card's frame, as `paneMoved(leading:width:)` is handed it.
     private struct Pane: Equatable {
         let leading: CGFloat
         let width: CGFloat

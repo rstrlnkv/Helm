@@ -46,11 +46,11 @@ import HelmUI
 /// paints its own fill even with it off
 /// (`TheSearchRestsAsItsMagnifierTests.testAnUnbezeledFieldDrawsTheMagnifierAndTheClearButtonAndNoFill`
 /// reads this in both appearances). That test also reads the unbezeled field's intrinsic height as 16 at
-/// every control size. An unbezeled field draws its ink above the centre of a 36 pt frame, so
-/// `Container.layout()` moves the field down by `inkRise`;
-/// `TheSearchRestsAsItsMagnifierTests.testTheInkOfTheFilledFieldSitsAtThePlatesMiddle` reads the ink of the
-/// moved field within 1 pt of the middle of a 36 pt plate, in both appearances. **Not seen on a screen:** the
-/// field with its ink centred in the plate; the offset is read off that bitmap, not off the running bar.
+/// every control size. `Container.layout()` gives the field that height, centred in the plate, so the field
+/// stays inside the plate and its ink sits at the plate's middle;
+/// `TheBarsInkSitsInTheMiddleOfTheBarTests.testThePlaceholderAndTheMagnifierEachSitAtThePlatesMiddle` reads the
+/// placeholder's and the magnifier's ink within 1.5 pt of the middle of a 36 pt plate, in both appearances, in
+/// the window's own bitmap.
 /// Assumed, not measured: that
 /// Return is the only way a non-empty string reaches the field's action (`sendsWholeSearchString` on,
 /// `sendsActionOnEndEditing` off), and that `makeFirstResponder(field)` on a field just unhidden in the same
@@ -58,8 +58,8 @@ import HelmUI
 @MainActor
 final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
 
-    /// Moves the zone's field down, in points, so the ink of an unbezeled field sits at the plate's middle.
-    private static let inkRise: CGFloat = 4
+    /// The field's own height, centred in the plate: an unbezeled field's intrinsic height at every control size.
+    private static let fieldHeight: CGFloat = 16
 
     /// A search field that reports that it became first responder, and answers the bar's menu while resting.
     private final class Field: NSSearchField {
@@ -82,8 +82,8 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
         }
     }
 
-    /// Holds the field and the magnifier, always both; the field is placed lower than the middle, the
-    /// magnifier fills the bounds.
+    /// Holds the field and the magnifier, always both; the field has its own height,
+    /// centred, and the magnifier fills the bounds.
     private final class Container: NSView {
         let field: NSSearchField
         let magnifier: NSButton
@@ -100,7 +100,8 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
 
         override func layout() {
             super.layout()
-            field.frame = NSRect(x: 0, y: -ShellBarSearch.inkRise, width: bounds.width, height: bounds.height)
+            let height = min(ShellBarSearch.fieldHeight, bounds.height)
+            field.frame = NSRect(x: 0, y: ((bounds.height - height) / 2).rounded(), width: bounds.width, height: height)
             magnifier.frame = bounds
         }
     }

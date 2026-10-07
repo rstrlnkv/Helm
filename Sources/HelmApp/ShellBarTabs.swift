@@ -52,8 +52,8 @@ final class ShellBarTabs: ShellBarZone {
         var menu: ObjectIdentifier?
     }
 
-    /// The menu of the bar, handed to both switchers as their own `NSView.menu`. Nothing in `Sources/` sets it;
-    /// a change shows the last state again.
+    /// The menu of the bar, handed to both switchers as their own `NSView.menu`. `SettingsWindow` sets it to the
+    /// bar view's menu; a change shows the last state again.
     var barMenu: NSMenu? {
         didSet {
             guard barMenu !== oldValue, let shown else { return }
@@ -77,8 +77,8 @@ final class ShellBarTabs: ShellBarZone {
     private(set) var redrawCount = 0
 
     private let plate: ShellBarPlate
-    private let full = NSHostingView(rootView: ShellBarTabsRoot(compact: false))
-    private let folded = NSHostingView(rootView: ShellBarTabsRoot(compact: true))
+    private let full = NSHostingView.inBar(rootView: ShellBarTabsRoot(compact: false))
+    private let folded = NSHostingView.inBar(rootView: ShellBarTabsRoot(compact: true))
     private let labelStyle: @MainActor () -> ToolbarSwitcherStyle
     /// Replaced on every show, before any guard: the binding reads it at call time.
     private var shown: ShellBarZoneState?
@@ -88,8 +88,6 @@ final class ShellBarTabs: ShellBarZone {
          labelStyle: @escaping @MainActor () -> ToolbarSwitcherStyle = { AppSettings.toolbarSwitcherStyle }) {
         self.labelStyle = labelStyle
         plate = ShellBarPlate(appearance: .flat, isActive: true, titlebarIsTransparent: titlebarIsTransparent)
-        full.sizingOptions = [.intrinsicContentSize]
-        folded.sizingOptions = [.intrinsicContentSize]
     }
 
     func show(_ state: ShellBarZoneState) {

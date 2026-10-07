@@ -5,11 +5,11 @@ import HelmUI
 
 /// **The dim shared by every piece of the name zone's own row, and by the
 /// trailing status item beside it** — dimming together, as one unit,
-/// applies across both `NSToolbarItem`s that carry the name's ink now that
-/// the status has moved to the bar's trailing edge (2026-09-28), even though
-/// the two are separate hosted views with nothing to composite together:
-/// each reads the same four numbers, from `SettingsToolbar.patchName`'s one
-/// snapshot, so they move on exactly the same call.
+/// applies across the name's view and the status's view now that the status
+/// stands at the bar's trailing edge (2026-09-28), even though the two are
+/// separate hosted views with nothing to composite together: each reads the
+/// same four numbers (`helmNameZoneInactiveOpacity`) and is handed `appearsActive` from the one
+/// `ShellPageBar.Snapshot`, so they move on exactly the same call.
 @MainActor func helmNameZoneInactiveOpacity(dark: Bool, titlebarIsTransparent: Bool) -> Double {
     switch (dark, titlebarIsTransparent) {
     case (true, true): NameZoneView.inactiveOpacityDark
@@ -30,16 +30,18 @@ struct NameZoneView: View {
     let symbol: String
     let tint: Color
     let title: String
+    /// False draws the name alone (`PageBarStyle.windowTitle`).
+    var showsIcon = true
     let iconStyle: SidebarStyle
     /// **The same `isKeyWindow || isMainWindow` signal the actions capsule
     /// reads** (`SettingsToolbar.windowAppearsActive`'s own header has the
-    /// reading), not `\.controlActiveState`: this view is hosted through an
-    /// `NSToolbarItem`'s custom view exactly like the capsule, and that
+    /// reading), not `\.controlActiveState`: this view is hosted by the bar
+    /// as the capsule is, outside the pane's view tree, and that
     /// environment key is not trusted here, for the capsule's reason
     /// (`HelmToolbarActionsCapsule`'s own header). `appearsActive` costs no
     /// rebuild the capsule's own glass needs — every ink below is a plain
     /// SwiftUI value read at draw time, not Liquid Glass, so reassigning this
-    /// view's `rootView` (`SettingsToolbar.patchName`) is enough to move it.
+    /// view's `rootView` (`ShellPageBar.draw`) is enough to move it.
     let appearsActive: Bool
     /// Which title bar the zone sits in — `window.titlebarAppearsTransparent`,
     /// which the band decision sets (`HelmBandChoice.titlebarAppearsTransparent`).
@@ -88,7 +90,7 @@ struct NameZoneView: View {
 
     var body: some View {
         HStack(spacing: HelmSpace.s5) {
-            HelmIconPlate(symbol: symbol, tint: tint, size: 24)
+            if showsIcon { HelmIconPlate(symbol: symbol, tint: tint, size: 24) }
             Text(title)
                 .font(.system(size: 16, weight: .semibold))
                 .tracking(-0.2)
@@ -110,10 +112,10 @@ struct NameZoneView: View {
     }
 }
 
-/// **The status word or badge, at the shared name-only bar's trailing
+/// **The status word or badge, at the bar's trailing
 /// edge** — the owner, 2026-09-28: «Давай вернем его в правую часть». A
 /// sibling of `NameZoneView` rather than a branch inside it, because the two
-/// now live in separate `NSToolbarItem`s (`SettingsToolbar.makeStatusItem`),
+/// are separate hosted views (`ShellPageBar.drawIdentity`; in `SettingsToolbar`, separate `NSToolbarItem`s),
 /// drawing the two shapes a status has always had — a badge for active,
 /// quiet text for idle, nothing for a module with no notion of running — and
 /// dimming by the same four numbers (`helmNameZoneInactiveOpacity`) so the
@@ -159,9 +161,9 @@ struct StatusZoneView: View {
         .compositingGroup()
         .opacity(appearsActive ? 1 : inactiveOpacity)
         // **Out of VoiceOver on every page with nothing to say** — every
-        // page that declares no toolbar content, every module with no notion of running — since this
-        // item is always in the bar's own identifier list, empty or not
-        // (`SettingsToolbar.makeStatusItem`'s own header): a placeholder is not a name, and
+        // page that declares no toolbar content, every module with no notion of running — since
+        // `SettingsToolbar` keeps this item in its identifier list, empty or not
+        // (`makeStatusItem`'s own header); `ShellPageBar` mounts the view only with a status: a placeholder is not a name, and
         // an unnamed control is worse than one that is simply not there.
         .accessibilityHidden(status == nil)
     }

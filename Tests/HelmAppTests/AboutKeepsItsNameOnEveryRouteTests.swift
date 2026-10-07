@@ -83,7 +83,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
     }
 
     /// The window as the owner reads it under `.windowTitle`: the page's name
-    /// (Settings, the one About shares with General and Log), drawn, with no
+    /// (Settings, the one About shares with General and Log), set and never drawn by AppKit, with no
     /// subtitle left from anywhere. It is not the window's own fallback name, so
     /// a title the page lost is not read as one it kept.
     private func assertAboutUnderWindowTitle(_ label: String,
@@ -92,8 +92,8 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
                        "\(label): the window is not titled with the Settings name", file: file, line: line)
         XCTAssertNotEqual(window?.title, AppStr.settingsWindowTitle,
                           "\(label): the window fell back to its own name", file: file, line: line)
-        XCTAssertEqual(window?.titleVisibility, .visible,
-                       "\(label): under .windowTitle the title must be drawn", file: file, line: line)
+        XCTAssertEqual(window?.titleVisibility, .hidden,
+                       "\(label): under .windowTitle the bar draws the name, never the window's title", file: file, line: line)
         XCTAssertEqual(window?.subtitle, "",
                        "\(label): About has no status, so no subtitle", file: file, line: line)
     }

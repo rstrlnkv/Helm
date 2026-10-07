@@ -310,15 +310,17 @@ final class ThePageBarFollowsItsPageTests: XCTestCase {
                                   iconStyle: .colour, appearsActive: true, titlebarIsTransparent: true)
         }
         let bare = snapshot(.moduleName, nil)
-        XCTAssertTrue(bare.showsName, """
-            the snapshot shows no name under the module-name style: both gates are closed for every input
-            """)
         XCTAssertEqual(bare.statusWord, "Active")
         XCTAssertTrue(bare.statusActive)
 
         let windowTitle = snapshot(.windowTitle, nil)
-        XCTAssertFalse(windowTitle.showsName)
-        XCTAssertNil(windowTitle.statusWord)
+        XCTAssertFalse(windowTitle.showsIcon, "the \"without icon\" style draws the icon")
+        XCTAssertNil(windowTitle.statusWord, "the \"without icon\" style draws the status badge")
+        XCTAssertTrue(bare.showsIcon, "the module-name style draws no icon")
+        XCTAssertTrue(snapshot(.moduleName, HelmPageToolbarContent()).showsIcon)
+        let titleWithTab = snapshot(.windowTitle, HelmPageToolbarContent(
+            tabs: [HelmToolbarTab(id: "t", title: "T", symbol: "x")], selectedTab: .constant("t")))
+        XCTAssertFalse(titleWithTab.showsIcon)
 
         let withTab = HelmPageToolbarContent(tabs: [HelmToolbarTab(id: "t", title: "T", symbol: "x")],
                                              selectedTab: .constant("t"))
@@ -326,11 +328,29 @@ final class ThePageBarFollowsItsPageTests: XCTestCase {
         let withSearch = HelmPageToolbarContent(search: HelmToolbarSearch(prompt: "P", text: .constant("")))
         for (what, content) in [("a tab", withTab), ("an action", withAction), ("a search", withSearch)] {
             let shown = snapshot(.moduleName, content)
-            XCTAssertTrue(shown.showsName, "the name went with \(what)")
             XCTAssertNil(shown.statusWord, "the status stayed beside \(what)")
         }
         let empty = snapshot(.moduleName, HelmPageToolbarContent())
         XCTAssertEqual(empty.statusWord, "Active", "a content with nothing in it took the status away")
+    }
+
+    /// The view, not the flag: a name zone told to draw no icon is narrower by the plate it did not draw.
+    func testTheNameZoneGivenNoIconDrawsNoPlate() {
+        func width(showsIcon: Bool) -> CGFloat {
+            var zone = NameZoneView(symbol: "gearshape", tint: .blue, title: "Page", iconStyle: .colour,
+                                    appearsActive: true, titlebarIsTransparent: true)
+            zone.showsIcon = showsIcon
+            let host = NSHostingView(rootView: zone)
+            host.layoutSubtreeIfNeeded()
+            return host.fittingSize.width
+        }
+        let withIcon = width(showsIcon: true)
+        let without = width(showsIcon: false)
+        XCTAssertGreaterThan(without, 0, "the name drew nothing at all without its icon: it was never measured")
+        XCTAssertGreaterThanOrEqual(withIcon - without, 24, """
+            the zone told to draw no icon is only \(withIcon - without) narrower than the one that draws it \
+            (\(withIcon) against \(without)): the plate is still drawn
+            """)
     }
 
     // MARK: - One Settings page

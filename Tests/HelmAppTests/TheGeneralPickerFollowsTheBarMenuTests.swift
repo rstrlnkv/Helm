@@ -140,7 +140,8 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             let model = SettingsModel(host: ModuleHost.shared)
             model.selection = .general
             let channel = HelmWindowToolbarChannel()
-            let split = SettingsShellViewController(model: model, toolbarChannel: channel, band: .onMacOS(27))
+            let split = SettingsShellViewController(model: model, toolbarChannel: channel, band: .onMacOS(27),
+                                                    bar: ShellPageBarView())
             let window = NSWindow(contentViewController: split)
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.appearance = NSAppearance(named: .aqua)
@@ -184,7 +185,8 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             let model = SettingsModel(host: ModuleHost.shared)
             model.selection = .general
             let channel = HelmWindowToolbarChannel()
-            let split = SettingsShellViewController(model: model, toolbarChannel: channel, band: .onMacOS(27))
+            let split = SettingsShellViewController(model: model, toolbarChannel: channel, band: .onMacOS(27),
+                                                    bar: ShellPageBarView())
             let window = NSWindow(contentViewController: split)
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.appearance = NSAppearance(named: .aqua)

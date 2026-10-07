@@ -195,11 +195,12 @@ public final class HelmToolbarActionsModel {
         isInteractive = value
     }
 
-    /// Called by `SettingsToolbar.setWindowAppearsActive(_:)`, itself fed by
+    /// Called by `ShellBarActions.show` with the activity its bar hands it —
     /// `SettingsWindow`'s own direct read of the window's `isKeyWindow` and
-    /// `isMainWindow` — see this type's own `appearsActive` header for why
-    /// the value crosses in from there rather than being read here;
-    /// `ShellBarActions.show` calls it too, with the activity its bar hands it.
+    /// `isMainWindow`, passed to `ShellPageBar.setWindowAppearsActive(_:)`; see
+    /// this type's own `appearsActive` header for why the value crosses in
+    /// from there rather than being read here.
+    /// `SettingsToolbar.setWindowAppearsActive(_:)` calls it too.
     public func setAppearsActive(_ value: Bool) {
         guard appearsActive != value else { return }
         appearsActive = value

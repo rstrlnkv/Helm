@@ -6,18 +6,17 @@ import Module_KeepAwake_UI
 @testable import HelmUI
 @testable import HelmApp
 
-/// **The settings window wears the shell: a card beside a column of rows, the
-/// bar's first item over the card — not a split view with a section of switched
-/// off modules.**
+/// **The settings window wears the shell: a card beside a column of rows and
+/// Helm's own page bar — not a split view with a section of switched off
+/// modules, and no toolbar.**
 ///
 /// Two kinds of check. The first are readings of the source: the old
 /// construction is gone, the new one is called, and the pieces that other guards
 /// read as text are still where they read them. The second, under "What the
-/// built window does", drive the real `SettingsWindow` and
-/// `SettingsShellViewController` without ever ordering a window front: the weak
-/// receiver, the report outside the layout pass, the sidebar's width and its one
-/// hosting view, and a selection whose module goes off. `show(selecting:)` itself
-/// orders the window front, so it is only read.
+/// built window does", drive a `SettingsShellViewController` without ever
+/// ordering a window front: the sidebar's width and its one hosting view, and a
+/// selection whose module goes off. `show(selecting:)` itself orders the window
+/// front, so it is only read.
 ///
 /// Every reading first asserts that it found its subject — a file that moved,
 /// or a block whose opening line was renamed, fails here instead of reading
@@ -105,15 +104,17 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
 
     // MARK: - What is built
 
-    func testTheWindowBuildsTheShellAndLeadsTheBarWithASpacer() throws {
+    func testTheWindowBuildsTheShellAndThePageBarAndNoToolbar() throws {
         let code = try windowCode()
         XCTAssertTrue(code.contains("ShellContentView("), """
             the window never builds `ShellContentView`: the card, the corner and the sidebar's \
             frame are drawn by nobody
             """)
-        XCTAssertTrue(code.contains("lead: .spacer"), """
-            the bar is not told to lead with a spacer: the page's name sits over the sidebar, not \
-            on the card
+        XCTAssertTrue(code.contains("ShellPageBar("), """
+            the window never builds `ShellPageBar`: no page has a bar
+            """)
+        XCTAssertFalse(code.contains("SettingsToolbar("), """
+            the window builds a `SettingsToolbar` again: two bars answer the one channel
             """)
     }
 
@@ -187,121 +188,17 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
         XCTAssertTrue(between.contains(".helmToolbarBackdrop()"),
                       "the pane lost its strip under the bar when the hosting was moved")
         XCTAssertTrue(between.contains("helmWindowToolbarChannel"),
-                      "the pane no longer publishes into the channel the toolbar reads: no page names the window")
+                      "the pane no longer publishes into the channel the bar reads: no page names the window")
     }
 
     // MARK: - What the built window does
 
-    private struct Built {
-        let owner: SettingsWindow
-        let window: NSWindow
-        let model: SettingsModel
-        let toolbar: SettingsToolbar
-        var controller: SettingsShellViewController? { window.contentViewController as? SettingsShellViewController }
-    }
-
-    /// A real `SettingsWindow`, never ordered front, with the frame it autosaves put back afterwards.
-    @MainActor private func built() throws -> Built {
-        let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-        let found = UserDefaults.standard.string(forKey: frameKey)
-        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
-        let fields = Mirror(reflecting: owner).children
-        let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
-                                   "SettingsWindow no longer holds `window` — this case reads it by name")
-        let model = try XCTUnwrap(fields.first { $0.label == "model" }?.value as? SettingsModel,
-                                  "SettingsWindow no longer holds `model` — this case reads it by name")
-        let toolbar = try XCTUnwrap(fields.first { $0.label == "settingsToolbar" }?.value as? SettingsToolbar,
-                                    "SettingsWindow no longer holds `settingsToolbar` — this case reads it by name")
-        addTeardownBlock {
-            UserDefaults.standard.set(found, forKey: frameKey)
-            await MainActor.run { window.toolbar = nil }
-        }
-        return Built(owner: owner, window: window, model: model, toolbar: toolbar)
-    }
-
     @MainActor private func bareController() -> SettingsShellViewController {
         let c = SettingsShellViewController(model: SettingsModel(host: ModuleHost.shared),
-                                            toolbarChannel: HelmWindowToolbarChannel(), band: .onMacOS(27))
+                                            toolbarChannel: HelmWindowToolbarChannel(), band: .onMacOS(27),
+                                            bar: ShellPageBarView())
         c.loadViewIfNeeded()
         return c
-    }
-
-    /// The toolbar outlives the window and the controller; what it holds of the controller is nothing. (A window
-    /// that is let go of while the owner lives keeps its content for reasons of its own, measured; one that is
-    /// let go of with its owner does not, and a receiver that captured the controller would hold it.) Total failure
-    /// prints: "the window's content is not the shell's controller" / "the window built no bar with a spacer: the
-    /// fixture is wrong" / "the bar's receiver keeps the controller alive: it was still there after the window and
-    /// its owner were gone" / "the toolbar refused a report after the controller was gone".
-    @MainActor func testTheBarsReceiverDoesNotKeepTheControllerAlive() throws {
-        let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-        let found = UserDefaults.standard.string(forKey: frameKey)
-        addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
-        weak var weakController: SettingsShellViewController?
-        var toolbar: SettingsToolbar?
-        try autoreleasepool {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
-            let fields = Mirror(reflecting: owner).children
-            let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
-                                       "SettingsWindow no longer holds `window` — this case reads it by name")
-            toolbar = try XCTUnwrap(fields.first { $0.label == "settingsToolbar" }?.value as? SettingsToolbar,
-                                    "SettingsWindow no longer holds `settingsToolbar` — this case reads it by name")
-            weakController = window.contentViewController as? SettingsShellViewController
-            XCTAssertNotNil(weakController, "the window's content is not the shell's controller")
-            XCTAssertTrue(toolbar?.hasSpacer == true, "the window built no bar with a spacer: the fixture is wrong")
-            window.toolbar = nil
-        }
-        XCTAssertNil(weakController, """
-            the bar's receiver keeps the controller alive: it was still there after the window and its \
-            owner were gone
-            """)
-        XCTAssertEqual(toolbar?.paneMoved(leading: 0, width: 1000), true,
-                       "the toolbar refused a report after the controller was gone")
-    }
-
-    /// A report that flips the bar puts a new bar on the window, which tells the shell. The shell is only asked
-    /// for a layout: no card report is delivered inside the call, and the toolbar is told nothing, so the spacer
-    /// the report took away does not come back from the shell's own, older, card. Total failure prints: "the
-    /// fixture is wrong: …" / "the new bar's arrival did not ask the shell for a layout" / "the bar's arrival
-    /// delivered <n> card reports inside the call" / "the bar's arrival put the spacer back: <w>".
-    @MainActor func testTheBarsArrivalOnlyAsksForALayoutAndTellsTheToolbarNothing() throws {
-        let b = try built()
-        let c = try XCTUnwrap(b.controller, "the window's content is not the shell's controller")
-        var frames: [CGRect] = []
-        c.cardMoved = { frames.append($0) }
-        let before = try XCTUnwrap(b.window.toolbar, "the fixture is wrong: the window has no bar")
-        XCTAssertTrue(b.toolbar.hasSpacer, "the fixture is wrong: the bar has no spacer to lose")
-        c.shell.layoutSubtreeIfNeeded()
-        XCTAssertFalse(c.shell.needsLayout, "the fixture is wrong: the shell is still waiting for a layout")
-        frames.removeAll()
-        // The card is at 200; the toolbar is told 0, so the bar flips and a new one is taken.
-        XCTAssertTrue(b.toolbar.paneMoved(leading: 0, width: 1060), "the fixture is wrong: the report was refused")
-        let after = try XCTUnwrap(b.window.toolbar, "the fixture is wrong: the window lost its bar")
-        XCTAssertFalse(before === after, "the fixture is wrong: the flip put no new bar on the window")
-        XCTAssertTrue(c.shell.needsLayout, "the new bar's arrival did not ask the shell for a layout")
-        XCTAssertEqual(frames.count, 0, "the bar's arrival delivered \(frames.count) card reports inside the call")
-        XCTAssertFalse(b.toolbar.hasSpacer,
-                       "the bar's arrival put the spacer back: \(String(describing: b.toolbar.leadingSpacer))")
-    }
-
-    /// Total failure prints: "the layout moved the card to <r>, not the 900 pt window's: the fixture is wrong" /
-    /// "the layout pass told the toolbar <n> times: the report is made inside it" / "the delivery was <frames>, not the
-    /// newest card alone" / "a second delivery repeated <frames>".
-    @MainActor func testTheCardIsReportedAfterTheLayoutPassAndOnlyTheNewestOfIt() {
-        let c = bareController()
-        var frames: [CGRect] = []
-        c.cardMoved = { frames.append($0) }
-        c.shell.frame = CGRect(x: 0, y: 0, width: 1000, height: 700)
-        c.shell.layoutSubtreeIfNeeded()
-        c.shell.frame = CGRect(x: 0, y: 0, width: 900, height: 700)
-        c.shell.layoutSubtreeIfNeeded()
-        let expected = ShellGeometry.cardFrame(in: CGSize(width: 900, height: 700), sidebarWidth: 200)
-        XCTAssertEqual(c.shell.card.frame, expected,
-                       "the layout moved the card to \(c.shell.card.frame), not the 900 pt window's: the fixture is wrong")
-        XCTAssertEqual(frames.count, 0, "the layout pass told the toolbar \(frames.count) times: the report is made inside it")
-        c.deliverCard()
-        XCTAssertEqual(frames, [expected], "the delivery was \(frames), not the newest card alone")
-        c.deliverCard()
-        XCTAssertEqual(frames, [expected], "a second delivery repeated \(frames)")
     }
 
     /// Total failure prints: "the sidebar opened <w> wide, not 200" / "the sidebar was <w> wide after folding (round <n>), not
@@ -331,7 +228,8 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
     /// sidebar's hosting view was replaced by <what>: its permission states are asked again".
     @MainActor func testTheSidebarKeepsOneHostingViewAcrossASelectionALanguageAndTheLiveSet() throws {
         let model = SettingsModel(host: ModuleHost.shared)
-        let c = SettingsShellViewController(model: model, toolbarChannel: HelmWindowToolbarChannel(), band: .onMacOS(27))
+        let c = SettingsShellViewController(model: model, toolbarChannel: HelmWindowToolbarChannel(), band: .onMacOS(27),
+                                            bar: ShellPageBarView())
         c.loadViewIfNeeded()
         defer {
             ModuleHost.shared.shutdown()

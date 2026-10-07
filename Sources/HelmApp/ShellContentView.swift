@@ -11,18 +11,23 @@ import HelmRuntime
 /// Subviews, bottom to top: the glass (regular, full bleed, no content view);
 /// on macOS 27 a full-bleed probe whose only job is to report the window's
 /// corner; the sidebar, as wide as the card's x so the two cannot part; the card,
-/// and inside it the clip, and inside that the pane. The card carries the fill
-/// and the shadow and never masks, so the shadow is not cut; the clip masks, so
-/// the pane's band does not run square to the window's corner. The sidebar and
-/// the pane are handed in, and so is `cardMoved`, told where the card went each
-/// time it moves; this view names no page and builds no toolbar; of the window's
-/// toolbar it asks only whether there is one.
+/// and inside it the clip, and inside that the pane and, above it, the page bar.
+/// The card carries the fill and the shadow and never masks, so the shadow is
+/// not cut; the clip masks, so the pane's band does not run square to the
+/// window's corner. The sidebar, the pane and the bar are handed in; this view
+/// names no page and builds no toolbar; of the window's toolbar it asks only
+/// whether there is one.
+///
+/// **The bar stands at the top of the clip, full width, `ShellBarLayout.height`
+/// high, and the pane starts under it:** `layout()` adds to the pane's own top
+/// safe-area inset what the bar needs beyond it, so the pane's top inset, which
+/// SwiftUI reads, is the bar's height. It hands the bar where the card stands
+/// and the frame of the window's three buttons in the bar's coordinates.
 ///
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
-/// `viewDidMoveToWindow`, the window's occlusion notification, `sidebarWidth`'s
-/// setter and `barWasAttached()`. Events
-/// only ask (`needsLayout = true`).
+/// `viewDidMoveToWindow`, the window's occlusion notification and
+/// `sidebarWidth`'s setter. Events only ask (`needsLayout = true`).
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
@@ -41,14 +46,13 @@ final class ShellContentView: NSView {
     /// Carries the fill, the radius and the shadow; never masks.
     let card = NSView()
 
-    /// Masks at the card's radius; holds the pane.
+    /// Masks at the card's radius; holds the pane and, above it, the page bar.
     let clip = NSView()
 
     private let sidebar: NSView
     private let pane: NSView
+    private let bar: ShellPageBarView
     private let glass = NSGlassEffectView()
-    private let cardMoved: (CGRect) -> Void
-    private var lastTold: CGRect?
     private var applied: WindowCorner?
     private var journal = WindowCorner.Journal()
 
@@ -69,13 +73,11 @@ final class ShellContentView: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// The closure and the two views are held for as long as this view lives: a
-    /// receiver that owns this view captures itself weakly. `cardMoved` is called
-    /// before the corner of that layout is applied.
-    init(sidebar: NSView, pane: NSView, cardMoved: @escaping (CGRect) -> Void) {
+    /// The three views are held for as long as this view lives.
+    init(sidebar: NSView, pane: NSView, bar: ShellPageBarView) {
         self.sidebar = sidebar
         self.pane = pane
-        self.cardMoved = cardMoved
+        self.bar = bar
         super.init(frame: .zero)
 
         glass.style = .regular
@@ -109,6 +111,7 @@ final class ShellContentView: NSView {
         clip.layer?.masksToBounds = true
         card.addSubview(clip)
         clip.addSubview(pane)
+        clip.addSubview(bar)
 
         resolveFill()
     }
@@ -159,14 +162,6 @@ final class ShellContentView: NSView {
         needsLayout = true
     }
 
-    /// Asks for a layout, so the corner is read again. For whoever gives the
-    /// window a toolbar: on 27.2 the assignment left this view's `needsLayout`
-    /// false (measured, a window never ordered in), and below macOS 27 there is
-    /// no probe to notice the corner moved.
-    func barWasAttached() {
-        needsLayout = true
-    }
-
     /// Sets the card's and the clip's radius from the window's corner, only when
     /// the corner differs from the one applied. It writes no line: the journal is
     /// written in `layout()`, after this, and only for a view that has a window,
@@ -210,16 +205,35 @@ final class ShellContentView: NSView {
         clip.frame = card.bounds
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
-        if frame != lastTold {
-            lastTold = frame
-            cardMoved(frame)
-        }
+        placeBar(cardMinX: frame.minX)
 
         let reading = publicReading
         let chrome = WindowCorner.Chrome(hasToolbar: window?.toolbar != nil, systemMajor: system.majorVersion)
         let corner = WindowCorner.read(publicReading: reading, from: window, chrome: chrome)
         apply(corner)
         writeLine(corner, publicReading: reading, chrome: chrome)
+    }
+
+    /// The bar at the clip's top (the clip is not flipped, so its top is `maxY`), full width; the pane's
+    /// additional top inset is what the bar's height needs beyond the safe area the pane has of its own,
+    /// written only when it differs.
+    private func placeBar(cardMinX: CGFloat) {
+        let height = min(ShellBarLayout.height, max(clip.bounds.height, 0))
+        bar.frame = CGRect(x: 0, y: clip.bounds.maxY - height, width: clip.bounds.width, height: height)
+        bar.place = ShellPageBarView.Place(cardMinX: cardMinX, windowWidth: bounds.width, buttons: windowButtons())
+        let own = pane.safeAreaInsets.top - pane.additionalSafeAreaInsets.top
+        let wanted = max(0, ShellBarLayout.height - own)
+        if pane.additionalSafeAreaInsets.top != wanted { pane.additionalSafeAreaInsets.top = wanted }
+    }
+
+    /// The union of the close, miniaturize and zoom buttons in the bar's coordinates; `.null` when none of
+    /// them is this window's or shown.
+    private func windowButtons() -> CGRect {
+        guard let window else { return .null }
+        return [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+            .compactMap { window.standardWindowButton($0) }
+            .filter { $0.window === window && !$0.isHidden }
+            .reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: bar)) }
     }
 
     private func writeLine(_ corner: WindowCorner, publicReading: CGFloat?, chrome: WindowCorner.Chrome) {

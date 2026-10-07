@@ -125,8 +125,7 @@ final class ShellBarActions: ShellBarZone {
 
         // Built after the model is written: a host made before it would draw the previous page once.
         if rebuilds {
-            let host = NSHostingView(rootView: Root(model: model, ink: flatInactiveInk, appearance: state.appearance))
-            host.sizingOptions = [.intrinsicContentSize]
+            let host = NSHostingView.inBar(rootView: Root(model: model, ink: flatInactiveInk, appearance: state.appearance))
             host.setAccessibilityLabel(HelmA11y.moreActions)
             view = host
         }
@@ -200,7 +199,7 @@ final class ShellBarActions: ShellBarZone {
             segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) },
             appearance: appearance)
             .environment(\.helmSwitcherStyle, .icons)
-        let host = NSHostingView(rootView: switcher)
+        let host = NSHostingView.inBar(rootView: switcher)
         host.layoutSubtreeIfNeeded()
         reserveMeasurements += 1
         var measured = host.fittingSize.width

@@ -5,9 +5,8 @@ import HelmRuntime
 
 /// **The shell's view lays its pieces out from `ShellGeometry`, cuts the card
 /// from the corner `WindowCorner` read and clips the pane inside the card to the
-/// same radius, so the page's band never runs square to the window's edge; it
-/// tells whoever asked where the card went, and it writes a line about the
-/// corner only while it is in a window.**
+/// same radius, so the page's band never runs square to the window's edge, and it
+/// writes a line about the corner only while it is in a window.**
 ///
 /// No window is ordered in, none is made key and the app is not
 /// activated; the two tests that need windows (the lines in the log) use two
@@ -23,8 +22,7 @@ import HelmRuntime
 /// not depend on the running macOS or on the guess table.
 /// `testOutsideAWindowTheProbesZeroIsNotAReading` does, and skips where there is
 /// no probe or no guess. What this file cannot prove:
-/// that the probe on 27 reports, that a window's corner moves on 26 after the
-/// toolbar's attach, and how the glass looks; only a window proves those.
+/// that the probe on 27 reports, and how the glass looks; only a window proves those.
 @MainActor
 final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
 
@@ -39,7 +37,6 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
         let view: ShellContentView
         let sidebar: CountingView
         let pane: NSView
-        let moved: MovedLog
     }
 
     private final class CountingView: NSView {
@@ -54,17 +51,12 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
         }
     }
 
-    private final class MovedLog {
-        var frames: [CGRect] = []
-    }
-
     private func makeShell(size: CGSize = TheCardClipsThePaneToItsCornersTests.size) -> Shell {
         let sidebar = CountingView()
         let pane = NSView()
-        let moved = MovedLog()
-        let view = ShellContentView(sidebar: sidebar, pane: pane, cardMoved: { moved.frames.append($0) })
+        let view = ShellContentView(sidebar: sidebar, pane: pane, bar: ShellPageBarView())
         view.frame = CGRect(origin: .zero, size: size)
-        return Shell(view: view, sidebar: sidebar, pane: pane, moved: moved)
+        return Shell(view: view, sidebar: sidebar, pane: pane)
     }
 
     /// A layout that is asked for, then run. Without a window AppKit runs none
@@ -232,38 +224,6 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
                        "outside a window the card was cut square: the probe's 0 was taken as the window's corner")
     }
 
-    // MARK: - the card's frame is told, once per move
-
-    func testCardMovedIsToldTheCardsFrameWhenItMovesAndNotOtherwise() {
-        let shell = makeShell()
-        let view = shell.view
-        pass(view)
-        XCTAssertEqual(shell.moved.frames.count, 1, "the first layout told \(shell.moved.frames.count) times where the card is")
-        assertFrame(shell.moved.frames.first ?? .zero, CGRect(x: 200, y: 4, width: 856, height: 752),
-                    "the first layout told \(String(describing: shell.moved.frames.first))")
-
-        let before = shell.sidebar.placements
-        pass(view)
-        XCTAssertGreaterThan(shell.sidebar.placements, before,
-                             "the repeat pass ran no layout: the count below proves nothing")
-        XCTAssertEqual(shell.moved.frames.count, 1,
-                       "cardMoved was called \(shell.moved.frames.count) times for a layout that moved nothing")
-
-        view.sidebarWidth = ShellGeometry.railWidth
-        view.layoutSubtreeIfNeeded()
-        XCTAssertEqual(shell.moved.frames.count, 2,
-                       "the sidebar's width changed and nobody was told where the card went")
-        assertFrame(shell.moved.frames.last ?? .zero, CGRect(x: 56, y: 4, width: 1000, height: 752),
-                    "the card was reported at \(String(describing: shell.moved.frames.last)) at the rail")
-        XCTAssertEqual(shell.sidebar.frame.width, 56, accuracy: 0.001, "the sidebar is not at the rail's width")
-
-        view.setFrameSize(NSSize(width: 900, height: 600))
-        view.layoutSubtreeIfNeeded()
-        XCTAssertEqual(shell.moved.frames.count, 3, "the window was resized and nobody was told where the card went")
-        assertFrame(shell.moved.frames.last ?? .zero, CGRect(x: 56, y: 4, width: 840, height: 592),
-                    "the card was reported at \(String(describing: shell.moved.frames.last)) after a resize")
-    }
-
     func testAWidthThatIsNotANumberLeavesFiniteFrames() {
         for width: CGFloat in [.nan, .infinity, -.infinity, -200, 5000] {
             let shell = makeShell()
@@ -281,8 +241,6 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
             XCTAssertEqual(frame.width, max(view.card.frame.minX, 0), accuracy: 0.001,
                            "the sidebar is \(frame.width) wide and the card starts at \(view.card.frame.minX): two places")
             XCTAssertEqual(frame.height, view.bounds.height, accuracy: 0.001, "the sidebar does not run the window's height")
-            XCTAssertTrue(shell.moved.frames.allSatisfy { [$0.minX, $0.minY, $0.width, $0.height].allSatisfy(\.isFinite) },
-                          "a sidebar of \(width) told the closure a frame that is not finite: \(shell.moved.frames)")
         }
     }
 
@@ -301,15 +259,6 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
         }
     }
 
-    func testBarWasAttachedAsksForALayout() {
-        let shell = makeShell()
-        pass(shell.view)
-        XCTAssertFalse(shell.view.needsLayout, "a layout was run and the view still wants one: the control does not hold")
-        shell.view.barWasAttached()
-        XCTAssertTrue(shell.view.needsLayout,
-                      "barWasAttached asked for nothing: where there is no probe the corner is never read again")
-    }
-
     // MARK: - in a window
 
     func testInAWindowOneLineIsWrittenAndTheSameCornerWritesNoSecond() {
@@ -324,7 +273,7 @@ final class TheCardClipsThePaneToItsCornersTests: XCTestCase {
             pass(view)
             pass(view)
             pass(view)
-            view.barWasAttached()
+            view.needsLayout = true
             view.layoutSubtreeIfNeeded()
 
             let lines = windowLines

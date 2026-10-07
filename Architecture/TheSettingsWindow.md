@@ -12,11 +12,11 @@ The sidebar is `ShellSidebar`: a column of rows for the modules that are on, and
 at the foot for General, the Log and About. A module that is switched off has no row, and
 a selection that names one reads as General (`ShellSidebarRows.settled`, applied in
 `SettingsModel` when the live modules move and in `show(selecting:)`, and again where the
-page is chosen). The page's name is in the window's bar, not over the sidebar:
-the bar leads with a spacer (`SettingsToolbar.Lead.spacer`) that `SettingsWindow` keeps
-told of where the card is, through the controller's `cardMoved`: the first time from its initialiser, afterwards a turn of the
-main queue after the layout that moved it, because a bar that flips its spacer assigns
-`window.toolbar` and that may not happen inside the content's layout pass.
+page is chosen). The page's name is in the page bar, not over the sidebar:
+the window has no `NSToolbar`, and the bar (`ShellPageBar`, built by `SettingsWindow`) is a view
+at the top of the card's clip. `ShellContentView` places it there, full width, and adds
+to the pane's top safe-area inset what the bar's height needs beyond the pane's own,
+so a page starts under the bar.
 
 One size serves every page: the reasons are the doc comments of `defaultSize` and
 `minSize`, and the narrowest pane a page is drawn in is `minSize` less the sidebar and the card's inset (`ShellGeometry.defaultSidebarWidth`, `ShellGeometry.inset`): the window sets the sidebar to that width or to `ShellGeometry.railWidth`, and nothing drags it.

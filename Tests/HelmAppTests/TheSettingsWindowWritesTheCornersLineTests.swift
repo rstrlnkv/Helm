@@ -39,7 +39,6 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
             let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
-            addTeardownBlock { await MainActor.run { window.toolbar = nil } }
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
             let view = shell.shell
             view.layoutSubtreeIfNeeded()
@@ -77,7 +76,6 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
             let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
-            addTeardownBlock { await MainActor.run { window.toolbar = nil } }
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
             shell.shell.layoutSubtreeIfNeeded()
             XCTAssertTrue(shell.shell.window === window, "the shell's view is in no window: the check below proves nothing")
@@ -167,7 +165,6 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
         let window = try XCTUnwrap(
             Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
-        addTeardownBlock { await MainActor.run { window.toolbar = nil } }
         let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
         shell.shell.layoutSubtreeIfNeeded()
         XCTAssertTrue(shell.shell.window === window, "the shell's view is in no window: what follows proves nothing")

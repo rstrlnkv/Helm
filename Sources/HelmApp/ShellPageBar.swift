@@ -69,6 +69,9 @@ struct ShellBarZoneState {
 /// read back is the page being left. Every other trigger fires outside that `willSet`, where the property is
 /// right.
 ///
+/// `SettingsWindow` builds the bar, hands its three zones to it and keeps none itself; the bar's view is the
+/// one `ShellContentView` places at the top of the card's clip.
+///
 /// `identity(for:host:)`, `status`, `pageKey(for:)` and `strippedOfClosures` are second copies of
 /// `SettingsToolbar`'s `pageIdentity`, `moduleStatus`, `pageKey` and `strippedOfClosures`: both bars are in the
 /// tree, and a change to one side is made in the other.
@@ -91,9 +94,9 @@ struct ShellBarZoneState {
     struct Snapshot: Equatable {
         let symbol: String
         let title: String
-        /// The "module name" style draws the name.
-        let showsName: Bool
-        /// nil unless that style and a page with no tabs, no actions and no search.
+        /// `.moduleName` draws the plate beside the name; `.windowTitle` draws the name alone.
+        let showsIcon: Bool
+        /// nil unless `.moduleName` and a page with no tabs, no actions and no search.
         let statusWord: String?
         let statusActive: Bool
         let iconStyle: SidebarStyle
@@ -104,9 +107,9 @@ struct ShellBarZoneState {
              iconStyle: SidebarStyle, appearsActive: Bool, titlebarIsTransparent: Bool) {
             symbol = identity.symbol
             title = identity.title
-            showsName = style == .moduleName
+            showsIcon = style == .moduleName
             let bare = content.map { $0.tabs.isEmpty && $0.actions.isEmpty && $0.search == nil } ?? true
-            statusWord = showsName && bare ? identity.status?.word : nil
+            statusWord = showsIcon && bare ? identity.status?.word : nil
             statusActive = identity.status?.active ?? false
             self.iconStyle = iconStyle
             self.appearsActive = appearsActive
@@ -480,20 +483,15 @@ struct ShellBarZoneState {
         guard next != snapshot else { return false }
         snapshot = next
 
-        if next.showsName {
-            let root = NameZoneView(symbol: next.symbol, tint: identity.tint, title: next.title,
-                                    iconStyle: next.iconStyle, appearsActive: next.appearsActive,
-                                    titlebarIsTransparent: next.titlebarIsTransparent)
-            let host = nameHost ?? makeHost(root)
-            host.rootView = root
-            host.setAccessibilityLabel(identity.title)
-            nameHost = host
-            nameWidth = host.fittingSize.width
-            view.setView(host, for: .name)
-        } else {
-            nameWidth = 0
-            view.setView(nil, for: .name)
-        }
+        let root = NameZoneView(symbol: next.symbol, tint: identity.tint, title: next.title,
+                                showsIcon: next.showsIcon, iconStyle: next.iconStyle, appearsActive: next.appearsActive,
+                                titlebarIsTransparent: next.titlebarIsTransparent)
+        let host = nameHost ?? makeHost(root)
+        host.rootView = root
+        host.setAccessibilityLabel(identity.title)
+        nameHost = host
+        nameWidth = host.fittingSize.width
+        view.setView(host, for: .name)
 
         if let word = next.statusWord {
             let status = (word: word, active: next.statusActive)
@@ -518,9 +516,7 @@ struct ShellBarZoneState {
     }
 
     private func makeHost<Root: View>(_ root: Root) -> NSHostingView<Root> {
-        let host = NSHostingView(rootView: root)
-        host.sizingOptions = [.intrinsicContentSize]
-        return host
+        NSHostingView.inBar(rootView: root)
     }
 
     // MARK: - Measures and verdicts

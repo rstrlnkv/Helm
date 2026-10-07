@@ -1,11 +1,6 @@
 # The page header
 
-In the settings window a page's header and its controls live in the window's own
-toolbar — one `NSToolbar` **per page**, built once and cached, owned by
-`SettingsWindow` (`SettingsToolbar`, `Sources/HelmApp/SettingsToolbar.swift`; its
-class header holds the reasons: why no page's toolbar is ever rewritten while it
-is on screen, why none is user-customizable, the grace period before a page with
-nothing declared falls back to the shared name-only bar).
+In the settings window a page's header and its controls live in Helm's own page bar — one view at the top of the card's clip, built once by `SettingsWindow` and told what to show on every page change (`ShellPageBar`, `Sources/HelmApp/ShellPageBar.swift`; its class header holds the reasons: why a page that has declared before is shown the instant it is selected, the grace before a page with nothing declared falls back to the name, why a frozen page holds none of its closures). The window has no `NSToolbar`. The class that built one per page, `SettingsToolbar` (`Sources/HelmApp/SettingsToolbar.swift`), is still in the tree and `command grep -rn 'SettingsToolbar(' Sources` prints nothing; what the sections below say of an `NSToolbar`, its items and its identifiers is that class's.
 
 A page says what it wants — tabs, actions, search — through
 `HelmWindowToolbarChannel` and `.helmWindowToolbar(_:token:)`
@@ -19,7 +14,9 @@ lists the files that publish.
 
 ## The bar's zones
 
-Left to right: a spacer that carries the name over to the card, where the card leaves room for one; the name (the module's plate and
+The page bar's zones are the name, the tabs, the actions, the search and the status (`ShellPageBarView.Zone`), framed by `ShellBarLayout`. The name and the status are `ShellPageBar`'s own hosted views (`NameZoneView`, `StatusZoneView`); the other three are `ShellBarTabs`, `ShellBarActions` and `ShellBarSearch`. The name is drawn under both styles, with the module's plate only under `PageBarStyle.moduleName`; the status only under that style on a page with no tabs, no actions and no search.
+
+`SettingsToolbar`'s bar, left to right: a spacer that carries the name over to the card, where the card leaves room for one; the name (the module's plate and
 its name, drawn only under `PageBarStyle.moduleName`); a flexible space; the tabs,
 centred; a flexible space; **one** custom-view item for the whole action capsule;
 the search field. A status-bearing page draws the shared name-only bar instead —
@@ -66,16 +63,13 @@ rests as AppKit's magnifier at every width, through one rest predicate
 ## The bar's menu and style
 
 The bar has one right-click menu (`ShellBarMenu`), filled the same way for the toolbar and for `ShellPageBar`,
-which nothing in `Sources/` constructs. It has an Appearance section (Flat, Liquid Glass) on every page, and
-General mirrors it in the row "Toolbar style"; `ShellPageBar` hands the setting to its zones, and since nothing in `Sources/` constructs that bar, no bar on a screen draws by it. The toolbar's menu is answered by
+which `SettingsWindow` builds. It has an Appearance section (Flat, Liquid Glass) on every page, and
+General mirrors it in the row "Toolbar style"; `ShellPageBar` hands the setting to its zones, so the window's bar draws by it. The toolbar's menu is answered by
 the same local monitor as the magnifier press, so a Control-click on the collapsed
 magnifier has one owner; the same menu is each centre switcher's `NSView.menu`,
 which is what VoiceOver opens.
 
-`PageBarStyle` is a setting in Appearance: the module's plate and name as the
-toolbar's leading item with a status at the trailing edge — the shipping default,
-and what `PageBarStyle.init(stored:)` answers for an empty or unrecognised store —
-or the page's name as the window title with its status as the subtitle. The
+`PageBarStyle` is a setting in Appearance: the module's plate and name at the bar's leading edge with a status at the trailing edge — the shipping default, and what `PageBarStyle.init(stored:)` answers for an empty or unrecognised store — or the name alone, with no plate and no status. The
 environment value `helmPageBar` is what the window sets; where it is nil — a sheet,
 a page mounted on its own — the header is drawn in the page rather than in a
 toolbar that does not exist for it (ARCHITECTURE.md § The header strip).
@@ -94,7 +88,7 @@ reasons — the pointer on it while the window is key, the page scrolled underne
 the page declaring that what sits under the band is not a scroll view — from one
 answer, `HelmPageHeader.isLit`, which feeds both the fill and the rule.
 
-Under the settings window's toolbar the same light is `helmToolbarBackdrop`'s, and
+Under the settings window's bar the same light is `helmToolbarBackdrop`'s, and
 whose band lies there depends on the system: `HelmBandChoice`
 (`Sources/HelmUI/DesignSystem/HelmBandChoice.swift`) is read once from the running
 macOS and handed down as one value, and its header holds the 26-versus-27 reasoning.
