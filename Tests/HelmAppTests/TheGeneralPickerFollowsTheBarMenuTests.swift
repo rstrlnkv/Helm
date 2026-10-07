@@ -14,7 +14,7 @@ import XCTest
 /// `@State`, and nothing on the page listens for a change — a picker left
 /// saying "With Icon" over a bar that has just gone to the plain title is two
 /// answers to one question on one screen. What keeps it right is the pane's
-/// own composition in `SettingsSplitViewController` (a new identity for the
+/// own composition in `SettingsShellViewController` (a new identity for the
 /// whole pane when the style changes), so the page is mounted exactly there,
 /// through the real controller, and the choice is made through the menu
 /// item's own action and target — nothing here re-composes either half.
@@ -130,7 +130,7 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             let model = SettingsModel(host: ModuleHost.shared)
             model.selection = .general
             let channel = HelmWindowToolbarChannel()
-            let split = SettingsSplitViewController(model: model, toolbarChannel: channel, band: .onMacOS(27))
+            let split = SettingsShellViewController(model: model, toolbarChannel: channel, band: .onMacOS(27))
             let window = NSWindow(contentViewController: split)
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.appearance = NSAppearance(named: .aqua)

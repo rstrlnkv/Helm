@@ -8,7 +8,7 @@ import XCTest
 /// **`SettingsToolbar.identifiers` leads with what its `lead` says: the sidebar's
 /// tracking separator for `.sidebarSeparator`, nothing or the leading spacer for
 /// `.spacer`; the `.sidebarSeparator` bar stays exactly what it was.** The window
-/// constructs `.sidebarSeparator`; `.spacer` is constructed by tests alone, here and in `TheBarTellsItsShellWhenItIsAttachedTests`.
+/// constructs `.spacer`; `.sidebarSeparator` is the initialiser's default, so every test that builds a `SettingsToolbar` without `lead:` gets it, and only this file names it.
 ///
 /// The tests above the mark "a toolbar told where the pane is" need no window, no `NSWindow`, no screen:
 /// `SettingsToolbar.identifiers` and `SettingsToolbar.spacerWidth` are pure, and
@@ -207,7 +207,7 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
                      "a not-a-number items start gets a number: the spacer's width is a guess")
     }
 
-    /// The sidebar's maximum (`SettingsWindow.sidebarMaximum`, 320) is the sidebar's business, not this function's: 320 → 243.5, wider keeps growing, finite.
+    /// The sidebar's widest (`ShellGeometry.sidebarRange`, 320) is the sidebar's business, not this function's: 320 → 243.5, wider keeps growing, finite.
     /// Total failure prints: "a pane at the 320 maximum carries no spacer" / "a pane at 320 gets <x>, not 243.5" /
     /// "a pane wider than 320 (<p>) shrank or went non-finite: …".
     func testAPaneWiderThanTheMaximumStaysArithmetic() throws {

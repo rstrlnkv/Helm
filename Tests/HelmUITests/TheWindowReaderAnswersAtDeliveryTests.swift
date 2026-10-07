@@ -23,7 +23,7 @@ import HelmTestSupport
 /// - the view moves to a **different** window during the hop, so "the window"
 ///   the delivery answers for is not the one the call was made in;
 /// - **two** readers in one window — the shape the app actually mounts
-///   (`SettingsSplitViewController.viewDidLoad` in `SettingsWindow.swift`, once for
+///   (`SettingsShellViewController.makeShell` in `SettingsWindow.swift`, once for
 ///   `SettingsSidebar` and once for `SettingsDetail`), and the reason the measured
 ///   trace showed the unmount landing twice per launch.
 ///

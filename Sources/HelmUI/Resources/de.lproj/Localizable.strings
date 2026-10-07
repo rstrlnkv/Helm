@@ -869,7 +869,6 @@
 "Waiting for you to allow Helm in System Settings." = "Wartet auf Ihre Erlaubnis in den Systemeinstellungen.";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS hat Helm nicht zu den Anmeldeobjekten hinzugefügt, es öffnet sich also nicht von selbst.";
 "Open Login Items & Extensions…" = "Anmeldeobjekte & Erweiterungen öffnen…";
-"Switched off" = "Ausgeschaltet";
 "Put back" = "Zurücklegen";
 "back where it was" = "zurückgelegt";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "Die Markierung, die eine Regel am zweiten Zugriff hindert, ließ sich nicht schreiben – die Regel kann diese Datei innerhalb einer Stunde erneut nehmen.";

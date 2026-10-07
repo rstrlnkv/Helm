@@ -279,20 +279,64 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
                        "a later report did not reach the bar on the window: the spacer is \(String(describing: widthConstant(of: window.toolbar?.items.first))), not 183.5")
     }
 
-    /// A pane whose leading edge is huge and finite: the spacer is as wide as the number says, finite, and the
-    /// bar neither traps nor refuses. (No ceiling by design: `spacerWidth`'s doc comment.) Total failure
-    /// prints: "a huge finite pane gave a spacer of <w>" / "a huge finite width was not kept as room: <x>".
-    func testAHugeFiniteLeadingGivesAFiniteSpacerAndNothingTraps() throws {
+    /// A pane whose leading edge is huge and finite. In a window the spacer is held to the window's own width, so
+    /// it is never wider than the window; with no window there is no ceiling to hold it to, and the answer is
+    /// still finite and the bar neither traps nor refuses. Total failure prints: "a huge finite pane gave a spacer
+    /// of <w>, not the window's <W> + 16 - seed" / "a huge finite width was not kept as room: <x>" / "a pane
+    /// leading at the window's own width was held at <w>" / "a 500 pt window gave a spacer of <w>: the ceiling is
+    /// not the window's width" / "with no window a huge finite pane gave a spacer of <w>".
+    func testALeadingPastTheWindowIsHeldAtItAndWithoutAWindowNothingTraps() throws {
         let toolbar = SettingsToolbar(model: SettingsModel(host: ModuleHost.shared),
                                       channel: HelmWindowToolbarChannel(), lead: .spacer)
         let window = unshownWindow()
         defer { window.toolbar = nil }
         toolbar.window = window
+        let ceiling = window.frame.width
+        XCTAssertGreaterThan(ceiling, 0, "the fixture is wrong: the window has no width")
         toolbar.paneMoved(leading: 1e9, width: CGFloat.greatestFiniteMagnitude)
-        XCTAssertEqual(toolbar.leadingSpacer ?? -1, 1e9 + 16 - SettingsToolbar.itemsStartSeed, accuracy: 1,
-                       "a huge finite pane gave a spacer of \(String(describing: toolbar.leadingSpacer))")
+        XCTAssertEqual(toolbar.leadingSpacer ?? -1, ceiling + 16 - SettingsToolbar.itemsStartSeed, accuracy: 0.0001,
+                       "a huge finite pane gave a spacer of \(String(describing: toolbar.leadingSpacer)), not the window's \(ceiling) + 16 - seed")
         XCTAssertEqual(toolbar.offeredRoom(), CGFloat.greatestFiniteMagnitude,
                        "a huge finite width was not kept as room: \(toolbar.offeredRoom())")
+        toolbar.paneMoved(leading: ceiling, width: 100)
+        XCTAssertEqual(toolbar.leadingSpacer ?? -1, ceiling + 16 - SettingsToolbar.itemsStartSeed, accuracy: 0.0001,
+                       "a pane leading at the window's own width was held at \(String(describing: toolbar.leadingSpacer))")
+        window.setContentSize(NSSize(width: 500, height: 700))
+        let narrow = window.frame.width
+        XCTAssertLessThan(narrow, ceiling, "the fixture is wrong: the window did not narrow")
+        toolbar.paneMoved(leading: 1e9, width: 100)
+        XCTAssertEqual(toolbar.leadingSpacer ?? -1, narrow + 16 - SettingsToolbar.itemsStartSeed, accuracy: 0.0001,
+                       "a \(narrow) pt window gave a spacer of \(String(describing: toolbar.leadingSpacer)): the ceiling is not the window's width")
         window.layoutIfNeeded()
+
+        let loose = SettingsToolbar(model: SettingsModel(host: ModuleHost.shared),
+                                    channel: HelmWindowToolbarChannel(), lead: .spacer)
+        XCTAssertNil(loose.window, "the fixture is wrong: the toolbar has a window")
+        loose.paneMoved(leading: 1e9, width: CGFloat.greatestFiniteMagnitude)
+        XCTAssertEqual(loose.leadingSpacer ?? -1, 1e9 + 16 - SettingsToolbar.itemsStartSeed, accuracy: 1,
+                       "with no window a huge finite pane gave a spacer of \(String(describing: loose.leadingSpacer))")
+        XCTAssertEqual(loose.offeredRoom(), CGFloat.greatestFiniteMagnitude)
+    }
+
+    /// The count the settle's bound stands on: a report resets it, a flip counts one. (The gate itself, where a
+    /// settle that keeps flipping stops reading, needs a visible window whose bar answers differently on each
+    /// flip, which no window that is never shown can be made to do; the count is what can be driven.) Total
+    /// failure prints: "a fresh toolbar counts <n> flips" / "a report that flipped the bar left the count at <n>,
+    /// not 1" / "a report that flipped nothing left the count at <n>, not 0: a report does not re-arm the bound" /
+    /// "a flip back left the count at <n>, not 1".
+    func testAReportRearmsTheFlipCountAndAFlipCountsOne() {
+        let toolbar = SettingsToolbar(model: SettingsModel(host: ModuleHost.shared),
+                                      channel: HelmWindowToolbarChannel(), lead: .spacer)
+        XCTAssertEqual(SettingsToolbar.flipCeiling, 4, "the ceiling moved from 4: the reason written above `flipCeiling` (one flip from the report, three from a read) no longer adds up to it")
+        XCTAssertEqual(toolbar.flipsSinceReport, 0, "a fresh toolbar counts \(toolbar.flipsSinceReport) flips")
+        toolbar.paneMoved(leading: 200, width: 856)
+        XCTAssertTrue(toolbar.hasSpacer, "the fixture is wrong: the report gave no spacer")
+        XCTAssertEqual(toolbar.flipsSinceReport, 1, "a report that flipped the bar left the count at \(toolbar.flipsSinceReport), not 1")
+        toolbar.paneMoved(leading: 260, width: 796)
+        XCTAssertEqual(toolbar.flipsSinceReport, 0,
+                       "a report that flipped nothing left the count at \(toolbar.flipsSinceReport), not 0: a report does not re-arm the bound")
+        toolbar.paneMoved(leading: 0, width: 1060)
+        XCTAssertFalse(toolbar.hasSpacer, "the fixture is wrong: the report left the spacer")
+        XCTAssertEqual(toolbar.flipsSinceReport, 1, "a flip back left the count at \(toolbar.flipsSinceReport), not 1")
     }
 }

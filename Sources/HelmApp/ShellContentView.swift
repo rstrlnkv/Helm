@@ -28,8 +28,6 @@ import HelmRuntime
 /// card's x, so it is finite whenever the card's is. A radius the probe or the
 /// window answers as not-a-number is a rung that did not answer
 /// (`WindowCorner.read`), never a radius.
-///
-/// Nothing in `Sources` builds this view yet.
 @MainActor
 final class ShellContentView: NSView {
 

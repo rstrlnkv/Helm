@@ -9,8 +9,7 @@ import HelmUI
 ///
 /// **The foot row stands for the three selections that are not a module.**
 /// `SettingsSelection` has `.general`, `.log` and `.about` beside `.module`,
-/// and this value gives all three the one row `.foot`. The sidebar
-/// `SettingsWindow.swift` draws today gives each of the three a row of its own.
+/// and this value gives all three the one row `.foot`.
 ///
 /// **Not main-actor and no SwiftUI import**, so a test can build and question it
 /// from values alone.
@@ -81,8 +80,7 @@ struct ShellSidebarRows: Equatable, Sendable {
     ///
     /// The admin helper never blocks: it is a password prompt, not a grant that
     /// can silently go missing, and a warning that cannot be verified is worse
-    /// than none. `SettingsWindow.swift`'s private `isBlocked` holds the same
-    /// rule today.
+    /// than none.
     static func blocked(inertWithout: [ModulePermission], disk: PermissionState,
                         accessibility: PermissionState, screenRecording: PermissionState) -> Bool {
         inertWithout.contains { need in
@@ -103,5 +101,10 @@ struct ShellSidebarRows: Equatable, Sendable {
     static func settled(_ selection: SettingsSelection, enabled: Set<String>) -> SettingsSelection {
         if case .module(let id) = selection, !enabled.contains(id) { return .general }
         return selection
+    }
+
+    /// The same for a selection that may be none, which stays none.
+    static func settled(_ selection: SettingsSelection?, enabled: Set<String>) -> SettingsSelection? {
+        selection.map { settled($0, enabled: enabled) }
     }
 }

@@ -227,8 +227,8 @@ import HelmUI
 
     /// **What the bar's first item is: the sidebar's tracking separator
     /// (`.sidebarSeparator`, the default), or no tracking item at all
-    /// (`.spacer`).** `SettingsWindow` constructs `.sidebarSeparator`; `.spacer`
-    /// is constructed by tests alone. A `.spacer` bar starts with the spacer
+    /// (`.spacer`).** `SettingsWindow` constructs `.spacer`; `.sidebarSeparator`
+    /// is for the test rigs that still mount a split view. A `.spacer` bar starts with the spacer
     /// where the pane leaves room for one (`leadingSpacer`, recomputed by
     /// `leadMoved()`), and where it does not, or before the pane has been told,
     /// with whatever `identifiers` lists next: its name under `.moduleName`.
@@ -238,7 +238,7 @@ import HelmUI
     /// showing that bar, never from `init` and never without a window. Held
     /// for the toolbar's life: capture the receiver weakly. Called after the
     /// bar is the attached one. A receiver is to ask for a layout, not force
-    /// one; nothing under `Sources/` passes a receiver.
+    /// one; `SettingsWindow` passes the shell's `barWasAttached()`.
     private let barAttached: () -> Void
 
     private static let nameID = NSToolbarItem.Identifier("helm.name")
@@ -434,8 +434,7 @@ import HelmUI
     // MARK: - Where the pane is
 
     /// Where the pane stands, as this class takes it: both numbers finite and
-    /// not below zero. Meant for the card's frame (`ShellContentView`'s
-    /// `cardMoved`); nothing connects the two.
+    /// not below zero. The card's frame, handed over by `SettingsWindow` from the controller's `cardMoved`.
     private struct Pane: Equatable {
         let leading: CGFloat
         let width: CGFloat
@@ -444,6 +443,19 @@ import HelmUI
     /// `nil` until the first `paneMoved`. Nothing clears it: it is the last
     /// position told, not a value of one visit.
     private var pane: Pane?
+
+    /// How many times the spacer has appeared or left since the pane was last
+    /// told, the report's own included: reading where the items start can flip
+    /// it, and the new bar settles and reads again. Once it reaches the ceiling
+    /// nothing reads again until a report stores a new position, so the cycle
+    /// is bounded by this count and not by two reads agreeing, which nothing
+    /// guarantees.
+    ///
+    /// Why 4: the report's own flip plus three from a read that follows it (`settle`, `windowDidResize()`). The number is
+    /// chosen, measured by nobody. No test holds the gate in `readItemsStart()`,
+    /// which is reachable only on a visible window.
+    private(set) var flipsSinceReport = 0
+    nonisolated static let flipCeiling = 4
 
     /// Where the toolbar starts its items before any bar has been read: 92.5,
     /// measured at a 200 pt sidebar on macOS 27.2 only, on no other width and
@@ -464,8 +476,7 @@ import HelmUI
 
     var hasSpacer: Bool { leadingSpacer != nil }
 
-    /// Told where the pane is; tests alone call it, nothing under `Sources/`
-    /// does. Returns whether anything was stored: the same pair as the last
+    /// Told where the pane is, by `SettingsWindow` from the card's frame: the first time from its initialiser, afterwards a turn of the main queue after the layout that moved it. Returns whether anything was stored: the same pair as the last
     /// one is refused, so a layout that moved neither number (a height-only
     /// change) arms no settle.
     ///
@@ -474,13 +485,17 @@ import HelmUI
     /// `width` no room (the tabs fold; +inf is not sent to the upper bound,
     /// where a huge room would unfold them into overflow), and for `leading`
     /// 0, for which `spacerWidth` answers nil while the items start at or past
-    /// `nameInset`.
+    /// `nameInset`. A `leading` past the window's own width is held at it, so
+    /// the spacer is never wider than the window; with no window there is no
+    /// ceiling to hold it to.
     @discardableResult
     func paneMoved(leading: CGFloat, width: CGFloat) -> Bool {
-        let next = Pane(leading: leading.clampedIfFinite(to: 0...CGFloat.greatestFiniteMagnitude) ?? 0,
+        let ceiling = window?.frame.width ?? CGFloat.greatestFiniteMagnitude
+        let next = Pane(leading: leading.clampedIfFinite(to: 0...max(ceiling, 0)) ?? 0,
                         width: width.clampedIfFinite(to: 0...CGFloat.greatestFiniteMagnitude) ?? 0)
         guard next != pane else { return false }
         pane = next
+        flipsSinceReport = 0
         _ = readItemsStart()
         leadMoved()
         return true
@@ -497,7 +512,8 @@ import HelmUI
     /// Nor while no bar is attached, the view has no window or no width, or
     /// the answer is not a position. Returns whether the stored value moved.
     private func readItemsStart() -> Bool {
-        guard lead == .spacer, window?.isVisible == true, let bar = attachedBar,
+        guard lead == .spacer, flipsSinceReport < Self.flipCeiling, window?.isVisible == true,
+              let bar = attachedBar,
               let view = bar.spacerItem?.view ?? bar.nameItem?.view,
               view.window != nil, view.frame.width > 0 else { return false }
         let start = view.convert(view.bounds, to: nil).minX
@@ -520,6 +536,11 @@ import HelmUI
         let flipped = (next == nil) != (leadingSpacer == nil)
         leadingSpacer = next
         if flipped {
+            flipsSinceReport += 1
+            if flipsSinceReport == Self.flipCeiling {
+                HelmLog.shared.warn("toolbar", "the bar's spacer flipped \(Self.flipCeiling) times since the pane was last told; "
+                    + "no more reads until it moves (pane leading \(pane?.leading ?? -1), items start \(itemsStart))")
+            }
             refreshAndResettle()
             return true
         }
@@ -579,7 +600,7 @@ import HelmUI
     }
 
     /// The symbol, tint and name of the page on screen: a module's are the ones
-    /// the sidebar draws for its row (`SettingsSidebar` in `SettingsWindow.swift`), and
+    /// the sidebar draws for its row (`ShellSidebar`), and
     /// General, Log and About share Settings' — read off `currentSelection` and
     /// `ModuleRegistry` rather than off `model.pageTitle`, which the
     /// `.moduleName` bar style deliberately carries with no subtitle and no
@@ -940,9 +961,9 @@ import HelmUI
     /// right. The first item is the lead's: under `.sidebarSeparator` the
     /// tracking separator (`hasSpacer` is ignored there, so the list is this one
     /// whatever else is asked), under `.spacer` `helm.leadingSpacer` when
-    /// `hasSpacer` and nothing otherwise. This window's
-    /// `.fullSizeContentView` style mask plus its real sidebar item are
-    /// exactly the shape `NSToolbarSidebarTrackingSeparatorItemIdentifier`'s
+    /// `hasSpacer` and nothing otherwise. A window with a
+    /// `.fullSizeContentView` style mask and a split view's sidebar item (a test rig's; the settings window has none) is
+    /// the shape `NSToolbarSidebarTrackingSeparatorItemIdentifier`'s
     /// own header names ("automatically configures it to track the divider
     /// of the sidebar if one is discovered … windows with
     /// `NSWindowStyleMaskFullSizeContentView`"). The name item, and the
@@ -1023,8 +1044,8 @@ import HelmUI
     /// sliver), or an input is not a position. Not-a-number or infinite on
     /// either side, or a pane leading below zero, answers nil, and so does a
     /// width that is not finite: a width computed from them would be a guess.
-    /// When it answers, the width is finite and above zero. No ceiling: the
-    /// sidebar's own range is its owner's business. `leadMoved()` calls it.
+    /// When it answers, the width is finite and above zero. No ceiling here:
+    /// `paneMoved` holds `leading` to the window's width before it gets here. `leadMoved()` calls it.
     nonisolated static func spacerWidth(paneLeading: CGFloat, itemsStart: CGFloat) -> CGFloat? {
         guard paneLeading.isFinite, paneLeading >= 0, itemsStart.isFinite else { return nil }
         let width = paneLeading + nameInset - itemsStart
@@ -1567,9 +1588,9 @@ import HelmUI
     /// **A sibling with no size of its own, never the view being measured**
     /// (`CLAUDE.md`'s own rule for a geometry reading): the pane's width once
     /// `paneMoved(leading:width:)` has told it, else the detail pane's own
-    /// width when this window's content is the split view it always is
-    /// (`SettingsSplitViewController`), or the window's whole content layout
-    /// rect for a window under test that mounts the toolbar without one.
+    /// width when this window's content is a split view (a test rig's; the
+    /// window itself reports the pane), or the window's whole content layout
+    /// rect for a window that mounts the toolbar without either.
     /// Internal so a test reads it without a window.
     func offeredRoom() -> CGFloat {
         if let pane { return pane.width }

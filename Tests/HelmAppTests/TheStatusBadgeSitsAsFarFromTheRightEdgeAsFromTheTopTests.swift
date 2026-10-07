@@ -43,21 +43,18 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     private static let keepAwake = KeepAwakeDescriptor.id.rawValue
     private static let vpn = VPNDescriptor.id.rawValue
     private static let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-    private static let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
 
     private var owner: SettingsWindow?
     private var window: NSWindow?
     private var model: SettingsModel?
     private var bar: SettingsToolbar?
     private var foundFrame: String?
-    private var foundSplit: [String]?
     private var savedStyle: PageBarStyle = .moduleName
     private var savedAppAppearance: NSAppearance?
 
     override func setUp() {
         super.setUp()
         foundFrame = UserDefaults.standard.string(forKey: Self.frameKey)
-        foundSplit = UserDefaults.standard.stringArray(forKey: Self.splitKey)
         savedStyle = AppSettings.pageBarStyle
         savedAppAppearance = NSApplication.shared.appearance
         AppSettings.pageBarStyle = .moduleName
@@ -76,7 +73,6 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         UserDefaults.standard.removeObject(forKey: "module.\(Self.keepAwake).enabled")
         UserDefaults.standard.removeObject(forKey: "module.\(Self.vpn).enabled")
         UserDefaults.standard.set(foundFrame, forKey: Self.frameKey)
-        UserDefaults.standard.set(foundSplit, forKey: Self.splitKey)
         AppSettings.pageBarStyle = savedStyle
         super.tearDown()
     }

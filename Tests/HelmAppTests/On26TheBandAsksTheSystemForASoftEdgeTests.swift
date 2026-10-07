@@ -111,7 +111,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
     }
 
     private func detailPane(of window: NSWindow) -> NSView? {
-        (window.contentViewController as? NSSplitViewController)?.splitViewItems.last?.viewController.view
+        SettingsWindowParts.pane(of: window)
     }
 
     // MARK: - Reading the pocket
@@ -255,12 +255,9 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         let control = try controlStyles()
 
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-        let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
         let foundFrame = UserDefaults.standard.string(forKey: frameKey)
-        let foundSplit = UserDefaults.standard.stringArray(forKey: splitKey)
         addTeardownBlock {
             UserDefaults.standard.set(foundFrame, forKey: frameKey)
-            UserDefaults.standard.set(foundSplit, forKey: splitKey)
         }
 
         let foundStyle = AppSettings.store.object(PageBarStyle.storageKey)
@@ -284,8 +281,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
                 window.toolbar = nil
                 window.close()
             }
-            let pane = { (window.contentViewController as? NSSplitViewController)?
-                .splitViewItems.last?.viewController.view }
+            let pane = { SettingsWindowParts.pane(of: window) }
 
             let steps: [(String, () -> Void)] = [
                 ("General", { model.selection = .general }),

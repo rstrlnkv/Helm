@@ -269,4 +269,16 @@ final class TheSidebarListsOnlyWhatIsOnTests: XCTestCase {
             XCTAssertEqual(Rows.settled(.log, enabled: enabled), .log)
         }
     }
+
+    /// The window's selection may be none: none stays none, and a chosen one is judged as above.
+    func testASelectionThatMayBeNoneIsSettledAndNoneStaysNone() {
+        let none: SettingsSelection? = nil
+        XCTAssertNil(Rows.settled(none, enabled: []), "no selection became \(String(describing: Rows.settled(none, enabled: [])))")
+        let off: SettingsSelection? = .module("disk")
+        XCTAssertEqual(Rows.settled(off, enabled: []), .some(.general),
+                       "an optional selection on a module that is off stayed on it")
+        XCTAssertEqual(Rows.settled(off, enabled: ["disk"]), .some(.module("disk")))
+        let about: SettingsSelection? = .about
+        XCTAssertEqual(Rows.settled(about, enabled: []), .some(.about))
+    }
 }

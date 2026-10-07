@@ -869,7 +869,6 @@
 "Waiting for you to allow Helm in System Settings." = "Ожидает вашего разрешения в Настройках системы.";
 "macOS would not add Helm to your login items, so it will not open by itself." = "Helm не удалось добавить в объекты входа, поэтому сам он открываться не будет.";
 "Open Login Items & Extensions…" = "Открыть «Объекты входа и расширения»…";
-"Switched off" = "Выключенные";
 "Put back" = "Вернуть";
 "back where it was" = "возвращено";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "Метку, которая не даёт правилу сработать дважды, записать не удалось — в течение часа правило может забрать этот файл снова.";

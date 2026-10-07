@@ -22,8 +22,8 @@ on the doc comment of `Sources/HelmUI/DesignSystem/OffScreenIdle.swift`: it unmo
 subtree while its window is out of sight and rebuilds it from the view model's current
 state; the model keeps its subscription throughout, so nothing is missed. It reaches a
 module page from the window and not from the page: both hosting controllers that
-`SettingsSplitViewController.viewDidLoad` (`Sources/HelmApp/SettingsWindow.swift`)
-builds end on `helmIdlesOffScreen()` — the one hosting `SettingsSidebar`, and the one
+`SettingsShellViewController.makeShell` (`Sources/HelmApp/SettingsWindow.swift`)
+builds end on `helmIdlesOffScreen()` — the one hosting `ShellSidebar`, and the one
 hosting `SettingsDetail`, the pane that holds whichever module page is open, so a page
 inherits the idling without asking for it. `helmSettingsColumn()` ends on the same
 modifier, so a block that takes the column takes the idling with it; a page whose root

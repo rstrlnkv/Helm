@@ -27,10 +27,8 @@ import Module_VPN_UI
 @MainActor
 final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
 
-    /// `SettingsWindow.minSize.width` (860) minus `SettingsWindow
-    /// .sidebarMaximum` (320) — the narrowest a page's own pane is ever asked
-    /// to draw at: the window at its minimum width, with the sidebar pulled
-    /// out to its own maximum thickness. `LivePageToolbarFixture`'s own
+    /// `SettingsWindow.minSize.width` (860) minus the widest of `ShellGeometry.sidebarRange` (320): narrower than the window reaches, where the sidebar is 200 or the rail.
+    /// `LivePageToolbarFixture`'s own
     /// `width:` sets the window's content width directly, which is what
     /// `offeredRoom()` reads back when there is no split view to ask (its own
     /// header) — the same convention `TheLastItemsGlassSitsAsFarFromTheEdge-

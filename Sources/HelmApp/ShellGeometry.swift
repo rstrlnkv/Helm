@@ -30,7 +30,7 @@ enum ShellGeometry {
     /// The sidebar's width when it is folded to the rail.
     nonisolated static let railWidth: CGFloat = 56
 
-    /// The widths the sidebar can be dragged to.
+    /// The widths a stored or dragged sidebar width is brought into; nothing in the window drags it.
     nonisolated static let sidebarRange: ClosedRange<CGFloat> = 150...320
 
     /// The width a stored value that is not a number reads as.

@@ -23,14 +23,16 @@ import HelmUI
 /// returns to it. There is exactly one place an action is ever drawn, at either
 /// width, which is what this file now reads for.
 ///
-/// **The band is reachable, and it is reachable by arithmetic rather than by
-/// opinion.** `SettingsWindow` refuses a content width under 860 and lets the
-/// sidebar be dragged to 320, so the narrowest pane a person can produce is
-/// 860 − 320 = 540 pt — twenty points under the threshold, one drag of the
-/// sidebar divider at the smallest window the app allows. The detail item's own
-/// `minimumThickness` of 420 is the floor below that, and is what the band would
-/// open out to if the window minimum ever fell. All three numbers are read out
-/// of `Sources/HelmApp/SettingsWindow.swift` rather than copied here, so the day
+/// **The band is the one the shell's geometry allows, not one the window
+/// reaches.** `SettingsWindow` refuses a content width under 860,
+/// `ShellGeometry.sidebarRange` ends at 320 and the card keeps 4 pt from the
+/// trailing edge, so the narrowest pane that geometry allows is
+/// 860 − 320 − 4 = 536 pt — twenty-four points under the threshold. Nothing in
+/// `Sources` drags the sidebar: the window sets it to
+/// `ShellGeometry.defaultSidebarWidth` or `ShellGeometry.railWidth`, and at the
+/// default the pane is 656 pt, above the threshold. The three numbers are read
+/// out of `Sources/HelmApp/SettingsWindow.swift` and
+/// `Sources/HelmApp/ShellGeometry.swift` rather than copied here, so the day
 /// the band closes this file fails and says so instead of passing over a page
 /// that no longer has the problem.
 ///
@@ -77,11 +79,11 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
 
     // MARK: - The band, read out of the window that decides it
 
-    /// One integer assigned to `name` in `SettingsWindow.swift`, and a failure
+    /// One integer assigned to `name` in `SettingsWindow.swift` (or the file named), and a failure
     /// naming the file when there is not exactly one.
     private func windowNumber(_ pattern: String, _ what: String,
+                              in path: String = "Sources/HelmApp/SettingsWindow.swift",
                               file: StaticString = #filePath, line: UInt = #line) -> CGFloat? {
-        let path = "Sources/HelmApp/SettingsWindow.swift"
         guard let text = try? RepoSource.text(of: path) else {
             XCTFail("\(path) could not be read", file: file, line: line)
             return nil
@@ -117,18 +119,19 @@ final class TheNarrowPaneCanStillActOnAPackageTests: XCTestCase {
     /// means this whole file is about a state nobody can reach any more, and a
     /// skip reads as a pass in a failures-only summary.
     private func narrowBand(file: StaticString = #filePath, line: UInt = #line) -> [CGFloat] {
+        let geometry = "Sources/HelmApp/ShellGeometry.swift"
         guard let contentMin = windowNumber(#"minSize = NSSize\(width: ([0-9.]+)"#,
                                             "the window's minimum content width"),
-              let sidebarMax = windowNumber(#"sidebarMaximum: CGFloat = ([0-9.]+)"#,
-                                            "the sidebar's maximum thickness"),
-              let detailMin = windowNumber(#"detailItem\.minimumThickness = ([0-9.]+)"#,
-                                           "the detail pane's minimum thickness")
+              let sidebarMax = windowNumber(#"sidebarRange: ClosedRange<CGFloat> = [0-9.]+\.\.\.([0-9.]+)"#,
+                                            "the sidebar's widest width", in: geometry),
+              let inset = windowNumber(#"inset: CGFloat = ([0-9.]+)"#,
+                                       "the card's gap to the window's trailing edge", in: geometry)
         else { return [] }
         let split = threshold
         XCTAssertGreaterThan(split, 0, "no width in 200…1400 shows the inspector", file: file, line: line)
-        // The pane is what is left of the smallest window when the sidebar is
-        // dragged as wide as it goes, and never less than the pane's own floor.
-        let floor = max(detailMin, contentMin - sidebarMax)
+        // The pane is what is left of the smallest window at the widest sidebar
+        // `ShellGeometry.sidebarRange` allows, less the card's inset.
+        let floor = contentMin - sidebarMax - inset
         guard floor < split else {
             XCTFail("""
                 the narrowest pane a person can reach is \(floor) pt and `HomebrewSplit` shows the \

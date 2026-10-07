@@ -109,10 +109,10 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
 
     // MARK: - The two windows, alike but for one flag
 
-    /// The settings window's construction: split view, sidebar item, a detail
+    /// A split-view rig, not the settings window's construction: split view, sidebar item, a detail
     /// pane hosting a grouped `Form` whose toolbar is bridged into the window,
-    /// `.fullSizeContentView`, hidden title — the window `SettingsWindow` builds
-    /// in its initialiser. The probe sets `detail.sceneBridgingOptions =
+    /// `.fullSizeContentView`, hidden title. `SettingsWindow` builds a shell with no
+    /// split view. The probe sets `detail.sceneBridgingOptions =
     /// [.toolbars]` itself; `SettingsWindow` sets none any more — its toolbar
     /// is the app-owned `NSToolbar` `SettingsToolbar` builds — so the bridge
     /// here is the probe's own shape and not a copy of what ships. Never
@@ -369,17 +369,13 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
     /// `TheWindowsBandReadsTheDeclarationTests` reads it: the strip's surface
     /// against the last row of the safe area, where the rule is.
     func testEachSystemsSettingsWindowWearsExactlyOneBand() throws {
-        // `SettingsWindow` autosaves its frame and its sidebar's divider into
-        // the test tool's own defaults domain; what was found there is put
-        // back, absent included — left there, both were every run's
-        // (2026-09-28).
+        // `SettingsWindow` autosaves its frame into the test tool's own defaults
+        // domain; what was found there is put back, absent included — left
+        // there, it was every run's (2026-09-28).
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-        let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
         let foundFrame = UserDefaults.standard.string(forKey: frameKey)
-        let foundSplit = UserDefaults.standard.stringArray(forKey: splitKey)
         addTeardownBlock {
             UserDefaults.standard.set(foundFrame, forKey: frameKey)
-            UserDefaults.standard.set(foundSplit, forKey: splitKey)
         }
         // What each system should wear is written here, not read back off
         // the decision — a decision that gave 26 27's answer would otherwise
@@ -406,8 +402,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
                     """)
 
                 model.selection = .general
-                let pane = try XCTUnwrap((window.contentViewController as? NSSplitViewController)?
-                    .splitViewItems.last?.viewController.view, "\(where_): no detail pane")
+                let pane = try XCTUnwrap(SettingsWindowParts.pane(of: window), "\(where_): no detail pane")
                 _ = turnTheRunLoop(until: { self.readPocket(under: pane).effectOpacity == (helms ? 0 : 1) },
                                    forAtMost: 10)
                 let general = readPocket(under: pane)
@@ -562,7 +557,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
 
     // MARK: - Probe B — what the flag is load-bearing for
 
-    /// **The title bar is one section over the whole window, and
+    /// **On a split-view rig the title bar is one section over the whole window, and
     /// `titlebarAppearsTransparent` does not touch the surface a band would be
     /// drawn on** — what the flag moves is the *pane*, which is where the
     /// verdict above reads it.
@@ -572,7 +567,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
     /// the only view up there that knows about the split is a 5.5 pt
     /// `NSTitlebarContainerBlockingView` standing on the divider. So there is
     /// no per-section surface in the bar for either Helm or the system to
-    /// light.
+    /// light. Read on `settingsShapedWindow`, a rig that mounts a split view; the settings window has no divider and is not read here.
     ///
     /// macOS 27's window against macOS 26's — flagged against unflagged, both
     /// settled and read in one pass — the bar's census moves, but not at its
@@ -608,8 +603,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
                 under the bar, not the one that stands on the divider — \(bar.sentence)
                 """)
 
-            let sidebarWidth = (opaque.contentViewController as? NSSplitViewController)?
-                .splitViewItems.first?.viewController.view.frame.width ?? 0
+            let sidebarWidth = SettingsWindowParts.sidebarWidth(of: opaque)
             XCTAssertGreaterThan(sidebarWidth, 100, """
                 \(where_): the sidebar is \(sidebarWidth) pt wide, so «as wide as the sidebar» \
                 measures nothing

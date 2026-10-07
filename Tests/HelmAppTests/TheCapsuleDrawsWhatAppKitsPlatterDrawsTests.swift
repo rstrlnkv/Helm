@@ -367,23 +367,19 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     }
 
     private var rigs: [Rig] = []
-    /// The settings window's autosaved frame and sidebar divider as the test
-    /// tool's own domain held them before the first rig, put back after the
-    /// last one drops — `Rig.drop()` removes the frame whether or not it was
-    /// there, which took one another family had left out of the domain, and
-    /// the divider was left behind by every run (2026-09-28).
+    /// The settings window's autosaved frame as the test tool's own domain
+    /// held it before the first rig, put back after the last one drops —
+    /// `Rig.drop()` removes the frame whether or not it was there, which took
+    /// one another family had left out of the domain (2026-09-28).
     private var foundFrame: String?
-    private var foundSplit: [String]?
     private var frameHeld = false
     private static let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-    private static let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
 
     override func tearDown() {
         rigs.forEach { $0.drop() }
         rigs = []
         if frameHeld {
             UserDefaults.standard.set(foundFrame, forKey: Self.frameKey)
-            UserDefaults.standard.set(foundSplit, forKey: Self.splitKey)
         }
         super.tearDown()
     }
@@ -395,7 +391,6 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
             try standInForTheWindowServer()
             holdThePageBarStyle()
             foundFrame = UserDefaults.standard.string(forKey: Self.frameKey)
-            foundSplit = UserDefaults.standard.stringArray(forKey: Self.splitKey)
             frameHeld = true
             standingIn = true
         }

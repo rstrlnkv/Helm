@@ -708,16 +708,6 @@ enum AppStr {
         L("The icon is white when idle and takes on the colour of whichever module is active.")
     }
 
-    /// The sidebar's last group of modules: the ones somebody switched off.
-    ///
-    /// Not `L("Off")`, which Layout's sound setting already owns and which
-    /// seven languages have translated as the state of *that* — one English key
-    /// means one thing.
-    static func switchedOffSection(language: AppLanguage = AppLanguage.current) -> String {
-        L("Switched off", language: language)
-    }
-    static var switchedOffSection: String { switchedOffSection() }
-
     /// A section's heading: the name somebody typed, or its seed translated.
     ///
     /// Never the stored string on its own — a seeded section has no stored

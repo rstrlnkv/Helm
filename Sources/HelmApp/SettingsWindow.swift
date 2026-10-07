@@ -4,20 +4,17 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-/// System Settings-style settings window built on AppKit `NSSplitViewController`
-/// so the sidebar is a full-height vibrant source list, with the traffic lights
-/// floating over it. Each pane hosts a SwiftUI view; a shared `SettingsModel`
-/// carries the selection between them.
+/// The settings window: glass with a column of module rows on it, and an opaque
+/// card holding the page, built by `SettingsShellViewController` from
+/// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
+/// `SettingsModel` carries the selection between them.
 ///
-/// **There is a title bar over the sidebar, and it is not in sections.** This
-/// sentence used to say «no title-bar strip», and the census measured against
-/// it: one `NSTitlebarView` spans the whole window over one full-width
-/// `NSToolbarView`, nothing under the bar is as wide as the sidebar, and the
-/// only view up there that knows about the split is a 5,5 pt
-/// `NSTitlebarContainerBlockingView` standing on the divider
-/// (`TheSystemsScrollEdgeEffectAttachesTests`, read through `TitlebarCensus`).
-/// So there is no per-section surface in the bar for Helm or for the system to
+/// **There is a title bar over the sidebar, and it is not in sections.** One
+/// `NSTitlebarView` spans the whole window over one full-width `NSToolbarView`
+/// (read on a split-view rig, not on this window), so there is no per-section surface in the bar for Helm or for the system to
 /// light, which is why the band this window wears is drawn in the pane below.
+/// The bar's first item is a spacer that carries the page's name over to the
+/// card (`SettingsToolbar.Lead.spacer`), told where the card is.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
@@ -35,9 +32,10 @@ import HelmUI
     /// densest row — name, kind badge, version, description and an action
     /// button — fits from about 940. The Disk screen wants more: its bar needs
     /// 800 pt of pane before the scan statement will show
-    /// (`DiskLayout.barWithStatement`), and at 940 the pane is 690, so the
+    /// (`DiskLayout.barWithStatement`), and at 940 the pane, the window less
+    /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`, is under it, so the
     /// statement never appeared out of the box and nothing suggested widening
-    /// the window would reveal it. 1060 gives a 810 pt pane, which clears it.
+    /// the window would reveal it. 1060 clears it.
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
     /// a sheet is drawn inside this window and the window's own content is the
@@ -60,10 +58,15 @@ import HelmUI
     init(host: ModuleHost, band: HelmBandChoice = .running) {
         let model = SettingsModel(host: host)
         self.model = model
-        settingsToolbar = SettingsToolbar(model: model, channel: toolbarChannel)
-        let split = SettingsSplitViewController(model: model, toolbarChannel: toolbarChannel,
+        let shell = SettingsShellViewController(model: model, toolbarChannel: toolbarChannel,
                                                 band: band)
-        let window = NSWindow(contentViewController: split)
+        let toolbar = SettingsToolbar(model: model, channel: toolbarChannel, lead: .spacer,
+                                      barAttached: { [weak shell] in shell?.barWasAttached() })
+        settingsToolbar = toolbar
+        shell.cardMoved = { [weak toolbar] frame in
+            toolbar?.paneMoved(leading: frame.minX, width: frame.width)
+        }
+        let window = NSWindow(contentViewController: shell)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
         // **Load-bearing on the pane, not in the bar.** Transparent, it holds
@@ -89,6 +92,11 @@ import HelmUI
         self.window = window
         super.init()
         window.delegate = self
+        // The card's place is known to the bar before the bar is put on the
+        // window: one layout, and the report it queued delivered here rather
+        // than a turn of the main queue later.
+        shell.view.layoutSubtreeIfNeeded()
+        shell.deliverCard()
         // Assigning this is what puts the first toolbar on the window —
         // `SettingsToolbar` cannot do it itself at construction, since it is
         // built before this window exists (`init` above needs the toolbar
@@ -145,7 +153,10 @@ import HelmUI
         if moduleID == Self.settingsPage {
             model.selection = .general
         } else if let moduleID {
-            model.selection = .module(moduleID)
+            // A module that is off has no row to show where the window is:
+            // it opens on General.
+            model.selection = ShellSidebarRows.settled(.module(moduleID),
+                                                       enabled: model.host.enabledModuleIDs)
         }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
@@ -232,8 +243,23 @@ enum SettingsSelection: Hashable {
     /// it already built. A changed identity is the only thing that guarantees
     /// the whole subtree is made again.
     @Published private(set) var languageRevision = 0
+    private var liveWatch: AnyCancellable?
+
     init(host: ModuleHost) {
         self.host = host
+        // A module switched off while the window is open leaves the selection
+        // on a page no row leads to. The sink reads the store through
+        // `enabledModuleIDs`, not `host.live`: `@Published` publishes in
+        // `willSet`, so `live` still holds the old set inside it. It closes
+        // the difference between the page and the bar after `live` moves, not
+        // after the stored flag is written: between the store write
+        // (`ModuleHost.swift:56`) and `live[key] = nil` (`:133`) the page
+        // already draws General while the bar still reads the raw selection.
+        liveWatch = host.$live.sink { [weak self] _ in
+            guard let self else { return }
+            let settled = ShellSidebarRows.settled(self.selection, enabled: host.enabledModuleIDs)
+            if settled != self.selection { self.selection = settled }
+        }
         // The model lives as long as the settings window, so the observation
         // needs no teardown — and a deinit cannot touch main-actor state.
         NotificationCenter.default.addObserver(
@@ -253,9 +279,18 @@ enum SettingsSelection: Hashable {
     }
 }
 
-// MARK: - Split controller
+// MARK: - Shell controller
 
-final class SettingsSplitViewController: NSSplitViewController {
+/// What the window's content is: the shell's view, with the sidebar and the page
+/// hosted in it. A plain view controller; the window's size is the user's and
+/// the controller asks nothing of it.
+///
+/// **The card's place is reported outside the content's layout pass.** A flip
+/// of the bar's spacer assigns `window.toolbar`, and that must not happen
+/// inside `ShellContentView.layout()`; `cardWasLaidOut` keeps the newest frame
+/// and `deliverCard()` hands it to `cardMoved` a turn of the main queue later
+/// (the window delivers the first one itself, before the bar has a window).
+@MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
     /// Handed to the detail pane's environment so a page can publish its
     /// toolbar content (`helmWindowToolbar`) without importing `HelmApp` —
@@ -266,6 +301,14 @@ final class SettingsSplitViewController: NSSplitViewController {
     /// under a title bar set from another's.
     private let band: HelmBandChoice
 
+    /// Told where the card is; set by the window, which holds the toolbar.
+    var cardMoved: (CGRect) -> Void = { _ in }
+    private var pendingCard: CGRect?
+    private var deliveryScheduled = false
+
+    private let fold = SidebarFold()
+    private var foldWatch: AnyCancellable?
+
     init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice) {
         self.model = model
         self.toolbarChannel = toolbarChannel
@@ -274,66 +317,66 @@ final class SettingsSplitViewController: NSSplitViewController {
     }
     required init?(coder: NSCoder) { fatalError("not supported") }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    /// The view the controller shows, built on first use.
+    private(set) lazy var shell: ShellContentView = makeShell()
 
-        let sidebar = NSHostingController(
-            rootView: SettingsSidebar(model: model, host: model.host)
-                .modifier(RebuiltOnLanguageChange(model: model))
-                .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
-                // The window survives closing (`isReleasedWhenClosed = false`),
-                // so without this both panes went on re-rendering — and keeping
-                // memory — for every engine event for as long as the app ran.
-                // `OffScreenIdle` in HelmUI has the measurements.
-                .helmIdlesOffScreen())
-        // **The safe area is AppKit's here, and that is what was wrong.**
-        //
-        // This used to be `safeAreaRegions = []` plus a hand-reserved 44 pt
-        // strip in the view: the system's inset thrown away and a slightly
-        // larger one put back, so the first row cleared the traffic lights with
-        // no scroll-edge fade. That was right for the old look and is wrong for
-        // this one — on macOS 26 a sidebar is a pane of glass at the window's
-        // full height, the lights sit on it, and a list scrolling under them
-        // with the system's fade is what every stock app does.
-        //
-        // Measured: AppKit offers 42 pt here and the hand-rolled strip was 44,
-        // so what the substitution bought was two points and the loss of the
-        // fade. The sidebar's *view* was full height throughout; it was its
-        // content that started below the lights.
+    override func loadView() {
+        view = shell
+        // Stage 1 opens expanded; whether the sidebar stays folded across a
+        // launch is not remembered. The sink also sets the width once, now.
+        foldWatch = fold.$collapsed.sink { [weak self] collapsed in
+            self?.shell.sidebarWidth = collapsed
+                ? ShellGeometry.railWidth
+                : ShellGeometry.sidebarWidth(stored: ShellGeometry.defaultSidebarWidth)
+        }
+    }
+
+    /// Whether the sidebar is folded to the rail.
+    var sidebarCollapsed: Bool {
+        get { fold.collapsed }
+        set { fold.collapsed = newValue }
+    }
+
+    /// The toolbar assigned a bar to the window: ask the shell for a layout.
+    /// Asks only, never forces one.
+    func barWasAttached() {
+        guard isViewLoaded else { return }
+        shell.barWasAttached()
+    }
+
+    private func cardWasLaidOut(_ frame: CGRect) {
+        pendingCard = frame
+        guard !deliveryScheduled else { return }
+        deliveryScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.deliverCard() }
+        }
+    }
+
+    /// Hands the newest frame laid out, if any is waiting, to `cardMoved`.
+    func deliverCard() {
+        deliveryScheduled = false
+        guard let frame = pendingCard else { return }
+        pendingCard = nil
+        cardMoved(frame)
+    }
+
+    private func makeShell() -> ShellContentView {
         // The window's size belongs to the user. By default NSHostingController
         // feeds SwiftUI's ideal size into auto layout, and any pane whose ideal
         // height is unbounded (Spacer-centred empty states, plain VStacks
         // without a Form) grows the WINDOW to the full screen. Turning the
         // sizing options off makes every pane fill whatever the window gives
         // it and never the other way around.
+        let sidebar = NSHostingController(
+            rootView: SidebarInTheShell(model: model, fold: fold)
+                .modifier(RebuiltOnLanguageChange(model: model))
+                // The window survives closing (`isReleasedWhenClosed = false`),
+                // so without this both panes went on re-rendering — and keeping
+                // memory — for every engine event for as long as the app ran.
+                // `OffScreenIdle` in HelmUI has the measurements.
+                .helmIdlesOffScreen())
         sidebar.sizingOptions = []
-        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
-        // **Documented as the switch for a full-height sidebar, and measured as
-        // a no-op on macOS 27.** A probe built this same window twice, with the
-        // flag and without, and read the sidebar's top edge in window
-        // coordinates: 700 and 700, safe-area top 42 both times. On this system
-        // a sidebar under `.fullSizeContentView` is already full height and
-        // AppKit already reserves the traffic lights' strip.
-        //
-        // It stays because the deployment target is 26.0 and that is the one
-        // version this cannot be measured on — the property is documented as
-        // deciding whether full-height sidebars appear *after* a style mask is
-        // set, and a line that costs nothing is cheaper than a gap on the
-        // oldest system Helm ships to. It is not what fixed the gap; see the
-        // safe area below, which is.
-        sidebarItem.allowsFullHeightLayout = true
-        sidebarItem.canCollapse = false
-        // Narrower by default, and the person's to change.
-        //
-        // It was pinned at 250 from both sides, which is a sidebar nobody can
-        // resize: the two thicknesses being equal is what made the divider
-        // inert. 214 is the width the redesign draws every window at
-        // (`--sidebar-w`), and the longest row Helm ships — «Удаление
-        // приложений» — still sets in it; the floor and ceiling are there so a
-        // drag cannot leave a column too narrow to read or wide enough to
-        // starve the pane, whose own minimum is 420.
-        sidebarItem.minimumThickness = Self.sidebarMinimum
-        sidebarItem.maximumThickness = Self.sidebarMaximum
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
@@ -386,299 +429,27 @@ final class SettingsSplitViewController: NSSplitViewController {
         // `.toolbar`/`sceneBridgingOptions` route) means for a page with
         // genuinely nothing to declare.
         detail.sizingOptions = []
-        let detailItem = NSSplitViewItem(viewController: detail)
-        detailItem.minimumThickness = 420
-
-        addSplitViewItem(sidebarItem)
-        addSplitViewItem(detailItem)
-
-        // AppKit remembers the divider itself, under this name, in the same
-        // defaults the window frame already uses. Written by hand it would be
-        // a third place storing a number the framework is already storing.
-        splitView.autosaveName = Self.dividerAutosave
-    }
-
-    /// The divider is a hairline to look at and a band to grab.
-    ///
-    /// AppKit hands a thin divider a hit area barely wider than the line, and
-    /// on a sidebar that is the difference between «resizable» and «resizable
-    /// if you find it». The rectangle drawn stays one pixel; the rectangle the
-    /// pointer is tested against is this one, and it is where the resize cursor
-    /// appears too — both come from the same call.
-    override func splitView(_ splitView: NSSplitView,
-                            effectiveRect proposedEffectiveRect: NSRect,
-                            forDrawnRect drawnRect: NSRect,
-                            ofDividerAt dividerIndex: Int) -> NSRect {
-        var grab = proposedEffectiveRect
-        grab.origin.x -= Self.dividerGrab
-        grab.size.width += Self.dividerGrab * 2
-        return grab
-    }
-
-    /// Either side of the hairline. Five is what a pointer finds without
-    /// looking, and it is small enough that the first row of the pane, whose
-    /// own inset is 20, is never inside it.
-    private static let dividerGrab: CGFloat = 5
-
-    /// Whether the first-run placement below has already had its say. Three
-    /// callbacks invite it and only the earliest one that finds a width may
-    /// act; the rest have to be inert, or a layout pass mid-drag would put the
-    /// divider back.
-    private var hasPlacedDivider = false
-    override func viewWillAppear() {
-        super.viewWillAppear()
-        placeInitialDividerIfNeeded()
-    }
-
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        placeInitialDividerIfNeeded()
-    }
-
-    override func viewDidAppear() {
-        super.viewDidAppear()
-        placeInitialDividerIfNeeded()
-    }
-
-    /// **The first run's width, set where the split view actually has one and
-    /// before the window is presented on screen.**
-    ///
-    /// Measured: doing this in `viewDidLoad` gives **180** — the minimum, not
-    /// the 214 asked for. At that point the split has no width to divide, so
-    /// the position clamps to the floor and the default silently becomes the
-    /// smallest allowed. Doing it in `viewDidAppear` ran after the window was
-    /// drawn, and the sidebar, the detail pane and the bridged toolbar tabs
-    /// visibly jumped by 34 pt on the first launch.
-    ///
-    /// Which is why all three callbacks above call this and the width is the
-    /// gate rather than the callback: whichever of them first finds
-    /// `splitView.bounds.width` at `sidebarDefault` or more is the one that
-    /// places the divider, and on this path that is still before the window is
-    /// displayed.
-    private func placeInitialDividerIfNeeded() {
-        guard !hasPlacedDivider else { return }
-        guard splitView.bounds.width >= Self.sidebarDefault else { return }
-        // The flag marks the decision as taken, not a position as written — a
-        // launch that defers to a remembered width must stop asking too.
-        hasPlacedDivider = true
-        // Only a first run gets the default. A stored position is the person's
-        // own drag, and writing 214 over it would undo that on every launch;
-        // this is the only thing that tells a first launch from a hundredth.
-        guard !UserDefaults.standard.hasSavedSplitPosition(Self.dividerAutosave) else { return }
-        splitView.setPosition(Self.sidebarDefault, ofDividerAt: 0)
-    }
-
-    /// The width the redesign draws, and the range a drag may reach.
-    private static let sidebarDefault: CGFloat = 214
-    private static let sidebarMinimum: CGFloat = 180
-    private static let sidebarMaximum: CGFloat = 320
-    /// Versioned, like `HelmSettingsWindow.v4` beside it: the day the range
-    /// changes, a stored position from outside it should be forgotten rather
-    /// than clamped in silence.
-    private static let dividerAutosave = "HelmSettingsSidebar.v1"
-}
-
-extension UserDefaults {
-    /// Whether AppKit has a remembered divider for this autosave name.
-    ///
-    /// `NSSplitView` writes `NSSplitView Subview Frames <name>` and offers no
-    /// public way to ask, so the question is asked of the same key it writes.
-    /// Without it, a first launch and a hundredth are indistinguishable, and
-    /// the default width would be re-applied over the person's own every time.
-    func hasSavedSplitPosition(_ autosaveName: String) -> Bool {
-        object(forKey: "NSSplitView Subview Frames \(autosaveName)") != nil
+        addChild(sidebar)
+        addChild(detail)
+        return ShellContentView(sidebar: sidebar.view, pane: detail.view) { [weak self] frame in
+            self?.cardWasLaidOut(frame)
+        }
     }
 }
 
-// MARK: - Sidebar
+/// Whether the sidebar is folded to the rail, held in memory by the shell's controller and
+/// read by the one hosting view of the sidebar: it is never rebuilt for a fold,
+/// so a permission state it has probed stays.
+@MainActor private final class SidebarFold: ObservableObject {
+    @Published var collapsed = false
+}
 
-private struct SettingsSidebar: View {
+private struct SidebarInTheShell: View {
     @ObservedObject var model: SettingsModel
-    /// Observed, not reached through the model.
-    ///
-    /// The list filters by `isEnabled`, and switching a module off in Settings
-    /// calls `ModuleHost.setEnabled` directly — no `.helmModuleOrderChanged`,
-    /// which is the only thing this view was listening for. `model.host` is a
-    /// plain `let`, so nothing here heard the change and the row of a module
-    /// that had just been switched off stayed in the sidebar until something
-    /// else happened to invalidate the view.
-    ///
-    /// `isEnabled` reads the store rather than `live`, so this is not about
-    /// where the value comes from — it is about being redrawn at all.
-    @ObservedObject var host: ModuleHost
+    @ObservedObject var fold: SidebarFold
+
     var body: some View {
-        // No hand-reserved strip: the split item is full-height now, so AppKit
-        // gives this view a safe area that already clears the traffic lights,
-        // and the list is meant to scroll under them.
-        sidebarList
-    }
-
-    /// Re-probed when the app comes forward: a grant is given in System
-    /// Settings, which means this window is behind while it happens.
-    @State private var diskAccess: PermissionState = .granted
-    @State private var accessibility: PermissionState = .granted
-    @State private var screenRecording: PermissionState = .granted
-
-    /// Whether a module has declared it can do nothing without a permission
-    /// macOS is currently withholding.
-    ///
-    /// Layout has been inert in every logged session on this machine — 84
-    /// warnings of `no accessibility grant — not watching` — and the sidebar
-    /// listed it exactly like the modules that work. The module's own page says
-    /// so, but only once you are on it: from the outside a module that cannot do
-    /// anything looks like a module with nothing to do.
-    ///
-    /// **`inertWithout`, not `permissions`.** Reading the wider list put the
-    /// triangle on seven rows — the four Full Disk modules, which
-    /// work and find less, and Keep Awake, which declares Accessibility for a
-    /// pointer nudge that ships switched off and never asks for it otherwise.
-    /// Seven marks are wallpaper; the row where the warning was true was the
-    /// one nobody would read any more. And since an ad-hoc build loses its
-    /// grants on every update, that sidebar was what every user saw after every
-    /// update.
-    private func isBlocked(_ descriptor: any ModuleDescriptor) -> Bool {
-        descriptor.moduleMetadata.inertWithout.contains { need in
-            switch need {
-            case .fullDisk: return diskAccess == .denied
-            case .accessibility: return accessibility == .denied
-            // `CGPreflightScreenCaptureAccess` answers from the process's own
-            // grant and raises no dialog, so this one is probeable — the comment
-            // that stood here said it was not, and it was written before
-            // anything declared it inert without it.
-            case .screenRecording: return screenRecording == .denied
-            // Not withheld in the same sense: the admin helper is a password
-            // prompt, not a grant that can silently go missing. A warning we
-            // cannot verify is worse than none.
-            case .adminHelper: return false
-            }
-        }
-    }
-
-    private var sidebarList: some View {
-        // Both asked once for the whole list. `isEnabled` is a store read per
-        // module and `layout` is a store read plus a reconcile, and each is a
-        // question about the group rather than about a row.
-        let enabled = enabledModules
-        let layout = self.layout
-        return List(selection: $model.selection) {
-            // The modules first. The sidebar is where you go to *use* one, and
-            // the three pages under them are about Helm rather than about
-            // anything it does — Settings was above the whole arrangement,
-            // which put the least-visited page of the window in the first row
-            // and pushed every module down by one.
-            ForEach(layout.sections) { section in
-                let modules = descriptors(layout.live(in: section, enabled: enabled))
-                if !modules.isEmpty {
-                    Section(AppStr.sectionTitle(section)) {
-                        ForEach(modules, id: \.idRaw) { descriptor in
-                            // The sidebar column is fixed, so it asks for the
-                            // short name; everything else shows the full one.
-                            sidebarRow(descriptor.moduleMetadata.shortName,
-                                       descriptor.moduleMetadata.sfSymbol,
-                                       descriptor.moduleTint.colour,
-                                       blocked: isBlocked(descriptor))
-                                .tag(SettingsSelection.module(descriptor.idRaw))
-                        }
-                    }
-                }
-            }
-            // The modules that are off, below the ones that are on and drawn
-            // the way the composer draws them — dimmed, and reachable.
-            //
-            // **They were dropped, and that left a written screen with no
-            // door.** `ModuleDetailView`'s else-branch says what the module is
-            // and offers «Turn on», and none of the four routes to
-            // `.module(id)` would give a switched-off module one: the person
-            // who switched Disk off and later wondered what it did had a
-            // tooltip in the composer and nothing else. The section costs one
-            // row per module somebody has switched off, which is a number they
-            // chose.
-            let off = descriptors(layout.off(enabled: enabled))
-            if !off.isEmpty {
-                Section(AppStr.switchedOffSection) {
-                    ForEach(off, id: \.idRaw) { descriptor in
-                        sidebarRow(descriptor.moduleMetadata.shortName,
-                                   descriptor.moduleMetadata.sfSymbol,
-                                   descriptor.moduleTint.colour)
-                            .opacity(0.55)
-                            .tag(SettingsSelection.module(descriptor.idRaw))
-                    }
-                }
-            }
-            // Helm itself, at the foot: settings, the log, and what this build
-            // is. Three pages a person opens on purpose and rarely, kept
-            // together and out of the way of the ones they came for.
-            Section {
-                sidebarRow(AppStr.settingsPane, "gearshape", .gray)
-                    .tag(SettingsSelection.general)
-                // Shown on every build. The live tail was dev-only while it was
-                // a curiosity; now it is where the log itself is turned on,
-                // read and copied, and that is the button somebody is told to
-                // press when they report a problem.
-                sidebarRow(AppStr.logPane, "text.alignleft", .gray)
-                    .tag(SettingsSelection.log)
-                sidebarRow(AppStr.aboutHelm, "info.circle", .gray)
-                    .tag(SettingsSelection.about)
-            }
-        }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
-        // The trackers, not the two synchronous lines this replaced: the disk
-        // probe is four blocking file reads and the sidebar took them on the
-        // thread that draws, once as it appeared and again on every return to
-        // the app.
-        .helmTracksFullDiskAccess($diskAccess)
-        .helmTracksAccessibility($accessibility)
-        .helmTracksScreenRecording($screenRecording)
-    }
-
-    /// The arrangement the person composed. Read rather than cached: it is
-    /// reconciled on every read, which is what keeps a module that arrived with
-    /// this build from being missing until something else is rearranged.
-    private var layout: SidebarLayout {
-        _ = model.orderRevision                       // redraw when it changes
-        return SidebarLayoutStore.read(from: AppSettings.store,
-                                       registry: SidebarLayoutStore.registry())
-    }
-
-    /// Which modules are on. The sidebar lists those first and the rest under
-    /// «Switched off»; Settings is where it is decided which exist at all.
-    private var enabledModules: Set<String> { model.host.enabledModuleIDs }
-
-    private func descriptors(_ ids: [String]) -> [any ModuleDescriptor] {
-        ids.compactMap(ModuleRegistry.descriptor)
-    }
-
-    private func sidebarRow(_ title: String, _ symbol: String, _ color: Color,
-                            blocked: Bool = false) -> some View {
-        Label {
-            HStack(spacing: 6) {
-                Text(title)
-                if blocked {
-                    // The module is on and cannot act. Not a badge with a count
-                    // and not a red dot — this is one fact, and the pane it
-                    // sends you to is where it is fixed.
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(HelmSignal.warning)
-                        .help(AppStr.moduleBlockedByPermission)
-                        .accessibilityLabel(AppStr.moduleBlockedByPermission)
-                }
-            }
-        } icon: {
-            // One plate, either way. The plain look was drawn here by hand — a
-            // grey `SymbolInk`-corrected glyph at 13 in a 22 pt frame — and that
-            // hand-drawing was the whole reach of a setting labelled «Module
-            // icons»: the panel, the gallery and every page header went on
-            // asking for the module's colour directly. `HelmIconPlate` answers
-            // the question now, so the setting means what it says.
-            HelmIconPlate(symbol: symbol, tint: color, size: 22)
-        }
-        // The mockup's row is 28 tall around a 22 pt plate; `.sidebar` style
-        // gives a taller one, and eleven rows of it is why the column read as
-        // roomy rather than narrow. The height is set on the content, not the
-        // row, so the selection capsule keeps its own inset.
-        .frame(height: 28)
+        ShellSidebar(model: model, collapsed: fold.collapsed) { fold.collapsed.toggle() }
     }
 }
 
@@ -696,7 +467,9 @@ private struct SettingsDetail: View {
     private var content: some View {
         let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
                                           selectedTab: SettingsTabs.binding($model.selection))
-        switch model.selection {
+        // A module that is off reads as General, as it does in the sidebar,
+        // whatever the selection still says.
+        switch ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs) {
         case .none, .general:
             // The keys are the ones `SettingsToolbar.pageKey` answers for the
             // page; General and About put nothing in their bar but the tabs.
@@ -795,34 +568,15 @@ private struct ModuleDetailView: View {
         }
     }
 
-    /// The module's own page, or the invitation to switch it on.
-    ///
-    /// No switch here. It was the third one in the app for the same fact — the
-    /// composer sheet's column and the empty state's «Включить» being the other
-    /// two — and it was the only one that could act on the page you were
-    /// standing on: the sidebar lists what is on, so switching a module off
-    /// from its own header removed its row, left the selection pointing at
-    /// nothing, and went on showing the module you had just turned off.
+    /// The module's own page. A module that is off never gets here: the detail
+    /// reads it as General (`ShellSidebarRows.settled`), so there is no empty state
+    /// with a switch to write, and no switch on this page either.
     ///
     /// Whether a module exists at all is a settings question, and it is asked
     /// where the sidebar is arranged.
     @ViewBuilder private var page: some View {
         if let live = host.liveModule(id) {
             descriptor.settingsPage(live.vm)
-        } else {
-            // A sentence pointing at a switch in the far corner was the app's
-            // poorest screen: it said neither what the module does nor where to
-            // turn it on. Say what it is, then offer the action where the eye
-            // already is.
-            HelmEmptyState(symbol: descriptor.moduleMetadata.sfSymbol,
-                           tint: descriptor.moduleTint.colour,
-                           title: descriptor.moduleMetadata.name,
-                           message: descriptor.moduleMetadata.summary) {
-                Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .padding(.top, 4)
-            }
         }
     }
 }
@@ -840,4 +594,3 @@ private struct RebuiltOnLanguageChange: ViewModifier {
         content.id(model.languageRevision)
     }
 }
-

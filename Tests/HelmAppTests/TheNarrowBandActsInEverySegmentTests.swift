@@ -33,9 +33,10 @@ import HelmUI
 /// every segment, and what varies is only whether a second one joined it.
 ///
 /// **The band is the same arithmetic and it is read out of the same file.**
-/// 860 − 320 = 540 is the narrowest pane the settings window can be dragged to,
-/// the detail item's own 420 pt is the floor under that, and `HomebrewSplit`
-/// answers the top. Read rather than copied, so the day the band closes this
+/// 860 − 320 − 4 = 536 is the narrowest pane the shell's geometry allows (the
+/// window's minimum, the widest of `ShellGeometry.sidebarRange`, the card's gap to
+/// the trailing edge); the window itself sets the sidebar to 200 or the rail and
+/// nothing drags it. `HomebrewSplit` answers the top. Read rather than copied, so the day the band closes this
 /// fails and says the file is about a state nobody can reach instead of passing
 /// over a page that no longer has the problem.
 ///
@@ -117,11 +118,11 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
     // MARK: - The band
 
-    /// One integer assigned in `SettingsWindow.swift`, and a failure naming the
+    /// One integer assigned in `SettingsWindow.swift` (or the file named), and a failure naming the
     /// file when the pattern does not find exactly one.
     private func windowNumber(_ pattern: String, _ what: String,
+                              in path: String = "Sources/HelmApp/SettingsWindow.swift",
                               file: StaticString = #filePath, line: UInt = #line) -> CGFloat? {
-        let path = "Sources/HelmApp/SettingsWindow.swift"
         guard let text = try? RepoSource.text(of: path) else {
             XCTFail("\(path) could not be read", file: file, line: line)
             return nil
@@ -153,17 +154,18 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     /// Fails rather than skips when the band is empty: a skip reads as a pass in
     /// a failures-only summary.
     private func narrowBand(file: StaticString = #filePath, line: UInt = #line) -> [CGFloat] {
+        let geometry = "Sources/HelmApp/ShellGeometry.swift"
         guard let contentMin = windowNumber(#"minSize = NSSize\(width: ([0-9.]+)"#,
                                             "the window's minimum content width"),
-              let sidebarMax = windowNumber(#"sidebarMaximum: CGFloat = ([0-9.]+)"#,
-                                            "the sidebar's maximum thickness"),
-              let detailMin = windowNumber(#"detailItem\.minimumThickness = ([0-9.]+)"#,
-                                           "the detail pane's minimum thickness")
+              let sidebarMax = windowNumber(#"sidebarRange: ClosedRange<CGFloat> = [0-9.]+\.\.\.([0-9.]+)"#,
+                                            "the sidebar's widest width", in: geometry),
+              let inset = windowNumber(#"inset: CGFloat = ([0-9.]+)"#,
+                                       "the card's gap to the window's trailing edge", in: geometry)
         else { return [] }
         let split = threshold
         XCTAssertGreaterThan(split, 0, "no width in 200…1400 shows the inspector",
                              file: file, line: line)
-        let floor = max(detailMin, contentMin - sidebarMax)
+        let floor = contentMin - sidebarMax - inset
         guard floor < split else {
             XCTFail("""
                 the narrowest pane a person can reach is \(floor) pt and `HomebrewSplit` shows the \

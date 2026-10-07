@@ -42,18 +42,12 @@ import XCTest
 /// point (644.5 asked, 645.0 read), so a point is the finest step this sweep
 /// can take.
 ///
-/// **Not a width the real window reaches today.** 420 pt is
-/// `NSSplitViewItem.minimumThickness`'s own declared floor on the detail
-/// pane, mirrored here in `mountSplit`'s own rig — `SettingsWindow.swift`
-/// sets the window's own `contentMinSize` to 860 × 540 and the sidebar's own
-/// maximum to 320 pt
-/// (`command grep -n 'minSize = \|sidebarMaximum: \|detailItem.minimumThickness' Sources/HelmApp/SettingsWindow.swift`),
-/// so the pane a person can actually narrow the real window to bottoms out at
-/// 860 − 320 = 540 pt, above the whole 420–500 pt range this file sweeps. The
-/// guard stays — `minimumThickness` is the pane's own declared floor, and
-/// this file is what proves the tabs do not blink if that floor is ever
-/// reached; how AppKit weighs it against the window's own limits on a resize
-/// is not measured here — but nothing swept below should be read as a width
+/// **Not a width the real window reaches.** 420 pt is the detail item's
+/// `minimumThickness` in `mountSplit`'s own rig; the settings window has no split view and no pane floor.
+/// `SettingsWindow.swift` sets `contentMinSize` to 860 × 540 and the sidebar is
+/// `ShellGeometry.defaultSidebarWidth` or the rail, so the pane a person can narrow the real window to
+/// is above the whole 420–500 pt range this file sweeps. The guard stays for the rig's floor;
+/// but nothing swept below should be read as a width
 /// a person can dial into today's window.
 ///
 /// **Each step rests by the clock.** `settle(_:turns:)` alone returned in as

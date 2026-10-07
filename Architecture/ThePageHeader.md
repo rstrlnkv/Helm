@@ -19,11 +19,11 @@ lists the files that publish.
 
 ## The bar's zones
 
-Left to right: the sidebar's tracking separator; the name (the module's plate and
+Left to right: a spacer that carries the name over to the card, where the card leaves room for one; the name (the module's plate and
 its name, drawn only under `PageBarStyle.moduleName`); a flexible space; the tabs,
 centred; a flexible space; **one** custom-view item for the whole action capsule;
 the search field. A status-bearing page draws the shared name-only bar instead —
-separator, name, a flexible space, `helm.status` at the trailing edge — and under
+spacer, name, a flexible space, `helm.status` at the trailing edge — and under
 `PageBarStyle.moduleName` that bar always lists `helm.status`, drawing nothing on a page with no status, so every status-less module that draws it never sees that item move
 (`SettingsToolbar.identifiers`, `StatusZoneView`).
 

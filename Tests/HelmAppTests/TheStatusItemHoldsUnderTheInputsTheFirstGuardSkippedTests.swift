@@ -22,8 +22,7 @@ import Module_VPN_UI
 @MainActor
 final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCase {
 
-    /// `SettingsWindow.minSize.width` (860) minus `SettingsWindow
-    /// .sidebarMaximum` (320) — the same narrowest pane the first guard uses.
+    /// `SettingsWindow.minSize.width` (860) minus the widest of `ShellGeometry.sidebarRange` (320): narrower than the window reaches, where the sidebar is 200 or the rail.
     private static let minPaneWidth: CGFloat = 860 - 320
 
     private var fixtures: [LivePageToolbarFixture] = []
@@ -265,8 +264,7 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     /// **The module switched off while its own page is the one on screen** —
     /// the sidebar's own arrangement toggle (`SidebarComposerList`) reaches
     /// `ModuleHost.setEnabled` with no page switch and no declaration. The
-    /// page itself drops to the "Turn On" empty state (`SettingsWindow`'s own
-    /// `page`), so the status must go with it: a module that is not running
+    /// page reads as General (`ShellSidebarRows.settled`), so the status must go with it: a module that is not running
     /// at all has no "Not running" to report.
     ///
     /// **Predates the move.** The same two readings taken against HEAD's own

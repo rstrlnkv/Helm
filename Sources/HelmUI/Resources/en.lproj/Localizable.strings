@@ -869,7 +869,6 @@
 "Waiting for you to allow Helm in System Settings." = "Waiting for you to allow Helm in System Settings.";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS would not add Helm to your login items, so it will not open by itself.";
 "Open Login Items & Extensions…" = "Open Login Items & Extensions…";
-"Switched off" = "Switched off";
 "Put back" = "Put back";
 "back where it was" = "back where it was";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour.";

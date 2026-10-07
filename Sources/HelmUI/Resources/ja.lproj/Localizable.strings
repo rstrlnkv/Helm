@@ -869,7 +869,6 @@
 "Waiting for you to allow Helm in System Settings." = "システム設定で許可されるのを待っています。";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS が Helm をログイン項目に追加しませんでした。Helm は自動的には開きません。";
 "Open Login Items & Extensions…" = "ログイン項目と機能拡張を開く…";
-"Switched off" = "オフのモジュール";
 "Put back" = "元に戻す";
 "back where it was" = "元の場所に戻り済み";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "ルールが二度目に働くのを止める印を書き込めませんでした。1 時間以内にルールがこのファイルをまた動かす可能性があります。";

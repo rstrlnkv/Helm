@@ -24,7 +24,7 @@ import HelmTestSupport
 /// `TheGeneralPickerFollowsTheBarMenuTests
 /// .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu` does mount that
 /// combination, ordered in behind the other windows, through
-/// `SettingsSplitViewController`, sends the
+/// `SettingsShellViewController`, sends the
 /// bar's own menu action and reads the picker back through Vision — that is
 /// where the staleness above was actually measured. The switcher style had a
 /// tracker of its own under the pane, held here to the opposite; it went on

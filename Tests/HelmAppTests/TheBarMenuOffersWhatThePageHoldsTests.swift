@@ -95,7 +95,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         let channel: HelmWindowToolbarChannel
     }
 
-    /// `SettingsSplitViewController`'s shape — a 214 pt sidebar beside the
+    /// A split-view rig — a 214 pt sidebar beside the
     /// pane — with a page of tabs and search declared, so the centre switcher
     /// (and through it the bar's menu) exists from the start.
     private func mount(pane: CGFloat = 1060) -> Rig {

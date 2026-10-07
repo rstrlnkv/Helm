@@ -54,7 +54,7 @@ public struct HelmBandChoice: Equatable, Sendable {
                               pageHeaderBand: helmsToolbarBand || pageHeaderBandOn26)
     }
 
-    /// The running system's decision — the one place its version is read.
+    /// The running system's decision.
     public static let running = onMacOS(ProcessInfo.processInfo.operatingSystemVersion.majorVersion)
 }
 

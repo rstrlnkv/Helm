@@ -29,8 +29,8 @@ import XCTest
 /// bare, split-view-less window with synthetic labels chosen to force a
 /// permanent fold at 646 pt: real content actually leaves slack there, so the
 /// bug it hid was not "never fits," it was "any fold, even one AppKit would
-/// gladly undo, sticks." What follows uses the real split-view shape
-/// `SettingsSplitViewController` builds and Homebrew's own segment words, and
+/// gladly undo, sticks." What follows uses a split-view rig, the shape the
+/// settings window had when this was written, and Homebrew's own segment words, and
 /// drives the open half of the cycle through M1 (`tookMagnifierPress(_:)`)
 /// rather than calling `beginSearchInteraction()` directly, which skips M1's
 /// own pre-fold and evicts on the open path for a reason that has nothing to
@@ -97,11 +97,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         AppSettings.store.set(savedSwitcher, for: ToolbarSwitcherStyle.storageKey)
     }
 
-    /// `SettingsSplitViewController`'s own `sidebarDefault` — `private` there
-    /// and duplicated here rather than widened for one test file to reach,
-    /// the same precedent a now-deleted sibling test already set for the
-    /// identical number, before its own Uninstaller cases lost the bridged
-    /// field this pass removed.
+    /// The rig's sidebar width: 214, the split view's default when this was written.
     private static let sidebarWidth: CGFloat = 214
 
     /// Homebrew's own three segments — reduced from four 2026-09-24 when the
@@ -142,8 +138,7 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         let keepAlive: [AnyObject]
     }
 
-    /// **The split-view shape `SettingsSplitViewController` actually
-    /// builds** — a 214 pt sidebar and a detail pane beside it — because
+    /// **A split-view rig** — a 214 pt sidebar and a detail pane beside it — because
     /// `offeredRoom()` reads the detail item's own width; a bare window with
     /// no split view hands it `contentLayoutRect.width` instead, which also
     /// includes the traffic-light zone a real settings window's detail pane

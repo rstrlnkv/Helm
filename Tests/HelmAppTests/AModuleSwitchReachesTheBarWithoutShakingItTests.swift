@@ -35,8 +35,7 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
 
     private static let keepAwake = KeepAwakeDescriptor.id.rawValue
     private static let vpn = VPNDescriptor.id.rawValue
-    /// `SettingsSplitViewController`'s own `sidebarDefault`, as
-    /// `AnUnfoldIsPredictedNeverTrialledTests` duplicates it.
+    /// The rig's sidebar width, as `AnUnfoldIsPredictedNeverTrialledTests` has it.
     private static let sidebarWidth: CGFloat = 214
 
     private var savedPageBar: Any?
@@ -101,8 +100,7 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
         let keepAlive: [AnyObject]
     }
 
-    /// The split-view shape `SettingsSplitViewController` builds, so
-    /// `offeredRoom()` reads a detail pane and the fold is the real one.
+    /// A split-view rig, so `offeredRoom()` reads a detail pane and the fold is the rig's.
     /// Never ordered on screen.
     private func mountSplit(pane: CGFloat, selection: SettingsSelection) -> Rig {
         let model = SettingsModel(host: ModuleHost.shared)
