@@ -274,23 +274,13 @@ public struct HelmToolbarActionsCapsule: View {
     /// (`HelmBarAppearance`, on why the environment's default is the glass).
     @Environment(\.helmBarAppearance) private var appearance
 
-    /// **The margin an `isBordered = false` custom-view item is short of an
-    /// AppKit-drawn one, when it is the toolbar's own last item.** Measured
-    /// against a bare `NSToolbar`, one 36×36 custom view, nothing else
-    /// changed: at 1060 pt, `isBordered = false` left the view's own trailing
-    /// edge 4.0 pt from the window's, `isBordered = true` left it 8.0 pt
-    /// (`TheLastItemsGlassSitsAsFarFromTheEdgeTests`, `BareToolbarEdgeProbeDelegate`).
-    /// The same 4.0 pt shortfall showed on the real bar: Hosts' `helm.actions`
-    /// — the toolbar's last item on that page — sat 4.0 pt from the window's
-    /// trailing edge at 1060 pt, where Uninstaller's `helm.search` field,
-    /// AppKit's own control, rested 8.0 pt from it at the same width. The
-    /// capsule stays `isBordered = false` regardless — a bordered item wraps
-    /// it in a second glass, this type's own header — so the missing 4 pt is
-    /// made up here, in the content, and only where nothing draws after the
-    /// capsule to already carry it (`trailingInset`, driven by
-    /// `SettingsToolbar.makeActionsItem` from `content.search == nil`):
-    /// Homebrew and Uninstaller, where search follows the capsule, are
-    /// unaffected.
+    /// **4 pt: the trailing inset the status zone falls back to** when it has no status or its ink
+    /// cannot be measured (`StatusZoneView.trailingInset(for:barHeight:boxMargin:)`), and what
+    /// `StatusZoneView.boxMargin` takes from 8. The number is a reading of AppKit's toolbar, kept
+    /// as a number: a custom-view item with `isBordered = false`, last in an `NSToolbar`, ended
+    /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt. No row
+    /// measures that now, and the capsule carries no inset of its own: `ShellBarLayout.trailing`
+    /// is what stands between the bar's last control and the bar's edge.
     public static let edgeMargin: CGFloat = 4
 
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured

@@ -108,7 +108,7 @@ enum ShellBarLayout {
     struct Input: Equatable, Sendable {
         /// The bar's width.
         var barWidth: CGFloat
-        /// The card's minX, in the window's coordinates.
+        /// The card's minX, in the coordinates of the view that holds the card (`ShellContentView`).
         var cardMinX: CGFloat
         /// The window's content width.
         var windowWidth: CGFloat

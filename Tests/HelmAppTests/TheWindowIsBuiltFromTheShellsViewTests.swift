@@ -104,7 +104,7 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
 
     // MARK: - What is built
 
-    func testTheWindowBuildsTheShellAndThePageBarAndNoToolbar() throws {
+    func testTheWindowBuildsTheShellAndThePageBar() throws {
         let code = try windowCode()
         XCTAssertTrue(code.contains("ShellContentView("), """
             the window never builds `ShellContentView`: the card, the corner and the sidebar's \
@@ -112,9 +112,6 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
             """)
         XCTAssertTrue(code.contains("ShellPageBar("), """
             the window never builds `ShellPageBar`: no page has a bar
-            """)
-        XCTAssertFalse(code.contains("SettingsToolbar("), """
-            the window builds a `SettingsToolbar` again: two bars answer the one channel
             """)
     }
 

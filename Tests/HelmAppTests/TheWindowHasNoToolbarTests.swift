@@ -50,6 +50,34 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
         XCTAssertEqual(ran.count, 9, "not all nine steps ran")
     }
 
+    /// **No code under `Sources` names a type of AppKit's toolbar family.** Code is read with comments and
+    /// string insides blanked, so a sentence about the old shell does not count and a type does. The pattern
+    /// is wider than `NSToolbar` itself: `NSSearchToolbarItem` and `NSTrackingSeparatorToolbarItem` do not
+    /// contain it. Before the scan the reads must hold the settings window's file and the shared toolbar
+    /// actions' file, so an empty or misplaced read cannot pass as an absence.
+    func testNothingInSourcesNamesAnNSToolbarType() throws {
+        let reads = try SwiftSource.code(under: "Sources")
+        let window = reads.first { $0.path == "Sources/HelmApp/SettingsWindow.swift" }
+        let actions = reads.first { $0.path == "Sources/HelmUI/DesignSystem/HelmToolbarActions.swift" }
+        guard let window, window.text.contains("final class SettingsModel"), actions != nil else {
+            XCTFail("no source file was read: the absence below is the absence of the reader")
+            return
+        }
+        let pattern = try NSRegularExpression(pattern: "NS[A-Za-z]*Toolbar[A-Za-z]*")
+        var hits: [String] = []
+        for read in reads {
+            for (index, line) in read.text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let text = String(line)
+                let whole = NSRange(text.startIndex..., in: text)
+                if let match = pattern.firstMatch(in: text, range: whole), let range = Range(match.range, in: text) {
+                    hits.append("\(read.path):\(index + 1): \(text[range])")
+                }
+            }
+        }
+        XCTAssertTrue(hits.isEmpty,
+                      "\(hits.count) code lines under Sources name an NSToolbar type:\n" + hits.joined(separator: "\n"))
+    }
+
     func testADeclareOnTheWindowsChannelReachesThePageBarAlone() throws {
         guard let rig = SettingsWindowRig.build(
             in: self, failure: "SettingsWindow holds no page bar: a declare was counted on a channel nobody reads")
@@ -67,8 +95,6 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
         XCTAssertEqual(bar.presentation, .page(key: "probe.a", isLive: true, isDimmed: false),
                        "the bar did not take the page the window's channel was told about")
         XCTAssertNil(rig.window.toolbar, "the window wears a toolbar beside the bar")
-        XCTAssertFalse(Mirror(reflecting: rig.owner).children.contains { $0.value is SettingsToolbar },
-                       "the window still holds a SettingsToolbar")
         let snapshot = bar.snapshot
         XCTAssertNotNil(snapshot, "the bar drew nothing: its snapshot is empty")
         XCTAssertEqual(snapshot?.appearsActive, false,

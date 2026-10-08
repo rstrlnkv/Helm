@@ -3,7 +3,7 @@ import HelmUI
 
 /// **The one owner of the window's three buttons: where they stand, whether they show, and the capsule
 /// that stands in for them in the rail.** Among the `Shell*` files nothing else writes their frames or
-/// reads `standardWindowButton`; `SettingsToolbar.opensBarMenu(_:)` reads them too, to keep its menu off them.
+/// reads `standardWindowButton`.
 ///
 /// Expanded, the buttons stand `ShellGeometry.buttonShift` right and `buttonDrop` down of where AppKit
 /// puts them (their *home*). In the rail they keep their row and stand under a closed capsule of three

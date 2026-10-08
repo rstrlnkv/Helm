@@ -56,7 +56,7 @@ final class TheToolbarHidesWhatScrollsUnderItTests: XCTestCase {
             the window's title on every page without a glass control
             """)
         XCTAssertTrue(code[detail.upperBound..<sizing.lowerBound].contains("helmWindowToolbarChannel"), """
-            the detail pane no longer publishes into the channel `SettingsToolbar` reads — every \
+            the detail pane no longer publishes into the channel the page bar reads — every \
             page's `.helmWindowToolbar` call would have nowhere to declare into
             """)
     }

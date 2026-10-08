@@ -75,10 +75,6 @@ struct ShellBarZoneState {
 ///
 /// `SettingsWindow` builds the bar, hands its three zones to it and keeps none itself; the bar's view is the
 /// one `ShellContentView` places at the top of the card's clip.
-///
-/// `identity(for:host:)`, `status`, `pageKey(for:)` and `strippedOfClosures` are second copies of
-/// `SettingsToolbar`'s `pageIdentity`, `moduleStatus`, `pageKey` and `strippedOfClosures`: both bars are in the
-/// tree, and a change to one side is made in the other.
 @MainActor final class ShellPageBar: NSObject {
 
     // MARK: - Values
