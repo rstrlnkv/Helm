@@ -306,6 +306,56 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         check("after hover(false)", alpha: 0)
     }
 
+    /// **An animation open when the placement is given up writes no origin when it completes.** The rail,
+    /// a hover change with Reduce Motion off, then `place(rail:)` gives the placement up, then the run loop
+    /// runs past `HelmMotion.interfaceDuration` and the animation's completion lands. Full screen is not
+    /// entered: no row here enters it, so the release is reached by another exit of `place(rail:)`, a button
+    /// missing: the zoom button hidden, two buttons of three. That full screen's exit reaches the same
+    /// `release()` is read, not run.
+    /// AppKit's move of the buttons is made by hand, as the other rows make it: each button is put at the
+    /// reference window's home. Each must still stand there after the completion, on both axes. The plate,
+    /// wider than closed at the end, says only that the hover opened the capsule; that a completion lands and
+    /// has something to write is shown by taking `wanted = [:]` out of `release()`: the row goes red.
+    func testAnAnimationsEndWritesNoOriginOnceThePlacementIsGivenUp() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no animation was opened"),
+              let owner = owner(of: rig) else { return }
+        owner.reducesMotion = { false }
+        let reference = reference(like: rig)
+        guard let (own, homeButtons) = threeButtons(rig, reference),
+              let zoom = rig.window.standardWindowButton(.zoomButton) else { return }
+        let names = ["close", "miniaturize", "zoom"]
+        settle(rig)
+        rail(rig)
+        let placed = own.map(\.frame.origin)
+        let closedWidth = owner.plateFrame.width
+        owner.hover(true)
+        XCTAssertTrue(owner.isOpen, "the capsule did not open with animation on: no animation was open")
+
+        zoom.isHidden = true
+        owner.place(rail: true)
+        XCTAssertFalse(owner.isOpen, "after the release the capsule is still open")
+        XCTAssertTrue(owner.capsule.isHidden, "after the release the capsule is shown")
+
+        for (i, button) in own.enumerated() { button.setFrameOrigin(homeButtons[i].frame.origin) }
+        for i in 0..<3 {
+            XCTAssertNotEqual(placed[i].x, homeButtons[i].frame.origin.x,
+                              "the \(names[i]) button's placed x equals its home: a stale write would be invisible")
+            XCTAssertEqual(own[i].frame.origin.x, homeButtons[i].frame.origin.x, accuracy: 0.01,
+                           "the \(names[i]) button was not put at home by hand: it stands at \(own[i].frame.origin)")
+        }
+        let left = own.map(\.frame.origin)
+
+        SettingsWindowRig.pump(0.6)
+        XCTAssertGreaterThan(owner.plateFrame.width, closedWidth + 10,
+                             "the plate stands \(owner.plateFrame.width) wide, as closed (\(closedWidth)): the hover opened nothing, so no animation was started")
+        for i in 0..<3 {
+            XCTAssertEqual(own[i].frame.origin.x, left[i].x, accuracy: 0.01,
+                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (AppKit's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
+            XCTAssertEqual(own[i].frame.origin.y, left[i].y, accuracy: 0.01,
+                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (AppKit's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
+        }
+    }
+
     func testWithReduceMotionTheCapsuleChangesSizeInTheSameTurn() throws {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing opened"),
               let owner = owner(of: rig) else { return }

@@ -27,14 +27,19 @@ import HelmUI
 /// `TheWindowButtonsStayWhereHelmPutThemTests` rest on it: the fold row goes red without the answer). So
 /// every placement, and every hover change made without an animation, ends by putting back each button that
 /// stands elsewhere, after the last alpha write. An animated change does it once at once and once more when
-/// the animation completes; no row reaches that, the rows run with Reduce Motion on.
+/// the animation completes. One row reaches a completion, and only after the placement was given up, where
+/// it must write nothing (`testAnAnimationsEndWritesNoOriginOnceThePlacementIsGivenUp`); a completion that
+/// puts a button back while a placement is held is reached by no row: every other row that changes the
+/// hover on an attached owner sets Reduce Motion on.
 ///
 /// **Hover is an event-stream value.** `isOpen` is set by the tracking area's enter and exit, cleared by
 /// leaving the rail, by full screen and by `attach(to: nil)`, and read again from the pointer's place in
 /// every `place(rail:)` of a visible window, so an exit that never came is healed by the next layout.
 ///
-/// In full screen no frame is written, the buttons' alpha goes back to 1 and the capsule is hidden: the
-/// buttons are the system's there. Not run in a full-screen window.
+/// In full screen `place(rail:)` writes no frame and forgets the targets, the buttons' alpha goes back to 1
+/// and the capsule is hidden: the buttons are the system's there. By reading, not run: an animation's
+/// completion that lands after full screen is entered and before the next `place(rail:)` still writes the
+/// old targets, and `attach(to:)` writes the recorded homes in any state. Not run in a full-screen window.
 /// Reduce Motion changes the capsule's size in the same turn, without an animation. `attach(to:)` stops
 /// every observer; `deinit` removes the notification tokens.
 @MainActor
@@ -276,9 +281,12 @@ final class ShellWindowButtons {
         }
     }
 
-    /// Nothing is held: the buttons show, the capsule is hidden and shut.
+    /// Nothing is held: the buttons show, the capsule is hidden and shut. The targets are forgotten too:
+    /// `holdOrigins` writes only what `wanted` holds, so a running animation's completion, which reaches it
+    /// after this, finds nothing to write until the next placement sets the targets again.
     private func release() -> CGRect {
         current = nil
+        wanted = [:]
         giveBack(watched.map(\.button))
         return .null
     }
