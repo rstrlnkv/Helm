@@ -53,16 +53,20 @@ struct ShellBarZoneState {
 /// name on every ordinary visit. A short grace (`graceInterval`) is armed the moment a page that was live a
 /// heartbeat ago stops being able to say anything: either because the selection itself just changed to such
 /// a page, or because the module the page on screen names has just been switched off without the selection
-/// moving. If nothing has declared when it fires, the bar falls to the name and stays there (`fellBack`) until
-/// the page is selected once more or declares afresh; a language or setting change does not bring the stale
-/// page back. A page that has never declared reads as the name at once. A withdraw with no selection change
+/// moving; the page is then shown frozen at once, whatever the channel still holds, and is not shown live
+/// again until the module is switched on (`switchedOff`). If the channel holds nothing for the page when the
+/// grace fires, the bar falls to the name and stays there (`fellBack`) until the page is selected once more
+/// or declares afresh; a language or setting change does not bring the stale page back. A switched-off page
+/// the channel still holds when the grace fires stays frozen, and the grace is armed once more when that
+/// page withdraws. A page that has never declared reads as the name at once. A withdraw with no selection change
 /// that names a module still switched on (a language remount tearing the mount down) never starts the
 /// fallback: the page stays, frozen, until the next declare.
 ///
-/// **A frozen page holds none of its closures.** `strippedOfClosures` keeps only what a zone needs to draw
-/// the page: the page's closures capture its view model, and a bar that kept them kept a switched-off
-/// module's view model, and the transport client behind it, alive. A page left while live is stripped the
-/// moment the selection leaves it.
+/// **A frozen page is remembered and shown without its closures.** `strippedOfClosures` keeps only what a
+/// zone needs to draw the page: the page's closures capture its view model, and a bar that kept them kept a
+/// switched-off module's view model, and the transport client behind it, alive. A page left while live is
+/// stripped the moment the selection leaves it. The channel is not the bar's to strip: a switched-off page's
+/// declaration stays in it, closures and all, until the page's mount withdraws.
 ///
 /// **`refresh` is the one place that decides what the zones are told.** On a selection signal it reads the
 /// selection the sink was handed, not `model.selection`: `@Published` publishes in `willSet`, so the property
@@ -151,6 +155,14 @@ struct ShellBarZoneState {
 
     private var remembered: [String: Remembered] = [:]
     private var fellBack: Set<String> = []
+    /// The modules `.helmModuleDisabled` named and `.helmModuleEnabled` has not named since. `ModuleHost.disable`
+    /// posts the notification inside the switch itself, and the page's mount withdraws from the channel when
+    /// SwiftUI next updates or dismantles it: later by reading, and no row runs a real mount. Until the
+    /// withdraw the channel still holds the page's closures, and a key in this set is never shown live.
+    /// By reading, when a module is switched off through `ModuleHost` the selection has already left its page
+    /// before the notification is posted (`SettingsModel`'s watch of the host's live modules moves it to
+    /// General), so in the app this set guards a state only a page still selected at the notification can reach.
+    private var switchedOff: Set<String> = []
     private var graceKey: String?
     private var graceWork: DispatchWorkItem?
     private var currentSelection: SettingsSelection?
@@ -170,9 +182,7 @@ struct ShellBarZoneState {
     private var shownLive = false
     private var shownDimmed = false
 
-    // Read in `deinit`, which Swift 6 treats as nonisolated even on a `@MainActor` class; only ever touched on
-    // the main actor otherwise.
-    nonisolated(unsafe) private var watches: [NSObjectProtocol] = []
+    private var watches: [NSObjectProtocol] = []
     private var selectionWatch: AnyCancellable?
     private var activityWatch: AnyCancellable?
 
@@ -212,8 +222,9 @@ struct ShellBarZoneState {
             .helmSidebarStyleChanged, .helmBarAppearanceChanged,
         ]
         watches = names.map { name in
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.heard(name) }
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let module = note.object as? String
+                MainActor.assumeIsolated { self?.heard(name, module: module) }
             }
         }
         // The value the sink is handed: the sink fires at once with the current selection, which is the
@@ -223,10 +234,16 @@ struct ShellBarZoneState {
         }
     }
 
-    deinit {
+    /// Isolated, so it may cancel the grace and reach the zones. The zones are told once more, with no content
+    /// and not live: a zone somebody still holds (the bar's view holds the views of the zones, not the
+    /// zones) keeps no closure of the page it was last shown. Every closure a zone holds back to the
+    /// controller is weak, and a weak load of an object in `deinit` is nil, so a `measuresMoved` called from
+    /// inside that `show` does nothing; the bar's view loses the zones' views, and keeps its name and, by
+    /// reading, its status where the page has one.
+    isolated deinit {
         for watch in watches { NotificationCenter.default.removeObserver(watch) }
-        // `graceWork` is not cancelled here: `DispatchWorkItem` is not `Sendable`, so a nonisolated `deinit`
-        // cannot touch it. Its closure holds the controller weakly and does nothing once it is gone.
+        graceWork?.cancel()
+        showZones(content: nil, isLive: false, isDimmed: false, animated: false)
     }
 
     // MARK: - The window's activity
@@ -317,9 +334,12 @@ struct ShellBarZoneState {
     // MARK: - Notifications
 
     /// Re-reads the setting the notification names, then answers as any republication does: every zone shown
-    /// again, one pass.
-    private func heard(_ name: Notification.Name) {
+    /// again, one pass. The module a `.helmModuleDisabled` or `.helmModuleEnabled` names is entered in or
+    /// struck from `switchedOff` first.
+    private func heard(_ name: Notification.Name, module: String?) {
         switch name {
+        case .helmModuleDisabled: if let module { switchedOff.insert(module) }
+        case .helmModuleEnabled: if let module { switchedOff.remove(module) }
         case .helmPageBarStyleChanged: pageBarStyle = AppSettings.pageBarStyle
         case .helmSidebarStyleChanged: sidebarStyle = AppSettings.sidebarStyle
         case .helmAlwaysCollapseSearchChanged: alwaysCollapseSearch = AppSettings.alwaysCollapseSearch
@@ -355,7 +375,7 @@ struct ShellBarZoneState {
             }
         }
 
-        if let content = channel.content(for: AnyHashable(key)) {
+        if !switchedOff.contains(key), let content = channel.content(for: AnyHashable(key)) {
             fellBack.remove(key)
             var animated = false
             if case .page(key, _, _) = presentation { animated = true }
@@ -375,14 +395,21 @@ struct ShellBarZoneState {
             let stripped = Self.strippedOfClosures(cached.content)
             remembered[key] = Remembered(content: stripped, wasLive: false, isDimmed: dimmed)
             present(.page(key: key, isLive: false, isDimmed: dimmed), stripped, animated: false)
-            if wasLive, didSwitch || isModuleSwitchedOff() { armGrace(key) }
+            // The second arm: a frozen page of a module the host does not hold live, with no grace running for
+            // it and nothing in the channel. That is the switched-off page withdrawing after the first grace
+            // ran out with the channel still holding it; by reading, nothing declares for a module that is
+            // off, so without this arm the page would stay frozen.
+            let off = isModuleSwitchedOff()
+            if (wasLive && (didSwitch || off)) || (off && graceKey != key && channel.content(for: AnyHashable(key)) == nil) {
+                armGrace(key)
+            }
         } else {
             present(.nameOnly, nil, animated: false)
         }
     }
 
     /// Whether the page on screen names a module the host no longer holds live, which is what the person's own
-    /// switch leaves; asked only of a page that was live a moment ago. General, About and Log name no module that can be switched off.
+    /// switch leaves; asked on every frozen pass. General, About and Log name no module that can be switched off.
     private func isModuleSwitchedOff() -> Bool {
         guard case .module(let id) = currentSelection else { return false }
         return model.host.liveModule(id) == nil
