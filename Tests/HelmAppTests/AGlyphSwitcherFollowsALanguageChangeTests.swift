@@ -20,8 +20,10 @@ import XCTest
 /// The page's re-declaration is played through the channel: in the app,
 /// `SettingsWindow` re-identifies the page on `.helmLanguageChanged`
 /// (`content.id(model.languageRevision)`), and the page declares again in the
-/// new language onto the same `PageBar` — `ShapeSignature` carries no
-/// language — so the same `NSSegmentedControl` receives the new titles.
+/// new language onto the same page bar. The declared ids are the same, so the
+/// actions zone keeps its host (`rebuilds` in `ShellBarActions.show`) and the
+/// tabs zone re-roots the two hosts it already holds: neither builds a new
+/// host for a language.
 @MainActor
 final class AGlyphSwitcherFollowsALanguageChangeTests: XCTestCase {
 
@@ -39,9 +41,13 @@ final class AGlyphSwitcherFollowsALanguageChangeTests: XCTestCase {
             ])
     }
 
-    private func segmented(_ id: String, _ window: NSWindow) -> NSSegmentedControl? {
-        window.toolbar?.items.first { $0.itemIdentifier.rawValue == id }?.view?
-            .everyView(ofType: NSSegmentedControl.self).first
+    /// The switcher the bar in the window holds in `zone`, found by a walk down from the window's frame
+    /// view and held to be the mounted bar's own zone.
+    private func segmented(_ zone: ShellPageBarView.Zone, _ mounted: MountedPageBar,
+                           _ window: NSWindow) -> NSSegmentedControl? {
+        let found = window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        guard found === mounted.bar.view, let view = found?.view(for: zone) else { return nil }
+        return view.everyView(ofType: NSSegmentedControl.self).first
     }
 
     private func names(_ control: NSSegmentedControl) -> (tips: [String?], spoken: [String?]) {
@@ -50,27 +56,36 @@ final class AGlyphSwitcherFollowsALanguageChangeTests: XCTestCase {
     }
 
     /// `style` is the tabs' label style the bar is in while the language moves.
-    private func run(style: ToolbarSwitcherStyle, item: String, expected: () -> [String]) {
+    private func run(style: ToolbarSwitcherStyle, zone: ShellPageBarView.Zone, expected: () -> [String]) {
         let store = AppSettings.store
         let saved = store.object(ToolbarSwitcherStyle.storageKey)
+        let savedCollapse = store.object("alwaysCollapseSearch")
+        let savedPageBar = store.object(PageBarStyle.storageKey)
+        let savedBarAppearance = store.object(HelmBarAppearance.storageKey)
         defer {
             store.set(saved, for: ToolbarSwitcherStyle.storageKey)
+            store.set(savedCollapse, for: "alwaysCollapseSearch")
+            store.set(savedPageBar, for: PageBarStyle.storageKey)
+            store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
             NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
         }
         AppLanguage.only(.en) {
             AppSettings.toolbarSwitcherStyle = style
+            AppSettings.pageBarStyle = .windowTitle
+            AppSettings.barAppearance = .flat
+            AppSettings.alwaysCollapseSearch = false
             let model = SettingsModel(host: ModuleHost.shared)
             let channel = HelmWindowToolbarChannel()
-            let toolbar = SettingsToolbar(model: model, channel: channel)
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
                                   styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
                                   backing: .buffered, defer: false)
-            toolbar.window = window
+            let mounted = MountedPageBar(model: model, channel: channel, in: window)
+            defer { mounted.remove() }
             model.selection = .module("test.language")
             var generation = channel.nextGeneration()
             channel.declare(content(), token: "test.language", generation: generation)
-            window.layoutIfNeeded()
-            guard let control = segmented(item, window) else { return XCTFail("no \(item) switcher") }
+            mounted.layout()
+            guard let control = segmented(zone, mounted, window) else { return XCTFail("no \(zone) switcher") }
             XCTAssertEqual(names(control).tips.map { $0 ?? "" }, expected(), "precondition: English names")
 
             AppLanguage.each { language in
@@ -79,17 +94,16 @@ final class AGlyphSwitcherFollowsALanguageChangeTests: XCTestCase {
                 generation = channel.nextGeneration()
                 channel.declare(content(), token: "test.language", generation: generation)
                 for _ in 0..<10 {
-                    window.layoutIfNeeded()
+                    mounted.layout()
                     RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
                 }
-                guard let now = segmented(item, window) else { return XCTFail("\(language.rawValue): gone") }
+                guard let now = segmented(zone, mounted, window) else { return XCTFail("\(language.rawValue): gone") }
                 let read = names(now)
                 XCTAssertEqual(read.tips, expected().map(Optional.some),
-                               "\(style) \(item) \(language.rawValue): tooltips stayed in another language")
+                               "\(style) \(zone) \(language.rawValue): tooltips stayed in another language")
                 XCTAssertEqual(read.spoken, expected().map(Optional.some),
-                               "\(style) \(item) \(language.rawValue): VoiceOver names stayed in another language")
+                               "\(style) \(zone) \(language.rawValue): VoiceOver names stayed in another language")
             }
-            _ = toolbar
         }
     }
 
@@ -97,12 +111,12 @@ final class AGlyphSwitcherFollowsALanguageChangeTests: XCTestCase {
     /// every Mac that never right-clicked a switcher reads) — drawn in glyphs
     /// all the same, so only a changed name can force the refill.
     func testTheViewModeGlyphsAreRenamedOnALanguageChange() {
-        run(style: .text, item: "helm.actions") { [HostsStr.tableView, HostsStr.textView] }
+        run(style: .text, zone: .actions) { [HostsStr.tableView, HostsStr.textView] }
     }
 
     /// The same defect in the family: the centre tabs, in `.icons` — older
     /// than the always-glyphs change, and red at the commit before it too.
     func testTheCentreTabsGlyphsAreRenamedOnALanguageChange() {
-        run(style: .icons, item: "helm.tabs") { [HostsStr.keysTab, HostsStr.sshHostsTab] }
+        run(style: .icons, zone: .tabs) { [HostsStr.keysTab, HostsStr.sshHostsTab] }
     }
 }

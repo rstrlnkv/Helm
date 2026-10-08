@@ -6,16 +6,39 @@ import XCTest
 @testable import HelmApp
 
 /// Follow's two eyes (`HelmToolbarToggleFace`), fed what their own tests did
-/// not feed: the real Log page pressed through the capsule and through the
-/// overflow menu, the frames between the press and the new glyph, and a toggle
-/// with no face drawn beside a plain button.
+/// not feed: the real Log page pressed through the capsule, the frames between
+/// the press and the new glyph, and a toggle with no face drawn beside a plain
+/// button.
 ///
-/// The Log page is mounted with a real `SettingsToolbar`
-/// (`LivePageToolbarFixture`), so a press goes down the wire a click does:
-/// the capsule's own `press`, or the menu item AppKit shows when the capsule
-/// no longer fits.
+/// The Log page is mounted with the real page bar (`LivePageToolbarFixture`),
+/// so a press goes down the wire a click does: the capsule's own `press`. The
+/// bar's actions zone has no overflow form: the bar folds its tabs and its
+/// search when room runs short and never the capsule, so there is no menu item
+/// for Follow to be checked in.
 @MainActor
 final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
+
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+    }
+
+    override func tearDown() {
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        super.tearDown()
+    }
 
     private func logPage(_ appearance: NSAppearance.Name) -> LivePageToolbarFixture {
         let source = LogPageUnderHand.log(40)
@@ -25,28 +48,18 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
         return fx
     }
 
-    private func actionsItem(_ fx: LivePageToolbarFixture) -> NSToolbarItem? {
-        fx.mount.window?.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" }
-    }
-
-    private func capsule(_ fx: LivePageToolbarFixture) -> NSHostingView<HelmToolbarActionsCapsule>? {
-        actionsItem(fx)?.view as? NSHostingView<HelmToolbarActionsCapsule>
+    /// The actions zone's view, found by a walk of the bar the window holds and held to be the fixture's
+    /// own zone, so a zone that drew into no window cannot be photographed by accident.
+    private func capsule(_ fx: LivePageToolbarFixture) -> NSView? {
+        let found = fx.mount.window?.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        guard let view = found?.view(for: .actions), view === fx.pageBar.actions.view else { return nil }
+        return view
     }
 
     private func followIsOn(_ model: HelmToolbarActionsModel) -> Bool? {
         guard case .toggle(let isOn) = model.declared.first(where: { $0.id == "follow" })?.kind
         else { return nil }
         return isOn
-    }
-
-    /// The overflow menu's own item for Follow, found by what it presses.
-    private func followMenuItem(_ item: NSToolbarItem?) -> NSMenuItem? {
-        func find(_ menuItem: NSMenuItem) -> NSMenuItem? {
-            if menuItem.representedObject as? String == "follow" { return menuItem }
-            for child in menuItem.submenu?.items ?? [] { if let hit = find(child) { return hit } }
-            return nil
-        }
-        return item?.menuFormRepresentation.flatMap(find)
     }
 
     private struct Ink: CustomStringConvertible {
@@ -68,7 +81,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     /// graph as last laid out — an animation running on the model reads as a
     /// step. With them, a swap the harness animated itself over 500 ms read
     /// as 50 frames easing from the open eye's ink to the slashed eye's, and a
-    /// dim as 50 frames of falling ink (probe, X-C tester).
+    /// dim as 50 frames of falling ink.
     private func ink(_ view: NSView, slot: Int) -> Ink? {
         view.layoutSubtreeIfNeeded()
         view.window?.displayIfNeeded()
@@ -87,43 +100,6 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
             }
         }
         return c > 0 ? Ink(coverage: c, red: r / c, green: g / c, blue: b / c) : nil
-    }
-
-    // MARK: - The overflow menu
-
-    /// **When the capsule folds into AppKit's «»» menu, Follow is a
-    /// checkmarked item, and the checkmark is the state.** The eyes do not
-    /// reach the menu (a menu item carries the control's name and a state,
-    /// the way every other toggle in this app's menus does): what a person
-    /// sees there is «Follow ✓» while following and «Follow» while not. Held:
-    /// the checkmark agrees with the capsule's own state before any press,
-    /// after a press through the menu item, and after a second one — and a
-    /// press through the menu reaches the page, which flips the capsule's eye.
-    func testTheOverflowMenusFollowIsCheckedExactlyWhileFollowing() throws {
-        let fx = logPage(.aqua)
-        defer { fx.drop() }
-        let model = try XCTUnwrap(capsule(fx)?.rootView.model, "no capsule")
-        XCTAssertEqual(followIsOn(model), true, "the Log does not open following")
-        var states: [String] = []
-        for press in 0..<3 {
-            let menuItem = try XCTUnwrap(followMenuItem(actionsItem(fx)),
-                                         "press \(press): the overflow menu has no Follow item")
-            let isOn = try XCTUnwrap(followIsOn(model))
-            states.append("\(isOn ? "following" : "not following") → \(menuItem.state == .on ? "✓" : "no ✓")")
-            XCTAssertEqual(menuItem.state, isOn ? .on : .off, """
-                press \(press): the capsule says \(isOn ? "following" : "not following") and the \
-                overflow menu's Follow is \(menuItem.state == .on ? "checked" : "unchecked")
-                """)
-            XCTAssertEqual(menuItem.title, AppStr.logFollow)
-            XCTAssertTrue(menuItem.isEnabled, "press \(press): Follow in the menu is disabled")
-            guard press < 2 else { break }
-            let action = try XCTUnwrap(menuItem.action)
-            NSApp.sendAction(action, to: menuItem.target, from: menuItem)
-            fx.settle(20)
-            XCTAssertEqual(followIsOn(model), !isOn,
-                           "press \(press): a press on the menu's Follow did not reach the page")
-        }
-        XCTAssertEqual(states.count, 3, "the loop did not read three states: \(states)")
     }
 
     // MARK: - The frames of a press
@@ -148,7 +124,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
             let fx = logPage(appearance)
             defer { fx.drop() }
             let view = try XCTUnwrap(capsule(fx), "\(screen): no capsule")
-            let model = view.rootView.model
+            let model = fx.pageBar.actions.model
             let slot = try XCTUnwrap(model.declared.filter { model.visibleIDs.contains($0.id) }
                 .firstIndex { $0.id == "follow" }, "\(screen): Follow is not in the capsule")
             XCTAssertEqual(followIsOn(model), true, "\(screen): the Log does not open following")
@@ -203,7 +179,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
                                    generation: fx.channel.nextGeneration())
                 fx.settle(30)
                 let view = try XCTUnwrap(capsule(fx), "\(screen): no capsule")
-                XCTAssertEqual(view.rootView.model.visibleIDs, [action.id])
+                XCTAssertEqual(fx.pageBar.actions.model.visibleIDs, [action.id])
                 let reading = try XCTUnwrap(ink(view, slot: 0), "\(screen): \(name) drew nothing")
                 let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
                 view.cacheDisplay(in: view.bounds, to: rep)
@@ -239,7 +215,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
 
     /// **A return visit draws the eye, not the accent, before the page
     /// redeclares.** Leaving a page and coming back shows its bar from a
-    /// closure-free copy (`SettingsToolbar`'s frozen bar) until the page
+    /// closure-free copy (the page bar's frozen look) until the page
     /// declares again; that copy is built action by action, and a toggle
     /// copied without its face is a toggle with no face — drawn in the accent,
     /// the blue the owner asked to be rid of, for as long as the page takes to
@@ -250,18 +226,14 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     func testAReturnVisitKeepsTheEyeBeforeThePageRedeclares() throws {
         let face = HelmToolbarToggleFace(offSymbol: "eye.slash", onValue: "Following",
                                          offValue: "Not following")
-        let model = SettingsModel(host: ModuleHost.shared)
-        let channel = HelmWindowToolbarChannel()
-        let toolbar = SettingsToolbar(model: model, channel: channel)
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
-                              styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
-        toolbar.window = window
-        func capsuleEntry() throws -> HelmToolbarActionsModel.Entry {
-            let item = try XCTUnwrap(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                     "no actions item")
-            let view = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>, "no capsule")
-            return try XCTUnwrap(view.rootView.model.declared.first { $0.id == "follow" }, "no Follow entry")
+        let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.followA"),
+                                        width: 1060, height: 700)
+        defer { fx.drop() }
+        let model = fx.model, channel = fx.channel
+        func capsuleEntry(_ when: String) throws -> HelmToolbarActionsModel.Entry {
+            XCTAssertNotNil(capsule(fx), "\(when): the bar in the window holds no actions zone")
+            return try XCTUnwrap(fx.pageBar.actions.model.declared.first { $0.id == "follow" },
+                                 "\(when): no Follow entry, the bar shows \(fx.bar.presentation)")
         }
         for isOn in [true, false] {
             model.selection = .module("test.followA")
@@ -269,8 +241,8 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
             channel.declare(HelmPageToolbarContent(actions: [
                 HelmToolbarAction(id: "follow", title: "Follow", symbol: "eye", isOn: isOn, face: face) {}
             ]), token: "test.followA", generation: generation)
-            window.layoutIfNeeded()
-            XCTAssertEqual(try capsuleEntry().toggleFace, face, "the live bar lost the face — the fixture is wrong")
+            fx.settle(10)
+            XCTAssertEqual(try capsuleEntry("live").toggleFace, face, "the live bar lost the face — the fixture is wrong")
 
             model.selection = .module("test.followB")
             channel.declare(HelmPageToolbarContent(actions: [
@@ -278,11 +250,17 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
             ]), token: "test.followB", generation: channel.nextGeneration())
             channel.withdraw(token: "test.followA", generation: generation)
             model.selection = .module("test.followA")
-            window.layoutIfNeeded()
+            // No turn of the run loop: the bar keeps the frozen copy for its grace interval only, and the
+            // return is read before the page has had a chance to redeclare.
+            fx.pageBar.layout()
+            XCTAssertEqual(fx.bar.presentation,
+                           .page(key: ShellPageBar.pageKey(for: .module("test.followA")), isLive: false,
+                                 isDimmed: false),
+                           "precondition: the bar does not show the frozen copy of the page it came back to")
 
             XCTAssertNil(channel.content(for: AnyHashable("test.followA")),
                          "the page redeclared — the frozen copy was never drawn")
-            let entry = try capsuleEntry()
+            let entry = try capsuleEntry("on the return")
             XCTAssertEqual(entry.kind, .toggle(isOn: isOn), "the return visit lost Follow's state")
             XCTAssertEqual(entry.toggleFace, face, """
                 \(isOn ? "following" : "not following"): the bar drawn on a return visit carries \
@@ -290,12 +268,10 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
                 \(isOn ? " — lit in the accent" : "") rather than the \(isOn ? "open" : "slashed") eye
                 """)
         }
-        _ = toolbar
     }
 
     /// The bitmap as drawn, over the window's background of that appearance,
-    /// white glyphs recoloured to the label ink (offscreen a toolbar glyph comes
-    /// out white on transparent in both appearances; glass does not composite).
+    /// glyphs drawn white recoloured to the label ink (glass does not composite offscreen).
     private func write(_ rep: NSBitmapImageRep, appearance: NSAppearance.Name, name: String) {
         guard let dir = ProcessInfo.processInfo.environment["HELM_FRAMES_DIR"] else { return }
         var background = NSColor.white, labelInk = NSColor.black

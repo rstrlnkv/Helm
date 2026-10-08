@@ -15,11 +15,11 @@ import Module_Homebrew_Engine
 /// that file holds — «вкладки везде переключаются резко», 2026-09-30.
 ///
 /// - **The writer.** The shared guard writes the page's `selectedTab` binding
-///   itself. A person's press reaches that binding through `SettingsToolbar`'s
-///   own binding and `HelmToolbarSwitcher`'s coordinator, and a
+///   itself. A person's press reaches that binding through the bar's tabs zone
+///   and `HelmToolbarSwitcher`'s coordinator, and a
 ///   `withAnimation` anywhere on that path animates every page at once while
 ///   the guard stays green. Here the press is the control's own action, sent
-///   to the real toolbar, and what is read is the transaction the page's
+///   to the real bar, and what is read is the transaction the page's
 ///   update arrived in.
 /// - **What the switch asked for.** The shared guard parks the wire for the
 ///   length of its photograph, so the answer a shown tab asks its engine for
@@ -56,19 +56,49 @@ final class ATabSwitchIsACutEndToEndTests: XCTestCase {
         }
     }
 
-    /// **A press on a segment of the real toolbar changes the page in a
-    /// transaction with no animation.** The control is found in the window's
-    /// `NSToolbar`, its selection moved and its own action sent — the call a
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+    private var savedLabelStyle: Any?
+    private var pageBar: MountedPageBar?
+
+    /// The bar reads these when it is built (its tabs zone reads the label style when it shows), so they
+    /// are pinned before one is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        savedLabelStyle = AppSettings.store.object(ToolbarSwitcherStyle.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+        AppSettings.toolbarSwitcherStyle = .text
+    }
+
+    override func tearDown() {
+        pageBar?.remove()
+        pageBar = nil
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        AppSettings.store.set(savedLabelStyle, for: ToolbarSwitcherStyle.storageKey)
+        super.tearDown()
+    }
+
+    /// **A press on a segment of the real bar changes the page in a
+    /// transaction with no animation.** The control is found in the bar's tabs
+    /// zone, held to be the mounted bar's own, its selection moved and its own action sent — the call a
     /// click ends in — so every layer between the press and the page's binding
     /// is the shipping one.
-    func testAPressOnTheToolbarReachesThePageWithoutACurve() throws {
+    func testAPressOnTheBarReachesThePageWithoutACurve() throws {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
-        let toolbar = SettingsToolbar(model: model, channel: channel)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
                               styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
-        toolbar.window = window
+        let mounted = MountedPageBar(model: model, channel: channel, in: window)
+        pageBar = mounted
 
         let box = TabBox()
         var heard: [Bool] = []
@@ -97,13 +127,16 @@ final class ATabSwitchIsACutEndToEndTests: XCTestCase {
             selectedTab: binding, actions: [], search: nil)
         model.selection = .module("test.cut")
         channel.declare(content, token: "test.cut", generation: channel.nextGeneration())
-        window.layoutIfNeeded()
+        mounted.layout()
         Self.pump(window.contentView, turns: 5)
+        mounted.layout()
 
-        let bar = try XCTUnwrap(window.toolbar)
-        let tabsItem = try XCTUnwrap(bar.items.first { $0.itemIdentifier.rawValue == "helm.tabs" })
-        let control = try XCTUnwrap(tabsItem.view?.everyView(ofType: NSSegmentedControl.self).first,
-                                    "no NSSegmentedControl under the tabs item")
+        let found = window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        let tabsView = try XCTUnwrap(found?.view(for: .tabs), "the bar in the window holds no tabs zone")
+        XCTAssertTrue(found === mounted.bar.view, "the bar in the window is not the mounted bar")
+        XCTAssertTrue(tabsView === mounted.tabs.view, "the tabs zone is not the mounted bar's own")
+        let control = try XCTUnwrap(tabsView.everyView(ofType: NSSegmentedControl.self).first,
+                                    "no NSSegmentedControl under the tabs zone")
         XCTAssertEqual(control.segmentCount, 2, "the switcher is folded, so a press opens a menu instead")
 
         for (index, id) in [(1, "b"), (0, "a"), (1, "b")] {
@@ -114,13 +147,12 @@ final class ATabSwitchIsACutEndToEndTests: XCTestCase {
             // The subject before the absence: the press reached the page.
             XCTAssertEqual(box.tab, id, "the press on segment \(index) did not reach the page's binding")
         }
-        print("[transactions] toolbar press → page: \(heard)")
+        print("[transactions] bar press → page: \(heard)")
         XCTAssertEqual(heard.count, 3, "the page heard \(heard.count) changes for three presses")
         XCTAssertFalse(heard.contains(true), """
-            a press on the toolbar's switcher reached the page inside an animated transaction \
+            a press on the bar's switcher reached the page inside an animated transaction \
             (\(heard)) — every page's tab switch rides that curve whatever the page itself says
             """)
-        _ = toolbar
     }
 
     // MARK: - What the switch asked for

@@ -7,11 +7,13 @@ import XCTest
 
 /// **A `.segmented` entry with one option reserves what it draws, so a button
 /// beside it that hides does not move the capsule by so much as a half
-/// point.** Guards `SettingsToolbar.oneOptionCapsuleMargin`, and through it
-/// the one-option branch of `SettingsToolbar.segmentedReserveWidth(_:)`.
+/// point.** Holds the one-option reserve of `ShellBarActions.segmentedReserveWidth(_:appearance:)` no
+/// narrower than what the zone draws, and the capsule still when a button beside it hides. It does not hold
+/// `ShellBarActions.oneOptionCapsuleMargin` to its figure: on the page bar, with the margin at 0, this file
+/// stayed green — the red runs dated below were against the earlier toolbar.
 ///
-/// Written as a repro (tester, 2026-09-25) against the tree before that
-/// margin existed. The reserve is measured on the switcher alone, in
+/// Written as a repro (tester, 2026-09-25) against the earlier toolbar,
+/// `SettingsToolbar`, before that margin existed. The reserve is measured on the switcher alone, in
 /// `SwitcherMeasurementRig`'s toolbar item; the capsule draws it inside its
 /// `GlassEffectContainer`. For two, three and four options the two agree to
 /// the point (`ASegmentedEntrysReserveIsWhatItDrawsTests`); for one they did
@@ -38,7 +40,7 @@ import XCTest
 /// amount.
 ///
 /// **No tolerance, and two glyphs that draw at a half point** — the
-/// reserve is a whole point since `segmentedReserveWidth(_:)` rounds it up,
+/// reserve is a whole point since `ShellBarActions.segmentedReserveWidth(_:appearance:)` rounds it up,
 /// so a reserve that covers what is drawn leaves the capsule where it was to
 /// the exact point. This file used to allow half a point on both checks, and
 /// that half point was the whole defect: with the margin set to 2.5 pt it
@@ -48,6 +50,15 @@ import XCTest
 /// what `HostsTabsUnfoldWithoutABlinkTests` measured a blink on. The two
 /// half-point glyphs below are what catch that.
 ///
+/// **What is read now.** The page is declared on a real page bar in a window
+/// (`LivePageToolbarFixture`), under each of the bar's two looks. The reserve
+/// is the figure the actions zone's own model holds for the entry — measured
+/// once, on a switcher mounted alone in a detached host — and what is drawn is
+/// the `NSSegmentedControl` in the zone's own host, laid out inside the
+/// capsule: two hosts, two layouts, so the comparison can fail. The numbers in
+/// the paragraphs above were read in the earlier toolbar's attached item and
+/// are history, not what this file asserts.
+///
 /// `HelmToolbarAction`'s segmented initialiser accepts any number of options,
 /// and this file feeds it one — an input the API leaves open. Whether a page
 /// declares one is read at the declarations
@@ -55,49 +66,82 @@ import XCTest
 @MainActor
 final class AOneOptionSegmentedEntrysReserveCoversItTests: XCTestCase {
 
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+    private var fixtures: [LivePageToolbarFixture] = []
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.alwaysCollapseSearch = false
+        TheGlassSwitcherWarmUp.run()
+    }
+
+    override func tearDown() {
+        fixtures.forEach { $0.drop() }
+        fixtures = []
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        super.tearDown()
+    }
+
     func testHidingAButtonBesideAOneOptionEntryDoesNotResizeTheCapsule() throws {
-        for glyph in ["keyboard", "rectangle.3.group", "tablecells",
-                      "battery.100.bolt", "chevron.left.forwardslash.chevron.right"] {
-            let model = SettingsModel(host: ModuleHost.shared)
-            let channel = HelmWindowToolbarChannel()
-            let toolbar = SettingsToolbar(model: model, channel: channel)
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
-                                  styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-                                  backing: .buffered, defer: false)
-            toolbar.window = window
-            model.selection = .module("test.oneOption")
+        let token = "test.oneOption"
+        for look in [HelmBarAppearance.flat, .liquidGlass] {
+            for glyph in ["keyboard", "rectangle.3.group", "tablecells",
+                          "battery.100.bolt", "chevron.left.forwardslash.chevron.right"] {
+                let context = "\(look) / \(glyph)"
+                AppSettings.barAppearance = look
+                let fx = LivePageToolbarFixture(Color.clear, selection: .module(token), width: 1060, height: 700)
+                fixtures.append(fx)
 
-            func declare(buttonVisible: Bool) {
-                channel.declare(HelmPageToolbarContent(actions: [
-                    HelmToolbarAction(id: "viewMode", title: "View", options: [
-                        HelmToolbarTab(id: "only", title: glyph, symbol: glyph),
-                    ], selection: .constant("only")),
-                    HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise",
-                                      isVisible: buttonVisible) {},
-                ]), token: "test.oneOption", generation: channel.nextGeneration())
-                window.layoutIfNeeded()
+                func declare(buttonVisible: Bool) {
+                    fx.channel.declare(HelmPageToolbarContent(actions: [
+                        HelmToolbarAction(id: "viewMode", title: "View", options: [
+                            HelmToolbarTab(id: "only", title: glyph, symbol: glyph),
+                        ], selection: .constant("only")),
+                        HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise",
+                                          isVisible: buttonVisible) {},
+                    ]), token: token, generation: fx.channel.nextGeneration())
+                    fx.settle(10)
+                }
+
+                declare(buttonVisible: true)
+                // Found from the window and held to be the fixture's own zone.
+                let found = fx.mount.window?.contentView?.superview?
+                    .everyView(ofType: ShellPageBarView.self).first?.view(for: .actions)
+                let hosting = try XCTUnwrap(found, "\(context): the bar in the window holds no actions zone")
+                XCTAssertTrue(hosting === fx.pageBar.actions.view, "\(context): precondition — not the fixture's zone")
+                let control = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
+                                            "\(context): precondition — no switcher drawn")
+                XCTAssertEqual(control.segmentCount, 1, "\(context): precondition — the switcher has the wrong segments")
+                TheGlassSwitcherWarmUp.assertDrawnAtTheBarsSize(control, context)
+                let entry = try XCTUnwrap(fx.pageBar.actions.model.declared.first { $0.id == "viewMode" },
+                                          "\(context): no viewMode entry declared")
+                guard case .segmented(_, _, let reserve) = entry.kind else {
+                    return XCTFail("\(context): precondition — the entry is not a segmented one")
+                }
+                XCTAssertGreaterThan(control.frame.width, 0, "\(context): precondition — the switcher drew no width")
+                XCTAssertGreaterThanOrEqual(reserve, control.frame.width, """
+                    \(context): the one-option entry reserves \(reserve) pt and draws \(control.frame.width) pt
+                    """)
+                let both = hosting.fittingSize.width
+
+                declare(buttonVisible: false)
+                XCTAssertTrue(fx.pageBar.actions.view === hosting, "\(context): the capsule's host was built again")
+                XCTAssertEqual(fx.pageBar.actions.model.visibleIDs, ["viewMode"],
+                               "\(context): precondition — the button did not hide")
+                XCTAssertEqual(hosting.fittingSize.width, both, """
+                    \(context): hiding the button beside a one-option entry resized the capsule \
+                    (\(both) -> \(hosting.fittingSize.width) pt)
+                    """)
             }
-
-            declare(buttonVisible: true)
-            let hosting = try XCTUnwrap(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" }?
-                .view as? NSHostingView<HelmToolbarActionsCapsule>, "\(glyph): no hosted capsule")
-            let control = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
-                                        "\(glyph): precondition — no switcher drawn")
-            XCTAssertEqual(control.segmentCount, 1, "\(glyph): precondition — the switcher has the wrong segments")
-            let entry = try XCTUnwrap(hosting.rootView.model.declared.first { $0.id == "viewMode" })
-            let reserve = hosting.rootView.reserveWidth(entry)
-            XCTAssertGreaterThanOrEqual(reserve, control.frame.width, """
-                \(glyph): the one-option entry reserves \(reserve) pt and draws \(control.frame.width) pt
-                """)
-            let both = hosting.fittingSize.width
-
-            declare(buttonVisible: false)
-            XCTAssertEqual(hosting.fittingSize.width, both, """
-                \(glyph): hiding the button beside a one-option entry resized the capsule \
-                (\(both) -> \(hosting.fittingSize.width) pt)
-                """)
-            window.toolbar = nil
-            _ = toolbar
         }
     }
 }

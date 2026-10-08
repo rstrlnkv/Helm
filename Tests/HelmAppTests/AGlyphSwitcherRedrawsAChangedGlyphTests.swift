@@ -19,7 +19,7 @@ import XCTest
 /// through the actions capsule on this Mac: `minus` / `ellipsis` re-declared
 /// as `rectangle.3.group` / `keyboard` under the same two names left the
 /// control drawing `minus` / `ellipsis` at 73.0 pt while
-/// `SettingsToolbar.segmentedReserveWidth(_:)` measured the new pair at
+/// `segmentedReserveWidth(_:)` measured the new pair at
 /// 85.0 — the switcher stale and the reserve 12 pt past it. The capsule's
 /// switcher is always `.icons`, so it is always in the one style where a
 /// glyph is all that is drawn. No page changes an option's glyph today
@@ -36,21 +36,47 @@ import XCTest
 final class AGlyphSwitcherRedrawsAChangedGlyphTests: XCTestCase {
 
     private struct Mounted {
-        let toolbar: SettingsToolbar
+        let pageBar: MountedPageBar
         let channel: HelmWindowToolbarChannel
         let window: NSWindow
+    }
+
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+    private var mounted: [Mounted] = []
+
+    /// The bar reads these when it is built, so they are pinned before one is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+    }
+
+    override func tearDown() {
+        mounted.forEach { $0.pageBar.remove() }
+        mounted = []
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        super.tearDown()
     }
 
     private func mount() -> Mounted {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
-        let toolbar = SettingsToolbar(model: model, channel: channel)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
                               styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
-        toolbar.window = window
         model.selection = .module("test.changedGlyph")
-        return Mounted(toolbar: toolbar, channel: channel, window: window)
+        let made = Mounted(pageBar: MountedPageBar(model: model, channel: channel, in: window),
+                           channel: channel, window: window)
+        mounted.append(made)
+        return made
     }
 
     private func declare(_ glyphs: [String], on mounted: Mounted) {
@@ -60,14 +86,16 @@ final class AGlyphSwitcherRedrawsAChangedGlyphTests: XCTestCase {
                 HelmToolbarTab(id: "second", title: "Second", symbol: glyphs[1]),
             ], selection: .constant("first")),
         ]), token: "test.changedGlyph", generation: mounted.channel.nextGeneration())
-        mounted.window.layoutIfNeeded()
+        mounted.pageBar.layout()
     }
 
+    /// The switcher the bar in the window holds in its actions zone, found by a walk down from the
+    /// window's frame view and held to be the mounted bar's own zone.
     private func switcher(_ mounted: Mounted) throws -> NSSegmentedControl {
-        let hosting = try XCTUnwrap(mounted.window.toolbar?.items
-            .first { $0.itemIdentifier.rawValue == "helm.actions" }?
-            .view as? NSHostingView<HelmToolbarActionsCapsule>, "no hosted capsule")
-        return try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first, "no switcher drawn")
+        let found = mounted.window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        let zone = try XCTUnwrap(found?.view(for: .actions), "the bar in the window holds no actions zone")
+        XCTAssertTrue(found === mounted.pageBar.bar.view, "the bar in the window is not the mounted bar")
+        return try XCTUnwrap(zone.everyView(ofType: NSSegmentedControl.self).first, "no switcher drawn")
     }
 
     func testReDeclaredGlyphsUnderTheSameNamesAreDrawn() throws {
@@ -84,9 +112,11 @@ final class AGlyphSwitcherRedrawsAChangedGlyphTests: XCTestCase {
         declare(before, on: changed)
         let control = try switcher(changed)
         let beforeWidth = control.frame.width
-        XCTAssertGreaterThan(abs(expectedWidth - beforeWidth), 4, """
-            precondition: the two pairs draw \(beforeWidth) and \(expectedWidth) pt — too close to tell \
-            a stale switcher from a fresh one
+        let beforeSizes = (0..<control.segmentCount).map { control.image(forSegment: $0)?.size }
+        XCTAssertNotEqual(beforeSizes, expectedSizes, "precondition: the two pairs draw the same images")
+        XCTAssertGreaterThan(abs(expectedWidth - beforeWidth), 0.5, """
+            precondition: the two pairs draw \(beforeWidth) and \(expectedWidth) pt — closer than the \
+            0.5 pt the width check below reads to, so it could not tell a stale switcher from a fresh one
             """)
 
         declare(after, on: changed)
@@ -101,8 +131,5 @@ final class AGlyphSwitcherRedrawsAChangedGlyphTests: XCTestCase {
             the re-declared switcher is \(redrawn.frame.width) pt wide, a fresh one with \(after) is \
             \(expectedWidth) pt
             """)
-        fresh.window.toolbar = nil
-        changed.window.toolbar = nil
-        _ = (fresh.toolbar, changed.toolbar)
     }
 }

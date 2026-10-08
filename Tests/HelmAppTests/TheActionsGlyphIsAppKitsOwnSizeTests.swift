@@ -7,7 +7,7 @@ import XCTest
 
 /// **The owner's report (2026-09-27): "the glyph on the Refresh button is very
 /// small."** Every glyph in `HelmToolbarActionsCapsule` is a SwiftUI `Label`
-/// hosted in the item's own `NSHostingView`, and with no font of its own it
+/// hosted in the zone's own `NSHostingView`, and with no font of its own it
 /// took that view's default — body type — where AppKit draws the symbol of a
 /// live toolbar button, a bordered item with a target and an action as
 /// Refresh is, larger.
@@ -17,8 +17,8 @@ import XCTest
 /// `NSToolbarItem` with a target and an action whose image is the same
 /// symbol — the shape `BareToolbarEdgeProbeDelegate` already uses for the
 /// edge margin — and the ink box of the `NSToolbarButton` AppKit draws for
-/// it, against the ink box of the capsule's own glyph on a real, attached
-/// `SettingsToolbar`.
+/// it, against the ink box of the capsule's own glyph in the actions zone of a real
+/// page bar in a window (`LivePageToolbarFixture`).
 ///
 /// **It has to be a live button.** An item with no action is drawn through
 /// `NSToolbarImageView` instead, greyed as disabled and larger; this file
@@ -47,6 +47,28 @@ import XCTest
 /// AppKit's own `NSSegmentedControl` and draws its glyphs itself.
 @MainActor
 final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
+
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+    }
+
+    override func tearDown() {
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        super.tearDown()
+    }
 
     /// One glyph's ink: where it lies and how much stroke it holds — `ink(_:slot:)`.
     private struct Ink { let box: NSRect; let weight: CGFloat }
@@ -137,8 +159,8 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
     }
 
     /// The three kinds that draw through `HelmToolbarActionsCapsule`'s shared
-    /// glyph, declared through the real channel so `SettingsToolbar
-    /// .actionEntries(for:)` builds them — one symbol each, so each slot is
+    /// glyph, declared through the real channel so the bar's actions zone builds them
+    /// (`ShellBarActions.entries(for:appearance:)`) — one symbol each, so each slot is
     /// compared against AppKit's own drawing of that same symbol.
     private static let declared: [(symbol: String, action: HelmToolbarAction)] = [
         ("arrow.clockwise", HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise") {}),
@@ -159,11 +181,11 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
         fx.channel.declare(HelmPageToolbarContent(actions: Self.declared.map(\.action)),
                            token: "test.glyphs", generation: fx.channel.nextGeneration())
         fx.settle(30)
-        let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
-        let item = try XCTUnwrap(toolbar.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                 "no helm.actions item")
-        let capsule = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>, "no capsule")
-        XCTAssertEqual(capsule.rootView.model.visibleIDs, Self.declared.map(\.action.id),
+        // Found from the window, and held to be the fixture's own zone.
+        let found = fx.mount.window?.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        let capsule = try XCTUnwrap(found?.view(for: .actions), "the bar in the window holds no actions zone")
+        XCTAssertTrue(capsule === fx.pageBar.actions.view, "the actions view in the window is not the fixture's")
+        XCTAssertEqual(fx.pageBar.actions.model.visibleIDs, Self.declared.map(\.action.id),
                        "not every declared kind is on the capsule — a slot would read a neighbour's glyph")
         let side = HelmToolbarActionsCapsule.side
         return try Self.declared.indices.map { index in

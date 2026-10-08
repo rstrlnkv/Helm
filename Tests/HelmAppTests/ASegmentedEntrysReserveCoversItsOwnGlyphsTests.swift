@@ -8,78 +8,128 @@ import XCTest
 /// **The reserve is measured per glyph set, not a stand-in shared across
 /// every `.segmented` entry.** `HelmToolbarActionsCapsule.reserveWidth(_:)`
 /// reads whatever `EntryKind.segmented`'s own `reserveWidth` carries, and
-/// `SettingsToolbar.segmentedReserveWidth(_:)` measures that number against
-/// an attached `SwitcherMeasurementRig`, per glyph pair, rounded up to the
-/// next whole point — measured here: 73.0 pt for `minus` / `ellipsis`, 78.0
-/// for Hosts' own `tablecells` / `text.alignleft` (77.5 pt actually drawn,
-/// rounded up), 82.0 for `keyboard` / `rectangle.split.3x1`, 85.0 for
-/// `rectangle.3.group` / `keyboard`. A reserve tuned to one pair and reused
-/// for every page would cover a page whose glyphs are narrow without
-/// covering a page whose glyphs are wider — the capsule resize this entry
-/// exists to prevent — so this file checks all four pairs rather than only
-/// Hosts' own.
+/// `ShellBarActions.segmentedReserveWidth(_:appearance:)` measures that number
+/// on a switcher mounted alone, per glyph set and per look, rounded up to the
+/// next whole point. A reserve tuned to one pair and reused for every page
+/// would cover a page whose glyphs are narrow without covering a page whose
+/// glyphs are wider — the capsule resize this entry exists to prevent — so
+/// this file checks four pairs and two longer sets, the pairs including Hosts' own `tablecells` /
+/// `text.alignleft`, rather than only one.
+///
+/// The page is declared on a real page bar in a window
+/// (`LivePageToolbarFixture`), under each of the bar's two looks. The reserve
+/// is read from the actions zone's own model; what is drawn is the
+/// `NSSegmentedControl` in the zone's host, laid out inside the capsule. Two
+/// hosts, two layouts: the reserve is compared with something it does not
+/// compute. The figures in the earlier version of this comment (73.0, 78.0,
+/// 82.0, 85.0 pt) were read in the earlier toolbar's attached item and are not
+/// asserted here.
 ///
 /// The pairs span the glyph widths on purpose: a check fed one pair is a
 /// check of that pair's numbers.
 @MainActor
 final class ASegmentedEntrysReserveCoversItsOwnGlyphsTests: XCTestCase {
 
-    private static let pairs = [("minus", "ellipsis"), ("tablecells", "text.alignleft"),
-                                ("keyboard", "rectangle.split.3x1"), ("rectangle.3.group", "keyboard")]
+    /// Four pairs and a three- and a four-option set: the pairs draw within a point or four of each other
+    /// in either look, so the longer sets are what make the widths differ.
+    private static let sets: [[String]] = [
+        ["minus", "ellipsis"], ["tablecells", "text.alignleft"],
+        ["keyboard", "rectangle.split.3x1"], ["rectangle.3.group", "keyboard"],
+        ["keyboard", "tablecells", "text.alignleft"],
+        ["rectangle.3.group", "keyboard", "rectangle.split.3x1", "tablecells"],
+    ]
+
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+    private var fixtures: [LivePageToolbarFixture] = []
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.alwaysCollapseSearch = false
+        TheGlassSwitcherWarmUp.run()
+    }
+
+    override func tearDown() {
+        fixtures.forEach { $0.drop() }
+        fixtures = []
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
+        super.tearDown()
+    }
 
     func testTheReserveCoversWhatTheSwitcherDrawsWhateverItsGlyphs() throws {
-        var drawnWidths: [CGFloat] = []
-        for (first, second) in Self.pairs {
-            let pair = "\(first) / \(second)"
-            let model = SettingsModel(host: ModuleHost.shared)
-            let channel = HelmWindowToolbarChannel()
-            let toolbar = SettingsToolbar(model: model, channel: channel)
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
-                                  styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
-                                  backing: .buffered, defer: false)
-            toolbar.window = window
-            model.selection = .module("test.reserveGlyphs")
+        let token = "test.reserveGlyphs"
+        var drawnWidths: [HelmBarAppearance: [CGFloat]] = [:]
+        for look in [HelmBarAppearance.flat, .liquidGlass] {
+            for glyphs in Self.sets {
+                let pair = "\(look) / " + glyphs.joined(separator: " / ")
+                AppSettings.barAppearance = look
+                let fx = LivePageToolbarFixture(Color.clear, selection: .module(token), width: 1060, height: 700)
+                fixtures.append(fx)
 
-            func declare(buttonVisible: Bool) {
-                channel.declare(HelmPageToolbarContent(actions: [
-                    HelmToolbarAction(id: "viewMode", title: "View", isVisible: true, options: [
-                        HelmToolbarTab(id: "first", title: "First", symbol: first),
-                        HelmToolbarTab(id: "second", title: "Second", symbol: second),
-                    ], selection: .constant("first")),
-                    HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise",
-                                      isVisible: buttonVisible) {},
-                ]), token: "test.reserveGlyphs", generation: channel.nextGeneration())
-                window.layoutIfNeeded()
+                func declare(buttonVisible: Bool) {
+                    fx.channel.declare(HelmPageToolbarContent(actions: [
+                        HelmToolbarAction(id: "viewMode", title: "View", isVisible: true,
+                                          options: glyphs.enumerated().map {
+                                              HelmToolbarTab(id: "option\($0.offset)", title: $0.element, symbol: $0.element)
+                                          }, selection: .constant("option0")),
+                        HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise",
+                                          isVisible: buttonVisible) {},
+                    ]), token: token, generation: fx.channel.nextGeneration())
+                    fx.settle(10)
+                }
+
+                declare(buttonVisible: true)
+                // Found from the window and held to be the fixture's own zone.
+                let found = fx.mount.window?.contentView?.superview?
+                    .everyView(ofType: ShellPageBarView.self).first?.view(for: .actions)
+                let hosting = try XCTUnwrap(found, "\(pair): the bar in the window holds no actions zone")
+                XCTAssertTrue(hosting === fx.pageBar.actions.view, "\(pair): precondition — not the fixture's zone")
+                let both = hosting.fittingSize.width
+                let control = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
+                                            "\(pair): precondition — no switcher drawn")
+                XCTAssertEqual(control.segmentCount, glyphs.count, "\(pair): precondition — the switcher has the wrong segments")
+                TheGlassSwitcherWarmUp.assertDrawnAtTheBarsSize(control, pair)
+                XCTAssertTrue((0..<glyphs.count).allSatisfy { control.image(forSegment: $0) != nil },
+                              "\(pair): precondition — a glyph is missing, so its width was never drawn")
+                drawnWidths[look, default: []].append(control.frame.width)
+                let entry = try XCTUnwrap(fx.pageBar.actions.model.declared.first { $0.id == "viewMode" },
+                                          "\(pair): no viewMode entry declared")
+                guard case .segmented(_, _, let reserve) = entry.kind else {
+                    return XCTFail("\(pair): precondition — the entry is not a segmented one")
+                }
+                XCTAssertGreaterThanOrEqual(reserve + 0.5, control.frame.width, """
+                    \(pair): the segmented entry reserves \(reserve) pt and draws \(control.frame.width) pt
+                    """)
+
+                declare(buttonVisible: false)
+                XCTAssertTrue(fx.pageBar.actions.view === hosting, "\(pair): the capsule's host was built again")
+                XCTAssertEqual(fx.pageBar.actions.model.visibleIDs, ["viewMode"],
+                               "\(pair): precondition — the button did not hide")
+                XCTAssertEqual(hosting.fittingSize.width, both, accuracy: 0.5, """
+                    \(pair): hiding the button beside the segmented entry resized the capsule \
+                    (\(both) -> \(hosting.fittingSize.width) pt)
+                    """)
             }
-
-            declare(buttonVisible: true)
-            let hosting = try XCTUnwrap(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" }?
-                .view as? NSHostingView<HelmToolbarActionsCapsule>, "\(pair): no hosted capsule")
-            let both = hosting.fittingSize.width
-            let control = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
-                                        "\(pair): precondition — no switcher drawn")
-            XCTAssertEqual(control.segmentCount, 2, "\(pair): precondition — the switcher has the wrong segments")
-            XCTAssertTrue((0..<2).allSatisfy { control.image(forSegment: $0) != nil },
-                          "\(pair): precondition — a glyph is missing, so its width was never drawn")
-            drawnWidths.append(control.frame.width)
-            let entry = try XCTUnwrap(hosting.rootView.model.declared.first { $0.id == "viewMode" })
-            let reserve = hosting.rootView.reserveWidth(entry)
-            XCTAssertGreaterThanOrEqual(reserve + 0.5, control.frame.width, """
-                \(pair): the segmented entry reserves \(reserve) pt and draws \(control.frame.width) pt
-                """)
-
-            declare(buttonVisible: false)
-            XCTAssertEqual(hosting.fittingSize.width, both, accuracy: 0.5, """
-                \(pair): hiding the button beside the segmented entry resized the capsule \
-                (\(both) -> \(hosting.fittingSize.width) pt)
-                """)
-            _ = toolbar
         }
-        // The subject: the pairs really do draw at different widths, or this
-        // is one pair's numbers four times over.
-        XCTAssertGreaterThan((drawnWidths.max() ?? 0) - (drawnWidths.min() ?? 0), 4, """
-            precondition: the glyph pairs drew \(drawnWidths) — too close together to say anything about \
-            glyph width
+        // The subject: the sets really do draw at different widths, and the two looks reached the bar.
+        // The pairs alone draw too close together for this (`sets`' own comment), so it is the three- and
+        // the four-option set that carry it, by their count and not by a glyph's width.
+        for (look, widths) in drawnWidths {
+            XCTAssertGreaterThan((widths.max() ?? 0) - (widths.min() ?? 0), 4, """
+                precondition: the sets drew \(widths) under \(look) — too close together to say \
+                anything about a reserve measured per set
+                """)
+        }
+        XCTAssertNotEqual(drawnWidths[.flat], drawnWidths[.liquidGlass], """
+            precondition: both looks drew the same widths — the second look never reached the bar
             """)
     }
 }

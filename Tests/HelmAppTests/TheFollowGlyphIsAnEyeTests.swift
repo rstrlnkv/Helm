@@ -14,7 +14,7 @@ import XCTest
 /// value; a toggle with no face is drawn as it always was.
 ///
 /// **What is asserted is what was drawn, by reference.** The capsule is
-/// rendered through the real toolbar channel with one action in it, and the
+/// rendered through the real channel into the page bar's actions zone with one action in it, and the
 /// glyph's ink — how much of it there is and what colour it is — is compared
 /// against a plain button of the same symbol drawn through the same path: the
 /// toggle's «on» must be the plain `eye` and its «off» the plain `eye.slash`,
@@ -29,8 +29,26 @@ import XCTest
 @MainActor
 final class TheFollowGlyphIsAnEyeTests: XCTestCase {
 
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+    }
+
     override func tearDown() {
         AppLanguage.override = nil
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
         super.tearDown()
     }
 
@@ -47,6 +65,15 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
 
     private var framesDir: String? { ProcessInfo.processInfo.environment["HELM_FRAMES_DIR"] }
 
+    /// The actions zone's view, found by a walk of the bar the window holds: the fixture's own zone is
+    /// checked to be that view, so a zone that drew into no window cannot be photographed by accident.
+    private static func actionsView(of fx: LivePageToolbarFixture) -> NSView? {
+        guard let bar = fx.mount.window?.contentView?.superview?
+            .everyView(ofType: ShellPageBarView.self).first,
+              let view = bar.view(for: .actions), view === fx.pageBar.actions.view else { return nil }
+        return view
+    }
+
     /// The glyph in slot 0 of a capsule holding only `action`: its coverage
     /// (every alpha summed, in pixels) and its alpha-weighted mean colour in
     /// sRGB. Nil when nothing was drawn — a reading of a blank is a guess.
@@ -58,11 +85,8 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
         fx.channel.declare(HelmPageToolbarContent(actions: [action]), token: "test.follow",
                            generation: fx.channel.nextGeneration())
         fx.settle(30)
-        let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
-        let item = try XCTUnwrap(toolbar.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                 "no helm.actions item")
-        let capsule = try XCTUnwrap(item.view, "no capsule")
-        XCTAssertEqual((item.view as? NSHostingView<HelmToolbarActionsCapsule>)?.rootView.model.visibleIDs,
+        let capsule = try XCTUnwrap(Self.actionsView(of: fx), "the bar in the window holds no actions zone")
+        XCTAssertEqual(fx.pageBar.actions.model.visibleIDs,
                        [action.id], "the capsule does not hold exactly the action under test")
         guard let rep = capsule.bitmapImageRepForCachingDisplay(in: capsule.bounds) else { return nil }
         capsule.cacheDisplay(in: capsule.bounds, to: rep)
@@ -88,11 +112,10 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
     }
 
     /// **The picture for a person, with `HELM_FRAMES_DIR` set**: slot 0 of the
-    /// capsule as measured above. Offscreen the toolbar item's glyphs come out
-    /// white on a transparent bitmap in both appearances — the ink SwiftUI gives
-    /// a glyph that sits on glass, and glass does not composite here — so the
-    /// picture recolours the white ones to the appearance's own label ink,
-    /// leaves any other colour (the accent of a toggle with no face) as drawn,
+    /// capsule as measured above. The picture recolours a glyph drawn white
+    /// (the ink SwiftUI gives a glyph on glass, which does not composite
+    /// offscreen) to the appearance's own label ink, leaves any other colour
+    /// (the accent of a toggle with no face) as drawn,
     /// and lays the result on the window's background. A picture of the glyphs,
     /// not of the glass; the assertions do not read it.
     private func picture(_ rep: NSBitmapImageRep, appearance: NSAppearance.Name, name: String) {
@@ -233,9 +256,8 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
             HelmToolbarAction(id: "follow", title: "Follow", symbol: "eye", isOn: true, face: face) {}
         ]), token: "test.follow", generation: fx.channel.nextGeneration())
         fx.settle(30)
-        let item = try XCTUnwrap(fx.mount.window?.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" })
-        let capsule = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>)
-        let entry = try XCTUnwrap(capsule.rootView.model.declared.first { $0.id == "follow" })
+        XCTAssertNotNil(Self.actionsView(of: fx), "the bar in the window holds no actions zone")
+        let entry = try XCTUnwrap(fx.pageBar.actions.model.declared.first { $0.id == "follow" })
         XCTAssertEqual(entry.toggleFace, face)
         XCTAssertEqual(entry.kind, .toggle(isOn: true))
     }
