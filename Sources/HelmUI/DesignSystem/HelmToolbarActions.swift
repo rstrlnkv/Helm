@@ -127,9 +127,9 @@ public final class HelmToolbarActionsModel {
     /// which internal access already answers for.
     private(set) var declared: [Entry] = []
     /// The subset of `declared` currently shown — always a subsequence of
-    /// `declared` in the same order. `public`: `SettingsToolbar.patchActions`,
-    /// a genuinely different module, reads this to decide whether the
-    /// visible set actually moved before writing it again.
+    /// `declared` in the same order. `public`: `ShellBarActions.show`, in another
+    /// module, reads this to decide whether the visible set actually moved
+    /// before writing it again.
     public private(set) var visibleIDs: [String] = []
     /// Mirrors a frozen `PageBar`'s own inertness (`SettingsToolbar.freeze`),
     /// and a dimmed page's in `ShellBarActions.show`
@@ -260,12 +260,7 @@ public final class HelmToolbarActionsModel {
 /// built and reads the host only after. That the call can be dropped with every row
 /// green is read, not run.
 public struct HelmToolbarActionsCapsule: View {
-    // Internal, not `private`: a test reaching this through `@testable import
-    // HelmUI` (`TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests`) is
-    // the only reader outside `body` — SwiftUI's own AX tree for a button
-    // built from `Label` is not reliably walkable off a window this harness
-    // never orders on screen, so a test asks the model directly instead.
-    let model: HelmToolbarActionsModel
+    private let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
     /// Which glyph-dim constant applies — see `inactiveGlyphOpacity`'s and
     /// `disabledGlyphOpacity`'s own headers.
@@ -338,11 +333,6 @@ public struct HelmToolbarActionsCapsule: View {
     static let disabledInactiveGlyphOpacityDark: Double = 0.35
     static let disabledInactiveGlyphOpacityLight: Double = 0.50
 
-    /// Non-zero exactly when this capsule is a toolbar's own last item (no
-    /// search follows it) — see `edgeMargin`'s own header for the measurement
-    /// this closes. `ShellBarActions` leaves it at 0: its bar's layout owns the margin.
-    public let trailingInset: CGFloat
-
     /// **The two numbers a flat capsule dims by in a window that is not active,
     /// one per appearance.** The caller owns them (the name zone's, which
     /// `HelmApp` can reach and this module cannot); nil leaves the capsule on
@@ -359,10 +349,8 @@ public struct HelmToolbarActionsCapsule: View {
 
     private let flatInactiveInk: InactiveInk?
 
-    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0,
-                flatInactiveInk: InactiveInk? = nil) {
+    public init(_ model: HelmToolbarActionsModel, flatInactiveInk: InactiveInk? = nil) {
         self.model = model
-        self.trailingInset = trailingInset
         self.flatInactiveInk = flatInactiveInk
     }
 
@@ -534,12 +522,6 @@ public struct HelmToolbarActionsCapsule: View {
                 }
             }
         }
-        // Outside the `ZStack`, so it widens the hosted item's own intrinsic
-        // size rather than reserving room the buttons' trailing alignment
-        // would swallow — `patchActionsMenu`'s reserve is unaffected, since
-        // this is measured directly against `content.search`, never against
-        // `model.declared`.
-        .padding(.trailing, trailingInset)
     }
 
     /// `declared`, filtered to `visibleIDs` — declared order preserved, so a
@@ -661,15 +643,8 @@ public struct HelmToolbarActionsCapsule: View {
     /// reach either itself — `Package.swift`'s own target graph has `HelmApp` depend on
     /// `HelmUI` (the `HelmApp` target's `dependencies:` in `host`), and the reverse edge would be a cycle — which is
     /// why the number crosses as plain data on the entry rather than being asked for here.
-    ///
-    /// Not `private`, on the same grounds as `model` above: it is what
-    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` reads, through
-    /// `@testable import HelmUI`, to tell the reserve's own width apart from
-    /// `HelmToolbarActionsCapsule`'s deliberate `trailingInset` — a test that
-    /// instead assumed every declared entry costs `Self.side` would read a
-    /// `.segmented` entry's own extra width as if it were the inset.
     @MainActor
-    func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
+    private func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
         Self.reserveWidth(for: entry)
     }
 

@@ -380,34 +380,7 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
         }
     }
 
-    // MARK: - 4. What only the source can say
-
-    private static let zonesFile = "Sources/HelmApp/ShellBarZones.swift"
-
-    private func body(of marker: String, until end: String, in file: String) throws -> Substring {
-        let source = SwiftSource.uncommented(try RepoSource.text(of: file))
-        let start = try XCTUnwrap(source.range(of: marker), "\(marker) is gone from \(file)")
-        let rest = source[start.upperBound...]
-        let stop = rest.range(of: end)?.lowerBound ?? rest.endIndex
-        return rest[..<stop]
-    }
-
-    /// **The empty status view's VoiceOver gate, held to its line.** An offscreen
-    /// `NSHostingView` in a test process answers `accessibilityChildren()`
-    /// with nothing whatever it holds (`HelmAccordionTests`' own
-    /// `testTheClipCannotShipWithoutTheGate` records the measurement), so no
-    /// behavioural reading can tell the gate from its absence — a behavioural
-    /// case that reads only `rootView.status` stays green with the modifier
-    /// deleted.
-    func testTheEmptyStatusIsKeptOutOfVoiceOverInTheOnlyPlaceItCanBeRead() throws {
-        let view = try body(of: "struct StatusZoneView: View", until: "\n}\n", in: Self.zonesFile)
-        XCTAssertTrue(view.contains(".accessibilityHidden(status == nil)"), """
-            StatusZoneView no longer hides itself from VoiceOver when there is no status — an \
-            empty hosted view reads aloud as an unnamed element
-            """)
-    }
-
-    // MARK: - 5. "Without Icon", and switching style while the window is up
+    // MARK: - 4. "Without Icon", and switching style while the window is up
 
     /// **`.windowTitle` ("Without Icon") keeps the name zone and drops the
     /// status zone, and a style switch at runtime changes both ways, on the

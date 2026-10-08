@@ -15,8 +15,7 @@ import XCTest
 /// **The reference is AppKit's own drawing, read fresh every run, never a
 /// number this file remembers.** A bare `NSToolbar` holding one bordered
 /// `NSToolbarItem` with a target and an action whose image is the same
-/// symbol — the shape `BareToolbarEdgeProbeDelegate` already uses for the
-/// edge margin — and the ink box of the `NSToolbarButton` AppKit draws for
+/// symbol, and the ink box of the `NSToolbarButton` AppKit draws for
 /// it, against the ink box of the capsule's own glyph in the actions zone of a real
 /// page bar in a window (`LivePageToolbarFixture`).
 ///
@@ -225,8 +224,7 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
     }
 }
 
-/// One bordered image item with a target and an action, nothing else —
-/// `BareToolbarEdgeProbeDelegate`'s shape with an image instead of a view, so
+/// One bordered image item with a target and an action, nothing else, so
 /// AppKit draws the glyph itself, and draws it the way it draws a button a
 /// person can press. The action is the point: without it AppKit draws the
 /// same item through `NSToolbarImageView`, greyed as disabled and larger.

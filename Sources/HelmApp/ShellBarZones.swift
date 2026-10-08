@@ -131,10 +131,10 @@ struct NameZoneView: View {
 /// window's top edge to the drawn top of the badge's fill (or of the quiet
 /// word's ink) is what AppKit's vertical centring leaves in a bar
 /// `barHeight` tall, and the same distance is put between the drawn right
-/// edge and the window's. The actions capsule keeps AppKit's own 8 pt
-/// (`HelmToolbarActionsCapsule.edgeMargin`): it is 36 pt tall in a 52 pt
-/// bar, so its top gap is that 8 already, and only this item is shorter
-/// than the bar by enough to matter.
+/// edge and the window's. The actions capsule stands `ShellBarLayout.trailing`
+/// from the bar's edge, 8 pt: it is 36 pt tall in a 52 pt bar, so its top gap
+/// is that 8 already, and only this view is shorter than the bar by enough to
+/// matter.
 struct StatusZoneView: View {
     let status: (word: String, active: Bool)?
     let appearsActive: Bool
@@ -163,22 +163,16 @@ struct StatusZoneView: View {
         .padding(.trailing, trailingInset)
         .compositingGroup()
         .opacity(appearsActive ? 1 : inactiveOpacity)
-        // **Out of VoiceOver on every page with nothing to say** — every
-        // page that declares no toolbar content, every module with no notion of running — since
-        // `SettingsToolbar` keeps this item in its identifier list, empty or not
-        // (`makeStatusItem`'s own header); `ShellPageBar` mounts the view only with a status: a placeholder is not a name, and
-        // an unnamed control is worse than one that is simply not there.
-        .accessibilityHidden(status == nil)
     }
 }
 
 extension StatusZoneView {
 
-    /// **The distance AppKit leaves between an `isBordered = false` last
-    /// item's own box and the window's trailing edge** — measured, and pinned
-    /// by `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests` (box margin 4 pt
-    /// at 1060 pt): the 8 pt of a bordered item less the
-    /// `HelmToolbarActionsCapsule.edgeMargin` an unbordered one is short.
+    /// **The distance AppKit left between an `isBordered = false` last
+    /// item's own box and the window's trailing edge**, kept as a number: the
+    /// 8 pt of a bordered item less `HelmToolbarActionsCapsule.edgeMargin`.
+    /// No row measures it now, and `ShellPageBar` passes its own margin
+    /// (`ShellBarLayout.statusTrailing`) instead of this default.
     static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
 
     /// Where the drawing lies inside its own box, in points from the box's
@@ -190,7 +184,7 @@ extension StatusZoneView {
     private struct Ink { let boxHeight: CGFloat, top: CGFloat, trailing: CGFloat }
 
     /// `nil` where the render draws nothing (an empty status, or a view AppKit
-    /// would not photograph): the caller then keeps the capsule's own inset.
+    /// would not photograph): the caller then keeps `HelmToolbarActionsCapsule.edgeMargin`.
     ///
     /// **Measured the way the placed item is laid out and drawn** — inside a
     /// window of its own that is never shown, so `fittingSize` keeps the

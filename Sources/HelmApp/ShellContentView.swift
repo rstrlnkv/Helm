@@ -67,8 +67,7 @@ final class ShellContentView: NSView {
     private weak var journalWindow: NSWindow?
     /// Asks for a layout when the window's occlusion state changes; removed
     /// whenever the view leaves a window, and in `deinit`. Read in `deinit`,
-    /// which Swift 6 treats as nonisolated even on a `@MainActor` class, as
-    /// `SettingsToolbar.swift`'s `languageWatch` is.
+    /// which Swift 6 treats as nonisolated even on a `@MainActor` class.
     nonisolated(unsafe) private var shownObserver: NSObjectProtocol?
     private let system = ProcessInfo.processInfo.operatingSystemVersion
 

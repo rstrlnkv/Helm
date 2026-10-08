@@ -36,8 +36,8 @@ capsule's model, one that belongs to other tabs is left out of the visible set; 
 items, each with its own press — `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`
 holds what each draws, how `isVisible`, `isEnabled` and `isBusy` differ, and why a
 kind cannot be two at once. A segmented action stands at the right with every other action, and its reserve is what its switcher draws
-under each look (`ShellBarActions.segmentedReserveWidth`). The bar has no overflow menu: out of room, the tabs
-fold, then the search, then the name truncates, and the capsule keeps its width (`ShellBarLayout`'s header).
+under each look (`ShellBarActions.segmentedReserveWidth`). The bar has no overflow menu: out of room, the search narrows to `ShellBarLayout.searchFloor`, then the tabs
+fold, then the search folds to its magnifier, then the name truncates, and the capsule keeps its width (`ShellBarLayout`'s header).
 
 ## The tabs and the search field
 

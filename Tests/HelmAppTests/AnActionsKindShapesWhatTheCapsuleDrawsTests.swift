@@ -6,8 +6,8 @@ import XCTest
 @testable import HelmUI
 
 /// **Three shapes an action can take beyond a plain button, read off the page bar's actions zone rather
-/// than off the source** — the same reason `TheAttachedToolbarNeverChurnsOnAPageSwitchTests` gives for going
-/// through the bar and the channel rather than constructing `HelmToolbarActionsModel.Entry` by hand:
+/// than off the source**, through the bar and the channel rather than by constructing
+/// `HelmToolbarActionsModel.Entry` by hand:
 /// `ShellBarActions.entries(for:appearance:)` is where the page bar turns `HelmToolbarAction.Kind` into
 /// `HelmToolbarActionsModel.EntryKind` (the earlier toolbar's `SettingsToolbar.actionEntries(for:)` is a
 /// second copy, which this file does not read), and a test that skips it would prove nothing about whether

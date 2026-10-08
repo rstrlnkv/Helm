@@ -21,11 +21,6 @@ import SwiftUI
 /// whether the capsule's glass follows the window by itself is unresolved in `SettingsToolbar`
 /// (`HelmToolbarActionsCapsule`'s header), so the glass look is rebuilt as that bar rebuilds its host.
 /// Under `.flat` a change of activity moves the model only. **Not seen on a screen:** this zone in a window.
-///
-/// `perform`, `entries(for:appearance:)`, `segmentedReserveWidth`, `reserveCache` and
-/// `oneOptionCapsuleMargin` are second copies of `SettingsToolbar`'s `perform`, `actionEntries(for:)`,
-/// `segmentedReserveWidth(_:)`, `segmentedReserveCache` and `oneOptionCapsuleMargin`: both bars are in the
-/// tree, and a change to one side is made in the other.
 @MainActor
 final class ShellBarActions: ShellBarZone {
     /// The capsule's host; nil while the page declares no action.
@@ -210,8 +205,8 @@ final class ShellBarActions: ShellBarZone {
         return measured
     }
 
-    /// The capsule with the look and the flat dimming numbers the zone carries. The trailing inset is
-    /// left at 0: the bar's layout owns the right margin (`ShellBarLayout.trailing`).
+    /// The capsule with the look and the flat dimming numbers the zone carries. It has no inset of its
+    /// own: the bar's layout owns the right margin (`ShellBarLayout.trailing`).
     private struct Root: View {
         let model: HelmToolbarActionsModel
         let ink: HelmToolbarActionsCapsule.InactiveInk
