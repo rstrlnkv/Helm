@@ -79,7 +79,11 @@ final class ThePaneStartsBelowTheBarTests: XCTestCase {
 
     // MARK: - The window's buttons
 
-    func testTheBarIsHandedTheThreeButtonsAndTheNameClearsThemOnTheRail() throws {
+    /// **What the bar is handed is the window buttons' owner's obstacle for AppKit's home of the buttons.**
+    /// Expanded, the union of the three real buttons as they stand; in the rail, the closed capsule of the
+    /// placement for a bare window's home, converted from the shell to the bar as `ShellContentView.layout()`
+    /// converts it, and the name does not start under it.
+    func testTheBarIsHandedTheWindowButtonsObstacleAndTheNameClearsItOnTheRail() throws {
         guard let rig = SettingsWindowRig.build(
             in: self, failure: "the window has no content view controller of the shell's type: no buttons were read")
         else { return }
@@ -108,18 +112,39 @@ final class ThePaneStartsBelowTheBarTests: XCTestCase {
             XCTAssertEqual(got, want, accuracy: 0.5, "the buttons' \(what) the bar was handed is not the union of the three")
         }
 
+        // AppKit's own home, read off a bare window of the same style mask and size, never shown; the shell is
+        // flipped and fills the window, so a rect's y from the window's top is its y in the shell.
+        let reference = NSWindow(contentRect: rig.window.contentView?.bounds ?? .zero,
+                                 styleMask: rig.window.styleMask, backing: .buffered, defer: true)
+        reference.isReleasedWhenClosed = false
+        let homeButtons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+            .compactMap { reference.standardWindowButton($0) }
+        XCTAssertEqual(homeButtons.count, 3, "the reference window has \(homeButtons.count) standard buttons")
+        let inWindow = homeButtons.reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: nil)) }
+        XCTAssertFalse(inWindow.isNull || inWindow.isEmpty, "the reference's buttons are \(inWindow): no home to compare with")
+        let shell = rig.shell.shell
+        XCTAssertEqual(shell.bounds.height, reference.frame.height, accuracy: 0.5,
+                       "the shell is not as tall as the reference window: its y is not the window's from the top")
+        let home = CGRect(x: inWindow.minX, y: reference.frame.height - inWindow.maxY,
+                          width: inWindow.width, height: inWindow.height)
+
         rig.shell.sidebarCollapsed = true
         XCTAssertTrue(rig.shell.sidebarCollapsed, "the sidebar did not fold")
         settle()
-        let folded = buttons.reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: bar)) }
-        XCTAssertEqual(bar.place.buttons.maxX, folded.maxX, accuracy: 0.5, "the folded bar holds a stale buttons rect")
-        XCTAssertGreaterThan(folded.maxX + ShellBarLayout.obstacleClearance, ShellBarLayout.leading,
-                             "the buttons end left of the name's own start: the clearance is not tested")
+        let obstacle = ShellWindowButtons.obstacle(ShellWindowButtons.placement(home: home, rail: true))
+        XCTAssertFalse(obstacle.isNull || obstacle.isEmpty, "the owner's obstacle for \(home) is \(obstacle): nothing to compare with")
+        let want = shell.convert(obstacle, to: bar)
+        let folded = bar.place.buttons
+        XCTAssertFalse(folded.isNull, "the folded bar was handed no obstacle")
+        for (got, wanted, what) in [(folded.minX, want.minX, "minX"), (folded.maxX, want.maxX, "maxX"),
+                                    (folded.minY, want.minY, "minY"), (folded.maxY, want.maxY, "maxY")] {
+            XCTAssertEqual(got, wanted, accuracy: 0.5, "the folded bar's \(what) is not the owner's obstacle \(want): it holds \(folded)")
+        }
         guard let name = bar.view(for: .name) else {
             XCTFail("the bar has no name view")
             return
         }
         XCTAssertGreaterThanOrEqual(name.frame.minX, folded.maxX + ShellBarLayout.obstacleClearance - 0.5,
-                                    "the name \(name.frame) starts under the buttons ending at \(folded.maxX)")
+                                    "the name \(name.frame) starts under the obstacle ending at \(folded.maxX)")
     }
 }

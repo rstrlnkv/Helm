@@ -127,8 +127,8 @@ enum ShellBarLayout {
         var alwaysCollapseSearch: Bool
         /// The field's text is not empty, or it is being edited.
         var searchInUse: Bool
-        /// The window's buttons' union in bar coordinates; `.zero` or `.null`
-        /// for none.
+        /// What the name must clear, in bar coordinates: the window's buttons' union, or in the rail the
+        /// closed capsule that stands in for them; `.zero` or `.null` for none.
         var buttons: CGRect
     }
 

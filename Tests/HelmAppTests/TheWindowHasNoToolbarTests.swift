@@ -98,4 +98,95 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
             XCTAssertEqual(rig.window.titleVisibility, .hidden, "the window's title is drawn under \(style) after a turn")
         }
     }
+
+    /// **A press 20 pt from the window's top, where the titlebar's strip lies over the bar, answers what
+    /// the bar draws there.** The frame view's `hitTest` is asked, the x of each zone is the middle of the
+    /// bar's own frame for it. Each control answers a view inside the bar that lies over its zone; the tabs'
+    /// view cannot move the window, the name and a gap answer the bar itself, which can. The actions' and the
+    /// search's hit views answer true for `mouseDownCanMoveWindow`, and this row does not say whether a press
+    /// there moves the window. That a real press is delivered where `hitTest` says is not stated here.
+    /// The answer's class and its flag are printed for every point (`PRESSUNDERSTRIP`).
+    func testAPressOnAControlUnderTheTitlebarsStripAnswersTheControl() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: noShell) else { return }
+        guard let frameView = rig.window.contentView?.superview else {
+            XCTFail("the window has no frame view: nothing was pressed")
+            return
+        }
+        guard let bar = rig.pageBar?.view else {
+            XCTFail("SettingsWindow holds no page bar: nothing was pressed")
+            return
+        }
+        rig.open("probe.a", search: true)
+        rig.window.contentView?.layoutSubtreeIfNeeded()
+        SettingsWindowRig.pump()
+        rig.window.contentView?.layoutSubtreeIfNeeded()
+        guard let frames = bar.frames else {
+            XCTFail("the bar has no frames: nothing was pressed")
+            return
+        }
+        let fromTop: CGFloat = 20
+        let windowHeight = rig.window.frame.height
+        let strip = frameView.bounds.height - rig.window.contentLayoutRect.height
+        XCTAssertTrue(strip > fromTop, "the titlebar's strip is \(strip) pt tall, not over the point \(fromTop) pt from the top")
+        /// The middle x of a bar-coordinate frame, in window coordinates, and the point at `fromTop`.
+        func point(atBarX x: CGFloat) -> NSPoint {
+            let inWindow = bar.convert(NSPoint(x: x, y: 0), to: nil)
+            return NSPoint(x: inWindow.x, y: windowHeight - fromTop)
+        }
+        let zones: [(String, CGRect)] = [("tabs", frames.tabs), ("actions", frames.actions), ("search", frames.search)]
+        var pressed = 0
+        for (zone, frame) in zones {
+            guard !frame.isNull, !frame.isEmpty else {
+                XCTFail("the bar has no \(zone) view on this page (frame \(frame)): nothing was pressed")
+                continue
+            }
+            let at = point(atBarX: frame.midX)
+            guard let hit = frameView.hitTest(at) else {
+                XCTFail("\(zone) at x \(at.x), \(fromTop) from the top: the frame view answered nil")
+                continue
+            }
+            pressed += 1
+            let name = String(describing: type(of: hit))
+            print("PRESSUNDERSTRIP \(zone) x \(at.x) y \(fromTop) -> \(name) canMove \(hit.mouseDownCanMoveWindow)")
+            XCTAssertTrue(hit !== bar && hit.isDescendant(of: bar),
+                          "\(zone) at x \(at.x), \(fromTop) from the top answered \(name), not a view inside the bar")
+            if zone == "tabs" {
+                XCTAssertFalse(hit.mouseDownCanMoveWindow,
+                               "\(zone) at x \(at.x), \(fromTop) from the top answered \(name), which moves the window")
+            }
+            if hit !== bar, hit.isDescendant(of: bar) {
+                XCTAssertTrue(hit.convert(hit.bounds, to: bar).intersects(frame),
+                              "\(zone) at x \(at.x) answered \(name), which does not lie over the zone's frame \(frame)")
+            }
+        }
+        // The name, and the first gap between two zones that holds some width.
+        var handles: [(String, CGFloat)] = []
+        if frames.name.isNull || frames.name.isEmpty {
+            XCTFail("the bar has no name frame (\(frames.name)): nothing was pressed")
+        } else {
+            handles.append(("name", frames.name.midX))
+        }
+        let ordered = ([("name", frames.name)] + zones).filter { !$0.1.isNull && !$0.1.isEmpty }.sorted { $0.1.minX < $1.1.minX }
+        var gap: CGFloat?
+        for (a, b) in zip(ordered, ordered.dropFirst()) where b.1.minX - a.1.maxX >= 2 {
+            gap = (a.1.maxX + b.1.minX) / 2
+            break
+        }
+        if let gap { handles.append(("gap", gap)) } else {
+            XCTFail("no gap between the bar's zones on this page: nothing was pressed in a gap (frames \(ordered.map { $0.1 }))")
+        }
+        for (zone, x) in handles {
+            let at = point(atBarX: x)
+            guard let hit = frameView.hitTest(at) else {
+                XCTFail("\(zone) at x \(at.x), \(fromTop) from the top: the frame view answered nil")
+                continue
+            }
+            pressed += 1
+            let name = String(describing: type(of: hit))
+            print("PRESSUNDERSTRIP \(zone) x \(at.x) y \(fromTop) -> \(name) canMove \(hit.mouseDownCanMoveWindow)")
+            XCTAssertTrue(hit === bar, "\(zone) at x \(at.x), \(fromTop) from the top answered \(name), not the bar itself")
+            XCTAssertTrue(hit.mouseDownCanMoveWindow, "\(zone) at x \(at.x) answered \(name), which cannot move the window")
+        }
+        XCTAssertEqual(pressed, 5, "\(pressed) of 5 points were pressed: the row did not measure what it names")
+    }
 }

@@ -208,7 +208,9 @@ import HelmUI
     func windowDidResignMain(_ notification: Notification) { updateWindowAppearsActive() }
 
     private func updateWindowAppearsActive() {
-        pageBar.setWindowAppearsActive(window.isKeyWindow || window.isMainWindow)
+        let active = window.isKeyWindow || window.isMainWindow
+        pageBar.setWindowAppearsActive(active)
+        (window.contentViewController as? SettingsShellViewController)?.shell.setWindowAppearsActive(active)
     }
 }
 

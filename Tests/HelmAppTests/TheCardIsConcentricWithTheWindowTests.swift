@@ -204,6 +204,15 @@ final class TheCardIsConcentricWithTheWindowTests: XCTestCase {
         XCTAssertTrue(ShellGeometry.sidebarRange.contains(ShellGeometry.defaultSidebarWidth))
     }
 
+    func testTheWindowButtonsDropAndShiftAndWhereTheyGo() {
+        // The window buttons' drop and shift, and where they go for a home of (9, 9, 60, 14).
+        XCTAssertEqual(ShellGeometry.buttonDrop, 6)
+        XCTAssertEqual(ShellGeometry.buttonShift, 6)
+        let home = CGRect(x: 9, y: 9, width: 60, height: 14)
+        XCTAssertEqual(ShellGeometry.buttonsOffset(home: home, rail: false), CGSize(width: 6, height: 6))
+        XCTAssertEqual(ShellGeometry.buttonsOffset(home: home, rail: true), CGSize(width: 10, height: 6))
+    }
+
     // MARK: - the sidebar's width
 
     func testAStoredSidebarWidthIsBroughtInsideTheRange() {
@@ -269,7 +278,7 @@ final class TheCardIsConcentricWithTheWindowTests: XCTestCase {
         let closed = ShellGeometry.capsuleClosedFrame(buttons: Self.buttons)
         XCTAssertEqual(closed.size, CGSize(width: 40, height: 18))
         XCTAssertEqual(closed.minX, 10, "(56 - 40) / 2 + 2")
-        XCTAssertEqual(closed.midY, Self.buttons.midY, "the row where the buttons are; there is no drop")
+        XCTAssertEqual(closed.midY, Self.buttons.midY, "the row where the buttons stand")
         XCTAssertEqual(closed, CGRect(x: 10, y: 17, width: 40, height: 18))
 
         // Follows the row, not a constant, and not the buttons' x.
@@ -280,7 +289,7 @@ final class TheCardIsConcentricWithTheWindowTests: XCTestCase {
         XCTAssertEqual(other.size, CGSize(width: 40, height: 18))
     }
 
-    func testTheOpenCapsuleSurroundsTheButtonsWhereTheSystemPutThem() {
+    func testTheOpenCapsuleSurroundsTheButtonsWhereTheyStand() {
         let open = ShellGeometry.capsuleOpenFrame(buttons: Self.buttons)
         XCTAssertEqual(open, CGRect(x: 10, y: 13, width: 78, height: 26),
                        "the capsule opens at the rail's centre while the buttons stay at 19: the dots open onto nothing")

@@ -11,7 +11,8 @@ import HelmRuntime
 /// Subviews, bottom to top: the glass (regular, full bleed, no content view);
 /// on macOS 27 a full-bleed probe whose only job is to report the window's
 /// corner; the sidebar, as wide as the card's x so the two cannot part; the card,
-/// and inside it the clip, and inside that the pane and, above it, the page bar.
+/// and inside it the clip, and inside that the pane and, above it, the page bar; last, the window
+/// buttons' capsule (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
 /// window's corner. The sidebar, the pane and the bar are handed in; this view
@@ -22,12 +23,14 @@ import HelmRuntime
 /// high, and the pane starts under it:** `layout()` adds to the pane's own top
 /// safe-area inset what the bar needs beyond it, so the pane's top inset, which
 /// SwiftUI reads, is the bar's height. It hands the bar where the card stands
-/// and the frame of the window's three buttons in the bar's coordinates.
+/// and the obstacle `ShellWindowButtons` answers (the closed capsule in the rail, the three buttons
+/// otherwise) in the bar's coordinates. This view and the bar neither write the window buttons' frames
+/// nor read them; that owner does.
 ///
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
-/// `viewDidMoveToWindow`, the window's occlusion notification and
-/// `sidebarWidth`'s setter. Events only ask (`needsLayout = true`).
+/// `viewDidMoveToWindow`, the window's occlusion notification,
+/// `sidebarWidth`'s setter and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
@@ -53,6 +56,7 @@ final class ShellContentView: NSView {
     private let pane: NSView
     private let bar: ShellPageBarView
     private let glass = NSGlassEffectView()
+    private let buttons = ShellWindowButtons()
     private var applied: WindowCorner?
     private var journal = WindowCorner.Journal()
 
@@ -102,6 +106,7 @@ final class ShellContentView: NSView {
         shadow.shadowOffset = NSSize(width: 0, height: -1)
         card.shadow = shadow
         addSubview(card)
+        addSubview(buttons.capsule)
 
         clip.wantsLayer = true
         clip.layer?.cornerCurve = .continuous
@@ -141,6 +146,7 @@ final class ShellContentView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        buttons.attach(to: window)
         if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
         shownObserver = nil
         if let window {
@@ -205,7 +211,8 @@ final class ShellContentView: NSView {
         clip.frame = card.bounds
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
-        placeBar(cardMinX: frame.minX)
+        let obstacle = buttons.place(rail: ShellGeometry.isRail(sidebarWidth: sidebarWidth))
+        placeBar(cardMinX: frame.minX, buttons: obstacle.isNull ? .null : convert(obstacle, to: bar))
 
         let reading = publicReading
         let chrome = WindowCorner.Chrome(hasToolbar: window?.toolbar != nil, systemMajor: system.majorVersion)
@@ -217,23 +224,18 @@ final class ShellContentView: NSView {
     /// The bar at the clip's top (the clip is not flipped, so its top is `maxY`), full width; the pane's
     /// additional top inset is what the bar's height needs beyond the safe area the pane has of its own,
     /// written only when it differs.
-    private func placeBar(cardMinX: CGFloat) {
+    private func placeBar(cardMinX: CGFloat, buttons: CGRect) {
         let height = min(ShellBarLayout.height, max(clip.bounds.height, 0))
         bar.frame = CGRect(x: 0, y: clip.bounds.maxY - height, width: clip.bounds.width, height: height)
-        bar.place = ShellPageBarView.Place(cardMinX: cardMinX, windowWidth: bounds.width, buttons: windowButtons())
+        bar.place = ShellPageBarView.Place(cardMinX: cardMinX, windowWidth: bounds.width, buttons: buttons)
         let own = pane.safeAreaInsets.top - pane.additionalSafeAreaInsets.top
         let wanted = max(0, ShellBarLayout.height - own)
         if pane.additionalSafeAreaInsets.top != wanted { pane.additionalSafeAreaInsets.top = wanted }
     }
 
-    /// The union of the close, miniaturize and zoom buttons in the bar's coordinates; `.null` when none of
-    /// them is this window's or shown.
-    private func windowButtons() -> CGRect {
-        guard let window else { return .null }
-        return [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
-            .compactMap { window.standardWindowButton($0) }
-            .filter { $0.window === window && !$0.isHidden }
-            .reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: bar)) }
+    /// Hands the window's activity to the buttons' capsule, whose dots are coloured only while it is active.
+    func setWindowAppearsActive(_ active: Bool) {
+        buttons.setWindowAppearsActive(active)
     }
 
     private func writeLine(_ corner: WindowCorner, publicReading: CGFloat?, chrome: WindowCorner.Chrome) {
