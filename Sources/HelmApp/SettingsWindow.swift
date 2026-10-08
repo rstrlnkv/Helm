@@ -12,7 +12,9 @@ import HelmUI
 /// **The window has no `NSToolbar`.** The page's bar is Helm's own
 /// (`ShellPageBar`), a view at the top of the card's clip that
 /// `ShellContentView` places; the window holds the controller and hands its
-/// view to the shell, and the pane below it starts under the bar.
+/// view to the shell, and the pane below it starts under the bar. The window
+/// recalculates its key-view loop itself (`autorecalculatesKeyViewLoop`, in
+/// `init`), which is how the bar's views come to be in it.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
@@ -89,6 +91,19 @@ import HelmUI
         window.contentMinSize = Self.minSize
         window.center()
         window.isReleasedWhenClosed = false
+        // **The window recalculates its key-view loop.** The bar's zones are content views, and the actions
+        // host is built anew when another page's actions arrive. In a window that was never shown, with this
+        // line removed every row of `TheKeyViewRingRunsSidebarPaneBarTests` is red: Tab from the
+        // sidebar's host leaves the first responder at the window. With it, Tab from there lands in the bar's
+        // search field, and the raw `nextKeyView` ring closes through sidebar, pane, bar, the bar's zones in
+        // `Zone` order with the search zone among them and a rebuilt actions host on it in place of the old one;
+        // the family asserts each of these. Pane before bar is the order AppKit gave, accepted and not chosen;
+        // why it gives that order is not measured (the two are siblings in the clip with one top-left corner).
+        // No `nextKeyView` is set by hand: assumed, not measured in the tree, that a hosting view overwrites a
+        // link set on it. Not measured: a key or shown window, Shift-Tab, a pressed key, and anything with
+        // keyboard navigation on; the rows do not read that setting and were run with it off, so Tab is shown
+        // to reach the search field only, not the tabs, the actions or the sidebar's rows.
+        window.autorecalculatesKeyViewLoop = true
         // Remember whatever size the user settles on.
         window.setFrameAutosaveName("HelmSettingsWindow.v4")
         self.window = window

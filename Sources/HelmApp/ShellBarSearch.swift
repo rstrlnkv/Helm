@@ -68,7 +68,9 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
     private static let fieldHeight: CGFloat = 16
 
     /// A search cell that gives the field editor the rectangle the resting label draws in: an unbezeled field
-    /// hands its editor the whole bounds, which puts the typed text over the magnifier and under the clear button.
+    /// hands its editor the whole bounds, which puts the typed text over the magnifier (with this cell
+    /// `TheTypedTextStartsWhereThePlaceholderDidTests` reads none there; no row builds a bare cell) and the
+    /// whole of the clear button over the text's end (read from the rectangles, not measured).
     private final class Cell: NSSearchFieldCell {
         override func edit(withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, event: NSEvent?) {
             super.edit(withFrame: searchTextRect(forBounds: rect), in: controlView, editor: editor, delegate: delegate, event: event)
