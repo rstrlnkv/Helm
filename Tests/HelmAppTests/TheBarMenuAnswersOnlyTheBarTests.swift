@@ -24,10 +24,11 @@ import Module_KeepAwake_UI
 /// bar's menu are the name, the tabs, the actions, the search field resting open, the magnifier it rests
 /// as, the status word and the empty space between the zones. The places that must not are the sidebar,
 /// the glass round the card, the window's buttons (also in the rail, where they sit over the bar's own
-/// frame) and the titlebar strip above the sidebar. The rail row fails as the code stands: the right end
-/// of the closed capsule lies over the bar's frame, and a press there is answered by the bar's menu. While
-/// the search field holds an editor, a press in the field lands on the field editor, whose menu is the text
-/// menu.
+/// frame) and the titlebar strip above the sidebar. In the rail the capsule's view is its hover zone, and
+/// the right part of that zone lies over the bar's frame: the bar withholds its menu inside it
+/// (`ShellPageBarView.menu(for:)`), opens it just right of it, and opens it where a hidden capsule's frame
+/// lies. While the search field holds an editor, a press in the field lands on the field editor, whose
+/// menu is the text menu.
 ///
 /// Not held here: Control-click and a plain click. AppKit turns a Control-click into a context-menu press
 /// before any view sees it, and only a real event through `NSWindow.sendEvent(_:)` would show that, which
@@ -298,9 +299,9 @@ final class TheBarMenuAnswersOnlyTheBarTests: XCTestCase {
     }
 
     /// **In the rail the three buttons stand at alpha 0 under a closed capsule that answers no hit**, so
-    /// the press lands on whatever lies under the capsule. Its middle must answer no bar menu, and its right
-    /// end must not either. Measured: the right end lies over the bar's frame, the press there lands on
-    /// `ShellPageBarView` and is answered by the bar's menu, so this row fails as the code stands.
+    /// the press lands on whatever lies under the capsule's view, whose frame is the hover zone. The right
+    /// end of that zone lies over the bar's frame, where the press lands on `ShellPageBarView` and the bar
+    /// withholds its menu (`ShellPageBarView.menu(for:)`); the zone's middle must answer no bar menu either.
     func testTheClosedCapsuleInTheRailDoesNotAnswerTheBarsMenu() {
         guard let rig = mount() else { return }
         rig.shell.sidebarCollapsed = true
@@ -312,9 +313,63 @@ final class TheBarMenuAnswersOnlyTheBarTests: XCTestCase {
         }
         XCTAssertFalse(capsule.isHidden, "precondition: the capsule is hidden in the rail")
         let frame = capsule.frame
-        for (place, x) in [("the middle of the closed capsule", frame.midX), ("the right end of the closed capsule", frame.maxX - 2)] {
+        for (place, x) in [("the middle of the capsule's hover zone", frame.midX), ("the right end of the capsule's hover zone", frame.maxX - 2)] {
             assertStaysShut(rig, place, at: shell.convert(NSPoint(x: x, y: frame.midY), to: nil), landing: { _ in true })
         }
+    }
+
+    /// **A capsule that is hidden holds no ground**: in the rail, with the zoom button hidden, the
+    /// shell releases the buttons and hides the capsule, which keeps the frame it had. A right click on the
+    /// bar where that frame lies, the right end of what was the capsule, opens the bar's menu again. The
+    /// expanded sidebar cannot show this: the hidden frame then lies left of the card, over no bar at all.
+    func testAHiddenCapsuleLeavesTheBarsMenuWhereItWas() {
+        guard let rig = mount() else { return }
+        rig.shell.sidebarCollapsed = true
+        XCTAssertTrue(rig.shell.sidebarCollapsed, "precondition: the sidebar did not fold")
+        settle(rig)
+        let shell = rig.shell.shell
+        guard let capsule = shell.subviews.last, capsule !== shell.card else {
+            return XCTFail("the shell holds no capsule above the card: nothing is pressed")
+        }
+        XCTAssertFalse(capsule.isHidden, "precondition: the capsule is hidden in the rail")
+        let frame = capsule.frame
+        let point = shell.convert(NSPoint(x: frame.maxX - 2, y: frame.midY), to: nil)
+        assertStaysShut(rig, "the right end of the capsule's hover zone", at: point, landing: { _ in true })
+        guard let zoom = rig.window.standardWindowButton(.zoomButton) else { return XCTFail("no zoom button") }
+        zoom.isHidden = true
+        defer { zoom.isHidden = false }
+        rig.shell.shell.needsLayout = true
+        settle(rig)
+        XCTAssertTrue(capsule.isHidden, "precondition: the capsule still shows with a button hidden")
+        assertOpens(rig, "the bar where the hidden capsule's frame lies", at: point,
+                    landing: { $0 === rig.pageBar?.view })
+    }
+
+    /// **Just right of the capsule's hover zone in the rail, still at the zone's height, the bar's menu
+    /// opens and the press lands on the bar.** The bar keeps its menu off the capsule's reach only, and that
+    /// reach is handed over in the bar's coordinates (`ShellContentView.layout()` converts it); a reach
+    /// handed over in the shell's coordinates, where the bar starts further right, would refuse the menu on
+    /// this point too. The point is checked to lie outside the capsule's frame and inside the bar's frame
+    /// before anything is asked of it.
+    func testJustRightOfTheCapsulesHoverZoneInTheRailTheBarsMenuOpens() {
+        guard let rig = mount() else { return }
+        rig.shell.sidebarCollapsed = true
+        XCTAssertTrue(rig.shell.sidebarCollapsed, "precondition: the sidebar did not fold")
+        settle(rig)
+        let shell = rig.shell.shell
+        guard let capsule = shell.subviews.last, capsule !== shell.card, let bar = rig.pageBar?.view else {
+            return XCTFail("the shell holds no capsule above the card, or no bar: nothing is pressed")
+        }
+        XCTAssertFalse(capsule.isHidden, "precondition: the capsule is hidden in the rail")
+        let frame = capsule.frame
+        let inShell = NSPoint(x: frame.maxX + 6, y: frame.midY)
+        XCTAssertFalse(frame.contains(inShell), "precondition: the point \(inShell) lies inside the capsule's frame \(frame)")
+        let inBar = bar.convert(inShell, from: shell)
+        XCTAssertTrue(bar.bounds.contains(inBar), "precondition: the point lies outside the bar, at \(inBar) of \(bar.bounds)")
+        XCTAssertTrue(bar.place.reach.contains(NSPoint(x: inBar.x - 12, y: inBar.y)),
+                      "precondition: the bar's reach \(bar.place.reach) is not the capsule's: no menu is withheld anywhere")
+        assertOpens(rig, "the bar just right of the capsule's hover zone", at: shell.convert(inShell, to: nil),
+                    landing: { $0 === bar })
     }
 
     /// **The titlebar strip above the sidebar**, right of the buttons and above the page's top, answers no

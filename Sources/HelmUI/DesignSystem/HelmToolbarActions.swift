@@ -254,10 +254,11 @@ public final class HelmToolbarActionsModel {
 /// live transition for the unresolved reason above, and
 /// `correctActionsGlassOnFirstAttach(_:)` calls it at most once, and only for
 /// a bar built while the window reads inactive, for the
-/// separate, confirmed reason its own header gives — and
-/// `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests.testAChangeMovesNoItemAndLeavesNoReplacedCapsuleAlive`
-/// is the guard that keeps the live-transition call from being quietly
-/// dropped before the contradiction is settled.
+/// separate, confirmed reason its own header gives. No row in `Tests/` holds the
+/// live-transition call: the one row that calls `SettingsToolbar.setWindowAppearsActive(_:)`
+/// (`TheActionsCapsuleFollowsTheWindowsAppearsActiveTests`) calls it before the bar is
+/// built and reads the host only after. That the call can be dropped with every row
+/// green is read, not run.
 public struct HelmToolbarActionsCapsule: View {
     // Internal, not `private`: a test reaching this through `@testable import
     // HelmUI` (`TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests`) is

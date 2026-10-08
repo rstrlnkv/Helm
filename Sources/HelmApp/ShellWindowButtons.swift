@@ -11,7 +11,8 @@ import HelmUI
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
 /// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0. The
 /// obstacle the page bar is handed is the closed capsule's frame in the rail, the buttons' union
-/// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens.
+/// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens. The bar
+/// is also handed `reach`, the hover zone, and opens no menu inside it.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
 /// Assumed, not measured: that it lays them out from the titlebar's top, so that a change of the titlebar's
@@ -95,6 +96,11 @@ final class ShellWindowButtons {
 
     /// The plate in the capsule's coordinates.
     var plateFrame: CGRect { view.plate.frame }
+
+    /// The capsule's hover zone, which is the capsule view's frame, in the capsule's superview's
+    /// coordinates; `.null` while the view is hidden or has no superview. It never depends on hover or on
+    /// `isOpen`. The page bar keeps its menu off it.
+    var reach: CGRect { view.isHidden || view.superview == nil ? .null : view.frame }
 
     /// The real buttons' union now, in the capsule's superview's coordinates; `.null` without a window,
     /// a superview or buttons. Read by tests.

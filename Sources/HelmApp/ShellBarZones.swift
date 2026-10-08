@@ -72,15 +72,18 @@ struct NameZoneView: View {
     static let inactiveOpacityLight: Double = 0.33   // (247−177)/(247−38) ≈ 0.3349
     /// **The same two under the opaque title bar — macOS 26's, by the band
     /// decision — and AppKit 27.2's answer to that decision, not macOS 26's.**
-    /// Read on this Mac (27.2, engineer, 2026-09-27) off a real
-    /// `SettingsWindow` built with `HelmBandChoice.onMacOS(26)`, AppKit's own
-    /// title drawn beside the zone, as the share of its lit ink the title
-    /// keeps inactive (S3 and S5 alike, through its own `draw(_:)`): Light
+    /// Read on this Mac (27.2, engineer, 2026-09-27) under the title bar
+    /// `HelmBandChoice.onMacOS(26)` sets, off AppKit's own title, as the share
+    /// of its lit ink the title keeps inactive (S3 and S5 alike, through its
+    /// own `draw(_:)`): Light
     /// 0.399, Dark 0.279 — against 0.329 and 0.296 under the transparent
     /// title bar in the same run, which the pair above answers. Whether
     /// macOS 26 itself dims its title by the same amount is for the owner's
     /// 26 virtual machine to confirm; `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`
-    /// holds the zone to AppKit's title under both title bars.
+    /// holds the zone's shares to AppKit's title under both title bars. The zone's
+    /// S1 ink under this one is not held to the title's:
+    /// `testTheNameZoneDrawsAppKitsTitleInkUnderTheOpaqueTitleBar` there compares
+    /// the two and says what each reads.
     static let inactiveOpacityOpaqueDark: Double = 0.28
     static let inactiveOpacityOpaqueLight: Double = 0.40
 

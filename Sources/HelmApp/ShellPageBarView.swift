@@ -6,7 +6,8 @@ import AppKit
 /// no height of its own. It reads one setting, the system's double-click action, and
 /// touches its window only in `mouseDown(with:)`, where it asks the window to drag on a
 /// press and to zoom, to minimize or nothing on a double click. It is an accessibility group (role toolbar) of the
-/// zones it shows; its label is written by whoever owns it, and so is its menu.
+/// zones it shows; its label is written by whoever owns it, and so is its menu, which it withholds inside
+/// `place.reach`.
 ///
 /// **One pass, in this order.** `layout()` builds one `ShellBarLayout.Input`
 /// from the bar's width, `measures` and `place`, asks `ShellBarLayout.frames`
@@ -42,12 +43,16 @@ final class ShellPageBarView: NSView {
     }
 
     /// Where the bar stands. Written by whoever sets the bar's frame, in the same pass.
-    /// Each field is the field of the same meaning in `ShellBarLayout.Input`,
+    /// Each field but `reach` is the field of the same meaning in `ShellBarLayout.Input`,
     /// which says what it holds.
     struct Place: Equatable {
         var cardMinX: CGFloat = 0
         var windowWidth: CGFloat = 0
         var buttons: CGRect = .null
+        /// The window-button capsule's hover zone in the bar's coordinates; the bar opens no menu on a point
+        /// inside it. Not an input of the layout. `.null`, and a rectangle with a not-a-number side, contain
+        /// no point, so the menu opens as everywhere else on the bar.
+        var reach: CGRect = .null
     }
 
     struct Verdicts: Equatable {
@@ -133,6 +138,14 @@ final class ShellPageBarView: NSView {
             if let view = views[zone], hit === view || hit.isDescendant(of: view) { return self }
         }
         return hit
+    }
+
+    /// The bar's menu, except on a point inside `place.reach`: there the press is meant for the window
+    /// buttons' capsule. A left press there lands on the bar as anywhere else on it: `hitTest(_:)` does not
+    /// read `place.reach`.
+    override func menu(for event: NSEvent) -> NSMenu? {
+        if place.reach.contains(convert(event.locationInWindow, from: nil)) { return nil }
+        return super.menu(for: event)
     }
 
     override var mouseDownCanMoveWindow: Bool { true }
