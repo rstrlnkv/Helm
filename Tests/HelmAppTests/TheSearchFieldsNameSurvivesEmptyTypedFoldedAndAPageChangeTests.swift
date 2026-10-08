@@ -5,20 +5,13 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Ported from `ASearchFieldSaysWhatItIsTests`, deleted in this pass along
-/// with `ToolbarSearchName` — the SwiftUI-bridge-era mechanism it watched.**
+/// **The page bar's search has an accessibility name in every state a person can meet it in.**
 ///
-/// The search field is no longer bridged in from `.searchable`; `SettingsToolbar`
-/// builds the `NSSearchToolbarItem` itself (`makeSearchItem`) and re-patches its
-/// accessibility label on every refresh (`patchSearch`). What used to need a
-/// dedicated namer object to reach the field from outside its own view tree is
-/// now a plain method on the object that already owns the item, but the states
-/// worth proving are the same ones `ASearchFieldSaysWhatItIsTests` proved against
-/// the bridge: empty, holding a value, forced under AppKit's own 160 pt collapse
-/// floor, and rebuilt by a page change. "Today's language" and "after a language
-/// notice" are already covered, by
-/// `TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests`, and are
-/// not repeated here.
+/// The search zone (`ShellBarSearch`) holds a field and a magnifier and shows one of them. The field is named
+/// when it is empty, when it holds a value, and after a page change; folded, what a person with VoiceOver
+/// meets is the magnifier, so the magnifier carries the same name and the hidden field keeps it for the
+/// moment the magnifier's press opens it. Today's language and a language notice are held by
+/// `TheMagnifierAndTheFieldNameThemselvesInEveryLanguageAfterASecondShow` in `TheSearchRestsAsItsMagnifierTests`.
 @MainActor
 final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTestCase {
 
@@ -42,7 +35,7 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
         }
     }
 
-    /// What a page change actually is, for one mounted `SettingsToolbar` — a
+    /// What a page change actually is, for one mounted bar — a
     /// different page drawn under the same window, the way a person switches
     /// pages in the sidebar. `@Published` rather than a plain `@State` on
     /// `Page` itself: the test drives this from outside the view tree, the
@@ -65,10 +58,27 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
     }
 
     private var fixtures: [LivePageToolbarFixture] = []
+    private var savedCollapse: Any?
+    private var savedPageBar: Any?
+    private var savedBarAppearance: Any?
+
+    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
+    override func setUp() {
+        super.setUp()
+        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
+        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
+        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
+        AppSettings.pageBarStyle = .windowTitle
+        AppSettings.barAppearance = .flat
+        AppSettings.alwaysCollapseSearch = false
+    }
 
     override func tearDown() {
         fixtures.forEach { $0.drop() }
         fixtures = []
+        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
+        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
+        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
         super.tearDown()
     }
 
@@ -88,9 +98,9 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
                        file: StaticString = #filePath, line: UInt = #line) -> NSSearchField? {
         guard let field = fixture.mount.searchField else {
             XCTFail("""
-                \(what): the toolbar holds no search field at all, so there is nothing here \
+                \(what): the window holds no search field at all, so there is nothing here \
                 whose name could be read — either the page's declare never reached the \
-                channel or `SettingsToolbar` stopped publishing the item
+                channel or the bar stopped holding the search zone
                 """, file: file, line: line)
             return nil
         }
@@ -104,18 +114,18 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
         let field = try XCTUnwrap(field(fixture, "empty"))
         XCTAssertEqual(field.placeholderString, "Search apps",
                        "precondition: the prompt never reached the field")
+        XCTAssertFalse(field.isHidden, "precondition: with the setting off the empty field rests open")
         XCTAssertEqual(field.accessibilityLabel(), HelmA11y.searchField, """
-            the search field is read aloud with no name — `makeSearchItem` set none, or \
-            `patchSearch` overwrote it with nothing on the refresh that follows every declare
+            the search field is read aloud with no name — the zone set none when the page \
+            declared its search
             """)
     }
 
     // MARK: - With a value
 
-    /// Typed rather than assigned: `controlTextDidChange` is `SettingsToolbar`'s
+    /// Typed rather than assigned: `controlTextDidChange` is the search zone's
     /// own delegate method, and posting the notification the way AppKit does is
-    /// what actually exercises it, the same device `ASearchFieldSaysWhatItIsTests`
-    /// used against the bridge.
+    /// what actually exercises it, the way a keystroke reaches it.
     func testAFieldWithSomethingInItStillHasAName() throws {
         let (fixture, holder) = mount(token: "test.searchTyped")
         let field = try XCTUnwrap(field(fixture, "with a value"))
@@ -129,45 +139,48 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
             """)
     }
 
-    // MARK: - Collapsed
+    // MARK: - Folded
 
-    /// Forced directly under AppKit's own 160 pt floor, the way
-    /// `ASearchFieldSaysWhatItIsTests.Mount.forceCollapsed` forced it — a bare
-    /// toolbar with nothing beside the field rests open at any width this
-    /// fixture can reach, so reaching the collapsed state honestly needs a
-    /// crowded bar this file has no reason to build.
-    private func forceCollapsed(_ field: NSSearchField, _ fixture: LivePageToolbarFixture) {
-        field.constraints
-            .filter { $0.firstItem === field && $0.firstAttribute == .width }
-            .forEach { $0.isActive = false }
-        field.widthAnchor.constraint(equalToConstant: 40).isActive = true
-        fixture.settle(15)
-    }
+    /// With `alwaysCollapseSearch` on and the field empty the zone rests as its magnifier: the field is
+    /// hidden and the magnifier is the one control a person meets, so it carries the name, and so does the
+    /// hidden field that its press opens.
+    func testTheFoldedZonesMagnifierHasAName() throws {
+        AppSettings.alwaysCollapseSearch = true
+        let (fixture, _) = mount(token: "test.searchFolded")
+        let field = try XCTUnwrap(field(fixture, "folded"))
+        let zone = fixture.pageBar.search
+        XCTAssertTrue(field === zone.field, "precondition: the field found in the window is not the zone's")
+        XCTAssertTrue(field.isHidden, "precondition: the empty field is not resting as the magnifier")
+        XCTAssertFalse(zone.magnifier.isHidden, "precondition: the resting zone shows no magnifier")
+        XCTAssertEqual(zone.plate.frame.width, ShellBarLayout.magnifierWidth,
+                       "precondition: the plate is not the magnifier's width")
 
-    func testTheCollapsedControlsFieldHasAName() throws {
-        let (fixture, _) = mount(token: "test.searchCollapsed")
-        let field = try XCTUnwrap(field(fixture, "collapsed"))
-        forceCollapsed(field, fixture)
-        XCTAssertTrue(field.isHidden, """
-            precondition: the field is still visible after forcing its width under 160 pt — \
-            AppKit's own floor moved, and this fixture's forcing needs to move with it
+        XCTAssertEqual(zone.magnifier.accessibilityLabel(), HelmA11y.searchField, """
+            the zone rests as a magnifier with no name: that is the one control VoiceOver meets
             """)
+        // A button is offered to VoiceOver as its cell, so the cell is what the bar's children hold.
+        let met = fixture.bar.view.accessibilityChildren() ?? []
+        XCTAssertTrue(met.contains { ($0 as? NSCell) === zone.magnifier.cell },
+                      "the bar offers VoiceOver no magnifier: the zone's name is on a control nobody meets")
+        XCTAssertFalse(met.contains { ($0 as? NSView) === field }, "the bar offers VoiceOver the hidden field")
         XCTAssertEqual(field.accessibilityLabel(), HelmA11y.searchField, """
-            the control's magnifier opens onto a field with no name
+            the hidden field has no name, so the press on the magnifier opens a field with none
             """)
+
+        zone.magnifier.performClick(nil)
+        XCTAssertFalse(field.isHidden, "precondition: the magnifier's press did not open the field")
+        XCTAssertEqual(field.accessibilityLabel(), HelmA11y.searchField,
+                       "the field the magnifier opened has no name")
     }
 
     // MARK: - A page change
 
-    /// A page change here means a different page — one with its own token —
-    /// drawn under the *same* `LivePageToolbarFixture`, the same window and
-    /// the same `SettingsToolbar`: switching `pageSwitch.showsB` swaps which
-    /// page `SwitchingPage` draws, and `model.selection` moves with it, the
-    /// way `SettingsWindow` moves both together on a sidebar click. Two
-    /// independent fixtures, each with its own toolbar, proved nothing about
-    /// a page change at all — `SettingsToolbar` caches one `NSToolbar` per
-    /// page keyed on its own `pageBars`, and a second fixture never touches
-    /// the first one's cache either way.
+    /// A page change here means a different page — one with its own token — drawn under the *same*
+    /// `LivePageToolbarFixture`, the same window and the same bar: switching `pageSwitch.showsB` swaps which
+    /// page `SwitchingPage` draws, and `model.selection` moves with it, the way the sidebar's click moves
+    /// both. The bar holds one search zone and may keep one field across the change, so a name that is only
+    /// kept would pass; both names are taken off before the change, and only a show of page B's declaration
+    /// can put them back. Page B's own prompt arriving proves that show happened.
     func testTheNameSurvivesAPageChange() throws {
         let holderA = Holder(), holderB = Holder()
         let pageSwitch = PageSwitch()
@@ -179,21 +192,28 @@ final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTe
         fixture.settle(25)
 
         let fieldA = try XCTUnwrap(field(fixture, "page A"))
+        let zone = fixture.pageBar.search
+        XCTAssertEqual(fieldA.placeholderString, "Search apps", "precondition: page A's prompt never arrived")
         XCTAssertEqual(fieldA.accessibilityLabel(), HelmA11y.searchField,
                        "precondition: page A's own field starts unnamed")
+
+        fieldA.setAccessibilityLabel(nil)
+        zone.magnifier.setAccessibilityLabel(nil)
+        XCTAssertNil(fieldA.accessibilityLabel(), "precondition: the field's name was not taken off")
+        XCTAssertNil(zone.magnifier.accessibilityLabel(), "precondition: the magnifier's name was not taken off")
 
         pageSwitch.showsB = true
         fixture.model.selection = .module("test.searchPageB")
         fixture.settle(25)
 
         let fieldB = try XCTUnwrap(field(fixture, "page B"))
-        XCTAssertFalse(fieldA === fieldB, """
-            precondition: the same field object came back for a different page, so this case \
-            proves nothing about a field built fresh
-            """)
+        XCTAssertEqual(fieldB.placeholderString, "Search hosts",
+                       "precondition: page B's declaration never reached the zone")
         XCTAssertEqual(fieldB.accessibilityLabel(), HelmA11y.searchField, """
-            the field built for the second page has no name — a one-off naming would leave \
+            the field shown for the second page has no name — a one-off naming would leave \
             every page but the first without one
             """)
+        XCTAssertEqual(zone.magnifier.accessibilityLabel(), HelmA11y.searchField,
+                       "the magnifier shown for the second page has no name")
     }
 }

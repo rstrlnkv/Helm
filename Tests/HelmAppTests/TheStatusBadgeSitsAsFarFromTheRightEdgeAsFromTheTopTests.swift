@@ -14,13 +14,14 @@ import Module_VPN_UI
 /// одинаковые».** The gap from the window's right edge to what the status
 /// draws — the green badge's fill, the quiet word's ink — is held to the gap
 /// from the window's top edge to the top of the same drawing, both read off
-/// the real `SettingsWindow` (its own `window`, `model` and `settingsToolbar`,
+/// the real `SettingsWindow` (its own `window`, `model` and `pageBar`,
 /// reached through `Mirror`, on screen), never derived from `StatusZoneView`'s
 /// inset.
 ///
-/// **What each gap is read from.** The top gap is the item's frame in the
-/// window plus the ink's own offset inside the hosted view; the right gap the
-/// same on the other axis. The ink is a `cacheDisplay` of the hosted view
+/// **What each gap is read from.** The top gap is the status zone's frame in
+/// the window plus the ink's own offset inside the hosted view; the right gap
+/// the same on the other axis. The zone is the one `ShellPageBarView` holds
+/// for `.status`. The ink is a `cacheDisplay` of the hosted view
 /// alone at alpha 24/255 — not the 12/255 `StatusZoneView.trailingInset`
 /// itself reads, so the two do not agree by sharing a threshold.
 ///
@@ -28,15 +29,21 @@ import Module_VPN_UI
 /// Awake is idle in a test process (nothing here starts it), so the quiet word
 /// is the bar's own. The badge is Keep Awake's engine state published on the
 /// module's own transport with `isActive` set — the wire the page and the bar
-/// both read, so the bar's activity watch patches the item exactly as a
+/// both read, so the bar's activity watch patches the zone exactly as a
 /// session starting would, while no engine starts and no power assertion is
-/// taken. Nothing in this file puts a `StatusZoneView` into the item by hand.
+/// taken. Nothing in this file puts a `StatusZoneView` into the bar by hand.
 ///
 /// **The inputs the fix did not name** each have a case: the first frame the
 /// window is shown with (no language change to re-patch it first), a page
 /// route that crosses a page with no status and back, the window gone
 /// inactive, the macOS 26 title bar, the app drawn in the other appearance
-/// than the window, and a bar whose height changes under a page that stays.
+/// than the window, a live resize that must not measure, and a status word
+/// that is not shown when the machine's bar settings say it has no place.
+///
+/// **The machine's settings the bar reads when it is built** — the page bar
+/// style, the sidebar style, the search's collapse and the bar's appearance —
+/// are pinned in `setUp` and put back in `tearDown`; with the page bar style
+/// on the window title the bar draws no status at all.
 @MainActor
 final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase {
 
@@ -47,23 +54,31 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     private var owner: SettingsWindow?
     private var window: NSWindow?
     private var model: SettingsModel?
-    private var bar: SettingsToolbar?
+    private var bar: ShellPageBar?
     private var foundFrame: String?
     private var savedStyle: PageBarStyle = .moduleName
+    private var savedSidebarStyle: SidebarStyle = .colour
+    private var savedCollapse = false
+    private var savedBarAppearance: HelmBarAppearance = .flat
     private var savedAppAppearance: NSAppearance?
 
     override func setUp() {
         super.setUp()
         foundFrame = UserDefaults.standard.string(forKey: Self.frameKey)
         savedStyle = AppSettings.pageBarStyle
+        savedSidebarStyle = AppSettings.sidebarStyle
+        savedCollapse = AppSettings.alwaysCollapseSearch
+        savedBarAppearance = AppSettings.barAppearance
         savedAppAppearance = NSApplication.shared.appearance
         AppSettings.pageBarStyle = .moduleName
+        AppSettings.sidebarStyle = .colour
+        AppSettings.alwaysCollapseSearch = false
+        AppSettings.barAppearance = .flat
     }
 
     override func tearDown() {
         NSApplication.shared.appearance = savedAppAppearance
         window?.orderOut(nil)
-        window?.toolbar = nil
         window = nil
         model = nil
         bar = nil
@@ -74,6 +89,9 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         UserDefaults.standard.removeObject(forKey: "module.\(Self.vpn).enabled")
         UserDefaults.standard.set(foundFrame, forKey: Self.frameKey)
         AppSettings.pageBarStyle = savedStyle
+        AppSettings.sidebarStyle = savedSidebarStyle
+        AppSettings.alwaysCollapseSearch = savedCollapse
+        AppSettings.barAppearance = savedBarAppearance
         super.tearDown()
     }
 
@@ -81,7 +99,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
     /// The real window, built and pointed at Keep Awake but **not yet shown**
     /// — `show(_:)` is a separate step so the first-frame case can read what
-    /// the item carries before the window is ever on screen.
+    /// the zone carries before the window is ever on screen.
     private func build(band: HelmBandChoice = .onMacOS(27), _ appearance: NSAppearance.Name,
                        modules: [any ModuleDescriptor] = [KeepAwakeDescriptor()],
                        activeAtOpen: Bool = false) throws -> NSWindow {
@@ -106,8 +124,8 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                                  "SettingsWindow no longer holds `window` as an NSWindow")
         let model = try XCTUnwrap(fields.first { $0.label == "model" }?.value as? SettingsModel,
                                   "SettingsWindow no longer holds `model` as a SettingsModel")
-        bar = try XCTUnwrap(fields.first { $0.label == "settingsToolbar" }?.value as? SettingsToolbar,
-                            "SettingsWindow no longer holds `settingsToolbar` as a SettingsToolbar")
+        bar = try XCTUnwrap(fields.first { $0.label == "pageBar" }?.value as? ShellPageBar,
+                            "SettingsWindow no longer holds `pageBar` as a ShellPageBar")
         real.appearance = NSAppearance(named: appearance)
         model.selection = .module(Self.keepAwake)
         self.model = model
@@ -149,17 +167,17 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         }
     }
 
+    /// The hosted view the bar's `.status` zone holds; `nil` where the bar has no status.
     private func statusHost(_ window: NSWindow) -> NSHostingView<StatusZoneView>? {
-        window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.status" }?.view
-            as? NSHostingView<StatusZoneView>
+        bar?.view.view(for: .status) as? NSHostingView<StatusZoneView>
     }
 
     /// **The window as the person sees it while using it — key, so the bar
     /// draws at full ink.** A test process never becomes the active app, so
-    /// the window is never key and every item dims (`NameSnapshot
+    /// the window is never key and every zone dims (`ShellPageBar.Snapshot
     /// .appearsActive`); the badge's fill at that opacity falls under the
     /// reading's threshold and the case would measure the word inside it.
-    /// Set through the toolbar's own entry, which is what `SettingsWindow`'s
+    /// Set through the bar's own entry, which is what `SettingsWindow`'s
     /// key notifications call.
     private func lit(_ window: NSWindow) {
         bar?.setWindowAppearsActive(true)
@@ -242,14 +260,13 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                 right: window.frame.width - frame.maxX + host.bounds.width - CGFloat(right + 1) / scale)
     }
 
-    /// The one assertion every case makes: the item carries the state the
-    /// case is about (so an empty or wrong item cannot pass), and what it drew
+    /// The one assertion every case makes: the zone carries the state the
+    /// case is about (so an empty or wrong zone cannot pass), and what it drew
     /// sits as far from the right edge as from the top.
     private func assertGapsAgree(_ window: NSWindow, active: Bool, _ label: String,
-                                 minTop: CGFloat = 15,
                                  file: StaticString = #filePath, line: UInt = #line) {
         guard let host = statusHost(window) else {
-            return XCTFail("\(label): no helm.status host", file: file, line: line)
+            return XCTFail("\(label): no status zone", file: file, line: line)
         }
         XCTAssertEqual(host.rootView.status?.word, active ? AppStr.moduleActive : AppStr.moduleIdle,
                        "\(label): the bar does not carry the word this reading is about", file: file, line: line)
@@ -258,7 +275,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         guard let gap = gaps(host, in: window) else {
             return XCTFail("\(label): the status drew nothing", file: file, line: line)
         }
-        XCTAssertGreaterThan(gap.top, minTop, "\(label): top gap \(gap.top) pt — not a reading of the bar",
+        XCTAssertGreaterThan(gap.top, 15, "\(label): top gap \(gap.top) pt — not a reading of the bar",
                              file: file, line: line)
         XCTAssertEqual(gap.right, gap.top, accuracy: 0.5, """
             \(label): «\(host.rootView.status?.word ?? "")» ends \(gap.right) pt from the window's \
@@ -271,8 +288,8 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     /// **The real bar's own «Не активно» / «Not running» …, in each language
     /// and appearance.** Nothing is set by hand here: the language changes,
     /// the bar patches its status, and the ink is where the top gap says.
-    /// The old inset (`HelmToolbarActionsCapsule.edgeMargin`, so 9 pt of ink
-    /// gap against a 21–22 pt top gap) reads red in every language.
+    /// The old inset (`HelmToolbarActionsCapsule.edgeMargin`) reads red in
+    /// every language.
     func testTheQuietWordsInkIsAsFarFromTheRightEdgeAsFromTheTop() throws {
         for appearance in RenderedInk.bothAppearances {
             let window = try open(appearance)
@@ -289,9 +306,10 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
     /// **The badge's fill, in each language and appearance, put there by the
     /// bar itself** — Keep Awake's state goes active on its own wire, the
-    /// activity watch patches the item, and the fill's right edge and top are
+    /// activity watch patches the zone, and the fill's right edge and top are
     /// read from pixels. The language change after it re-derives the inset for
-    /// the new word, which is the second route into `patchName`.
+    /// the new word, which is the second route into `ShellPageBar.drawIdentity`: through
+    /// `present`, not through `draw`.
     func testTheBadgesFillIsAsFarFromTheRightEdgeAsFromTheTop() throws {
         for appearance in RenderedInk.bothAppearances {
             let window = try open(appearance)
@@ -309,7 +327,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     // MARK: - The first frame
 
     /// **The inset the window is first shown with is the one it settles on**
-    /// — no language change, no page switch, nothing re-patching the item
+    /// — no language change, no page switch, nothing re-patching the zone
     /// after it is built, the module idle and already running a session when
     /// the window opens. Read twice: before the window is ever ordered on
     /// screen (what the first frame draws) and after it has settled there; a
@@ -322,13 +340,13 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                     let label = "\(active ? "badge" : "word"), \(RenderedInk.label(of: appearance))"
                     let window = try build(appearance, activeAtOpen: active)
                     settle(window, 0.2)
-                    let before = try XCTUnwrap(statusHost(window), "\(label): no helm.status host before showing")
+                    let before = try XCTUnwrap(statusHost(window), "\(label): no status zone before showing")
                     let first = before.rootView.trailingInset
                     XCTAssertEqual(before.rootView.status?.active, active,
-                                   "\(label): before showing, the item does not carry this state")
+                                   "\(label): before showing, the zone does not carry this state")
                     show(window)
                     lit(window)
-                    let after = try XCTUnwrap(statusHost(window), "\(label): no helm.status host once shown")
+                    let after = try XCTUnwrap(statusHost(window), "\(label): no status zone once shown")
                     XCTAssertEqual(first, after.rootView.trailingInset, accuracy: 0.01, """
                         \(label): the status is built with a \(first) pt inset and settles at \
                         \(after.rootView.trailingInset) pt once the window is on screen — it jumps
@@ -344,7 +362,6 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
     private func tearDownWindow() {
         window?.orderOut(nil)
-        window?.toolbar = nil
         window = nil
         model = nil
         bar = nil
@@ -370,17 +387,18 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
             model.selection = .general
             settle(window)
             // General carries its three tabs (`SettingsTabs.all`, shown by `SettingsWindow`'s detail content),
-            // and a bar with tabs lists no `helm.status` — the subject first,
+            // and a bar with tabs holds no status zone — the subject first,
             // then the absence.
-            XCTAssertNotNil(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.tabs" },
+            XCTAssertNotNil(bar?.view.view(for: .tabs),
                             "General: its bar with the three tabs is not on the window, so the line below proves nothing")
-            XCTAssertNil(statusHost(window), "General: a bar that carries tabs lists helm.status")
+            XCTAssertNotNil(bar?.view.view(for: .name), "General: the bar holds no name zone")
+            XCTAssertNil(statusHost(window), "General: a bar that carries tabs holds a status zone")
 
             model.selection = .module(Self.vpn)
             settle(window)
             let vpnActive = statusHost(window)?.rootView.status?.active
             let vpnHost = try XCTUnwrap(statusHost(window))
-            XCTAssertNotNil(vpnHost.rootView.status, "VPN: helm.status carries no status")
+            XCTAssertNotNil(vpnHost.rootView.status, "VPN: the status zone carries no status")
             assertGapsAgree(window, active: vpnActive ?? false, "VPN")
 
             model.selection = .module(Self.keepAwake)
@@ -395,9 +413,9 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     // MARK: - The window gone inactive
 
     /// **Dimmed, both states stay exactly where the lit ones were** — the
-    /// item is re-patched on the key change (`NameSnapshot.appearsActive`),
-    /// and neither the inset it is handed nor the frame AppKit gives it may
-    /// move with the opacity. Where the lit item's two gaps agree is the case
+    /// zone is re-patched on the key change (`ShellPageBar.Snapshot.appearsActive`),
+    /// and neither the inset it is handed nor the frame the bar's layout gives it may
+    /// move with the opacity. Where the lit zone's two gaps agree is the case
     /// above; read here from pixels, the dimmed badge's fill falls under the
     /// reading's threshold, so the geometry is what is held, and the dimmed
     /// word's gaps are read as well since its ink still clears it.
@@ -411,18 +429,18 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                     try publishKeepAwake(active: active)
                     settle(window)
                     let litHost = try XCTUnwrap(statusHost(window))
-                    XCTAssertTrue(litHost.rootView.appearsActive, "\(label): the lit item reads inactive")
-                    XCTAssertEqual(litHost.rootView.status?.active, active, "\(label): the lit item has another state")
+                    XCTAssertTrue(litHost.rootView.appearsActive, "\(label): the lit zone reads inactive")
+                    XCTAssertEqual(litHost.rootView.status?.active, active, "\(label): the lit zone has another state")
                     let lit = (inset: litHost.rootView.trailingInset, frame: litHost.convert(litHost.bounds, to: nil))
                     bar.setWindowAppearsActive(false)
                     settle(window)
                     let host = try XCTUnwrap(statusHost(window))
-                    XCTAssertFalse(host.rootView.appearsActive, "\(label): the item did not take the inactive state")
-                    XCTAssertEqual(host.rootView.status?.active, active, "\(label): the item changed state")
+                    XCTAssertFalse(host.rootView.appearsActive, "\(label): the zone did not take the inactive state")
+                    XCTAssertEqual(host.rootView.status?.active, active, "\(label): the zone changed state")
                     XCTAssertEqual(host.rootView.trailingInset, lit.inset, accuracy: 0.01,
                                    "\(label): the inset moved from \(lit.inset) to \(host.rootView.trailingInset)")
                     XCTAssertEqual(host.convert(host.bounds, to: nil), lit.frame,
-                                   "\(label): the item moved when the window went inactive")
+                                   "\(label): the zone moved when the window went inactive")
                     if !active { assertGapsAgree(window, active: false, label) }
                     bar.setWindowAppearsActive(true)
                     settle(window)
@@ -433,10 +451,34 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         }
     }
 
+    // MARK: - A bar that has no place for a status
+
+    /// **With the page bar on the window's title the bar holds no status
+    /// zone, and with the module name again it holds one that sits where the
+    /// rule says** — the subject first (the zone is there and measured), then
+    /// the absence, then the zone back at equal gaps.
+    func testAStatusIsOnlyWhereTheBarHasAPlaceForIt() throws {
+        inEnglish {
+            let window = try open(.aqua)
+            try publishKeepAwake(active: true)
+            settle(window)
+            assertGapsAgree(window, active: true, "module name")
+            AppSettings.pageBarStyle = .windowTitle
+            settle(window)
+            XCTAssertNotNil(bar?.view.view(for: .name), "window title: the bar holds no name zone")
+            XCTAssertNil(statusHost(window), "window title: the bar holds a status zone")
+            AppSettings.pageBarStyle = .moduleName
+            settle(window)
+            assertGapsAgree(window, active: true, "module name again")
+            try publishKeepAwake(active: false)
+            settle(window)
+        }
+    }
+
     // MARK: - The macOS 26 title bar
 
-    /// **The opaque title bar `SettingsWindow` builds for macOS 26** — the bar
-    /// height is read off the window rather than assumed, so the same rule
+    /// **The opaque title bar `SettingsWindow` builds for macOS 26** — the bar's
+    /// height is `ShellBarLayout.height` under either band, and the same rule
     /// has to hold under the other band, both states, every language.
     func testTheOpaqueTitleBarKeepsTheGapsOne() throws {
         for appearance in RenderedInk.bothAppearances {
@@ -461,7 +503,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     /// **The window Dark over an app drawn Light, and the reverse** — the
     /// inset's own measurement renders in a window of its own that is never
     /// shown, which draws in whatever the app's appearance is (on this Mac,
-    /// the hour's), while the item draws in the window's.
+    /// the hour's), while the zone draws in the window's.
     func testTheGapsHoldWhenTheAppIsDrawnInTheOtherAppearance() throws {
         for appearance in RenderedInk.bothAppearances {
             let other: NSAppearance.Name = appearance == .aqua ? .darkAqua : .aqua
@@ -484,52 +526,12 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         }
     }
 
-    // MARK: - A bar that changes height under a page that stays
-
-    /// **The bar's height changes and the page does not** — the compact
-    /// unified style, reached here by setting `toolbarStyle`, stands in for
-    /// what full screen does to the bar, as far as this test can say it (not
-    /// entered here: a full-screen Space takes the whole display from anything
-    /// else on it). What follows it is a resize — the test posts it itself by
-    /// calling `setFrame`, so it does not show that AppKit posts one on a
-    /// style change — and nothing else: no language change, no page switch,
-    /// no key change.
-    func testABarThatChangesHeightTakesTheInsetWithIt() throws {
-        inEnglish {
-            let window = try open(.aqua)
-            for active in [false, true] {
-                try publishKeepAwake(active: active)
-                settle(window)
-                let tall = window.frame.height - window.contentLayoutRect.height
-                let style = window.toolbarStyle
-                window.toolbarStyle = .unifiedCompact
-                var frame = window.frame
-                frame.size.width -= 2
-                window.setFrame(frame, display: true)
-                settle(window)
-                let short = window.frame.height - window.contentLayoutRect.height
-                XCTAssertNotEqual(tall, short, accuracy: 1, """
-                    the compact style left the bar \(short) pt tall — this case changes nothing it could read
-                    """)
-                assertGapsAgree(window, active: active, "\(active ? "badge" : "word"), bar \(tall) → \(short) pt",
-                                minTop: 8)
-                window.toolbarStyle = style
-                frame.size.width += 2
-                window.setFrame(frame, display: true)
-                settle(window)
-                assertGapsAgree(window, active: active, "\(active ? "badge" : "word"), bar back to \(tall) pt")
-            }
-            try publishKeepAwake(active: false)
-            settle(window)
-        }
-    }
-
     // MARK: - The macOS 26 title bar in an app drawn the other way
 
     /// **The opaque bar, the window in one appearance and the app in the
     /// other** — the two inputs the band case and the appearance case each
     /// took alone, together: the inset is measured in a window of its own
-    /// that takes the app's appearance, while the item draws in this one's.
+    /// that takes the app's appearance, while the zone draws in this one's.
     func testTheOpaqueBarHoldsWhenTheAppIsDrawnInTheOtherAppearance() throws {
         for appearance in RenderedInk.bothAppearances {
             let other: NSAppearance.Name = appearance == .aqua ? .darkAqua : .aqua
@@ -558,7 +560,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     /// **Light turns Dark (and back) under a window that stays open, with
     /// nothing else changing** — this Mac switches by the sun and Helm sets
     /// only the app's appearance, which the window follows. The measurement
-    /// renders in the app's appearance and `NameSnapshot` carries none, so
+    /// renders in the app's appearance and `ShellPageBar.Snapshot` carries none, so
     /// the inset taken before the flip is the one drawn after it (an earlier
     /// tester's reading, not re-run for this comment: fr, ja and pt quiet
     /// words 0.5 pt apart between the two). The drawn gaps still have to be
@@ -618,29 +620,24 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         addTeardownBlock { method_setImplementation(method, original) }
     }
 
-    private func toolbarIdentity(_ window: NSWindow) -> [ObjectIdentifier] {
-        guard let toolbar = window.toolbar else { return [] }
-        return [ObjectIdentifier(toolbar)] + toolbar.items.map { ObjectIdentifier($0) }
-            + toolbar.items.compactMap { $0.view.map { ObjectIdentifier($0) } }
-    }
-
-    /// **A live resize patches on every step and measures on none** — the
-    /// resize handler re-reads the attached bar on each `didResize` (the
-    /// notification AppKit posts per step of a drag as well), and the
-    /// snapshot gate is what keeps that from being an offscreen window and a
-    /// render per step. The drag is stood in for by frame steps between the
-    /// live-resize start and end notifications (a test process cannot drag
-    /// its own window); one step then changes the bar's height, which has to
-    /// measure exactly once. Nothing in the attached toolbar may be rebuilt.
-    func testALiveResizeMeasuresOnlyWhenTheBarsHeightMoves() throws {
+    /// **A live resize measures nothing** — `ShellPageBar` hears no resize: a
+    /// step reaches the bar only as a layout pass of its view, and the inset
+    /// is taken only where the snapshot changes (`drawIdentity`). Since the
+    /// bar has no path from a resize to a measurement, the zero count is a
+    /// guard for one that may be added; the identity of the hosted view
+    /// below is what holds today. The drag is stood in for by frame steps
+    /// between the live-resize start and end notifications (a test process
+    /// cannot drag its own window). Nothing in the bar may be rebuilt: the
+    /// status zone's hosted view is the one it was before, and it still
+    /// carries the state.
+    func testALiveResizeTakesNoInkMeasurement() throws {
         try countInkProbes()
         inEnglish {
             let window = try open(.aqua)
             for active in [false, true] {
                 try publishKeepAwake(active: active)
                 settle(window)
-                let before = toolbarIdentity(window)
-                let identifiers = window.toolbar?.itemIdentifiers
+                let before = try XCTUnwrap(statusHost(window), "no status zone before the resize")
                 InkProbes.resizes = 0
                 let watch = NotificationCenter.default.addObserver(
                     forName: NSWindow.didResizeNotification, object: window, queue: nil) { _ in
@@ -661,34 +658,11 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                 let resizes = InkProbes.resizes
                 XCTAssertGreaterThanOrEqual(resizes, 60, "the steps posted \(resizes) resizes — nothing was resized")
                 XCTAssertEqual(InkProbes.seen.count, 0, """
-                    \(active ? "badge" : "word"): \(InkProbes.seen.count) ink measurements over \(resizes) resizes \
-                    that left the bar \(window.frame.height - window.contentLayoutRect.height) pt tall
+                    \(active ? "badge" : "word"): \(InkProbes.seen.count) ink measurements over \(resizes) resizes
                     """)
-                XCTAssertEqual(toolbarIdentity(window), before, "a live resize rebuilt the attached toolbar's items")
-                XCTAssertEqual(window.toolbar?.itemIdentifiers, identifiers, "a live resize rewrote the identifiers")
-
-                let style = window.toolbarStyle
-                window.toolbarStyle = .unifiedCompact
-                frame.size.width -= 3
-                window.setFrame(frame, display: true)
-                settle(window)
-                for step in 0..<20 {
-                    frame.size.width += step.isMultiple(of: 2) ? 3 : -3
-                    window.setFrame(frame, display: true)
-                    RunLoop.current.run(mode: .default, before: Date())
-                }
-                settle(window)
-                XCTAssertEqual(InkProbes.seen.count, 1, """
-                    \(active ? "badge" : "word"): \(InkProbes.seen.count) ink measurements for one change of the \
-                    bar's height and twenty resizes after it
-                    """)
-                assertGapsAgree(window, active: active, "\(active ? "badge" : "word"), after a compact live resize",
-                                minTop: 8)
-                XCTAssertEqual(toolbarIdentity(window), before, "a height change rebuilt the attached toolbar's items")
-                window.toolbarStyle = style
-                frame.size.width += 3
-                window.setFrame(frame, display: true)
-                settle(window)
+                let after = try XCTUnwrap(statusHost(window), "no status zone after the resize")
+                XCTAssertTrue(after === before, "a live resize rebuilt the status zone's hosted view")
+                assertGapsAgree(window, active: active, "\(active ? "badge" : "word"), after a live resize")
             }
             try publishKeepAwake(active: false)
             settle(window)
@@ -713,7 +687,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
             for active in [false, true] {
                 let status = (word: active ? AppStr.moduleActive : AppStr.moduleIdle, active: active)
                 for _ in 0..<25 {
-                    autoreleasepool { _ = StatusZoneView.trailingInset(for: status, barHeight: 52) }
+                    autoreleasepool { _ = StatusZoneView.trailingInset(for: status, barHeight: ShellBarLayout.height) }
                 }
             }
         }
