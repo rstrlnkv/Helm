@@ -13,16 +13,21 @@ import HelmUI
 /// obstacle the page bar is handed is the closed capsule's frame in the rail, the buttons' union
 /// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens.
 ///
-/// **Held by origin, on both axes.** Assumed, not measured: that AppKit lays the buttons out again from the
-/// titlebar's top, so that a change of the titlebar's height would move a button offset on one axis only.
-/// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that this object did not make
-/// (`NSView.frameDidChangeNotification`, an origin other than the one written here) is taken for AppKit's:
-/// it becomes the new home and is answered in the same turn with the placement. The rows make that write
-/// by hand; AppKit making it in a shown window is not measured. This object's own writes are told by
-/// `isPlacing` and by their value, so answering cannot loop. A write to a button's alpha makes AppKit put the
-/// buttons back at its own origins (the rows of `TheWindowButtonsStayWhereHelmPutThemTests` rest on it: the
-/// fold row goes red without the answer), so every placement and every hover change ends by writing each
-/// button's origin once more, after the last alpha write.
+/// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
+/// Assumed, not measured: that it lays them out from the titlebar's top, so that a change of the titlebar's
+/// height would move a button offset on one axis only.
+/// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that
+/// this object did not make and that reaches it (`NSView.frameDidChangeNotification`, an origin other than
+/// the one written here) is taken for AppKit's: it becomes the new home and is answered in the same turn
+/// with the placement. The rows make that write by hand. That answer does not hold every write AppKit makes:
+/// the one inside an alpha write, below, left the zoom button at AppKit's origin, and why the answer missed
+/// it is not measured. AppKit writing an origin in a shown window is not measured. This object's own writes
+/// are told by `isPlacing` and by their value, so answering cannot loop. Measured in an unshown window: a
+/// write to a button's alpha makes AppKit put the buttons back at its own origins (the rows of
+/// `TheWindowButtonsStayWhereHelmPutThemTests` rest on it: the fold row goes red without the answer). So
+/// every placement, and every hover change made without an animation, ends by putting back each button that
+/// stands elsewhere, after the last alpha write. An animated change does it once at once and once more when
+/// the animation completes; no row reaches that, the rows run with Reduce Motion on.
 ///
 /// **Hover is an event-stream value.** `isOpen` is set by the tracking area's enter and exit, cleared by
 /// leaving the rail, by full screen and by `attach(to: nil)`, and read again from the pointer's place in
@@ -257,7 +262,8 @@ final class ShellWindowButtons {
     }
 
     /// Writes each watched button's origin to where it was placed, when it stands elsewhere: once, in
-    /// order, with `isPlacing` set, so no write of its own is answered and nothing here can repeat.
+    /// order. No write of its own is answered: `isPlacing` is set, and `frameChanged` tells the same write by
+    /// its value as well, so nothing here can repeat.
     private func holdOrigins() {
         isPlacing = true
         defer { isPlacing = false }

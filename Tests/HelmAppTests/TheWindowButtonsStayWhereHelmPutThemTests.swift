@@ -187,7 +187,8 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
     }
 
     /// **Fold, unfold, fold: each of the three buttons stands where Helm puts it at every step, the zoom
-    /// button included.** A fresh window folded straight to the rail hides a button AppKit moved on the way.
+    /// button included.** A fresh window folded straight to the rail does not show the defect, so the row
+    /// folds a settled expanded window: there the zoom button stayed at AppKit's origin.
     func testFoldingASettledExpandedWindowMovesAllThreeButtonsToTheRail() throws {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing was folded"),
               let owner = owner(of: rig) else { return }
