@@ -251,22 +251,29 @@ final class SettingsIsOnePageWithThreeTabsTests: XCTestCase {
     // MARK: - The name
 
     /// `.about` and `.log` answer what `.general` answers, so the bar's name
-    /// plate does not change under the tabs. This reads the old bar's
-    /// `pageIdentity`; the shell's bar answers the same rule by value in
+    /// plate does not change under the tabs. Asked of the shell's bar by value
+    /// (`ShellPageBar.identity(for:host:)`, the function the bar draws its name from), not read out of
+    /// a source file: the answer is the Settings name and glyph for all four selections that are not a
+    /// module, and none of them has a status word. The same rule is held for all four selections in
     /// `ThePageBarFollowsItsPageTests.testGeneralLogAndAboutAreOneSettingsPage`.
-    func testTheBarsNameStaysSettingsOnLogAndAbout() throws {
-        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/SettingsToolbar.swift"))
-        let bodies = SwiftSource.bodiesNamed("pageIdentity", in: source)
-        XCTAssertEqual(bodies.count, 1, "pageIdentity is not one function any more")
-        let identity = try XCTUnwrap(bodies.first)
+    @MainActor
+    func testTheBarsNameStaysSettingsOnLogAndAbout() {
+        let general = ShellPageBar.identity(for: .general, host: ModuleHost.shared)
+        XCTAssertEqual(general.title, AppStr.settingsPane, "General is not named Settings")
+        XCTAssertEqual(general.symbol, "gearshape", "General has not the Settings glyph")
 
-        XCTAssertFalse(identity.contains("AppStr.aboutHelm"), "About still names its own bar")
-        XCTAssertFalse(identity.contains("AppStr.logPane"), "Log still names its own bar")
-        XCTAssertFalse(identity.contains("info.circle"), "About still has its own glyph in the bar")
-        XCTAssertFalse(identity.contains("text.alignleft"), "Log still has its own glyph in the bar")
-        XCTAssertTrue(identity.contains("AppStr.settingsPane"), "nothing answers with the Settings name")
-        XCTAssertTrue(identity.contains("case .about") && identity.contains("case .log"),
-                      "the identity no longer names the two pages it must answer for")
+        for (name, selection) in [("Log", SettingsSelection.log), ("About", .about)] {
+            let identity = ShellPageBar.identity(for: selection, host: ModuleHost.shared)
+            XCTAssertEqual(identity.title, general.title, "\(name) names its own bar")
+            XCTAssertNotEqual(identity.title, AppStr.aboutHelm, "\(name) is named About")
+            XCTAssertNotEqual(identity.title, AppStr.logPane, "\(name) is named Log")
+            XCTAssertEqual(identity.symbol, general.symbol, "\(name) has its own glyph in the bar")
+            XCTAssertNil(identity.status, "\(name) shows a status word")
+        }
+        let none = ShellPageBar.identity(for: nil, host: ModuleHost.shared)
+        XCTAssertEqual(none.title, general.title, "no selection is not named Settings")
+        XCTAssertNotEqual(AppStr.settingsPane, AppStr.aboutHelm, "the precondition: Settings and About have one name")
+        XCTAssertNotEqual(AppStr.settingsPane, AppStr.logPane, "the precondition: Settings and Log have one name")
     }
 
     /// The name each page publishes for the window's title.

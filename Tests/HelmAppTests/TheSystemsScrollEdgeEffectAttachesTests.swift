@@ -113,9 +113,8 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
     /// pane hosting a grouped `Form` whose toolbar is bridged into the window,
     /// `.fullSizeContentView`, hidden title. `SettingsWindow` builds a shell with no
     /// split view. The probe sets `detail.sceneBridgingOptions =
-    /// [.toolbars]` itself; `SettingsWindow` sets none any more — its toolbar
-    /// is the app-owned `NSToolbar` `SettingsToolbar` builds — so the bridge
-    /// here is the probe's own shape and not a copy of what ships. Never
+    /// [.toolbars]` itself; `SettingsWindow` sets none and has no `NSToolbar` at
+    /// all — so the bridge here is the probe's own shape and not a copy of what ships. Never
     /// ordered on screen: the probe read the same three states for a window
     /// that was shown and one that was not.
     private func settingsShapedWindow(transparentTitleBar: Bool) -> NSWindow {
@@ -392,7 +391,6 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
                 window.appearance = NSAppearance(named: appearance)
                 window.orderBack(nil)
                 defer {
-                    window.toolbar = nil
                     window.close()
                 }
 

@@ -8,7 +8,7 @@ import XCTest
 @testable import HelmUI
 
 /// **The Appearance row's Page header picker, on screen, while the same
-/// choice is made from the toolbar's own menu.**
+/// choice is made from the page bar's own menu.**
 ///
 /// `MenuBarSettingsView` reads `AppSettings.pageBarStyle` once, into a
 /// `@State`, and nothing on the page listens for a change of it — a picker left
@@ -125,10 +125,12 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
         }
     }
 
-    private func choose(_ title: String) {
-        let items = ShellBarMenu.items(pageBarStyle: AppSettings.pageBarStyle, tabLabels: nil,
-                                       appearance: AppSettings.barAppearance, alwaysCollapseSearch: nil)
-        guard let item = items.first(where: { $0.title == title && !$0.isSectionHeader }),
+    /// Opens the menu of the page bar mounted in the window, as AppKit fills it just before drawing it, and
+    /// presses the item by its own action and target.
+    private func choose(_ title: String, in pageBar: MountedPageBar) {
+        guard let menu = pageBar.bar.view.menu else { return XCTFail("the bar's view carries no menu") }
+        menu.delegate?.menuNeedsUpdate?(menu)
+        guard let item = menu.items.first(where: { $0.title == title && !$0.isSectionHeader }),
               let action = item.action else {
             return XCTFail("the bar's menu offers no «\(title)»")
         }
@@ -148,12 +150,13 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             window.isReleasedWhenClosed = false
             window.setContentSize(NSSize(width: 1060, height: 800))
             window.orderBack(nil)
-            let toolbar = SettingsToolbar(model: model, channel: channel)
-            toolbar.window = window
+            let pageBar = MountedPageBar(model: model, channel: channel, in: window)
             defer {
-                window.toolbar = nil
+                pageBar.remove()
                 window.close()
             }
+            XCTAssertNotNil(window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first,
+                            "precondition: the bar is in no window — the menu below belongs to nobody")
             pump(window, turns: 30)
 
             guard let first = pickerRow(window) else {
@@ -164,7 +167,7 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             for (step, (title, style)) in [("Without Icon", PageBarStyle.windowTitle),
                                            ("With Icon", .moduleName),
                                            ("Without Icon", .windowTitle)].enumerated() {
-                choose(title)
+                choose(title, in: pageBar)
                 XCTAssertEqual(AppSettings.pageBarStyle, style, "step \(step): «\(title)» did not store \(style)")
                 pump(window, turns: 20)
                 let lines = pickerRow(window)
@@ -193,7 +196,11 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             window.isReleasedWhenClosed = false
             window.setContentSize(NSSize(width: 1060, height: 800))
             window.orderBack(nil)
-            defer { window.close() }
+            let pageBar = MountedPageBar(model: model, channel: channel, in: window)
+            defer {
+                pageBar.remove()
+                window.close()
+            }
             pump(window, turns: 30)
 
             guard let form = form(window), let document = form.documentView else {
@@ -212,7 +219,7 @@ final class TheGeneralPickerFollowsTheBarMenuTests: XCTestCase {
             guard let before = row() else {
                 return XCTFail("no Toolbar style row read anywhere on the General page — nothing below is read")
             }
-            choose("Liquid Glass")
+            choose("Liquid Glass", in: pageBar)
             XCTAssertEqual(AppSettings.barAppearance, .liquidGlass, "the menu did not store Liquid Glass")
             pump(window, turns: 20)
             guard let after = row() else {

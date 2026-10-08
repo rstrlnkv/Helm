@@ -1,80 +1,38 @@
 import AppKit
-import QuartzCore
-import SwiftUI
+import HelmContract
 import HelmTestSupport
+import SwiftUI
 import XCTest
 @testable import HelmApp
 @testable import HelmUI
 @testable import Module_Hosts_UI
 
-/// **Hosts' tabs unfold across their fold point without a blink.** Guards the
-/// whole-point rounding in `SettingsToolbar.segmentedReserveWidth(_:)`: a
-/// `.segmented` entry's reserve is rounded up to the next whole point, so
-/// `helm.actions` never stands half a point wide.
+/// **Hosts' tabs unfold across their fold point once, with nothing swapped on the way.** Hosts' own
+/// declaration on its SSH tab — the same two tabs, the same two-option view switcher with its glyphs, `+`
+/// declared and hidden — is mounted in the page bar the Settings window holds, and the bar is widened and
+/// narrowed a point at a time through its fold point in Russian and
+/// German, in the words-only label style.
 ///
-/// Written as a repro (tester, 2026-09-25) against the tree before that
-/// rounding, in the default label style. The reserve measured for Hosts' own
-/// Table / Plain-text glyphs was 77.5 pt, so `helm.actions` was 117.5 pt wide
-/// on both of Hosts' tabs — a half point. Widened from 420 pt in `.text`
-/// (the style nothing stored reads as) a point at a time, each width held
-/// 0.3 s, the fold prediction unfolded the tabs at 430 pt (Russian) / 460 pt
-/// (German), AppKit evicted them and `gateRefusalsRecorded` moved — the blink
-/// `AnUnfoldIsPredictedNeverTrialledTests` exists to rule out — and they
-/// unfolded for good a point later. Measured then on this Mac, 2 pt steps,
-/// same declaration, only the reserve overridden: 72.0, 78.0 and 80.0 (the
-/// reserve before that pass) unfold cleanly, at 426/456, 432/462 and
-/// 434/464; 77.5 blinks every time, and a capsule of plain buttons at
-/// 112.0 pt unfolds cleanly too. So the blink follows the half point. Not
-/// the rig's shared state: the same sweep with a re-declaration on every
-/// step (one extra rig measurement each) records the same single refusal at
-/// the same pane. Seen red again (tester, 2026-09-26) with the rounding taken
-/// out of the tree it guards: one refusal each, at 430.0 pt (Russian) and
-/// 460.0 pt (German).
+/// The bar folds the tabs by `ShellBarLayout`'s verdict over the widths the zones measured, in the layout
+/// pass itself; there is no trial that a toolbar can refuse, so what a blink would look like here is a fold
+/// state that flips back and forth across the point, a tabs view that is replaced on the way, or a control
+/// that draws the other form than the verdict says. Per language and direction the sweep asserts: folded at
+/// one end and whole at the other (the sweep crosses a fold point at all), exactly one change of the fold
+/// state along the way, the same tabs view at every width, and the strip drawn as one segment while
+/// folded and two while whole. The ascending and the descending sweep change state at the same width.
+/// `TheBarsTabsFoldByTheLayoutsVerdictTests` holds the verdict against the layout for a synthetic page at a
+/// seven-point step; this is Hosts' real content at a one-point step.
 ///
-/// **Swept wider on the rounded reserve** (tester, 2026-09-26, this Mac,
-/// `helm.actions` at 118.0 pt, a point at a time through each unfold): in
-/// `.iconsAndText` — Russian, English, French, Spanish and Portuguese from
-/// 420 pt, German from 450 pt — no refusal anywhere, Russian's and French's
-/// full tabs included, which are a whole 198.0 and 180.0 pt rather than a
-/// half; in `.text` only Russian and German are folded at the pane's 420 pt
-/// minimum at all, which is why this file sweeps those two. A 0.5 pt step
-/// does not sweep half points here: the window's own frame lands on the whole
-/// point (644.5 asked, 645.0 read), so a point is the finest step this sweep
-/// can take.
-///
-/// **Not a width the real window reaches.** 420 pt is the detail item's
-/// `minimumThickness` in `mountSplit`'s own rig; the settings window has no split view and no pane floor.
-/// `SettingsWindow.swift` sets `contentMinSize` to 860 × 540 and the sidebar is
-/// `ShellGeometry.defaultSidebarWidth` or the rail, so the pane a person can narrow the real window to
-/// is above the whole 420–500 pt range this file sweeps. The guard stays for the rig's floor;
-/// but nothing swept below should be read as a width
-/// a person can dial into today's window.
-///
-/// **Each step rests by the clock.** `settle(_:turns:)` alone returned in as
-/// little as 29 ms a step here — `run(mode:before:)` returns on the first
-/// source it serves — and the settle that runs the prediction fires
-/// `SettingsToolbar.settleInterval` (0.1 s) after the last resize, so a step
-/// shorter than that is cancelled by the next one and the prediction is never
-/// asked at that width: the same sweep at 8 turns a step read no refusal at
-/// all. `restPerStep` says why it is 0.3 s: holding a width for that long is
-/// what stands in for someone resting the window's edge there, or letting go
-/// of it there, once the pane can actually reach it.
-///
-/// The declaration is Hosts' own on its SSH tab
-/// (`HostsSettingsPage.toolbarContent`): the same two tabs, the same two
-/// options with the same glyphs, `+` declared and hidden. The split-view
-/// window is `AnUnfoldIsPredictedNeverTrialledTests.mountSplit`'s.
+/// The actions zone's reserve being a whole point is held in `TheBarsActionsKeepTheirReserveTests`.
 @MainActor
 final class HostsTabsUnfoldWithoutABlinkTests: XCTestCase {
 
-    private static let sidebarWidth: CGFloat = 214
-    /// How long each width is held. Longer than `SettingsToolbar.settleInterval`
-    /// is not enough: at 0.15 s a step, the tabs unfolded at 430 pt and the
-    /// next step's resize arrived before AppKit's own eviction did, so the
-    /// same tree read clean; at 0.3 s AppKit evicted at 430 pt every time. A
-    /// width someone's cursor stops at, once the pane can reach it, is held
-    /// for longer than either.
-    private static let restPerStep: TimeInterval = 0.3
+    private struct Step {
+        let width: CGFloat
+        let folded: Bool
+        let segments: Int
+        let view: ObjectIdentifier?
+    }
 
     private func hostsOnSSH() -> HelmPageToolbarContent {
         HelmPageToolbarContent(
@@ -90,112 +48,63 @@ final class HostsTabsUnfoldWithoutABlinkTests: XCTestCase {
             ])
     }
 
-    private struct Rig {
-        let window: NSWindow
-        let toolbar: SettingsToolbar
-        let keepAlive: [AnyObject]
-    }
-
-    private func mountSplit(pane: CGFloat) -> Rig {
-        let model = SettingsModel(host: ModuleHost.shared)
-        let channel = HelmWindowToolbarChannel()
-        let toolbar = SettingsToolbar(model: model, channel: channel)
-        let detail = NSViewController()
-        detail.view = NSView(frame: NSRect(x: 0, y: 0, width: pane, height: 700))
-        let detailItem = NSSplitViewItem(viewController: detail)
-        detailItem.minimumThickness = 420
-        let sidebar = NSViewController()
-        sidebar.view = NSView(frame: NSRect(x: 0, y: 0, width: Self.sidebarWidth, height: 700))
-        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
-        sidebarItem.canCollapse = false
-        sidebarItem.minimumThickness = Self.sidebarWidth
-        sidebarItem.maximumThickness = Self.sidebarWidth
-        let split = NSSplitViewController()
-        split.addSplitViewItem(sidebarItem)
-        split.addSplitViewItem(detailItem)
-        sidebarItem.allowsFullHeightLayout = true
-        let window = NSWindow(contentViewController: split)
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: pane + Self.sidebarWidth, height: 700))
-        window.orderBack(nil)
-        window.layoutIfNeeded()
-        split.splitView.setPosition(Self.sidebarWidth, ofDividerAt: 0)
-        window.layoutIfNeeded()
-        toolbar.window = window
-        model.selection = .module("test.hostsBlink")
-        channel.declare(hostsOnSSH(), token: "test.hostsBlink", generation: channel.nextGeneration())
-        window.layoutIfNeeded()
-        return Rig(window: window, toolbar: toolbar, keepAlive: [model, channel, split])
-    }
-
-    private func settle(_ window: NSWindow, turns: Int) {
-        for _ in 0..<turns {
-            window.layoutIfNeeded(); window.contentView?.layoutSubtreeIfNeeded()
-            CATransaction.flush()
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+    private func sweep(_ fx: LivePageToolbarFixture, _ widths: [CGFloat]) -> [Step] {
+        widths.map { width in
+            fx.bar.view.place = ShellPageBarView.Place(cardMinX: 0, windowWidth: width, buttons: .null)
+            fx.bar.view.frame = NSRect(x: 0, y: 0, width: width, height: ShellBarLayout.height)
+            fx.bar.view.layoutSubtreeIfNeeded()
+            let strip = fx.bar.view.view(for: .tabs)?.everyView(ofType: NSSegmentedControl.self).first
+            return Step(width: width, folded: fx.pageBar.tabs.isFolded, segments: strip?.segmentCount ?? -1,
+                        view: fx.bar.view.view(for: .tabs).map(ObjectIdentifier.init))
         }
     }
 
-    /// Turns the run loop for `seconds` by the clock — see this file's header.
-    private func rest(_ window: NSWindow, seconds: TimeInterval) {
-        let until = Date().addingTimeInterval(seconds)
-        while Date() < until { settle(window, turns: 1) }
-    }
-
-    private func segmentCount(_ toolbar: NSToolbar) -> Int? {
-        toolbar.items.first { $0.itemIdentifier.rawValue == "helm.tabs" }?.view?
-            .everyView(ofType: NSSegmentedControl.self).first?.segmentCount
+    /// The widths at which the fold state differs from the step before.
+    private func changes(_ steps: [Step]) -> [CGFloat] {
+        zip(steps, steps.dropFirst()).filter { $0.folded != $1.folded }.map { $1.width }
     }
 
     func testHostsTabsUnfoldAcrossTheirFoldPointWithoutABlink() {
-        // Raw, so a key the domain did not hold is removed again rather than
-        // written back as the typed getter's default. The page-bar style is
-        // pinned as well: the fold point below is `moduleName`'s, and with
-        // `windowTitle` left in the test tool's own domain the precondition
-        // read two segments at 420 pt, not one (2026-09-28).
-        let store = AppSettings.store
-        let found = store.object(ToolbarSwitcherStyle.storageKey)
-        let foundBar = store.object(PageBarStyle.storageKey)
-        addTeardownBlock { @MainActor in
-            store.set(found, for: ToolbarSwitcherStyle.storageKey)
-            store.set(foundBar, for: PageBarStyle.storageKey)
-            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
-            NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
-        }
-        AppSettings.toolbarSwitcherStyle = .text
-        AppSettings.pageBarStyle = .moduleName
+        PinnedBarSettings.pin(in: self)
+        let up = Array(stride(from: CGFloat(300), through: 1100, by: 1))
         for language: AppLanguage in [.ru, .de] {
             AppLanguage.only(language) {
-                let rig = mountSplit(pane: 420)
-                defer { rig.window.orderOut(nil); rig.window.toolbar = nil }
-                guard let bar = rig.window.toolbar else { return XCTFail("\(language): no toolbar attached") }
-                settle(rig.window, turns: 30)
-                XCTAssertEqual(segmentCount(bar), 1, """
-                    \(language) precondition: Hosts' tabs are not folded at 420 pt, so a sweep upward from \
-                    here crosses no fold point
-                    """)
-                let before = rig.toolbar.gateRefusalsRecorded
-                var refusedAt: [CGFloat] = []
-                var pane: CGFloat = 420
-                while pane < 500 {
-                    pane += 1
-                    rig.window.setContentSize(NSSize(width: pane + Self.sidebarWidth, height: 700))
-                    let refusals = rig.toolbar.gateRefusalsRecorded
-                    rest(rig.window, seconds: Self.restPerStep)
-                    if rig.toolbar.gateRefusalsRecorded != refusals { refusedAt.append(pane) }
+                let fx = LivePageToolbarFixture(EmptyView(), selection: .module("test.hostsBlink"),
+                                                width: 1060, height: 700)
+                defer { fx.drop() }
+                fx.channel.declare(hostsOnSSH(), token: "test.hostsBlink", generation: fx.channel.nextGeneration())
+                fx.settle(10)
+                XCTAssertEqual(fx.bar.presentation, .page(key: "test.hostsBlink", isLive: true, isDimmed: false),
+                               "\(language) precondition: the bar does not show the declared page live")
+
+                let ascending = sweep(fx, up)
+                let descending = sweep(fx, up.reversed()).reversed() as [Step]
+                for (direction, steps) in [("ascending", ascending), ("descending", descending)] {
+                    XCTAssertEqual(steps.first?.folded, true, """
+                        \(language) \(direction) precondition: Hosts' tabs are not folded at \(up.first ?? 0) pt, \
+                        so a sweep upward from there crosses no fold point
+                        """)
+                    XCTAssertEqual(steps.last?.folded, false, """
+                        \(language) \(direction) precondition: Hosts' tabs are still folded at \(up.last ?? 0) pt
+                        """)
+                    XCTAssertEqual(changes(steps).count, 1, """
+                        \(language) \(direction): the fold state changed at \(changes(steps)) pt — the tabs blink \
+                        before they stay
+                        """)
+                    XCTAssertEqual(Set(steps.map(\.view)).count, 1, """
+                        \(language) \(direction): the tabs view was replaced on the way — \(Set(steps.map(\.view)).count) \
+                        different views over the sweep
+                        """)
+                    XCTAssertNotNil(steps.first?.view, "\(language) \(direction) precondition: the bar held no tabs view")
+                    let wrong = steps.filter { $0.segments != ($0.folded ? 1 : 2) }.map(\.width)
+                    XCTAssertTrue(wrong.isEmpty, """
+                        \(language) \(direction): the strip draws the other form than the fold says at \(wrong) pt
+                        """)
                 }
-                XCTAssertEqual(segmentCount(bar), 2, """
-                    \(language) precondition: Hosts' tabs never unfolded by 500 pt — the refusal count below \
-                    cannot tell a clean unfold from none
+                XCTAssertEqual(changes(ascending), changes(descending), """
+                    \(language): the tabs unfold at \(changes(ascending)) widening and fold at \(changes(descending)) \
+                    narrowing
                     """)
-                XCTAssertEqual(rig.toolbar.gateRefusalsRecorded, before, """
-                    \(language): widening Hosts' pane from 420 to 500 pt unfolded the tabs into an eviction at \
-                    \(refusedAt) pt — the tabs blink open and shut before they stay
-                    """)
-                _ = rig.keepAlive
             }
         }
     }

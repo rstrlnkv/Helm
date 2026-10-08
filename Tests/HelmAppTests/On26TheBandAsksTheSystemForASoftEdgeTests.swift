@@ -279,7 +279,6 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
             window.appearance = NSAppearance(named: .darkAqua)
             window.orderBack(nil)
             defer {
-                window.toolbar = nil
                 window.close()
             }
             let pane = { SettingsWindowParts.pane(of: window) }

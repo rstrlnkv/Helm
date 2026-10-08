@@ -7,51 +7,46 @@ import Module_VPN_UI
 @testable import HelmApp
 @testable import HelmUI
 
-/// **What the `.helmModuleEnabled`/`.helmModuleDisabled` pair on
-/// `SettingsToolbar` does to every bar it was not written for** — tester's
-/// confirmation pass on the repair that made `helm.status` follow a module
-/// switched on or off under its own page.
+/// **What a module switched on or off does to the page bar it was not written for** — the bar the
+/// Settings window holds, mounted in a window through `LivePageToolbarFixture`.
 ///
-/// The pair is deliberately unfiltered: a switch of *any* module reaches the
-/// bar on screen, whichever page that is. Three questions the repair's own
-/// cases never asked:
+/// `ShellPageBar` hears `.helmModuleEnabled` and `.helmModuleDisabled` unfiltered: a switch of any module
+/// reaches the bar on screen, whichever page that is. Three questions:
 ///
-/// - A switch of some other module while a tab page is showing (Homebrew's
-///   shape: tabs, actions, search) — the menu-bar panel's «Turn on»
-///   (`PanelChrome.swift`) and the sidebar composer's toggle both reach it with
-///   the settings window open — must attach no new toolbar, rewrite no
-///   identifier, reseat no item, evict nothing and move no fold, at a pane
-///   where the tabs are full and at one where they are folded.
-/// - The page's own module flipped off and on faster than its page can
-///   withdraw and redeclare must leave the shared name-only bar this rig shows at General (where the
-///   selection goes for good) still, and the page selected again must have its own bar, live.
-/// - A `SettingsToolbar` let go of — including in the middle of the very post
-///   it observes — must neither be kept alive by its observers nor answer one.
+/// - A switch of another module while a tab page is showing (Homebrew's shape: tabs, actions, search) — the
+///   menu-bar panel's «Turn on» (`PanelChrome.swift`) and the sidebar composer's toggle both reach it with the
+///   Settings window open — must change no zone's frame, replace no zone's view, hide none and measure the tabs
+///   again not once, at a width where the tabs are full and at one where they are folded.
+/// - The page's own module flipped off and on faster than its page can withdraw and redeclare must leave the
+///   bar this fixture shows at General (the name alone, where the selection goes for good) still, and the page
+///   selected again must have its own bar back, live.
+/// - A `ShellPageBar` let go of, including in the middle of the very post it observes, must neither be kept
+///   alive by its observers nor answer one.
 ///
-/// Every "nothing moved" case first proves the post reached the toolbar at
-/// all, through a `selectedTab` binding that counts its reads: a bar that
-/// never heard the switch would pass every absence below for nothing.
+/// "Nothing moved" is read two ways: a state read after every switch (on the tab page at once and again
+/// after the fixture has settled, on the name-only bar once it has settled), and a watch on the zones'
+/// views from the first switch to the last (every `frameDidChange` of a zone's view or the bar's, every
+/// `isHidden` that flips), which sees a frame that moves and comes back inside one
+/// switch. The two rows about another module's switch first prove what their absence is about: the bar
+/// is in the window and laid out, and the zones the row names have a width. On the tab page the row also proves that the page is shown live, that the switch reached the bar (the
+/// page's `selectedTab` binding counts its reads, `show` reads it on every republication) and that the
+/// watch counts a frame that really moves; on the name-only bar nothing shows that another module's
+/// switch reached it.
+///
+/// Where the neighbour stops: `ThePageBarAfterItsModuleIsSwitchedOffTests` posts the notification by hand to a
+/// bar in no window and reads what each zone is told and whether a press reaches the page's closures. These
+/// rows go through `ModuleHost.setEnabled`, a bar in a window, and the zones' frames.
 @MainActor
 final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
 
     private static let keepAwake = KeepAwakeDescriptor.id.rawValue
     private static let vpn = VPNDescriptor.id.rawValue
-    /// The rig's sidebar width, as `AnUnfoldIsPredictedNeverTrialledTests` has it.
-    private static let sidebarWidth: CGFloat = 214
 
-    private var savedPageBar: Any?
-    private var savedSwitcher: Any?
-    private var savedCollapse: Any?
     private var fixtures: [LivePageToolbarFixture] = []
 
-    override func setUp() {
-        super.setUp()
-        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
-        savedSwitcher = AppSettings.store.object(ToolbarSwitcherStyle.storageKey)
-        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
-        AppSettings.pageBarStyle = .moduleName
-        AppSettings.toolbarSwitcherStyle = .text
-        AppSettings.alwaysCollapseSearch = false
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
@@ -61,21 +56,16 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
         for id in [Self.keepAwake, Self.vpn] {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
-        AppSettings.store.set(savedSwitcher, for: ToolbarSwitcherStyle.storageKey)
-        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
         super.tearDown()
     }
 
     // MARK: - Rig
 
-    /// Counts every read of the declared `selectedTab` — `patchTabs` and
-    /// `settle` both read it, so a count that moved is the proof a post
-    /// reached the bar.
+    /// Counts every read of the declared `selectedTab`: `ShellBarTabs.show` reads it on every
+    /// republication, so a count that moved is the proof a post reached the bar.
     @MainActor private final class Reads { var count = 0 }
 
-    /// Homebrew's own shape (`AnUnfoldIsPredictedNeverTrialledTests
-    /// .homebrewContent()`), with a selected-tab binding that counts.
+    /// Homebrew's own shape, with a selected-tab binding that counts.
     private func tabPageContent(_ reads: Reads) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
             tabs: [
@@ -93,128 +83,110 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
             search: HelmToolbarSearch(prompt: L("Search packages"), text: .constant("")))
     }
 
-    private struct Rig {
-        let window: NSWindow
-        let toolbar: SettingsToolbar
-        let model: SettingsModel
-        let channel: HelmWindowToolbarChannel
-        let keepAlive: [AnyObject]
+    /// The fixture's window holds the page's bar and nothing else; its bar is the real one.
+    private func mount(selection: SettingsSelection, width: CGFloat) -> LivePageToolbarFixture {
+        let fx = LivePageToolbarFixture(EmptyView(), selection: selection, width: width, height: 700)
+        fixtures.append(fx)
+        return fx
     }
 
-    /// A split-view rig, so `offeredRoom()` reads a detail pane and the fold is the rig's.
-    /// Never ordered on screen.
-    private func mountSplit(pane: CGFloat, selection: SettingsSelection) -> Rig {
-        let model = SettingsModel(host: ModuleHost.shared)
-        let channel = HelmWindowToolbarChannel()
-        let toolbar = SettingsToolbar(model: model, channel: channel)
-        let detail = NSViewController()
-        detail.view = NSView(frame: NSRect(x: 0, y: 0, width: pane, height: 700))
-        let detailItem = NSSplitViewItem(viewController: detail)
-        detailItem.minimumThickness = 420
-        let sidebar = NSViewController()
-        sidebar.view = NSView(frame: NSRect(x: 0, y: 0, width: Self.sidebarWidth, height: 700))
-        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
-        sidebarItem.canCollapse = false
-        sidebarItem.minimumThickness = Self.sidebarWidth
-        sidebarItem.maximumThickness = Self.sidebarWidth
-        let split = NSSplitViewController()
-        split.addSplitViewItem(sidebarItem)
-        split.addSplitViewItem(detailItem)
-        sidebarItem.allowsFullHeightLayout = true
-        let window = NSWindow(contentViewController: split)
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: pane + Self.sidebarWidth, height: 700))
-        window.layoutIfNeeded()
-        split.splitView.setPosition(Self.sidebarWidth, ofDividerAt: 0)
-        window.layoutIfNeeded()
-        let got = detail.view.bounds.width
-        if abs(got - pane) > 0.5 {
-            window.setContentSize(NSSize(width: window.frame.width + (pane - got), height: 700))
-            window.layoutIfNeeded()
-        }
-        model.selection = selection
-        toolbar.window = window
-        return Rig(window: window, toolbar: toolbar, model: model, channel: channel, keepAlive: [split])
-    }
-
-    private func settle(_ window: NSWindow, turns: Int = 20) {
-        for _ in 0..<turns {
-            window.layoutIfNeeded()
-            window.contentView?.layoutSubtreeIfNeeded()
-            CATransaction.flush()
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
-        }
+    private func declareTabPage(_ fx: LivePageToolbarFixture, _ reads: Reads) -> Int {
+        let generation = fx.channel.nextGeneration()
+        fx.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
+        return generation
     }
 
     // MARK: - What the bar is showing
 
-    /// Everything a switch elsewhere could move on the attached bar: which
-    /// toolbar, its identifier list, the item objects themselves, the tabs'
-    /// hosted view, what AppKit shows of each watched item, the fold (the
-    /// segment count of the one segmented control the tabs host draws, nil
-    /// when folded into a menu), and whether the controls are live.
+    /// One zone as the window holds it.
+    private struct ZoneRead: Equatable {
+        let zone: ShellPageBarView.Zone
+        let view: ObjectIdentifier
+        let frame: CGRect
+        let hidden: Bool
+    }
+
+    /// Everything a switch elsewhere could move on the attached bar: each zone's view, frame and visibility,
+    /// the bar view's own frame and its subviews in order. The zones are read through `view(for:)` in
+    /// `Zone.allCases` order, so two reads are equal only when the same zones hold the same views.
+    private struct ZoneFrames: Equatable {
+        let bar: CGRect
+        let subviews: [ObjectIdentifier]
+        let zones: [ZoneRead]
+
+        @MainActor init(_ bar: ShellPageBarView) {
+            self.bar = bar.frame
+            subviews = bar.subviews.map(ObjectIdentifier.init)
+            zones = ShellPageBarView.Zone.allCases.compactMap { zone in
+                bar.view(for: zone).map {
+                    ZoneRead(zone: zone, view: ObjectIdentifier($0), frame: $0.frame, hidden: $0.isHidden)
+                }
+            }
+        }
+
+        func frame(of zone: ShellPageBarView.Zone) -> CGRect? { zones.first { $0.zone == zone }?.frame }
+        var present: Set<ShellPageBarView.Zone> { Set(zones.filter { !$0.hidden }.map(\.zone)) }
+    }
+
+    /// The zones plus what the controller and the zones say of themselves.
     private struct BarState: Equatable, CustomStringConvertible {
-        let toolbar: ObjectIdentifier?
-        let identifiers: [String]
-        let items: [ObjectIdentifier]
-        let tabsView: ObjectIdentifier?
-        let segments: Int?
-        let visible: [String]
-        let searchEnabled: Bool?
-        let actionsInteractive: Bool?
+        let frames: ZoneFrames
+        let presentation: ShellPageBar.Presentation
+        let tabsFolded: Bool
+        let actionsInteractive: Bool
+        let statusWord: String?
 
         var description: String {
-            "toolbar=\(toolbar.map { "\($0.hashValue)" } ?? "nil") ids=\(identifiers) "
-                + "segments=\(segments.map(String.init) ?? "nil") visible=\(visible) "
-                + "search=\(searchEnabled.map(String.init) ?? "nil") "
-                + "actions=\(actionsInteractive.map(String.init) ?? "nil")"
+            "presentation=\(presentation) tabsFolded=\(tabsFolded) actionsInteractive=\(actionsInteractive) "
+                + "status=\(statusWord ?? "nil") bar=\(frames.bar) "
+                + "zones=\(frames.zones.map { "\($0.zone):\($0.frame)\($0.hidden ? " hidden" : "")" })"
         }
     }
 
-    private func state(_ window: NSWindow) -> BarState {
-        let toolbar = window.toolbar
-        let items = toolbar?.items ?? []
-        let tabs = items.first { $0.itemIdentifier.rawValue == "helm.tabs" }
-        let actions = items.first { $0.itemIdentifier.rawValue == "helm.actions" }?.view
-            as? NSHostingView<HelmToolbarActionsCapsule>
-        let search = items.compactMap { $0 as? NSSearchToolbarItem }.first
-        return BarState(
-            toolbar: toolbar.map(ObjectIdentifier.init),
-            identifiers: toolbar?.itemIdentifiers.map(\.rawValue) ?? [],
-            items: items.map(ObjectIdentifier.init),
-            tabsView: tabs?.view.map(ObjectIdentifier.init),
-            segments: tabs?.view?.everyView(ofType: NSSegmentedControl.self).first?.segmentCount,
-            visible: items.filter { $0.isVisible }.map(\.itemIdentifier.rawValue),
-            searchEnabled: search?.searchField.isEnabled,
-            actionsInteractive: actions?.rootView.model.isInteractive)
+    private func state(_ fx: LivePageToolbarFixture) -> BarState {
+        BarState(frames: ZoneFrames(fx.bar.view), presentation: fx.bar.presentation,
+                 tabsFolded: fx.bar.view.verdicts.tabsFolded,
+                 actionsInteractive: fx.pageBar.actions.model.isInteractive,
+                 statusWord: statusWord(fx.bar.view))
     }
 
-    /// `willAddItem`/`didRemoveItem` on any toolbar, and every `isVisible`
-    /// going false on the items of the bar attached when it started.
-    @MainActor private final class ChurnWatch {
-        var added = 0
-        var removed = 0
-        var evicted: [String] = []
+    private func statusWord(_ bar: ShellPageBarView) -> String? {
+        (bar.view(for: .status) as? NSHostingView<StatusZoneView>)?.rootView.status?.word
+    }
+
+    /// The bar is in the fixture's window, found from the window and not from the fixture, and has been
+    /// laid out.
+    private func assertBarIsLive(_ fx: LivePageToolbarFixture, _ label: String,
+                                 file: StaticString = #filePath, line: UInt = #line) {
+        let found = fx.mount.window?.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        XCTAssertTrue(found === fx.bar.view, "\(label): the fixture's bar is in no window", file: file, line: line)
+        XCTAssertNotNil(fx.bar.view.frames, "\(label): the bar was never laid out", file: file, line: line)
+        XCTAssertGreaterThan(fx.bar.view.view(for: .name)?.frame.width ?? 0, 0,
+                             "\(label): the name has no room", file: file, line: line)
+    }
+
+    /// Every frame change of the bar or of a zone's view that was there when it started, and every
+    /// `isHidden` that flips on one of them.
+    @MainActor private final class ZoneWatch {
+        var frameChanges: [String] = []
+        var visibilityChanges: [String] = []
         private var tokens: [NSObjectProtocol] = []
         private var kvo: [NSKeyValueObservation] = []
 
-        init(_ toolbar: NSToolbar?) {
-            tokens.append(NotificationCenter.default.addObserver(
-                forName: NSToolbar.willAddItemNotification, object: nil, queue: nil) { [weak self] _ in
-                MainActor.assumeIsolated { self?.added += 1 }
-            })
-            tokens.append(NotificationCenter.default.addObserver(
-                forName: NSToolbar.didRemoveItemNotification, object: nil, queue: nil) { [weak self] _ in
-                MainActor.assumeIsolated { self?.removed += 1 }
-            })
-            for item in toolbar?.items ?? [] {
-                let name = item.itemIdentifier.rawValue
-                kvo.append(item.observe(\.isVisible, options: [.new]) { [weak self] _, change in
-                    guard change.newValue == false else { return }
-                    MainActor.assumeIsolated { self?.evicted.append(name) }
+        @MainActor init(_ bar: ShellPageBarView) {
+            var watched: [(String, NSView)] = [("bar", bar)]
+            for zone in ShellPageBarView.Zone.allCases {
+                if let view = bar.view(for: zone) { watched.append(("\(zone)", view)) }
+            }
+            for (name, view) in watched {
+                view.postsFrameChangedNotifications = true
+                tokens.append(NotificationCenter.default.addObserver(
+                    forName: NSView.frameDidChangeNotification, object: view, queue: nil) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.frameChanges.append(name) }
+                })
+                kvo.append(view.observe(\.isHidden, options: [.old, .new]) { [weak self] _, change in
+                    guard change.oldValue != change.newValue else { return }
+                    MainActor.assumeIsolated { self?.visibilityChanges.append(name) }
                 })
             }
         }
@@ -228,119 +200,120 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
 
     // MARK: - 1. Another module's switch, under a tab page
 
-    /// **VPN switched off and on six times while a Homebrew-shaped page, held
-    /// by Keep Awake (which stays on), is on screen**, at a pane where the tabs are full (English, 1060) and
-    /// one where they are folded (Russian, 560). The bar is read after every
-    /// single switch, before anything settles, and again after the settle
-    /// each switch schedules — a blink that comes and goes inside one
-    /// switch is the one a before/after pair would miss.
-    func testAnotherModulesSwitchMovesNothingOnATabPage() {
-        let cases: [(AppLanguage, CGFloat, String)] = [(.en, 1060, "full"), (.ru, 560, "folded")]
-        for (language, pane, fold) in cases {
+    /// **VPN switched off and on six times while a Homebrew-shaped page, held by Keep Awake (which stays
+    /// on), is on screen**, at a width where the tabs are full (English, 1060) and one where they are folded
+    /// (Russian, 560). The bar is read after every single switch, before the fixture settles, and
+    /// again after it has settled; the watch sees a frame that moves and returns inside one switch.
+    func testAnotherModulesSwitchMovesNoZoneOnATabPage() {
+        let cases: [(AppLanguage, CGFloat, Bool)] = [(.en, 1060, false), (.ru, 560, true)]
+        for (language, width, folded) in cases {
             AppLanguage.only(language) {
+                let label = "\(language) \(width) (\(folded ? "folded" : "full"))"
                 ModuleHost.shared.shutdown()
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
                 let reads = Reads()
-                let rig = mountSplit(pane: pane, selection: .module(Self.keepAwake))
-                rig.channel.declare(tabPageContent(reads), token: Self.keepAwake,
-                                    generation: rig.channel.nextGeneration())
-                settle(rig.window, turns: 40)
-                let before = state(rig.window)
-                XCTAssertNotNil(before.toolbar, "\(language) \(pane): no toolbar attached")
-                XCTAssertTrue(before.identifiers.contains("helm.tabs"),
-                              "\(language) \(pane): the tab page's own bar is not the one attached — \(before)")
-                // The subject: the fold state this case is named for really is
-                // the one on screen, or "the fold did not move" is about
-                // nothing.
-                if fold == "full" {
-                    XCTAssertEqual(before.segments, 3, "\(language) \(pane): tabs not full to begin with — \(before)")
-                } else {
-                    XCTAssertNotEqual(before.segments, 3,
-                                      "\(language) \(pane): tabs not folded to begin with — \(before)")
-                }
+                let fx = mount(selection: .module(Self.keepAwake), width: width)
+                _ = declareTabPage(fx, reads)
+                fx.settle(40)
+                let before = state(fx)
 
-                let watch = ChurnWatch(rig.window.toolbar)
+                // The subject: a bar in the window showing the tab page live, with the fold this case is
+                // named for, and the zones a switch could move holding a width.
+                assertBarIsLive(fx, label)
+                XCTAssertEqual(before.presentation, .page(key: Self.keepAwake, isLive: true, isDimmed: false),
+                               "\(label): the tab page is not the one shown live — \(before)")
+                XCTAssertTrue(before.frames.present.isSuperset(of: [.name, .tabs, .actions]),
+                              "\(label): a zone of the tab page is missing — \(before)")
+                for zone in [ShellPageBarView.Zone.name, .tabs, .actions] {
+                    XCTAssertGreaterThan(before.frames.frame(of: zone)?.width ?? 0, 0, "\(label): \(zone) has no width")
+                }
+                XCTAssertEqual(before.tabsFolded, folded, "\(label): the tabs are not \(folded ? "folded" : "full") to begin with")
+                XCTAssertTrue(before.actionsInteractive, "\(label): the page is not live to begin with")
+
+                let watch = ZoneWatch(fx.bar.view)
                 let readsBefore = reads.count
+                let measuredBefore = fx.pageBar.tabs.measureCount
+                let redrawnBefore = fx.pageBar.tabs.redrawCount
                 var seen: [String] = []
                 for round in 0..<6 {
                     ModuleHost.shared.setEnabled(VPNDescriptor(), round % 2 == 1)
-                    let now = state(rig.window)
+                    let now = state(fx)
                     if now != before { seen.append("round \(round), at once: \(now)") }
-                    settle(rig.window, turns: 12)
-                    let settled = state(rig.window)
+                    fx.settle(12)
+                    let settled = state(fx)
                     if settled != before { seen.append("round \(round), settled: \(settled)") }
                 }
                 watch.stop()
 
                 XCTAssertGreaterThan(reads.count, readsBefore, """
-                    \(language) \(pane): six module switches never reached the bar at all — every \
-                    absence below would pass for a toolbar that did not hear them
+                    \(label): six module switches never reached the bar at all — every absence below \
+                    would pass for a bar that did not hear them
                     """)
-                XCTAssertEqual(seen, [], """
-                    \(language) \(pane) (\(fold)): another module's switch moved the tab page's bar; \
-                    before: \(before)
-                    """)
-                XCTAssertEqual(watch.added, 0, "\(language) \(pane): \(watch.added) willAddItem during the switches")
-                XCTAssertEqual(watch.removed, 0,
-                               "\(language) \(pane): \(watch.removed) didRemoveItem during the switches")
-                XCTAssertEqual(watch.evicted, [], "\(language) \(pane): items evicted during the switches")
-                _ = rig
+                XCTAssertEqual(seen, [], "\(label): another module's switch moved the tab page's bar; before: \(before)")
+                XCTAssertEqual(watch.frameChanges, [], "\(label): a frame changed during the switches")
+                XCTAssertEqual(watch.visibilityChanges, [], "\(label): a zone was hidden or shown during the switches")
+                XCTAssertEqual(fx.pageBar.tabs.measureCount, measuredBefore, "\(label): the tabs were measured again")
+                XCTAssertEqual(fx.pageBar.tabs.redrawCount, redrawnBefore, "\(label): the tabs were redrawn")
+
+                // The watch can see: a frame that really moves is counted.
+                let control = ZoneWatch(fx.bar.view)
+                fx.bar.view.measures.name += 40
+                fx.settle(2)
+                control.stop()
+                XCTAssertTrue(control.frameChanges.contains("name"),
+                              "\(label): the watch saw no frame move when the name was widened — the zero above is about a deaf watch")
             }
         }
     }
 
-    // MARK: - 2. Another module's switch, under the shared name-only bar
+    // MARK: - 2. Another module's switch, under the name-only bar
 
-    /// **General, and Keep Awake's own page, while VPN is switched off and on**
-    /// — the shared bar keeps its toolbar, its items and its status host, and
-    /// Keep Awake's word stays the page's own reading.
-    func testAnotherModulesSwitchMovesNothingOnTheSharedBar() {
+    /// **General, and Keep Awake's own page, while VPN is switched off and on** — General shows the name
+    /// alone and Keep Awake's page the name and Keep Awake's word; both keep their zones' views and frames,
+    /// and the word stays the page's own reading.
+    func testAnotherModulesSwitchMovesNoZoneOnTheNameOnlyBar() {
         AppLanguage.only(.en) {
             ModuleHost.shared.shutdown()
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
             ModuleHost.shared.setEnabled(VPNDescriptor(), true)
             for selection in [SettingsSelection.general, .module(Self.keepAwake)] {
-                let fx = LivePageToolbarFixture(EmptyView(), selection: selection, width: 1060, height: 700)
+                let fx = mount(selection: selection, width: 1060)
                 fx.settle(30)
-                fixtures.append(fx)
-                guard let window = fx.mount.window else { return XCTFail("\(selection): no window") }
-                let before = state(window)
-                let statusBefore = statusHost(window.toolbar)
-                XCTAssertTrue(before.identifiers.contains("helm.status"),
-                              "\(selection): not the shared name-only bar — \(before)")
+                let before = state(fx)
+                assertBarIsLive(fx, "\(selection)")
                 let expected: String? = selection == .general ? nil : liveWord(Self.keepAwake)
                 if selection != .general {
                     XCTAssertNotNil(expected, "Keep Awake is on and reports no activity")
                 }
-                XCTAssertEqual(statusBefore?.rootView.status?.word, expected,
-                               "\(selection): the status to begin with")
+                XCTAssertEqual(before.statusWord, expected, "\(selection): the status to begin with")
+                XCTAssertEqual(before.frames.present, selection == .general ? [.name] : [.name, .status],
+                               "\(selection): not the name-only bar — \(before)")
+                for zone in before.frames.present {
+                    XCTAssertGreaterThan(before.frames.frame(of: zone)?.width ?? 0, 0, "\(selection): \(zone) has no width")
+                }
 
-                let watch = ChurnWatch(window.toolbar)
+                let watch = ZoneWatch(fx.bar.view)
                 var seen: [String] = []
                 for round in 0..<6 {
                     ModuleHost.shared.setEnabled(VPNDescriptor(), round % 2 == 1)
                     fx.settle(8)
-                    let now = state(window)
+                    let now = state(fx)
                     if now != before { seen.append("round \(round): \(now)") }
-                    let host = statusHost(window.toolbar)
-                    if host !== statusBefore { seen.append("round \(round): a different status host") }
-                    if host?.rootView.status?.word != expected {
-                        seen.append("round \(round): status «\(host?.rootView.status?.word ?? "nothing")»")
-                    }
                 }
                 watch.stop()
-                XCTAssertEqual(seen, [], "\(selection): VPN's switch moved the shared bar; before: \(before)")
-                XCTAssertEqual(watch.added + watch.removed, 0, "\(selection): items added or removed")
-                XCTAssertEqual(watch.evicted, [], "\(selection): items evicted")
-                // The subject: this same bar does hear a switch — its own
-                // module's — so the stillness above is not deafness.
+                XCTAssertEqual(seen, [], "\(selection): VPN's switch moved the bar; before: \(before)")
+                XCTAssertEqual(watch.frameChanges, [], "\(selection): a frame changed")
+                XCTAssertEqual(watch.visibilityChanges, [], "\(selection): a zone was hidden or shown")
+
+                // Keep Awake switched off takes its word off this bar. This does not show that the bar hears
+                // a module's switch: the selection moves to General when its module goes off (`SettingsModel`)
+                // and the bar follows the selection, so a bar deaf to both notifications passes here too.
+                // Nothing in this row shows that VPN's switch reached the bar.
                 if selection != .general {
                     ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
                     fx.settle(8)
-                    XCTAssertNil(statusHost(window.toolbar)?.rootView.status, """
-                        Keep Awake's own switch never reached this bar — every stillness above \
-                        is about a toolbar that hears nothing
-                        """)
+                    XCTAssertNil(statusWord(fx.bar.view),
+                                 "Keep Awake was switched off and its word is still on this bar")
                     ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
                 }
             }
@@ -357,183 +330,182 @@ final class AModuleSwitchReachesTheBarWithoutShakingItTests: XCTestCase {
         }
     }
 
-    private func statusHost(_ toolbar: NSToolbar?) -> NSHostingView<StatusZoneView>? {
-        toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.status" }?.view
-            as? NSHostingView<StatusZoneView>
-    }
-
     // MARK: - 3. The page's own module, flipped faster than the page follows
 
-    /// **Off and on again.** The first switch-off is in the order the app
-    /// delivers it — the post from `ModuleHost.setEnabled` first and
-    /// synchronously, the page's withdraw after it. Every declare in the eight
-    /// rounds, the first one's included, and the seven later withdraws land
-    /// under a selection that is already General: the app sends none of those,
-    /// because the page is no longer mounted (`SettingsDetail`), so they are
-    /// stray writes the bar must ignore. The eight flips after them are the two
-    /// posts alone, which the app does send with General selected. Then one
-    /// switch-off held longer than `SettingsToolbar.graceInterval`; no grace is
-    /// armed on this route, so that wait tells nothing apart. A module that is off reads as
-    /// General (`ShellSidebarRows.settled`, applied by `SettingsModel` at every
-    /// change of `live`) and nothing brings the selection back, so the first
-    /// switch-off moves the selection to General for good. What the bar owes
-    /// is that, from then on, the flips shake nothing: it is the bar the rig
-    /// shows at General after the first switch — the shared name-only one,
-    /// since nothing here declares General's tabs as `SettingsDetail` does in
-    /// the app — and the same toolbar with the same items after every later one, and the selection is still General at the end. Then
-    /// the person selects the module again, the page declares afresh, and the
-    /// bar equals the one the page had at the start, with its controls live.
+    /// **Off and on again.** The first switch-off is in the order the app delivers it — the post from
+    /// `ModuleHost.setEnabled` first and synchronously, the page's withdraw after it. Every declare in the
+    /// eight rounds, the first one's included, and the seven later withdraws land under a selection that is
+    /// already General: the app sends none of those, because the page is no longer mounted
+    /// (`SettingsDetail`), so they are stray writes the bar must ignore. The eight flips after them are the
+    /// two posts alone, which the app does send with General selected. Then one switch-off held longer than
+    /// `ShellPageBar.graceInterval`; no grace is armed on this route, so that wait tells nothing apart.
+    /// A module that is off reads as General (`ShellSidebarRows.settled`, applied by `SettingsModel` at every
+    /// change of `live`) and nothing brings the selection back, so the first switch-off moves the selection
+    /// to General for good. What the bar owes is that, from then on, the flips move no zone: it is the name
+    /// alone after the first switch, in the same views and frames after every later one, and the selection
+    /// is still General at the end. Then the person selects the module again, the page declares afresh, and
+    /// the bar equals the one the page had at the start, with its controls live.
     ///
-    /// Keep Awake's id stands for a tab page here: `SettingsToolbar` keys the
-    /// bar on the page and asks the host only whether that id is live, so a
-    /// real descriptor is what `isModuleSwitchedOff()` needs and the content
-    /// is what the channel carries.
-    func testThePagesOwnModuleSwitchedOffLeavesTheSharedNameOnlyBarStillAndReselectingItRestoresItsBar() {
+    /// Keep Awake's id stands for a tab page here: the bar keys the page on its id and asks the host only
+    /// whether that id is live, so a real descriptor is what `isModuleSwitchedOff()` needs and the content is
+    /// what the channel carries.
+    func testThePagesOwnModuleSwitchedOffLeavesTheNameOnlyBarStillAndReselectingItRestoresItsBar() {
         AppLanguage.only(.en) {
             ModuleHost.shared.shutdown()
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
             let reads = Reads()
-            let rig = mountSplit(pane: 1060, selection: .module(Self.keepAwake))
-            var generation = rig.channel.nextGeneration()
-            rig.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
-            settle(rig.window, turns: 40)
-            let live = state(rig.window)
-            XCTAssertEqual(live.segments, 3, "the page's bar is not the one attached — \(live)")
-            XCTAssertEqual(live.actionsInteractive, true, "the page's bar is not live to begin with")
+            let fx = mount(selection: .module(Self.keepAwake), width: 1060)
+            var generation = declareTabPage(fx, reads)
+            fx.settle(40)
+            let live = state(fx)
+            assertBarIsLive(fx, "the tab page")
+            XCTAssertEqual(live.presentation, .page(key: Self.keepAwake, isLive: true, isDimmed: false),
+                           "the page's bar is not the one attached — \(live)")
+            XCTAssertFalse(live.tabsFolded, "the tabs are not full to begin with — \(live)")
+            XCTAssertTrue(live.actionsInteractive, "the page's bar is not live to begin with")
+            XCTAssertTrue(live.frames.present.isSuperset(of: [.name, .tabs, .actions]), "\(live)")
 
-            // Eight fast flips. The first round moves the selection to
-            // General; the bar it settles on (the shared name-only bar this
-            // rig shows at General) is the one every later round must leave
-            // untouched.
+            // Eight fast flips. The first round moves the selection to General; the bar it settles on
+            // is the one every later round must leave untouched.
             var general: BarState?
             for round in 0..<8 {
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
-                rig.channel.withdraw(token: Self.keepAwake, generation: generation)
-                settle(rig.window, turns: 2)
+                fx.channel.withdraw(token: Self.keepAwake, generation: generation)
+                fx.settle(2)
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
-                generation = rig.channel.nextGeneration()
-                rig.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
-                settle(rig.window, turns: 2)
+                generation = declareTabPage(fx, reads)
+                fx.settle(2)
                 if round == 0 {
-                    settle(rig.window, turns: 30)
-                    general = state(rig.window)
-                    XCTAssertEqual(rig.model.selection, .general,
+                    fx.settle(30)
+                    let now = state(fx)
+                    general = now
+                    XCTAssertEqual(fx.model.selection, .general,
                                    "switched off under its own page and the selection did not move to General")
-                    XCTAssertTrue(general?.identifiers.contains("helm.status") == true
-                                  && general?.identifiers.contains("helm.tabs") == false,
-                                  "the first switch-off did not leave the shared name-only bar this rig shows at General — \(String(describing: general))")
-                    XCTAssertNotEqual(general, live, "the shared name-only bar this rig shows at General is the page's bar")
+                    XCTAssertEqual(now.frames.present, [.name],
+                                   "the first switch-off did not leave the name alone — \(now)")
+                    XCTAssertEqual(now.presentation, .nameOnly, "\(now)")
+                    XCTAssertNotEqual(now, live, "the name-only bar is the page's bar")
                 } else if let general {
-                    let now = state(rig.window)
-                    XCTAssertEqual(now, general, "round \(round) moved the shared name-only bar this rig shows at General")
+                    let now = state(fx)
+                    XCTAssertEqual(now, general, "round \(round) moved the name-only bar")
                 }
             }
-            settle(rig.window, turns: 30)
-            XCTAssertEqual(state(rig.window), general, "eight fast flips with the rig's own withdraw and declare")
-            XCTAssertEqual(rig.model.selection, .general, "a switch-on brought the selection back by itself")
+            fx.settle(30)
+            XCTAssertEqual(state(fx), general, "eight fast flips with the rig's own withdraw and declare")
+            XCTAssertEqual(fx.model.selection, .general, "a switch-on brought the selection back by itself")
 
             // No withdraw at all between the two posts.
             for _ in 0..<8 {
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
                 ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
             }
-            settle(rig.window, turns: 30)
-            XCTAssertEqual(state(rig.window), general, "eight flips the page never withdrew for")
+            fx.settle(30)
+            XCTAssertEqual(state(fx), general, "eight flips the page never withdrew for")
 
-            // Off, and held longer than `SettingsToolbar.graceInterval`. No
-            // grace is armed on this route — the selection is already General
-            // and this rig caches no bar for it — so the wait tells nothing
-            // apart: deleting `assignNameOnly()` from `armGrace`'s closure
-            // leaves this family green. What is read is that the bar still
-            // carries `helm.status` and says nothing about the module that
-            // is off.
+            // Off, and held longer than `ShellPageBar.graceInterval`. No grace is armed on this route:
+            // the selection is already General and the bar holds no page for it. What is read is that the
+            // bar is still the name alone and says nothing about the module that is off.
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
-            rig.channel.withdraw(token: Self.keepAwake, generation: generation)
+            fx.channel.withdraw(token: Self.keepAwake, generation: generation)
             let fellBack = expectation(description: "longer than the grace interval")
-            DispatchQueue.main.asyncAfter(deadline: .now() + SettingsToolbar.graceInterval + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + fx.bar.graceInterval + 0.3) {
                 fellBack.fulfill()
             }
             wait(for: [fellBack], timeout: 3)
-            settle(rig.window, turns: 5)
-            let off = state(rig.window)
-            XCTAssertTrue(off.identifiers.contains("helm.status"),
-                          "switched off, held longer than the grace interval, and the bar carries no helm.status — \(off)")
-            XCTAssertNil(statusHost(rig.window.toolbar)?.rootView.status,
-                         "the shared bar says a status for a module that is off")
+            fx.settle(5)
+            let off = state(fx)
+            XCTAssertEqual(off.frames.present, [.name], "switched off and held, and the bar is not the name alone — \(off)")
+            XCTAssertNil(off.statusWord, "the bar says a status for a module that is off")
+            XCTAssertEqual(off.frames.frame(of: .name), general?.frames.frame(of: .name), "the name moved")
 
-            // On again, and the person selects it again: the page declares
-            // afresh, as the rig does it, and the bar is the page's own.
+            // On again, and the person selects it again: the page declares afresh, as the rig does it,
+            // and the bar is the page's own.
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
-            settle(rig.window, turns: 5)
-            XCTAssertEqual(rig.model.selection, .general, "a switch-on brought the selection back by itself")
-            rig.model.selection = .module(Self.keepAwake)
-            generation = rig.channel.nextGeneration()
-            rig.channel.declare(tabPageContent(reads), token: Self.keepAwake, generation: generation)
-            settle(rig.window, turns: 40)
-            XCTAssertEqual(state(rig.window), live, "the module selected again does not show its own bar")
-            _ = rig
+            fx.settle(5)
+            XCTAssertEqual(fx.model.selection, .general, "a switch-on brought the selection back by itself")
+            fx.model.selection = .module(Self.keepAwake)
+            generation = declareTabPage(fx, reads)
+            fx.settle(40)
+            // Read as frames, word and liveness: the actions zone builds a new view when the page comes back after the name alone, measured.
+            let again = state(fx)
+            XCTAssertEqual(again.description, live.description, "the module selected again does not show its own bar")
+            XCTAssertEqual(again.frames.zones.map(\.frame), live.frames.zones.map(\.frame))
+            XCTAssertEqual(again.frames.subviews.count, live.frames.subviews.count)
         }
     }
 
-    // MARK: - 4. A toolbar let go of
+    // MARK: - 4. A bar let go of
 
-    /// **Let go of with its window still up, then both posts** — nothing kept
-    /// it alive (the observers capture it weakly), and the window's bar does
-    /// not move for a post nobody is left to answer.
-    func testADroppedToolbarIsNotKeptAliveAndAnswersNoPost() {
-        weak var weakToolbar: SettingsToolbar?
-        var window: NSWindow?
-        var keep: [AnyObject] = []
-        autoreleasepool {
-            let rig = mountSplit(pane: 1060, selection: .general)
-            settle(rig.window, turns: 10)
-            weakToolbar = rig.toolbar
-            window = rig.window
-            keep = rig.keepAlive
+    /// **Let go of with its view still in the window, then both posts** — nothing kept the controller alive
+    /// (its observers capture it weakly), and the view it left behind does not move for a post nobody is left
+    /// to answer. The page is Keep Awake's, live, so a controller that survived would answer Keep Awake's
+    /// switch by taking the word off the bar; the word is on the view before the release and is asserted.
+    func testADroppedBarIsNotKeptAliveAndAnswersNoPost() {
+        AppLanguage.only(.en) {
+            ModuleHost.shared.shutdown()
+            ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
+            weak var weakBar: ShellPageBar?
+            var barView: ShellPageBarView?
+            var mounted: MountedRender?
+            autoreleasepool {
+                let fx = LivePageToolbarFixture(EmptyView(), selection: .module(Self.keepAwake), width: 1060, height: 700)
+                fx.settle(30)
+                weakBar = fx.bar
+                barView = fx.bar.view
+                mounted = fx.mount
+            }
+            defer { barView?.removeFromSuperview(); mounted?.drop() }
+            guard let barView else { return XCTFail("no bar view") }
+            // The subject: the view is in the window, shows the word, and the controller is the one thing gone.
+            XCTAssertNotNil(barView.window, "the bar's view is in no window")
+            XCTAssertNotNil(statusWord(barView), "the page's word is not on the view before the posts")
+            for _ in 0..<5 { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
+            XCTAssertNil(weakBar, "a ShellPageBar nobody holds is still alive — something retains it")
+            let before = ZoneFrames(barView)
+            let wordBefore = statusWord(barView)
+            ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
+            ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
+            for _ in 0..<5 { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
+            XCTAssertEqual(ZoneFrames(barView), before, "a post moved the view of a bar already gone")
+            XCTAssertEqual(statusWord(barView), wordBefore, "a post redrew the word on the view of a bar already gone")
         }
-        settle(window!, turns: 5)
-        XCTAssertNil(weakToolbar, "a SettingsToolbar nobody holds is still alive — something retains it")
-        let before = window.map(state)
-        ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
-        ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
-        settle(window!, turns: 5)
-        XCTAssertEqual(window.map(state), before, "a post moved the bar of a toolbar already gone")
-        _ = keep
     }
 
-    /// **Let go of inside the post itself** — an observer registered before
-    /// the toolbar's drops the last reference while `.helmModuleDisabled` is
-    /// being delivered, so the toolbar's own block, already scheduled, runs
-    /// against an object that no longer exists.
-    func testAToolbarDroppedMidPostAnswersNothingAndDoesNotCrash() {
+    /// **Let go of inside the post itself** — an observer registered before the bar's drops the last
+    /// reference while `.helmModuleDisabled` is being delivered, so the bar's own block, already scheduled,
+    /// runs against an object that no longer exists.
+    func testABarDroppedMidPostAnswersNothingAndDoesNotCrash() {
         ModuleHost.shared.shutdown()
         ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
-        @MainActor final class Holder { var rig: AnyObject? }
+        @MainActor final class Holder { var bar: ShellPageBar? }
         let holder = Holder()
-        weak var weakToolbar: SettingsToolbar?
+        weak var weakBar: ShellPageBar?
         var dropped = 0
         let dropper = NotificationCenter.default.addObserver(
             forName: .helmModuleDisabled, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated {
-                if holder.rig != nil { dropped += 1 }
-                holder.rig = nil
+                if holder.bar != nil { dropped += 1 }
+                holder.bar = nil
             }
         }
         defer { NotificationCenter.default.removeObserver(dropper) }
-        var window: NSWindow?
+        var barView: ShellPageBarView?
+        var mounted: MountedRender?
         autoreleasepool {
-            let rig = mountSplit(pane: 1060, selection: .module(Self.keepAwake))
-            settle(rig.window, turns: 10)
-            weakToolbar = rig.toolbar
-            window = rig.window
-            holder.rig = rig.toolbar
+            let fx = LivePageToolbarFixture(EmptyView(), selection: .module(Self.keepAwake), width: 1060, height: 700)
+            fx.settle(10)
+            weakBar = fx.bar
+            barView = fx.bar.view
+            mounted = fx.mount
+            holder.bar = fx.bar
         }
-        XCTAssertNotNil(weakToolbar, "the toolbar was gone before the post — the case never ran")
+        defer { barView?.removeFromSuperview(); mounted?.drop() }
+        XCTAssertNotNil(weakBar, "the bar was gone before the post — the case never ran")
         ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
-        settle(window!, turns: 5)
+        for _ in 0..<5 { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
         XCTAssertEqual(dropped, 1, "the dropping observer never ran")
-        XCTAssertNil(weakToolbar, "the toolbar outlived the post that let it go")
+        XCTAssertNil(weakBar, "the bar outlived the post that let it go")
         ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
-        settle(window!, turns: 5)
+        for _ in 0..<5 { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
     }
 }

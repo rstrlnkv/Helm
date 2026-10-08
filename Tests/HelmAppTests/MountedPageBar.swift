@@ -14,8 +14,8 @@ import HelmUI
 /// `Sources/HelmApp/SettingsWindow.swift` (including `tabs.barMenu = bar.view.menu`), so new wiring there
 /// drifts from here unless it is copied too. Nothing is pinned for the settings the bar reads when it is
 /// built (`AppSettings.pageBarStyle`, `sidebarStyle`, `alwaysCollapseSearch`, `barAppearance`) nor for the
-/// fifth its tabs zone reads (`AppSettings.toolbarSwitcherStyle`): a family that depends on one sets it in
-/// its own `setUp` and puts it back.
+/// fifth its tabs zone reads (`AppSettings.toolbarSwitcherStyle`): a family that depends on one pins it
+/// before building the bar (`PinnedBarSettings.pin(in:)`) and puts it back.
 ///
 /// `layout()` has to be called after anything that moves the bar's frames; `MountedRender.settle` lays
 /// out the page's host and nothing else.

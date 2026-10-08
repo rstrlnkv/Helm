@@ -13,12 +13,12 @@ import XCTest
 ///
 /// `TheListEndsAtItsLastRowTests` reads the page in a plain titled window. The
 /// owner saw about three empty striped rows under `zcode` in the Settings
-/// window itself — full-size content under an app-owned `NSToolbar`, the page
+/// window itself — full-size content under the window's own bar, the page
 /// bleeding under the band (`HomebrewDescriptor.pageBleeds`), the page header
 /// placed by `helmPageHeader`, the backdrop and the band choice — so this
 /// reads the same list inside a split-view rig whose detail pane carries the
-/// modifiers `SettingsShellViewController.makeShell` puts on the pane, with the toolbar
-/// attached as `LivePageToolbarFixture` attaches it. Scrolled to the furthest
+/// modifiers `SettingsShellViewController.makeShell` puts on the pane, with the page bar
+/// added as `LivePageToolbarFixture` adds it (a `MountedPageBar` over the window's content). Scrolled to the furthest
 /// offset the clip view allows (`StripedListEnd`), judged against the list's
 /// own row step. Console absent and present, Light and Dark.
 @MainActor
@@ -54,8 +54,11 @@ final class TheHomebrewListEndsAtItsLastRowInTheWindowTests: XCTestCase {
     }
 
     private var windows: [NSWindow] = []
+    private var pageBars: [MountedPageBar] = []
 
     override func tearDown() {
+        pageBars.forEach { $0.remove() }
+        pageBars = []
         windows.forEach { $0.orderOut(nil); $0.contentViewController = nil }
         windows = []
         super.tearDown()
@@ -100,6 +103,7 @@ final class TheHomebrewListEndsAtItsLastRowInTheWindowTests: XCTestCase {
     private func settle(_ window: NSWindow, _ turns: Int) {
         for _ in 0..<turns {
             window.contentView?.layoutSubtreeIfNeeded()
+            pageBars.filter { $0.window === window }.forEach { $0.layout() }
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
         }
     }
@@ -114,8 +118,10 @@ final class TheHomebrewListEndsAtItsLastRowInTheWindowTests: XCTestCase {
         let channel = HelmWindowToolbarChannel()
         let model = SettingsModel(host: ModuleHost.shared)
         let window = settingsShaped(HomebrewSettingsPage(vm: mvm), appearance: appearance, channel: channel)
-        let toolbar = SettingsToolbar(model: model, channel: channel)
-        toolbar.window = window
+        let pageBar = MountedPageBar(model: model, channel: channel, in: window)
+        pageBars.append(pageBar)
+        let barInWindow = window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
+        XCTAssertTrue(barInWindow === pageBar.bar.view, "precondition: the page bar is not in the window it is read in")
         if onScreen { window.orderFrontRegardless() }
         settle(window, 40)
         await hb.loadIfNeeded()
@@ -145,7 +151,6 @@ final class TheHomebrewListEndsAtItsLastRowInTheWindowTests: XCTestCase {
             \(name): scrolled to its end the list shows \(reading.overscroll) pt of empty rows under \
             the last one (\(reading.overscroll / max(table.rowHeight, 1)) rows at \(table.rowHeight) pt) — \(reading)
             """)
-        toolbar.window = nil
     }
 
     func testOffScreenLightWithoutTheConsole() async throws { try await read(.aqua, console: false, onScreen: false) }

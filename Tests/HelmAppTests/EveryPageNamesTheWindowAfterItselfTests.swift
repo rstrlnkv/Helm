@@ -37,7 +37,6 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
 
     override func tearDown() {
         window?.orderOut(nil)
-        window?.toolbar = nil
         window = nil
         model = nil
         owner = nil
