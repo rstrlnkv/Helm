@@ -11,7 +11,8 @@ import HelmTestSupport
 /// No window is ordered or made key. The first two rows are measurements of AppKit that the zone stands on,
 /// each asserting what it read, in an unshown window or a bare bitmap: that a search field takes an editor
 /// and gives it up, and ends its editing, in a window that was never shown; and what a search field draws
-/// in a 283 by 36 frame.
+/// in a 283 by 36 frame. The rows over a bar with tabs expect the field the layout leaves beside tabs
+/// centred on the bar, computed from the layout's own constants; the others, with no tabs, the full 283.
 @MainActor
 final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
 
@@ -250,8 +251,9 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         var view: NSView? = NSView()
         var measuresMoved: (() -> Void)?
         func show(_ state: ShellBarZoneState) {}
+        static let unfolded: CGFloat = 310
         func measure(into measures: inout ShellPageBarView.Measures) {
-            measures.tabs = 310
+            measures.tabs = Self.unfolded
             measures.tabsFolded = 136
         }
         func apply(_ verdicts: ShellPageBarView.Verdicts) {}
@@ -429,12 +431,21 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         XCTAssertFalse(rig.zone.field.isHidden, "the press left the field hidden")
         XCTAssertTrue(rig.zone.magnifier.isHidden, "the press left the magnifier up beside the field")
 
+        // The field the layout gives with the tabs on the bar's centre: the search ends `trailing` from the
+        // right edge, no actions stand between it and the tabs (so `zoneGap` is its claim), and the tabs
+        // reach `barWidth / 2 + tabs / 2`; what is left of that is the field, which `searchWidth` caps.
+        let barWidth = rig.bar.view.frame.width
+        let open = (barWidth - ShellBarLayout.trailing) - ShellBarLayout.zoneGap
+            - (barWidth / 2 + TabsZone.unfolded / 2)
+        XCTAssertTrue(open > ShellBarLayout.searchFloor && open < ShellBarLayout.searchWidth,
+                      "precondition: the rig's room (\(open)) lies between the floor and the full field, so the row tells them apart")
+
         var passes = 0
-        while rig.zone.plate.frame.width != 283, passes < 5 {
+        while rig.zone.plate.frame.width != open, passes < 5 {
             rig.bar.view.layoutSubtreeIfNeeded()
             passes += 1
         }
-        XCTAssertEqual(rig.zone.plate.frame.width, 283, "the bar never widened the plate after the press")
+        XCTAssertEqual(rig.zone.plate.frame.width, open, "the bar never widened the plate after the press")
         XCTAssertEqual(passes, 1, "opened in \(passes) passes")
         XCTAssertEqual(changes, 1, "the press changed the bar's verdict \(changes) times")
         XCTAssertFalse(rig.bar.view.verdicts.tabsFolded, "the open field folded the tabs on a bar of 856")
