@@ -461,7 +461,8 @@ public struct HelmToolbarActionsCapsule: View {
                         // missing from 5–7 (Light), and a press on the segment
                         // already selected no longer lighting both segments
                         // (Dark: 12 frames in both films before, 0 in all four
-                        // films after). Not changed by this line: a press that
+                        // films after) (films of the system's cell, which the switcher wore then; with
+                        // `HelmFlatSegmentedCell` none of it was measured). Not changed by this line: a press that
                         // *moves* the selection lights both segments for 8–10
                         // frames of a 50 ms press in Dark and 5–10 in Light,
                         // against 0–4 for the centre tabs' presses in the same
@@ -612,7 +613,8 @@ public struct HelmToolbarActionsCapsule: View {
     /// SDK's own exported symbols read `.interactive()` as laying a second,
     /// SwiftUI-only press recogniser over whatever the glass wraps — not
     /// measured at runtime on this control, where withholding it removed the
-    /// glass flash and the outline swell (`body`'s own comment).
+    /// glass flash and the outline swell (`body`'s own comment) (films of the system's cell, which the switcher wore then; with
+    /// `HelmFlatSegmentedCell` none of it was measured).
     private func glass(for kind: HelmToolbarActionsModel.EntryKind) -> Glass {
         if case .segmented = kind { return .regular }
         return .regular.interactive()
@@ -638,7 +640,7 @@ public struct HelmToolbarActionsCapsule: View {
     /// mounting the same segments, non-compact and in `.icons`, the one style
     /// `entryContent(_:)` ever draws a `.segmented` entry in.
     /// `ShellBarActions.segmentedReserveWidth(_:appearance:)` is a second measurer: it mounts
-    /// the switcher in a detached hosting view, in the look the capsule draws in, because the
+    /// the switcher in a detached hosting view, in the look the capsule draws in (both looks draw the same widths), because the
     /// bar it serves has no toolbar item to attach to. This module cannot import `HelmApp` to
     /// reach either itself — `Package.swift`'s own target graph has `HelmApp` depend on
     /// `HelmUI` (the `HelmApp` target's `dependencies:` in `host`), and the reverse edge would be a cycle — which is

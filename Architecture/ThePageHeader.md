@@ -36,7 +36,7 @@ capsule's model, one that belongs to other tabs is left out of the visible set; 
 items, each with its own press — `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`
 holds what each draws, how `isVisible`, `isEnabled` and `isBusy` differ, and why a
 kind cannot be two at once. A segmented action stands at the right with every other action, and its reserve is what its switcher draws
-under each look (`ShellBarActions.segmentedReserveWidth`). The bar has no overflow menu: out of room, the search narrows to `ShellBarLayout.searchFloor`, then the tabs
+(both looks draw the same widths) (`ShellBarActions.segmentedReserveWidth`). The bar has no overflow menu: out of room, the search narrows to `ShellBarLayout.searchFloor`, then the tabs
 fold, then the search folds to its magnifier, then the name truncates, and the capsule keeps its width (`ShellBarLayout`'s header).
 
 ## The tabs and the search field
@@ -46,8 +46,7 @@ The tabs have one form, `HelmToolbarSwitcher`
 `ToolbarSwitcherStyle`, which the bar's right-click menu changes for all of them;
 its `compact` flag folds it to the current tab, and `ShellBarLayout` decides when: the verdict is one
 threshold in the bar's width. `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
-the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the glass lens draws the
-dot on a real screen was not measured. The search field is an `NSSearchField` on a plate of the bar's own, with the magnifier it folds to
+the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the dot reads over the glass plate on a real screen was not measured. The search field is an `NSSearchField` on a plate of the bar's own, with the magnifier it folds to
 (`ShellBarSearch`): Return, and only Return, runs a page's `onSubmit`. With `AppSettings.alwaysCollapseSearch`
 on, an empty idle field rests as the magnifier at every width, and a field in use is never folded for room
 (`ShellBarSearch.isInUse`, `ShellBarLayout`'s header).

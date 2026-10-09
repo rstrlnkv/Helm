@@ -11,11 +11,8 @@ import XCTest
 /// file tests the flag's own effect on the control, in isolation from the
 /// three mechanisms that decide *when* to set it.
 ///
-/// **The same `NSSegmentedControl` instance throughout** is why the compact
-/// form reuses this control rather than swapping in a different view — see
-/// `compact`'s own doc on `HelmToolbarSwitcher`'s initialiser: a torn-down
-/// and rebuilt view would re-pin its own toolbar metric and lose the item
-/// AppKit had already inserted, which the plan measured this reuse avoids.
+/// **The same `NSSegmentedControl` instance throughout**: the compact form refills this
+/// control rather than swapping in a different view (`compact`'s own doc on `HelmToolbarSwitcher`).
 @MainActor
 final class TheSwitcherFoldsToOneSegmentTests: XCTestCase {
 

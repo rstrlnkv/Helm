@@ -897,11 +897,12 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
 
     /// **Left red on purpose.** Under Liquid Glass the view-mode switcher does not follow an
     /// inactive window as the `+` beside it does: the `+` reads the reference's share, the
-    /// switcher keeps 0.878 of its S1 ink. Against AppKit's own control with the first segment
-    /// selected, as the switcher has it. `Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`
-    /// dims by `inactiveGlyphOpacity` in `glyph(_:symbol:)`, which `entryControl(_:)` draws, and
-    /// in the Flat branch of `backing(_:for:)`; a `.segmented` entry is `entryContent(_:)`'s
-    /// other branch. What the 0.878 is drawn from, glyph or track, is not isolated.
+    /// switcher keeps its S1 ink (the row's message prints both shares). Against AppKit's own
+    /// control with the first segment selected, as the switcher has it. The switcher's cell,
+    /// `HelmFlatSegmentedCell`, inks from fixed label colours and reads no window state;
+    /// `Sources/HelmUI/DesignSystem/HelmToolbarActions.swift` dims by `inactiveGlyphOpacity` in
+    /// `glyph(_:symbol:)`, which `entryControl(_:)` draws, and in the Flat branch of
+    /// `backing(_:for:)`; a `.segmented` entry is `entryContent(_:)`'s other branch.
     func testTheCapsulesSwitcherDimsInAnInactiveWindowAsAppKitsOwnControlDoes() throws {
         for appearance in Self.appearances {
             let name = Self.named(appearance)

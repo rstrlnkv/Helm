@@ -27,13 +27,16 @@ import SwiftUI
 /// The plate does not lean on the second: on the inactive edge it removes the
 /// glass and draws the fill. The same bench read the brightest pixel of an
 /// unselected label of a `.regular` stock segmented control as 229.3 with its
-/// window key and 229.3 with it not key: a stock control does not dim its own
-/// ink in an inactive window, only its selection capsule turns grey. So the
-/// glass plate dims there as the flat one does. **Not seen on a screen:** this
-/// plate with a control on it — how the stock control's own track reads on the
-/// glass, that the flat cell's fixed inks do not dim by themselves in an
-/// inactive window, how the dimmed plate reads beside the name, and that a
-/// fill at `barPlate` is what AppKit's inactive platter looks like.
+/// window key and 229.3 with it not key: that control, outside a toolbar, did not dim its
+/// label when its window stopped being key, only its selection capsule turned grey (in a toolbar
+/// AppKit's own control does dim when the app is inactive:
+/// `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`). The strip
+/// on this plate is `HelmFlatSegmentedCell` under both looks, whose inks are
+/// fixed, so the glass plate dims there as the flat one does. **Not seen on a
+/// screen:** this plate with a control on it — that the flat cell's fixed inks
+/// do not dim by themselves in an inactive window, how the dimmed plate reads
+/// beside the name, and that a fill at `barPlate` is what AppKit's inactive
+/// platter looks like.
 ///
 /// **The shape is the same in every state:** a continuous corner of half the
 /// height, on the layer, and on the glass view when there is one; the layer

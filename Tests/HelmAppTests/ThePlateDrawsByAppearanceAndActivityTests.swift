@@ -20,9 +20,9 @@ import XCTest
 /// window, key and then not key, in the dark appearance, and not on this plate: an `.extraLarge` stock segmented control outside a
 /// toolbar draws a capsule track of its own; a bare `NSGlassEffectView` on the window's background loses its rim
 /// highlight by itself when its window is neither key nor main; and the brightest pixel of an unselected label of
-/// a `.regular` stock segmented control read 229.3 with the window key and 229.3 with it not key, so a stock
-/// control does not dim its own ink in an inactive window, only its selection capsule turns grey. That is why an
-/// inactive plate dims by the name zone's number under both looks. Assumed: that the flat cell's fixed inks do not
+/// a `.regular` stock segmented control read 229.3 with the window key and 229.3 with it not key. That an
+/// inactive plate dims by the name zone's number under both looks rests on the strip being
+/// `HelmFlatSegmentedCell` under both, whose inks are fixed. Assumed: that the flat cell's fixed inks do not
 /// dim by themselves in an inactive window, and that a fill at `barPlate` is what AppKit's inactive platter looks
 /// like; unseen: how the dimmed glass plate reads beside the name. The rows prove what the plate's views and layer
 /// hold, not what a person sees.

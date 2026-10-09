@@ -30,8 +30,7 @@ import XCTest
 @MainActor
 final class ASegmentedEntrysReserveCoversItsOwnGlyphsTests: XCTestCase {
 
-    /// Four pairs and a three- and a four-option set: the pairs draw within a point or four of each other
-    /// in either look, so the longer sets are what make the widths differ.
+    /// Four pairs and a three- and a four-option set.
     private static let sets: [[String]] = [
         ["minus", "ellipsis"], ["tablecells", "text.alignleft"],
         ["keyboard", "rectangle.split.3x1"], ["rectangle.3.group", "keyboard"],
@@ -75,7 +74,9 @@ final class ASegmentedEntrysReserveCoversItsOwnGlyphsTests: XCTestCase {
                 fixtures.append(fx)
 
                 func declare(buttonVisible: Bool) {
-                    fx.channel.declare(HelmPageToolbarContent(actions: [
+                    fx.channel.declare(HelmPageToolbarContent(
+                        tabs: [HelmToolbarTab(id: "alpha", title: "Alpha", symbol: "circle")],
+                        selectedTab: .constant("alpha"), actions: [
                         HelmToolbarAction(id: "viewMode", title: "View", isVisible: true,
                                           options: glyphs.enumerated().map {
                                               HelmToolbarTab(id: "option\($0.offset)", title: $0.element, symbol: $0.element)
@@ -87,6 +88,10 @@ final class ASegmentedEntrysReserveCoversItsOwnGlyphsTests: XCTestCase {
                 }
 
                 declare(buttonVisible: true)
+                // The look reached the bar: the tabs zone's plate is the one this look draws.
+                let plate = try XCTUnwrap(fx.pageBar.tabs.view as? ShellBarPlate,
+                                          "\(pair): precondition — the tabs zone placed no plate")
+                XCTAssertEqual(plate.barAppearance, look, "\(pair): precondition — the bar was not handed this look")
                 // Found from the window and held to be the fixture's own zone.
                 let found = fx.mount.window?.contentView?.superview?
                     .everyView(ofType: ShellPageBarView.self).first?.view(for: .actions)
@@ -119,17 +124,18 @@ final class ASegmentedEntrysReserveCoversItsOwnGlyphsTests: XCTestCase {
                     """)
             }
         }
-        // The subject: the sets really do draw at different widths, and the two looks reached the bar.
-        // The pairs alone draw too close together for this (`sets`' own comment), so it is the three- and
-        // the four-option set that carry it, by their count and not by a glyph's width.
+        // The subject: the sets really do draw at different widths under each look.
         for (look, widths) in drawnWidths {
             XCTAssertGreaterThan((widths.max() ?? 0) - (widths.min() ?? 0), 4, """
                 precondition: the sets drew \(widths) under \(look) — too close together to say \
                 anything about a reserve measured per set
                 """)
         }
-        XCTAssertNotEqual(drawnWidths[.flat], drawnWidths[.liquidGlass], """
-            precondition: both looks drew the same widths — the second look never reached the bar
+        // Both looks wear one cell, so the same glyphs draw the same widths; that the second look
+        // reached the bar is the plate check inside the loop.
+        XCTAssertEqual(drawnWidths[.flat]?.count, Self.sets.count, "the flat look drew \(String(describing: drawnWidths[.flat]))")
+        XCTAssertEqual(drawnWidths[.flat], drawnWidths[.liquidGlass], """
+            the two looks drew different widths for the same glyphs: \(String(describing: drawnWidths))
             """)
     }
 }

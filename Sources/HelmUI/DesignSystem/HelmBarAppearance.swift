@@ -5,11 +5,12 @@ import SwiftUI
 ///
 /// One stored value, flat unless the other is stored:
 ///
-/// - `flat` — a tint of `HelmSurface.barPlate` under a group, and
-///   `HelmFlatSegmentedCell` drawing the pick, `HelmSurface.barPick`, on it.
-/// - `liquidGlass` — the system's own glass under a group and the system's
-///   own segmented cell. What nothing says is this look, so a control built
-///   without being told a look draws as it always did.
+/// - `flat` — a tint of `HelmSurface.barPlate` under a group.
+/// - `liquidGlass` — the system's own glass under a group. What nothing says
+///   is this look.
+///
+/// Under both, the strip is `HelmFlatSegmentedCell` drawing the pick,
+/// `HelmSurface.barPick` (`HelmToolbarSwitcher`'s header).
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice
@@ -25,7 +26,7 @@ import SwiftUI
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
 /// nobody having set a look gets. `SettingsToolbar`'s items and the tests
 /// that mount the actions capsule bare build it that way, so for them
-/// `liquidGlass` is the drawing that existed before the setting did;
+/// `liquidGlass` is the plate that existed before the setting did, the strip on it being the bar's own cell;
 /// `ShellBarActions` is the one builder in `Sources/` that sets a look on it, and `SettingsWindow` hands that zone to the window's bar.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).

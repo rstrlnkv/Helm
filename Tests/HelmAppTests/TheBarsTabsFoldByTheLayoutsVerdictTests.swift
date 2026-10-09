@@ -280,8 +280,12 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
                       })
         try measuring("the look", change: { $0.params.appearance = .liquidGlass; $0.show() },
                       check: { before, after in
+                          // Both looks wear one cell, so the look moves no width; the zone still reads
+                          // the strip again (`measuring` counts it) and the oracle agrees.
                           XCTAssertEqual(before.tabs, 242, accuracy: 0.5, "the flat reading moved")
-                          XCTAssertEqual(after.tabs, 254, accuracy: 0.5, "the glass reading moved")
+                          XCTAssertEqual(after.tabs, 242, accuracy: 0.5, "the glass reading is not the flat one")
+                          XCTAssertEqual(after.folded, before.folded, accuracy: 0.001,
+                                         "the look moved the folded width")
                       })
 
         /// A change that moves no width: no measure, and a redraw only where something drawn moved.
@@ -545,8 +549,8 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
         XCTAssertEqual(plate.barAppearance, .liquidGlass)
         for (name, strip) in [("whole", again.full), ("folded", again.folded)] {
             let cell = try XCTUnwrap(strip.cell, "the \(name) strip has no cell")
-            XCTAssertTrue(type(of: cell) == NSSegmentedCell.self,
-                          "the \(name) strip wears \(type(of: cell)) under the glass look, not exactly NSSegmentedCell")
+            XCTAssertTrue(type(of: cell) == HelmFlatSegmentedCell.self,
+                          "the \(name) strip wears \(type(of: cell)) under the glass look, not exactly HelmFlatSegmentedCell")
         }
         XCTAssertEqual(glasses(in: plate).count, 1, "a glass plate of an active window holds \(glasses(in: plate).count) glass views")
 
@@ -555,7 +559,7 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
         let back = try bothControls(rig)
         XCTAssertTrue(back.full === full && back.folded === folded, "flipping back built other controls")
         XCTAssertTrue(back.full.cell is HelmFlatSegmentedCell && back.folded.cell is HelmFlatSegmentedCell,
-                      "flipping back did not return the flat cell")
+                      "flipping back put another cell on the strips")
         XCTAssertEqual(glasses(in: plate).count, 0)
 
         // An inactive window dims the plate by the name zone's number under both looks.

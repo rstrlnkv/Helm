@@ -4,9 +4,10 @@ import SwiftUI
 import XCTest
 @testable import HelmUI
 
-/// **The switcher wears its own flat cell only where it is asked to, and the capsule asks for it by the
-/// environment's look.** A switcher built with no appearance keeps the system's own cell; a control that
-/// is flipped to flat and back keeps its identity, its segments and its action.
+/// **The switcher wears its own flat cell under every look, however it is built, and a change of look
+/// leaves the control as it is.** A switcher given no appearance, `.flat` or `.liquidGlass` wears
+/// `HelmFlatSegmentedCell` and nothing else, the capsule under any environment's look mounts the same, and a
+/// control whose look is flipped keeps its identity, its cell, its segments and its action.
 ///
 /// No window is ordered: the hosting view is laid out windowless, and the capsule rows mount through
 /// `MountedRender`, whose window is never ordered in. What is read back is the cell's class, the
@@ -15,7 +16,7 @@ import XCTest
 /// overriding `drawSegment` alone has its paint on screen, with the system's selection capsule still under the
 /// selected segment; whether that capsule shows under this cell's pick, and this cell's exact widths, were not.
 @MainActor
-final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
+final class TheSwitcherDrawsFlatUnderEveryLookTests: XCTestCase {
 
     private var renders: [MountedRender] = []
 
@@ -67,9 +68,9 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
 
     private func isFlat(_ control: NSSegmentedControl) -> Bool { control.cell is HelmFlatSegmentedCell }
 
-    private func isExactlyTheSystemsCell(_ control: NSSegmentedControl) -> Bool {
+    private func isExactlyTheFlatCell(_ control: NSSegmentedControl) -> Bool {
         guard let cell = control.cell else { return false }
-        return type(of: cell) == NSSegmentedCell.self
+        return type(of: cell) == HelmFlatSegmentedCell.self
     }
 
     func testAFlatSwitcherWearsTheFlatCellAndTheBarsHeight() throws {
@@ -83,53 +84,66 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
                        HelmFlatSegmentedCell.pill + 2 * HelmFlatSegmentedCell.inset, accuracy: 0.001)
     }
 
-    func testASwitcherToldNothingKeepsTheSystemsOwnCell() throws {
-        // 36 is the stock control's height at `.extraLarge` as measured for three words; the flat cell
-        // is built to match it, so both looks fit to one height.
+    func testASwitcherToldNothingWearsTheFlatCellAtTheBarsHeight() throws {
+        let flat = try control(in: host(Mounted(selected: 1, compact: false, appearance: .flat)))
         let host = host(Mounted(selected: 1, compact: false, appearance: nil))
         let control = try control(in: host)
         XCTAssertGreaterThan(control.segmentCount, 0, "precondition — no segments filled")
-        XCTAssertTrue(isExactlyTheSystemsCell(control), """
+        XCTAssertTrue(isExactlyTheFlatCell(control), """
             a switcher given no appearance wears \(String(describing: control.cell.map { type(of: $0) })), \
-            not exactly NSSegmentedCell
+            not exactly HelmFlatSegmentedCell
             """)
-        XCTAssertEqual(control.fittingSize.height, 36, accuracy: 0.5, "the stock control's height moved")
+        XCTAssertEqual(control.fittingSize.height, HelmFlatSegmentedCell.height, accuracy: 0.5,
+                       "the control given no appearance is not the bar's height")
+        XCTAssertEqual(control.fittingSize.width, flat.fittingSize.width, accuracy: 0.5,
+                       "a switcher given no appearance fits a different width from the one told .flat")
     }
 
-    func testAFlipKeepsTheControlItsSegmentsAndItsAction() throws {
+    func testAGlassSwitcherWearsTheFlatCellAtTheWidthsOfTheFlatOne() throws {
+        let flat = try control(in: host(Mounted(selected: 1, compact: false, appearance: .flat)))
+        let glass = try control(in: host(Mounted(selected: 1, compact: false, appearance: .liquidGlass)))
+        XCTAssertGreaterThan(glass.segmentCount, 0, "precondition — no segments filled")
+        XCTAssertTrue(isExactlyTheFlatCell(glass), """
+            a switcher told .liquidGlass wears \(String(describing: glass.cell.map { type(of: $0) })), \
+            not exactly HelmFlatSegmentedCell
+            """)
+        XCTAssertEqual(glass.fittingSize.height, HelmFlatSegmentedCell.height, accuracy: 0.5,
+                       "the glass look's control is not the bar's height")
+        XCTAssertEqual(glass.fittingSize.width, flat.fittingSize.width, accuracy: 0.5,
+                       "the two looks fit the same words to different widths")
+    }
+
+    func testAFlipOfTheLookKeepsTheControlItsCellItsSegmentsAndItsAction() throws {
         let host = host(Mounted(selected: 1, compact: false, appearance: .liquidGlass))
         let control = try control(in: host)
         XCTAssertEqual(control.segmentCount, Mounted.words.count, "precondition — the glass form is not filled")
+        let cell = try XCTUnwrap(control.cell, "precondition — the control has no cell")
+        let target = try XCTUnwrap(control.target, "precondition — the control has no target")
 
-        func check(_ step: String, flat: Bool) throws {
+        func check(_ step: String) throws {
             host.layoutSubtreeIfNeeded()
             XCTAssertTrue(control === host.everyView(ofType: NSSegmentedControl.self).first,
                           "\(step): the flip rebuilt the control")
-            XCTAssertEqual(control.segmentCount, Mounted.words.count, """
-                segmentCount is \(control.segmentCount) after the flip (\(step)): the swap emptied the \
-                control and nothing refilled it
-                """)
+            XCTAssertTrue(control.cell === cell, "\(step): the flip put another cell on the control")
+            XCTAssertEqual(control.segmentCount, Mounted.words.count, "\(step): segmentCount")
             for (index, word) in Mounted.words.enumerated() {
                 XCTAssertEqual(control.label(forSegment: index), word, "\(step): label of segment \(index)")
             }
             XCTAssertEqual(control.selectedSegment, 1, "\(step): selected segment")
-            XCTAssertNotNil(control.target, "\(step): the control lost its target")
+            XCTAssertTrue(control.target === target, "\(step): the control's target changed")
             XCTAssertNotNil(control.action, "\(step): the control lost its action")
             XCTAssertEqual(control.controlSize, .extraLarge, "\(step): control size")
-            XCTAssertEqual(isFlat(control), flat, "\(step): cell class \(String(describing: control.cell.map { type(of: $0) }))")
-            if !flat {
-                XCTAssertTrue(isExactlyTheSystemsCell(control), "\(step): not exactly NSSegmentedCell")
-            }
+            XCTAssertTrue(isExactlyTheFlatCell(control), "\(step): not exactly HelmFlatSegmentedCell")
         }
 
-        try check("glass first", flat: false)
+        try check("glass first")
         host.rootView = Mounted(selected: 1, compact: false, appearance: .flat)
-        try check("flat", flat: true)
+        try check("flat")
         host.rootView = Mounted(selected: 1, compact: false, appearance: .liquidGlass)
-        try check("glass again", flat: false)
+        try check("glass again")
     }
 
-    func testAFlatSwitcherFoldsAsTheGlassOneDoes() throws {
+    func testAFlatSwitcherFoldsToOneSegmentAndUnfoldsOnTheSameControl() throws {
         let host = host(Mounted(selected: 1, compact: false, appearance: .flat))
         let control = try control(in: host)
         XCTAssertTrue(isFlat(control), "precondition — the switcher is not flat")
@@ -185,28 +199,17 @@ final class TheSwitcherDrawsFlatOnlyWhereAskedTests: XCTestCase {
         return render
     }
 
-    func testACapsuleHandsItsAppearanceToTheSwitcherInside() throws {
-        let flat = mountCapsule(appearance: .flat)
-        let flatControl = try XCTUnwrap(flat.host.everyView(ofType: NSSegmentedControl.self).first,
-                                        "no segmented control mounted (flat environment)")
-        XCTAssertGreaterThan(flatControl.segmentCount, 0, "precondition — no segments filled (flat)")
-        XCTAssertTrue(isFlat(flatControl), """
-            the capsule under a flat environment mounts \(String(describing: flatControl.cell.map { type(of: $0) }))
-            """)
-
-        let bare = mountCapsule(appearance: nil)
-        let bareControl = try XCTUnwrap(bare.host.everyView(ofType: NSSegmentedControl.self).first,
-                                        "no segmented control mounted (no environment)")
-        XCTAssertGreaterThan(bareControl.segmentCount, 0, "precondition — no segments filled (no environment)")
-        XCTAssertTrue(isExactlyTheSystemsCell(bareControl), """
-            the capsule with no environment mounts \(String(describing: bareControl.cell.map { type(of: $0) })), \
-            not exactly NSSegmentedCell
-            """)
-
-        let glass = mountCapsule(appearance: .liquidGlass)
-        let glassControl = try XCTUnwrap(glass.host.everyView(ofType: NSSegmentedControl.self).first,
-                                         "no segmented control mounted (glass environment)")
-        XCTAssertTrue(isExactlyTheSystemsCell(glassControl), "a glass environment does not mount the system's cell")
+    func testACapsuleMountsTheFlatCellUnderEveryLook() throws {
+        for (name, look) in [("flat", HelmBarAppearance?.some(.flat)), ("no", nil), ("glass", .some(.liquidGlass))] {
+            let render = mountCapsule(appearance: look)
+            let control = try XCTUnwrap(render.host.everyView(ofType: NSSegmentedControl.self).first,
+                                        "no segmented control mounted (\(name) environment)")
+            XCTAssertGreaterThan(control.segmentCount, 0, "precondition — no segments filled (\(name))")
+            XCTAssertTrue(isExactlyTheFlatCell(control), """
+                the capsule under the \(name) environment mounts \
+                \(String(describing: control.cell.map { type(of: $0) })), not exactly HelmFlatSegmentedCell
+                """)
+        }
     }
 
     func testFlatActionsCarryNoPlateAndASegmentedOneDoes() throws {

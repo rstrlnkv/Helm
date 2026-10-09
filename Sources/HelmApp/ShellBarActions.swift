@@ -42,7 +42,7 @@ final class ShellBarActions: ShellBarZone {
         let symbols: [String]
         let appearance: HelmBarAppearance
     }
-    /// Every reserve measured, by the options' glyphs in order and by look: a switcher is drawn from its
+    /// Every reserve measured, by the options' glyphs in order and by look (both looks draw the same widths; the key still carries the look): a switcher is drawn from its
     /// glyphs alone (`entryContent` fixes the style to `.icons`), and a page that republishes on every
     /// keystroke must not mount a switcher each time. Not bounded: a key is a `.segmented` declaration's
     /// glyphs, and the declarations `command grep -rn 'options: \[$' Sources/Modules` lists spell them as
@@ -177,7 +177,7 @@ final class ShellBarActions: ShellBarZone {
     }
 
     /// **A `.segmented` entry's reserve: the width of the switcher the capsule will draw, in the look it
-    /// will draw it in, measured once per glyph set and look.** The switcher is mounted alone in a
+    /// will draw it in (both looks draw the same widths), measured once per glyph set and look.** The switcher is mounted alone in a
     /// detached hosting view, non-compact and in `.icons`, and read as `fittingSize.width` after a layout
     /// pass. The first option stands for whichever is picked, no options reserve nothing, a one-option
     /// entry gets `oneOptionCapsuleMargin`, and the result is rounded up to a whole point. A zero reading

@@ -33,7 +33,7 @@ final class ShellBarTabs: ShellBarZone {
 
     /// What the zone draws. Equal to the last one: nothing is re-rooted, nothing is measured.
     struct Drawn: Equatable {
-        /// What a width was measured under: the fields that can move a width.
+        /// What a width was measured under: the fields that can move a width, and the look, which moves none since both looks wear one cell and is measured again all the same.
         struct Shape: Equatable {
             var titles: [String]
             var symbols: [String]

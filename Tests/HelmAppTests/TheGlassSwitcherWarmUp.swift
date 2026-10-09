@@ -5,30 +5,27 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Draws one Liquid Glass switcher in a page bar and throws it away, so that the next one a process
-/// draws is the one a reading is about.**
+/// **Draws one switcher in a page bar and throws it away before a reserve family takes its readings.**
 ///
-/// Seen in the reserve families (`ASegmentedEntrysReserveIsWhatItDrawsTests` and its two neighbours), by
-/// the order the tests ran in and not by an isolated run: in whichever test was the first of its process to
-/// put a glass-look switcher in a page bar, that switcher was 24 pt high and 48 pt wide for `minus` /
-/// `ellipsis`, and stayed so through later layout turns and through the page re-declaring its options,
-/// while the reserve beside it, measured on a switcher mounted alone, said 80 pt; in every later test it
-/// was 36 pt high and 80 pt wide. 24 pt is AppKit's regular control size and 36 pt the one
-/// `HelmToolbarSwitcher.updateNSView` pins (`.extraLarge`). Why the first one keeps the regular size was
-/// not established: the reserve's own measuring switcher is made before it in the same process and
-/// answers the wide figure, and the comment in `updateNSView` is about a control AppKit's toolbar
-/// promotes, which this bar has none of. That the readings after this call agree is all it is known to
-/// do. Which test of a family is that first one depends on the order the runner picks, so a reading of
-/// the glass look without this call reads a different state on one run than on the next.
+/// Why it exists: in the reserve families (`ASegmentedEntrysReserveIsWhatItDrawsTests` and its two
+/// neighbours) a switcher was once read at 24 pt high and 48 pt wide for `minus` / `ellipsis` in whichever
+/// test ran first in its process, against 36 pt and 80 pt in the tests after it. That order effect was seen
+/// in family runs and was not reproduced by `TheFirstGlassSwitcherIsDrawnAtTheBarsSizeTests`, which never
+/// calls this helper: what that family measured before `HelmToolbarSwitcher` wore one cell under both looks and wrote the bar's size on every
+/// pass was a switcher at the regular size (24 pt) at every mount of the tabs, and an action at 36 pt only
+/// until its window turned key (24 pt after a settle) — not a first-of-process effect. That family is
+/// green with the switcher as it is now, and no row has been run with this call and without it, so nothing
+/// measured says what this call still guards; it draws one switcher and the readings after it are the ones
+/// the families assert on.
 ///
-/// A reading calls `assertDrawnAtTheBarsSize` as well: a warm-up that stopped working would leave the
-/// first reading at the regular size, where a reserve that is too wide still "covers" what is drawn.
+/// A reading calls `assertDrawnAtTheBarsSize` as well: a switcher drawn at the regular size would leave a
+/// reserve that is too wide looking as if it "covers" what is drawn.
 @MainActor
 enum TheGlassSwitcherWarmUp {
     private static var done = false
 
-    /// Draws the glass look's segmented control once per process. Settings are the caller's to pin and
-    /// put back; this sets the bar's look to glass and leaves it so.
+    /// Draws a segmented control once per process. Settings are the caller's to pin and put back; this
+    /// sets the bar's look to glass and leaves it so.
     static func run() {
         guard !done else { return }
         done = true
@@ -45,8 +42,7 @@ enum TheGlassSwitcherWarmUp {
         fx.settle(10)
     }
 
-    /// Fails when a drawn switcher is not as high as the capsule's own side, the size every control after the
-    /// first is drawn at in both looks.
+    /// Fails when a drawn switcher is not as high as the capsule's own side, the bar's size.
     static func assertDrawnAtTheBarsSize(_ control: NSSegmentedControl, _ context: String,
                                          file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertEqual(control.frame.height, HelmToolbarActionsCapsule.side, """

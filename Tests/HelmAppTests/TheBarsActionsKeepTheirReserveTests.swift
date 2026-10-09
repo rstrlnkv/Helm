@@ -415,16 +415,31 @@ final class TheBarsActionsKeepTheirReserveTests: XCTestCase {
                           Capsule.inactiveGlyphOpacityDark,
                           "the name's number equals AppKit's: the flat ink proves nothing")
 
-        for (look, flat) in [(HelmBarAppearance.flat, true), (.liquidGlass, false)] {
-            let zone = makeZone()
-            zone.show(state([segmented(symbols: ["star", "heart"], choice: Choice("o1"))], appearance: look))
+        // Both looks draw the strip with the flat cell; the look is the plate under it. A change of look
+        // hands the zone a new host (the zone's own rule), which proves the second look arrived, and the
+        // control in that host wears the same cell.
+        func strip(_ zone: ShellBarActions, _ look: HelmBarAppearance) throws -> NSSegmentedControl {
             let view = try XCTUnwrap(zone.view, "\(look): the zone had no view")
             view.frame = NSRect(x: 0, y: 0, width: 600, height: 60)
             view.layoutSubtreeIfNeeded()
-            let control = try XCTUnwrap(view.everyView(ofType: NSSegmentedControl.self).first,
-                                        "\(look): no NSSegmentedControl in the zone's host")
-            XCTAssertEqual(control.cell is HelmFlatSegmentedCell, flat,
-                           "\(look): the inner control's cell is not the one this look draws")
+            return try XCTUnwrap(view.everyView(ofType: NSSegmentedControl.self).first,
+                                 "\(look): no NSSegmentedControl in the zone's host")
+        }
+        for (first, second) in [(HelmBarAppearance.flat, HelmBarAppearance.liquidGlass), (.liquidGlass, .flat)] {
+            let zone = makeZone()
+            let entries = [segmented(symbols: ["star", "heart"], choice: Choice("o1"))]
+            zone.show(state(entries, appearance: first))
+            let before = try XCTUnwrap(zone.view, "\(first): the zone had no view")
+            let one = try strip(zone, first)
+            XCTAssertTrue(type(of: one.cell!) == HelmFlatSegmentedCell.self,
+                          "\(first): the inner control's cell is \(String(describing: one.cell)), not the flat one")
+
+            zone.show(state(entries, appearance: second))
+            XCTAssertTrue(zone.view !== before, "\(first) -> \(second): the second look never reached the zone")
+            let two = try strip(zone, second)
+            XCTAssertTrue(two !== one, "\(first) -> \(second): precondition: the control in the new host is the old one")
+            XCTAssertTrue(type(of: two.cell!) == HelmFlatSegmentedCell.self,
+                          "\(second): the inner control's cell is \(String(describing: two.cell)), not the flat one")
         }
     }
 }

@@ -7,10 +7,7 @@ import SwiftUI
 /// took all four, as a choice made by right-clicking the toolbar (the bar's
 /// own menu, `ShellBarMenu.items`, under "Tab labels"):
 ///
-/// - `text` — each segment as wide as its word, a hairline between two
-///   unselected ones. The system segmented control split the capsule into
-///   equal shares of the longest word: 4 × 122 pt for Homebrew in Russian,
-///   with «Поиск» sitting in a field three times its own width.
+/// - `text` — each segment as wide as its word.
 /// - `icons` — a glyph per segment, 40 pt each, the word in the tooltip.
 /// - `iconsAndText` — a glyph beside each word.
 ///
@@ -67,20 +64,18 @@ public struct HelmSwitcherSegment<Value: Hashable> {
     }
 }
 
-/// **The switcher in the window's toolbar: the system's own segmented control,
+/// **The switcher in the bar: an `NSSegmentedControl` wearing `HelmFlatSegmentedCell`,
 /// sized to what it shows.**
 ///
-/// It was drawn by hand for a while, to get segments as wide as their words and
-/// a divider between them — and that cost everything the system control does
-/// for free, which is most of what Liquid Glass *is*: measured 2026-09-17 against
-/// Apple Music's toolbar, pressing a segment swells its glass and dragging
-/// carries that glass from segment to segment. None of it can be imitated from
-/// SwiftUI, and none of it was.
-///
-/// Under `HelmBarAppearance.flat` the control keeps its class and wears
-/// `HelmFlatSegmentedCell`, which draws by hand again and asks for none of that
-/// glass; whether AppKit still draws any of its own under it was not seen on a
-/// screen (the cell's header).
+/// Under both looks the strip is the same: the neutral pill of the flat cell.
+/// The system's own cell was worn under Liquid Glass for a while, for the glass
+/// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
+/// segment swells its glass and dragging carries that glass from segment to
+/// segment), and in a key window it selected with the accent colour, which no
+/// segmented control in the bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`). The look changes the plate
+/// under the strip (`HelmBarAppearance`), not the strip; the glass swell is
+/// gone with the system's cell. Whether AppKit still draws any of its own under
+/// the cell was not seen on a screen (the cell's header).
 ///
 /// What the system control had to be told: `segmentDistribution = .fit`, which
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
@@ -105,36 +100,26 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// **Fold the whole strip into one segment — the current tab — with a
     /// menu for the rest**, rather than letting AppKit's own overflow move
     /// the strip into the toolbar's «»» menu the moment it stops fitting
-    /// beside an opening search field. The same `NSSegmentedControl`
-    /// instance carries both forms: `SettingsToolbar`'s fold state
-    /// (`PageBar.tabsFolded`) is what flips this, and keeping one view
-    /// identity across the flip is why — a torn-down-and-rebuilt control
-    /// would re-pin its own toolbar metric (`hasPinnedMetric`'s own doc, one
-    /// paragraph down) and lose the item AppKit had already inserted.
-    /// `ShellBarTabs` mounts two switchers instead, one of each form, and never
-    /// flips this on a mounted control: outside a toolbar there is no item to lose.
+    /// beside an opening search field. One `NSSegmentedControl` instance can carry both forms:
+    /// `updateNSView` refills the same control when this flips (`TheSwitcherFoldsToOneSegmentTests`).
+    /// Nothing in `Sources` flips it on a mounted control: `ShellBarTabs` mounts two switchers, one of
+    /// each form, and its plate holds whichever the layout says.
     private let compact: Bool
     /// The control's own `NSView.menu` — see this type's own header: the
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
     /// something else (the actions capsule's, the measuring rig's).
     private let menu: NSMenu?
-    /// **Which look the strip is drawn in — an input, not the environment's
-    /// value.** `.liquidGlass` is the system's own cell and is what a caller
-    /// that says nothing gets, so a control never asked for the flat look is
-    /// never touched (`dress`); `.flat` swaps in `HelmFlatSegmentedCell`.
-    private let appearance: HelmBarAppearance
-
     @Environment(\.helmSwitcherStyle) private var style
     @Environment(\.isEnabled) private var isEnabled
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>],
                 compact: Bool = false, menu: NSMenu? = nil, appearance: HelmBarAppearance = .liquidGlass) {
+        // `appearance` is read by nothing here: both looks wear one cell (this type's header).
         self.name = name
         self.segments = segments
         self._selection = selection
         self.compact = compact
         self.menu = menu
-        self.appearance = appearance
     }
 
     public func makeCoordinator() -> Coordinator { Coordinator() }
@@ -159,14 +144,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     public func makeNSView(context: Context) -> NSSegmentedControl {
         let control = NSSegmentedControl()
-        control.segmentStyle = .automatic
-        control.segmentDistribution = .fit
-        control.trackingMode = .selectOne
-        control.target = context.coordinator
-        control.action = #selector(Coordinator.picked(_:))
         context.coordinator.watch(control)
-        Self.dress(control, as: appearance, coordinator: context.coordinator)
-        context.coordinator.lastAppearance = appearance
+        Self.dress(control, coordinator: context.coordinator)
         Self.fill(control, segments: displaySegments, style: style,
                   selected: displaySelectedIndex, compact: compact)
         context.coordinator.lastStyle = style
@@ -199,64 +178,13 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         }
         context.coordinator.compact = compact
 
-        // A look that changed swaps the cell here, before `isInitial` below
-        // is read: the swap empties the control, which is what sends this
-        // update down the structural branch to refill it.
-        if context.coordinator.lastAppearance != appearance {
-            Self.dress(control, as: appearance, coordinator: context.coordinator)
-            context.coordinator.lastAppearance = appearance
-        }
-
-        // **The metric the bar will promote it to, taken before the first
-        // measurement is made in the old one.** AppKit promotes the control as
-        // the toolbar inserts it in its item viewer and asks SwiftUI nothing,
-        // so an unpinned control answers its first `sizeThatFits` at
-        // `.regular` and every later one at `.extraLarge`, and the frame is
-        // set twice.
-        //
-        // Filling the segments in `makeNSView` does not settle this — it
-        // decides *what* is measured, not in which metric. Measured
-        // 2026-09-20 against that pre-population, three placements, same
-        // harness, with a print of the frame log added to that file's `mount`
-        // and one placement per run of
-        //
-        //   bash Scripts/test.sh --filter TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests
-        //
-        // With no pin at all, and with the pin written in `makeNSView`,
-        // `TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests` read
-        // (252.0, 24.0) laid out against (272.0, 36.0) settled over two
-        // frames — the same numbers either way, so a metric written in
-        // `makeNSView` does not survive to the first measurement. Written
-        // here, the same run reads one frame, (272.0, 36.0), and that file
-        // passes; the `makeNSView` half of this was re-run twice on
-        // 2026-09-20 and went red at those two sizes both times. What
-        // overwrites it in between was not established; that it is
-        // overwritten was.
-        //
-        // Written here and not in `fill`, which every attached-control path
-        // already shares (`makeNSView` and this method's own calls below —
-        // `command grep -n 'Self[.]fill(' Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`
-        // lists them) — a control-size decision is not what `fill` exists to
-        // make (what its body writes: each segment's label, image, tooltip,
-        // width and menu indicator, and the selection), and conflating the
-        // two would tie every future
-        // caller of `fill` to this one metric. Written once rather than on
-        // every pass, on a flag of its own and not on the fill gating below:
-        // the bar decides its own metric, and a writer that ran every time
-        // would fight a promotion to any other size rather than anticipate
-        // this one.
-        //
-        // **That holds for a control whose cell was never swapped.** `dress`
-        // writes `.extraLarge` itself after every swap, because a swap
-        // resets the control to `.regular` (measured on a bare control:
-        // segments gone, target nil, size regular), and the flat cell's
-        // height does not read the metric. Not measured: a flat control
-        // inside a toolbar — whether the bar still promotes a control whose
-        // cell was swapped, and whether `dress`'s write fights that promotion.
-        if !context.coordinator.hasPinnedMetric {
-            context.coordinator.hasPinnedMetric = true
-            control.controlSize = .extraLarge
-        }
+        // **The bar's metric, written on every pass.** `dress` writes `.extraLarge` in `makeNSView`, and with this
+        // write removed a mounted control read `.regular` all the same under `HelmFlatSegmentedCell`
+        // (`TheFirstGlassSwitcherIsDrawnAtTheBarsSizeTests` and `TheSwitcherDrawsFlatUnderEveryLookTests` went red on
+        // the control size); with the system's cell it read `.regular` after a single write here, and again once its
+        // window became key. What resets it was not established under either cell. The cell's size does not read the
+        // metric (`cellSize`), so this holds `controlSize`, which those two families read.
+        if control.controlSize != .extraLarge { control.controlSize = .extraLarge }
 
         let shown = displaySegments
         let selectedIndex = displaySelectedIndex
@@ -406,25 +334,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
-    /// **The one place the cell is chosen, and the one place in `Sources` whose
-    /// code names `HelmFlatSegmentedCell`.** `.flat` installs it when the
-    /// control does not wear it; `.liquidGlass` installs the system's
-    /// `NSSegmentedCell` only when the control wears the flat one, so a control never dressed
-    /// flat is not touched at all. A cell swap wipes what the control held
-    /// (measured on a bare control: segment count 0, target nil, size
-    /// regular), so everything `makeNSView` writes is written again here and
-    /// the caller refills the segments. Nobody has seen the flat cell drawn in
-    /// a window.
-    private static func dress(_ control: NSSegmentedControl, as appearance: HelmBarAppearance,
-                              coordinator: Coordinator) {
-        switch appearance {
-        case .flat:
-            guard !(control.cell is HelmFlatSegmentedCell) else { return }
-            control.cell = HelmFlatSegmentedCell()
-        case .liquidGlass:
-            guard control.cell is HelmFlatSegmentedCell else { return }
-            control.cell = NSSegmentedCell()
-        }
+    /// **The one place the cell is installed, and the one place in `Sources` whose code names `HelmFlatSegmentedCell`.**
+    /// A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
+    /// so the control's settings are written here, after the swap, and `makeNSView` fills the segments after it.
+    /// Nobody has seen the flat cell drawn in a window.
+    private static func dress(_ control: NSSegmentedControl, coordinator: Coordinator) {
+        control.cell = HelmFlatSegmentedCell()
         control.segmentStyle = .automatic
         control.segmentDistribution = .fit
         control.trackingMode = .selectOne
@@ -480,8 +395,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// image on the third text segment drew, red pixels found left of the word, and the strip's fitting width went from
     /// 310 to 318 pt; `NSSegmentedControl` has no image-position property); so a text segment's whole image is the dot. Where the style draws a glyph the dot is drawn into the
     /// glyph's corner, since a segment has one image (the same drawing, run in the same offscreen way on an icon-only
-    /// strip, put the dot at the glyph's upper right with the glyph still drawn). How the glass lens treats the dot on a real screen, selected or
-    /// not, in the bar's metric, was not measured.
+    /// strip, put the dot at the glyph's upper right with the glyph still drawn). How the dot reads over the glass plate on a real screen was not measured.
     private static func image(for segment: HelmSwitcherSegment<Value>, showsGlyph: Bool) -> NSImage? {
         let glyph = showsGlyph ? NSImage(systemSymbolName: segment.symbol, accessibilityDescription: segment.label) : nil
         guard segment.needsAttention else { return glyph }
@@ -548,7 +462,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var tabsMenu: NSMenu?
         var compact = false
         var lastStyle: ToolbarSwitcherStyle?
-        var lastAppearance: HelmBarAppearance?
         var lastCompact: Bool?
         /// The segments' own names as of the last fill — read regardless of
         /// `lastStyle`, because a glyph-only style draws none of them: the
@@ -564,18 +477,6 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var lastSymbols: [String]?
         /// Which segments carried a dot as of the last fill, for the same reason.
         var lastAttention: [Bool]?
-        /// Whether the bar's metric has been written onto the control yet.
-        /// Its own flag rather than a reading of the fill gating above,
-        /// because the two answer different questions: that one asks whether
-        /// the segments need rewriting, this one whether the control has ever
-        /// been given a size class. Under `SettingsToolbar`, folding to `compact` does not touch this
-        /// at all — it is the same control, the same coordinator and the
-        /// same pin, which is the whole reason the fold reuses this view
-        /// rather than swapping in a different one (`compact`'s own doc, on
-        /// the initialiser parameter, above): only a genuine
-        /// `dismantleNSView` — the switcher's item itself being torn down and
-        /// rebuilt — pins the metric a second time.
-        var hasPinnedMetric = false
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
 
@@ -646,12 +547,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     }
 }
 
-/// **The segmented cell of the flat look: no bezel, a capsule of
+/// **The bar's segmented cell, under both looks: no bezel, a capsule of
 /// `HelmSurface.barPick` under the selected segment, the word in 13 pt
 /// medium.** It reads each segment's label, image and menu indicator from the
 /// control's own per-segment state, so what `fill` writes, the dot and the
 /// refill rule stay one. `cellSize` is its own, so the control's fitting size
-/// follows it (`TheSwitcherDrawsFlatOnlyWhereAskedTests` reads the height back
+/// follows it (`TheSwitcherDrawsFlatUnderEveryLookTests` reads the height back
 /// as `height` and the width as the picks plus the insets).
 ///
 /// A disabled control draws its words and template glyphs in
