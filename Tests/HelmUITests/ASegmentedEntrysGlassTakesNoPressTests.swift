@@ -12,11 +12,9 @@ import XCTest
 /// and swelled the outline further than the centre tabs' own press does.
 /// The repair withholds `interactive()` from the one kind whose content is a
 /// wrapped `NSSegmentedControl` (`HelmToolbarActionsCapsule`'s own
-/// `glass(for:)`) — measured to remove the flash and the swell; the
-/// indicator not sliding and both segments lighting up are closed by joining
-/// `NSToolbar.centeredItemIdentifiers` instead (`HelmToolbarActionsCapsule
-/// .body`'s own comment, at the call site — "Why it did not slide, and now
-/// does").
+/// `glass(for:)`) — measured to remove the flash and the swell; a
+/// press that moves the selection still lights both segments, which it does not touch
+/// (`HelmToolbarActionsCapsule.body`'s own comment, at the call site — "Why it slides").
 ///
 /// **Why a source scan and not a render.** Measured (tester, 2026-09-26) with
 /// the segmented arm put back to `.regular.interactive()`, against the same

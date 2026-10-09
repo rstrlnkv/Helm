@@ -45,7 +45,7 @@ The tabs have one form, `HelmToolbarSwitcher`
 (`Sources/HelmUI/DesignSystem/HelmToolbarSwitcher.swift`), labelled by
 `ToolbarSwitcherStyle`, which the bar's right-click menu changes for all of them;
 its `compact` flag folds it to the current tab, and `ShellBarLayout` decides when: the verdict is one
-threshold in the bar's width. `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
+threshold in the bar's width. `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A press on a tab of the whole strip asks its cell to slide the pick to it over `HelmMotion.interfaceDuration` (a cut under Reduce Motion, on the first draw, when the page sets the selection, and for a tab chosen from the folded strip's menu; a republication that also renames a tab or moves a dot ends the slide); the page under the bar changes at once. The slide was not seen on a screen. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
 the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the dot reads over the glass plate on a real screen was not measured. The search field is an `NSSearchField` on a plate of the bar's own, with the magnifier it folds to
 (`ShellBarSearch`): Return, and only Return, runs a page's `onSubmit`. With `AppSettings.alwaysCollapseSearch`
 on, an empty idle field rests as the magnifier at every width, and a field in use is never folded for room

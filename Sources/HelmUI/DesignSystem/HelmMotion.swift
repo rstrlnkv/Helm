@@ -210,7 +210,8 @@ public enum HelmMotion {
 
     /// Whether a chosen object may travel up to its raised place, rather than
     /// standing there at once — the screenshot editor's palette lifts the picked
-    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`.
+    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, and the bar's
+    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`).
     ///
     /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:
     /// a decision made of an argument can be asserted, one that reads

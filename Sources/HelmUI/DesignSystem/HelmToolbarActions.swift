@@ -466,57 +466,18 @@ public struct HelmToolbarActionsCapsule: View {
                         // *moves* the selection lights both segments for 8–10
                         // frames of a 50 ms press in Dark and 5–10 in Light,
                         // against 0–4 for the centre tabs' presses in the same
-                        // films — at that point this entry's item was not yet
-                        // in `NSToolbar.centeredItemIdentifiers`, which moves
-                        // this number, and so does hosting the capsule in
-                        // AppKit's own bordered platter (below). Withholding
+                        // films, of the system's cell. Withholding
                         // `interactive()` touches neither
                         // this entry's glass shape, its union or its
                         // transition, nor any other kind's own interactive
                         // press.
                         //
-                        // **Why it did not slide, and now does.** Filmed in a
-                        // reference app (engineer, 2026-09-26, both
-                        // appearances): a copy of this capsule tracks a press
-                        // the classic way — the pressed segment highlighted
-                        // while the old one stays selected, then a jump on
-                        // release, no slide frame — with this glass, with
-                        // none, and inside an `NSGlassEffectView` alike.
-                        // **Not inside AppKit's own bordered platter**: the
-                        // same copy wrapped there got neither tracking
-                        // cleanly, and a hosting this capsule's own item
-                        // never takes anyway, since it stays
-                        // `isBordered = false` regardless (this type's own
-                        // header above); the same
-                        // copy, glass and all, lifts on the press and slides
-                        // like the centre tabs once its item is listed in
-                        // `NSToolbar.centeredItemIdentifiers`
-                        // (`SettingsToolbar.centredIdentifiers(_:)`), and the
-                        // centre tabs' own switcher stops sliding when its
-                        // item is left out of that list. Measured on the live
-                        // page in Helm Dev (engineer, 2026-09-26, window
-                        // 1060×828; L = frames of a 250 ms hold with the old
-                        // segment already dark, S = slide frames — the
-                        // indicator strictly between the two segments'
-                        // centres, 6 px clear of each — of a 50 ms press,
-                        // B = both-lit frames of a 50 ms press): before this
-                        // entry's item joined the set, L 0,0,0, S 0,0,0,
-                        // B 6,6,4, in both appearances — the classic jump this
-                        // paragraph opens with, no lift and no slide at all;
-                        // after, Dark L 7–9, S 5–8, B 0–1, Light L 7–8, S 3–7,
-                        // B 0
-                        // (`ASwitcherInTheCapsuleIsCentredWithTheTabsTests`'s
-                        // own header carries this reading in full). Against
-                        // the centre tabs' own S 7–14, L 6–9, B 0–4 in the
-                        // same films, L and B now match; S alone reads lower,
-                        // and that is the metric, not a weaker slide — S only
-                        // counts a frame with the indicator clear of both
-                        // segments' centres, and this switcher's own travel is
-                        // about 40 pt against the tabs' about 77 (designer's
-                        // own frame measurements, both appearances — the
-                        // segment centres are 76.8–77.2 pt apart), so the
-                        // same tracking lands fewer frames inside the
-                        // narrower gap it measures.
+                        // **Why it slides.** A press on this capsule's segmented
+                        // action is a press on the same `HelmToolbarSwitcher`
+                        // the tabs use, wearing the same `HelmFlatSegmentedCell`,
+                        // and that cell slides its pick to a pressed segment;
+                        // no row presses the capsule's switcher. The slide was
+                        // not seen on a screen with the flat cell.
                         backing(entryContent(entry).disabled(!entry.isEnabled || !model.isInteractive),
                                 for: entry)
                     }

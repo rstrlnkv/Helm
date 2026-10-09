@@ -76,6 +76,8 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// under the strip (`HelmBarAppearance`), not the strip; the glass swell is
 /// gone with the system's cell. Whether AppKit still draws any of its own under
 /// the cell was not seen on a screen (the cell's header).
+/// A press slides the pick from the old segment to the new one (`HelmFlatSegmentedCell.slide`); the page
+/// under the bar still changes at once.
 ///
 /// What the system control had to be told: `segmentDistribution = .fit`, which
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
@@ -153,6 +155,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         context.coordinator.lastNames = displaySegments.map(\.label)
         context.coordinator.lastSymbols = displaySegments.map(\.symbol)
         context.coordinator.lastAttention = displaySegments.map(\.needsAttention)
+        context.coordinator.shownSelection = displaySelectedIndex
         return control
     }
 
@@ -312,6 +315,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         control.isEnabled = isEnabled
         control.setAccessibilityLabel(name)
         control.menu = menu
+        context.coordinator.shownSelection = selectedIndex
 
         // **The compact form's own menu** — built fresh on every update from
         // the *full* segment list, never `shown`, so a folded capsule always
@@ -334,8 +338,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
-    /// **The one place the cell is installed, and the one place in `Sources` whose code names `HelmFlatSegmentedCell`.**
-    /// A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
+    /// **The place the cell is installed** (`fill` and the coordinator's `picked` reach it through `control.cell`, to end
+    /// and to start a slide). A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
     /// so the control's settings are written here, after the swap, and `makeNSView` fills the segments after it.
     /// Nobody has seen the flat cell drawn in a window.
     private static func dress(_ control: NSSegmentedControl, coordinator: Coordinator) {
@@ -357,6 +361,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     private static func fill(_ control: NSSegmentedControl,
                              segments: [HelmSwitcherSegment<Value>],
                              style: ToolbarSwitcherStyle, selected: Int?, compact: Bool) {
+        // A refill is not a press: a slide in flight ends where the strip stands now.
+        (control.cell as? HelmFlatSegmentedCell)?.cancelSlide()
         if control.segmentCount != segments.count { control.segmentCount = segments.count }
         for (index, segment) in segments.enumerated() {
             let showsGlyph = style != .text
@@ -477,6 +483,8 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         var lastSymbols: [String]?
         /// Which segments carried a dot as of the last fill, for the same reason.
         var lastAttention: [Bool]?
+        /// The index the control showed selected as of the last update or press: where a press's slide starts from.
+        var shownSelection: Int?
         private weak var control: NSSegmentedControl?
         private var monitor: Any?
 
@@ -534,7 +542,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                 tabsMenu.popUp(positioning: tabsMenu.items.first { $0.state == .on }, at: .zero, in: sender)
                 return
             }
-            pick(sender.selectedSegment)
+            // The cell is asked to slide before the page's write is made (`TheSwitchersPickSlidesToAPressedSegmentTests`);
+            // that its animation group has also returned by then is by reading, held by no row.
+            let to = sender.selectedSegment
+            (sender.cell as? HelmFlatSegmentedCell)?.slide(from: shownSelection, to: to)
+            shownSelection = to
+            pick(to)
         }
 
         /// A choice from the compact form's own menu — `representedObject`
@@ -572,7 +585,38 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// geometry, the dot and the fold's arrow, and that a press lands on the
 /// segment drawn there (the system's own hit-testing was not made to follow
 /// `segmentWidth`).
+///
+/// **A press slides the pick; nothing else does.** `slide(from:to:)` puts a temporary
+/// view the pick's size over the old segment and moves it to the new one through
+/// `NSAnimationContext` and the view's animator, for `HelmMotion.interfaceDuration` along
+/// `HelmMotion.interfaceCurve`, while the cell draws everything but its own pick; the words
+/// take their new inks at the start. Reduce Motion, a selection the page wrote and the first
+/// draw leave the pick a cut. **A refill ends a slide in flight** (`cancelSlide`, called first
+/// by `fill`), because a refill may change the segments' widths and with them the slide's
+/// target; so a page whose answer to a press also renames a tab or moves its dot gets no
+/// slide. The temporary view is removed by `finishSlide`, reached from the animation's
+/// completion and from `cancelSlide`, or by the `slide` that takes it over; no row awaits the completion.
+/// **Not seen on a screen:** the slide itself, and the moving pick passing over
+/// the words (it is translucent, drawn above them, where the resting pick is
+/// below).
 final class HelmFlatSegmentedCell: NSSegmentedCell {
+    /// One slide asked for: between which segments, and how long it takes.
+    struct Slide: Equatable {
+        let from: Int
+        let to: Int
+        let duration: TimeInterval
+    }
+
+    /// Whether the system asks for less motion; a seam so a row can force either answer.
+    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
+    /// Told of each slide as it is begun, before its animation group opens.
+    var onSlide: (Slide) -> Void = { _ in }
+    /// The slide in flight, nil at rest.
+    private(set) var sliding: Slide?
+    private var pill: SlidingPill?
+    /// Which slide a completion belongs to; a newer or a cancelled one makes it stale.
+    private var generation = 0
+
     /// The pick's height; the bar's own control is `height` high.
     static let pill: CGFloat = 32
     /// The space between the cell's edge and the pick, and between two segments.
@@ -648,22 +692,88 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
         return set > 0 ? set : contentWidth(segment) + 2 * Self.sidePadding
     }
 
-    override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
+    /// Where one segment stands in the cell's frame.
+    private func segmentFrame(_ segment: Int, in cellFrame: NSRect) -> NSRect {
         var x = cellFrame.minX + Self.inset
+        for index in 0..<segment { x += segmentWidth(index) + Self.inset }
+        return NSRect(x: x, y: cellFrame.minY, width: segmentWidth(segment), height: cellFrame.height)
+    }
+
+    /// The pick inside a segment's frame: what `drawSegment` fills, and where a slide ends, and starts unless it takes another over (that one starts from the moving view's frame).
+    private func pick(in segmentFrame: NSRect) -> NSRect {
+        segmentFrame.insetBy(dx: 0, dy: (segmentFrame.height - Self.pill) / 2)
+    }
+
+    private func pickRect(_ segment: Int, in cellFrame: NSRect) -> NSRect {
+        pick(in: segmentFrame(segment, in: cellFrame))
+    }
+
+    /// The pick's colour, resolved in the appearance it is read in.
+    private func pickFill() -> NSColor {
+        let fill = NSColor(HelmSurface.barPick).usingColorSpace(.sRGB) ?? NSColor(HelmSurface.barPick)
+        return fill.withAlphaComponent(fill.alphaComponent * strength())
+    }
+
+    /// **Moves the pick from `from` to `to` for the length of the token, or does nothing** — no index shown before,
+    /// the same segment, an index the control does not have, a disabled control, Reduce Motion and a cell with no
+    /// control view leave it a cut. A slide already in flight is replaced by one that starts from the frame the
+    /// moving pick holds (its presentation frame when it has one).
+    func slide(from: Int?, to: Int) {
+        guard let from, from != to, (0..<segmentCount).contains(from), (0..<segmentCount).contains(to),
+              isEnabled, HelmMotion.travels(reduceMotion: reducesMotion()), let control = controlView
+        else { return }
+        let slide = Slide(from: from, to: to, duration: HelmMotion.interfaceDuration)
+        onSlide(slide)
+
+        let start = pill.map { $0.layer?.presentation()?.frame ?? $0.frame }
+            ?? pickRect(from, in: control.bounds)
+        pill?.removeFromSuperview()
+        generation += 1
+        let mine = generation
+        let moving = SlidingPill(frame: start, fill: { [weak self] in self?.pickFill() ?? .clear })
+        control.addSubview(moving)
+        pill = moving
+        sliding = slide
+        control.needsDisplay = true
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = slide.duration
+            context.timingFunction = HelmMotion.interfaceCurve
+            moving.animator().frame = pickRect(to, in: control.bounds)
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.generation == mine else { return }
+                self.finishSlide()
+            }
+        })
+    }
+
+    /// Ends a slide in flight at once; the pick is drawn by the cell again.
+    func cancelSlide() {
+        guard sliding != nil || pill != nil else { return }
+        generation += 1
+        finishSlide()
+    }
+
+    private func finishSlide() {
+        sliding = nil
+        // The control is redrawn with the cell's own pick before the temporary view is removed.
+        controlView?.display()
+        pill?.removeFromSuperview()
+        pill = nil
+    }
+
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
         for index in 0..<segmentCount {
-            let width = segmentWidth(index)
-            drawSegment(index, inFrame: NSRect(x: x, y: cellFrame.minY, width: width, height: cellFrame.height),
-                        with: controlView)
-            x += width + Self.inset
+            drawSegment(index, inFrame: segmentFrame(index, in: cellFrame), with: controlView)
         }
     }
 
     override func drawSegment(_ segment: Int, inFrame frame: NSRect, with controlView: NSView) {
         let selected = isSelected(forSegment: segment)
-        if selected {
-            let pick = frame.insetBy(dx: 0, dy: (frame.height - Self.pill) / 2)
-            let fill = NSColor(HelmSurface.barPick).usingColorSpace(.sRGB) ?? NSColor(HelmSurface.barPick)
-            fill.withAlphaComponent(fill.alphaComponent * strength()).setFill()
+        if selected, sliding == nil {
+            let pick = pick(in: frame)
+            pickFill().setFill()
             NSBezierPath(roundedRect: pick, xRadius: pick.height / 2, yRadius: pick.height / 2).fill()
         }
         let ink = ink(selected: selected)
@@ -708,6 +818,34 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
             return true
         }
     }
+}
+
+/// The pick while it travels: a view the pick's size, filled with the cell's own pick colour, which it asks for
+/// again in `updateLayer`, under the view's effective appearance. It takes no click and says nothing
+/// to accessibility.
+private final class SlidingPill: NSView {
+    private let fill: () -> NSColor
+
+    init(frame: NSRect, fill: @escaping () -> NSColor) {
+        self.fill = fill
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerRadius = HelmFlatSegmentedCell.pill / 2
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = fill().cgColor
+        }
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func isAccessibilityElement() -> Bool { false }
 }
 
 /// One press, over the line between a monitor's `@Sendable` handler and the

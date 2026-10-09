@@ -20,7 +20,9 @@ import Module_Homebrew_Engine
 ///   `withAnimation` anywhere on that path animates every page at once while
 ///   the guard stays green. Here the press is the control's own action, sent
 ///   to the real bar, and what is read is the transaction the page's
-///   update arrived in.
+///   update arrived in. The rule is about the page: the switcher's pick slides
+///   to the pressed tab (`HelmFlatSegmentedCell.slide`), which the coordinator asks
+///   for before it writes the binding; no row here sees the order.
 /// - **What the switch asked for.** The shared guard parks the wire for the
 ///   length of its photograph, so the answer a shown tab asks its engine for
 ///   lands after it; here that landing is photographed too.
