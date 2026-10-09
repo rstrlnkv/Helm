@@ -635,4 +635,253 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         ask("open", mustBeTheButton: true)
         XCTAssertEqual(asked, 9, "\(asked) of 9 points were asked")
     }
+
+    // MARK: The dots' ink follows the system's control tint and the appearance the capsule draws under
+
+    /// One dot's ink as sRGB components.
+    private struct DotInk: CustomStringConvertible {
+        let r: Double, g: Double, b: Double, a: Double
+        var spread: Double { max(r, g, b) - min(r, g, b) }
+        var description: String { String(format: "(%.2f %.2f %.2f a%.2f)", r, g, b, a) }
+        func matches(_ o: DotInk, within e: Double = 0.01) -> Bool {
+            abs(r - o.r) <= e && abs(g - o.g) <= e && abs(b - o.b) <= e && abs(a - o.a) <= e
+        }
+    }
+
+    /// The red, yellow and green the dots draw in a non-graphite tint while the window is active.
+    private static let colouredInks = [DotInk(r: 1.0, g: 0.37, b: 0.34, a: 1), DotInk(r: 1.0, g: 0.74, b: 0.18, a: 1),
+                                       DotInk(r: 0.16, g: 0.78, b: 0.25, a: 1)]
+
+    /// The capsule's three dots, left to right, in the rail; the tint seam answers `tint`, the window
+    /// appears `active`. Nil, after a failure, when the dots are not three, or one has no layer colour or
+    /// not one an sRGB reading can make: three equal nothings must not pass as three equal inks.
+    private func dotInks(_ rig: SettingsWindowRig, _ owner: ShellWindowButtons, tint: NSControlTint,
+                         active: Bool) -> [DotInk]? {
+        owner.reducesMotion = { true }
+        owner.controlTint = { tint }
+        rail(rig)
+        owner.setWindowAppearsActive(active)
+        settle(rig)
+        return readDots(owner)
+    }
+
+    /// What the three dots hold now.
+    private func readDots(_ owner: ShellWindowButtons) -> [DotInk]? {
+        let dots = owner.capsule.subviews.filter { abs($0.frame.width - 6) < 0.01 && abs($0.frame.height - 6) < 0.01 }
+            .sorted { $0.frame.minX < $1.frame.minX }
+        guard dots.count == 3 else {
+            XCTFail("the capsule holds \(dots.count) dots of 6 pt, not 3: no ink was read")
+            return nil
+        }
+        var read: [DotInk] = []
+        for (i, dot) in dots.enumerated() {
+            guard let cg = dot.layer?.backgroundColor, let ink = NSColor(cgColor: cg)?.usingColorSpace(.sRGB) else {
+                XCTFail("dot \(i) has no readable layer colour: no ink was read")
+                return nil
+            }
+            read.append(DotInk(r: Double(ink.redComponent), g: Double(ink.greenComponent), b: Double(ink.blueComponent),
+                               a: Double(ink.alphaComponent)))
+        }
+        return read
+    }
+
+    /// **With the system on Graphite and the window active, the three dots are one neutral ink, each at an
+    /// alpha of 0.5 or more and unsaturated, and not the inactive grey.** The tint the row asserts on comes
+    /// through the owner's seam, set before the reading; the machine's own setting is never written, and
+    /// what it answered while the shell was built is replaced by the redraw `setWindowAppearsActive` makes.
+    func testWithGraphiteAndAnActiveWindowTheThreeDotsAreOneNeutralInk() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+              let owner = owner(of: rig),
+              let graphite = dotInks(rig, owner, tint: .graphiteControlTint, active: true) else { return }
+        for (i, ink) in graphite.enumerated() {
+            XCTAssertGreaterThanOrEqual(ink.a, 0.5, "graphite, active: dot \(i) is \(ink), its alpha under 0.5")
+            XCTAssertLessThan(ink.spread, 0.02, "graphite, active: dot \(i) is \(ink), saturated (spread \(ink.spread))")
+            XCTAssertTrue(ink.matches(graphite[0]), "graphite, active: dot \(i) is \(ink), dot 0 is \(graphite[0]): the three are not equal")
+        }
+        owner.setWindowAppearsActive(false)
+        settle(rig)
+        guard let inactive = readDots(owner) else { return }
+        XCTAssertFalse(graphite[0].matches(inactive[0]),
+                       "graphite active \(graphite[0]) and inactive \(inactive[0]) are the same ink: the window's state shows nowhere")
+    }
+
+    /// **Under the blue and the default tint and an active window the dots are red, yellow and green.**
+    func testWithAnyOtherTintAndAnActiveWindowTheDotsAreRedYellowGreen() throws {
+        for tint in [NSControlTint.blueControlTint, .defaultControlTint] {
+            guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+                  let owner = owner(of: rig),
+                  let inks = dotInks(rig, owner, tint: tint, active: true) else { return }
+            for i in 0..<3 {
+                XCTAssertTrue(inks[i].matches(Self.colouredInks[i]),
+                              "tint \(tint.rawValue), active: dot \(i) is \(inks[i]), not \(Self.colouredInks[i])")
+            }
+        }
+    }
+
+    /// **An inactive window draws one grey whatever the tint answers.**
+    func testAnInactiveWindowDrawsOneGreyWhateverTheTintAnswers() throws {
+        var seen: [[DotInk]] = []
+        for tint in [NSControlTint.graphiteControlTint, .blueControlTint] {
+            guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+                  let owner = owner(of: rig),
+                  let inks = dotInks(rig, owner, tint: tint, active: false) else { return }
+            for (i, ink) in inks.enumerated() {
+                XCTAssertGreaterThan(ink.a, 0, "tint \(tint.rawValue), inactive: dot \(i) is \(ink), not drawn")
+                XCTAssertLessThan(ink.spread, 0.02, "tint \(tint.rawValue), inactive: dot \(i) is \(ink), not grey")
+                XCTAssertTrue(ink.matches(inks[0]), "tint \(tint.rawValue), inactive: dot \(i) is \(ink), dot 0 is \(inks[0])")
+            }
+            seen.append(inks)
+        }
+        guard seen.count == 2 else { return }
+        XCTAssertTrue(seen[0][0].matches(seen[1][0]),
+                      "inactive under graphite is \(seen[0][0]) and under blue \(seen[1][0]): the tint reaches an inactive window")
+    }
+
+    /// **When the system's colours change the dots are read again, without the window's state changing.**
+    /// The owner's `systemColorsDidChange()` is what the observer of the change calls; the row calls it
+    /// after the seam's answer moved, in both directions.
+    func testWhenTheSystemsColoursChangeTheDotsAreReadAgain() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+              let owner = owner(of: rig),
+              let coloured = dotInks(rig, owner, tint: .blueControlTint, active: true) else { return }
+        XCTAssertTrue(coloured[0].matches(Self.colouredInks[0]), "blue, active: dot 0 is \(coloured[0]): the start is not coloured")
+        owner.controlTint = { .graphiteControlTint }
+        owner.systemColorsDidChange()
+        guard let grey = readDots(owner) else { return }
+        XCTAssertLessThan(grey[0].spread, 0.02, "after the change to graphite dot 0 is \(grey[0]), still saturated")
+        XCTAssertTrue(grey[1].matches(grey[0]) && grey[2].matches(grey[0]), "after the change to graphite the dots are \(grey), not equal")
+        owner.controlTint = { .blueControlTint }
+        owner.systemColorsDidChange()
+        guard let back = readDots(owner) else { return }
+        XCTAssertTrue(back[0].matches(Self.colouredInks[0]), "after the change back to blue dot 0 is \(back[0]), not coloured")
+    }
+
+    /// **Under Graphite and an active window the dots' ink follows the appearance the capsule draws under:
+    /// light on dark, dark on light, in either order.** A graphite ink made once and kept for the process
+    /// would be right only under the appearance that made it first: the row goes dark, light, dark and asserts
+    /// each step, so a row run against such an ink is red whatever ran before it. Total failure: the
+    /// window's appearance never took (asserted first, from the capsule's own effective appearance), or the
+    /// dots hold no readable colour (`readDots`); neither is allowed to pass as an ink.
+    func testTheGraphiteInkFollowsTheAppearanceTheCapsuleDrawsUnder() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+              let owner = owner(of: rig),
+              dotInks(rig, owner, tint: .graphiteControlTint, active: true) != nil else { return }
+        let steps: [(NSAppearance.Name, String)] = [(.darkAqua, "dark"), (.aqua, "light"), (.darkAqua, "dark")]
+        for (n, (name, label)) in steps.enumerated() {
+            rig.window.appearance = NSAppearance(named: name)
+            owner.setWindowAppearsActive(true)
+            settle(rig)
+            let drawn = owner.capsule.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+            XCTAssertEqual(drawn, name, "step \(n): the capsule draws under \(drawn?.rawValue ?? "nothing"), not \(label): the appearance never took")
+            guard drawn == name, let inks = readDots(owner) else { return }
+            for (i, ink) in inks.enumerated() {
+                let light = (ink.r + ink.g + ink.b) / 3 > 0.5
+                XCTAssertEqual(light, name == .darkAqua,
+                               "step \(n), graphite, active, \(label) appearance: dot \(i) is \(ink), \(light ? "light" : "dark") ink on a \(label) capsule")
+            }
+        }
+    }
+
+    /// **On a change of the window's appearance alone, with nothing else called, the dots' ink follows it.**
+    /// Nothing calls `setWindowAppearsActive` on a change of theme; the redraw rests on the capsule's
+    /// `viewDidChangeEffectiveAppearance`. The graphite tint and the active window are set before the first
+    /// change (under light), then only `window.appearance` moves: dark, light, dark. Total failure: the
+    /// appearance never took (asserted first from the capsule's own effective appearance), or the dots hold
+    /// no readable colour (`readDots`).
+    func testAChangeOfTheWindowsAppearanceAloneRedrawsTheGraphiteInk() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+              let owner = owner(of: rig) else { return }
+        rig.window.appearance = NSAppearance(named: .aqua)
+        guard dotInks(rig, owner, tint: .graphiteControlTint, active: true) != nil else { return }
+        let steps: [(NSAppearance.Name, String)] = [(.darkAqua, "dark"), (.aqua, "light"), (.darkAqua, "dark")]
+        for (n, (name, label)) in steps.enumerated() {
+            rig.window.appearance = NSAppearance(named: name)
+            settle(rig)
+            let drawn = owner.capsule.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+            XCTAssertEqual(drawn, name, "step \(n): the capsule draws under \(drawn?.rawValue ?? "nothing"), not \(label): the appearance never took")
+            guard drawn == name, let inks = readDots(owner) else { return }
+            for (i, ink) in inks.enumerated() {
+                let light = (ink.r + ink.g + ink.b) / 3 > 0.5
+                XCTAssertEqual(light, name == .darkAqua,
+                               "step \(n), only the window's appearance changed, \(label): dot \(i) is \(ink), \(light ? "light" : "dark") ink on a \(label) capsule")
+            }
+        }
+    }
+
+    // MARK: The dots follow the notification itself
+
+    /// A count of the questions the tint seam was asked; a box, so a closure the owner holds can bump it.
+    private final class Asked { var count = 0 }
+
+    private func postSystemColorsChanged() {
+        NotificationCenter.default.post(name: NSColor.systemColorsDidChangeNotification, object: nil)
+    }
+
+    /// **The notification itself, posted through the default centre, makes the dots read the tint again; the
+    /// row does not call `systemColorsDidChange()`, the observer does.** A dot that stays red under a
+    /// graphite answer, or an answer never asked, is the total failure: after the post the count is
+    /// asserted first, then the colours.
+    func testPostingTheSystemsColoursNotificationRereadsTheDots() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: no dot was read"),
+              let owner = owner(of: rig),
+              let coloured = dotInks(rig, owner, tint: .blueControlTint, active: true) else { return }
+        XCTAssertTrue(coloured[0].matches(Self.colouredInks[0]), "blue, active: dot 0 is \(coloured[0]): the start is not coloured")
+        let asked = Asked()
+        owner.controlTint = { asked.count += 1; return .graphiteControlTint }
+        postSystemColorsChanged()
+        XCTAssertGreaterThanOrEqual(asked.count, 1, "the notification was posted and the tint was not asked: nobody observes it")
+        guard let grey = readDots(owner) else { return }
+        XCTAssertLessThan(grey[0].spread, 0.02, "after the post under graphite dot 0 is \(grey[0]), still saturated")
+        XCTAssertTrue(grey[1].matches(grey[0]) && grey[2].matches(grey[0]), "after the post under graphite the dots are \(grey), not equal")
+        owner.controlTint = { .blueControlTint }
+        postSystemColorsChanged()
+        guard let back = readDots(owner) else { return }
+        for i in 0..<3 {
+            XCTAssertTrue(back[i].matches(Self.colouredInks[i]), "after the post back under blue dot \(i) is \(back[i]), not \(Self.colouredInks[i])")
+        }
+    }
+
+    /// **Once the buttons are detached the notification asks nothing; attached again, it asks once per post,
+    /// not once per attach.** The count is the seam's questions, with a counted post before as the positive
+    /// control: a count that never moved would pass "asks nothing" for the wrong reason.
+    func testAfterDetachingThePostedNotificationRereadsNothing() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing was detached"),
+              let owner = owner(of: rig) else { return }
+        let asked = Asked()
+        owner.controlTint = { asked.count += 1; return .graphiteControlTint }
+        postSystemColorsChanged()
+        XCTAssertEqual(asked.count, 1, "attached: one post asked the tint \(asked.count) times, not 1: the control did not run")
+        owner.attach(to: nil)
+        let before = asked.count
+        postSystemColorsChanged()
+        XCTAssertEqual(asked.count, before, "detached: a post asked the tint \(asked.count - before) more times: the observer survived the detach")
+        owner.attach(to: rig.window)
+        owner.attach(to: rig.window)
+        asked.count = 0
+        postSystemColorsChanged()
+        XCTAssertEqual(asked.count, 1, "attached twice: one post asked the tint \(asked.count) times, not 1: observers piled up or none was added")
+    }
+
+    /// **A released owner is not reached by the notification.** The weak reference is nil first (the owner
+    /// really died), then a post asks nothing and does not crash. Only read: a token left behind by `deinit`
+    /// is hidden by the observer's weak capture, so this row cannot tell it from a removed one.
+    func testAfterTheOwnerIsReleasedThePostedNotificationReachesNothing() throws {
+        let asked = Asked()
+        weak var gone: ShellWindowButtons?
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: true)
+        autoreleasepool {
+            let owner = ShellWindowButtons()
+            owner.controlTint = { asked.count += 1; return .graphiteControlTint }
+            owner.attach(to: window)
+            let base = asked.count
+            postSystemColorsChanged()
+            XCTAssertEqual(asked.count, base + 1, "alive: a post asked the tint \(asked.count - base) times, not 1: the control did not run")
+            gone = owner
+        }
+        XCTAssertNil(gone, "the owner is still alive after its last reference went: the release was not shown")
+        let before = asked.count
+        postSystemColorsChanged()
+        XCTAssertEqual(asked.count, before, "released: a post asked the tint \(asked.count - before) more times")
+    }
 }

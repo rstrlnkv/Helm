@@ -233,7 +233,8 @@ final class ShellContentView: NSView {
         if pane.additionalSafeAreaInsets.top != wanted { pane.additionalSafeAreaInsets.top = wanted }
     }
 
-    /// Hands the window's activity to the buttons' capsule, whose dots are coloured only while it is active.
+    /// Hands the window's activity to the buttons' capsule, whose dots are coloured only while it is active
+    /// and the system's tint is not Graphite.
     func setWindowAppearsActive(_ active: Bool) {
         buttons.setWindowAppearsActive(active)
     }

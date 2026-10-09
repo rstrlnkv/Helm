@@ -41,8 +41,10 @@ import HelmUI
 /// and the capsule is hidden: the buttons are the system's there. By reading, not run: an animation's
 /// completion that lands after full screen is entered and before the next `place(rail:)` still writes the
 /// old targets, and `attach(to:)` writes the recorded homes in any state. Not run in a full-screen window.
-/// Reduce Motion changes the capsule's size in the same turn, without an animation. `attach(to:)` stops
-/// every observer; `deinit` removes the notification tokens.
+/// Reduce Motion changes the capsule's size in the same turn, without an animation. The dots' ink follows
+/// the window's state, the system's control tint and the capsule's appearance, read again when the
+/// appearance or the system's colours change.
+/// `attach(to:)` stops every observer; `deinit` removes the notification tokens.
 @MainActor
 final class ShellWindowButtons {
 
@@ -90,6 +92,9 @@ final class ShellWindowButtons {
 
     /// Whether the Reduce Motion setting is on; read at every change, set by tests.
     var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
+
+    /// The system's control tint; read at every redraw of the dots, set by tests.
+    var controlTint: () -> NSControlTint = { NSColor.currentControlTint }
 
     /// Whether the capsule is open, the real buttons showing.
     private(set) var isOpen = false
@@ -140,6 +145,7 @@ final class ShellWindowButtons {
     init() {
         view.isHidden = true
         view.onHover = { [weak self] inside in self?.hover(inside) }
+        view.tint = { [weak self] in self?.controlTint() ?? NSColor.currentControlTint }
     }
 
     deinit {
@@ -148,9 +154,9 @@ final class ShellWindowButtons {
 
     // MARK: - the window
 
-    /// Starts watching `window`'s buttons and full screen. Every call, the same window and nil included, first
-    /// stops every observer, puts the buttons back home at alpha 1 and hides the capsule; it places nothing,
-    /// the next `place(rail:)` does.
+    /// Starts watching `window`'s buttons, its full screen and the system's colours, and reads the dots' ink
+    /// again. Every call, the same window and nil included, first stops every observer, puts the buttons back
+    /// home at alpha 1 and hides the capsule; it places nothing, the next `place(rail:)` does.
     func attach(to window: NSWindow?) {
         detach()
         guard let window else { return }
@@ -162,7 +168,19 @@ final class ShellWindowButtons {
                 MainActor.assumeIsolated { self?.view.superview?.needsLayout = true }
             })
         }
+        tokens.append(NotificationCenter.default.addObserver(
+            forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.systemColorsDidChange() }
+        })
+        view.redrawInk()
         watch(Self.standardButtons(of: window))
+    }
+
+    /// What the observer of `NSColor.systemColorsDidChangeNotification` calls: the dots are read again, the
+    /// window's state and the placement unchanged.
+    func systemColorsDidChange() {
+        view.redrawInk()
     }
 
     private func detach() {
@@ -304,8 +322,9 @@ final class ShellWindowButtons {
         for button in buttons where button.alphaValue != 1 { button.alphaValue = 1 }
     }
 
-    /// The dots' ink: coloured while the window appears active, grey while it does not. Always applies the
-    /// placement again.
+    /// The dots' ink: coloured while the window appears active (one neutral under Graphite), grey while it
+    /// does not. Always reads the tint (every assignment to `active`, an equal value too, redraws the dots)
+    /// and applies the placement again.
     func setWindowAppearsActive(_ active: Bool) {
         view.active = active
         place(rail: rail)
@@ -357,6 +376,8 @@ private final class CapsuleView: NSView {
     let plate = NSGlassEffectView()
     let dots = (0..<3).map { _ in NSView() }
     var onHover: ((Bool) -> Void)?
+    /// The system's control tint, asked at every redraw and never kept.
+    var tint: () -> NSControlTint = { NSColor.currentControlTint }
 
     /// Whether the window appears active.
     var active = true {
@@ -367,12 +388,13 @@ private final class CapsuleView: NSView {
     private static let dot: CGFloat = 6
     private static let gap: CGFloat = 4
 
-    /// The ink of the dots while the window is active, in the order of the system's close, minimise and
-    /// zoom buttons. The design system has no token for them; `AppearancePicker.swift` draws the same three
-    /// lights from literals of its own, which are not these values. These are read nowhere else.
-    private static let activeInks = [NSColor(srgbRed: 1.0, green: 0.37, blue: 0.34, alpha: 1),
-                                     NSColor(srgbRed: 1.0, green: 0.74, blue: 0.18, alpha: 1),
-                                     NSColor(srgbRed: 0.16, green: 0.78, blue: 0.25, alpha: 1)]
+    /// The ink of the dots while the window is active and the tint is not Graphite, in the order of the
+    /// system's close, minimise and zoom buttons. The design system has no token for them;
+    /// `AppearancePicker.swift` draws the same three lights from literals of its own, which are not these
+    /// values. These are read nowhere else.
+    private static let coloured = [NSColor(srgbRed: 1.0, green: 0.37, blue: 0.34, alpha: 1),
+                                   NSColor(srgbRed: 1.0, green: 0.74, blue: 0.18, alpha: 1),
+                                   NSColor(srgbRed: 0.16, green: 0.78, blue: 0.25, alpha: 1)]
 
     override var isFlipped: Bool { true }
 
@@ -417,10 +439,20 @@ private final class CapsuleView: NSView {
         }
     }
 
-    /// The inks are colours of one appearance, so they are resolved here and again when it changes.
-    private func redrawInk() {
+    /// The opacity of the label colour that is the one neutral for all three dots while the window is active
+    /// under Graphite, as the system's graphite buttons are three equal dots. Not measured from AppKit's own
+    /// buttons (an unshown window draws only their inactive state): the design system has no neutral for it,
+    /// so it is a choice, above the inactive grey's opacity. The colour is made in `redrawInk`, because the
+    /// label colour is a different colour in each appearance.
+    private static let graphiteAlpha: CGFloat = 0.55
+
+    /// The inks are colours of one appearance, so they are resolved here and again when it changes or the
+    /// window's state or the system's colours do.
+    func redrawInk() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            let inks = active ? Self.activeInks : Array(repeating: NSColor.labelColor.withAlphaComponent(0.25), count: 3)
+            let graphite = Array(repeating: NSColor.labelColor.withAlphaComponent(Self.graphiteAlpha), count: 3)
+            let lit = tint() == .graphiteControlTint ? graphite : Self.coloured
+            let inks = active ? lit : Array(repeating: NSColor.labelColor.withAlphaComponent(0.25), count: 3)
             for (dot, ink) in zip(dots, inks) { dot.layer?.backgroundColor = ink.cgColor }
         }
     }
