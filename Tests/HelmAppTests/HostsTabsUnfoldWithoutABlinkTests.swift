@@ -50,7 +50,6 @@ final class HostsTabsUnfoldWithoutABlinkTests: XCTestCase {
 
     private func sweep(_ fx: LivePageToolbarFixture, _ widths: [CGFloat]) -> [Step] {
         widths.map { width in
-            fx.bar.view.place = ShellPageBarView.Place(cardMinX: 0, windowWidth: width, buttons: .null)
             fx.bar.view.frame = NSRect(x: 0, y: 0, width: width, height: ShellBarLayout.height)
             fx.bar.view.layoutSubtreeIfNeeded()
             let strip = fx.bar.view.view(for: .tabs)?.everyView(ofType: NSSegmentedControl.self).first

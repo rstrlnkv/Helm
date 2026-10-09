@@ -2,8 +2,7 @@ import CoreGraphics
 import HelmRuntime
 
 /// **The bar's arithmetic, as numbers in and numbers out: from the natural
-/// widths of its zones, its own width, where the card stands in the window and
-/// where the window's buttons end, one frame per zone and two verdicts, whether
+/// widths of its zones, its own width and where the window's buttons end, one frame per zone and two verdicts, whether
 /// the tabs are folded to one item and whether the search is folded to its
 /// magnifier.** No view, no window; nothing here holds state.
 ///
@@ -18,7 +17,7 @@ import HelmRuntime
 /// any, ends `statusTrailing` from the bar's right edge. The actions and the
 /// search stand in a chain from the right, `trailing` in from the edge (or one
 /// `zoneGap` before the status): search last, the actions before it. The tabs
-/// are centred on the *window*, not on the bar, and held between what the name
+/// are centred on the bar, at half its width, and held between what the name
 /// leaves on the left and what the chain leaves on the right.
 ///
 /// **What gives way, in this order.** The search narrows from `searchWidth`
@@ -34,7 +33,7 @@ import HelmRuntime
 /// and nothing else moves.
 ///
 /// **Bad numbers.** Every width is brought into `0...1_000_000` (not-a-number
-/// reads 0), `cardMinX` into `-1_000_000...1_000_000`, so every frame is finite.
+/// reads 0), so every frame is finite.
 /// The window's buttons are an obstacle only when the rect is a place: not
 /// null, not infinite, finite x and width, and a width and height above zero;
 /// their row is ignored.
@@ -108,10 +107,6 @@ enum ShellBarLayout {
     struct Input: Equatable, Sendable {
         /// The bar's width.
         var barWidth: CGFloat
-        /// The card's minX, in the coordinates of the view that holds the card (`ShellContentView`).
-        var cardMinX: CGFloat
-        /// The window's content width.
-        var windowWidth: CGFloat
         /// The natural widths of the zones; 0 is an absent zone.
         var nameWidth: CGFloat
         /// The tabs unfolded.
@@ -151,8 +146,6 @@ enum ShellBarLayout {
     /// finite frames.
     nonisolated static func frames(for input: Input) -> Frames {
         let width = bounded(input.barWidth)
-        let windowWidth = bounded(input.windowWidth)
-        let cardMinX = input.cardMinX.clamped(to: -widest...widest, whenNotANumber: 0)
         let nameWidth = bounded(input.nameWidth)
         let tabsWidth = bounded(input.tabsWidth)
         let foldedWidth = bounded(input.tabsFoldedWidth)
@@ -166,7 +159,7 @@ enum ShellBarLayout {
         let hasSearch = input.hasSearch
 
         let start = nameStart(buttons: input.buttons)
-        let centre = windowWidth / 2 - cardMinX
+        let centre = width / 2
 
         // The trailing chain, right to left. `end` is where the search ends.
         let statusMinX = width - statusTrailing - statusWidth

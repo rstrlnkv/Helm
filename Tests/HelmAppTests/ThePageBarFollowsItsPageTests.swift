@@ -485,7 +485,6 @@ final class ThePageBarFollowsItsPageTests: XCTestCase {
         p.tabs.swapsItsViewOnApply = true
         p.actions.movesItsMeasuresOnApply = true
         let bar = p.makeBar()
-        bar.view.place = Bar.Place(cardMinX: 200, windowWidth: 700, buttons: .null)
         let oldTabsView = p.tabs.view
         let measuresBefore = bar.view.measures
         let measured = p.zones.map(\.measureCount)

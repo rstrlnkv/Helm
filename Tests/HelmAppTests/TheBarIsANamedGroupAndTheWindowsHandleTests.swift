@@ -91,7 +91,6 @@ final class TheBarIsANamedGroupAndTheWindowsHandleTests: XCTestCase {
         }
         // The status's width is 0, so the layout hides its view; the other four stand.
         bar.measures = Bar.Measures(name: 130, tabs: 310, tabsFolded: 136, actions: 72, status: 0, hasSearch: true)
-        bar.place = Bar.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.frame = NSRect(x: 0, y: 0, width: 856, height: 52)
         bar.layoutSubtreeIfNeeded()
 
@@ -154,7 +153,6 @@ final class TheBarIsANamedGroupAndTheWindowsHandleTests: XCTestCase {
         let bar = controller.view
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 1000, height: 200))
         container.addSubview(bar)
-        bar.place = Bar.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.frame = NSRect(x: 10, y: 30, width: 856, height: 52)
         bar.layoutSubtreeIfNeeded()
 
@@ -195,7 +193,6 @@ final class TheBarIsANamedGroupAndTheWindowsHandleTests: XCTestCase {
         let inner = NSView(frame: NSRect(x: 0, y: 0, width: 2, height: 2))
         given[.name]!.addSubview(inner)
         bar.measures = Bar.Measures(name: 130, tabs: 310, tabsFolded: 136, actions: 72, status: 60, hasSearch: true)
-        bar.place = Bar.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.frame = NSRect(x: 10, y: 30, width: 856, height: 52)
         bar.layoutSubtreeIfNeeded()
 

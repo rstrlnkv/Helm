@@ -22,8 +22,7 @@ import HelmRuntime
 /// **The bar stands at the top of the clip, full width, `ShellBarLayout.height`
 /// high, and the pane starts under it:** `layout()` adds to the pane's own top
 /// safe-area inset what the bar needs beyond it, so the pane's top inset, which
-/// SwiftUI reads, is the bar's height. It hands the bar where the card stands, in this view's own
-/// coordinates (`ShellBarLayout.Input.cardMinX`), and the obstacle `ShellWindowButtons` answers (the closed
+/// SwiftUI reads, is the bar's height. It hands the bar the obstacle `ShellWindowButtons` answers (the closed
 /// capsule in the rail, the three buttons otherwise) and its `reach`, both in the bar's coordinates. This
 /// view and the bar neither write the window buttons' frames nor read them; that owner does.
 ///
@@ -212,7 +211,7 @@ final class ShellContentView: NSView {
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
         let obstacle = buttons.place(rail: ShellGeometry.isRail(sidebarWidth: sidebarWidth))
         let reach = buttons.reach
-        placeBar(cardMinX: frame.minX, buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
+        placeBar(buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
                  reach: reach.isNull ? .null : convert(reach, to: bar))
 
         let reading = publicReading
@@ -225,10 +224,10 @@ final class ShellContentView: NSView {
     /// The bar at the clip's top (the clip is not flipped, so its top is `maxY`), full width; the pane's
     /// additional top inset is what the bar's height needs beyond the safe area the pane has of its own,
     /// written only when it differs.
-    private func placeBar(cardMinX: CGFloat, buttons: CGRect, reach: CGRect) {
+    private func placeBar(buttons: CGRect, reach: CGRect) {
         let height = min(ShellBarLayout.height, max(clip.bounds.height, 0))
         bar.frame = CGRect(x: 0, y: clip.bounds.maxY - height, width: clip.bounds.width, height: height)
-        bar.place = ShellPageBarView.Place(cardMinX: cardMinX, windowWidth: bounds.width, buttons: buttons, reach: reach)
+        bar.place = ShellPageBarView.Place(buttons: buttons, reach: reach)
         let own = pane.safeAreaInsets.top - pane.additionalSafeAreaInsets.top
         let wanted = max(0, ShellBarLayout.height - own)
         if pane.additionalSafeAreaInsets.top != wanted { pane.additionalSafeAreaInsets.top = wanted }

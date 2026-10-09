@@ -4,8 +4,9 @@ import HelmUI
 
 /// **A real `ShellPageBar` with its three real zones, put into a window somebody else built.**
 ///
-/// The bar has no window of its own: whoever owns it writes its frame and its `place`, as the shell's
-/// content view does for the real window. This does the same for a test window that only holds a page.
+/// The bar has no window of its own: whoever owns it writes its frame, as the shell's
+/// content view does for the real window. This does the same for a test window that only holds a page, and hands
+/// the bar nothing of the window's buttons: `place` stays its default, so the name starts at the layout's leading inset.
 /// The bar's view is added next to the window's content view, in the window's frame view, so the page's
 /// own ink readings (`host.cacheDisplay`) do not contain it, and a walk down from the frame view finds it.
 ///
@@ -44,13 +45,12 @@ struct MountedPageBar {
         layout()
     }
 
-    /// Sets the bar's frame and `place` from the window's content view, then lays the bar out.
+    /// Sets the bar's frame from the window's content view, then lays the bar out.
     func layout() {
         if let content = window?.contentView {
             let c = content.frame
             bar.view.frame = NSRect(x: c.minX, y: c.maxY - ShellBarLayout.height,
                                     width: c.width, height: ShellBarLayout.height)
-            bar.view.place = ShellPageBarView.Place(cardMinX: 0, windowWidth: c.width, buttons: .null)
         }
         bar.view.layoutSubtreeIfNeeded()
     }

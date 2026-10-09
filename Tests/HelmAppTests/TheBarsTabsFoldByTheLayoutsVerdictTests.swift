@@ -183,13 +183,12 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
             + Array(stride(from: 120, through: 700, by: 7))
         var sawFolded = false, sawWhole = false, checkedFolded = 0, checkedWhole = 0
         for width in widths {
-            bar.place = ShellPageBarView.Place(cardMinX: 0, windowWidth: width, buttons: .null)
             bar.frame = NSRect(x: 0, y: 0, width: width, height: ShellBarLayout.height)
             bar.layoutSubtreeIfNeeded()
 
             let m = bar.measures
             let answer = ShellBarLayout.frames(for: ShellBarLayout.Input(
-                barWidth: width, cardMinX: 0, windowWidth: width, nameWidth: m.name, tabsWidth: m.tabs,
+                barWidth: width, nameWidth: m.name, tabsWidth: m.tabs,
                 tabsFoldedWidth: m.tabsFolded, actionsWidth: m.actions, statusWidth: m.status,
                 hasSearch: m.hasSearch, alwaysCollapseSearch: m.alwaysCollapseSearch,
                 searchInUse: m.searchInUse, buttons: .null))
@@ -645,7 +644,6 @@ final class TheBarsTabsFoldByTheLayoutsVerdictTests: XCTestCase {
 
         var foldedPass = false
         for width in stride(from: 900, through: 150, by: -50) {
-            bar.view.place = ShellPageBarView.Place(cardMinX: 0, windowWidth: CGFloat(width), buttons: .null)
             bar.view.frame = NSRect(x: 0, y: 0, width: CGFloat(width), height: ShellBarLayout.height)
             bar.view.layoutSubtreeIfNeeded()
             if zone.isFolded, !foldedPass {

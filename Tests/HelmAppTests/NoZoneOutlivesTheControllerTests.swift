@@ -58,7 +58,6 @@ final class NoZoneOutlivesTheControllerTests: XCTestCase {
         var sentinel: PageSentinel? = PageSentinel()
         let token = ShellPageBar.pageKey(for: model.selection)
         channel.declare(pageContent(kind, sentinel!), token: token, generation: channel.nextGeneration())
-        bar.view.place = ShellPageBarView.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.view.layoutSubtreeIfNeeded()
 
         // The subject: the zone drew this content, live, and its view is in the bar's view.
@@ -165,7 +164,6 @@ final class NoZoneOutlivesTheControllerTests: XCTestCase {
                                    titlebarIsTransparent: true)
             bar.graceInterval = 30
             bar.view.frame = NSRect(x: 0, y: 0, width: 856, height: 52)
-            bar.view.place = ShellPageBarView.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
             bar.view.layoutSubtreeIfNeeded()
             barView = bar.view
             controller = bar

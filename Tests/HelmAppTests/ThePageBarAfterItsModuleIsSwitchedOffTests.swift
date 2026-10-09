@@ -64,7 +64,6 @@ final class ThePageBarAfterItsModuleIsSwitchedOffTests: XCTestCase {
         r.token = ShellPageBar.pageKey(for: r.model.selection)
         r.generation = r.channel.nextGeneration()
         r.channel.declare(pageContent(kind, s), token: r.token, generation: r.generation)
-        r.bar.view.place = ShellPageBarView.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         r.bar.view.layoutSubtreeIfNeeded()
         r.tabs.apply(ShellPageBarView.Verdicts(tabsFolded: false))
         XCTAssertEqual(r.bar.presentation, .page(key: r.token, isLive: true, isDimmed: false),

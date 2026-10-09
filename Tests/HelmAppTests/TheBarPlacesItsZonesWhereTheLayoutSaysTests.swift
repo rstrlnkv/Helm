@@ -40,10 +40,10 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
         subscript(_ zone: Bar.Zone) -> NSView { views[zone]! }
 
         /// One pass at the given width, as the owner of the bar would run it.
-        func lay(width: CGFloat, cardMinX: CGFloat = 200, window: CGFloat,
+        func lay(width: CGFloat,
                  buttons: CGRect = .null, measures: Bar.Measures) {
             bar.measures = measures
-            bar.place = Bar.Place(cardMinX: cardMinX, windowWidth: window, buttons: buttons)
+            bar.place = Bar.Place(buttons: buttons)
             bar.frame = NSRect(x: 0, y: 0, width: width, height: 52)
             bar.layoutSubtreeIfNeeded()
         }
@@ -64,7 +64,7 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
     func testEveryZonesViewStandsInTheFrameTheLayoutAnswers() {
         let stage = Stage()
         // The window's three buttons where `TheCardIsConcentricWithTheWindowTests` puts them, x 19...79 in the window: -181...-121 in a bar whose card starts at 200.
-        stage.lay(width: 856, window: 1060, buttons: CGRect(x: -181, y: 19, width: 60, height: 14),
+        stage.lay(width: 856, buttons: CGRect(x: -181, y: 19, width: 60, height: 14),
                   measures: Self.homebrew)
 
         XCTAssertFalse(Bar.Zone.allCases.allSatisfy { stage[$0].frame == .zero }, """
@@ -72,16 +72,16 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
             asked the layout, and every comparison below would be of what was never placed
             """)
         assertFrame(stage[.name], row(16, 146), "the name")
-        assertFrame(stage[.tabs], row(175, 485), "the tabs")
-        assertFrame(stage[.actions], row(489, 561), "the actions")
-        assertFrame(stage[.search], row(565, 848), "the search")
+        assertFrame(stage[.tabs], row(273, 583), "the tabs")
+        assertFrame(stage[.actions], row(587, 659), "the actions")
+        assertFrame(stage[.search], row(663, 848), "the search")
         XCTAssertTrue(stage[.status].isHidden, "no status was asked for, and its view is shown")
         XCTAssertNotNil(stage.bar.frames, "the view keeps no answer after a pass")
     }
 
     func testAZoneTheLayoutCallsAbsentIsHiddenAndTheRestStand() {
         let stage = Stage()
-        stage.lay(width: 856, window: 1060, measures: Bar.Measures(name: 130, status: 70))
+        stage.lay(width: 856, measures: Bar.Measures(name: 130, status: 70))
 
         XCTAssertFalse(Bar.Zone.allCases.allSatisfy { stage[$0].frame == .zero }, """
             the view set no frame: all five zone views are still at .zero — layout() never ran or never \
@@ -107,22 +107,22 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
             tabsViewInside = stage[.tabs].frame
         }
 
-        stage.lay(width: 856, window: 1060, measures: Self.homebrew)
+        stage.lay(width: 856, measures: Self.homebrew)
         XCTAssertEqual(calls.count, 0, "a first pass that answers nothing folded told the receiver")
-        XCTAssertEqual(stage[.tabs].frame, row(175, 485))
+        XCTAssertEqual(stage[.tabs].frame, row(273, 583))
 
-        stage.lay(width: 656, window: 860, measures: Self.homebrew)
+        stage.lay(width: 656, measures: Self.homebrew)
         XCTAssertEqual(calls.count, 1, "the tabs folded and the receiver was told \(calls.count) times")
         XCTAssertEqual(calls.first, Bar.Verdicts(tabsFolded: true, searchFolded: false))
-        XCTAssertEqual(framesInside?.tabs, row(162, 298),
+        XCTAssertEqual(framesInside?.tabs, row(260, 396),
                        "inside the call the new answer was not stored yet")
-        XCTAssertEqual(tabsViewInside, row(175, 485),
+        XCTAssertEqual(tabsViewInside, row(273, 583),
                        "a frame of this pass was set before the receiver was told")
-        assertFrame(stage[.tabs], row(162, 298), "the tabs after the pass")
-        assertFrame(stage[.actions], row(302, 374), "the actions after the pass")
-        assertFrame(stage[.search], row(378, 648), "the search after the pass")
+        assertFrame(stage[.tabs], row(260, 396), "the tabs after the pass")
+        assertFrame(stage[.actions], row(400, 472), "the actions after the pass")
+        assertFrame(stage[.search], row(476, 648), "the search after the pass")
 
-        stage.lay(width: 650, window: 860, measures: Self.homebrew)
+        stage.lay(width: 650, measures: Self.homebrew)
         XCTAssertEqual(calls.count, 1, "the same verdict told the receiver again")
     }
 
@@ -130,15 +130,15 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
 
     func testAChangedPlaceMovesTheNameAndAnEqualOneAndAnEqualMeasureAskForNothing() {
         let stage = Stage()
-        stage.lay(width: 1000, cardMinX: 56, window: 1060, buttons: .null, measures: Self.homebrew)
+        stage.lay(width: 1000, buttons: .null, measures: Self.homebrew)
         assertFrame(stage[.name], row(16, 146), "the name with no buttons")
 
-        stage.lay(width: 1000, cardMinX: 56, window: 1060,
+        stage.lay(width: 1000,
                   buttons: CGRect(x: -37, y: 15, width: 60, height: 14), measures: Self.homebrew)
         assertFrame(stage[.name], row(31, 161), "the name beside the buttons")
-        assertFrame(stage[.tabs], row(319, 629), "the tabs beside the buttons")
-        assertFrame(stage[.actions], row(633, 705), "the actions beside the buttons")
-        assertFrame(stage[.search], row(709, 992), "the search beside the buttons")
+        assertFrame(stage[.tabs], row(345, 655), "the tabs beside the buttons")
+        assertFrame(stage[.actions], row(659, 731), "the actions beside the buttons")
+        assertFrame(stage[.search], row(735, 992), "the search beside the buttons")
 
         XCTAssertFalse(stage.bar.needsLayout, "a pass left the view asking for another")
         stage.bar.place = stage.bar.place
@@ -189,7 +189,6 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
         bar.setView(name, for: .name)
         bar.setView(status, for: .status)
         bar.measures = Bar.Measures(name: 130, status: 70)
-        bar.place = Bar.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.frame = NSRect(x: 0, y: 0, width: 856, height: 52)
         bar.layoutSubtreeIfNeeded()
 
@@ -206,7 +205,7 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
     /// A bar too narrow for the name beside the tabs, the actions and a search:
     /// both folded, the search is only its magnifier.
     private func layBothFolded(_ stage: Stage) {
-        stage.lay(width: 536, cardMinX: 320, window: 860,
+        stage.lay(width: 536,
                   measures: Bar.Measures(name: 200, tabs: 310, tabsFolded: 136, actions: 72,
                                          status: 0, hasSearch: true))
     }
@@ -253,24 +252,24 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
 
     func testAZoneShownOnOnePassAndAnsweredNoWidthOnALaterOneIsHiddenAndShownAgain() {
         let stage = Stage()
-        stage.lay(width: 856, window: 1060, measures: Self.homebrew)
-        assertFrame(stage[.tabs], row(175, 485), "the tabs on the first pass")
-        assertFrame(stage[.search], row(565, 848), "the search on the first pass")
+        stage.lay(width: 856, measures: Self.homebrew)
+        assertFrame(stage[.tabs], row(273, 583), "the tabs on the first pass")
+        assertFrame(stage[.search], row(663, 848), "the search on the first pass")
 
-        stage.lay(width: 856, window: 1060, measures: Bar.Measures(name: 130, status: 70))
+        stage.lay(width: 856, measures: Bar.Measures(name: 130, status: 70))
         for zone in [Bar.Zone.tabs, .actions, .search] {
             XCTAssertTrue(stage[zone].isHidden, "\(zone) was shown before and has no width now, and its view is shown")
         }
         assertFrame(stage[.name], row(16, 146), "the name on the second pass")
 
-        stage.lay(width: 856, window: 1060, measures: Self.homebrew)
-        assertFrame(stage[.tabs], row(175, 485), "the tabs when they come back")
-        assertFrame(stage[.search], row(565, 848), "the search when it comes back")
+        stage.lay(width: 856, measures: Self.homebrew)
+        assertFrame(stage[.tabs], row(273, 583), "the tabs when they come back")
+        assertFrame(stage[.search], row(663, 848), "the search when it comes back")
     }
 
     func testTheSameViewAgainDoesNothingAndANewViewAsksForALayout() {
         let stage = Stage()
-        stage.lay(width: 856, window: 1060, measures: Self.homebrew)
+        stage.lay(width: 856, measures: Self.homebrew)
         let before = stage.bar.subviews
         XCTAssertFalse(stage.bar.needsLayout, "a pass left the view asking for another")
 
@@ -283,17 +282,17 @@ final class TheBarPlacesItsZonesWhereTheLayoutSaysTests: XCTestCase {
         stage.bar.setView(other, for: .tabs)
         XCTAssertTrue(stage.bar.needsLayout, "a new view was set and no layout was asked for")
         stage.bar.layoutSubtreeIfNeeded()
-        assertFrame(other, row(175, 485), "the new view after the layout it asked for")
+        assertFrame(other, row(273, 583), "the new view after the layout it asked for")
     }
 
     func testAFrameWithAHalfPointIsSetExactly() {
         let stage = Stage()
-        // Window 875, bar 671: the tabs fold and centre on a half point.
-        stage.lay(width: 671, window: 875, measures: Self.homebrew)
+        // Bar 671: the tabs fold and the bar's centre 335.5 less half their width puts them on a half point.
+        stage.lay(width: 671, measures: Self.homebrew)
 
-        assertFrame(stage[.tabs], row(169.5, 305.5), "the folded tabs")
-        assertFrame(stage[.search], row(385.5, 663), "the search")
-        XCTAssertEqual(stage[.tabs].frame.minX, 169.5, "the half point was rounded")
+        assertFrame(stage[.tabs], row(267.5, 403.5), "the folded tabs")
+        assertFrame(stage[.search], row(483.5, 663), "the search")
+        XCTAssertEqual(stage[.tabs].frame.minX, 267.5, "the half point was rounded")
     }
 
     // MARK: - Coordinates

@@ -42,12 +42,9 @@ final class ShellPageBarView: NSView {
         var searchInUse = false
     }
 
-    /// Where the bar stands. Written by whoever sets the bar's frame, in the same pass.
-    /// Each field but `reach` is the field of the same meaning in `ShellBarLayout.Input`,
-    /// which says what it holds.
+    /// What of the window's buttons stands over the bar. Written by whoever sets the bar's frame, in the same pass.
+    /// `buttons` is the field of the same name in `ShellBarLayout.Input`, which says what it holds.
     struct Place: Equatable {
-        var cardMinX: CGFloat = 0
-        var windowWidth: CGFloat = 0
         var buttons: CGRect = .null
         /// The window-button capsule's hover zone in the bar's coordinates; the bar opens no menu on a point
         /// inside it. Not an input of the layout. `.null`, and a rectangle with a not-a-number side, contain
@@ -185,8 +182,6 @@ final class ShellPageBarView: NSView {
         super.layout()
         let answer = ShellBarLayout.frames(for: ShellBarLayout.Input(
             barWidth: bounds.width,
-            cardMinX: place.cardMinX,
-            windowWidth: place.windowWidth,
             nameWidth: measures.name,
             tabsWidth: measures.tabs,
             tabsFoldedWidth: measures.tabsFolded,

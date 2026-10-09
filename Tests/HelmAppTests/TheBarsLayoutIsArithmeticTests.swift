@@ -4,7 +4,7 @@ import XCTest
 
 /// **`ShellBarLayout` is the bar's arithmetic and nothing else: from the widths of
 /// the name, the tabs, the page's actions, the search and the status, the bar's own
-/// width, where the card sits in the window and where the window's buttons end, it
+/// width and where the window's buttons end, it
 /// answers one frame per zone and two verdicts, whether the tabs are folded to one
 /// item and whether the search is folded to its magnifier.**
 ///
@@ -16,14 +16,14 @@ import XCTest
 /// natural widths fed in as numbers: a name 130 wide, tabs 310 wide unfolded and
 /// 136 folded, an actions capsule reserving 72, a search field. No test here
 /// measures a view; the widths are assumptions these tests feed, and every
-/// expected frame is arithmetic on them. The window of 1060 is the Settings
-/// window's default width and the card's minX of 200 is the default sidebar; the
+/// expected frame is arithmetic on them. The bar of 856 is the Settings window's
+/// default width of 1060 less the default sidebar of 200 and the card's 4 on the right; the
 /// buttons' rect (19, 19, 60, 14) in the window stands for where the system puts the three
 /// window buttons, the 14-point button size an assumption, as an input. A frame is written `minX…maxX` in the bar's own
 /// coordinates, whose x 0 is the card's minX in the window.
 ///
 /// Every number the rows expect was recomputed from the rules: the
-/// tabs' centre is the window's centre (window width / 2 less the card's minX), the
+/// tabs' centre is the bar's centre (half its width), the
 /// trailing chain is counted from the bar's right edge, 8 in, or 4 before a status, and each verdict is a
 /// threshold in the width that is crossed once along a sweep.
 final class TheBarsLayoutIsArithmeticTests: XCTestCase {
@@ -50,13 +50,13 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     /// A page with a name, tabs, an actions capsule and a search; every default is
     /// the page's natural width, every override is what a row varies.
     private static func homebrew(
-        bar: CGFloat, cardMinX: CGFloat = 200, window: CGFloat,
+        bar: CGFloat,
         name: CGFloat = 130, tabs: CGFloat = 310, folded: CGFloat = 136,
         actions: CGFloat = 72, status: CGFloat = 0,
         search: Bool = true, resting: Bool = false, inUse: Bool = false,
         buttons: CGRect = .zero
     ) -> Input {
-        Input(barWidth: bar, cardMinX: cardMinX, windowWidth: window, nameWidth: name,
+        Input(barWidth: bar, nameWidth: name,
               tabsWidth: tabs, tabsFoldedWidth: folded, actionsWidth: actions,
               statusWidth: status, hasSearch: search, alwaysCollapseSearch: resting,
               searchInUse: inUse, buttons: buttons)
@@ -96,7 +96,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
                        ShellBarLayout.height)
 
         let f = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, buttons: Self.windowButtons(cardMinX: 200)))
+            bar: 856, buttons: Self.windowButtons(cardMinX: 200)))
         let zones = [("name", f.name), ("tabs", f.tabs), ("actions", f.actions), ("search", f.search)]
         for (zone, frame) in zones { assertAnswered(zone, frame) }
         for (zone, frame) in zones {
@@ -107,7 +107,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testAt1060NothingFoldsAndEveryZoneStandsWhereTheRulesPutIt() {
         let f = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, buttons: Self.windowButtons(cardMinX: 200)))
+            bar: 856, buttons: Self.windowButtons(cardMinX: 200)))
 
         // The subject happened: every zone was given a frame.
         assertAnswered("name", f.name)
@@ -116,11 +116,11 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("search", f.search)
 
         assertSpan("name", f.name, 16, 146)
-        assertSpan("tabs", f.tabs, 175, 485)
-        XCTAssertEqual(f.tabs.midX + 200, 530, "the tabs' centre is the window's centre, 1060 / 2")
-        assertSpan("actions", f.actions, 489, 561)
-        assertSpan("search", f.search, 565, 848)
-        XCTAssertEqual(f.search.width, 283)
+        assertSpan("tabs", f.tabs, 273, 583)
+        XCTAssertEqual(f.tabs.midX, 428, "the tabs' centre is the bar's centre, 856 / 2")
+        assertSpan("actions", f.actions, 587, 659)
+        assertSpan("search", f.search, 663, 848)
+        XCTAssertEqual(f.search.width, 185, "the field gave 98 of its 283 to keep the tabs centred")
         XCTAssertEqual(856 - f.search.maxX, 8, "the search ends 8 from the bar's right edge")
         XCTAssertEqual(f.search.minX - f.actions.maxX, 4, "the actions end 4 before the search")
         for (zone, frame) in [("name", f.name), ("tabs", f.tabs), ("actions", f.actions), ("search", f.search)] {
@@ -131,85 +131,147 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         XCTAssertTrue(f.fits)
     }
 
-    func testATabScopedActionMovesNeitherTheTabsNorTheSearch() {
+    func testTheTabsStandOnTheBarsCentreNotTheWindowsWithRoomOnBothSides() {
+        // The bar beside the open sidebar is 856 wide and the card starts 200 in the window; the centre is read off the bar alone.
+        let sidebar = ShellBarLayout.frames(for: Self.homebrew(
+            bar: 856, buttons: Self.windowButtons(cardMinX: 200)))
+        assertAnswered("tabs", sidebar.tabs)
+        XCTAssertTrue(sidebar.fits)
+        XCTAssertEqual(sidebar.tabs.width, 310, "the tabs are open, so the centre is read off the full width")
+        XCTAssertEqual(sidebar.tabs.midX, 428, "the tabs' centre is the bar's centre, 856 / 2")
+        assertSpan("tabs", sidebar.tabs, 273, 583)
+        assertSpan("actions", sidebar.actions, 587, 659)
+        assertSpan("search", sidebar.search, 663, 848)
+        XCTAssertEqual(sidebar.search.width, 185, "the field gave 98 to keep the tabs centred")
+
+        // The rail: the bar is 1000 wide and the centre moves with the bar.
+        let rail = ShellBarLayout.frames(for: Self.homebrew(
+            bar: 1000, buttons: CGRect(x: -37, y: 15, width: 60, height: 14)))
+        assertAnswered("tabs", rail.tabs)
+        XCTAssertTrue(rail.fits)
+        XCTAssertEqual(rail.tabs.midX, 500, "the tabs' centre is the bar's centre, 1000 / 2")
+        assertSpan("tabs", rail.tabs, 345, 655)
+        assertSpan("actions", rail.actions, 659, 731)
+        assertSpan("search", rail.search, 735, 992)
+    }
+
+    func testAt860WithTheSidebarOpenTheFoldedTabsStandOnTheBarsCentre() {
+        // Bar 656 = 860 less the sidebar's 200 and the card's 4 on the right. Name 130, tabs 310 / 136 folded,
+        // actions 72, a search. Ladder: tabs 16 + 130 + 8 = 154 start; with the floor 120 the open tabs end
+        // at 464 against a limit of 648 - 120 - 4 - 72 - 4 = 448, so they fold. Folded, the bar's centre 328 puts them
+        // at 260...396, right of 154, so the name does not push them. The search is what is left of the chain:
+        // actions 400...472 hold 4 clear of the tabs, the field takes 476...648 = 172 and is a field (>= 120).
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 656))
+
+        assertAnswered("name", f.name)
+        assertAnswered("tabs", f.tabs)
+        assertAnswered("actions", f.actions)
+        assertAnswered("search", f.search)
+        XCTAssertTrue(f.tabsFolded)
+        XCTAssertFalse(f.searchFolded)
+        XCTAssertEqual(f.tabs.midX, 328, "the tabs' centre is the bar's centre, 656 / 2")
+        assertSpan("name", f.name, 16, 146)
+        assertSpan("tabs", f.tabs, 260, 396)
+        assertSpan("actions", f.actions, 400, 472)
+        assertSpan("search", f.search, 476, 648)
+        XCTAssertEqual(f.search.width, 172, "the field gave 111 of its 283 to keep the tabs centred")
+        XCTAssertTrue(f.fits)
+    }
+
+    func testATabScopedActionMovesNotTheTabsAndTheSearchTakesWhatTheCapsuleFrees() {
         let buttons = Self.windowButtons(cardMinX: 200)
-        let wide = ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060, buttons: buttons))
-        let narrow = ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060, actions: 36, buttons: buttons))
+        let wide = ShellBarLayout.frames(for: Self.homebrew(bar: 856, buttons: buttons))
+        let narrow = ShellBarLayout.frames(for: Self.homebrew(bar: 856, actions: 36, buttons: buttons))
 
         assertAnswered("actions with a tab-scoped capsule", narrow.actions)
         assertAnswered("tabs", narrow.tabs)
-        assertSpan("actions", narrow.actions, 525, 561)
+        assertSpan("actions", narrow.actions, 587, 623)
         XCTAssertEqual(narrow.tabs, wide.tabs, "the tabs did not move when the capsule shrank")
-        XCTAssertEqual(narrow.search, wide.search, "the search did not move when the capsule shrank")
+        XCTAssertEqual(narrow.search.maxX, wide.search.maxX, "the search ends at the same place")
+        assertSpan("search", narrow.search, 627, 848)
+        XCTAssertEqual(wide.search.width, 185)
+        XCTAssertEqual(narrow.search.width, 221, "the field takes the 36 the capsule freed: it is what the centred tabs leave")
         XCTAssertEqual(narrow.name, wide.name)
     }
 
     func testTheLastGroupEndsEightFromTheEdgeWithAndWithoutSearch() {
         let buttons = Self.windowButtons(cardMinX: 200)
-        let with = ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060, buttons: buttons))
-        let without = ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060, search: false, buttons: buttons))
+        let with = ShellBarLayout.frames(for: Self.homebrew(bar: 856, buttons: buttons))
+        let without = ShellBarLayout.frames(for: Self.homebrew(bar: 856, search: false, buttons: buttons))
 
         assertAnswered("actions", without.actions)
         assertAnswered("tabs", without.tabs)
         assertSpan("actions", without.actions, 776, 848)
-        assertSpan("tabs", without.tabs, 175, 485)
+        assertSpan("tabs", without.tabs, 273, 583)
         XCTAssertEqual(without.actions.maxX, with.search.maxX, "both groups end where the search ended")
         XCTAssertEqual(without.search, .zero, "no search is no frame")
         XCTAssertFalse(without.searchFolded)
     }
 
-    // MARK: - the tabs clamp, they do not centre
+    // MARK: - the name pushes the tabs off the centre
 
-    func testAtTheFloorTheTabsClampAgainstTheNameAndDoNotCentre() {
-        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 656, window: 860, search: false))
+    func testAWideNamePushesTheTabsOffTheBarsCentreAndANarrowOneDoesNot() {
+        // Name 200 on a bar of 656: the bar's centre 328 would put the tabs at 173...483, but the name ends at
+        // 216 and the tabs may not start before 216 + 8, so they stand at 224...534 and the right side has room (limit 572).
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 656, name: 200, search: false))
 
+        assertAnswered("name", f.name)
         assertAnswered("tabs", f.tabs)
         assertAnswered("actions", f.actions)
-        assertSpan("tabs", f.tabs, 154, 464)
-        XCTAssertNotEqual(f.tabs.minX, 75, "centred on the window the tabs would start at 75, left of the name's end")
-        XCTAssertEqual(f.name.maxX + 8, 154, "the tabs start one name gap after the name")
+        assertSpan("name", f.name, 16, 216)
+        assertSpan("tabs", f.tabs, 224, 534)
+        XCTAssertNotEqual(f.tabs.minX, 173, "centred on the bar the tabs would start at 173, left of the name's end")
+        XCTAssertNotEqual(f.tabs.midX, 328, "the name moved the tabs off the bar's centre")
+        XCTAssertEqual(f.name.maxX + 8, f.tabs.minX, "the tabs start one name gap after the name")
         assertSpan("actions", f.actions, 576, 648)
         XCTAssertFalse(f.tabsFolded, "310 of tabs still fit here")
         XCTAssertTrue(f.fits)
+
+        // The page's own name of 130 ends at 146: the tabs are clear of it and stand on the centre.
+        let clear = ShellBarLayout.frames(for: Self.homebrew(bar: 656, search: false))
+        assertAnswered("tabs", clear.tabs)
+        assertSpan("tabs", clear.tabs, 173, 483)
+        XCTAssertEqual(clear.tabs.midX, 328)
+        XCTAssertGreaterThan(clear.tabs.minX, clear.name.maxX + 8)
     }
 
     // MARK: - the order things give way in
 
     func testTheTabsFoldBeforeTheSearchShrinksBelowItsFloor() {
-        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 656, window: 860))
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 656))
 
         assertAnswered("tabs", f.tabs)
         assertAnswered("search", f.search)
         XCTAssertTrue(f.tabsFolded, "the tabs fold first")
         XCTAssertFalse(f.searchFolded, "the search is still a field")
-        assertSpan("tabs", f.tabs, 162, 298)
-        assertSpan("actions", f.actions, 302, 374)
-        assertSpan("search", f.search, 378, 648)
-        XCTAssertEqual(f.search.width, 270, "the search gave way from 283 to keep the tabs centred")
+        assertSpan("tabs", f.tabs, 260, 396)
+        assertSpan("actions", f.actions, 400, 472)
+        assertSpan("search", f.search, 476, 648)
+        XCTAssertEqual(f.search.width, 172, "the search gave way from 283 to keep the tabs centred")
         XCTAssertTrue(f.fits)
     }
 
     func testTheFoldIsOneThresholdInTheWidthAndTheSearchIsAtItsFloorThere() {
-        let at876 = ShellBarLayout.frames(for: Self.homebrew(bar: 672, window: 876))
-        assertAnswered("tabs", at876.tabs)
-        assertAnswered("search", at876.search)
-        XCTAssertFalse(at876.tabsFolded)
-        XCTAssertFalse(at876.searchFolded)
-        assertSpan("tabs", at876.tabs, 154, 464)
-        assertSpan("search", at876.search, 544, 664)
-        XCTAssertEqual(at876.search.width, 120, "exactly the floor: one point less does not fit")
+        let at672 = ShellBarLayout.frames(for: Self.homebrew(bar: 672))
+        assertAnswered("tabs", at672.tabs)
+        assertAnswered("search", at672.search)
+        XCTAssertFalse(at672.tabsFolded)
+        XCTAssertFalse(at672.searchFolded)
+        assertSpan("tabs", at672.tabs, 154, 464)
+        assertSpan("search", at672.search, 544, 664)
+        XCTAssertEqual(at672.search.width, 120, "exactly the floor: one point less does not fit")
 
-        let at875 = ShellBarLayout.frames(for: Self.homebrew(bar: 671, window: 875))
-        assertAnswered("tabs", at875.tabs)
-        XCTAssertTrue(at875.tabsFolded)
-        XCTAssertFalse(at875.searchFolded)
-        assertSpan("tabs", at875.tabs, 169.5, 305.5)
-        assertSpan("search", at875.search, 385.5, 663)
-        XCTAssertEqual(at875.search.width, 277.5)
+        let at671 = ShellBarLayout.frames(for: Self.homebrew(bar: 671))
+        assertAnswered("tabs", at671.tabs)
+        XCTAssertTrue(at671.tabsFolded)
+        XCTAssertFalse(at671.searchFolded)
+        assertSpan("tabs", at671.tabs, 267.5, 403.5)
+        assertSpan("search", at671.search, 483.5, 663)
+        XCTAssertEqual(at671.search.width, 179.5)
     }
 
     func testTheSearchFoldsToItsMagnifierBeforeAnythingIsClipped() {
-        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 536, cardMinX: 320, window: 860, name: 200))
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 536, name: 200))
 
         assertAnswered("name", f.name)
         assertAnswered("tabs", f.tabs)
@@ -228,7 +290,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testASearchInUseIsNeverFoldedForRoom() {
         let f = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 536, cardMinX: 320, window: 860, name: 200, inUse: true))
+            bar: 536, name: 200, inUse: true))
 
         assertAnswered("search", f.search)
         assertAnswered("name", f.name)
@@ -244,7 +306,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     }
 
     func testTheNameIsTheOnlyZoneThatTruncatesAndOnlyAfterBothFolds() {
-        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 536, cardMinX: 320, window: 860, name: 300))
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 536, name: 300))
 
         assertAnswered("name", f.name)
         assertAnswered("tabs", f.tabs)
@@ -267,7 +329,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     }
 
     func testWhenEvenAZeroWidthNameLeavesNoRoomTheNameKeepsItsPlaceAndFitsIsFalse() {
-        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 250, cardMinX: 320, window: 574, name: 300))
+        let f = ShellBarLayout.frames(for: Self.homebrew(bar: 250, name: 300))
 
         assertAnswered("tabs", f.tabs)
         assertAnswered("actions", f.actions)
@@ -289,7 +351,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testTheNameStartsRightOfTheWindowButtonsWhenTheyAreOverTheCard() {
         let rail = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 1000, cardMinX: 56, window: 1060, buttons: CGRect(x: -37, y: 15, width: 60, height: 14)))
+            bar: 1000, buttons: CGRect(x: -37, y: 15, width: 60, height: 14)))
 
         assertAnswered("name", rail.name)
         assertAnswered("tabs", rail.tabs)
@@ -297,19 +359,19 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("search", rail.search)
         assertSpan("name", rail.name, 31, 161)
         XCTAssertEqual(rail.name.minX, 23 + 8, "the buttons end at 23 and the name stands 8 clear")
-        assertSpan("tabs", rail.tabs, 319, 629)
-        assertSpan("actions", rail.actions, 633, 705)
-        assertSpan("search", rail.search, 709, 992)
+        assertSpan("tabs", rail.tabs, 345, 655)
+        assertSpan("actions", rail.actions, 659, 731)
+        assertSpan("search", rail.search, 735, 992)
 
         // The same buttons beside the default sidebar end at -121 in the bar, left of it, and leave the name alone.
         let sidebar = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, cardMinX: 200, window: 1060, buttons: Self.windowButtons(cardMinX: 200)))
+            bar: 856, buttons: Self.windowButtons(cardMinX: 200)))
         assertAnswered("name", sidebar.name)
         XCTAssertEqual(sidebar.name.minX, 16, "buttons that end left of the bar leave the name at its own start")
     }
 
     func testARectThatIsNotAPlaceIsNoObstacleAndTheRowItStandsOnDoesNotMatter() {
-        let reference = ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060)).name
+        let reference = ShellBarLayout.frames(for: Self.homebrew(bar: 856)).name
         assertAnswered("name", reference)
         XCTAssertEqual(reference.minX, 16, "no buttons: the name starts at its own 16")
 
@@ -322,22 +384,22 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
             CGRect(x: 100, y: 19, width: 60, height: 0),
         ]
         for rect in notPlaces {
-            XCTAssertEqual(ShellBarLayout.frames(for: Self.homebrew(bar: 856, window: 1060, buttons: rect)).name,
+            XCTAssertEqual(ShellBarLayout.frames(for: Self.homebrew(bar: 856, buttons: rect)).name,
                            reference, "buttons \(rect) are not an obstacle")
         }
         XCTAssertEqual(notPlaces.count, 8, "every shape was fed in")
 
         // A real obstacle, then the same one on another row: only the x counts.
         let high = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, buttons: CGRect(x: 40, y: 2, width: 60, height: 14))).name
+            bar: 856, buttons: CGRect(x: 40, y: 2, width: 60, height: 14))).name
         let low = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, buttons: CGRect(x: 40, y: 700, width: 60, height: 14))).name
+            bar: 856, buttons: CGRect(x: 40, y: 700, width: 60, height: 14))).name
         XCTAssertEqual(high.minX, 108, "the buttons end at 100 and the name stands 8 clear")
         XCTAssertEqual(low.minX, 108, "the buttons' row is ignored")
 
         // Buttons that end before the name's own start clear it: 16 wins over 0 + 8.
         let near = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, buttons: CGRect(x: -60, y: 19, width: 60, height: 14))).name
+            bar: 856, buttons: CGRect(x: -60, y: 19, width: 60, height: 14))).name
         XCTAssertEqual(near.minX, 16, "the name starts at the later of 16 and the buttons' end plus 8")
     }
 
@@ -345,7 +407,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testAStatusAloneStandsAtTheRightEdgeBesideTheName() {
         let f = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, name: 130, tabs: 0, folded: 0, actions: 0, status: 70, search: false))
+            bar: 856, name: 130, tabs: 0, folded: 0, actions: 0, status: 70, search: false))
 
         // The subject happened: both zones that exist were given a frame.
         assertAnswered("name", f.name)
@@ -365,7 +427,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     // MARK: - the setting that keeps the search at rest
 
     func testASearchThatRestsIsAMagnifierUntilItIsUsedAndThenReturnsToRest() {
-        let atFloor = Self.homebrew(bar: 656, window: 860, resting: true)
+        let atFloor = Self.homebrew(bar: 656, resting: true)
         let resting = ShellBarLayout.frames(for: atFloor)
 
         assertAnswered("tabs", resting.tabs)
@@ -373,29 +435,29 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("search", resting.search)
         XCTAssertFalse(resting.tabsFolded, "the freed room keeps the tabs open")
         XCTAssertTrue(resting.searchFolded)
-        assertSpan("tabs", resting.tabs, 154, 464)
+        assertSpan("tabs", resting.tabs, 173, 483)
         assertSpan("actions", resting.actions, 536, 608)
         assertSpan("search", resting.search, 612, 648)
 
         var used = atFloor
         used.searchInUse = true
         let open = ShellBarLayout.frames(for: used)
-        let notResting = ShellBarLayout.frames(for: Self.homebrew(bar: 656, window: 860))
+        let notResting = ShellBarLayout.frames(for: Self.homebrew(bar: 656))
         assertAnswered("search", open.search)
         XCTAssertFalse(open.searchFolded)
         XCTAssertEqual(open, notResting, "a search in use is the search of a bar whose search never rests")
         XCTAssertTrue(open.tabsFolded)
-        assertSpan("search", open.search, 378, 648)
+        assertSpan("search", open.search, 476, 648)
 
         XCTAssertEqual(ShellBarLayout.frames(for: atFloor), resting, "resting again equals the first rest")
 
         let wide = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 856, window: 1060, resting: true, buttons: Self.windowButtons(cardMinX: 200)))
+            bar: 856, resting: true, buttons: Self.windowButtons(cardMinX: 200)))
         assertAnswered("search", wide.search)
         XCTAssertTrue(wide.searchFolded, "a resting search is a magnifier whatever the room")
         assertSpan("search", wide.search, 812, 848)
         assertSpan("actions", wide.actions, 736, 808)
-        assertSpan("tabs", wide.tabs, 175, 485)
+        assertSpan("tabs", wide.tabs, 273, 583)
     }
 
     // MARK: - one threshold per verdict
@@ -403,7 +465,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     func testAcrossAOnePointSweepEachVerdictChangesExactlyOnce() {
         var rows: [(window: CGFloat, nameCut: Bool, searchFolded: Bool, tabsFolded: Bool)] = []
         for window in stride(from: CGFloat(500), through: 1100, by: 1) {
-            let f = ShellBarLayout.frames(for: Self.homebrew(bar: window - 204, window: window))
+            let f = ShellBarLayout.frames(for: Self.homebrew(bar: window - 204))
             assertAnswered("name", f.name)
             rows.append((window, f.name.width < 130, f.searchFolded, f.tabsFolded))
         }
@@ -444,19 +506,18 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     }
 
     func testWithoutASearchTheTabsUnfoldAsSoonAsTheyFitWithNoMargin() {
-        var verdicts: [(window: CGFloat, folded: Bool)] = []
-        for window in stride(from: CGFloat(860), through: 900, by: 1) {
-            let f = ShellBarLayout.frames(for: Self.homebrew(
-                bar: window - 324, cardMinX: 320, window: window, search: false))
+        var verdicts: [(bar: CGFloat, folded: Bool)] = []
+        for bar in stride(from: CGFloat(536), through: 576, by: 1) {
+            let f = ShellBarLayout.frames(for: Self.homebrew(bar: bar, search: false))
             assertAnswered("tabs", f.tabs)
-            verdicts.append((window, f.tabsFolded))
+            verdicts.append((bar, f.tabsFolded))
         }
         XCTAssertEqual(verdicts.count, 41, "every width was swept")
 
         let changed = zip(verdicts, verdicts.dropFirst()).filter { $0.folded != $1.folded }
         XCTAssertEqual(changed.count, 1, "the tabs' fold changed \(changed.count) times along the sweep")
-        XCTAssertEqual(verdicts.first { $0.window == 871 }?.folded, true, "folded up to 871")
-        XCTAssertEqual(verdicts.first { $0.window == 872 }?.folded, false, "unfolded from 872")
+        XCTAssertEqual(verdicts.first { $0.bar == 547 }?.folded, true, "folded up to 547")
+        XCTAssertEqual(verdicts.first { $0.bar == 548 }?.folded, false, "unfolded from 548")
         XCTAssertEqual(verdicts.first?.folded, true)
         XCTAssertEqual(verdicts.last?.folded, false)
     }
@@ -464,7 +525,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     // MARK: - what a bad number reads as
 
     func testNoInputOfAnyKindMakesAFrameThatIsNotANumber() {
-        let base = Self.homebrew(bar: 856, window: 1060, status: 70,
+        let base = Self.homebrew(bar: 856, status: 70,
                                  buttons: Self.windowButtons(cardMinX: 200))
         let reference = ShellBarLayout.frames(for: base)
         assertAnswered("name", reference.name)
@@ -483,7 +544,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
         for value in Self.awkward {
             let fields: [(String, WritableKeyPath<Input, CGFloat>)] = [
-                ("barWidth", \.barWidth), ("cardMinX", \.cardMinX), ("windowWidth", \.windowWidth),
+                ("barWidth", \.barWidth),
                 ("nameWidth", \.nameWidth), ("tabsWidth", \.tabsWidth),
                 ("tabsFoldedWidth", \.tabsFoldedWidth), ("actionsWidth", \.actionsWidth),
                 ("statusWidth", \.statusWidth),
@@ -505,14 +566,14 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
                 check(input, "\(field) \(value)")
             }
         }
-        XCTAssertEqual(tried, Self.awkward.count * 12, "every field was fed every awkward number in turn")
+        XCTAssertEqual(tried, Self.awkward.count * 10, "every field was fed every awkward number in turn")
 
         // Every switch with every extreme at once.
         for search in [false, true] {
             for resting in [false, true] {
                 for inUse in [false, true] {
                     for value in [Self.nan, Self.inf, -Self.inf, Self.huge, -Self.huge] {
-                        var input = Input(barWidth: value, cardMinX: value, windowWidth: value, nameWidth: value,
+                        var input = Input(barWidth: value, nameWidth: value,
                                           tabsWidth: value, tabsFoldedWidth: value, actionsWidth: value,
                                           statusWidth: value, hasSearch: search, alwaysCollapseSearch: resting,
                                           searchInUse: inUse, buttons: .infinite)
@@ -523,7 +584,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(tried, Self.awkward.count * 12 + 8 * 5 * 2)
+        XCTAssertEqual(tried, Self.awkward.count * 10 + 8 * 5 * 2)
     }
 
     /// How many zones were given a frame.
@@ -533,12 +594,12 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testANumberThatIsNotANumberReadsAsZeroAndOneBeyondTheCeilingReadsAsTheCeiling() {
         let ceiling: CGFloat = 1_000_000
-        let base = Self.homebrew(bar: 856, window: 1060, status: 70,
+        let base = Self.homebrew(bar: 856, status: 70,
                                  buttons: Self.windowButtons(cardMinX: 200))
         XCTAssertGreaterThan(present(ShellBarLayout.frames(for: base)), 3, "the base page was laid out")
 
         let fields: [(String, WritableKeyPath<Input, CGFloat>)] = [
-            ("barWidth", \.barWidth), ("windowWidth", \.windowWidth), ("nameWidth", \.nameWidth),
+            ("barWidth", \.barWidth), ("nameWidth", \.nameWidth),
             ("tabsWidth", \.tabsWidth), ("tabsFoldedWidth", \.tabsFoldedWidth),
             ("actionsWidth", \.actionsWidth), ("statusWidth", \.statusWidth),
         ]
@@ -565,21 +626,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
             }
         }
         XCTAssertEqual(compared, fields.count * 8, "every width was fed every kind")
-        XCTAssertEqual(differing, 6, "the ceiling and zero differ for every width but the folded one, which a fitting bar never reads")
-
-        // The card's offset is bounded on both sides, and not a number reads 0.
-        func atCard(_ value: CGFloat) -> Frames {
-            var input = base
-            input.cardMinX = value
-            return ShellBarLayout.frames(for: input)
-        }
-        XCTAssertGreaterThan(present(atCard(0)), 3)
-        XCTAssertNotEqual(atCard(ceiling), atCard(0), "the ceiling is a place of its own")
-        XCTAssertEqual(atCard(Self.nan), atCard(0), "an offset that is not a number reads 0")
-        XCTAssertEqual(atCard(ceiling + 1), atCard(ceiling))
-        XCTAssertEqual(atCard(Self.inf), atCard(ceiling))
-        XCTAssertEqual(atCard(-ceiling - 1), atCard(-ceiling))
-        XCTAssertEqual(atCard(-Self.inf), atCard(-ceiling))
+        XCTAssertEqual(differing, 5, "the ceiling and zero differ for every width but the folded one, which a fitting bar never reads")
 
         // Buttons that end past the ceiling are read as ending at it.
         func nameStart(_ rect: CGRect) -> CGFloat {
@@ -597,7 +644,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     func testWithNoTabsFitsIsWhetherTheNameCouldStandAtItsStart() {
         func name(_ bar: CGFloat) -> Frames {
             ShellBarLayout.frames(for: Self.homebrew(
-                bar: bar, window: bar + 204, name: 100, tabs: 0, folded: 0, actions: 0, search: false))
+                bar: bar, name: 100, tabs: 0, folded: 0, actions: 0, search: false))
         }
         let at23 = name(23)
         XCTAssertNotEqual(at23.name, .zero, "a present name keeps its frame")
@@ -617,7 +664,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
         // With a search and actions to its right and no room at all.
         let none = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 100, window: 304, name: 100, tabs: 0, folded: 0))
+            bar: 100, name: 100, tabs: 0, folded: 0))
         XCTAssertNotEqual(none.name, .zero)
         XCTAssertEqual(none.name.minX, 16)
         XCTAssertEqual(none.name.width, 0)
@@ -629,7 +676,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testWithNoTabsASearchOutOfRoomFoldsToSpareTheName() {
         let narrow = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 300, window: 504, name: 100, tabs: 0, folded: 0))
+            bar: 300, name: 100, tabs: 0, folded: 0))
         assertAnswered("name", narrow.name)
         assertAnswered("search", narrow.search)
         XCTAssertTrue(narrow.searchFolded, "the open field would have cost the name 24")
@@ -641,7 +688,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         XCTAssertTrue(narrow.fits)
 
         let used = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 300, window: 504, name: 100, tabs: 0, folded: 0, inUse: true))
+            bar: 300, name: 100, tabs: 0, folded: 0, inUse: true))
         assertAnswered("search", used.search)
         XCTAssertFalse(used.searchFolded, "a search in use is never folded for room")
         assertSpan("name", used.name, 16, 92)
@@ -650,7 +697,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         XCTAssertTrue(used.fits)
 
         let wide = ShellBarLayout.frames(for: Self.homebrew(
-            bar: 500, window: 704, name: 100, tabs: 0, folded: 0))
+            bar: 500, name: 100, tabs: 0, folded: 0))
         assertAnswered("search", wide.search)
         XCTAssertFalse(wide.searchFolded, "with room the field stays open")
         assertSpan("name", wide.name, 16, 116)
@@ -662,14 +709,14 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     func testTabsAloneStandCentredAndThenAgainstTheRightEdge() {
         func page(_ bar: CGFloat) -> Frames {
             ShellBarLayout.frames(for: Self.homebrew(
-                bar: bar, window: 1060, actions: 0, search: false,
+                bar: bar, actions: 0, search: false,
                 buttons: Self.windowButtons(cardMinX: 200)))
         }
         let wide = page(856)
         assertAnswered("name", wide.name)
         assertAnswered("tabs", wide.tabs)
         assertSpan("name", wide.name, 16, 146)
-        assertSpan("tabs", wide.tabs, 175, 485)
+        assertSpan("tabs", wide.tabs, 273, 583)
         XCTAssertEqual(wide.actions, .zero)
         XCTAssertEqual(wide.search, .zero)
         XCTAssertEqual(wide.status, .zero)
@@ -687,18 +734,18 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("tabs", folded.tabs)
         XCTAssertTrue(folded.tabsFolded)
         assertSpan("name", folded.name, 16, 146)
-        assertSpan("tabs", folded.tabs, 262, 398)
+        assertSpan("tabs", folded.tabs, 167.5, 303.5)
         XCTAssertTrue(folded.fits)
     }
 
     func testTabsThatCannotFoldNeverFoldWhateverTheBarOverflowsBy() {
         func page(folded: CGFloat, search: Bool) -> Frames {
-            ShellBarLayout.frames(for: Self.homebrew(bar: 500, window: 800, folded: folded, search: search))
+            ShellBarLayout.frames(for: Self.homebrew(bar: 500, folded: folded, search: search))
         }
         let reference = page(folded: 136, search: false)
         assertAnswered("tabs", reference.tabs)
         XCTAssertTrue(reference.tabsFolded, "a capsule narrower than the tabs folds them")
-        assertSpan("tabs", reference.tabs, 154, 290)
+        assertSpan("tabs", reference.tabs, 182, 318)
         assertSpan("name", reference.name, 16, 146)
 
         for folded in [0, -5, 310, 400, Self.nan, Self.inf] as [CGFloat] {
@@ -724,14 +771,14 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
 
     func testARestingSearchStaysTheMagnifierWhenTheTabsMustFold() {
         func page(bar: CGFloat, name: CGFloat = 130) -> Frames {
-            ShellBarLayout.frames(for: Self.homebrew(bar: bar, window: 800, name: name, resting: true))
+            ShellBarLayout.frames(for: Self.homebrew(bar: bar, name: name, resting: true))
         }
         let folded = page(bar: 500)
         assertAnswered("tabs", folded.tabs)
         assertAnswered("search", folded.search)
         XCTAssertTrue(folded.tabsFolded)
         XCTAssertTrue(folded.searchFolded)
-        assertSpan("tabs", folded.tabs, 154, 290)
+        assertSpan("tabs", folded.tabs, 182, 318)
         assertSpan("search", folded.search, 456, 492)
         XCTAssertEqual(folded.search.width, 36, "the room the fold freed does not open the field")
         assertSpan("actions", folded.actions, 380, 452)
@@ -757,9 +804,9 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
     }
 
     func testAStatusStandsAtTheEdgeAndTheSearchAndTheActionsStandBeforeIt() {
-        func page(bar: CGFloat = 856, window: CGFloat = 1060, actions: CGFloat = 72, search: Bool = true) -> Frames {
+        func page(bar: CGFloat = 856, actions: CGFloat = 72, search: Bool = true) -> Frames {
             ShellBarLayout.frames(for: Self.homebrew(
-                bar: bar, window: window, actions: actions, status: 70, search: search,
+                bar: bar, actions: actions, status: 70, search: search,
                 buttons: Self.windowButtons(cardMinX: 200)))
         }
         let all = page()
@@ -768,10 +815,11 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("actions", all.actions)
         assertAnswered("tabs", all.tabs)
         assertSpan("status", all.status, 786, 856)
-        assertSpan("search", all.search, 565, 782)
-        XCTAssertEqual(all.search.width, 217, "the field gave 66 to keep the tabs centred")
-        assertSpan("actions", all.actions, 489, 561)
-        assertSpan("tabs", all.tabs, 175, 485)
+        assertSpan("search", all.search, 662, 782)
+        XCTAssertEqual(all.search.width, 120, "the field is at its floor: the centred tabs would have left it 119")
+        assertSpan("actions", all.actions, 586, 658)
+        assertSpan("tabs", all.tabs, 272, 582)
+        XCTAssertEqual(all.tabs.midX, 427, "one short of the bar's centre 428: the chain holds the tabs' right edge at 582")
         assertSpan("name", all.name, 16, 146)
         XCTAssertTrue(all.fits)
 
@@ -779,27 +827,27 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         assertAnswered("actions", actions.actions)
         assertSpan("status", actions.status, 786, 856)
         assertSpan("actions", actions.actions, 710, 782)
-        assertSpan("tabs", actions.tabs, 175, 485)
+        assertSpan("tabs", actions.tabs, 273, 583)
         XCTAssertEqual(actions.search, .zero)
         XCTAssertTrue(actions.fits)
 
         let search = page(actions: 0)
         assertAnswered("search", search.search)
         assertSpan("status", search.status, 786, 856)
-        assertSpan("search", search.search, 499, 782)
-        XCTAssertEqual(search.search.width, 283)
-        assertSpan("tabs", search.tabs, 175, 485)
+        assertSpan("search", search.search, 587, 782)
+        XCTAssertEqual(search.search.width, 195, "the field takes what the centred tabs leave")
+        assertSpan("tabs", search.tabs, 273, 583)
         XCTAssertEqual(search.actions, .zero)
         XCTAssertTrue(search.fits)
 
-        let squeezed = page(bar: 656, window: 860)
+        let squeezed = page(bar: 656)
         assertAnswered("tabs", squeezed.tabs)
         XCTAssertTrue(squeezed.tabsFolded)
         XCTAssertFalse(squeezed.searchFolded)
         assertSpan("status", squeezed.status, 586, 656)
-        assertSpan("search", squeezed.search, 378, 582)
-        assertSpan("actions", squeezed.actions, 302, 374)
-        assertSpan("tabs", squeezed.tabs, 162, 298)
+        assertSpan("search", squeezed.search, 462, 582)
+        assertSpan("actions", squeezed.actions, 386, 458)
+        assertSpan("tabs", squeezed.tabs, 246, 382)
         assertSpan("name", squeezed.name, 16, 146)
         XCTAssertTrue(squeezed.fits)
     }
@@ -823,7 +871,7 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
                             for status in [CGFloat(0), 70] {
                                 for s in searches {
                                     let input = Input(
-                                        barWidth: bar, cardMinX: cardMinX, windowWidth: bar + cardMinX + 4,
+                                        barWidth: bar,
                                         nameWidth: name, tabsWidth: tabs, tabsFoldedWidth: tabs == 0 ? 0 : 136,
                                         actionsWidth: actions, statusWidth: status, hasSearch: s.has,
                                         alwaysCollapseSearch: s.resting, searchInUse: s.inUse,

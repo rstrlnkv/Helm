@@ -263,7 +263,6 @@ final class TheBarsActionsKeepTheirReserveTests: XCTestCase {
         bar.setView(NSView(), for: .tabs)
         bar.setView(zone.view, for: .actions)
         bar.measures = measures
-        bar.place = Bar.Place(cardMinX: 200, windowWidth: 856, buttons: .null)
         bar.frame = NSRect(x: 0, y: 0, width: 856, height: 52)
         bar.layoutSubtreeIfNeeded()
 

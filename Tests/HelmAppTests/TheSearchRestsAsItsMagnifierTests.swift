@@ -290,7 +290,6 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         }
         let rig = Rig(model: model, channel: channel, zone: zone, bar: bar, window: window)
         declare(rig, page: page)
-        bar.view.place = ShellPageBarView.Place(cardMinX: 200, windowWidth: 1060, buttons: .null)
         bar.view.layoutSubtreeIfNeeded()
         return rig
     }
@@ -392,9 +391,8 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         rig.model.selection = .general
         rests("a page without search and back")
 
-        rig.bar.view.place = ShellPageBarView.Place(cardMinX: 56, windowWidth: 1060, buttons: .null)
         rig.bar.view.frame = NSRect(x: 0, y: 0, width: 1004, height: 52)
-        rests("a change of place")
+        rests("a change of the bar's width")
 
         AppSettings.barAppearance = .liquidGlass
         XCTAssertTrue(runMain(until: 2) { rig.zone.plate.barAppearance == .liquidGlass },
@@ -439,7 +437,7 @@ final class TheSearchRestsAsItsMagnifierTests: XCTestCase {
         XCTAssertEqual(rig.zone.plate.frame.width, 283, "the bar never widened the plate after the press")
         XCTAssertEqual(passes, 1, "opened in \(passes) passes")
         XCTAssertEqual(changes, 1, "the press changed the bar's verdict \(changes) times")
-        XCTAssertFalse(rig.bar.view.verdicts.tabsFolded, "the open field folded the tabs at 1060")
+        XCTAssertFalse(rig.bar.view.verdicts.tabsFolded, "the open field folded the tabs on a bar of 856")
         XCTAssertFalse(rig.bar.view.verdicts.searchFolded, "the bar still holds the search folded")
     }
 

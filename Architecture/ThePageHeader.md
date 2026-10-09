@@ -17,7 +17,7 @@ lists the files that publish.
 The page bar's zones are the name, the tabs, the actions, the search and the status (`ShellPageBarView.Zone`), framed by `ShellBarLayout`. The name and the status are `ShellPageBar`'s own hosted views (`NameZoneView`, `StatusZoneView`); the other three are `ShellBarTabs`, `ShellBarActions` and `ShellBarSearch`. The name is drawn under both styles, with the module's plate only under `PageBarStyle.moduleName`; the status only under that style on a page with no tabs, no actions and no search.
 
 Left to right: the name, which starts `ShellBarLayout.leading` in, or right of the window's buttons where they
-stand over the card; the tabs, centred on the window and held between the name and what stands at the right; the
+stand over the card; the tabs, centred on the bar and held between the name and what stands at the right; the
 actions capsule; the search field, last. A status, where one is drawn, ends `ShellBarLayout.statusTrailing` from
 the bar's right edge. `ShellBarLayout.frames` answers one frame per zone and two verdicts — the tabs folded to one
 item, the search folded to its magnifier — and its header holds what gives way and in which order;
