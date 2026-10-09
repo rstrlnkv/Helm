@@ -13,6 +13,8 @@ import HelmUI
 /// obstacle the page bar is handed is the closed capsule's frame in the rail, the buttons' union
 /// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens. The bar
 /// is also handed `reach`, the hover zone, and opens no menu inside it.
+/// While the sidebar's width travels to a fold, `ShellContentView` asks for the rail's placement from the turn of the
+/// flip until the target width is written or the run completes, in both directions, so the placement changes once, at the run's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
 /// Assumed, not measured: that it lays them out from the titlebar's top, so that a change of the titlebar's
@@ -239,7 +241,7 @@ final class ShellWindowButtons {
 
     // MARK: - placing
 
-    /// Puts the buttons and the capsule where the sidebar's width wants them; returns the obstacle in
+    /// Puts the buttons and the capsule where `rail` says; returns the obstacle in
     /// the capsule's superview's coordinates, `.null` when nothing is held (full screen, no window, a
     /// button missing or hidden, no place for the home).
     @discardableResult

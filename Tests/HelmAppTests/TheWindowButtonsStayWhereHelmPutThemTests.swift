@@ -234,6 +234,57 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         folded("second fold")
     }
 
+    /// **While a fold is asked for and has not arrived, the rail's placement holds, both ways.** Nothing waits: the
+    /// width is still 200 in the turn of the flip, and the capsule is already out and the buttons already away;
+    /// unfolding, the width reaches 200 only by the final write, and only then do the buttons come home.
+    func testWhileTheFoldTravelsTheButtonsKeepTheRailsPlacement() throws {
+        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing was folded"),
+              let owner = owner(of: rig) else { return }
+        let shell = rig.shell.shell
+        shell.reducesMotion = { false }
+        let reference = reference(like: rig)
+        guard let (own, _) = threeButtons(rig, reference) else { return }
+        let home = topLeft(of: reference)
+        XCTAssertEqual(home.count, 3, "the reference holds \(home.count) buttons by top-left: nothing was compared")
+
+        func layOut() { rig.window.contentView?.layoutSubtreeIfNeeded() }
+        func alphas() -> [CGFloat] { own.map(\.alphaValue) }
+        layOut()
+        XCTAssertTrue(owner.reach.isNull, "the window did not open expanded: the fixture is wrong (reach \(owner.reach))")
+        XCTAssertEqual(alphas(), [1, 1, 1], "the window did not open with its buttons: the fixture is wrong")
+
+        rig.shell.flipSidebar()
+        layOut()
+        XCTAssertEqual(shell.sidebarWidth, ShellGeometry.defaultSidebarWidth,
+                       "the width was \(shell.sidebarWidth) in the turn of the flip: the fold did not travel")
+        XCTAssertNotNil(shell.foldTarget, "no fold was asked: the fixture is wrong")
+        XCTAssertFalse(owner.reach.isNull, "folding, the capsule was not out in the turn of the flip (reach \(owner.reach))")
+        XCTAssertEqual(alphas(), [0, 0, 0], "folding, the buttons were \(alphas()) in the turn of the flip, not 0")
+
+        shell.fold(to: ShellGeometry.railWidth, animated: false)
+        layOut()
+        XCTAssertEqual(shell.sidebarWidth, ShellGeometry.railWidth, "the cut to the rail left the width at \(shell.sidebarWidth)")
+        rig.shell.flipSidebar()
+        layOut()
+        XCTAssertNotNil(shell.foldTarget, "no unfold was asked: the fixture is wrong")
+        XCTAssertFalse(owner.reach.isNull, "unfolding, the capsule went before the target was written (reach \(owner.reach))")
+        XCTAssertEqual(alphas(), [0, 0, 0], "unfolding, the buttons were \(alphas()) before the target was written, not 0")
+
+        shell.sidebarWidth = ShellGeometry.defaultSidebarWidth
+        layOut()
+        XCTAssertTrue(owner.reach.isNull, "after the target was written the capsule still stands (reach \(owner.reach))")
+        XCTAssertEqual(alphas(), [1, 1, 1], "after the target was written the buttons were \(alphas()), not 1")
+        let held = topLeft(of: rig.window)
+        for i in 0..<3 {
+            guard let was = home[i], let now = held[i] else {
+                XCTFail("button \(i) is missing (home \(String(describing: home[i])), now \(String(describing: held[i])))")
+                continue
+            }
+            XCTAssertEqual(now.x, was.x + ShellGeometry.buttonShift, accuracy: 0.5, "button \(i) stands at \(now), home \(was)")
+            XCTAssertEqual(now.y, was.y + ShellGeometry.buttonDrop, accuracy: 0.5, "button \(i) stands at \(now), home \(was)")
+        }
+    }
+
     func testInTheRailTheRealButtonsOpenOutOfTheCapsule() throws {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing opened"),
               let owner = owner(of: rig) else { return }

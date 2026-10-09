@@ -319,15 +319,24 @@ enum SettingsSelection: Hashable {
     private let bar: ShellPageBarView
 
     private let fold = SidebarFold()
-    private var foldWatch: AnyCancellable?
+
+    /// Where the fold state is remembered (`AppSettings.sidebarCollapsed(in:)`).
+    private let store: NamespacedStore
+
+    /// The width the sidebar has when expanded, read from the store once, when the window is built.
+    /// Nothing in the window changes it, so an unfold always ends here.
+    private let expandedWidth: CGFloat
 
     init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice,
-         bar: ShellPageBarView) {
+         bar: ShellPageBarView, store: NamespacedStore = AppSettings.store) {
         self.model = model
         self.toolbarChannel = toolbarChannel
         self.band = band
         self.bar = bar
+        self.store = store
+        self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
+        fold.collapsed = AppSettings.sidebarCollapsed(in: store)
     }
     required init?(coder: NSCoder) { fatalError("not supported") }
 
@@ -336,19 +345,35 @@ enum SettingsSelection: Hashable {
 
     override func loadView() {
         view = shell
-        // Stage 1 opens expanded; whether the sidebar stays folded across a
-        // launch is not remembered. The sink also sets the width once, now.
-        foldWatch = fold.$collapsed.sink { [weak self] collapsed in
-            self?.shell.sidebarWidth = collapsed
-                ? ShellGeometry.railWidth
-                : ShellGeometry.sidebarWidth(stored: ShellGeometry.defaultSidebarWidth)
+        shell.fold(to: width(collapsed: fold.collapsed), animated: false)
+    }
+
+    /// Whether the sidebar is folded to the rail. Setting it is a cut and is not remembered: the
+    /// state a person left is written by `flipSidebar()` alone.
+    var sidebarCollapsed: Bool {
+        get { fold.collapsed }
+        set {
+            fold.collapsed = newValue
+            if isViewLoaded { shell.fold(to: width(collapsed: newValue), animated: false) }
         }
     }
 
-    /// Whether the sidebar is folded to the rail.
-    var sidebarCollapsed: Bool {
-        get { fold.collapsed }
-        set { fold.collapsed = newValue }
+    /// A person's flip of the sidebar, from the sidebar's own control: the state is written to the
+    /// store first, then the width travels (`ShellContentView.fold(to:animated:)`) and the rows'
+    /// flag changes inside the animation that goes with it; where the width was cut, the flag is
+    /// written plainly.
+    func flipSidebar() {
+        let collapsed = !fold.collapsed
+        AppSettings.setSidebarCollapsed(collapsed, in: store)
+        if shell.fold(to: width(collapsed: collapsed), animated: true) {
+            withAnimation(HelmMotion.sidebarFold) { fold.collapsed = collapsed }
+        } else {
+            fold.collapsed = collapsed
+        }
+    }
+
+    private func width(collapsed: Bool) -> CGFloat {
+        collapsed ? ShellGeometry.railWidth : expandedWidth
     }
 
     private func makeShell() -> ShellContentView {
@@ -359,7 +384,7 @@ enum SettingsSelection: Hashable {
         // sizing options off makes every pane fill whatever the window gives
         // it and never the other way around.
         let sidebar = NSHostingController(
-            rootView: SidebarInTheShell(model: model, fold: fold)
+            rootView: SidebarInTheShell(model: model, fold: fold) { [weak self] in self?.flipSidebar() }
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // The window survives closing (`isReleasedWhenClosed = false`),
                 // so without this both panes went on re-rendering — and keeping
@@ -415,9 +440,9 @@ enum SettingsSelection: Hashable {
     }
 }
 
-/// Whether the sidebar is folded to the rail, held in memory by the shell's controller and
-/// read by the one hosting view of the sidebar: it is never rebuilt for a fold,
-/// so a permission state it has probed stays.
+/// Whether the sidebar is folded to the rail, held by the shell's controller (which reads it from
+/// the store when it is built and writes it on a person's flip) and read by the one hosting view
+/// of the sidebar: it is never rebuilt for a fold, so a permission state it has probed stays.
 @MainActor private final class SidebarFold: ObservableObject {
     @Published var collapsed = false
 }
@@ -425,9 +450,10 @@ enum SettingsSelection: Hashable {
 private struct SidebarInTheShell: View {
     @ObservedObject var model: SettingsModel
     @ObservedObject var fold: SidebarFold
+    let flip: () -> Void
 
     var body: some View {
-        ShellSidebar(model: model, collapsed: fold.collapsed) { fold.collapsed.toggle() }
+        ShellSidebar(model: model, collapsed: fold.collapsed, toggleCollapsed: flip)
     }
 }
 

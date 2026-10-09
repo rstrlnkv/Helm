@@ -47,7 +47,7 @@ public enum HelmMotion {
     /// otherwise carry the number as a literal of its own, which is the
     /// duplicate-constant shape nothing goes red on.
     ///
-    /// **Not the same curve.** `interface` is a spring and an animation group
+    /// **Not the same curve.** `interface` is a spring and the switcher's fill group
     /// runs AppKit's own timing function; what is shared here is the length, so
     /// the two move for the same time and not along the same path. A caller
     /// using this is responsible for its own `reduceMotion` branch, because a
@@ -56,11 +56,25 @@ public enum HelmMotion {
 
     /// `interface` for a `CALayer`: Core Animation takes a timing function and has nowhere to put a
     /// spring, so the curve is the nearest one without an overshoot — it leaves fast and settles slowly,
-    /// as a snappy spring does — and its length is `interfaceDuration`, which is the part the two share.
-    /// A caller using this is responsible for its own `reduceMotion` branch, as with the duration.
+    /// as a snappy spring does. Its length is `interfaceDuration` where the caller runs for that long;
+    /// the sidebar's fold runs this curve for `sidebarFoldDuration`, as its SwiftUI half, `sidebarFold`,
+    /// is a snappy spring given the same duration. A caller using this is responsible for its own
+    /// `reduceMotion` branch, as with the duration.
     public static var interfaceCurve: CAMediaTimingFunction {
         CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
     }
+
+    /// The sidebar folding to the rail and unfolding again: the rows' half of the move, written inside
+    /// `withAnimation` where the fold flag lands. The width itself is AppKit's and runs for
+    /// `sidebarFoldDuration` on `interfaceCurve`; the shell asks for this token only when it asked for
+    /// that, which is only when `travels` allows it, so both are asked for in the same turn and given the same duration.
+    public static var sidebarFold: Animation {
+        reduced ? instant : .snappy(duration: sidebarFoldDuration)
+    }
+
+    /// `sidebarFold`'s duration alone, in seconds, for the width that AppKit animates. A caller using
+    /// this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
+    public static var sidebarFoldDuration: TimeInterval { 0.26 }
 
     /// The header strip lighting under the pointer, and going out again.
     ///
@@ -210,8 +224,9 @@ public enum HelmMotion {
 
     /// Whether a chosen object may travel up to its raised place, rather than
     /// standing there at once — the screenshot editor's palette lifts the picked
-    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, and the bar's
-    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`).
+    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the bar's
+    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`), and the
+    /// settings window's sidebar travels to the rail or back (`ShellContentView.fold(to:animated:)`).
     ///
     /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:
     /// a decision made of an argument can be asserted, one that reads

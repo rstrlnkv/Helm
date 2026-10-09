@@ -97,6 +97,27 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
     }
 
+    /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
+    /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
+    /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not
+    /// sealed; the two functions take the store so a test reads and writes a scratch one.
+    static func sidebarCollapsed(in store: NamespacedStore) -> Bool {
+        store.bool("sidebarCollapsed", default: false)
+    }
+
+    static func setSidebarCollapsed(_ value: Bool, in store: NamespacedStore) {
+        store.set(value, for: "sidebarCollapsed")
+    }
+
+    /// **The width the sidebar has when it is expanded**, brought into `ShellGeometry.sidebarRange`
+    /// (`ShellGeometry.sidebarWidth(stored:)`). A missing key and a value that is not a number read
+    /// as not-a-number, which that function reads as `ShellGeometry.defaultSidebarWidth`; an
+    /// infinity reads as the bound on its side. Nothing in the window writes it (nothing drags the
+    /// sidebar), and a refused read writes nothing back. Read once, when a window is built; not sealed.
+    static func sidebarWidth(in store: NamespacedStore) -> CGFloat {
+        ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
+    }
+
     /// **Whether the settings window's search rests as AppKit's magnifier at
     /// every width**, rather than as a field wherever the bar has room for
     /// one — chosen from the toolbar's own right-click menu

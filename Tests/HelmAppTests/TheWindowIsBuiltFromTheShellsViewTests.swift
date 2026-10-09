@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import HelmRuntime
 import XCTest
 import HelmTestSupport
 import Module_KeepAwake_UI
@@ -193,15 +194,15 @@ final class TheWindowIsBuiltFromTheShellsViewTests: XCTestCase {
     @MainActor private func bareController() -> SettingsShellViewController {
         let c = SettingsShellViewController(model: SettingsModel(host: ModuleHost.shared),
                                             toolbarChannel: HelmWindowToolbarChannel(), band: .onMacOS(27),
-                                            bar: ShellPageBarView())
+                                            bar: ShellPageBarView(), store: AppSettings.store.over(InMemoryKeyValueStore()))
         c.loadViewIfNeeded()
         return c
     }
 
-    /// Total failure prints: "the sidebar opened <w> wide, not 200" / "the sidebar was <w> wide after folding (round <n>), not
+    /// With nothing stored the sidebar is the default 200 or the rail, and each width reaches the layout. Total failure prints: "the sidebar opened <w> wide, not 200" / "the sidebar was <w> wide after folding (round <n>), not
     /// 56" / "the card started at <x> where the sidebar is <w>: the width did not reach the layout" / "the
     /// sidebar was <w> after unfolding (round <n>), not 200".
-    @MainActor func testTheSidebarIsTwoHundredOrTheRailAndNothingBetween() {
+    @MainActor func testWithNothingStoredTheSidebarIsTwoHundredOrTheRail() {
         let c = bareController()
         c.shell.frame = CGRect(x: 0, y: 0, width: 1000, height: 700)
         XCTAssertEqual(c.shell.sidebarWidth, 200, "the sidebar opened \(c.shell.sidebarWidth) wide, not 200")

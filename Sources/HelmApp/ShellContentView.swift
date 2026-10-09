@@ -1,5 +1,6 @@
 import AppKit
 import HelmRuntime
+import HelmUI
 
 /// **The shell's content view: glass at the bottom, the sidebar on it, and the
 /// opaque card inset from the window's edge, with the pane clipped inside the
@@ -29,7 +30,13 @@ import HelmRuntime
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
 /// `viewDidMoveToWindow`, the window's occlusion notification,
-/// `sidebarWidth`'s setter and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// `sidebarWidth`'s setter (every write) and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+///
+/// **The fold is the width travelling.** `fold(to:animated:)` asks AppKit to run `sidebarWidth` and writes
+/// no frame: besides the width it sets only `foldTarget` and its run counter (`foldRun`), and asks for a layout. AppKit's animator writes the
+/// width while a run lasts, every write asks for a layout, and `layout()` places the card, the bar and the
+/// pane from the width standing then. The rail's placement of the buttons is asked for from the turn of the
+/// flip and given up when the target width is written or the run completes.
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
@@ -40,9 +47,44 @@ import HelmRuntime
 final class ShellContentView: NSView {
 
     /// The sidebar's width; the view does not clamp it (`ShellGeometry.railWidth` is
-    /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout.
-    var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
-        didSet { needsLayout = true }
+    /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout, and writing the
+    /// width a fold is travelling to ends that fold's claim on the buttons (`foldTarget`).
+    ///
+    /// `@objc dynamic` so that `animator()` can run it: AppKit's animator writes it while a fold
+    /// lasts, and `layout()` places everything from the value standing then. `fold(to:animated:)` is the caller that
+    /// asks for a run; every other write is a cut.
+    @objc dynamic var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
+        didSet {
+            if sidebarWidth == foldTarget { foldTarget = nil }
+            needsLayout = true
+        }
+    }
+
+    /// What a fold asked for: the width it starts from, the width it ends at and for how long.
+    struct Fold: Equatable {
+        let from: CGFloat
+        let to: CGFloat
+        let duration: TimeInterval
+    }
+
+    /// Whether the system's Reduce Motion is on, asked when a fold would travel; a test hands in its own answer.
+    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
+
+    /// Told each fold the view asks AppKit for, never a cut.
+    var onFold: (Fold) -> Void = { _ in }
+
+    /// The width a fold in flight is travelling to, nil when none is. While it is set the buttons keep
+    /// the rail's placement (`layout()`). It is cleared by the write of the target itself (`sidebarWidth`),
+    /// by a cut (`fold(to:animated:)`), by the run's completion when it is still that run's (`foldRun`),
+    /// and by the view's move to another window (`viewDidMoveToWindow`), which finishes the fold.
+    /// If none of them came, the buttons would stay in the rail's placement at an expanded width.
+    private(set) var foldTarget: CGFloat?
+
+    /// Counts the runs and cuts, so a completion that arrives after a later one is ignored.
+    private var foldRun = 0
+
+    override class func defaultAnimation(forKey key: NSAnimatablePropertyKey) -> Any? {
+        key == "sidebarWidth" ? CABasicAnimation() : super.defaultAnimation(forKey: key)
     }
 
     /// Carries the fill, the radius and the shadow; never masks.
@@ -145,6 +187,7 @@ final class ShellContentView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         buttons.attach(to: window)
+        if let foldTarget { fold(to: foldTarget, animated: false) }
         if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
         shownObserver = nil
         if let window {
@@ -196,6 +239,45 @@ final class ShellContentView: NSView {
         return nil
     }
 
+    // MARK: - the fold
+
+    /// **Brings the sidebar to `width`: one run of the width on `HelmMotion.interfaceCurve` for
+    /// `HelmMotion.sidebarFoldDuration` when `animated`, the width standing is finite and differs from `width`, and
+    /// Reduce Motion is off; a cut otherwise, except a `width` that is not finite, which is refused (below).** Returns whether a run was asked for. It writes no frame:
+    /// `layout()` places the card, the sidebar, the bar and the buttons from the width standing, so there
+    /// is one writer of frames. A cut is a plain write and drops the fold's claim (`foldTarget`); no row
+    /// holds that AppKit's run in flight then stops writing. A `width` that is not finite (not-a-number or an infinity) is a caller's
+    /// defect and is refused whole (nothing written, nothing heard, false): the stored width never gets
+    /// here unclamped. The fold itself and the lights giving way to the capsule are not seen on a screen.
+    @discardableResult
+    func fold(to width: CGFloat, animated: Bool) -> Bool {
+        guard width.isFinite else { return false }
+        foldRun += 1
+        guard animated, sidebarWidth.isFinite, sidebarWidth != width,
+              HelmMotion.travels(reduceMotion: reducesMotion()) else {
+            foldTarget = nil
+            sidebarWidth = width
+            return false
+        }
+        let run = foldRun
+        let fold = Fold(from: sidebarWidth, to: width, duration: HelmMotion.sidebarFoldDuration)
+        foldTarget = width
+        needsLayout = true
+        onFold(fold)
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = fold.duration
+            context.timingFunction = HelmMotion.interfaceCurve
+            animator().sidebarWidth = width
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.foldRun == run else { return }
+                self.foldTarget = nil
+                self.needsLayout = true
+            }
+        })
+        return true
+    }
+
     // MARK: - layout
 
     override func layout() {
@@ -209,7 +291,7 @@ final class ShellContentView: NSView {
         clip.frame = card.bounds
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
-        let obstacle = buttons.place(rail: ShellGeometry.isRail(sidebarWidth: sidebarWidth))
+        let obstacle = buttons.place(rail: foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth))
         let reach = buttons.reach
         placeBar(buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
                  reach: reach.isNull ? .null : convert(reach, to: bar))

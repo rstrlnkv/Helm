@@ -35,8 +35,8 @@ import HelmUI
 /// **The band is the same arithmetic and it is read out of the same file.**
 /// 860 − 320 − 4 = 536 is the narrowest pane the shell's geometry allows (the
 /// window's minimum, the widest of `ShellGeometry.sidebarRange`, the card's gap to
-/// the trailing edge); the window itself sets the sidebar to 200 or the rail and
-/// nothing drags it. `HomebrewSplit` answers the top. Read rather than copied, so the day the band closes this
+/// the trailing edge); the window is at that width only with a stored sidebar
+/// width, which nothing in the window writes, and nothing drags it. `HomebrewSplit` answers the top. Read rather than copied, so the day the band closes this
 /// fails and says the file is about a state nobody can reach instead of passing
 /// over a page that no longer has the problem.
 ///

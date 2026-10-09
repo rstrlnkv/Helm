@@ -24,13 +24,13 @@ import HelmUI
 /// width, which is what this file now reads for.
 ///
 /// **The band is the one the shell's geometry allows, not one the window
-/// reaches.** `SettingsWindow` refuses a content width under 860,
+/// reaches without a stored width.** `SettingsWindow` refuses a content width under 860,
 /// `ShellGeometry.sidebarRange` ends at 320 and the card keeps 4 pt from the
 /// trailing edge, so the narrowest pane that geometry allows is
 /// 860 − 320 − 4 = 536 pt — twenty-four points under the threshold. Nothing in
-/// `Sources` drags the sidebar: the window sets it to
+/// `Sources` drags the sidebar or writes a stored width: with none the window sets it to
 /// `ShellGeometry.defaultSidebarWidth` or `ShellGeometry.railWidth`, and at the
-/// default the pane is 656 pt, above the threshold. The three numbers are read
+/// default the pane is 656 pt, above the threshold; only a stored width reaches 536. The three numbers are read
 /// out of `Sources/HelmApp/SettingsWindow.swift` and
 /// `Sources/HelmApp/ShellGeometry.swift` rather than copied here, so the day
 /// the band closes this file fails and says so instead of passing over a page

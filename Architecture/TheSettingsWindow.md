@@ -19,7 +19,7 @@ to the pane's top safe-area inset what the bar's height needs beyond the pane's 
 so a page starts under the bar.
 
 One size serves every page: the reasons are the doc comments of `defaultSize` and
-`minSize`, and the narrowest pane a page is drawn in is `minSize` less the sidebar and the card's inset (`ShellGeometry.defaultSidebarWidth`, `ShellGeometry.inset`): the window sets the sidebar to that width or to `ShellGeometry.railWidth`, and nothing drags it.
+`minSize`, and the narrowest pane a page is drawn in is `minSize` less the widest sidebar and the card's inset (the upper bound of `ShellGeometry.sidebarRange`, `ShellGeometry.inset`), reached only with a stored width, which nothing in the window writes; with no stored width the sidebar is `ShellGeometry.defaultSidebarWidth`. The window sets the sidebar to the stored width brought into the range (`AppSettings.sidebarWidth(in:)`), to that default or to `ShellGeometry.railWidth`, and nothing drags it. A person's flip of the sidebar is remembered (`AppSettings.sidebarCollapsed(in:)`) and runs the width from one to the other for `HelmMotion.sidebarFoldDuration` (`ShellContentView.fold(to:animated:)`); a fold set from code, a flip back to the width already standing and any fold under Reduce Motion are cuts.
 Both detail frames, `SettingsDetail`'s and `ModuleDetailView`'s, are pinned
 `.topLeading`; the comment on `ModuleDetailView`'s says why.
 

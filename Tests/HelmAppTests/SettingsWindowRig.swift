@@ -10,7 +10,8 @@ import XCTest
 ///
 /// A test process window is never key nor visible, so nothing here waits for either. The window's saved
 /// frame is removed before the build and put back in a teardown block, so a size a test sets does not
-/// become the next launch's; the same block puts back `alwaysCollapseSearch`, which the build turns off.
+/// become the next launch's. `alwaysCollapseSearch`, which the build turns off, is put back by a block of its own. The two keys that
+/// remember the sidebar's fold are cleared before the build and put back by a block each, so every window opens expanded.
 @MainActor
 struct SettingsWindowRig {
     let owner: SettingsWindow
@@ -29,6 +30,17 @@ struct SettingsWindowRig {
             await MainActor.run {
                 if let found { UserDefaults.standard.set(found, forKey: frameKey) }
                 else { UserDefaults.standard.removeObject(forKey: frameKey) }
+            }
+        }
+        // The fold the window family leaves in the process's defaults would open the next window in the rail.
+        for key in ["module.app.sidebarCollapsed", "module.app.sidebarWidth"] {
+            nonisolated(unsafe) let kept = UserDefaults.standard.object(forKey: key)
+            UserDefaults.standard.removeObject(forKey: key)
+            test.addTeardownBlock {
+                await MainActor.run {
+                    if let kept { UserDefaults.standard.set(kept, forKey: key) }
+                    else { UserDefaults.standard.removeObject(forKey: key) }
+                }
             }
         }
         let collapse = AppSettings.alwaysCollapseSearch
