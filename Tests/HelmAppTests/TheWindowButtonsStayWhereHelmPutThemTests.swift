@@ -935,4 +935,80 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         postSystemColorsChanged()
         XCTAssertEqual(asked.count, before, "released: a post asked the tint \(asked.count - before) more times")
     }
+
+    // MARK: - under a toolbar
+
+    /// **A lift moves the home back: AppKit's home with a toolbar (19, 19) plus the offset the lift gives is
+    /// the place the home without one (9, 9) plus its offset gives, expanded and in the rail.** The home is a
+    /// parameter, so the row asks that the two places agree; the lift's 10 by 10 and the home's 19 are
+    /// asserted only so that the home fed in stands for the window the lift was read in; the sizes are an
+    /// assumption fed in (60 by 14).
+    func testWithTheToolbarsHomeAndItsLiftTheButtonsStandWhereTheBareWindowsHomePutsThem() {
+        let bare = CGRect(x: 9, y: 9, width: 60, height: 14)
+        let worn = CGRect(x: 9 + ShellGeometry.toolbarLift.width, y: 9 + ShellGeometry.toolbarLift.height,
+                          width: 60, height: 14)
+        XCTAssertEqual(ShellGeometry.toolbarLift, CGSize(width: 10, height: 10),
+                       "the lift is not the toolbar's measured 10 by 10: the home 19 below stands for another window")
+        XCTAssertEqual(worn.origin, CGPoint(x: 19, y: 19), "the home of a window wearing a toolbar")
+        for rail in [false, true] {
+            let today = ShellGeometry.buttonsOffset(home: bare, rail: rail)
+            let lifted = ShellGeometry.buttonsOffset(home: worn, rail: rail, lift: ShellGeometry.toolbarLift)
+            XCTAssertEqual(worn.minX + lifted.width, bare.minX + today.width, accuracy: 0.001,
+                           "rail \(rail): the buttons' left edge differs between the two windows")
+            XCTAssertEqual(worn.minY + lifted.height, bare.minY + today.height, accuracy: 0.001,
+                           "rail \(rail): the buttons' top differs between the two windows")
+            XCTAssertNotEqual(lifted, today, "rail \(rail): the lift changed nothing, so the row compared the same offset twice")
+        }
+    }
+
+    /// **With no lift, or a zero one, the offset is today's.** Both spellings, expanded and in the rail.
+    func testWithNoLiftTheOffsetIsTodays() {
+        let home = CGRect(x: 9, y: 9, width: 60, height: 14)
+        XCTAssertEqual(ShellGeometry.buttonsOffset(home: home, rail: false),
+                       CGSize(width: ShellGeometry.buttonShift, height: ShellGeometry.buttonDrop))
+        for rail in [false, true] {
+            XCTAssertEqual(ShellGeometry.buttonsOffset(home: home, rail: rail),
+                           ShellGeometry.buttonsOffset(home: home, rail: rail, lift: .zero),
+                           "rail \(rail): a zero lift is not the default")
+        }
+    }
+
+    /// **A window that wears the tabs' toolbar holds its three buttons where one that does not holds them,
+    /// expanded and in the rail.** The real window, never ordered; the toolbar owner is attached and worn by
+    /// hand, then taken off. The strip is read to be taller while it is worn, so the row cannot pass by
+    /// comparing a window with itself. That AppKit rewrites the buttons the same way in a shown window, and
+    /// in a key one, is not stated here.
+    func testAWindowWearingTheTabsToolbarHoldsItsButtonsWhereABareOneDoes() throws {
+        guard let rig = SettingsWindowRig.build(
+            in: self, failure: "the window has no content view controller of the shell's type: no button was read")
+        else { return }
+        guard let buttons = owner(of: rig) else { return }
+        settle(rig)
+        let bareStrip = rig.window.contentLayoutRect.height
+        let expandedBare = buttons.buttonsFrame
+        XCTAssertFalse(expandedBare.isNull || expandedBare.isEmpty, "the buttons' union is \(expandedBare): nothing was compared")
+        XCTAssertNil(rig.window.toolbar, "the window wore a toolbar before the row put one on")
+
+        let tabs = ShellTabsToolbar()
+        tabs.attach(to: rig.window)
+        tabs.wear(true)
+        settle(rig)
+        XCTAssertNotNil(rig.window.toolbar, "the toolbar was not worn: both sides of the comparison are the bare window")
+        XCTAssertLessThan(rig.window.contentLayoutRect.height, bareStrip - 10,
+                          "the toolbar did not make the strip taller: both sides of the comparison are the bare window")
+        let expandedWorn = buttons.buttonsFrame
+        XCTAssertEqual(expandedWorn.minX, expandedBare.minX, accuracy: 0.5, "expanded: the buttons' left edge moved with the toolbar")
+        XCTAssertEqual(expandedWorn.minY, expandedBare.minY, accuracy: 0.5, "expanded: the buttons' top moved with the toolbar")
+        XCTAssertEqual(expandedWorn.size.width, expandedBare.size.width, accuracy: 0.5, "expanded: the buttons' union changed width")
+
+        rail(rig)
+        let railWorn = buttons.buttonsFrame
+        tabs.wear(false)
+        settle(rig)
+        XCTAssertNil(rig.window.toolbar, "the toolbar stayed on the window after wear(false)")
+        let railBare = buttons.buttonsFrame
+        XCTAssertFalse(railBare.isNull || railBare.isEmpty, "the rail's buttons' union is \(railBare): nothing was compared")
+        XCTAssertEqual(railWorn.minX, railBare.minX, accuracy: 0.5, "rail: the buttons' left edge moved with the toolbar")
+        XCTAssertEqual(railWorn.minY, railBare.minY, accuracy: 0.5, "rail: the buttons' top moved with the toolbar")
+    }
 }

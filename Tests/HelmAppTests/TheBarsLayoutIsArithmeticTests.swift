@@ -932,4 +932,84 @@ final class TheBarsLayoutIsArithmeticTests: XCTestCase {
         XCTAssertEqual(rowsFitting + rowsNotFitting, 1401 * 2 * 3 * 2 * 3 * 2 * 4, "every row was laid out")
         XCTAssertEqual(violations.count, 0, "\(violations.count) violations, first: \(violations.prefix(5))")
     }
+
+    // MARK: - the row's top
+
+    /// A page that declares every zone, at the open sidebar's buttons or the rail's.
+    private static func everyZone(bar: CGFloat, cardMinX: CGFloat = 200, rowTop: CGFloat? = nil) -> Input {
+        var input = homebrew(bar: bar, status: 70, buttons: windowButtons(cardMinX: cardMinX))
+        if let rowTop { input.rowTop = rowTop }
+        return input
+    }
+
+    private static func zones(_ f: Frames) -> [(String, CGRect)] {
+        [("name", f.name), ("tabs", f.tabs), ("actions", f.actions), ("search", f.search), ("status", f.status)]
+    }
+
+    /// **`toolbarRowTop` is 4: 8 less `ShellGeometry.inset`, the controls 8 below the window's top being 4 below the card's.** The 8 is one reading of the toolbar in a window never shown, which no row reads; the row holds the arithmetic.
+    /// The default row top is still `controlTop`, so an input that names none gives today's numbers.
+    func testTheToolbarRowTopIsFourAndTheDefaultRowTopIsTodays() {
+        XCTAssertEqual(ShellBarLayout.toolbarRowTop, 4)
+        XCTAssertEqual(ShellBarLayout.controlTop, 8, "the default row moved: every flat number moved with it")
+        for bar in [CGFloat(400), 856, 1000] {
+            let named = Self.everyZone(bar: bar, rowTop: ShellBarLayout.controlTop)
+            let unnamed = Self.everyZone(bar: bar)
+            XCTAssertEqual(unnamed.rowTop, ShellBarLayout.controlTop, "the default `rowTop` of an input is not `controlTop`")
+            XCTAssertEqual(ShellBarLayout.frames(for: named), ShellBarLayout.frames(for: unnamed),
+                           "naming the default row top changed a frame at bar \(bar)")
+            let f = ShellBarLayout.frames(for: unnamed)
+            for (zone, frame) in Self.zones(f) where frame != .zero {
+                XCTAssertEqual(frame.minY, 8, "\(zone) at bar \(bar): today's row is 8 down")
+                XCTAssertEqual(frame.height, 36, "\(zone) at bar \(bar): today's row is 36 high")
+            }
+        }
+    }
+
+    /// **A row top moves every present frame's y by the same amount and nothing else.** Each of the five zones
+    /// must be present somewhere in the sweep (asserted) and must differ from its default only in `minY`;
+    /// the verdicts and the widths are the default's. An absent zone stays `.zero`. The layout holds a top only
+    /// to its widest ceiling on either side, never to the bar, so tops above the bar and below it are given too.
+    func testARowTopMovesEveryPresentFramesYByTheSameAmountAndNothingElse() {
+        var compared = 0
+        var presentZones = Set<String>()
+        for bar in [CGFloat(300), 560, 856, 1000, 1400] {
+            for cardMinX in [CGFloat(200), 56] {
+                let base = ShellBarLayout.frames(for: Self.everyZone(bar: bar, cardMinX: cardMinX))
+                for top in [ShellBarLayout.toolbarRowTop, 0, 8, 11.5, -3, 30] {
+                    let moved = ShellBarLayout.frames(for: Self.everyZone(bar: bar, cardMinX: cardMinX, rowTop: top))
+                    let label = "bar \(bar) card \(cardMinX) row top \(top)"
+                    XCTAssertEqual(moved.tabsFolded, base.tabsFolded, "\(label): the tabs' verdict moved")
+                    XCTAssertEqual(moved.searchFolded, base.searchFolded, "\(label): the search's verdict moved")
+                    XCTAssertEqual(moved.fits, base.fits, "\(label): `fits` moved")
+                    for ((zone, was), (_, now)) in zip(Self.zones(base), Self.zones(moved)) {
+                        if was == .zero {
+                            XCTAssertEqual(now, .zero, "\(label): the absent \(zone) was given a frame")
+                            continue
+                        }
+                        presentZones.insert(zone)
+                        compared += 1
+                        XCTAssertEqual(now.minY, top, "\(label): \(zone) does not stand at the row top")
+                        XCTAssertEqual(now.minY - was.minY, top - ShellBarLayout.controlTop,
+                                       "\(label): \(zone) moved by another amount than the others")
+                        XCTAssertEqual(now.minX, was.minX, "\(label): \(zone) moved sideways")
+                        XCTAssertEqual(now.width, was.width, "\(label): \(zone) changed width")
+                        XCTAssertEqual(now.height, was.height, "\(label): \(zone) changed height")
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(presentZones, ["name", "tabs", "actions", "search", "status"],
+                       "a zone was never present in the sweep: its row compared nothing")
+        XCTAssertGreaterThan(compared, 100, "too few frames were compared")
+    }
+
+    /// A row top that is not a number makes no frame that is not a number.
+    func testARowTopThatIsNotANumberMakesNoFrameThatIsNotANumber() {
+        for top in Self.awkward {
+            let f = ShellBarLayout.frames(for: Self.everyZone(bar: 856, rowTop: top))
+            for (zone, frame) in Self.zones(f) {
+                XCTAssertTrue(Self.isFiniteRect(frame), "row top \(top): the \(zone) frame is \(frame)")
+            }
+        }
+    }
 }

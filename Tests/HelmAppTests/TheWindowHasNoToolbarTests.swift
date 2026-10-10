@@ -5,9 +5,9 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **The settings window carries Helm's own page bar and no `NSToolbar`, and says so at every step of a
-/// session.** The real window is built and never ordered; the fields are read by `Mirror`, so a field renamed
-/// or a bar not held fails by name.
+/// **The settings window carries Helm's own page bar and, as built, no `NSToolbar`, and says so at every step
+/// of a session; the one file that may name a toolbar type is the tabs toolbar's.** The real window is built
+/// and never ordered; the fields are read by `Mirror`, so a field renamed or a bar not held fails by name.
 @MainActor
 final class TheWindowHasNoToolbarTests: XCTestCase {
 
@@ -50,12 +50,16 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
         XCTAssertEqual(ran.count, 9, "not all nine steps ran")
     }
 
-    /// **No code under `Sources` names a type of AppKit's toolbar family.** Code is read with comments and
-    /// string insides blanked, so a sentence about the old shell does not count and a type does. The pattern
-    /// is wider than `NSToolbar` itself: `NSSearchToolbarItem` and `NSTrackingSeparatorToolbarItem` do not
-    /// contain it. Before the scan the reads must hold the settings window's file and the shared toolbar
-    /// actions' file, so an empty or misplaced read cannot pass as an absence.
-    func testNothingInSourcesNamesAnNSToolbarType() throws {
+    /// **Only the tabs toolbar's file names a type of AppKit's toolbar family, and only it writes
+    /// `window.toolbar`.** Code is read with comments and string insides blanked, so a sentence about the old
+    /// shell does not count and a type does. The pattern is wider than `NSToolbar` itself:
+    /// `NSSearchToolbarItem` and `NSTrackingSeparatorToolbarItem` do not contain it. Every hit must lie in
+    /// `Sources/HelmApp/ShellTabsToolbar.swift`, and that file must hold at least one, so an allowance for a
+    /// file that is gone, or an empty read, fails. `.toolbar =` is written on exactly one code line under
+    /// `Sources`, in that file. Before the scan the reads must hold the settings window's file and the shared
+    /// toolbar actions' file, so a misplaced read cannot pass as an absence elsewhere.
+    func testOnlyTheTabsToolbarsFileNamesAnNSToolbarType() throws {
+        let owner = "Sources/HelmApp/ShellTabsToolbar.swift"
         let reads = try SwiftSource.code(under: "Sources")
         let window = reads.first { $0.path == "Sources/HelmApp/SettingsWindow.swift" }
         let actions = reads.first { $0.path == "Sources/HelmUI/DesignSystem/HelmToolbarActions.swift" }
@@ -65,17 +69,26 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
         }
         let pattern = try NSRegularExpression(pattern: "NS[A-Za-z]*Toolbar[A-Za-z]*")
         var hits: [String] = []
+        var inOwner = 0
+        var writers: [String] = []
         for read in reads {
             for (index, line) in read.text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let text = String(line)
                 let whole = NSRange(text.startIndex..., in: text)
                 if let match = pattern.firstMatch(in: text, range: whole), let range = Range(match.range, in: text) {
-                    hits.append("\(read.path):\(index + 1): \(text[range])")
+                    if read.path == owner { inOwner += 1 } else { hits.append("\(read.path):\(index + 1): \(text[range])") }
+                }
+                if text.range(of: #"\.toolbar\s*=(?!=)"#, options: .regularExpression) != nil {
+                    writers.append("\(read.path):\(index + 1)")
                 }
             }
         }
         XCTAssertTrue(hits.isEmpty,
-                      "\(hits.count) code lines under Sources name an NSToolbar type:\n" + hits.joined(separator: "\n"))
+                      "\(hits.count) code lines outside \(owner) name an NSToolbar type:\n" + hits.joined(separator: "\n"))
+        XCTAssertGreaterThan(inOwner, 0, "\(owner) names no NSToolbar type, or was not read: the allowance is for nothing")
+        XCTAssertEqual(writers.count, 1, "`.toolbar =` is written on \(writers.count) code lines: \(writers)")
+        XCTAssertTrue(writers.first?.hasPrefix(owner + ":") == true,
+                      "the one `.toolbar =` line lies outside \(owner): \(writers)")
     }
 
     func testADeclareOnTheWindowsChannelReachesThePageBarAlone() throws {

@@ -10,7 +10,9 @@ import HelmRuntime
 /// and x 0 is the card's minX in the window. Nothing is rounded. A zone is
 /// present when its width is above zero (the search: when `hasSearch`); an
 /// absent zone's frame is `.zero`, a present one stands on the row at
-/// `controlTop`, `controlHeight` high.
+/// `Input.rowTop` (`controlTop` unless the input names another; `toolbarRowTop`
+/// is the one for a window whose toolbar stands the controls 4 higher),
+/// `controlHeight` high.
 ///
 /// **Where things stand.** The name starts at `leading`, or `obstacleClearance`
 /// right of the window's buttons when they end further right. The status, if
@@ -62,6 +64,12 @@ enum ShellBarLayout {
 
     /// Where the row starts, from the bar's top.
     nonisolated static let controlTop: CGFloat = edge
+
+    /// Where the row starts, from the bar's top, in a window whose toolbar stands its controls 8 below the
+    /// window's top: 4 below the card's. A reading of that toolbar in a window never shown, which no row
+    /// reads, not a choice; nothing in the app hands it to `Input.rowTop`, which reads `controlTop` in every
+    /// input the app builds.
+    nonisolated static let toolbarRowTop: CGFloat = edge - ShellGeometry.inset
 
     /// How far the last control stands from the bar's right edge.
     nonisolated static let trailing: CGFloat = edge
@@ -125,6 +133,9 @@ enum ShellBarLayout {
         /// What the name must clear, in bar coordinates: the window's buttons' union, or in the rail the
         /// closed capsule that stands in for them; `.zero` or `.null` for none.
         var buttons: CGRect
+        /// Where the row starts, from the bar's top; every present zone's frame stands there. Not-a-number
+        /// reads `controlTop`, which is no bound; infinities go to the bound on their side.
+        var rowTop: CGFloat = ShellBarLayout.controlTop
     }
 
     struct Frames: Equatable, Sendable {
@@ -160,6 +171,7 @@ enum ShellBarLayout {
 
         let start = nameStart(buttons: input.buttons)
         let centre = width / 2
+        let top = input.rowTop.clamped(to: -widest...widest, whenNotANumber: controlTop)
 
         // The trailing chain, right to left. `end` is where the search ends.
         let statusMinX = width - statusTrailing - statusWidth
@@ -219,17 +231,17 @@ enum ShellBarLayout {
         var cursor = end
         var searchFrame = CGRect.zero
         if hasSearch {
-            searchFrame = row(x: cursor - search, width: search)
+            searchFrame = row(top: top, x: cursor - search, width: search)
             cursor = searchFrame.minX - (hasActions ? actionsToSearch : zoneGap)
         }
-        let actionsFrame = hasActions ? row(x: cursor - actionsWidth, width: actionsWidth) : .zero
+        let actionsFrame = hasActions ? row(top: top, x: cursor - actionsWidth, width: actionsWidth) : .zero
 
         return Frames(
-            name: hasName ? row(x: start, width: shown) : .zero,
-            tabs: hasTabs ? row(x: tabsX, width: tabs) : .zero,
+            name: hasName ? row(top: top, x: start, width: shown) : .zero,
+            tabs: hasTabs ? row(top: top, x: tabsX, width: tabs) : .zero,
             actions: actionsFrame,
             search: searchFrame,
-            status: hasStatus ? row(x: statusMinX, width: statusWidth) : .zero,
+            status: hasStatus ? row(top: top, x: statusMinX, width: statusWidth) : .zero,
             tabsFolded: tabsFolded,
             searchFolded: searchFolded,
             fits: hasTabs ? right - tabs >= tabsMinX : start + shown <= right)
@@ -241,8 +253,8 @@ enum ShellBarLayout {
         value.clamped(to: 0...widest, whenNotANumber: 0)
     }
 
-    private nonisolated static func row(x: CGFloat, width: CGFloat) -> CGRect {
-        CGRect(x: x, y: controlTop, width: width, height: controlHeight)
+    private nonisolated static func row(top: CGFloat, x: CGFloat, width: CGFloat) -> CGRect {
+        CGRect(x: x, y: top, width: width, height: controlHeight)
     }
 
     /// Where the name starts: `leading`, or `obstacleClearance` right of the

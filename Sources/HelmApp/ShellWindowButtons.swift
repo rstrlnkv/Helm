@@ -6,7 +6,11 @@ import HelmUI
 /// reads `standardWindowButton`.
 ///
 /// Expanded, the buttons stand `ShellGeometry.buttonShift` right and `buttonDrop` down of where AppKit
-/// puts them (their *home*). In the rail they keep their row and stand under a closed capsule of three
+/// puts them (their *home*), less `ShellGeometry.toolbarLift` when the window wears a toolbar: AppKit's
+/// home is that much further right and down there, so the buttons stand where they stand in a window with
+/// none (read from `window.toolbar` at every placement; the lift's size is one reading in a window never
+/// shown, and a row that wears the tabs toolbar by hand holds that the buttons then stand where a bare
+/// window's do, expanded and in the rail; no app code puts that toolbar on a window). In the rail they keep their row and stand under a closed capsule of three
 /// dots, at alpha 0; the pointer in the capsule's hover zone opens the capsule around them and shows the
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
 /// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0. The
@@ -17,8 +21,13 @@ import HelmUI
 /// flip until the target width is written or the run completes, in both directions, so the placement changes once, at the run's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
-/// Assumed, not measured: that it lays them out from the titlebar's top, so that a change of the titlebar's
-/// height would move a button offset on one axis only.
+/// Measured in a window never shown: with a toolbar the strip stands more than 10 pt taller, and the
+/// buttons, placed with the lift taken, stand within 0.5 pt of a bare window's, expanded and in the rail
+/// (rows of `TheWindowButtonsStayWhereHelmPutThemTests`). A change of the titlebar's height therefore
+/// moves the home on both axes, and the lift is taken from both. The numbers themselves, a 52 pt strip
+/// in place of a 32 pt title bar and the buttons at 19 and 19 from the corner instead of 9 and 9, are one
+/// reading in a window never shown, held by no row. Assumed: that it does the same in a shown window and
+/// in full screen.
 /// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that
 /// this object did not make and that reaches it (`NSView.frameDidChangeNotification`, an origin other than
 /// the one written here) is taken for AppKit's: it becomes the new home and is answered in the same turn
@@ -68,11 +77,19 @@ final class ShellWindowButtons {
     }
 
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
-    /// coordinates. Nil when `home` is nil, empty, null or not a finite place: nothing is moved or hidden.
+    /// coordinates, for a window with no toolbar (`placed(home:rail:lift:)` with a zero lift). Nil when `home`
+    /// is nil, empty, null or not a finite place: nothing is moved or hidden. Nothing under `Sources` calls it
+    /// now: `place(rail:)` goes through `placed(home:rail:lift:)`. It stays for the rows that use it
+    /// (`ThePaneStartsBelowTheBarTests`, `TheWindowButtonsStayWhereHelmPutThemTests`).
     nonisolated static func placement(home: CGRect?, rail: Bool) -> Placement? {
+        placed(home: home, rail: rail, lift: .zero)
+    }
+
+    /// The same for a window whose home is `lift` further right and down (`ShellGeometry.buttonsOffset`'s).
+    nonisolated static func placed(home: CGRect?, rail: Bool, lift: CGSize) -> Placement? {
         guard let home, !home.isNull, !home.isInfinite, home.width > 0, home.height > 0,
               [home.minX, home.minY, home.width, home.height].allSatisfy(\.isFinite) else { return nil }
-        let offset = ShellGeometry.buttonsOffset(home: home, rail: rail)
+        let offset = ShellGeometry.buttonsOffset(home: home, rail: rail, lift: lift)
         let buttons = home.offsetBy(dx: offset.width, dy: offset.height)
         guard rail, home.minY >= 0 else { return Placement(offset: offset, buttons: buttons, capsule: nil) }
         return Placement(offset: offset, buttons: buttons,
@@ -260,7 +277,8 @@ final class ShellWindowButtons {
             guard let superview = button.superview, let origin = homes[id] else { return release() }
             home = home.union(content.convert(CGRect(origin: origin, size: button.frame.size), from: superview))
         }
-        guard let placement = Self.placement(home: home, rail: rail) else { return release() }
+        let lift = window.toolbar == nil ? CGSize.zero : ShellGeometry.toolbarLift
+        guard let placement = Self.placed(home: home, rail: rail, lift: lift) else { return release() }
         current = placement
 
         isPlacing = true

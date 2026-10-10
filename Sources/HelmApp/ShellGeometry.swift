@@ -55,6 +55,11 @@ enum ShellGeometry {
     /// How far right of where AppKit puts them the window's three buttons stand when the sidebar is expanded.
     nonisolated static let buttonShift: CGFloat = 6
 
+    /// How far right and down AppKit puts the window's three buttons when the window wears a toolbar, against
+    /// where it puts them with none (19 against 9 on both axes). One reading in a window never shown; the rows hold that the buttons
+    /// placed with it stand within 0.5 of a bare window's and pin the constant; none reads AppKit's 19 or 9.
+    nonisolated static let toolbarLift = CGSize(width: 10, height: 10)
+
     /// Whether a sidebar of `sidebarWidth` is the rail. Not-a-number is not the
     /// rail, so a bad number never folds the buttons away.
     nonisolated static func isRail(sidebarWidth: CGFloat) -> Bool {
@@ -119,16 +124,24 @@ enum ShellGeometry {
     /// the buttons' left edge is the closed capsule's plus `capsulePad.width`,
     /// the edge the open capsule draws them from, so they open out of the
     /// capsule on the same row.
-    nonisolated static func buttonsOffset(home: CGRect, rail: Bool) -> CGSize {
-        guard rail else { return CGSize(width: buttonShift, height: buttonDrop) }
+    ///
+    /// **`lift`** is how far AppKit's home is further right and down in a window
+    /// that wears a toolbar than in one that does not (`toolbarLift`; zero for
+    /// none). It is taken from the expanded offset on both axes and from the
+    /// rail's drop, so the buttons stand where they stand in the window with no
+    /// toolbar. The rail's x needs none: it is the capsule's edge less `home`'s,
+    /// and `home` already carries the lift.
+    nonisolated static func buttonsOffset(home: CGRect, rail: Bool, lift: CGSize = .zero) -> CGSize {
+        let drop = buttonDrop - lift.height
+        guard rail else { return CGSize(width: buttonShift - lift.width, height: drop) }
         return CGSize(width: capsuleClosedFrame(buttons: home).minX + capsulePad.width - home.minX,
-                      height: buttonDrop)
+                      height: drop)
     }
 
     // MARK: - the capsule
 
     /// The capsule's frame closed: `capsuleSize`, at the rail's centre moved
-    /// right by `capsuleShift`, centred on the row of `buttons`. `ShellWindowButtons.placement` hands it the
+    /// right by `capsuleShift`, centred on the row of `buttons`. `ShellWindowButtons.placed(home:rail:lift:)` hands it the
     /// buttons where they stand, the drop already in them; `buttonsOffset` hands it the home and reads only
     /// the x, which does not depend on the row.
     nonisolated static func capsuleClosedFrame(buttons: CGRect) -> CGRect {
