@@ -9,8 +9,9 @@ import HelmUI
 /// puts them (their *home*), less `ShellGeometry.toolbarLift` when the window wears a toolbar: AppKit's
 /// home is that much further right and down there, so the buttons stand where they stand in a window with
 /// none (read from `window.toolbar` at every placement; the lift's size is one reading in a window never
-/// shown, and a row that wears the tabs toolbar by hand holds that the buttons then stand where a bare
-/// window's do, expanded and in the rail; no app code puts that toolbar on a window). In the rail they keep their row and stand under a closed capsule of three
+/// shown, and no row holds that the buttons then stand where a bare window's do, expanded and in the
+/// rail: the rows hold the lift's arithmetic; nothing in the app constructs `SettingsToolbar`, whose file alone
+/// writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
 /// dots, at alpha 0; the pointer in the capsule's hover zone opens the capsule around them and shows the
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
 /// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0. The
@@ -21,9 +22,11 @@ import HelmUI
 /// flip until the target width is written or the run completes, in both directions, so the placement changes once, at the run's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
-/// Measured in a window never shown: with a toolbar the strip stands more than 10 pt taller, and the
-/// buttons, placed with the lift taken, stand within 0.5 pt of a bare window's, expanded and in the rail
-/// (rows of `TheWindowButtonsStayWhereHelmPutThemTests`). A change of the titlebar's height therefore
+/// Measured once in a window never shown, under a toolbar of a lead and one control that was not
+/// `SettingsToolbar`'s, and held by no row now (the rows of
+/// `TheWindowButtonsStayWhereHelmPutThemTests` hold the lift's arithmetic): with a toolbar the strip
+/// stands more than 10 pt taller, and the buttons, placed with the lift taken, stand within 0.5 pt of a
+/// bare window's, expanded and in the rail. A change of the titlebar's height therefore
 /// moves the home on both axes, and the lift is taken from both. The numbers themselves, a 52 pt strip
 /// in place of a 32 pt title bar and the buttons at 19 and 19 from the corner instead of 9 and 9, are one
 /// reading in a window never shown, held by no row. Assumed: that it does the same in a shown window and

@@ -1,6 +1,6 @@
 # The page header
 
-In the settings window a page's header and its controls live in Helm's own page bar — one view at the top of the card's clip, built once by `SettingsWindow` and told what to show on every page change (`ShellPageBar`, `Sources/HelmApp/ShellPageBar.swift`; its class header holds the reasons: why a page that has declared before is shown the instant it is selected, the grace before a page with nothing declared falls back to the name, why a frozen page is remembered and shown without its closures). The window has no `NSToolbar`.
+In the settings window a page's header and its controls live in Helm's own page bar — one view at the top of the card's clip, built once by `SettingsWindow` and told what to show on every page change (`ShellPageBar`, `Sources/HelmApp/ShellPageBar.swift`; its class header holds the reasons: why a page that has declared before is shown the instant it is selected, the grace before a page with nothing declared falls back to the name, why a frozen page is remembered and shown without its closures). The window has no `NSToolbar`: `SettingsToolbar` (`Sources/HelmApp/SettingsToolbar.swift`) holds the code of an app-owned toolbar, one cached `NSToolbar` per page, and nothing in the app constructs it, so no window wears it.
 
 A page says what it wants — tabs, actions, search — through
 `HelmWindowToolbarChannel` and `.helmWindowToolbar(_:token:)`

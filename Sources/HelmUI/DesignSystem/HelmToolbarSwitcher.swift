@@ -165,8 +165,11 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     /// **The gesture that opens a menu on a Mac**: the right button, or the left
     /// one with Control held, which is how a trackpad without a right click
-    /// sends it. Its one caller is in this file.
-    static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
+    /// sends it. Public for `SettingsToolbar`'s own monitor, which is the one
+    /// place the gesture is answered on the toolbar, so the two can never
+    /// disagree about what it is; `ShellPageBar` reads no gesture, AppKit
+    /// opens its view's `menu`.
+    public static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
         switch type {
         case .rightMouseDown: return true
         case .leftMouseDown: return modifiers.contains(.control)

@@ -274,8 +274,10 @@ public struct HelmToolbarActionsCapsule: View {
     /// `StatusZoneView.boxMargin` takes from 8. The number is a reading of AppKit's toolbar, kept
     /// as a number: a custom-view item with `isBordered = false`, last in an `NSToolbar`, ended
     /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt. No row
-    /// measures that now, and the capsule carries no inset of its own: `ShellBarLayout.trailing`
-    /// is what stands between the bar's last control and the bar's edge.
+    /// measures that now. The capsule carries an inset of its own only where its caller hands one
+    /// (`trailingInset`, 0 by default): `ShellBarActions` hands none, `ShellBarLayout.trailing`
+    /// being what stands between the bar's last control and the bar's edge there, and
+    /// `SettingsToolbar.makeActionsItem` hands this number where no search follows the capsule.
     public static let edgeMargin: CGFloat = 4
 
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured
@@ -333,6 +335,11 @@ public struct HelmToolbarActionsCapsule: View {
     static let disabledInactiveGlyphOpacityDark: Double = 0.35
     static let disabledInactiveGlyphOpacityLight: Double = 0.50
 
+    /// Non-zero exactly when this capsule is a toolbar's own last item (no
+    /// search follows it) — see `edgeMargin`'s own header for the measurement
+    /// this closes. `ShellBarActions` leaves it at 0: its bar's layout owns the margin.
+    public let trailingInset: CGFloat
+
     /// **The two numbers a flat capsule dims by in a window that is not active,
     /// one per appearance.** The caller owns them (the name zone's, which
     /// `HelmApp` can reach and this module cannot); nil leaves the capsule on
@@ -349,8 +356,10 @@ public struct HelmToolbarActionsCapsule: View {
 
     private let flatInactiveInk: InactiveInk?
 
-    public init(_ model: HelmToolbarActionsModel, flatInactiveInk: InactiveInk? = nil) {
+    public init(_ model: HelmToolbarActionsModel, trailingInset: CGFloat = 0,
+                flatInactiveInk: InactiveInk? = nil) {
         self.model = model
+        self.trailingInset = trailingInset
         self.flatInactiveInk = flatInactiveInk
     }
 
@@ -484,6 +493,12 @@ public struct HelmToolbarActionsCapsule: View {
                 }
             }
         }
+        // Outside the `ZStack`, so it widens the hosted view's own intrinsic
+        // size rather than reserving room the buttons' trailing alignment
+        // would swallow. The hidden reserve row above is unaffected: it is
+        // laid out from `model.declared`, and the inset is the caller's,
+        // which `SettingsToolbar.makeActionsItem` decides from `content.search`.
+        .padding(.trailing, trailingInset)
     }
 
     /// `declared`, filtered to `visibleIDs` — declared order preserved, so a
