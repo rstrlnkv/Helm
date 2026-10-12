@@ -94,14 +94,15 @@ is a window onto it. Its controls live in the settings window's own toolbar rath
 in a band of the page (`LogView.toolbarContent`), so the place a person is sent to when
 they report a problem is the one named after it.
 
-The page draws **one card per launch**, and what a launch is comes out of the lines
-themselves, in pure functions in `Sources/HelmApp/LogSessions.swift` and not in the
-view, so a fixture can be handed to them. Nothing is dropped or reordered on the way: the
-cards joined are the tail. Two gaps are decided and deferred, and are skipped in
-`Tests/HelmAppTests/TheLogsHeadingsAndMarksHoldInEveryLanguageAndAppearanceTests.swift`:
-no query finds a card by «Earlier launch», and a day span across midnight is written by
-the system's interval formatter, which in Chinese and Japanese is numerals beside
-long-form day headings.
+Each launch is **a card** (under a filter, one with nothing to show has none), and what a
+launch is comes out of the lines themselves, in pure functions in
+`Sources/HelmApp/LogSessions.swift` and not in the view, so a fixture can be handed to them.
+Nothing is dropped or reordered on the way: the cards joined are the tail. Which of them the
+page draws is a separate matter, below. Two gaps are decided and deferred, and are skipped
+in `Tests/HelmAppTests/TheLogsHeadingsAndMarksHoldInEveryLanguageAndAppearanceTests.swift`:
+no query finds a card by «Earlier launch», and a day span across midnight is written by the
+system's interval formatter, which in Chinese and Japanese is numerals beside long-form day
+headings.
 
 `Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `limit` and trimmed
 from the front. It is filled from the parts a file line is spelled from rather than by
@@ -121,3 +122,33 @@ scroll offset (`LogReaderPlace`), with one known exception: a line taller than t
 below it, `log-tall-line`, skipped unless `HELM_KNOWN_GAPS=1` in
 `Tests/HelmAppTests/TheReadersLineLandsWhereItWasTests.swift`; a reader inside a larger
 card is held no better than the lazy estimate allows.
+
+Which launches are drawn is bounded, because a stack lays out every row it is given: the
+rows laid out at open are those of the newest launches, not of the whole tail. At open the
+page draws the newest launch and, before it, the nearest older launches, whole, while those
+older ones hold fewer than `LogView.drawnAtOpen` rows between them
+(`LogPresentation.drawn(rowsBefore:)`; a launch is never split). The figure is a threshold
+reached or passed, so the last launch added may take the older ones well past it, and a log
+of many launches each under `LogView.lazyAbove` draws fewer than `drawnAtOpen` plus twice
+`lazyAbove` rows at open: a bound that depends on both figures and is not tight. The newest
+launch is outside the count and is drawn whole, because it is the only one that grows: a
+line entering it cannot move the cut. A line that opens a new launch can, since the launch
+that was the newest is counted from then on, and the oldest launches drawn may leave the
+page from above.
+
+A reader who comes to rest within a view's height of the top of what is drawn, with a
+remembered line or with Follow lit at the end holding the view, asks for earlier launches
+(`LogReaderPlace.drawEarlier`; it is made at rest only, never from a scroll). An ask draws
+at least one launch more whenever one is not drawn: the page keeps a count of doublings of
+`drawnAtOpen` and the ask raises it to the nearest count that adds a launch
+(`LogView.earlierAfterAsk`), building the presentation once for it. What is drawn never
+shrinks because of an ask. Once every launch is drawn an ask writes no state, so the page is
+not redrawn and the toolbar not declared again. A tail at its cap is wholly drawn at
+`LogView.earlierCeiling` doublings, so at most that many asks write anything; the next finds
+nothing to draw. A launch that is not drawn is not in the content and takes no height, so
+the place of a drawn line is still a measurement where its rows are plain (a card over
+`lazyAbove` rows is lazy and its height an estimate), and the hold above is as exact as it
+was. The count of what is drawn is `LogReaderPlace.drawnRows`, and
+`Tests/HelmAppTests/TheLogDrawsTheNewestLaunchesFirstTests.swift` holds, in rows, that four
+times the log does not draw four times the rows. «Copy log» and the footer's counts are
+over the whole presentation, not over the cards drawn.

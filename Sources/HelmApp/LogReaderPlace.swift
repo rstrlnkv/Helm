@@ -28,7 +28,9 @@ import HelmUI
 /// measurement; above that they are lazy, and the height of what the view has
 /// scrolled past is an estimate, re-made whenever rows are drawn or dropped — a
 /// reader inside such a card is held no better than the estimate allows. The
-/// choice is `LogView`'s, and its doc says what each side costs.
+/// choice is `LogView`'s, and its doc says what each side costs. A launch the page
+/// has not drawn is not in the content at all, takes no height and is no estimate,
+/// so the sentence above is true of every row that is drawn.
 ///
 /// **Only a layout at rest is believed for remembering.** While a change is laid
 /// out the rows report places one after another, so the line is remembered when
@@ -49,9 +51,23 @@ import HelmUI
 /// quiet period, up to `attempts` times — the first landing is on an estimate when
 /// rows are lazy, and the rows it realised are measured after.
 ///
-/// A plain reference type, held in `@State` and never read by a body: what it
-/// remembers changes on every scroll, and a body that read it would be redrawn by
-/// the thing it is trying to keep still.
+/// **Earlier launches.** The page draws the newest launches and the earlier ones
+/// when the reader comes to rest near the top of what is drawn (`drawEarlier`,
+/// `LogView.drawnAtOpen`). It is asked from the rest that follows a layout or a
+/// scroll, never from `scrolled` itself, and only when something holds the view
+/// as the launches enter above it: a line remembered (they shift every drawn row,
+/// the line's row reports the place it moved to, and `holdLine` moves the view by
+/// the difference, as when a row above changes height), or Follow lit with the
+/// view at the end, where the scroll view's own bottom anchor keeps the end. Not
+/// while the end is being sought, and not when the view is further than a view's
+/// height from the top of what is drawn. What the ask gives is the page's
+/// (`LogView.earlierAfterAsk`): at least one launch more, and nothing written once
+/// every launch is drawn.
+///
+/// A plain reference type, held by the page and never read by a body — in its
+/// `@State`, or handed in (`LogView.readerPlace`): what it remembers changes on
+/// every scroll, and a body that read it would be redrawn by the thing it is
+/// trying to keep still.
 @MainActor
 final class LogReaderPlace {
     /// What the scroll view reports, in the content's own coordinates.
@@ -99,12 +115,23 @@ final class LogReaderPlace {
     private var lastReport = Date.distantPast
     private var timerPending = false
 
-    /// What the page does for the place, set by the page.
+    /// What the page does for the place, set by the page. `drawEarlier` draws at
+    /// least one launch before the oldest one drawn whenever there is one not
+    /// drawn, and writes nothing once every launch is drawn; it is asked by
+    /// `askForEarlierLaunches`, and what it changes the rows report as they are
+    /// laid out.
     var following: () -> Bool = { true }
     var scrollToLine: (LogEntry.ID, CGFloat) -> Void = { _, _ in }
     var scrollToEnd: () -> Void = {}
+    var drawEarlier: () -> Void = {}
 
     private var isAtEnd: Bool { metrics.gap <= Self.endTolerance }
+
+    /// How many rows stand drawn: those that have reported a place and have not
+    /// left. A reading of the record the place already keeps, not a count of its
+    /// own; it exists so that what the page draws can be read from outside by the
+    /// one object every row reports to (`LogView.readerPlace`).
+    var drawnRows: Int { frames.count }
 
     /// Follow asked for the end (a filter changed, Follow was pressed, a new
     /// line came, the page opened): hold nothing until it has been reached.
@@ -182,6 +209,14 @@ final class LogReaderPlace {
     }
 
     private func atRest() {
+        settle()
+        askForEarlierLaunches()
+    }
+
+    /// Whether the end is sought, held or the line remembered, once the layout is
+    /// at rest. Several of its roads end in a `return`, which is why the ask for
+    /// earlier launches is not a line at its end but a step after it.
+    private func settle() {
         if following() {
             if seeking {
                 if isAtEnd {
@@ -217,6 +252,21 @@ final class LogReaderPlace {
             endTop = nil
         }
         capture()
+    }
+
+    /// **The only road to `drawEarlier`.** The view is within its own height of the
+    /// top of what is drawn (a not-a-number top, height or content reads false:
+    /// nothing is asked), the end is not being sought (`seeking`: the line a launch
+    /// would be added above is not yet a line held), and the view is held as the
+    /// launches enter above it — a line is remembered, or Follow is lit with the
+    /// view at the end. After `settle`, so that a line has been remembered by the
+    /// rest being judged; the roads of `settle` that end in a `return` — the end
+    /// reached, the end given up, the end at rest — are all asked here, and the two
+    /// that ask for the end again are not.
+    private func askForEarlierLaunches() {
+        guard !seeking, metrics.contentHeight > 0, metrics.top <= metrics.visibleHeight,
+              anchor != nil || (following() && isAtEnd) else { return }
+        drawEarlier()
     }
 
     /// The first drawn row whose top is in the view, and how far that top is from

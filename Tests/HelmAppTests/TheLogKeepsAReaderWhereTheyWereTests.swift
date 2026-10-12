@@ -163,10 +163,32 @@ final class TheLogKeepsAReaderWhereTheyWereTests: XCTestCase {
             return nil
         }
 
-        /// Steps through the list until the landmark is in view, then puts it a
-        /// third of the way down.
+        /// Brings the list to the top, pass after pass, until the document's height
+        /// after a pass is the height before it; then steps down through the list
+        /// until the landmark is in view and puts it a third of the way down.
+        ///
+        /// A pass is a scroll to the top and a pump longer than the place's quiet
+        /// period (`LogReaderPlace.quiet`). The page draws the launches it holds
+        /// back at open (`LogView.drawnAtOpen`) when the view rests within a view's
+        /// height of the top of what is drawn with a line remembered, and each such
+        /// ask draws at least one launch more while one is not drawn
+        /// (`LogView.earlierAfterAsk`), holding the line the reader read as it does,
+        /// so the view is not at the top after the growth. A pass that leaves the
+        /// height as it was found nothing to draw, or no ask answered it; the loop
+        /// leaves on the first such pass, and at most `LogView.earlierCeiling + 1`
+        /// passes are made: a tail of `HelmLog.tailLimit` lines takes at most
+        /// `earlierCeiling` asks that draw, and the pass after them finds nothing.
+        /// The loop does not read whether every launch is drawn: after a pass that
+        /// no ask answered, a landmark in a launch not drawn is "never drawn" below.
         func scrollToLandmark() throws -> CGFloat {
             let scroll = try XCTUnwrap(scroll)
+            var height = scroll.documentView?.frame.height ?? 0
+            for _ in 0...LogView.earlierCeiling {
+                try self.scroll(toY: 0)
+                let now = scroll.documentView?.frame.height ?? 0
+                if now == height { break }
+                height = now
+            }
             let visible = scroll.documentVisibleRect.height
             var y: CGFloat = 0
             while y < (scroll.documentView?.frame.height ?? 0) {
