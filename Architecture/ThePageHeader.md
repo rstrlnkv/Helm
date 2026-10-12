@@ -72,7 +72,14 @@ the dot is the segment's image, and a folded switcher marks the tab in its menu 
 `SettingsToolbar` builds itself (`makeSearchItem`): Return, and only Return, runs a
 page's `onSubmit`. With `AppSettings.alwaysCollapseSearch` on, an empty idle field
 rests as AppKit's magnifier at every width, through one rest predicate
-(`SettingsToolbar.restSearch(_:)`; `PageBar.searchRestCap` holds the reading). In the page bar the search field is an `NSSearchField` on a plate of the bar's own, with the magnifier it folds to
+(`SettingsToolbar.restSearch(_:)`; `PageBar.searchRestCap` holds the reading).
+Under Flat the toolbar's search field stays AppKit's: `makeSearchItem` reads no look, so the same `NSSearchToolbarItem` is made the same way under
+both looks, and the look reaches the field only as its width, the room the tabs leave it and the room it is offered. The reason is a reading in a program outside this tree, on macOS 27.2, in a key window
+under Dark, on an item's own default field and not on one assigned as `makeSearchItem` assigns it: the item's `isBordered` written false read back true, the field's
+bezel written false took and the glass capsule was still drawn (the placeholder lifted and the field read 4 points wider), and the field's background and the item's
+plain style read the same untouched as written, being an untouched item's own values. Light, a window that is not key and the field's fold to the
+magnifier (the window was wide) were not seen, and no write was tried on an assigned field; Helm's own item was seen as AppKit's glass, `isBordered` read true, under both looks, in a key window under Dark, on one page, in a window 1060 points wide, the field idle and empty, before the search field's offer was built.
+In the page bar the search field is an `NSSearchField` on a plate of the bar's own, with the magnifier it folds to
 (`ShellBarSearch`): the same Return rule, with the same setting on an empty idle field rests as the magnifier at every width, and a field in use is never folded for room
 (`ShellBarSearch.isInUse`, `ShellBarLayout`'s header).
 
