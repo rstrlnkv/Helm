@@ -6,15 +6,15 @@ import XCTest
 @testable import HelmApp
 
 /// **`SettingsToolbar.identifiers` leads with what its `lead` says: the sidebar's
-/// tracking separator for `.sidebarSeparator`, nothing or the leading spacer for
-/// `.spacer`; the `.sidebarSeparator` bar stays exactly what it was.** The window
-/// constructs `.spacer`; `.sidebarSeparator` is the initialiser's default, so every test that builds a `SettingsToolbar` without `lead:` gets it, and only this file names it.
+/// tracking separator for `.sidebarSeparator`, the name for `.spacer`; the `.sidebarSeparator` bar stays
+/// exactly what it was.** The window constructs `.spacer`; `.sidebarSeparator` is the initialiser's default,
+/// so every test that builds a `SettingsToolbar` without `lead:` gets it, and only this file names it.
 ///
 /// The tests above the mark "a toolbar told where the pane is" need no window, no `NSWindow`, no screen:
-/// `SettingsToolbar.identifiers` and `SettingsToolbar.spacerWidth` are pure, and
+/// `SettingsToolbar.identifiers` and `SettingsToolbar.nameInset` are pure, and
 /// the content shapes are plain values. Those between it and the mark "what only a visible window can run, read from the source" build a `SettingsToolbar`
 /// with no window and tell it where the pane is through `paneMoved(leading:width:)`;
-/// they read its lists and numbers (`barIdentifiers`, `leadingSpacer`, `hasSpacer`,
+/// they read its lists and numbers (`barIdentifiers`, `currentNameInset`,
 /// `itemsStart`, `offeredRoom`), and still no window exists. Those below that mark read `SettingsToolbar.swift` as text.
 ///
 /// The `.sidebarSeparator` lists below are pinned LITERALLY, read from
@@ -22,7 +22,9 @@ import XCTest
 /// (that commit's `Sources/HelmApp/SettingsToolbar.swift`): the tracking separator
 /// first; the name item only under `.moduleName`; then, with nothing declared,
 /// `flexibleSpace, status` (`.moduleName` only); otherwise `flexibleSpace`,
-/// `tabs, flexibleSpace` when there are tabs, `actions`, `search`. They are not
+/// `tabs, flexibleSpace` when there are tabs, `actions`, `search`. The `.spacer` lists are pinned
+/// literally beside them: the same list without its first item under `.moduleName`, and under
+/// `.windowTitle` the name in front of that list, the status staying out. They are not
 /// computed through the function under test, so a lead that is ignored or a
 /// list that moved goes red here (a moved tail also in
 /// `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests`, which compares the tail
@@ -32,11 +34,8 @@ import XCTest
 /// an input these tests feed, taken from one measurement on macOS 27.2 with a
 /// 200 pt sidebar, not a fact they establish; 123.5 = 200 + 16 - 92.5 is the
 /// expectation derived from it, not a second measurement. For a pane whose
-/// leading edge is at 56 the items already start past 56 + 16, so the answer is
-/// nil; the reason `spacerWidth`'s doc comment gives (a too-narrow spacer is
-/// centred in an item wider than itself and moves the name further than its
-/// width) was seen once on macOS 27.2 and is not reproducible by a command in
-/// the tree.
+/// leading edge is at 56 the items already start past 56 + 16, so the inset is
+/// 0: the name starts where the items do, which is AppKit's to decide.
 @MainActor
 final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
 
@@ -48,8 +47,6 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
     private static let tabs = ID("helm.tabs")
     private static let actions = ID("helm.actions")
     private static let search = ID("helm.search")
-    /// The spacer item's identifier, as `SettingsToolbar.spacerID` spells it.
-    private static let spacer = ID("helm.leadingSpacer")
 
     // MARK: - content shapes
 
@@ -68,61 +65,59 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         let content: HelmPageToolbarContent?
         let moduleName: [ID]
         let windowTitle: [ID]
+        /// The `.spacer` lead's list under `.windowTitle`: the name opens it, the status stays out.
+        let spacerWindowTitle: [ID]
     }
 
     /// Pinned from the c753c864 source, one row per reachable content shape.
     private static let shapes: [Shape] = [
         Shape(label: "nothing declared (nil)", content: nil,
-              moduleName: [sep, name, flex, status], windowTitle: [sep]),
+              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name]),
         Shape(label: "declared but empty", content: HelmPageToolbarContent(),
-              moduleName: [sep, name, flex, status], windowTitle: [sep]),
+              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name]),
         Shape(label: "tabs", content: content(tabs: true, actions: false, search: false),
-              moduleName: [sep, name, flex, tabs, flex], windowTitle: [sep, flex, tabs, flex]),
+              moduleName: [sep, name, flex, tabs, flex], windowTitle: [sep, flex, tabs, flex],
+              spacerWindowTitle: [name, flex, tabs, flex]),
         Shape(label: "actions", content: content(tabs: false, actions: true, search: false),
-              moduleName: [sep, name, flex, actions], windowTitle: [sep, flex, actions]),
+              moduleName: [sep, name, flex, actions], windowTitle: [sep, flex, actions], spacerWindowTitle: [name, flex, actions]),
         Shape(label: "search", content: content(tabs: false, actions: false, search: true),
-              moduleName: [sep, name, flex, search], windowTitle: [sep, flex, search]),
+              moduleName: [sep, name, flex, search], windowTitle: [sep, flex, search], spacerWindowTitle: [name, flex, search]),
         Shape(label: "tabs + actions", content: content(tabs: true, actions: true, search: false),
-              moduleName: [sep, name, flex, tabs, flex, actions], windowTitle: [sep, flex, tabs, flex, actions]),
+              moduleName: [sep, name, flex, tabs, flex, actions], windowTitle: [sep, flex, tabs, flex, actions],
+              spacerWindowTitle: [name, flex, tabs, flex, actions]),
         Shape(label: "tabs + search", content: content(tabs: true, actions: false, search: true),
-              moduleName: [sep, name, flex, tabs, flex, search], windowTitle: [sep, flex, tabs, flex, search]),
+              moduleName: [sep, name, flex, tabs, flex, search], windowTitle: [sep, flex, tabs, flex, search],
+              spacerWindowTitle: [name, flex, tabs, flex, search]),
         Shape(label: "actions + search", content: content(tabs: false, actions: true, search: true),
-              moduleName: [sep, name, flex, actions, search], windowTitle: [sep, flex, actions, search]),
+              moduleName: [sep, name, flex, actions, search], windowTitle: [sep, flex, actions, search],
+              spacerWindowTitle: [name, flex, actions, search]),
         Shape(label: "tabs + actions + search", content: content(tabs: true, actions: true, search: true),
               moduleName: [sep, name, flex, tabs, flex, actions, search],
-              windowTitle: [sep, flex, tabs, flex, actions, search]),
+              windowTitle: [sep, flex, tabs, flex, actions, search],
+              spacerWindowTitle: [name, flex, tabs, flex, actions, search]),
     ]
 
     private func raw(_ list: [ID]) -> [String] { list.map(\.rawValue) }
 
     // MARK: - the bar led by `.spacer`
 
-    /// Total failure prints: "a pane whose leading edge is at 56 gets a spacer: a too-narrow spacer is
-    /// centred in an item wider than itself, so it moves the name further than its width" (`spacerWidth`
-    /// answers a number there) / "a bar led by `.spacer` still leads with the tracking separator, which
+    /// Total failure prints: "a pane whose leading edge is at 56 gets an inset of <x>: the name is pushed past
+    /// where the items start" / "a bar led by `.spacer` still leads with the tracking separator, which
     /// tracks nothing without a split view; got <list>" (the list starts with the separator, or with
     /// anything but the name).
-    func testWhereTheItemsStartPastThePaneTheBarCarriesNoSpacer() {
-        XCTAssertNil(SettingsToolbar.spacerWidth(paneLeading: 56, itemsStart: 92.5),
-                     "a pane whose leading edge is at 56 gets a spacer: a too-narrow spacer is centred in an item wider than itself, so it moves the name further than its width")
-        let list = SettingsToolbar.identifiers(content: nil, style: .moduleName, lead: .spacer, hasSpacer: false)
+    func testWhereTheItemsStartPastThePaneTheNameHasNoInset() {
+        let inset = SettingsToolbar.nameInset(paneLeading: 56, itemsStart: 92.5)
+        XCTAssertEqual(inset, 0, accuracy: 0.0001,
+                       "a pane whose leading edge is at 56 gets an inset of \(inset): the name is pushed past where the items start")
+        let list = SettingsToolbar.identifiers(content: nil, style: .moduleName, lead: .spacer)
         XCTAssertEqual(raw(list), raw([Self.name, Self.flex, Self.status]),
                        "a bar led by `.spacer` still leads with the tracking separator, which tracks nothing without a split view; got \(raw(list))")
     }
 
-    /// Total failure prints: "at sidebar 200 the bar carries no spacer: …" / "at sidebar 200 the spacer is <x>, not 123.5: …".
-    func testAtSidebar200TheSpacerIs123Point5() throws {
-        let w = try XCTUnwrap(SettingsToolbar.spacerWidth(paneLeading: 200, itemsStart: 92.5),
-                              "at sidebar 200 the bar carries no spacer: the name sits at the item floor, under the sidebar's edge")
-        XCTAssertEqual(w, 123.5, accuracy: 0.0001, "at sidebar 200 the spacer is \(w), not 123.5: the name does not land 16 pt past the pane's edge")
-    }
-
-    /// With `hasSpacer` the `.spacer` lead lists `[spacer, name, …]`; the `.sidebarSeparator` lead never shows it.
-    /// Total failure prints: "the spacer is missing from the list or not first: got <list>".
-    func testWithASpacerTheBarOpensWithTheSpacerThenTheName() {
-        let list = SettingsToolbar.identifiers(content: nil, style: .moduleName, lead: .spacer, hasSpacer: true)
-        XCTAssertEqual(raw(list), raw([Self.spacer, Self.name, Self.flex, Self.status]),
-                       "the spacer is missing from the list or not first: got \(raw(list))")
+    /// Total failure prints: "at sidebar 200 the inset is <x>, not 123.5: the name does not land 16 pt past the pane's edge".
+    func testAtSidebar200TheInsetIs123Point5() {
+        let inset = SettingsToolbar.nameInset(paneLeading: 200, itemsStart: 92.5)
+        XCTAssertEqual(inset, 123.5, accuracy: 0.0001, "at sidebar 200 the inset is \(inset), not 123.5: the name does not land 16 pt past the pane's edge")
     }
 
     // MARK: - the separator-led bar is byte-for-byte today's
@@ -131,60 +126,53 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
     /// and "the separator-led bar no longer starts with the tracking separator under <shape>".
     func testTheSeparatorLeadEqualsTodaysPinnedListForEveryShape() {
         for shape in Self.shapes {
-            let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .sidebarSeparator, hasSpacer: false)
+            let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .sidebarSeparator)
             XCTAssertEqual(raw(m), raw(shape.moduleName),
                            "the separator-led bar moved under \(shape.label) / moduleName: want \(raw(shape.moduleName)) got \(raw(m))")
             XCTAssertEqual(m.first, Self.sep, "the separator-led bar no longer starts with the tracking separator under \(shape.label)")
-            let t = SettingsToolbar.identifiers(content: shape.content, style: .windowTitle, lead: .sidebarSeparator, hasSpacer: false)
+            let t = SettingsToolbar.identifiers(content: shape.content, style: .windowTitle, lead: .sidebarSeparator)
             XCTAssertEqual(raw(t), raw(shape.windowTitle),
                            "the separator-led bar moved under \(shape.label) / windowTitle: want \(raw(shape.windowTitle)) got \(raw(t))")
             XCTAssertEqual(t.first, Self.sep, "the separator-led bar no longer starts with the tracking separator under \(shape.label) / windowTitle")
         }
     }
 
-    /// The `.spacer` lead without a spacer is today's list with its first item gone — nothing else moves.
-    /// Total failure prints: "the `.spacer` lead changed more than the first item under <shape> / moduleName: got […]".
-    func testTheSpacerLeadWithoutASpacerIsTodaysListMinusItsSeparator() {
+    /// The `.spacer` lead under `.moduleName` is the `.sidebarSeparator` list with its first item gone — nothing else moves —
+    /// and under `.windowTitle` the name opens the list, pinned literally, the status staying out.
+    /// Total failure prints: "the `.spacer` lead changed more than the first item under <shape> / moduleName: got […]" /
+    /// "the `.spacer` lead under <shape> / windowTitle is […], not the pinned […]".
+    func testTheSpacerLeadIsTodaysListMinusItsSeparator() {
         for shape in Self.shapes {
-            let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .spacer, hasSpacer: false)
+            let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .spacer)
             XCTAssertEqual(raw(m), raw(Array(shape.moduleName.dropFirst())),
                            "the `.spacer` lead changed more than the first item under \(shape.label) / moduleName: got \(raw(m))")
-            let t = SettingsToolbar.identifiers(content: shape.content, style: .windowTitle, lead: .spacer, hasSpacer: false)
-            XCTAssertEqual(raw(t), raw(Array(shape.windowTitle.dropFirst())),
-                           "the `.spacer` lead changed more than the first item under \(shape.label) / windowTitle: got \(raw(t))")
+            let t = SettingsToolbar.identifiers(content: shape.content, style: .windowTitle, lead: .spacer)
+            XCTAssertEqual(raw(t), raw(shape.spacerWindowTitle),
+                           "the `.spacer` lead under \(shape.label) / windowTitle is \(raw(t)), not the pinned \(raw(shape.spacerWindowTitle))")
+            XCTAssertFalse(t.contains(Self.status), "the `.spacer` lead lists the status under \(shape.label) / windowTitle")
             XCTAssertFalse(t.contains(Self.sep) || m.contains(Self.sep),
                            "a bar led by `.spacer` carries the sidebar tracking separator under \(shape.label)")
         }
     }
 
-    /// Total failure prints: "the `.spacer` lead with a spacer changed more than the first item under <shape>: got […]".
-    func testTheSpacerLeadWithASpacerIsTodaysListWithTheSpacerInPlaceOfTheSeparator() {
-        for shape in Self.shapes {
-            let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .spacer, hasSpacer: true)
-            XCTAssertEqual(raw(m), raw([Self.spacer] + shape.moduleName.dropFirst()),
-                           "the `.spacer` lead with a spacer changed more than the first item under \(shape.label): got \(raw(m))")
-        }
-    }
-
     // MARK: - boundaries and hostile inputs
 
-    /// `paneLeading + 16 <= itemsStart` is nil: the boundary itself is nil, a hair over is a number.
-    /// Total failure prints: "at paneLeading + 16 == itemsStart the bar carries a zero-width spacer item instead of none" /
-    /// "a quarter point past the boundary the spacer vanished: …".
-    func testTheBoundaryPaneLeadingPlus16EqualsItemsStart() throws {
-        XCTAssertNil(SettingsToolbar.spacerWidth(paneLeading: 76.5, itemsStart: 92.5),
-                     "at paneLeading + 16 == itemsStart the bar carries a zero-width spacer item instead of none")
-        let over = try XCTUnwrap(SettingsToolbar.spacerWidth(paneLeading: 76.75, itemsStart: 92.5),
-                                 "a quarter point past the boundary the spacer vanished: the name overlaps the buttons")
-        XCTAssertEqual(over, 0.25, accuracy: 0.0001, "a quarter point past the boundary the spacer is \(over), not 0.25")
-        XCTAssertNil(SettingsToolbar.spacerWidth(paneLeading: 76.25, itemsStart: 92.5),
-                     "a quarter point before the boundary the bar carries a negative spacer")
+    /// `paneLeading + 16 <= itemsStart` reads 0: the boundary itself and below read 0, a hair over reads the hair.
+    /// Total failure prints: "at paneLeading + 16 == itemsStart the inset is <x>, not 0" /
+    /// "a quarter point past the boundary the inset is <x>, not 0.25" / "a quarter point before the boundary the inset is <x>".
+    func testTheBoundaryPaneLeadingPlus16EqualsItemsStart() {
+        let at = SettingsToolbar.nameInset(paneLeading: 76.5, itemsStart: 92.5)
+        XCTAssertEqual(at, 0, accuracy: 0.0001, "at paneLeading + 16 == itemsStart the inset is \(at), not 0")
+        let over = SettingsToolbar.nameInset(paneLeading: 76.75, itemsStart: 92.5)
+        XCTAssertEqual(over, 0.25, accuracy: 0.0001, "a quarter point past the boundary the inset is \(over), not 0.25")
+        let under = SettingsToolbar.nameInset(paneLeading: 76.25, itemsStart: 92.5)
+        XCTAssertEqual(under, 0, accuracy: 0.0001, "a quarter point before the boundary the inset is \(under), not 0")
     }
 
-    /// A spacer width is nil or a finite positive number — never zero, negative, infinite or not-a-number,
-    /// whatever arrives, finite pairs whose difference overflows included.
-    /// Total failure prints: "spacerWidth(paneLeading: <p>, itemsStart: <i>) answered <x>: a zero, negative, infinite or not-a-number spacer reaches the toolbar".
-    func testNoInputMakesAnUnusableSpacer() {
+    /// An inset is a finite number not below zero — never negative, infinite or not-a-number,
+    /// whatever arrives, finite pairs whose difference overflows included; hostile inputs read 0.
+    /// Total failure prints: "nameInset(paneLeading: <p>, itemsStart: <i>) answered <x>: a negative, infinite or not-a-number inset reaches the toolbar".
+    func testNoInputMakesAnUnusableInset() {
         let hostile: [(CGFloat, CGFloat)] = [
             (-10, 92.5), (-.greatestFiniteMagnitude, 92.5), (0, 92.5),
             (.nan, 92.5), (200, .nan), (.nan, .nan),
@@ -194,65 +182,52 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
             (.greatestFiniteMagnitude, -.greatestFiniteMagnitude), (1e308, -1e308),
         ]
         for (p, i) in hostile {
-            if let w = SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: i) {
-                XCTAssertTrue(w.isFinite && w > 0,
-                              "spacerWidth(paneLeading: \(p), itemsStart: \(i)) answered \(w): a zero, negative, infinite or not-a-number spacer reaches the toolbar")
-            }
+            let w = SettingsToolbar.nameInset(paneLeading: p, itemsStart: i)
+            XCTAssertTrue(w.isFinite && w >= 0,
+                          "nameInset(paneLeading: \(p), itemsStart: \(i)) answered \(w): a negative, infinite or not-a-number inset reaches the toolbar")
         }
         for p: CGFloat in [-10, 0, .nan, -.infinity] {
-            XCTAssertNil(SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: 92.5),
-                         "a pane leading of \(p) left of the buttons gets a spacer instead of none")
+            XCTAssertEqual(SettingsToolbar.nameInset(paneLeading: p, itemsStart: 92.5), 0, accuracy: 0.0001,
+                           "a pane leading of \(p) left of the buttons gets an inset instead of 0")
         }
-        XCTAssertNil(SettingsToolbar.spacerWidth(paneLeading: 200, itemsStart: .nan),
-                     "a not-a-number items start gets a number: the spacer's width is a guess")
+        for p: CGFloat in [.greatestFiniteMagnitude, 1e308] {
+            XCTAssertEqual(SettingsToolbar.nameInset(paneLeading: p, itemsStart: -.greatestFiniteMagnitude), 0, accuracy: 0.0001,
+                           "a pair whose difference overflows (\(p)) gets a wide inset instead of 0")
+        }
+        XCTAssertEqual(SettingsToolbar.nameInset(paneLeading: 200, itemsStart: .nan), 0, accuracy: 0.0001,
+                       "a not-a-number items start gets a number: the inset is a guess")
     }
 
     /// The sidebar's widest (`ShellGeometry.sidebarRange`, 320) is the sidebar's business, not this function's: 320 → 243.5, wider keeps growing, finite.
-    /// Total failure prints: "a pane at the 320 maximum carries no spacer" / "a pane at 320 gets <x>, not 243.5" /
+    /// Total failure prints: "a pane at 320 gets <x>, not 243.5" /
     /// "a pane wider than 320 (<p>) shrank or went non-finite: …".
-    func testAPaneWiderThanTheMaximumStaysArithmetic() throws {
-        let max = try XCTUnwrap(SettingsToolbar.spacerWidth(paneLeading: 320, itemsStart: 92.5), "a pane at the 320 maximum carries no spacer")
+    func testAPaneWiderThanTheMaximumStaysArithmetic() {
+        let max = SettingsToolbar.nameInset(paneLeading: 320, itemsStart: 92.5)
         XCTAssertEqual(max, 243.5, accuracy: 0.0001, "a pane at 320 gets \(max), not 243.5")
         var last = max
         for p: CGFloat in [321, 400, 5000] {
-            let w = SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: 92.5)
-            XCTAssertNotNil(w, "a pane at \(p) lost its spacer")
-            if let w {
-                XCTAssertTrue(w.isFinite && w > last, "a pane wider than 320 (\(p)) shrank or went non-finite: \(w) after \(last)")
-                last = w
-            }
+            let w = SettingsToolbar.nameInset(paneLeading: p, itemsStart: 92.5)
+            XCTAssertTrue(w.isFinite && w > last, "a pane wider than 320 (\(p)) shrank or went non-finite: \(w) after \(last)")
+            last = w
         }
     }
 
-    /// 200 → 123.5 holds on both sides of it: the spacer is the pane leading plus 16 less the items' start, linear.
-    /// Total failure prints: "the spacer is not linear in the pane's leading edge: at <p> got <x>, want <y>".
-    func testTheSpacerFollowsThePaneOneForOne() throws {
+    /// 200 → 123.5 holds on both sides of it: the inset is the pane leading plus 16 less the items' start, linear.
+    /// Total failure prints: "the inset is not linear in the pane's leading edge: at <p> got <x>, want <y>".
+    func testTheInsetFollowsThePaneOneForOne() {
         for (p, want) in [(150.0, 73.5), (200.0, 123.5), (250.0, 173.5)] as [(CGFloat, CGFloat)] {
-            let w = try XCTUnwrap(SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: 92.5), "no spacer at pane \(p)")
-            XCTAssertEqual(w, want, accuracy: 0.0001, "the spacer is not linear in the pane's leading edge: at \(p) got \(w), want \(want)")
-        }
-    }
-
-    /// The `.sidebarSeparator` lead ignores `hasSpacer`: a spacer asked of a bar led by the separator changes nothing.
-    /// Total failure prints: "the separator-led bar changed when a spacer was asked of it under <shape> / <style>: got […]".
-    func testTheSeparatorLeadIgnoresAskedForSpacer() {
-        for shape in Self.shapes {
-            for (style, want) in [(PageBarStyle.moduleName, shape.moduleName), (.windowTitle, shape.windowTitle)] {
-                let list = SettingsToolbar.identifiers(content: shape.content, style: style, lead: .sidebarSeparator, hasSpacer: true)
-                XCTAssertEqual(raw(list), raw(want),
-                               "the separator-led bar changed when a spacer was asked of it under \(shape.label) / \(style): got \(raw(list))")
-                XCTAssertFalse(list.contains(Self.spacer), "the separator-led bar carries the leading spacer under \(shape.label) / \(style)")
-            }
+            let w = SettingsToolbar.nameInset(paneLeading: p, itemsStart: 92.5)
+            XCTAssertEqual(w, want, accuracy: 0.0001, "the inset is not linear in the pane's leading edge: at \(p) got \(w), want \(want)")
         }
     }
 
     /// A pane leading below zero is no position, however far left the items start: the arithmetic alone
     /// (-10 + 16 - (-200) = 206) would answer a width. Total failure prints:
-    /// "a pane leading of <p> with items at <i> got a <w> pt spacer".
-    func testANegativePaneLeadingGetsNoSpacerWhateverTheItemsStart() {
+    /// "a pane leading of <p> with items at <i> got a <w> pt inset".
+    func testANegativePaneLeadingGetsNoInsetWhateverTheItemsStart() {
         for (p, i) in [(-10, -200), (-1, -1), (-0.5, -100), (-.greatestFiniteMagnitude, -.greatestFiniteMagnitude)] as [(CGFloat, CGFloat)] {
-            let w = SettingsToolbar.spacerWidth(paneLeading: p, itemsStart: i)
-            XCTAssertNil(w, "a pane leading of \(p) with items at \(i) got a \(w ?? 0) pt spacer")
+            let w = SettingsToolbar.nameInset(paneLeading: p, itemsStart: i)
+            XCTAssertEqual(w, 0, accuracy: 0.0001, "a pane leading of \(p) with items at \(i) got a \(w) pt inset")
         }
     }
 
@@ -263,30 +238,29 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
                         channel: HelmWindowToolbarChannel(), lead: lead)
     }
 
-    /// Total failure prints: "the bar has no spacer at sidebar 200: the page's name sits over the sidebar,
-    /// not on the card; got <list>" / "a spacer of <w> at the rail: the name lands past where the bar could put it".
-    func testTheBarCarriesASpacerOnlyWhereThePaneLeavesRoom() {
+    /// Total failure prints: "the list at sidebar 200 is […], not [name, flex, status]" / "the inset at sidebar 200 is <x>, not 123.5:
+    /// the name does not land 16 pt past the pane's edge" / "the list moved when the pane went to the rail: a bar is rebuilt by a fold" /
+    /// "an inset of <w> at the rail: the name lands past where the bar could put it".
+    func testTheNamesInsetIsWhatThePaneLeavesAndTheListNeverMoves() {
         let toolbar = makeToolbar(lead: .spacer)
         toolbar.paneMoved(leading: 200, width: 856)
         let at200 = toolbar.barIdentifiers(content: nil, style: .moduleName)
-        XCTAssertEqual(raw(at200), raw([Self.spacer, Self.name, Self.flex, Self.status]),
-                       "the bar has no spacer at sidebar 200: the page's name sits over the sidebar, not on the card; got \(raw(at200))")
-        XCTAssertEqual(toolbar.leadingSpacer ?? -1, 123.5, accuracy: 0.0001,
-                       "the spacer at sidebar 200 is \(String(describing: toolbar.leadingSpacer)), not 123.5: the name does not land 16 pt past the pane's edge")
+        XCTAssertEqual(raw(at200), raw([Self.name, Self.flex, Self.status]), "the list at sidebar 200 is \(raw(at200)), not [name, flex, status]")
+        XCTAssertEqual(toolbar.currentNameInset, 123.5, accuracy: 0.0001,
+                       "the inset at sidebar 200 is \(toolbar.currentNameInset), not 123.5: the name does not land 16 pt past the pane's edge")
         toolbar.paneMoved(leading: 56, width: 1000)
         let at56 = toolbar.barIdentifiers(content: nil, style: .moduleName)
-        XCTAssertEqual(raw(at56), raw([Self.name, Self.flex, Self.status]),
-                       "the bar keeps a spacer at the rail: the name lands past where the bar could put it; got \(raw(at56))")
-        XCTAssertNil(toolbar.leadingSpacer,
-                     "a spacer of \(String(describing: toolbar.leadingSpacer)) at the rail: the name lands past where the bar could put it")
+        XCTAssertEqual(raw(at56), raw(at200), "the list moved when the pane went to the rail: a bar is rebuilt by a fold; got \(raw(at56))")
+        XCTAssertEqual(toolbar.currentNameInset, 0, accuracy: 0.0001,
+                       "an inset of \(toolbar.currentNameInset) at the rail: the name lands past where the bar could put it")
     }
 
-    /// Total failure prints: "a bar nobody told where the pane is carries a spacer of <w>" (or reads another
+    /// Total failure prints: "a bar nobody told where the pane is holds an inset of <w>" (or reads another
     /// seed, or offers room before there is a pane).
-    func testBeforeThePaneIsToldTheBarCarriesNoSpacerAndStartsFromTheSeed() {
+    func testBeforeThePaneIsToldTheNameHasNoInsetAndStartsFromTheSeed() {
         let toolbar = makeToolbar(lead: .spacer)
-        XCTAssertFalse(toolbar.hasSpacer,
-                       "a bar nobody told where the pane is carries a spacer of \(String(describing: toolbar.leadingSpacer))")
+        XCTAssertEqual(toolbar.currentNameInset, 0, accuracy: 0.0001,
+                       "a bar nobody told where the pane is holds an inset of \(toolbar.currentNameInset)")
         XCTAssertEqual(toolbar.itemsStart, 92.5, accuracy: 0.0001,
                        "a bar nobody measured starts its items at \(toolbar.itemsStart), not at the seed 92.5")
         XCTAssertEqual(SettingsToolbar.itemsStartSeed, 92.5, accuracy: 0.0001,
@@ -307,24 +281,24 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
                        "the bar measures room \(toolbar.offeredRoom()), not the pane's 1000: the tabs unfold against the whole window, sidebar included")
     }
 
-    /// Total failure prints: "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be
-    /// rebuilt on every report".
-    func testTheSeparatorLeadNeverCarriesASpacerWhateverItIsTold() {
+    /// Total failure prints: "a separator-led bar's list moved after paneMoved: the split rigs' bars would be
+    /// rebuilt on every report" / "a separator-led bar holds an inset of <w>: the tracking separator places its name".
+    func testTheSeparatorLedListIsTheSameWhateverItIsTold() {
         let toolbar = makeToolbar(lead: .sidebarSeparator)
         toolbar.paneMoved(leading: 200, width: 856)
-        XCTAssertFalse(toolbar.hasSpacer,
-                       "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be rebuilt on every report")
         let list = toolbar.barIdentifiers(content: nil, style: .moduleName)
         XCTAssertEqual(raw(list), raw([Self.sep, Self.name, Self.flex, Self.status]),
-                       "a separator-led bar grew a spacer after paneMoved: the split rigs' bars would be rebuilt on every report; got \(raw(list))")
+                       "a separator-led bar's list moved after paneMoved: the split rigs' bars would be rebuilt on every report; got \(raw(list))")
+        XCTAssertEqual(toolbar.currentNameInset, 0, accuracy: 0.0001,
+                       "a separator-led bar holds an inset of \(toolbar.currentNameInset): the tracking separator places its name")
         XCTAssertEqual(toolbar.offeredRoom(), 856, accuracy: 0.0001,
                        "a separator-led bar measures room \(toolbar.offeredRoom()), not the pane's 856, once the pane is told")
     }
 
     /// Both signs of infinity are required: +infinity must not become the upper bound of a room.
     /// Total failure prints: "a pane width of <w> reads as room <x>: the tabs unfold into room nobody measured" /
-    /// "a pane leading of <p> carries a spacer of <w>: a position nobody measured moves the name".
-    func testAPaneThatIsNotANumberIsNoRoomAndNoSpacer() {
+    /// "a pane leading of <p> holds an inset of <w>: a position nobody measured moves the name".
+    func testAPaneThatIsNotANumberIsNoRoomAndNoInset() {
         for width: CGFloat in [.nan, .infinity, -.infinity, -1] {
             let toolbar = makeToolbar(lead: .spacer)
             toolbar.paneMoved(leading: 200, width: width)
@@ -334,8 +308,8 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         for leading: CGFloat in [.nan, .infinity, -.infinity, -1] {
             let toolbar = makeToolbar(lead: .spacer)
             toolbar.paneMoved(leading: leading, width: 856)
-            XCTAssertFalse(toolbar.hasSpacer,
-                           "a pane leading of \(leading) carries a spacer of \(String(describing: toolbar.leadingSpacer)): a position nobody measured moves the name")
+            XCTAssertEqual(toolbar.currentNameInset, 0, accuracy: 0.0001,
+                           "a pane leading of \(leading) holds an inset of \(toolbar.currentNameInset): a position nobody measured moves the name")
         }
     }
 
@@ -379,8 +353,9 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         let second = SettingsToolbar(model: model, channel: HelmWindowToolbarChannel(), lead: .spacer)
         first.paneMoved(leading: 200, width: 856)
         model.selection = .about
-        XCTAssertTrue(first.hasSpacer, "the toolbar that was told lost its spacer")
-        XCTAssertFalse(second.hasSpacer, "a pane told to one toolbar reached the other: it carries a spacer")
+        XCTAssertEqual(first.currentNameInset, 123.5, accuracy: 0.0001, "the toolbar that was told lost its inset: \(first.currentNameInset)")
+        XCTAssertEqual(first.offeredRoom(), 856, accuracy: 0.0001, "the toolbar that was told lost its room: \(first.offeredRoom())")
+        XCTAssertEqual(second.currentNameInset, 0, accuracy: 0.0001, "a pane told to one toolbar reached the other: it holds an inset of \(second.currentNameInset)")
         XCTAssertEqual(second.offeredRoom(), 0, "a pane told to one toolbar reached the other: room \(second.offeredRoom())")
         XCTAssertTrue(second.paneMoved(leading: 200, width: 856),
                       "the second toolbar refused a pane the first had stored: the last pane is shared")
@@ -396,24 +371,12 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         return (bodies.first ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    /// A source reading, because the gate's `lead` half acts only where `isVisible` is true and no test here
-    /// shows a window: under `.sidebarSeparator` an unshown window reads nothing either way. Total failure
+    /// A source reading, because the gate's `lead` half acts only where `isVisible` answers true, and the one test window wearing a `SettingsToolbar` that answers so (`ClaimedWindow`, `TheBarTellsItsShellWhenItIsAttachedTests`) is built on `.spacer` alone:
+    /// under `.sidebarSeparator` an unshown window reads nothing either way. Total failure
     /// prints: "readItemsStart() does not open with the lead gate: <first 80 characters of its body>".
     func testReadItemsStartOpensWithTheLeadGateSoASeparatorLedBarIsNeverRead() throws {
         let body = try collapsedBody(of: "readItemsStart")
         XCTAssertTrue(body.hasPrefix("guard lead == .spacer, "),
                       "readItemsStart() does not open with the lead gate: \(body.prefix(80))")
-    }
-
-    /// A source reading: a flip from inside `settle` needs a visible window to run. Total failure prints:
-    /// "settle(_:) does not return when leadMoved() flipped the bar: <first 200 characters of its body>" / "leadMoved()
-    /// does not answer whether it flipped: <last 120 characters of its body>".
-    func testSettleGivesUpTheDiscardedBarWhenTheSpacerFlipsIt() throws {
-        let body = try collapsedBody(of: "settle")
-        XCTAssertTrue(body.contains("if readItemsStart(), leadMoved() { return }"),
-                      "settle(_:) does not return when leadMoved() flipped the bar: \(body.prefix(200))")
-        let moved = try collapsedBody(of: "leadMoved")
-        XCTAssertTrue(moved.contains("refreshAndResettle() return true") && moved.hasSuffix("return false"),
-                      "leadMoved() does not answer whether it flipped: \(moved.suffix(120))")
     }
 }

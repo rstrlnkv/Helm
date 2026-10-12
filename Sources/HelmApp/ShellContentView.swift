@@ -122,7 +122,8 @@ final class ShellContentView: NSView {
     override var isFlipped: Bool { true }
 
     /// The views and the closure are held for as long as this view lives: a receiver that owns this
-    /// view captures itself weakly. `cardMoved` is called before the corner of that layout is applied.
+    /// view captures itself weakly. `cardMoved` is called from `layout()` itself, in the turn that moved the card and before
+    /// the corner of that layout is applied; what it does must not assign `window.toolbar`.
     init(sidebar: NSView, pane: NSView, bar: ShellPageBarView?, cardMoved: @escaping (CGRect) -> Void = { _ in }) {
         self.sidebar = sidebar
         self.pane = pane

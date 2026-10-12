@@ -11,8 +11,8 @@ import HelmUI
 ///
 /// **The window wears an app-owned `NSToolbar`, built by `SettingsToolbar`** (`Bar.toolbar`, the
 /// default): a cached bar for each page that declares toolbar content and one shared by the pages that
-/// declare none, AppKit's strip over the whole window, and, where the card leaves room for one, a spacer as
-/// the bar's first item that carries the page's name over to the card, told where the card is. The shell's pane starts
+/// declare none, AppKit's strip over the whole window, and the page's name as the bar's first item, held off the
+/// item's leading edge so that it starts sixteen points past the card and never left of where AppKit starts its items, told where the card is. The shell's pane starts
 /// where AppKit's strip ends and the shell adds nothing to it. The window's `.pageBar` build is the one
 /// that has no toolbar: the page's bar is Helm's own (`ShellPageBar`), a view at the top of the card's
 /// clip that `ShellContentView` places, and the pane starts under it. Only tests construct that build,
@@ -142,10 +142,8 @@ import HelmUI
         window.delegate = self
         if let settingsToolbar {
             // The card's place is known to the bar before the bar is put on the
-            // window: one layout, and the report it queued delivered here rather
-            // than a turn of the main queue later.
+            // window: one layout, which tells it in its own turn.
             shell.view.layoutSubtreeIfNeeded()
-            shell.deliverCard()
             // Assigning this is what puts the first toolbar on the window —
             // `SettingsToolbar` cannot do it itself at construction, since it is
             // built before this window exists.
@@ -178,16 +176,13 @@ import HelmUI
     private var titleWatch: AnyCancellable?
 
     /// Writes what the page published as the window's title, and under `.windowTitle` its subtitle too (empty
-    /// under `.moduleName`). In the `.pageBar` build `titleVisibility` is `.hidden` under both styles: the
-    /// bar's name zone draws the name, with the module's plate under `.moduleName` and without it under
-    /// `.windowTitle`. In the `.toolbar` build the title is drawn by AppKit under `.windowTitle` and hidden
-    /// under `.moduleName`, where the name is a toolbar item that carries the module's plate and the title
-    /// stays the window's (the Window menu and Mission Control name the window by it).
+    /// under `.moduleName`). `titleVisibility` is `.hidden` under both styles in both builds, written once by the initialiser: the
+    /// name zone draws the name, with the module's plate under `.moduleName` and without it under
+    /// `.windowTitle`, and the title stays the window's (the Window menu and Mission Control name the window by it).
     private func applyTitle(_ title: HelmPageTitle?) {
         let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
         window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
-        window.titleVisibility = settingsToolbar != nil && style == .windowTitle ? .visible : .hidden
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -349,11 +344,9 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// **The card's place is reported outside the content's layout pass.** A flip
-/// of the bar's spacer assigns `window.toolbar`, and that must not happen
-/// inside `ShellContentView.layout()`; `cardWasLaidOut` keeps the newest frame
-/// and `deliverCard()` hands it to `cardMoved` a turn of the main queue later
-/// (the window delivers the first one itself, before the bar has a window).
+/// **The card's place is reported inside the content's layout pass.** `cardMoved` is called from
+/// `ShellContentView.layout()` in its own turn, so what it writes (the toolbar's inset for the name)
+/// is there when the pass ends; nothing it does may assign `window.toolbar`.
 ///
 /// The page bar's view, in the window's `.pageBar` build, is handed in and placed by the shell's view;
 /// the controller holds no zone and assigns the window no toolbar: that is `SettingsToolbar`'s,
@@ -374,8 +367,6 @@ enum SettingsSelection: Hashable {
 
     /// Told where the card is; set by the window, which holds the toolbar.
     var cardMoved: (CGRect) -> Void = { _ in }
-    private var pendingCard: CGRect?
-    private var deliveryScheduled = false
 
     private let fold = SidebarFold()
 
@@ -436,23 +427,6 @@ enum SettingsSelection: Hashable {
     func barWasAttached() {
         guard isViewLoaded else { return }
         shell.barWasAttached()
-    }
-
-    private func cardWasLaidOut(_ frame: CGRect) {
-        pendingCard = frame
-        guard !deliveryScheduled else { return }
-        deliveryScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            MainActor.assumeIsolated { self?.deliverCard() }
-        }
-    }
-
-    /// Hands the newest frame laid out, if any is waiting, to `cardMoved`.
-    func deliverCard() {
-        deliveryScheduled = false
-        guard let frame = pendingCard else { return }
-        pendingCard = nil
-        cardMoved(frame)
     }
 
     private func width(collapsed: Bool) -> CGFloat {
@@ -521,7 +495,7 @@ enum SettingsSelection: Hashable {
         addChild(sidebar)
         addChild(detail)
         return ShellContentView(sidebar: sidebar.view, pane: detail.view, bar: bar) { [weak self] frame in
-            self?.cardWasLaidOut(frame)
+            self?.cardMoved(frame)
         }
     }
 }

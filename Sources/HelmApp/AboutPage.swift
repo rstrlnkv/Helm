@@ -156,11 +156,11 @@ struct AboutHelmView: View {
             .padding(.vertical, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // The name of the page this one is a tab of, for the window's title
-        // bar. Without it nothing publishes a title, and under
-        // `PageBarStyle.windowTitle` `SettingsWindow.applyTitle(_:)` falls back
-        // to the window's own name («Настройки Helm» over this page). A no-op
-        // where no bar is set.
+        // The name of the page this one is a tab of, for the window's title.
+        // Without it nothing publishes a title, and
+        // `SettingsWindow.applyTitle(_:)` falls back to the window's own name
+        // («Настройки Helm» for the Window menu), the name zone drawing
+        // the pane's name. A no-op where no bar is set.
         .helmPageBar(title: AppStr.settingsPane)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })

@@ -14,13 +14,15 @@ lists the files that publish.
 
 ## The bar's zones
 
-`SettingsToolbar`'s bar, left to right: a spacer that carries the name over to the card, where the card leaves room for one; the name (the module's plate and
-its name, drawn only under `PageBarStyle.moduleName`); a flexible space; the tabs,
+`SettingsToolbar`'s bar, left to right: the name (the module's plate and
+its name under `PageBarStyle.moduleName`, the name alone under `PageBarStyle.windowTitle`, "Without Icon"); a flexible space; the tabs,
 centred; a flexible space; **one** custom-view item for the whole action capsule;
 the search field. A status-bearing page draws the shared name-only bar instead —
-spacer, name, a flexible space, `helm.status` at the trailing edge — and under
+name, a flexible space, `helm.status` at the trailing edge — and under
 `PageBarStyle.moduleName` that bar always lists `helm.status`, drawing nothing on a page with no status, so every status-less module that draws it never sees that item move
-(`SettingsToolbar.identifiers`, `StatusZoneView`). The window tells the toolbar where the card is (`ShellContentView`'s `cardMoved`, delivered a turn of the main queue after the layout that moved it, the window delivering the first itself), and the toolbar tells the shell only that a window took a bar. The pane starts where AppKit's strip ends and Helm adds nothing to its safe area.
+(`SettingsToolbar.identifiers`, `StatusZoneView`). The window tells the toolbar where the card is (`ShellContentView`'s `cardMoved`, called inside `layout()` in the turn that moved the card), and the toolbar tells the shell only that a window took a bar. The pane starts where AppKit's strip ends and Helm adds nothing to its safe area.
+
+**The name starts sixteen points past the card's edge and never left of where AppKit starts its items.** The name's item is a container (`SettingsToolbar.makeNameItem`) holding the name's hosting view under one leading constraint, whose constant is the card's edge plus sixteen less where the items start, and 0 where that is negative or not a number (`SettingsToolbar.nameInset(paneLeading:itemsStart:)`). `paneMoved(leading:width:)` writes it in the turn of the layout that moved the card, and a bar put on the window afterwards (another page's, or the bar of another look) is given the inset of now. A fold of the sidebar therefore assigns the window no toolbar and replaces no bar: it writes a constant, which follows the card's edge one for one while that edge plus sixteen is right of where the items start and stays 0 from there to the rail, where the name stands at the items' start. That the toolbar lays the item out at the width the constant gives it in the same display pass is not seen on a shown window. The window's own title is hidden under either style (`SettingsWindow`'s initialiser writes `titleVisibility` once and no other line of `Sources/HelmApp` writes it): the name is drawn by the bar, and the title stays the window's for the Window menu.
 
 **The actions are one capsule, not one view or item per action.** The capsule
 (`HelmToolbarActionsCapsule`, `Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`) reserves the width of every

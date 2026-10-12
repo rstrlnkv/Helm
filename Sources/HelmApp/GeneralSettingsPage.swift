@@ -351,7 +351,7 @@ struct MenuBarSettingsView: View {
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
                 // The window toolbar's header: the module's plate and name at
-                // the leading edge, or the window's own title bar — the
+                // the leading edge, or the name alone — the
                 // owner's choice is the first, and this is where a person who
                 // prefers the other drafted shape can still reach it
                 // (`PageBarStyle`).

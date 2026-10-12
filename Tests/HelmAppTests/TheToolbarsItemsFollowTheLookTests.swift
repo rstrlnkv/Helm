@@ -743,9 +743,9 @@ final class TheToolbarsItemsFollowTheLookTests: XCTestCase {
 
     // MARK: - What `isBordered = false` reads back on each shape of item
 
-    /// The item shapes the toolbar builds around a hosting view, and one the tree does not (the toolbar's
-    /// leading spacer, a bare `NSView` told `false`, draws nothing and is not among them): `hosting` is a hosting view told
-    /// `isBordered = false`, as the name, status and actions items are; `plate` is a `ShellBarPlate` holding a
+    /// The item shapes the toolbar builds around a hosting view, less the name item's container (a bare `NSView` holding one, told `false`, not probed), and one the tree does not build:
+    /// `hosting` is a hosting view told
+    /// `isBordered = false`, as the status and actions items are; `plate` is a `ShellBarPlate` holding a
     /// hosting view, as the tabs item is under Flat; `default` is a hosting view never told, as the tabs item
     /// is under Liquid Glass; `segmented` is a bare control told `false`, which no item of the toolbar is, the
     /// contrast that shows the instrument can say `true`.
@@ -783,8 +783,8 @@ final class TheToolbarsItemsFollowTheLookTests: XCTestCase {
 
     /// **`isBordered = false`, set in the delegate call as the app sets it, reads back `false` once the
     /// toolbar is on a window nobody ordered, on an item whose view is an `NSHostingView` or a
-    /// `ShellBarPlate` holding one: the two shapes the toolbar builds with it around a hosting view.** The
-    /// leading spacer, a bare `NSView` told `false`, is not probed. So
+    /// `ShellBarPlate` holding one: the shapes of the status, actions and Flat tabs items.** The
+    /// name item's container, a bare `NSView` holding a hosting view and told `false`, is a third shape the toolbar builds around a hosting view and is not probed. So
     /// `testUnderFlatTheTabsItemCarriesNoPlatterOfAppKits` reads a value that sticks. The two controls show
     /// the instrument can say `true`: an `NSSegmentedControl` as the item's own view reads `true` after
     /// `= false` (the shape that does NOT keep it), and an item never told reads `true` on a window.

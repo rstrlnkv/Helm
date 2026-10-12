@@ -464,7 +464,7 @@ public extension View {
     /// **Where the window has a toolbar, the header goes there instead**
     /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws
     /// no row in the page at all. `subtitle` is the status said in words, for
-    /// the `.windowTitle` style that puts it under the window's title. Carries
+    /// the `.windowTitle` style, which gives it to the window as its subtitle; the settings window hides its title. Carries
     /// no trailing content any more, under either bar style or none: the one
     /// caller that filled it drew a status badge, and that badge now lives at
     /// the bar's own trailing edge (`SettingsToolbar.makeStatusItem`, the
