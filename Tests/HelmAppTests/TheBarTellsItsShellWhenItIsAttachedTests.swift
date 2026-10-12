@@ -9,18 +9,24 @@ import XCTest
 /// (`NSWindow(contentRect:styleMask:backing:defer: true)`, `isReleasedWhenClosed = false`), and its toolbar
 /// is taken off at the end of each test.
 ///
-/// A moved items start (`readItemsStart()` answering true) is fed through a window that claims to be shown:
-/// `ClaimedWindow` answers `isVisible` as told and is otherwise an unshown window, so the toolbar reads whatever
-/// number the name item's container gives there. The rows that use it assert the toolbar's own coherence (the
-/// inset written is the arithmetic over the items start it stored; `itemsStartMoves` counts the reads that moved the start, is cleared by a stored report and stops the reads at `itemsStartMoveCeiling`), never the number AppKit gave, which in a
-/// window nobody ordered is not the owner's.
+/// A moved items start (`learnStartOfItems(_:)` answering true, called by the settle and by a resize, never by a
+/// report of the pane) is fed through a window that claims to be shown: `ClaimedWindow` answers `isVisible` as told
+/// and is otherwise an unshown window, so the toolbar learns whatever number the name item's container gives there.
+/// The rows that use it assert the toolbar's own coherence (the inset written is the arithmetic over the items start it
+/// holds for the placement told; `itemsStartMoves` counts the reads that moved the start by a point or more, is cleared by a stored report
+/// and stops the reads at `itemsStartMoveCeiling`), never the number AppKit gave, which in a window nobody ordered is not
+/// the owner's. In this window nothing is laid out, and the container's left edge follows the inset one for one
+/// (756.0 at an inset of 123.5, 879.5 at 0: its right edge stands), where in a laid-out toolbar it follows by a half point.
 ///
 /// The negative, a toolbar with no window never calling `barAttached`, is in
 /// `TheToolbarLeadsWithWhatItsShellGivesTests`.
 @MainActor
 final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
 
-    /// An unshown window that answers `isVisible` as told, the one gate `readItemsStart()` asks the window.
+    /// An unshown window that answers `isVisible` as told, one of the gates `learnStartOfItems(_:)` asks of the window.
+    /// A `SettingsWindow` builds its own `NSWindow` and cannot be given this subclass; the rows of
+    /// `TheWindowWearsTheToolbarTests` that need the same gate answer it for a settings window with `whileShown`, which
+    /// replaces `NSWindow.isVisible`'s implementation for the span of a call; hence the two seams.
     private final class ClaimedWindow: NSWindow {
         var claimsShown = false
         override var isVisible: Bool { claimsShown }
@@ -136,7 +142,7 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
                        "the cached bar came back with an inset of \(String(describing: nameInset(of: window.toolbar))), not 183.5: the bar was built at sidebar 200 and nobody told it the pane moved while it was off the window")
     }
 
-    /// `readItemsStart()` reads only a window that is visible. On this one it never is, so
+    /// `learnStartOfItems(_:)` reads only a window that is visible. On this one it never is, so
     /// `itemsStart` stays the seed after a report, after a resize and after a layout, and the inset is the seed's.
     /// Total failure prints:
     /// "itemsStart moved to <x> on a window nobody showed: a toolbar nothing laid out answered" / "the inset is
@@ -209,20 +215,56 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
         return (toolbar, window)
     }
 
-    /// A report read the items start of a window that claims to be shown and the inset it wrote comes from it.
-    /// Total failure prints: "the report read no items start: …" / "the inset after a report that moved the items
-    /// start is <w>, not <x> from the items start <s> it stored".
-    func testAReportThatMovesTheItemsStartWritesTheInsetFromTheNewStart() {
+    /// The left edge of the name item's container in window x, the number `learnStartOfItems(_:)` reads.
+    private func containerEdge(_ window: NSWindow) -> CGFloat? {
+        guard let container = nameContainer(of: window.toolbar), container.window != nil else { return nil }
+        return container.convert(container.bounds, to: nil).minX
+    }
+
+    /// **A report of the pane reads nothing off the toolbar: the inset it writes comes from the start held for the
+    /// placement told, the seed of that placement, or the start a settle or a resize learnt for it.** The window claims to be
+    /// shown, and the container stands 663.5 points from the seed (756.0 against 92.5; that it stands 20 or more from it is asserted first), so a report
+    /// that read the container would move the start and the row would see it. Three claims: a report at 260 leaves `itemsStart`
+    /// the seed, `itemsStartMoves` 0 and the inset the seed's 183.5; a report told the rail (`rail: true`) holds the rail's seed
+    /// 22.5 and writes 253.5; and after a resize has learnt a start for the rail's placement, a report at 300 in the rail writes the
+    /// inset from that start (the learnt one is far enough from the seed that the two inset arithmetics differ, asserted) and
+    /// clears the count. Total failure prints: "the container stands <x>, within 20 points of the seed: …" / "a report read
+    /// the items start: it holds <x>, not the seed" / "a report moved itemsStartMoves to <n>" / "the inset after a report is <w>, not 183.5 from
+    /// the seed" / "the rail's placement holds <x>, not the rail's seed" / "the resize learnt no start for the rail" / "the inset after a report is <w>, not <x> from the start learnt <s>".
+    func testAReportWritesTheInsetFromTheStartHeldForThePlacementToldAndReadsNothing() {
         guard let (toolbar, window) = toolbarOnAnUnclaimedWindow() else { return }
         defer { window.toolbar = nil }
         window.claimsShown = true
+        guard let edge = containerEdge(window), abs(edge - SettingsToolbar.itemsStartSeed) >= 20 else {
+            XCTFail("the container stands \(String(describing: containerEdge(window))), within 20 points of the seed: a report that read it would move nothing, so the row judges nothing")
+            return
+        }
         toolbar.paneMoved(leading: 260, width: 796)
-        XCTAssertNotEqual(toolbar.itemsStart, SettingsToolbar.itemsStartSeed,
-                          "the report read no items start: the window claims to be shown, so nothing under test happened")
-        let want = SettingsToolbar.nameInset(paneLeading: 260, itemsStart: toolbar.itemsStart)
-        XCTAssertNotEqual(want, 183.5, accuracy: 0.0001, "the fixture is wrong: the moved start leaves the inset where the seed had it")
+        XCTAssertEqual(toolbar.itemsStart, SettingsToolbar.itemsStartSeed, accuracy: 0.0001,
+                       "a report read the items start: it holds \(toolbar.itemsStart), not the seed, though the container stands at \(edge)")
+        XCTAssertEqual(toolbar.itemsStartMoves, 0, "a report moved itemsStartMoves to \(toolbar.itemsStartMoves)")
+        XCTAssertEqual(nameInset(of: window.toolbar) ?? -1, SettingsToolbar.nameInset(paneLeading: 260, itemsStart: SettingsToolbar.itemsStartSeed), accuracy: 0.0001,
+                       "the inset after a report is \(String(describing: nameInset(of: window.toolbar))), not 183.5 from the seed")
+
+        toolbar.paneMoved(leading: 260, width: 796, rail: true)
+        XCTAssertEqual(toolbar.itemsStart, SettingsToolbar.railItemsStartSeed, accuracy: 0.0001,
+                       "the rail's placement holds \(toolbar.itemsStart), not the rail's seed \(SettingsToolbar.railItemsStartSeed)")
+        XCTAssertEqual(nameInset(of: window.toolbar) ?? -1, 260 + 16 - 22.5, accuracy: 0.0001,
+                       "the inset after a report told the rail is \(String(describing: nameInset(of: window.toolbar))), not 253.5 from the rail's seed")
+
+        resize(window)
+        let learnt = toolbar.itemsStart
+        XCTAssertGreaterThanOrEqual(abs(learnt - SettingsToolbar.railItemsStartSeed), SettingsToolbar.itemsStartTolerance,
+                                    "the resize learnt no start for the rail: it holds \(learnt) beside the rail's seed, so nothing under test happened")
+        XCTAssertEqual(toolbar.itemsStartMoves, 1, "the resize that learnt a start left itemsStartMoves at \(toolbar.itemsStartMoves), not 1")
+        let want = SettingsToolbar.nameInset(paneLeading: 300, itemsStart: learnt)
+        XCTAssertGreaterThan(abs(want - SettingsToolbar.nameInset(paneLeading: 300, itemsStart: SettingsToolbar.railItemsStartSeed)), 1,
+                             "the fixture is wrong: the learnt start \(learnt) leaves the inset where the rail's seed had it")
+        XCTAssertTrue(toolbar.paneMoved(leading: 300, width: 756, rail: true), "the report was refused: the fixture is wrong")
+        XCTAssertEqual(toolbar.itemsStart, learnt, accuracy: 0.0001, "a report changed the start held for the rail from \(learnt) to \(toolbar.itemsStart)")
         XCTAssertEqual(nameInset(of: window.toolbar) ?? -1, want, accuracy: 0.0001,
-                       "the inset after a report that moved the items start is \(String(describing: nameInset(of: window.toolbar))), not \(want) from the items start \(toolbar.itemsStart) it stored")
+                       "the inset after a report is \(String(describing: nameInset(of: window.toolbar))), not \(want) from the start learnt \(learnt)")
+        XCTAssertEqual(toolbar.itemsStartMoves, 0, "a stored report left itemsStartMoves at \(toolbar.itemsStartMoves), not 0")
     }
 
     /// A resize read the items start and wrote the inset again, in the turn of the notification and before the
@@ -263,17 +305,15 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
                        "the inset after a settle that moved the items start is \(String(describing: nameInset(of: window.toolbar))), not \(want) from the items start \(toolbar.itemsStart) it stored")
     }
 
-    /// A read, a write and a read again end: with the window claiming to be shown from the first report on,
-    /// the items start and the inset stand still over the settles that follow, each the arithmetic of the
-    /// other. A cycle (the container's edge following the inset) would show as a start that moves between
-    /// samples. Not seen red: no run made the edge follow the inset. Total failure prints: "no items start was read: …" / "the items start moved between samples:
-    /// <samples>" / "the inset is not the arithmetic over the items start in sample <i>: <samples>".
-    func testAReadThatFollowsItsOwnWriteStandsStill() {
+    /// Eight samples of a toolbar on a window that claims to be shown from the start, told the pane at 200, 856 wide (the card of
+    /// the full sidebar in a window 1060 wide): each is the items start held and the inset on the window, after a layout of the
+    /// window and 0.1 s of the run loop (the settle's interval).
+    private func samplesOfAShownToolbar()
+        -> (toolbar: SettingsToolbar, window: ClaimedWindow, samples: [(start: CGFloat, inset: CGFloat)]) {
         let toolbar = SettingsToolbar(model: SettingsModel(host: ModuleHost.shared),
                                       channel: HelmWindowToolbarChannel(), lead: .spacer)
         let window = claimedWindow()
         window.claimsShown = true
-        defer { window.toolbar = nil }
         toolbar.window = window
         window.layoutIfNeeded()
         toolbar.paneMoved(leading: 200, width: 856)
@@ -283,9 +323,30 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
             samples.append((toolbar.itemsStart, nameInset(of: window.toolbar) ?? -1))
         }
+        return (toolbar, window, samples)
+    }
+
+    /// **A read, a write and a read again end, in a toolbar whose item's edge follows the inset one for one: from the second sample on the
+    /// start held and the inset stand still, each the arithmetic of the other, and the count did not end it.** In this window nothing
+    /// is laid out, and the container's left edge follows the inset one for one (756.0 at an inset of 123.5, 879.5 at 0: the right edge
+    /// stands, measured in this fixture), against the half point a laid-out toolbar gives. The pane at 200 gives an inset that reaches its
+    /// floor of 0 (216 is left of the edge at 756), so the start learnt (756.0, then 879.5) is written back as an inset of 0 both
+    /// times and the third read finds the same start: what ends the loop here is the inset's floor and the tolerance, and the first sample
+    /// differs from the second because the edge moved between them. The count is asserted under its ceiling: a refusal of an equal read that
+    /// had gone would keep learning the same number and be stopped by the count alone (read, not run). The last sample's start is not the seed, so a
+    /// toolbar that learnt nothing does not pass. A pane at 884 (an inset that never reaches its floor) was tried for a loop only the count
+    /// ends: the inset of 807.5 takes the item out of the window (its container has no window, nothing is learnt), so the ceiling is
+    /// held by `testAtTheCeilingNoMoreStartsAreRead`, which writes the container's frame, and not by a natural loop. Total failure prints: "no items start was learnt: …" / "the items start moved between
+    /// samples after the second: <samples>" / "itemsStartMoves is <n>: the reads were stopped by the ceiling, not by two reads agreeing" /
+    /// "the inset is not the arithmetic over the items start in sample <i>: <samples>".
+    func testAReadThatFollowsItsOwnWriteOneForOneStandsStillOnceTheInsetReachesItsFloor() {
+        let (toolbar, window, samples) = samplesOfAShownToolbar()
+        defer { window.toolbar = nil }
         XCTAssertNotEqual(samples.last?.start, SettingsToolbar.itemsStartSeed,
-                          "no items start was read: the window claims to be shown, so nothing under test happened: \(samples)")
-        XCTAssertEqual(Set(samples.map(\.start)).count, 1, "the items start moved between samples: \(samples)")
+                          "no items start was learnt: the window claims to be shown, so nothing under test happened: \(samples)")
+        XCTAssertEqual(Set(samples.dropFirst().map(\.start)).count, 1, "the items start moved between samples after the second: \(samples)")
+        XCTAssertLessThan(toolbar.itemsStartMoves, SettingsToolbar.itemsStartMoveCeiling,
+                          "itemsStartMoves is \(toolbar.itemsStartMoves): the reads were stopped by the ceiling, not by two reads agreeing: \(samples)")
         for (index, sample) in samples.enumerated() {
             let want = SettingsToolbar.nameInset(paneLeading: 200, itemsStart: sample.start)
             XCTAssertEqual(sample.inset, want, accuracy: 0.0001,
@@ -293,7 +354,7 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
         }
     }
 
-    /// The name item's container, the view `readItemsStart()` reads the items start off.
+    /// The name item's container, the view `learnStartOfItems(_:)` reads the items start off.
     private func nameContainer(of toolbar: NSToolbar?) -> NSView? {
         toolbar?.items.first(where: { $0.itemIdentifier.rawValue == "helm.name" })?.view
     }
@@ -318,8 +379,8 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
     }
 
     /// A read of the items start already stored raises `itemsStartMoves` by nothing. The subject comes first: the
-    /// report that moved the start raised the count by one, and the reads that follow are taken until one leaves
-    /// the start where it stood. Then two resizes read the same start. Total failure prints: "the report read no items start: …" / "the report that
+    /// resize that moved the start raised the count by one, and the reads that follow are taken until one leaves
+    /// the start where it stood. Then two resizes read the same start. Total failure prints: "the resize read no items start: …" / "the resize that
     /// moved the items start left itemsStartMoves at <n>, not 1: …" / "six reads still moved the items start: the
     /// fixture is wrong" / "<k> reads of the start already stored raised itemsStartMoves from <a> to <b>" / "the
     /// items start moved from <a> to <b> between reads of an unmoved container".
@@ -327,11 +388,11 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
         guard let (toolbar, window) = toolbarOnAnUnclaimedWindow() else { return }
         defer { window.toolbar = nil }
         window.claimsShown = true
-        toolbar.paneMoved(leading: 260, width: 796)
+        resize(window)
         XCTAssertNotEqual(toolbar.itemsStart, SettingsToolbar.itemsStartSeed,
-                          "the report read no items start: the window claims to be shown, so nothing under test happened")
+                          "the resize read no items start: the window claims to be shown, so nothing under test happened")
         XCTAssertEqual(toolbar.itemsStartMoves, 1,
-                       "the report that moved the items start left itemsStartMoves at \(toolbar.itemsStartMoves), not 1: it counts the reads that moved it")
+                       "the resize that moved the items start left itemsStartMoves at \(toolbar.itemsStartMoves), not 1: it counts the reads that moved it")
         guard settleTheStart(toolbar, window) else {
             XCTFail("six reads still moved the items start: the fixture is wrong")
             return
@@ -347,21 +408,22 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
         }
     }
 
-    /// A stored `paneMoved` clears `itemsStartMoves`. The subject comes first: the count is above zero before the
-    /// pane is told again. Total failure prints: "the report that moved the items start left itemsStartMoves at
-    /// <n>, not 1: …" / "the items start moved from <a> to <b> on the second report: the fixture is wrong" /
-    /// "a stored report left itemsStartMoves at <n>, not 0".
+    /// A stored `paneMoved` clears `itemsStartMoves`. The subject comes first: a resize in a window that claims to be
+    /// shown moved the start, so the count is above zero before the pane is told. Total failure prints: "the resize that
+    /// moved the items start left itemsStartMoves at <n>, not 1: …" / "the items start moved from <a> to <b> on the
+    /// report: the fixture is wrong" / "a stored report left itemsStartMoves at <n>, not 0".
     func testAStoredReportClearsTheCount() {
         guard let (toolbar, window) = toolbarOnAnUnclaimedWindow() else { return }
         defer { window.toolbar = nil }
         window.claimsShown = true
-        toolbar.paneMoved(leading: 260, width: 796)
+        resize(window)
         XCTAssertEqual(toolbar.itemsStartMoves, 1,
-                       "the report that moved the items start left itemsStartMoves at \(toolbar.itemsStartMoves), not 1: there is nothing for the next report to clear")
+                       "the resize that moved the items start left itemsStartMoves at \(toolbar.itemsStartMoves), not 1: there is nothing for the next report to clear")
         let stored = toolbar.itemsStart
-        XCTAssertTrue(toolbar.paneMoved(leading: 300, width: 756), "the second report was refused: the fixture is wrong")
+        XCTAssertNotEqual(stored, SettingsToolbar.itemsStartSeed, "the resize read no items start: the window claims to be shown, so nothing under test happened")
+        XCTAssertTrue(toolbar.paneMoved(leading: 300, width: 756), "the report was refused: the fixture is wrong")
         XCTAssertEqual(toolbar.itemsStart, stored, accuracy: 0.0001,
-                       "the items start moved from \(stored) to \(toolbar.itemsStart) on the second report: the fixture is wrong")
+                       "the items start moved from \(stored) to \(toolbar.itemsStart) on the report: the fixture is wrong")
         XCTAssertEqual(toolbar.itemsStartMoves, 0,
                        "a stored report left itemsStartMoves at \(toolbar.itemsStartMoves), not 0")
     }
@@ -413,6 +475,58 @@ final class TheBarTellsItsShellWhenItIsAttachedTests: XCTestCase {
         XCTAssertEqual(toolbar.itemsStart, stored, accuracy: 0.0001,
                        "a read at the ceiling moved the stored items start from \(stored) to \(toolbar.itemsStart)")
         XCTAssertEqual(toolbar.itemsStartMoves, ceiling, "a read at the ceiling raised itemsStartMoves to \(toolbar.itemsStartMoves)")
+    }
+
+    /// **A start a point or more from the one held is learnt, in either direction, and one nearer than a point is refused and raises nothing.** The
+    /// start is learnt in a window that claims to be shown (the container 663.5 points from the seed), the count is cleared by a stored report, and then the
+    /// container's frame is written by 0.75 (refused: the start and the count stand), by 1.0 from where it stood (learnt: the start is 1.0 more, the count is
+    /// 1), by 0.75 back (refused), and by 1.0 back (learnt: the start is where it was). The half point a laid-out toolbar gives (0.5, measured) is inside the
+    /// tolerance and 70 points (between the placements) outside it; this row reads the boundary itself, so a tolerance of 0.5 learns the 0.75, one of 2 refuses
+    /// the 1.0, and a difference taken without its sign refuses the way back (read, not run). Total failure prints: "the container did not take
+    /// the frame written, an edge of <x>: it stands at <y>; <which read>" / "<which read>: the start moved from <a> to <b>" / "<which read>:
+    /// itemsStartMoves went from <a> to <b>" / "<which read>: the start is <a>, not <b> (it was <c>)" / "<which read>: itemsStartMoves is <n>, not <m>",
+    /// where <which read> is one of "a read 0.75 from the start held", "a read 1.0 from the start held", "a read 0.75 below the start held",
+    /// "a read 1.0 below the start held".
+    func testAStartAPointAwayIsLearntInBothDirectionsAndOneNearerIsRefused() {
+        guard let (toolbar, window) = toolbarOnAnUnclaimedWindow() else { return }
+        defer { window.toolbar = nil }
+        guard let container = nameContainer(of: window.toolbar) else {
+            XCTFail("the fixture is wrong: the toolbar lists no name item")
+            return
+        }
+        window.claimsShown = true
+        toolbar.paneMoved(leading: 260, width: 796)
+        guard settleTheStart(toolbar, window) else {
+            XCTFail("six reads still moved the items start: the fixture is wrong")
+            return
+        }
+        XCTAssertNotEqual(toolbar.itemsStart, SettingsToolbar.itemsStartSeed, "the fixture is wrong: nothing was learnt, so the row judges nothing")
+        XCTAssertTrue(toolbar.paneMoved(leading: 300, width: 756), "the report was refused: the fixture is wrong")
+        XCTAssertEqual(toolbar.itemsStartMoves, 0, "the fixture is wrong: a stored report left the count at \(toolbar.itemsStartMoves)")
+        let x0 = container.frame.origin.x
+        let held = toolbar.itemsStart
+
+        func write(_ offset: CGFloat, learns expected: CGFloat?, _ why: String, line: UInt = #line) {
+            let before = toolbar.itemsStart
+            let counted = toolbar.itemsStartMoves
+            container.frame.origin.x = x0 + offset
+            guard let edge = containerEdge(window), abs(edge - (held + offset)) < 0.0001 else {
+                XCTFail("the container did not take the frame written, an edge of \(held + offset): it stands at \(String(describing: containerEdge(window))); \(why)", line: line)
+                return
+            }
+            resize(window)
+            if let expected {
+                XCTAssertEqual(toolbar.itemsStart, expected, accuracy: 0.0001, "\(why): the start is \(toolbar.itemsStart), not \(expected) (it was \(before))", line: line)
+                XCTAssertEqual(toolbar.itemsStartMoves, counted + 1, "\(why): itemsStartMoves is \(toolbar.itemsStartMoves), not \(counted + 1)", line: line)
+            } else {
+                XCTAssertEqual(toolbar.itemsStart, before, accuracy: 0.0001, "\(why): the start moved from \(before) to \(toolbar.itemsStart)", line: line)
+                XCTAssertEqual(toolbar.itemsStartMoves, counted, "\(why): itemsStartMoves went from \(counted) to \(toolbar.itemsStartMoves)", line: line)
+            }
+        }
+        write(0.75, learns: nil, "a read 0.75 from the start held")
+        write(1.0, learns: held + 1.0, "a read 1.0 from the start held")
+        write(0.25, learns: nil, "a read 0.75 below the start held")
+        write(0, learns: held, "a read 1.0 below the start held")
     }
 
     /// A receiver that reaches the pane synchronously, from inside `barAttached`.

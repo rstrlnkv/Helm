@@ -491,22 +491,32 @@ import HelmUI
     /// position told, not a value of one visit.
     private var pane: Pane?
 
-    /// How many reads have moved the stored items start since the pane was last
-    /// told, a report's own read included. A stored `paneMoved` clears it; once
-    /// it reaches the ceiling `readItemsStart()` reads nothing, so the stored
-    /// start stays and the inset is written from it. If no report comes after
-    /// that, the start is not read again and the name keeps the inset of the
-    /// last read.
+    /// How many reads have moved the start of items held for a placement since the pane was last told. A stored
+    /// `paneMoved` clears it; once it reaches the ceiling `learnStartOfItems(_:)` reads nothing, so the start held
+    /// stays and the inset is written from it until the pane moves again.
     ///
-    /// A moved start writes the inset and arms the settle, whose read may move
-    /// it again. That ends when two reads agree, which holds as long as the
-    /// item's edge does not follow the inset: assumed, seen on no shown window.
-    /// This count is what ends it if that is wrong, where the settle would
-    /// otherwise be armed again by every read that moves it, without end.
+    /// What ends a read, a write and a read again is `itemsStartTolerance`, not this count: the name item's left edge
+    /// moves with the inset it is written (read in a window never shown, 92.0 at an inset of 123.5, 92.5 at 124.0,
+    /// 92.0 at 124.5 and 92.5 at 125.0, its right edge on a whole point each time), so a start taken from it and
+    /// written back as an inset is never read back as the same number, and only a read a point or more from the
+    /// start held (`itemsStartTolerance`) is a move. The count is a bound on a loop the tolerance should already
+    /// end: where the edge goes on following the inset by a point or more, the reads stop at it, one warn line is
+    /// logged, and the name keeps the inset of the last read. No loop that only the count ends has been read: in a
+    /// toolbar nothing has laid out the edge follows the inset one for one (756.0 at an inset of 123.5 and 879.5
+    /// at 0, read in a window of `TheBarTellsItsShellWhenItIsAttachedTests` that claims to be shown), and there the
+    /// inset reached its floor of 0 and the reads ended after two moves, under the count.
     ///
     /// Why 4: chosen, measured by nobody.
     private(set) var itemsStartMoves = 0
     nonisolated static let itemsStartMoveCeiling = 4
+
+    /// **How far a start read off the name item must lie from the one held to count as a move: 1 point.** The item's
+    /// left edge stands on one of two neighbouring half points for the same placement (see `itemsStartMoves`); a
+    /// read within a point of the held start, the seed included, is that start again and is refused. A start that
+    /// differs by a point or more (70 points between the two placements of the window's buttons) is a move.
+    /// Compared as `abs(read - held) >= itemsStartTolerance` over a finite read; a read that is not a number is
+    /// refused before it is compared.
+    nonisolated static let itemsStartTolerance: CGFloat = 1
 
     /// Where the toolbar starts its items before any bar has been read: 92.5,
     /// measured at a 200 pt sidebar on macOS 27.2 only, on no other width and
@@ -519,9 +529,11 @@ import HelmUI
     nonisolated static let railItemsStartSeed: CGFloat = 22.5
 
     /// Where the toolbar starts its items under each placement of the window's buttons (the key is whether they
-    /// stand in the rail's), as `learnStartOfItems(_:)` read them off the name item's frame at a settle. Used
-    /// through `nameMaxX(_:)`, by the lead's arithmetic and by the search field's offer, neither of which can read
-    /// the item's frame in the layout that tells the placement: the toolbar has not laid out under that placement yet.
+    /// stand in the rail's), as `learnStartOfItems(_:)` read them off the name item's frame at a settle or on a
+    /// resize and found them a point or more from what was held. The one start the name's inset
+    /// (`currentNameInset`), the lead (`nameMaxX(_:)`) and the search field's offer all work from: none of them can
+    /// read the item's frame in the layout that tells the placement, the toolbar has not laid out under that
+    /// placement yet.
     private var learntItemsStarts: [Bool: CGFloat] = [:]
 
     /// Where the toolbar starts its items under a placement: the one learnt, else its seed
@@ -531,27 +543,40 @@ import HelmUI
     }
 
     /// **Learns where the toolbar starts its items under the placement the pane was last told**, from the left
-    /// edge of the attached bar's name item. Called by the settle, `settleInterval` after the last report or write
-    /// that armed it, which is assumed to come after the toolbar's own layout under that placement (no command shows
-    /// it, in a shown window or in one never shown). Reads nothing where the lead is not `.spacer`, no pane was
-    /// told, the bar has no name item, the item's view is not in a window or has no width, or the edge is not
-    /// finite, below zero or past the window's width (with no window there is no ceiling).
-    private func learnStartOfItems(_ bar: PageBar) {
-        guard lead == .spacer, let pane, let view = bar.nameItem?.view,
-              view.window != nil, view.frame.width > 0 else { return }
+    /// edge of the attached bar's name item, and returns whether the start held for that placement moved (the
+    /// callers write the inset again then). Called by the settle and by a resize; the settle runs
+    /// `settleInterval` after the last report or write that armed it, which is assumed to come after the toolbar's own
+    /// layout under that placement (no command shows it, in a shown window or in one never shown). Reads nothing where
+    /// the lead is not `.spacer` (under `.sidebarSeparator` the start stays the seed), the window is not visible, no
+    /// pane was told, the bar has no name item, the item's view is not in a window or has no width, or
+    /// `itemsStartMoves` is at its ceiling; refuses an edge that is not finite, below zero or past the window's width
+    /// (with no window there is no ceiling), and one within `itemsStartTolerance` of the start held. Assumed, not
+    /// tried: that `isVisible` is the gate that tells a toolbar AppKit has laid out from one it has not; a window never
+    /// ordered in held the item at 756 and at 879.5 on a toolbar nothing had laid out (read in a window of
+    /// `TheBarTellsItsShellWhenItIsAttachedTests`), and no start taken from it may reach the inset.
+    private func learnStartOfItems(_ bar: PageBar) -> Bool {
+        guard lead == .spacer, itemsStartMoves < Self.itemsStartMoveCeiling, window?.isVisible == true,
+              let pane, let view = bar.nameItem?.view,
+              view.window != nil, view.frame.width > 0 else { return false }
         let start = view.convert(view.bounds, to: nil).minX
-        guard start.isFinite, start >= 0, start <= (window?.frame.width ?? .greatestFiniteMagnitude) else { return }
+        guard start.isFinite, start >= 0, start <= (window?.frame.width ?? .greatestFiniteMagnitude),
+              abs(start - startOfItems(rail: pane.rail)) >= Self.itemsStartTolerance else { return false }
         learntItemsStarts[pane.rail] = start
+        itemsStartMoves += 1
+        if itemsStartMoves == Self.itemsStartMoveCeiling {
+            HelmLog.shared.warn("toolbar", "the bar's items start moved \(Self.itemsStartMoveCeiling) times since the pane last moved; "
+                + "no more reads until it moves again (pane leading \(pane.leading), items start \(start))")
+        }
+        return true
     }
 
-    /// Where the attached bar's name item starts, in window coordinates — the
-    /// seed until `readItemsStart()` has a view to read. Under
-    /// `.sidebarSeparator` it is never read and stays the seed.
-    private(set) var itemsStart: CGFloat = SettingsToolbar.itemsStartSeed
+    /// Where the toolbar starts its items under the placement the pane was last told: `startOfItems(rail:)`, the
+    /// seed before a pane is told. The start `currentNameInset` and `nameMaxX(_:)` both work from.
+    var itemsStart: CGFloat { startOfItems(rail: pane?.rail ?? false) }
 
     /// How far the name's view is held off its item's leading edge now: the
     /// arithmetic of `nameInset(paneLeading:itemsStart:)` over the pane as told and
-    /// the items start as read, 0 before the pane is told and always 0 under
+    /// the start of items under the placement it was told (`itemsStart`), 0 before the pane is told and always 0 under
     /// `.sidebarSeparator`, where the tracking separator places the name. Internal so a test reads it without a window.
     var currentNameInset: CGFloat {
         guard lead == .spacer, let pane else { return 0 }
@@ -562,28 +587,46 @@ import HelmUI
     /// around the lead item and, under Liquid Glass, the tabs' own platter (assumed: 4.0 to 4.5 points were read
     /// there in a window never shown, against 0 under Flat, and no command shows that it is the platter) — in points,
     /// per look, since the tabs' item is made of another thing under each. A look not yet read answers
-    /// `tabsGapSeed`, and `readTabsGap(_:)` only ever lowers a look's gap to one read off the attached bar's
-    /// frames, so a read, a write and a read again stand still: the tabs cannot stand nearer the lead than
-    /// AppKit's spacing, so a read is never below the true gap; a read at or above the stored gap is refused, and one
-    /// between the true gap and the stored one (the tabs not yet pushed all the way) is kept until a lower one is read.
+    /// `tabsGapPrior(of:)`, so the first bar a look puts on the window is given a lead worked out for the gap it
+    /// will rest at, not for a guess above it. The first read of a look is held to `tabsGapReadCeiling`, not to its
+    /// prior, and after it `readTabsGap(_:)` only lowers the look's gap to one read off the attached bar's frames, so
+    /// a read, a write and a read again stand still: the tabs cannot stand nearer the lead
+    /// than AppKit's spacing, so a read is never below the true gap; a read at or above the gap held is refused, and
+    /// one between the true gap and the held one (the tabs not yet pushed all the way) is kept until a lower one is
+    /// read.
     private var tabsGaps: [HelmBarAppearance: CGFloat] = [:]
 
-    private func tabsGap(of bar: PageBar) -> CGFloat { tabsGaps[bar.shape.look] ?? Self.tabsGapSeed }
+    private func tabsGap(of bar: PageBar) -> CGFloat { tabsGaps[bar.shape.look] ?? Self.tabsGapPrior(of: bar.shape.look) }
 
-    /// Where a look's gap starts: 16, chosen above the 0 to 4.5 points read in a window never shown between the
-    /// name's end and the tabs past the lead, and the 8.0 to 8.5 seen in a window never shown between the name and
-    /// the tabs on the bar as it was before the lead item, with a flexible space on either side of the tabs.
-    nonisolated static let tabsGapSeed: CGFloat = 16
+    /// Where a look's gap starts before any bar of it has been read: the figure read in a window never shown on
+    /// macOS 27.2 and on no other system, 0 under Flat and 4.0 under Liquid Glass (the lower end of the 4.0 to 4.5
+    /// read there; with 4.5 the tabs stood 1.0 to 1.4 points left of the card's middle at 7 of the 42 readings of
+    /// `testAcrossAFoldTheTabsMiddleFollowsTheCardsMiddle` (`TheWindowWearsTheToolbarTests`), with 4.0 at none).
+    /// Both are constants: no input of theirs can be not-a-number.
+    nonisolated static func tabsGapPrior(of look: HelmBarAppearance) -> CGFloat {
+        switch look {
+        case .flat: return 0
+        case .liquidGlass: return 4
+        }
+    }
+
+    /// What the first gap read for a look must lie under: 16, chosen above the 0 to 4.5 points read in a window never
+    /// shown between the name's end and the tabs past the lead, and the 8.0 to 8.5 seen in a window never shown between
+    /// the name and the tabs on the bar as it was before the lead item, with a flexible space on either side of the
+    /// tabs. A system whose gap lies above the prior is read once, up to this, then only lowered.
+    nonisolated static let tabsGapReadCeiling: CGFloat = 16
 
     /// Told where the pane is and whether the window's buttons stand in the rail's placement, by `SettingsWindow`
     /// from the card's frame and `ShellContentView.buttonsStandInRail`, inside the layout that moved either.
     /// `rail` defaults to the expanded placement, for a caller with no shell.
     /// Returns whether anything was stored: the same triple as the last
     /// one is refused, so a layout that moved none of them (a height-only
-    /// change) arms no settle. Stores, writes the attached bar's inset and tabs' lead (`insetMoved()`) and assigns no toolbar, so it
-    /// may be called from a layout pass. The lead is worked out from `startOfItems(rail:)` of the placement
-    /// told here; read in a window never shown, that puts the tabs within a point of the card's middle in the turn
-    /// that moves the buttons.
+    /// change) arms no settle. Stores, writes the attached bar's inset and tabs' lead (`insetMoved()`) and assigns no
+    /// toolbar, so it may be called from a layout pass. The inset and the lead are worked out from
+    /// `startOfItems(rail:)` of the placement told here and read no item's place off the toolbar (the widths of the
+    /// name's host and of the tabs' view are read), which in this turn has not laid out under that placement (the name
+    /// item's edge is still the other placement's); read in a window never shown, that puts the name on the card's edge
+    /// plus sixteen and the tabs within a point of the card's middle in the turn that moves the buttons.
     ///
     /// Both numbers are normalised before the comparison, so a NaN does not
     /// differ from itself. Not-a-number, infinite or below zero means for
@@ -602,46 +645,13 @@ import HelmUI
         guard next != pane else { return false }
         pane = next
         itemsStartMoves = 0
-        _ = readItemsStart()
         insetMoved()
-        return true
-    }
-
-    /// Re-reads where the attached bar's name item starts: that view's
-    /// leading edge in window coordinates, taken as where AppKit starts the items.
-    /// Assumed, not seen on a shown window: that this edge does not move with the
-    /// inset the view holds its content off it by, and that it is the item's start plus 0.5.
-    /// Reads nothing, and the stored value stays, under
-    /// `.sidebarSeparator`, and under `.spacer` while the window is not
-    /// visible.
-    /// Assumed, not tried: that `isVisible` is the gate that tells a toolbar AppKit has laid out from one it has not; no test reads on a shown window: `ClaimedWindow` of
-    /// `TheBarTellsItsShellWhenItIsAttachedTests` answers the gate on an unshown one, and its rows hold
-    /// what is written after a read, not the number read.
-    /// Nor while no bar is attached, the view has no window or no width, or
-    /// the answer is not a position, nor once `itemsStartMoves` is at
-    /// `itemsStartMoveCeiling`. Returns whether the stored value moved; the
-    /// callers write the inset again then. What ends a read, a write and a read
-    /// again is the refusal of a value equal to the stored one and, should the
-    /// item's edge follow the inset, that ceiling.
-    private func readItemsStart() -> Bool {
-        guard lead == .spacer, itemsStartMoves < Self.itemsStartMoveCeiling, window?.isVisible == true,
-              let bar = attachedBar,
-              let view = bar.nameItem?.view,
-              view.window != nil, view.frame.width > 0 else { return false }
-        let start = view.convert(view.bounds, to: nil).minX
-        guard start.isFinite, start >= 0, start != itemsStart else { return false }
-        itemsStart = start
-        itemsStartMoves += 1
-        if itemsStartMoves == Self.itemsStartMoveCeiling {
-            HelmLog.shared.warn("toolbar", "the bar's items start moved \(Self.itemsStartMoveCeiling) times since the pane last moved; "
-                + "no more reads until it moves again (pane leading \(pane?.leading ?? -1), items start \(itemsStart))")
-        }
         return true
     }
 
     /// Writes the inset of now to the attached bar's constraint, and the tabs' lead of now beside it
     /// (`writeTabsLead(_:)`: the lead reads where the name ends, which that inset moves), and arms the
-    /// settle: a moved pane or a moved items start moves the room around the
+    /// settle: a moved pane or a learnt items start moves the room around the
     /// tabs, and under `.sidebarSeparator` nothing of the bar moved but the
     /// settle is armed all the same. No bar is replaced and the window is assigned nothing.
     private func insetMoved() {
@@ -678,19 +688,37 @@ import HelmUI
     /// items under the placement the pane was told (`startOfItems(rail:)`) plus `currentNameInset` plus the
     /// hosting view's width, which the inset does not change. Not the item's frame: in the layout that tells
     /// the placement the item still stands where it stood under the other one. Read in a window never
-    /// shown, the item starts at 22.0 to 22.5 in the rail and at 92.0 to 92.5 at a 200-point sidebar. The inset is
-    /// the one the bar holds, which is worked out from `itemsStart`, not from the start used here. `nil` where
-    /// the bar has no name or no pane was told.
+    /// shown, the item starts at 22.0 to 22.5 in the rail and at 92.0 to 92.5 at a 200-point sidebar. The start is
+    /// `itemsStart`, the one `currentNameInset` is worked out from, so the inset and the name's end cannot be read
+    /// from two placements. `nil` where the bar has no name or no pane was told.
     private func nameMaxX(_ bar: PageBar) -> CGFloat? {
-        guard let pane, bar.nameItem?.view != nil, let host = bar.nameHost else { return nil }
+        guard pane != nil, bar.nameItem?.view != nil, let host = bar.nameHost else { return nil }
         let width = host.frame.width > 0 ? host.frame.width : host.fittingSize.width
-        return startOfItems(rail: pane.rail) + currentNameInset + width
+        return itemsStart + currentNameInset + width
     }
 
-    /// The tabs' width as laid out, else what they ask for; 0 where the bar has no tabs item.
+    /// The tabs' width as laid out, else what they ask for; where the bar has no tabs item yet (its lead item is
+    /// made first, inside the assignment of the bar to the window) the whole tabs' width as the settle measures it
+    /// (`wholeTabsWidth(_:_:)`), so that the lead made with the bar is the lead the bar rests at; 0 where the bar
+    /// declares no tabs.
     private func tabsWidth(_ bar: PageBar) -> CGFloat {
-        guard let view = bar.tabsItem?.view else { return 0 }
+        guard let view = bar.tabsItem?.view else {
+            guard let content = bar.content, !content.tabs.isEmpty else { return 0 }
+            return wholeTabsWidth(bar, content)
+        }
         return view.frame.width > 0 ? view.frame.width : view.fittingSize.width
+    }
+
+    /// **The centre tabs' whole width, measured once per `TabsWidthKey` and kept on the bar** (`PageBar.tabsWidth`):
+    /// the settle's reading and the first lead's, so a measurement is one mount of the rig however many ask. A key
+    /// that no longer matches (a word, the label style, the language or the selection moved) measures again.
+    private func wholeTabsWidth(_ bar: PageBar, _ content: HelmPageToolbarContent) -> CGFloat {
+        let key = TabsWidthKey(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
+                               language: AppLanguage.current, selectedID: content.selectedTab?.wrappedValue)
+        if let measured = bar.tabsWidth, measured.key == key { return measured.full }
+        let full = switcherWidth(tabs: content.tabs, style: key.style, look: bar.shape.look, selectedID: key.selectedID)
+        bar.tabsWidth = (key, full)
+        return full
     }
 
     /// The lead of now for `bar`: `tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)` over the pane as
@@ -809,9 +837,11 @@ import HelmUI
         return moved
     }
 
-    /// **Lowers `tabsGap` to the gap this layout shows**: the tabs' left edge less the name's end less the
-    /// lead's own width, all three as laid out together. Read from frames
-    /// (`isFinite`, not below 0, below the stored gap), so it only ever descends: the tabs cannot stand nearer the lead
+    /// **Takes the gap this layout shows where it lies below the gap held for the look or, for a look with none
+    /// held, below `tabsGapReadCeiling`**: the tabs' left edge less the name's end less the lead's own width, all
+    /// three as laid out together. Read from frames (`isFinite`, not below 0, below the gap held or, with none held,
+    /// below the ceiling), so after a look's first read it only descends; the first read may lie above the look's
+    /// prior (`tabsGapPrior(of:)`): the tabs cannot stand nearer the lead
     /// than AppKit's spacing, so a smaller gap is the truer, and a larger one is a layout in which the tabs had
     /// not yet been pushed. Reads nothing where the bar has no lead item, where one of the three views is not in a window, or where the lead or the tabs has no width.
     private func readTabsGap(_ bar: PageBar) {
@@ -820,7 +850,7 @@ import HelmUI
               lead.frame.width > 0, tabs.frame.width > 0 else { return }
         let gap = tabs.convert(.zero, to: nil).x - lead.frame.width
             - name.convert(NSPoint(x: name.bounds.width, y: 0), to: nil).x
-        guard gap.isFinite, gap >= 0, gap < tabsGap(of: bar) else { return }
+        guard gap.isFinite, gap >= 0, gap < (tabsGaps[bar.shape.look] ?? Self.tabsGapReadCeiling) else { return }
         tabsGaps[bar.shape.look] = gap
     }
 
@@ -1452,7 +1482,8 @@ import HelmUI
     /// **The name's item: a container whose one leading constraint holds the hosting view off the
     /// item's edge by the inset of now** (`currentNameInset`), so that the name starts where the pane
     /// says and the fold moves it by writing a constant, the bar staying the window's. The container's
-    /// leading edge is read as where the item starts (`readItemsStart()` states the assumption) and its trailing edge is pinned to the hosting view's. Under
+    /// leading edge is read as where the item starts (`learnStartOfItems(_:)` reads it; `itemsStartMoves` says how
+    /// that edge moves with the inset) and its trailing edge is pinned to the hosting view's. Under
     /// `.windowTitle` the zone is drawn without its icon (`showsIcon`). Not seen on a shown
     /// window: that AppKit lays the item out at the width this constraint gives it, in the display pass
     /// that writes it.
@@ -1763,7 +1794,8 @@ import HelmUI
     }
 
     /// **What the centre tabs' full width was measured under** — the one
-    /// reading `settle(_:)` keeps on the bar (`PageBar.tabsWidth`) rather than
+    /// reading `wholeTabsWidth(_:_:)` keeps on the bar (`PageBar.tabsWidth`), for the settle and for the lead made
+    /// with a fresh bar, rather than
     /// taking again. A measurement is a `SwitcherMeasurementRig` mount — a
     /// hosting view, a toolbar and a layout — and every declare re-arms a
     /// settle, so a page that republishes on every keystroke (Hosts' SSH
@@ -2147,7 +2179,7 @@ import HelmUI
     /// snapshot gate keeps the offscreen ink measurement to the resizes that
     /// moved something it reads.
     private func windowDidResize() {
-        if readItemsStart() { insetMoved() }
+        if let bar = attachedBar, learnStartOfItems(bar) { insetMoved() }
         patchAttachedName()
         scheduleSettleForAttachedBar()
     }
@@ -2304,7 +2336,7 @@ import HelmUI
     /// drawing, so a longer word in the running language costs what it would
     /// cost the real control. Full only: the compact form's width was
     /// measured beside it until nothing read it (`settle(_:)` bound it to
-    /// `_`). Called only from `settle(_:)`, behind `PageBar.tabsWidth`.
+    /// `_`). Called only from `wholeTabsWidth(_:_:)`, behind `PageBar.tabsWidth`.
     private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, look: HelmBarAppearance,
                                selectedID: String?) -> CGFloat {
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(selectedID ?? ""),
@@ -2968,17 +3000,17 @@ import HelmUI
         guard let key = attachedPageKey,
               key == Self.nameOnlyKey ? bar === nameOnlyBar : pageBars[key] === bar
         else { return }
-        // The start of items under the placement last told, read before anything below is written from it.
-        learnStartOfItems(bar)
-        // A moved items start moves the name's inset, and with it every gap the pass
-        // reads; `insetMoved()` has armed the pass again, over the layout that follows.
-        if readItemsStart() { insetMoved(); return }
+        // The start of items under the placement last told, read before anything below is written from it. A start
+        // that moved moves the name's inset, and with it every gap the pass reads; `insetMoved()` has armed the pass
+        // again, over the layout that follows. A start within `itemsStartTolerance` of the one held is no move, so
+        // the pass goes on to the lead and the offer without a second pass in between.
+        if learnStartOfItems(bar) { insetMoved(); return }
         // The lead is written from the tabs' and the gap's frames of this layout and the start of items learnt or
         // seeded, and the search field's offer beside it; when either constant moves, what the pass reads below moves
         // with it, so the pass is armed again over the layout that follows and goes on only when a pass moves neither.
-        // Assumed, held by no row and bounded by no count: that they come to stand still, since the gap only descends
-        // and the lead moves neither the name nor the tabs' width, except through a fold of the tabs, which writes the
-        // lead and the offer and arms the pass itself (`setTabsFolded`).
+        // Assumed, held by no row and bounded by no count: that they come to stand still, since the gap, once read
+        // for a look, only descends and the lead moves neither the name nor the tabs' width, except through a fold
+        // of the tabs, which writes the lead and the offer and arms the pass itself (`setTabsFolded`).
         readTabsGap(bar)
         let leadMoved = writeTabsLead(bar)
         let offerMoved = writeSearchOffer(bar)
@@ -3020,16 +3052,7 @@ import HelmUI
             // Measured once per `TabsWidthKey` — see its header for why a
             // settle after every keystroke must not measure tabs a keystroke
             // cannot move, and for what makes a key miss.
-            let key = TabsWidthKey(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
-                                   language: AppLanguage.current, selectedID: content.selectedTab?.wrappedValue)
-            let full: CGFloat
-            if let measured = bar.tabsWidth, measured.key == key {
-                full = measured.full
-            } else {
-                full = switcherWidth(tabs: content.tabs, style: key.style, look: bar.shape.look,
-                                     selectedID: key.selectedID)
-                bar.tabsWidth = (key, full)
-            }
+            let full = wholeTabsWidth(bar, content)
             let slack = predictedSlack(bar: bar, tabsWidth: full)
             // **Never unfold from an unanchored prediction** — see this
             // method's own header, "Four gates," for why a `nil` here must
@@ -4294,7 +4317,8 @@ private final class PageBar {
     /// keyed on and why equality, not a timeout, is what clears it.
     var refusedUnfold: SettingsToolbar.UnfoldRefusalKey?
     /// **The centre tabs' full width, and what it was measured under** —
-    /// read and written only by `SettingsToolbar.settle(_:)`; see
+    /// written only by `SettingsToolbar.wholeTabsWidth(_:_:)`, for the settle and for the first lead, and read there,
+    /// in `setTabsFolded` and in `growthIsWithinTheOffer(_:width:)`; see
     /// `SettingsToolbar.TabsWidthKey`'s own header for why a settle reuses it
     /// and what makes it measure again.
     var tabsWidth: (key: SettingsToolbar.TabsWidthKey, full: CGFloat)?

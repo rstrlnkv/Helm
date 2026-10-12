@@ -388,12 +388,13 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         return (bodies.first ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    /// A source reading, because the gate's `lead` half acts only where `isVisible` answers true, and the one test window wearing a `SettingsToolbar` that answers so (`ClaimedWindow`, `TheBarTellsItsShellWhenItIsAttachedTests`) is built on `.spacer` alone:
-    /// under `.sidebarSeparator` an unshown window reads nothing either way. Total failure
-    /// prints: "readItemsStart() does not open with the lead gate: <first 80 characters of its body>".
-    func testReadItemsStartOpensWithTheLeadGateSoASeparatorLedBarIsNeverRead() throws {
-        let body = try collapsedBody(of: "readItemsStart")
+    /// A source reading, because the gate's `lead` half acts only where `isVisible` answers true, and the test windows wearing a `SettingsToolbar` that answer so (`ClaimedWindow` in `TheBarTellsItsShellWhenItIsAttachedTests`, a settings window under `whileShown` in `TheWindowWearsTheToolbarTests`) are built on `.spacer` alone:
+    /// under `.sidebarSeparator` an unshown window learns nothing either way. The function is `learnStartOfItems(_:)`, the one reader of
+    /// where the items start (the settle and a resize call it; a report of the pane reads nothing). Total failure
+    /// prints: "SettingsToolbar.swift declares <n> functions named learnStartOfItems, not one" / "learnStartOfItems(_:) does not open with the lead gate: <first 80 characters of its body>".
+    func testLearnStartOfItemsOpensWithTheLeadGateSoASeparatorLedBarIsNeverRead() throws {
+        let body = try collapsedBody(of: "learnStartOfItems")
         XCTAssertTrue(body.hasPrefix("guard lead == .spacer, "),
-                      "readItemsStart() does not open with the lead gate: \(body.prefix(80))")
+                      "learnStartOfItems(_:) does not open with the lead gate: \(body.prefix(80))")
     }
 }

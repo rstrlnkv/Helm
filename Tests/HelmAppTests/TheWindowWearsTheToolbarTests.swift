@@ -28,9 +28,11 @@ import XCTest
 /// narrowing row are green without it. They run under both looks (the tabs are 168 pt wide under Flat and 148 under
 /// Liquid Glass in the rig's two-tab page), at a sidebar of 200 and in the rail, in a window never ordered: there the
 /// toolbar's items start where AppKit lays them out for an unshown window, which is x 92.0 to 92.5 at a sidebar of
-/// 200 and x 22.0 to 22.5 in the rail. The start the name's inset is worked out from is never read again here
-/// (`itemsStart` stays the seed, 92.5), so the name stands at 22.5 in the rail here and not sixteen inside the card;
-/// the start the tabs' lead is worked out from is read at each settle (`learnStartOfItems`).
+/// 200 and x 22.0 to 22.5 in the rail. The one start the name's inset and the tabs' lead are worked out from
+/// (`SettingsToolbar.itemsStart`, `startOfItems(rail:)`) is, in a window never ordered, the seed of the placement the
+/// pane was told (92.5 expanded, 22.5 in the rail), because `learnStartOfItems` reads the name item only while the window is
+/// visible; so the name stands sixteen inside the card in the rail too (72 at 56, an inset of 49.5). The rows that
+/// read a start off the item put the window under `whileShown`, which answers `isVisible` true for the span of a call.
 ///
 /// **The idle search field is offered room before the tabs fold.** The rows under "Where the search field stands
 /// beside the tabs", "What the fold on the search field's growth lets through" and "Where the tabs fold and unfold
@@ -157,7 +159,7 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     // MARK: - Where the name starts
 
     /// **At a sidebar of 200 the name starts sixteen past the pane.** The toolbar's items start where the seed
-    /// says (an unshown window never reads them again) and the name's view is held off its item's edge by the
+    /// says (a window never shown learns no start off the item) and the name's view is held off its item's edge by the
     /// pane's edge plus sixteen less that start, so the name's left edge is the sum, 216 in window x, read here
     /// from the item's constraint; the frame the same view takes at every width of the fold is read by
     /// `testTheNameFollowsThePaneOneForOneAtEveryWidth`.
@@ -180,17 +182,25 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
 
     // MARK: - The fold and the name's inset
 
-    /// Where an unshown window's toolbar starts its items: the seed (`SettingsToolbar.itemsStartSeed`), which a
-    /// window nobody ordered never reads again. Spelled as a number here, not read from the declaration, so a
+    /// Where an unshown window's toolbar starts its items at the full sidebar: the seed (`SettingsToolbar.itemsStartSeed`), which a
+    /// window nobody ordered holds for the full sidebar's placement. Spelled as a number here, not read from the declaration, so a
     /// seed that moved turns the rows below red by their own precondition.
     private static let itemsStart: CGFloat = 92.5
+
+    /// Where the same toolbar starts its items in the rail's placement of the window's buttons (`SettingsToolbar.railItemsStartSeed`),
+    /// spelled as a number for the same reason.
+    private static let railItemsStart: CGFloat = 22.5
+
+    /// The sidebar width at and under which the window's buttons stand in the rail's placement, spelled here and not read from `ShellGeometry`.
+    private static let railWidth: CGFloat = 56
 
     /// The distance the name keeps from the pane's leading edge.
     private static let nameGap: CGFloat = 16
 
-    /// The inset the name's view is held off the item's leading edge by when the pane starts at `leading`.
-    private static func inset(forPaneLeading leading: CGFloat) -> CGFloat {
-        max(0, leading + nameGap - itemsStart)
+    /// The inset the name's view is held off the item's leading edge by when the pane starts at `leading`: the pane's edge
+    /// plus sixteen less the start of the placement the window's buttons stand in (`rail`: 22.5, else 92.5), never below 0.
+    private static func inset(forPaneLeading leading: CGFloat, rail: Bool = false) -> CGFloat {
+        max(0, leading + nameGap - (rail ? railItemsStart : itemsStart))
     }
 
     /// Sidebar widths from the full one to the rail in twelve steps, and back.
@@ -331,15 +341,15 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// 76.5 and 112.5 is where the inset is above zero and below 36 pt; the row requires three readings there.
     /// Before the readings every width must have given one.
     ///
-    /// Where the items start is read twice. The toolbar's own `itemsStart` stays its seed in a window that is
-    /// never visible, and the row requires the inset to be above zero exactly where the pane's edge plus sixteen is
-    /// right of that seed. The name's item, though, starts where AppKit lays it out, which the row reads from the
+    /// Where the items start is read twice. The toolbar's own start (`itemsStart`) is the seed of the placement the
+    /// pane was told in a window that is never visible (92.5 expanded, 22.5 in the rail, spelled in this file), and the row
+    /// requires the inset to be above zero exactly where the pane's edge plus sixteen is right of the start of the placement
+    /// the width stands in (the rail at 56 and under, told by the shell). The name's item, though, starts where AppKit lays it out, which the row reads from the
     /// view: 92.0 to 92.5 in the expanded placement of the window's buttons and 22.0 to 22.5 in the rail placement, where the lead
-    /// changes at every step and the toolbar is laid out again. An unshown window cannot say that the toolbar's
-    /// start follows the item into the rail: there the inset is 0 while the pane's edge plus sixteen (72) is
-    /// right of the item's 22.5, so the name stands at the item's start and not at 72, where the inset's arithmetic would put it had the toolbar read
-    /// the item's 22.5 (not read here). Where the inset is 0 the name is wanted at the item's start; where it is
-    /// above zero, at the pane's edge plus sixteen.
+    /// changes at every step and the toolbar is laid out again. In the rail the pane's edge plus sixteen (72) is right of the
+    /// 22.5 the toolbar starts its items at there, so the inset is 49.5 and the name stands at 72, sixteen inside the card as at
+    /// every other width (a toolbar that worked the rail's inset out from the full sidebar's 92.5 would write 0 and the name would stand at the item's 22.5).
+    /// Where the inset is 0 the name is wanted at the item's start; where it is above zero, at the pane's edge plus sixteen.
     func testTheNameFollowsThePaneOneForOneAtEveryWidth() throws {
         PinnedBarSettings.pin(in: self)
         guard let rig = build() else { return }
@@ -370,9 +380,10 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
                     let itemStart = container.convert(container.bounds, to: nil).minX
                     reads += 1
                     if edge > 76.5, edge < 112.5 { inBand += 1 }
-                    let asked = edge + Self.nameGap > owner.itemsStart + 0.0001
+                    let start = edge <= Self.railWidth ? Self.railItemsStart : Self.itemsStart
+                    let asked = edge + Self.nameGap > start + 0.0001
                     if asked != (held > 0.0001) {
-                        off.append("pane \(edge): the inset is \(f3(held)) where the pane's edge plus sixteen is \(f3(edge + Self.nameGap)) and the toolbar's items start at \(f3(owner.itemsStart))")
+                        off.append("pane \(edge): the inset is \(f3(held)) where the pane's edge plus sixteen is \(f3(edge + Self.nameGap)) and the items start at \(f3(start)) (the toolbar holds \(f3(owner.itemsStart)))")
                     }
                     let want = held > 0.0001 ? edge + Self.nameGap : itemStart
                     if abs(got - want) > 1 { off.append("pane \(edge): name at \(got), want \(want) (the name's item starts at \(itemStart), inset \(held))") }
@@ -385,9 +396,12 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     }
 
     /// **At every width of the fold the name's inset is the pane's edge plus sixteen less where the items
-    /// start, and never below zero.** The same walk as above, read as the constant the name item holds and not
-    /// as a frame, so what AppKit makes of an item narrower than its viewer does not enter. The seed this
-    /// stands on is asserted before the readings.
+    /// start under the placement the width stands in, and never below zero.** The same walk as above, read as the constant the name item holds and not
+    /// as a frame, so what AppKit makes of an item narrower than its viewer does not enter. The start is the seed of the placement
+    /// (92.5 expanded, 22.5 in the rail at 56 and under: a window never shown learns none off the item), spelled in this file; the
+    /// seed at rest is asserted before the readings, and at each width the pane the toolbar was told stands in the rail exactly where
+    /// the width does, so a row whose rail start is wrong fails by that precondition and not by a number. At 56 the inset is
+    /// 56 + 16 - 22.5 = 49.5, not 0: the name stands sixteen inside the card in the rail as it does at every other width.
     func testTheNamesInsetFollowsThePaneOneForOneAtEveryWidth() throws {
         PinnedBarSettings.pin(in: self)
         guard let rig = build() else { return }
@@ -405,7 +419,11 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
             for widths in [Self.widthsDown, Self.widthsUp] {
                 walk(rig, widths) { _ in
                     let edge = shell.card.frame.minX
-                    let want = Self.inset(forPaneLeading: edge)
+                    let rail = edge <= Self.railWidth
+                    if let owner = settingsToolbar(of: toolbar), let told = toldPane(owner, "\(label) at pane \(edge)") {
+                        XCTAssertEqual(told.rail, rail, "\(label) at pane \(edge): the toolbar was told the \(told.rail ? "rail's" : "full sidebar's") placement where the width calls for the \(rail ? "rail's" : "full sidebar's")")
+                    }
+                    let want = Self.inset(forPaneLeading: edge, rail: rail)
                     guard let got = readInset(rig, "\(label) at pane \(edge)") else { return }
                     reads += 1
                     if abs(got - want) > 0.01 { off.append("pane \(edge): inset \(got), want \(want)") }
@@ -679,7 +697,8 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// a container wider than its hosting view by the inset, so the gap is the view's only while the container's
     /// trailing edge is the view's. Read at the full sidebar, at 140 and at the rail, in window x after the frame
     /// view is laid out; at 200 the container is wider than the view by 123.5, which is read first so that a
-    /// container that holds no inset reads as a failure and not as an agreement.
+    /// container that holds no inset reads as a failure and not as an agreement. At the rail (56) it is wider by
+    /// 49.5, the pane's edge plus sixteen less the rail's start of 22.5, and not by 0.
     func testTheNameItemEndsWhereItsHostingViewEnds() throws {
         PinnedBarSettings.pin(in: self)
         guard let rig = build() else { return }
@@ -700,8 +719,9 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
             XCTAssertEqual(containerEnd, hostEnd, accuracy: 0.5,
                            "at \(width) the name item ends at window x \(containerEnd) and its hosting view at \(hostEnd): the gap to the tabs is read from the wrong edge")
             let beyond = container.bounds.width - host.bounds.width
-            XCTAssertEqual(beyond, Self.inset(forPaneLeading: width), accuracy: 0.5,
-                           "at \(width) the name item is \(beyond) wider than its hosting view, not the inset \(Self.inset(forPaneLeading: width))")
+            let rail = width <= Self.railWidth
+            XCTAssertEqual(beyond, Self.inset(forPaneLeading: width, rail: rail), accuracy: 0.5,
+                           "at \(width) the name item is \(beyond) wider than its hosting view, not the inset \(Self.inset(forPaneLeading: width, rail: rail))")
         }
         XCTAssertEqual(reads, 3, "the name item was read \(reads) times of 3")
     }
@@ -2339,22 +2359,25 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
 
     /// **At the start of a fold of the sidebar into the rail, before the first tick has moved the card, the toolbar
     /// is told the rail's placement in that same layout: the pane it holds stands in the rail while its leading edge
-    /// and width are still the card's of 200, and the lead's constant has moved.** The fold is
+    /// and width are still the card's of 200, the name's inset has moved to the rail's start, and the lead's constant has not.** The fold is
     /// `ShellContentView.fold(to:animated:)` with a `HandTickedFoldLink`; its first tick records the start and writes
     /// nothing (`foldTarget` is 56 and `sidebarWidth` is still 200), so the card's frame is the one at rest and the only
     /// thing the layout has to tell the toolbar is that `buttonsStandInRail` became true. A `Told` that compared the
     /// card alone would tell nothing here and the toolbar would hold the pane of the full sidebar until the second
     /// tick moved the card. Three claims, each with its own message: the row stands at the start (width 200, target 56,
     /// `buttonsStandInRail`), the pane is told the rail (`pane.rail`) with the card's leading edge and width unchanged,
-    /// and the lead's constant moved by more than 8 points from its rest (the placement changes where the name ends by
-    /// 70). Both looks.
+    /// the name's inset (the constant of the constraint, no frame) moved by 70 points, from the full sidebar's 200 + 16 - 92.5 =
+    /// 123.5 to the rail's 200 + 16 - 22.5 = 193.5, and the lead's constant stands where it stood. The inset moves because the
+    /// start moves between the placements and the name stays on the card's edge plus sixteen; the name's end therefore
+    /// does not move at the first tick, and the lead, which is worked out from where the name ends, does not move with it. Both looks.
     /// Read: under both looks the pane at rest was `leading: 200.0, width: 856.0, rail: false` and at the start of the
-    /// fold `leading: 200.0, width: 856.0, rail: true`, the width 200.0 and the target 56.0; the lead's constant
-    /// went 195.000 -> 265.000 under Flat and 201.000 -> 271.000 under Liquid Glass (70 points, the difference of the
-    /// two placements' starts).
+    /// fold `leading: 200.0, width: 856.0, rail: true`, the width 200.0 and the target 56.0; the inset went 123.500 -> 193.500
+    /// and the lead's constant stayed 195.000 under Flat and 201.000 under Liquid Glass (read: 195.000 and 201.000 at rest and at the
+    /// start of the fold).
     /// Seen red under both looks with `if told.card != lastTold?.card` in `ShellContentView.layout()`: at the start of the fold
     /// the toolbar held the pane of the full sidebar (rail false), not told in the layout that moved the buttons, and the lead's
-    /// constant had not moved (195.000 at the start and at rest under Flat).
+    /// constant had not moved (195.000 at the start and at rest under Flat); with that mutant the claims on the pane's rail and on
+    /// the inset are the ones meant to fail; the inset's failure is read from the code, not run.
     func testTheStartOfAFoldIntoTheRailTellsTheToolbarTheRailBeforeTheCardMoves() throws {
         PinnedBarSettings.pin(in: self)
         for look in Self.looks {
@@ -2367,7 +2390,8 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
             let link = HandTickedFoldLink()
             shell.foldLink = link
             shell.reducesMotion = { false }
-            guard let rest = toldPane(owner, "\(label) at rest"), let restLead = leadConstant(rig, "\(label) at rest") else { return }
+            guard let rest = toldPane(owner, "\(label) at rest"), let restLead = leadConstant(rig, "\(label) at rest"),
+                  let restInset = readInset(rig, "\(label) at rest") else { return }
             XCTAssertFalse(rest.rail, "\(label): the pane at rest is already in the rail: the row does not begin from the full sidebar")
             XCTAssertTrue(shell.fold(to: 56, animated: true), "\(label): the fold was cut, not asked for")
             XCTAssertTrue(link.fire(at: 100), "\(label): the link was never started")
@@ -2379,10 +2403,650 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
             XCTAssertTrue(told.rail, "\(label): at the start of the fold the toolbar holds the pane of the full sidebar (rail \(told.rail)), not the rail's: it was not told in the layout that moved the buttons (leading \(f3(told.leading)), width \(f3(told.width)))")
             XCTAssertEqual(told.leading, rest.leading, accuracy: 0.01, "\(label): the pane's leading edge moved from \(f3(rest.leading)) to \(f3(told.leading)): the card has moved and the row judges nothing")
             XCTAssertEqual(told.width, rest.width, accuracy: 0.01, "\(label): the pane's width moved from \(f3(rest.width)) to \(f3(told.width)): the card has moved and the row judges nothing")
+            if let inset = readInset(rig, "\(label) at the start of the fold") {
+                XCTAssertEqual(inset - restInset, 70, accuracy: 0.5, "\(label): the name's inset is \(f3(inset)) at the start of the fold, \(f3(restInset)) at rest: it did not move by the 70 between the placements' starts, so the toolbar worked it out for the placement it was not in")
+                XCTAssertEqual(inset, 200 + Self.nameGap - Self.railItemsStart, accuracy: 0.5, "\(label): the name's inset is \(f3(inset)) at the start of the fold, not the card's edge plus sixteen less the rail's start")
+            }
             if let lead = leadConstant(rig, "\(label) at the start of the fold") {
-                XCTAssertGreaterThan(abs(lead - restLead), 8, "\(label): the lead's constant is \(f3(lead)) at the start of the fold, \(f3(restLead)) at rest: it did not move with the placement")
+                XCTAssertEqual(lead, restLead, accuracy: 1, "\(label): the lead's constant is \(f3(lead)) at the start of the fold, \(f3(restLead)) at rest: it moved with the placement, so the lead was worked out from a name that moved (the name stands on the card's edge plus sixteen before the fold and at its first tick)")
             }
             print("[rail start] \(label): pane at rest \(rest), at the start \(told); lead \(f3(restLead)) -> \(leadConstant(rig, "\(label) print").map { f3($0) } ?? "none")")
+        }
+    }
+
+    // MARK: - Where the name stands in the turn the buttons change place
+
+    /// Runs `body` with `window` answering `isVisible` true when `claimed`, and as it did after it: one of the gates
+    /// `SettingsToolbar.learnStartOfItems(_:)` asks of the window, so that the toolbar of a window nobody ordered learns
+    /// where its items start the way it does in a shown one. The getter of `NSWindow` is replaced for the span of
+    /// `body` by one that answers true for `window` and asks the original of every other object; it is put back
+    /// on every exit. The window's class is not changed: the app observes the window by key-value observation, whose
+    /// subclass a swap of the window's class takes away (the process trapped in the layout that followed). The same
+    /// gate is answered in `TheBarTellsItsShellWhenItIsAttachedTests` by `ClaimedWindow`, a subclass of `NSWindow` that
+    /// a bare toolbar's test window can be and a `SettingsWindow` cannot, since it builds its own `NSWindow`; hence the two seams.
+    private func whileShown(_ claimed: Bool, _ window: NSWindow, _ body: () -> Void) {
+        guard claimed else { body(); return }
+        let selector = #selector(getter: NSWindow.isVisible)
+        guard let method = class_getInstanceMethod(NSWindow.self, selector) else {
+            XCTFail("NSWindow has no isVisible getter to answer for: the row cannot stand for a shown window")
+            body()
+            return
+        }
+        let original = method_getImplementation(method)
+        typealias Getter = @convention(c) (AnyObject, Selector) -> Bool
+        let asked = unsafeBitCast(original, to: Getter.self)
+        let answer: @convention(block) (AnyObject) -> Bool = { [unowned window] object in
+            object === window ? true : asked(object, selector)
+        }
+        method_setImplementation(method, imp_implementationWithBlock(answer))
+        defer { method_setImplementation(method, original) }
+        body()
+    }
+
+    /// One reading of where the name's hosting view stands against the card's edge plus sixteen, with what the
+    /// toolbar holds at that moment. `off` is the name's x less the card's edge less sixteen.
+    private struct NameReading {
+        let label: String
+        let sidebar: CGFloat
+        let card: CGFloat
+        let name: CGFloat
+        let rail: Bool?
+        let itemsStart: CGFloat
+        let learnt: String
+        let container: CGFloat
+        let inset: CGFloat?
+        let tabs: CGFloat
+        let tabsWidth: CGFloat
+        var wanted: CGFloat { card + 16 }
+        var off: CGFloat { name - wanted }
+        var line: String {
+            func f(_ value: CGFloat) -> String { String(format: "%.1f", Double(value)) }
+            return "\(label): sidebar \(f(sidebar)), card at \(f(card)), the name's host at \(f(name)) where the card's edge plus 16 is \(f(wanted)) "
+                + "(\(String(format: "%+.1f", Double(off))))"
+        }
+        var cause: String {
+            func f(_ value: CGFloat) -> String { String(format: "%.1f", Double(value)) }
+            return "\(label): pane told rail \(rail.map { "\($0)" } ?? "?"), itemsStart \(f(itemsStart)), learnt starts \(learnt), "
+                + "the name's item from \(f(container)), the inset held \(inset.map { f($0) } ?? "none"), host \(f(name)); tabs from \(f(tabs)) \(f(tabsWidth)) wide"
+        }
+    }
+
+    /// The name's place now: the frame view is laid out first (`stand`), nothing is pumped.
+    private func nameReading(_ rig: SettingsWindowRig, _ owner: SettingsToolbar, _ label: String,
+                             file: StaticString = #filePath, line: UInt = #line) -> NameReading? {
+        guard let s = stand(rig, label, file: file, line: line) else { return nil }
+        return NameReading(label: label, sidebar: rig.shell.shell.sidebarWidth, card: s.cardMinX, name: s.nameMinX,
+                           rail: toldPane(owner, label, file: file, line: line)?.rail, itemsStart: owner.itemsStart,
+                           learnt: "\(stored("learntItemsStarts", of: owner) ?? "?")", container: s.containerMinX, inset: s.inset,
+                           tabs: s.tabsMinX, tabsWidth: s.tabsWidth)
+    }
+
+    /// The ticks after the first one, as fractions of the fold's length; the last is past the end and lands.
+    private static let foldTicks: [Double] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.1]
+
+    /// **In the layout that gives the window's buttons the rail's placement (the first tick of a fold into the rail,
+    /// before the card has moved) and at every tick after it, the name's hosting view stands on the card's edge plus
+    /// sixteen, within a point.** The fold is `ShellContentView.fold(to:animated:)` over a `HandTickedFoldLink`: the
+    /// first tick writes nothing, the layout that follows it tells the toolbar the rail's placement while the card
+    /// still stands at 200, and the frames are read in that turn, before any pump (`nameReading` lays the frame view
+    /// out and nothing more). The card's edge plus sixteen is 216 there, as it was at rest. Under both looks, in a window
+    /// whose toolbar learns where it starts its items (`whileShown`) and in one that does not (the start of each placement stays
+    /// its seed there, 92.5 expanded and 22.5 in the rail). The reading before the fold is asserted equal to 216 as the precondition, and the
+    /// landing in the rail (56, 72) is read with the others.
+    func testTheNameStandsOnTheCardsEdgePlusSixteenFromTheFirstTickOfAFoldIntoTheRail() throws {
+        PinnedBarSettings.pin(in: self)
+        var first: [String] = []
+        var later: [String] = []
+        var causes: [String] = []
+        var ticks = 0
+        for look in Self.looks {
+            for claimed in [false, true] {
+                let label = "\(look.rawValue)\(claimed ? ", toolbar re-reads its start" : ", toolbar on the seed")"
+                guard let rig = pageWithTabs(look), let owner = rig.window.toolbar?.delegate as? SettingsToolbar else {
+                    XCTFail("\(label): the window wears no SettingsToolbar: nothing is judged")
+                    return
+                }
+                whileShown(claimed, rig.window) { rig.settle() }
+                let shell = rig.shell.shell
+                let link = HandTickedFoldLink()
+                shell.foldLink = link
+                shell.reducesMotion = { false }
+                guard let rest = nameReading(rig, owner, "\(label), at rest") else { return }
+                XCTAssertEqual(rest.card, 200, accuracy: 0.5, "\(label): the fold does not start at 200")
+                XCTAssertEqual(rest.off, 0, accuracy: 1, "\(label), precondition: \(rest.line)")
+                causes.append(rest.cause)
+
+                XCTAssertTrue(shell.fold(to: 56, animated: true), "\(label): the fold was cut, not asked for")
+                XCTAssertTrue(link.fire(at: 100), "\(label): the link was never started")
+                whileShown(claimed, rig.window) { shell.layoutSubtreeIfNeeded() }
+                guard let start = nameReading(rig, owner, "\(label), first tick into the rail") else { return }
+                XCTAssertEqual(start.sidebar, 200, accuracy: 0.01, "\(label): the first tick moved the card: the row judges nothing")
+                if abs(start.off) > 1 { first.append(start.line) }
+                causes.append(start.cause)
+                for fraction in Self.foldTicks {
+                    link.fire(at: 100 + fraction * HelmMotion.sidebarFoldDuration)
+                    whileShown(claimed, rig.window) { shell.layoutSubtreeIfNeeded() }
+                    ticks += 1
+                    guard let r = nameReading(rig, owner, "\(label), tick at \(fraction)") else { return }
+                    if abs(r.off) > 1 { later.append(r.line) }
+                    if fraction == 0.1 || fraction == 1.1 { causes.append(r.cause) }
+                }
+                XCTAssertEqual(shell.sidebarWidth, 56, accuracy: 0.01, "\(label): the fold did not land in the rail")
+            }
+        }
+        print("[name into the rail] " + causes.joined(separator: "\n[name into the rail] "))
+        XCTAssertEqual(ticks, 40, "\(ticks) ticks of 40 were read")
+        XCTAssertTrue(first.isEmpty, "the name is not on the card's edge plus sixteen in the layout that sends the buttons into the rail: \(first)")
+        XCTAssertTrue(later.isEmpty, "the name left the card's edge plus sixteen at \(later.count) of 40 ticks into the rail: \(later)")
+    }
+
+    /// **In the layout that brings the window's buttons out of the rail (the tick that lands the sidebar on 200) and
+    /// at every tick before it, the name's hosting view stands on the card's edge plus sixteen, within a point.**
+    /// The fold in is made first (ticked by hand, then a settle, so the toolbar has been laid out in the rail
+    /// and has read or learnt where it starts its items there); the name at rest in the rail is the precondition
+    /// (the card's 56 plus 16, 72). Then the fold out: first tick, nine more, and the landing, each followed by the
+    /// shell's layout and read at once. After the landing a settle is run and the name is read again as the control:
+    /// where it rests is 216, so a reading that is off at the landing is a turn that the rest corrects, not a
+    /// place the window never reaches. Under both looks, in a window whose toolbar re-reads its start (the window answering isVisible true for
+    /// the span of each layout (`whileShown`)); the variant with the toolbar on its seeds is not run by this row.
+    func testTheNameStandsOnTheCardsEdgePlusSixteenAtTheLandingOfAFoldOutOfTheRail() throws {
+        PinnedBarSettings.pin(in: self)
+        var landing: [String] = []
+        var others: [String] = []
+        var causes: [String] = []
+        var ticks = 0
+        for look in Self.looks {
+            do {
+                let claimed = true
+                let label = "\(look.rawValue), toolbar re-reads its start"
+                guard let rig = pageWithTabs(look), let owner = rig.window.toolbar?.delegate as? SettingsToolbar else {
+                    XCTFail("\(label): the window wears no SettingsToolbar: nothing is judged")
+                    return
+                }
+                whileShown(claimed, rig.window) { rig.settle() }
+                let shell = rig.shell.shell
+                let link = HandTickedFoldLink()
+                shell.foldLink = link
+                shell.reducesMotion = { false }
+                XCTAssertTrue(shell.fold(to: 56, animated: true), "\(label): the fold in was cut, not asked for")
+                link.fire(at: 100)
+                for fraction in Self.foldTicks {
+                    whileShown(claimed, rig.window) {
+                        link.fire(at: 100 + fraction * HelmMotion.sidebarFoldDuration)
+                        shell.layoutSubtreeIfNeeded()
+                    }
+                    rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+                }
+                whileShown(claimed, rig.window) { rig.settle() }
+                guard let rail = nameReading(rig, owner, "\(label), at rest in the rail") else { return }
+                XCTAssertEqual(rail.card, 56, accuracy: 0.5, "\(label): the fold in did not land in the rail")
+                XCTAssertEqual(rail.off, 0, accuracy: 1, "\(label), precondition: \(rail.line)")
+                causes.append(rail.cause)
+
+                XCTAssertTrue(shell.fold(to: 200, animated: true), "\(label): the fold out was cut, not asked for")
+                XCTAssertTrue(link.fire(at: 200), "\(label): the link was never started")
+                whileShown(claimed, rig.window) { shell.layoutSubtreeIfNeeded() }
+                if let r = nameReading(rig, owner, "\(label), first tick out of the rail") {
+                    if abs(r.off) > 1 { others.append(r.line) }
+                    causes.append(r.cause)
+                }
+                for fraction in Self.foldTicks {
+                    link.fire(at: 200 + fraction * HelmMotion.sidebarFoldDuration)
+                    whileShown(claimed, rig.window) { shell.layoutSubtreeIfNeeded() }
+                    ticks += 1
+                    let landed = fraction > 1
+                    guard let r = nameReading(rig, owner, "\(label), \(landed ? "the landing" : "tick at \(fraction)")") else { return }
+                    if abs(r.off) > 1 { if landed { landing.append(r.line) } else { others.append(r.line) } }
+                    if fraction == 0.9 || landed { causes.append(r.cause) }
+                }
+                XCTAssertEqual(shell.sidebarWidth, 200, accuracy: 0.01, "\(label): the fold did not land on 200")
+                whileShown(claimed, rig.window) { rig.settle() }
+                if let control = nameReading(rig, owner, "\(label), control after a settle") {
+                    XCTAssertEqual(control.off, 0, accuracy: 1, "control: \(control.line)")
+                    causes.append(control.cause)
+                }
+            }
+        }
+        print("[name out of the rail] " + causes.joined(separator: "\n[name out of the rail] "))
+        XCTAssertEqual(ticks, 20, "\(ticks) ticks of 20 were read")
+        XCTAssertTrue(landing.isEmpty, "the name is not on the card's edge plus sixteen in the layout that brings the buttons out of the rail: \(landing)")
+        XCTAssertTrue(others.isEmpty, "the name left the card's edge plus sixteen at \(others.count) readings before the landing: \(others)")
+    }
+
+    // MARK: - Where the tabs stand in the turn a fresh bar is assigned
+
+    /// The search field's width on the worn bar; nil where the bar lists no search item.
+    private func searchFieldWidth(_ rig: SettingsWindowRig) -> CGFloat? {
+        guard let toolbar = rig.window.toolbar,
+              let item = SettingsWindowRig.item("helm.search", in: toolbar) as? NSSearchToolbarItem else { return nil }
+        return item.searchField.frame.width
+    }
+
+    /// The settle's timer put out of reach for the rest of the row (`SettingsToolbar.settleInterval` 1000, put back by a
+    /// teardown block), so that no pass runs unless the row runs it, and a reading made after a change is the turn's
+    /// own.
+    private func holdTheSettle() {
+        let original = SettingsToolbar.settleInterval
+        SettingsToolbar.settleInterval = 1000
+        addTeardownBlock { @MainActor in SettingsToolbar.settleInterval = original }
+    }
+
+    /// One change that puts a bar on the window, read in the turn that made it and again once the settle has nothing
+    /// more to move: the tabs, the lead's constant, the search field and the segments.
+    private struct FirstFrame {
+        let label: String
+        /// The bar's item list, in list order.
+        let order: [String]
+        let turn: Stand
+        let turnLead: CGFloat?
+        /// The lead's constant read before the frame view was laid out at all.
+        let leadAtOnce: CGFloat?
+        let turnField: CGFloat?
+        let rest: Stand
+        let restLead: CGFloat?
+        let restField: CGFloat?
+        let passes: Int
+        /// After each pass of the settle: the lead's constant and the tabs' left edge.
+        let perPass: [(lead: CGFloat?, tabs: CGFloat)]
+        /// How far right of its resting place the tabs' left edge stood in the turn.
+        var off: CGFloat { turn.tabsMinX - rest.tabsMinX }
+        var line: String {
+            func f(_ value: CGFloat?) -> String { value.map { String(format: "%.1f", Double($0)) } ?? "none" }
+            return "\(label): the tabs' left edge \(f(turn.tabsMinX)) in the turn (\(turn.segments) segments, \(f(turn.tabsWidth)) wide, lead \(f(turnLead)), "
+                + "search field \(f(turnField))) and \(f(rest.tabsMinX)) at rest after \(passes) passes (\(rest.segments) segments, \(f(rest.tabsWidth)) wide, "
+                + "lead \(f(restLead)), search field \(f(restField))), \(String(format: "%+.1f", Double(off))) off; the card's middle \(f(rest.cardMid)), "
+                + "the name host \(f(turn.nameMinX))...\(f(turn.nameMaxX)) in the turn and \(f(rest.nameMinX))...\(f(rest.nameMaxX)) at rest; "
+                + "items \(order); the lead's constant before any layout \(f(leadAtOnce)); after each pass (lead, tabs): "
+                + perPass.map { "(\(f($0.lead)), \(f($0.tabs)))" }.joined(separator: " ")
+        }
+    }
+
+    /// Runs the settle's pending pass by hand, one at a time with the frame view laid out before each, until a pass
+    /// arms no further one; what each pass left (the lead's constant and the tabs' left edge, the frame view laid out),
+    /// or nil after a failure (twenty passes, or no pass pending at the start).
+    private func runToRest(_ rig: SettingsWindowRig, _ owner: SettingsToolbar, _ label: String,
+                           file: StaticString = #filePath, line: UInt = #line) -> [(lead: CGFloat?, tabs: CGFloat)]? {
+        func pending() -> DispatchWorkItem? { inside(stored("settleWorkItem", of: owner)) as? DispatchWorkItem }
+        var seen: [(lead: CGFloat?, tabs: CGFloat)] = []
+        for pass in 1...20 {
+            guard let work = pending() else {
+                XCTFail("\(label): the toolbar holds no pending settle at pass \(pass): nothing is judged", file: file, line: line)
+                return nil
+            }
+            rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+            work.perform()
+            rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+            if let toolbar = rig.window.toolbar, let tabs = SettingsWindowRig.item("helm.tabs", in: toolbar)?.view, tabs.window != nil {
+                seen.append((leadConstants(in: toolbar)?.first, tabs.convert(tabs.bounds, to: nil).minX))
+            }
+            if pending() === work { return seen }
+        }
+        XCTFail("\(label): twenty passes of the settle by hand did not come to rest", file: file, line: line)
+        return nil
+    }
+
+    /// `change` is made on the worn bar, the bar it puts on the window is read at once (a look's change reaches the toolbar by
+    /// a notification on the main queue, so the run loop turns in one-millisecond slices until the window wears another bar,
+    /// at most 200; a page switch has made it already), then the settle's passes are run by hand and the bar is read again.
+    private func firstFrame(_ rig: SettingsWindowRig, _ label: String, _ change: () -> Void,
+                            file: StaticString = #filePath, line: UInt = #line) -> FirstFrame? {
+        guard let before = rig.worn("\(label): no bar was on the window before the change", file: file, line: line),
+              let owner = before.delegate as? SettingsToolbar else { return nil }
+        change()
+        var slices = 0
+        while rig.window.toolbar === before, slices < 200 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.001))
+            slices += 1
+        }
+        guard let after = rig.worn("\(label): the change left the window no bar", file: file, line: line) else { return nil }
+        guard after !== before else {
+            XCTFail("\(label): the change left the window the bar it had after \(slices) ms: the row reads no new bar", file: file, line: line)
+            return nil
+        }
+        let leadAtOnce = leadConstants(in: after)?.first
+        guard let turn = stand(rig, "\(label), in the turn", file: file, line: line) else { return nil }
+        let turnLead = leadConstants(in: after)?.first
+        let turnField = searchFieldWidth(rig)
+        guard let perPass = runToRest(rig, owner, label, file: file, line: line),
+              let rest = stand(rig, "\(label), at rest", file: file, line: line) else { return nil }
+        let frame = FirstFrame(label: label, order: after.itemIdentifiers.map(\.rawValue), turn: turn, turnLead: turnLead, leadAtOnce: leadAtOnce, turnField: turnField, rest: rest,
+                               restLead: leadConstants(in: rig.window.toolbar ?? after)?.first,
+                               restField: searchFieldWidth(rig), passes: perPass.count, perPass: perPass)
+        print("[first frame] " + frame.line)
+        return frame
+    }
+
+    /// A rig on the page `probe.a` (two tabs, an action, a search) under `look`, its settle held and run to rest.
+    private func restingPage(_ look: HelmBarAppearance, file: StaticString = #filePath, line: UInt = #line)
+        -> (rig: SettingsWindowRig, owner: SettingsToolbar)? {
+        guard let rig = pageWithTabs(look, file: file, line: line),
+              let owner = rig.worn("no toolbar on the page", file: file, line: line)?.delegate as? SettingsToolbar else { return nil }
+        holdTheSettle()
+        // Reaching the page left a settle pending at the default interval; re-arm it at the held one.
+        rig.model.selection = .general
+        rig.model.selection = .module("probe.a")
+        guard runToRest(rig, owner, "\(look.rawValue), the first page", file: file, line: line) != nil else { return nil }
+        return (rig, owner)
+    }
+
+    private func switchTo(_ rig: SettingsWindowRig, _ token: String, search: Bool) {
+        rig.declare(token, search: search)
+        rig.model.selection = .module(token)
+    }
+
+    /// What every row below judges: the tabs of the bar just assigned stand within a point of where they rest once the
+    /// settle has nothing more to move, and they are whole at rest (so that the comparison is of a place and not of a
+    /// fold). The message is the whole reading.
+    private func assertFirstFrameIsTheRestingOne(_ frame: FirstFrame, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(frame.rest.segments, 2, "\(frame.label): the tabs are not whole at rest, so nothing is compared: \(frame.line)", file: file, line: line)
+        XCTAssertEqual(frame.turn.tabsMinX, frame.rest.tabsMinX, accuracy: 1, frame.line, file: file, line: line)
+    }
+
+    /// **A page with tabs and a search, visited for the first time, puts its tabs where they will rest in the turn
+    /// its bar is assigned, within a point.** The window rests on `probe.a` (two tabs, an action, a search); the settle's
+    /// timer is out of reach (`holdTheSettle`), `probe.b` is declared with the same shape and selected, and the tabs'
+    /// left edge is read at once (the frame view laid out, nothing pumped), then after the settle's passes run by hand
+    /// until one arms no more. Under both looks. **The card's middle is 628, the tabs 168 wide (Flat) and 148 (Liquid
+    /// Glass), so they rest at 544 and 554.** Also read and printed with the reading: the lead item's constant in the
+    /// turn and at rest, the search field's width in both, the segments, the bar's item list in list order.
+    /// Seen red with `tabsWidth(_:)` answering 0 for a bar that has no tabs item: in the turn the tabs' left edge on the card's
+    /// middle, 628.0, where they rest at 544.0 (Flat) and 554.0 (Liquid Glass), the lead 279.0 and 275.0.
+    func testTheTabsOfAFreshBarWithASearchStandWhereTheyWillRestInTheTurnItIsAssigned() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, _) = restingPage(look),
+                  let frame = firstFrame(rig, "\(look.rawValue), a first visit of a page with tabs and a search", {
+                      self.switchTo(rig, "probe.b", search: true)
+                  }) else { return }
+            assertFirstFrameIsTheRestingOne(frame)
+        }
+    }
+
+    /// **A page with tabs and no search, visited for the first time, puts its tabs where they will rest in the turn its
+    /// bar is assigned, within a point.** The twin of the row above for the shape of Hosts and General: no search item
+    /// to take room, so the field's width is not read. Seen red with `tabsWidth(_:)` answering 0 for a bar that has no tabs item: in
+    /// the turn the tabs' left edge on the card's middle, 628.0, where they rest at 544.0 (Flat) and 554.0 (Liquid Glass), the lead
+    /// 279.0 and 275.0.
+    func testTheTabsOfAFreshBarWithNoSearchStandWhereTheyWillRestInTheTurnItIsAssigned() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, _) = restingPage(look),
+                  let frame = firstFrame(rig, "\(look.rawValue), a first visit of a page with tabs and no search", {
+                      self.switchTo(rig, "probe.c", search: false)
+                  }) else { return }
+            assertFirstFrameIsTheRestingOne(frame)
+        }
+    }
+
+    /// **A bar the toolbar kept comes back with its tabs where they will rest, in the turn it is assigned, within a point.**
+    /// The control for the two rows above: `show(_:key:)` writes the lead of now to a cached bar, whose tabs item has a width, before the
+    /// window takes it. The window rests on `probe.a`, goes to a fresh `probe.b` (run to rest) and back to `probe.a`, then to
+    /// `probe.b` again; both returns are read. Under both looks. Read: on the return to the first page 544.0 (Flat) and 554.0
+    /// (Liquid Glass) in the turn, as at rest; on the return to the second page 543.0 and 553.0 in the turn against 544.0 and
+    /// 554.0 at rest.
+    func testTheTabsOfACachedBarStandWhereTheyWillRestInTheTurnItComesBack() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, _) = restingPage(look) else { return }
+            switchTo(rig, "probe.b", search: true)
+            guard let owner = rig.worn("no toolbar on the second page")?.delegate as? SettingsToolbar,
+                  runToRest(rig, owner, "\(look.rawValue), the second page") != nil,
+                  let toA = firstFrame(rig, "\(look.rawValue), a return to the first page's kept bar", {
+                      rig.model.selection = .module("probe.a")
+                  }),
+                  let toB = firstFrame(rig, "\(look.rawValue), a return to the second page's kept bar", {
+                      rig.model.selection = .module("probe.b")
+                  }) else { return }
+            assertFirstFrameIsTheRestingOne(toA)
+            assertFirstFrameIsTheRestingOne(toB)
+        }
+    }
+
+    /// **A change of look puts a bar on the window, and its tabs stand where they will rest in the turn it is assigned, within
+    /// a point.** The window rests on `probe.a` under one look; `AppSettings.barAppearance` is set to the other (the toolbar
+    /// hears it by a notification on the main queue, so the run loop turns in one-millisecond slices until the window wears
+    /// another bar, and the tabs are read in that turn), and then set back; then the same on `probe.c`, a page with no
+    /// search. The first change of a window's life to a look it has not worn is a look whose gap between the lead and the tabs
+    /// is still the look's prior (`tabsGapPrior(of:)`, Flat 0 and Liquid Glass 4), the changes after it are to looks whose gap was read. Under both looks as the
+    /// start. Seen red with `tabsGapPrior(of:)` answering 16 for both looks, in the two readings of a look the window has not worn
+    /// (542.0 in the turn where 554.0 at rest, 528.0 where 544.0), and in all six with `tabsWidth(_:)` answering 0 for a bar that has
+    /// no tabs item.
+    func testAChangeOfLookPutsABarWhoseTabsStandWhereTheyWillRestInTheTurnItIsAssigned() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            let other: HelmBarAppearance = look == .flat ? .liquidGlass : .flat
+            guard let (rig, owner) = restingPage(look),
+                  let first = firstFrame(rig, "\(look.rawValue) to \(other.rawValue), a look the window has not worn, tabs and a search", {
+                      AppSettings.barAppearance = other
+                  }),
+                  let back = firstFrame(rig, "\(other.rawValue) to \(look.rawValue), a look whose gap was read, tabs and a search", {
+                      AppSettings.barAppearance = look
+                  }) else { return }
+            assertFirstFrameIsTheRestingOne(first)
+            assertFirstFrameIsTheRestingOne(back)
+            switchTo(rig, "probe.c", search: false)
+            guard runToRest(rig, owner, "\(look.rawValue), the page with no search") != nil,
+                  let noSearch = firstFrame(rig, "\(look.rawValue) to \(other.rawValue), a look whose gap was read, tabs and no search", {
+                      AppSettings.barAppearance = other
+                  }) else { return }
+            assertFirstFrameIsTheRestingOne(noSearch)
+        }
+    }
+
+    // MARK: - Where the name, the tabs and the field stand across the passes that follow a show and a landing
+
+    /// What stood where after one pass of the settle (pass 0 is the state before any pass): what the toolbar held and what the
+    /// frames read, the frame view laid out, with the window answering `isVisible` true for the pass and the layouts.
+    private struct PassReading {
+        let pass: Int
+        let itemsStart: CGFloat
+        let moves: Int
+        let inset: CGFloat?
+        let lead: CGFloat?
+        let cap: CGFloat?
+        let container: CGFloat
+        let name: CGFloat
+        let tabs: CGFloat
+        let field: CGFloat?
+        let rearmed: Bool?
+        var line: String {
+            func n(_ value: CGFloat?) -> String { value.map { String(format: "%.2f", Double($0)) } ?? "none" }
+            return "pass \(pass): itemsStart \(n(itemsStart)), moves \(moves), inset \(n(inset)), lead \(n(lead)), cap \(n(cap)), "
+                + "item from \(n(container)), name \(n(name)), tabs \(n(tabs)), field \(n(field)), re-armed \(rearmed.map { $0 ? "yes" : "no" } ?? "-")"
+        }
+    }
+
+    /// The state now, read with the frame view laid out, under a window that answers visible when `shown`.
+    private func passReading(_ rig: SettingsWindowRig, _ owner: SettingsToolbar, pass: Int, rearmed: Bool?, shown: Bool,
+                             file: StaticString = #filePath, line: UInt = #line) -> PassReading? {
+        var read: Stand?
+        whileShown(shown, rig.window) { read = stand(rig, "pass \(pass)", file: file, line: line) }
+        guard let s = read else { return nil }
+        let cap = wornPageBar(rig, of: owner).flatMap { barState($0, "pass \(pass)", file: file, line: line)?.cap.constant }
+        return PassReading(pass: pass, itemsStart: owner.itemsStart, moves: owner.itemsStartMoves, inset: s.inset,
+                           lead: leadConstants(in: rig.window.toolbar ?? NSToolbar())?.first, cap: cap, container: s.containerMinX,
+                           name: s.nameMinX, tabs: s.tabsMinX, field: searchFieldWidth(rig), rearmed: rearmed)
+    }
+
+    /// The settle's pending pass, run by hand with the window answering visible (unless not `shown`) for the pass and for the layouts either side,
+    /// until a pass arms no further one or `limit` passes have run; the state before the first and after each. nil after a
+    /// failure (no pass pending at the start).
+    private func passesOfTheSettle(_ rig: SettingsWindowRig, _ owner: SettingsToolbar, _ label: String, limit: Int = 12,
+                                   shown: Bool = true, file: StaticString = #filePath, line: UInt = #line) -> [PassReading]? {
+        func pending() -> DispatchWorkItem? { inside(stored("settleWorkItem", of: owner)) as? DispatchWorkItem }
+        guard let first = passReading(rig, owner, pass: 0, rearmed: nil, shown: shown, file: file, line: line) else { return nil }
+        var seen = [first]
+        for pass in 1...limit {
+            guard let work = pending() else {
+                XCTFail("\(label): the toolbar holds no pending settle at pass \(pass): nothing is judged", file: file, line: line)
+                return nil
+            }
+            var armedAgain = false
+            whileShown(shown, rig.window) {
+                rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+                work.perform()
+                armedAgain = pending() !== work
+                rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+            }
+            guard let reading = passReading(rig, owner, pass: pass, rearmed: armedAgain, shown: shown, file: file, line: line) else { return nil }
+            seen.append(reading)
+            if !armedAgain { return seen }
+        }
+        return seen
+    }
+
+    /// The fold of the sidebar to `width`, ticked by hand: the first tick at `start` (it writes nothing), then
+    /// `foldTicks` after it, each followed by the shell's layout under a window that answers visible and by the frame view's.
+    private func foldByTicks(_ rig: SettingsWindowRig, _ link: HandTickedFoldLink, to width: CGFloat, startingAt start: Double,
+                             file: StaticString = #filePath, line: UInt = #line) {
+        let shell = rig.shell.shell
+        XCTAssertTrue(shell.fold(to: width, animated: true), "the fold to \(width) was cut, not asked for", file: file, line: line)
+        XCTAssertTrue(link.fire(at: start), "the link was never started", file: file, line: line)
+        for fraction in Self.foldTicks {
+            whileShown(true, rig.window) {
+                link.fire(at: start + fraction * HelmMotion.sidebarFoldDuration)
+                shell.layoutSubtreeIfNeeded()
+            }
+            rig.window.contentView?.superview?.layoutSubtreeIfNeeded()
+        }
+        XCTAssertEqual(shell.sidebarWidth, width, accuracy: 0.01, "the fold did not land on \(width)", file: file, line: line)
+    }
+
+    /// The page of three tabs, an action and a search under `look` at 1060 and a sidebar of 200, at rest with its settle held
+    /// out of reach: the window answers not shown, so the toolbar reads nothing of where its items start, and the passes by hand
+    /// have run until one armed no more. The page has the shape of a package manager's, whose whole tabs (343 under Flat) and
+    /// field (narrower than its usual 283) are the shape on which the name, the tabs and the field moved a point at each pass before
+    /// `itemsStartTolerance`; nil after a failure.
+    private func shapedPageAtRest(_ look: HelmBarAppearance, file: StaticString = #filePath, line: UInt = #line)
+        -> (rig: SettingsWindowRig, owner: SettingsToolbar)? {
+        guard let rig = shapedPage(look, file: file, line: line),
+              let owner = rig.worn("no toolbar on the page", file: file, line: line)?.delegate as? SettingsToolbar else { return nil }
+        holdTheSettle()
+        rig.model.selection = .general
+        rig.model.selection = .module("probe.shaped")
+        guard runToRest(rig, owner, "\(look.rawValue), the page at rest", file: file, line: line) != nil else { return nil }
+        return (rig, owner)
+    }
+
+    /// How many passes of the settle a show or a landing may take before the name, the tabs and the field must stand still.
+    /// Four: a pass that reads where the items start and writes the inset, one that finds the same start and writes the
+    /// lead and the offer from it, one that finds both still, and one to spare; before `itemsStartTolerance` the loop took five or six
+    /// and was ended by `SettingsToolbar.itemsStartMoveCeiling`, not by two reads agreeing.
+    private static let passesToRest = 4
+
+    /// **After the first pass that follows `event`, no later pass moves the name's hosting view, the tabs' left edge or the search
+    /// field's width, and the passes come to an end of themselves.** The reference is the reading after pass 1 (the pass
+    /// that reads where the items start); each later reading is held to it within a quarter of a point. A quarter: AppKit
+    /// places these items on half points (the name's item at 92.0 or 92.5, the tabs at 456.0 or 457.0), the defect is a full
+    /// point, and what is wanted is standing still, so any move of a half point is a move. The field is held to itself between the
+    /// passes that offered it the same cap alone. The passes end of themselves: the
+    /// last pass armed no further one, within `passesToRest` passes, and `itemsStartMoves` is under the ceiling that would
+    /// otherwise have stopped the reads. Every message carries the whole table.
+    private func assertThePassesStandStill(_ table: [PassReading], _ owner: SettingsToolbar, _ label: String,
+                                           file: StaticString = #filePath, line: UInt = #line) {
+        let whole = "\n" + table.map { "    " + $0.line }.joined(separator: "\n")
+        XCTAssertGreaterThanOrEqual(table.count, 2, "\(label): no pass ran, nothing is judged\(whole)", file: file, line: line)
+        guard table.count >= 2 else { return }
+        let reference = table[1]
+        let later = table.dropFirst(2)
+        func spread(_ value: (PassReading) -> CGFloat?) -> CGFloat {
+            let all = ([reference] + later).compactMap(value)
+            return (all.max() ?? 0) - (all.min() ?? 0)
+        }
+        XCTAssertEqual(spread(\.name), 0, accuracy: 0.25,
+                       "\(label): the name's host moved after pass 1 (it stood at \(reference.name))\(whole)", file: file, line: line)
+        XCTAssertEqual(spread(\.tabs), 0, accuracy: 0.25,
+                       "\(label): the tabs moved after pass 1 (they stood at \(reference.tabs))\(whole)", file: file, line: line)
+        // The field is held to itself only between passes that offered it the same cap: a pass that writes a new offer moves the
+        // field by the offer's difference, which is not a pass moving it under an unchanged offer (a landing in the rail raises the
+        // cap from 208.5 to 280.5 under Flat and from 225 to 283 under Liquid Glass at the first pass that follows it, and the
+        // field follows the cap).
+        let widest = Dictionary(grouping: table.dropFirst(), by: \.cap).values.map { group -> CGFloat in
+            let widths = group.compactMap(\.field)
+            return (widths.max() ?? 0) - (widths.min() ?? 0)
+        }.max() ?? 0
+        XCTAssertEqual(widest, 0, accuracy: 0.25,
+                       "\(label): the search field's width moved between passes that offered it the same cap\(whole)", file: file, line: line)
+        XCTAssertEqual(table.last?.rearmed, false, "\(label): the last pass armed another: the passes did not end\(whole)", file: file, line: line)
+        XCTAssertLessThanOrEqual(table.count - 1, Self.passesToRest,
+                                 "\(label): \(table.count - 1) passes, more than the \(Self.passesToRest) a show or a landing is given\(whole)", file: file, line: line)
+        XCTAssertLessThan(owner.itemsStartMoves, SettingsToolbar.itemsStartMoveCeiling,
+                          "\(label): the reads of where the items start were stopped by the ceiling of \(SettingsToolbar.itemsStartMoveCeiling), "
+                          + "not by two reads agreeing (\(owner.itemsStartMoves) moves)\(whole)", file: file, line: line)
+    }
+
+    /// **A window that is shown after it has rested: no pass of the settle moves the name, the tabs or the field after the first.** The window
+    /// rests on the page (three tabs, an action, a search) as a window never ordered does, its toolbar having read nothing of where its
+    /// items start; then the window answers `isVisible` true (`whileShown`), a settle is armed, and its passes are run by hand with the
+    /// frame view laid out either side, each read. Under both looks. Before `itemsStartTolerance`, when only a read equal to
+    /// the start held was refused (an unshown window that answers visible): under Flat the name's host 216.5, 215.5, 216.5, 215.5, 215.5 after
+    /// passes 1 to 5, the tabs 457, 456, 457, 456, 457, the field 204, 205, 204, 205, 204, the toolbar's items start read 92.0, 92.5, 92.0,
+    /// 92.5 and then no more, six passes, the last of them armed none; under Liquid Glass the same with the tabs 474, 473 and the field
+    /// 220, 221; seen red since with the tolerance at 0 (the name's host moved 1.0 after pass 1).
+    func testAfterAShowNoPassMovesTheNameTheTabsOrTheField() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, owner) = shapedPageAtRest(look) else { return }
+            rig.model.selection = .general
+            rig.model.selection = .module("probe.shaped")
+            guard let table = passesOfTheSettle(rig, owner, "\(look.rawValue), after a show") else { return }
+            print("[passes after a show] \(look.rawValue)\n" + table.map { "[passes after a show]   " + $0.line }.joined(separator: "\n"))
+            assertThePassesStandStill(table, owner, "\(look.rawValue), after a show")
+        }
+    }
+
+    /// **The landing of a fold of the sidebar into the rail: no pass of the settle that follows moves the name, the tabs or the field after the
+    /// first.** The window rests as above; the sidebar is folded to 56 by the hand-ticked link (`foldByTicks`), the passes run by hand
+    /// from the landing. Under both looks. Before `itemsStartTolerance`, when only a read equal to the start held was refused: the name's host 72.5, 71.5, 72.5
+    /// after passes 1 to 3, the tabs 385, 384, 385 (Flat), the toolbar's start 22.0, 22.5, 22.0 read, then no more; seen red since with
+    /// the tolerance at 0 (the name's host moved 1.0 after pass 1).
+    func testAfterTheLandingOfAFoldIntoTheRailNoPassMovesTheNameTheTabsOrTheField() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, owner) = shapedPageAtRest(look) else { return }
+            let link = HandTickedFoldLink()
+            rig.shell.shell.foldLink = link
+            rig.shell.shell.reducesMotion = { false }
+            foldByTicks(rig, link, to: 56, startingAt: 100)
+            guard let table = passesOfTheSettle(rig, owner, "\(look.rawValue), after the landing in the rail") else { return }
+            print("[passes after the landing in] \(look.rawValue)\n" + table.map { "[passes after the landing in]   " + $0.line }.joined(separator: "\n"))
+            assertThePassesStandStill(table, owner, "\(look.rawValue), after the landing in the rail")
+        }
+    }
+
+    /// **The landing of a fold of the sidebar out of the rail: no pass of the settle that follows moves the name, the tabs or the field after the
+    /// first.** The window rests, is folded into the rail and its passes run by hand to the end, then folded out to 200, and the passes
+    /// that follow the landing are read. Under both looks. Before `itemsStartTolerance`, when only a read equal to the start held was refused: the name's host 215.5, 216.5, 215.5
+    /// after passes 1 to 3, the tabs 456, 457, 456 (Flat), the toolbar's start read 92.5, 92.0, 92.5, then no more; seen red since with
+    /// the tolerance at 0 (the name's host moved 1.0 after pass 1).
+    func testAfterTheLandingOfAFoldOutOfTheRailNoPassMovesTheNameTheTabsOrTheField() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, owner) = shapedPageAtRest(look) else { return }
+            let link = HandTickedFoldLink()
+            rig.shell.shell.foldLink = link
+            rig.shell.shell.reducesMotion = { false }
+            foldByTicks(rig, link, to: 56, startingAt: 100)
+            guard passesOfTheSettle(rig, owner, "\(look.rawValue), in the rail") != nil else { return }
+            foldByTicks(rig, link, to: 200, startingAt: 200)
+            guard let table = passesOfTheSettle(rig, owner, "\(look.rawValue), after the landing out of the rail") else { return }
+            print("[passes after the landing out] \(look.rawValue)\n" + table.map { "[passes after the landing out]   " + $0.line }.joined(separator: "\n"))
+            assertThePassesStandStill(table, owner, "\(look.rawValue), after the landing out of the rail")
+        }
+    }
+
+    /// **Control: the same show, with the window answering not shown, leaves the passes standing still.** The toolbar then reads nothing of
+    /// where its items start (`learnStartOfItems(_:)` asks the window's `isVisible`), so what would move the name, the tabs and the field in the
+    /// rows above is that read and what it writes; the judgement is the same one. With `itemsStartTolerance` at 0 the three rows above are red (the name's host
+    /// moves 1.0 after pass 1) and this one stays green.
+    func testWithTheWindowNotShownThePassesOfAShowStandStill() throws {
+        PinnedBarSettings.pin(in: self)
+        for look in Self.looks {
+            guard let (rig, owner) = shapedPageAtRest(look) else { return }
+            rig.model.selection = .general
+            rig.model.selection = .module("probe.shaped")
+            guard let table = passesOfTheSettle(rig, owner, "\(look.rawValue), a show that reads nothing", shown: false) else { return }
+            assertThePassesStandStill(table, owner, "\(look.rawValue), a show that reads nothing")
         }
     }
 
@@ -2565,23 +3229,28 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     }
 
     /// **A start of the toolbar's items that is not the seed is learnt from the name item and is the one the lead is
-    /// worked out from, for each placement.** The toolbar is told, by a direct `paneMoved`, the placement the window is
+    /// worked out from, for each placement, in a window that is shown.** The toolbar is told, by a direct `paneMoved`, the placement the window is
     /// NOT in: the full sidebar's window told the rail (the items start at 92.5 there, the rail's seed is 22.5), and the
     /// window in the rail told the full sidebar (22.5 there, the seed 92.5). The rule's input is then a start 70
     /// points from the seed of the placement told, the state of another system or a shown window, put under the
-    /// toolbar without editing anything. After a settle: the name's item stands where it stood (so the row has
+    /// toolbar without editing anything. The settle runs with the window answering `isVisible` true (`whileShown`, around `rig.settle()`
+    /// only: `learnStartOfItems(_:)` reads a window that is not visible not at all, which `testAnUnshownWindowNeverMovesWhereTheItemsStart`
+    /// in `TheBarTellsItsShellWhenItIsAttachedTests` holds). After the settle: the name's item stands where it stood (so the row has
     /// not moved the window), the start learnt for the placement told (`learntItemsStarts`, by `Mirror`) is the item's
-    /// left edge within a point, and the tabs' middle is the card's within a point (a lead worked out from the seed
+    /// left edge within a point, and the tabs' middle is the card's within `halfPoints` (a lead worked out from the seed
     /// would put them 70 off). A guard asserts the seed of the placement told is over 20 from the item's start. Both looks, both lies.
-    /// Read, in each of the four runs: the honest items start 92.500 (told the rail) and 22.500 (told the full sidebar),
-    /// the start learnt for the placement told is that number to the half point, and the tabs 0.000 off the card's
-    /// middle after the settle. Under both looks the dictionary held the same number for both keys after the settle
-    /// (`[false: 92.5, true: 92.5]`, `[false: 22.5, true: 22.5]`): the start learnt for the honest placement before the toolbar was told wrong, and the same item's edge learnt for the
-    /// placement told at the settle after it.
-    /// Seen red in all four runs with `learnStartOfItems` returning first (the start learnt for the placement told was none,
-    /// learnt [:], where the item stood at 92.500 (told the rail) and 22.500 (told the full sidebar); the tabs' middle 70.0, -26.0, 70.0 and -24.0 off the card's) and with
-    /// `startOfItems(rail:)` answering the seed alone (the tabs' middle the same 70.0, -26.0, 70.0 and -24.0 off). Not run:
-    /// the write `learntItemsStarts[pane.rail] = start` deleted.
+    /// Read, in each of the four runs, from the `[learnt start]` line the row prints (`honest item at <a>, learnt <dictionary>, tabs <b> off`):
+    /// the honest item at 92.500 (told the rail) and 22.000 (told the full sidebar), the start
+    /// learnt for the placement told 92.0 and 22.5 (the told inset moved the item by half a point before the read, and the tolerance of
+    /// a point keeps that start), the dictionary holding that one key, and the tabs 1.000 off the card's middle (told the rail) and 0.000 off (told the full sidebar)
+    /// after the settle, under both looks.
+    /// Seen red in all four runs, in a window never shown (`rig.settle()` without `whileShown`) with the gate on `isVisible` in
+    /// `learnStartOfItems` (the start learnt for the placement told was none, learnt [:], and the tabs' middle 70.0, -26.0, 70.0 and -24.0
+    /// off the card's): the row as it stood before the gate. The failed assertion's message prints the item's place after the settle
+    /// (`the item stands at`), a reading apart from the honest one that the `[learnt start]` line prints.
+    /// Seen red with the window shown and the settle returning after a learnt start with the inset written and the lead not (the tabs' middle -21.0
+    /// off the card's), and with `nameMaxX(_:)` working from the other placement's start. Not run: `learnStartOfItems` returning first,
+    /// `startOfItems(rail:)` answering the seed alone, the write `learntItemsStarts[pane.rail] = start` deleted.
     func testAStartOfItemsThatIsNotTheSeedIsLearntAndTheLeadIsWorkedOutFromIt() throws {
         PinnedBarSettings.pin(in: self)
         for look in Self.looks {
@@ -2597,13 +3266,13 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
                 let seed = told ? SettingsToolbar.railItemsStartSeed : SettingsToolbar.itemsStartSeed
                 XCTAssertGreaterThan(abs(honest.containerMinX - seed), 20, "\(label): the items start at \(f3(honest.containerMinX)), the seed of the placement told is \(f3(seed)): the start is not put away from the seed")
                 owner.paneMoved(leading: honest.cardMinX, width: honest.cardWidth, rail: told)
-                rig.settle()
+                whileShown(true, rig.window) { rig.settle() }
                 guard let s = stand(rig, "\(label): after") else { continue }
                 XCTAssertEqual(s.containerMinX, honest.containerMinX, accuracy: 0.5, "\(label): the name's item moved from \(f3(honest.containerMinX)) to \(f3(s.containerMinX)): the row moved the window")
                 let learnt = stored("learntItemsStarts", of: owner) as? [Bool: CGFloat]
                 XCTAssertEqual(learnt?[told] ?? -1, s.containerMinX, accuracy: 1,
                                "\(label): the start learnt for the placement told is \(learnt?[told].map { f3($0) } ?? "none") (learnt \(learnt.map { "\($0)" } ?? "unreadable")), the item stands at \(f3(s.containerMinX))")
-                XCTAssertEqual(s.off, 0, accuracy: 1, "\(label): the tabs' middle is \(f3(s.off)) off the card's after the settle: the lead is worked out from a start that is not the item's. \(s.line)")
+                XCTAssertEqual(s.off, 0, accuracy: Self.halfPoints, "\(label): the tabs' middle is \(f3(s.off)) off the card's after the settle: the lead is worked out from a start that is not the item's. \(s.line)")
                 print("[learnt start] \(label): honest item at \(f3(honest.containerMinX)), learnt \(learnt.map { "\($0)" } ?? "none"), tabs \(f3(s.off)) off")
             }
         }
