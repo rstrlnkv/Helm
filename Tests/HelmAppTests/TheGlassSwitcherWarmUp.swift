@@ -5,9 +5,11 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Draws one switcher in a page bar and throws it away before a reserve family takes its readings.**
+/// **Draws one switcher in a page bar and throws it away; checks a drawn switcher's height against the
+/// bar's size.** No family calls `run()` or `assertDrawnAtTheBarsSize` now: the reserve families read a
+/// `SettingsToolbar`, not a page bar.
 ///
-/// Why it exists: in the reserve families (`ASegmentedEntrysReserveIsWhatItDrawsTests` and its two
+/// Why it was written: in the reserve families (`ASegmentedEntrysReserveIsWhatItDrawsTests` and its two
 /// neighbours) a switcher was once read at 24 pt high and 48 pt wide for `minus` / `ellipsis` in whichever
 /// test ran first in its process, against 36 pt and 80 pt in the tests after it. That order effect was seen
 /// in family runs and was not reproduced by `TheFirstGlassSwitcherIsDrawnAtTheBarsSizeTests`, which never
@@ -15,11 +17,10 @@ import XCTest
 /// pass was a switcher at the regular size (24 pt) at every mount of the tabs, and an action at 36 pt only
 /// until its window turned key (24 pt after a settle) — not a first-of-process effect. That family is
 /// green with the switcher as it is now, and no row has been run with this call and without it, so nothing
-/// measured says what this call still guards; it draws one switcher and the readings after it are the ones
-/// the families assert on.
+/// measured says what this call guarded.
 ///
-/// A reading calls `assertDrawnAtTheBarsSize` as well: a switcher drawn at the regular size would leave a
-/// reserve that is too wide looking as if it "covers" what is drawn.
+/// `assertDrawnAtTheBarsSize` is the check a reading would make as well: a switcher drawn at the regular size
+/// would leave a reserve that is too wide looking as if it "covers" what is drawn.
 @MainActor
 enum TheGlassSwitcherWarmUp {
     private static var done = false

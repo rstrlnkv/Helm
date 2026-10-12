@@ -8,32 +8,47 @@ import XCTest
 @testable import Module_Hosts_UI
 
 /// **Hosts' Table / Plain-text switcher draws only glyphs, and each glyph
-/// still says what it is** — aloud and as a tooltip, in every language —
-/// read off the real page through the page bar's actions zone
-/// (`LivePageToolbarFixture`).
+/// still says what it is** — aloud, as a tooltip and in the overflow menu,
+/// in every language — read off the real page through a real
+/// `SettingsToolbar`.
 ///
 /// The owner asked for these tabs to be glyphs whatever the tabs' label
 /// style is (2026-09-25). Once the word is gone from the face, the name that
 /// `HostsSettingsPage.toolbarContent` gives each option (`HostsStr.tableView`,
-/// `HostsStr.textView`) survives in two places only: the segment's
+/// `HostsStr.textView`) survives in three places only: the segment's
 /// accessibility element (AppKit reads it from the glyph's accessibility
-/// description) and its tooltip. The actions zone has no overflow form: the
-/// bar folds its tabs and its search when room runs short and never the
-/// capsule, and the bar's menu (`ShellBarMenu.fill`) carries no page actions,
-/// so there is no third place for a name to live in.
-/// `AGlyphSwitcherFollowsALanguageChangeTests` also reads the two, but
-/// against a language change rather than a value at rest; this file is what
-/// proves them at rest, on the real page. A `.segmented` entry mounted on its
-/// own (`ASegmentedActionIsAlwaysGlyphsTests`) proves the face and not the name.
+/// description), its tooltip, and the capsule's overflow menu form.
+/// `AGlyphSwitcherFollowsALanguageChangeTests` also reads the first two, but
+/// against a language change rather than a value at rest, and never the
+/// overflow form; this file is what proves all three at rest, on the real
+/// page. A `.segmented` entry mounted on its own
+/// (`ASegmentedActionIsAlwaysGlyphsTests`) proves the face and not the name.
 ///
 /// Two more inputs the change never fed in: a label-style change while the
 /// page is up (the switcher must stay glyphs on the same control, and the
 /// centre tabs — the subject the change is proved to have reached — must
 /// follow it), and a bar that is not interactive (frozen) or an entry the
 /// page declares disabled. And a language change, both with the page up and
-/// made on another page while the bar has left Hosts and keeps its copy of
-/// the page: the group's own name (`HostsStr.viewGroup`) and each option's
+/// made on another page while Hosts' bar waits in the toolbar's cache: the
+/// group's own name (`HostsStr.viewGroup`) and the overflow form's title
 /// have to follow it, and were only ever read at rest (tester, 2026-09-26).
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` — through `LivePageInTheToolbarFixture` for the rows
+/// that mount the real page, bare on an `NSWindow` for the frozen-bar row — not
+/// the `lead: .spacer` bar the app's window builds: it has no `helm.tabsLead`
+/// and no capped search field.
+///
+/// **The look.** The bar's look is read when the bar is built
+/// (`AppSettings.barAppearance`) and names the cell the switcher wears:
+/// Helm's `HelmFlatSegmentedCell` under Flat, AppKit's own under Liquid Glass
+/// (`HelmBarAppearance.switcherCell`). The names, the overflow form and the
+/// frozen bar are read under Flat only: the settings are pinned in `setUp`
+/// (`PinnedBarSettings`), because another run shares the test tool's defaults
+/// domain, and those rows are not run under Liquid Glass. The one row that
+/// holds a control, its host and a width across a change runs under both
+/// looks, asserts from the switcher's cell that the look reached the bar, and
+/// prints the look with its reading.
 @MainActor
 final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
 
@@ -42,39 +57,22 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         func send(_ command: EngineCommand) async throws -> Data { Data() }
     }
 
-    private var fixtures: [LivePageToolbarFixture] = []
-    private var savedCollapse: Any?
-    private var savedPageBar: Any?
-    private var savedBarAppearance: Any?
-    private var savedLabelStyle: Any?
+    private var fixtures: [LivePageInTheToolbarFixture] = []
 
-    /// The bar reads these when it is built (its tabs zone reads the label style when it shows), so they are
-    /// pinned before a fixture is and put back after.
-    override func setUp() {
-        super.setUp()
-        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
-        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
-        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
-        savedLabelStyle = AppSettings.store.object(ToolbarSwitcherStyle.storageKey)
-        AppSettings.pageBarStyle = .windowTitle
-        AppSettings.barAppearance = .flat
-        AppSettings.alwaysCollapseSearch = false
-        AppSettings.toolbarSwitcherStyle = .text
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
         fixtures.forEach { $0.drop() }
         fixtures = []
-        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
-        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
-        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
-        AppSettings.store.set(savedLabelStyle, for: ToolbarSwitcherStyle.storageKey)
         super.tearDown()
     }
 
     /// The real page, on its SSH tab — the one tab the switcher shows on.
-    private func mountHostsOnSSH() -> LivePageToolbarFixture? {
-        let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
+    private func mountHostsOnSSH() -> LivePageInTheToolbarFixture? {
+        let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
                                            selection: .module(HostsDescriptor.id.rawValue),
                                            width: 1060, height: 700)
         fixtures.append(hosts)
@@ -88,23 +86,12 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         return hosts
     }
 
-    /// A zone's view, found by a walk of the bar the window holds and held to be the fixture's own zone, so
-    /// a zone that drew into no window cannot be read by accident.
-    private func zoneView(_ zone: ShellPageBarView.Zone, of fx: LivePageToolbarFixture) -> NSView? {
-        let found = fx.mount.window?.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
-        guard let view = found?.view(for: zone) else { return nil }
-        let own: NSView? = zone == .actions ? fx.pageBar.actions.view : fx.pageBar.tabs.view
-        return view === own ? view : nil
+    private func item(_ id: String, in window: NSWindow?) -> NSToolbarItem? {
+        window?.toolbar?.items.first { $0.itemIdentifier.rawValue == id }
     }
 
-    /// The view-mode switcher, in the actions zone.
-    private func switcher(_ fx: LivePageToolbarFixture) -> NSSegmentedControl? {
-        zoneView(.actions, of: fx)?.everyView(ofType: NSSegmentedControl.self).first
-    }
-
-    /// The centre tabs, in the tabs zone.
-    private func centreTabs(_ fx: LivePageToolbarFixture) -> NSSegmentedControl? {
-        zoneView(.tabs, of: fx)?.everyView(ofType: NSSegmentedControl.self).first
+    private func switcher(in window: NSWindow?) -> NSSegmentedControl? {
+        item("helm.actions", in: window)?.view?.everyView(ofType: NSSegmentedControl.self).first
     }
 
     /// What VoiceOver reads for each segment — the segmented cell's own
@@ -115,15 +102,16 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
 
     // MARK: - Names
 
-    func testEachGlyphIsNamedAloudAndAsATooltipInEveryLanguage() {
+    func testEachGlyphIsNamedAloudAsATooltipAndInTheOverflowMenuInEveryLanguage() {
         AppLanguage.each { language in
             guard let hosts = mountHostsOnSSH() else { return }
+            let window = hosts.mount.window
             // Read out of the table, not through `HostsStr` — see
             // `expectedNames(_:)` for why the page's own accessor cannot be
             // the expectation.
-            let expected = expectedNames(language).tooltips.compactMap { $0 }
-            guard let control = switcher(hosts) else {
-                return XCTFail("\(language.rawValue): no view-mode switcher in the actions zone on the SSH tab")
+            let expected = expectedNames(language).options ?? []
+            guard let control = switcher(in: window) else {
+                return XCTFail("\(language.rawValue): no view-mode switcher in helm.actions on the SSH tab")
             }
             XCTAssertEqual(control.segmentCount, 2, "\(language.rawValue): the switcher has the wrong segments")
             for index in 0..<min(control.segmentCount, expected.count) {
@@ -139,8 +127,15 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
             XCTAssertEqual(spokenNames(control), expected.map(Optional.some), """
                 \(language.rawValue): VoiceOver does not read each glyph by the name the page gives it
                 """)
-            XCTAssertEqual(control.selectedSegment, 0, """
-                \(language.rawValue): the switcher does not show the option the page selects on show (Table)
+
+            // The overflow form: one visible action, so the item's own menu
+            // form is that action's submenu.
+            let form = item("helm.actions", in: window)?.menuFormRepresentation
+            XCTAssertEqual(form?.submenu?.items.map(\.title), expected, """
+                \(language.rawValue): the overflow menu does not carry each option's name
+                """)
+            XCTAssertEqual(form?.submenu?.items.map(\.state), [.on, .off], """
+                \(language.rawValue): the overflow menu does not tick the option on show (Table)
                 """)
             hosts.drop()
             fixtures.removeAll { $0.mount === hosts.mount }
@@ -150,27 +145,32 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
     /// **The switcher is read aloud as a group under a name of its own.** It
     /// was declared under `HelmA11y.whatToShow` — the centre tabs' own name on
     /// the same bar — so VoiceOver named two switchers alike. Read off the real
-    /// page on its SSH tab, per language: the control's own label is the
-    /// table's word for `HostsStr.viewGroup`, and the centre tabs' label (the
-    /// subject: read first, and required to be what they declare) is a
-    /// different string.
+    /// page on its SSH tab, per language: the control's own label is
+    /// `HostsStr.viewGroup`, the overflow form's submenu carries the same
+    /// word, and the centre tabs' label (the subject: read first, and required
+    /// to be what they declare) is a different string.
     func testTheSwitcherIsNamedApartFromTheCentreTabsInEveryLanguage() {
         AppLanguage.each { language in
             guard let hosts = mountHostsOnSSH() else { return }
-            guard let tabs = centreTabs(hosts)
+            let window = hosts.mount.window
+            guard let tabs = item("helm.tabs", in: window)?.view?.everyView(ofType: NSSegmentedControl.self).first
             else { return XCTFail("\(language.rawValue): no centre tabs on the SSH tab") }
             XCTAssertEqual(tabs.accessibilityLabel(), HelmA11y.whatToShow, """
                 \(language.rawValue): the centre tabs are not named what they declare — nothing below compares \
                 against the right control
                 """)
-            guard let control = switcher(hosts) else {
-                return XCTFail("\(language.rawValue): no view-mode switcher in the actions zone on the SSH tab")
+            guard let control = switcher(in: window) else {
+                return XCTFail("\(language.rawValue): no view-mode switcher in helm.actions on the SSH tab")
             }
             XCTAssertEqual(control.accessibilityLabel(), expectedNames(language).group, """
                 \(language.rawValue): the view-mode switcher is not named as its own group
                 """)
             XCTAssertNotEqual(control.accessibilityLabel(), tabs.accessibilityLabel(), """
                 \(language.rawValue): the view-mode switcher and the centre tabs are read aloud under one name
+                """)
+            XCTAssertEqual(item("helm.actions", in: window)?.menuFormRepresentation?.title,
+                           expectedNames(language).menuTitle, """
+                \(language.rawValue): the overflow menu names the view modes under another word
                 """)
             hosts.drop()
             fixtures.removeAll { $0.mount === hosts.mount }
@@ -203,19 +203,18 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         }
     }
 
-    /// Everything that names the view-mode switcher, read off the bar: the group's name, and each option's
-    /// tooltip and spoken name.
+    /// Everything that names the view-mode switcher, read off the bar.
     private struct Names: Equatable {
         let group: String?
-        let tooltips: [String?]
-        let spoken: [String?]
+        let menuTitle: String?
+        let submenuTitle: String?
+        let options: [String]?
     }
 
-    private func names(_ fx: LivePageToolbarFixture) -> Names {
-        guard let control = switcher(fx) else { return Names(group: nil, tooltips: [], spoken: []) }
-        return Names(group: control.accessibilityLabel(),
-                     tooltips: (0..<control.segmentCount).map { control.toolTip(forSegment: $0) },
-                     spoken: spokenNames(control))
+    private func names(in window: NSWindow?) -> Names {
+        let form = item("helm.actions", in: window)?.menuFormRepresentation
+        return Names(group: switcher(in: window)?.accessibilityLabel(), menuTitle: form?.title,
+                     submenuTitle: form?.submenu?.title, options: form?.submenu?.items.map(\.title))
     }
 
     /// What the page must name things in `language` — read out of the table
@@ -223,13 +222,14 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
     /// page itself reads: an expectation read through the same accessor
     /// agrees with a name frozen at its first reading.
     private func expectedNames(_ language: AppLanguage) -> Names {
-        let options = [L("Table", language: language), L("Plain text", language: language)]
-        return Names(group: L("View", language: language), tooltips: options, spoken: options)
+        let group = L("View", language: language)
+        return Names(group: group, menuTitle: group, submenuTitle: group,
+                     options: [L("Table", language: language), L("Plain text", language: language)])
     }
 
     /// Puts the page on its SSH tab through its own declared binding and
     /// waits for the bar to follow.
-    private func selectSSH(_ hosts: LivePageToolbarFixture, _ label: String) -> Bool {
+    private func selectSSH(_ hosts: LivePageInTheToolbarFixture, _ label: String) -> Bool {
         guard let selected = hosts.channel.content(for: HostsDescriptor.id.rawValue)?.selectedTab else {
             XCTFail("\(label): Hosts declared no tabs onto the channel")
             return false
@@ -243,24 +243,25 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         return true
     }
 
-    /// **The group's name and each option's name follow a language change
-    /// made while the page is up.** In every language, one after another on
-    /// the same bar: the page is rebuilt in the new language, put back on SSH,
-    /// and the switcher's accessibility label and each option's tooltip and
-    /// spoken name are read against that language's table. The subject first —
-    /// the page did redeclare in the new language (its tabs' own words) — so a
-    /// stale name is not a page that never heard about the change.
+    /// **The group's name and the overflow menu's title follow a language
+    /// change made while the page is up.** In every language, one after
+    /// another on the same bar: the page is rebuilt in the new language, put
+    /// back on SSH, and the switcher's accessibility label, the overflow
+    /// form's title and submenu title, and each option in it are read against
+    /// that language's table. The subject first — the page did redeclare in
+    /// the new language (its tabs' own words) — so a stale name is not a page
+    /// that never heard about the change.
     func testTheGroupNameFollowsALanguageChangeWithThePageUp() {
         AppLanguage.only(.pt) {
             let model = SettingsModel(host: ModuleHost.shared)
             let route = Route()
-            let hosts = LivePageToolbarFixture(
+            let hosts = LivePageInTheToolbarFixture(
                 MountedAsTheWindowMountsIt(model: model, route: route, vm: ModuleViewModel(transport: Mute())),
                 selection: .module(HostsDescriptor.id.rawValue), width: 1060, height: 700)
             fixtures.append(hosts)
             hosts.settle(30)
             guard selectSSH(hosts, "pt") else { return }
-            XCTAssertEqual(names(hosts), expectedNames(.pt), "precondition: pt, before any change")
+            XCTAssertEqual(names(in: hosts.mount.window), expectedNames(.pt), "precondition: pt, before any change")
 
             AppLanguage.each { language in
                 NotificationCenter.default.post(name: .helmLanguageChanged, object: nil)
@@ -276,64 +277,52 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
                     rebuilt, which is not what the window does on a language change
                     """)
                 guard selectSSH(hosts, language.rawValue) else { return }
-                XCTAssertEqual(names(hosts), expectedNames(language), """
-                    \(language.rawValue): the view-mode switcher's group name or an option's name stayed in \
+                XCTAssertEqual(names(in: hosts.mount.window), expectedNames(language), """
+                    \(language.rawValue): the view-mode switcher's group name or its overflow menu stayed in \
                     another language
                     """)
             }
         }
     }
 
-    /// The page the bar shows, when it shows one, and whether that page is live.
-    private func shownPage(_ fx: LivePageToolbarFixture) -> (key: String, isLive: Bool)? {
-        if case .page(let key, let isLive, _) = fx.bar.presentation { return (key, isLive) }
-        return nil
-    }
-
     /// **The same, by the route a language change actually takes in the
-    /// app**: the language is chosen on another page, and the bar — which
-    /// keeps a closure-free copy of Hosts' page from the visit before, its
-    /// shape unchanged — is handed the page's declaration in the new
-    /// language on the way back.
+    /// app**: the language is chosen on another page, and Hosts' bar — kept
+    /// in the toolbar's cache from the visit before, its shape unchanged —
+    /// is handed the page's declaration in the new language on the way back.
     func testTheGroupNameFollowsALanguageChangeMadeOnAnotherPage() {
         AppLanguage.only(.pt) {
             let model = SettingsModel(host: ModuleHost.shared)
             let route = Route()
-            let hosts = LivePageToolbarFixture(
+            let hosts = LivePageInTheToolbarFixture(
                 MountedAsTheWindowMountsIt(model: model, route: route, vm: ModuleViewModel(transport: Mute())),
                 selection: .module(HostsDescriptor.id.rawValue), width: 1060, height: 700)
             fixtures.append(hosts)
             hosts.settle(30)
             guard selectSSH(hosts, "pt") else { return }
-            let hostsKey = HostsDescriptor.id.rawValue
-            XCTAssertEqual(names(hosts), expectedNames(.pt), "precondition: pt, before any change")
+            let hostsBar = hosts.mount.window?.toolbar
+            XCTAssertEqual(names(in: hosts.mount.window), expectedNames(.pt), "precondition: pt, before any change")
 
             AppLanguage.each { language in
                 // Away to General, where the language is chosen.
                 hosts.model.selection = .general
                 route.showsHosts = false
                 hosts.settle(30)
-                XCTAssertNotEqual(shownPage(hosts)?.key, hostsKey,
-                                  "precondition \(language.rawValue): the bar still shows Hosts' page")
+                XCTAssertNotIdentical(hosts.mount.window?.toolbar, hostsBar,
+                                      "precondition \(language.rawValue): Hosts' bar is still on the window")
                 NotificationCenter.default.post(name: .helmLanguageChanged, object: nil)
                 hosts.settle(30)
-                // And back. Read before the page has declared again: the bar holds its copy of Hosts' page.
-                hosts.model.selection = .module(hostsKey)
-                hosts.pageBar.layout()
-                let copy = shownPage(hosts)
-                XCTAssertEqual(copy?.key, hostsKey, """
-                    precondition \(language.rawValue): the bar did not come back to Hosts' page
-                    """)
-                XCTAssertEqual(copy?.isLive, false, """
-                    precondition \(language.rawValue): the bar shows Hosts' page live before the page has \
-                    declared — this reads a fresh declaration, not the copy the change has to reach
-                    """)
+                // And back.
+                hosts.model.selection = .module(HostsDescriptor.id.rawValue)
                 route.showsHosts = true
                 hosts.settle(30)
+                XCTAssertIdentical(hosts.mount.window?.toolbar, hostsBar, """
+                    precondition \(language.rawValue): Hosts came back on a rebuilt bar — this reads a fresh bar, \
+                    not the cached one the change has to reach
+                    """)
                 guard selectSSH(hosts, language.rawValue) else { return }
-                XCTAssertEqual(names(hosts), expectedNames(language), """
-                    \(language.rawValue): after a language change on another page, the bar's copy of Hosts' page \
-                    still names the view-mode switcher or one of its options in another language
+                XCTAssertEqual(names(in: hosts.mount.window), expectedNames(language), """
+                    \(language.rawValue): after a language change on another page, Hosts' cached bar still names \
+                    the view-mode switcher or its overflow menu in another language
                     """)
             }
         }
@@ -341,36 +330,51 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
 
     // MARK: - A label-style change while the page is up
 
-    /// The identity assertions catch a switcher or a hosted view built again
-    /// for a label style: `ShellBarActions.show` builds a host again by its
-    /// `rebuilds` verdict, which reads the look, the declared ids and the
-    /// window's activity and not the label style. History, from the earlier
-    /// toolbar, `SettingsToolbar`, and not asked of this bar: a
-    /// `ShapeSignature` that carried the style went red here, and its
-    /// `patchActions` handing the hosted view a fresh
-    /// `HelmToolbarActionsCapsule` as its root on every patch stayed green.
+    /// The identity assertions catch a bar, item or hosted view rebuilt for a
+    /// label style (a `ShapeSignature` that carried the style went red here).
+    /// They do not catch `patchActions` handing the hosted view a fresh
+    /// `HelmToolbarActionsCapsule` as its root — the rebuild the change
+    /// removed — and nothing behavioural can: measured with that assignment
+    /// put back on every patch, the switcher stayed the same
+    /// `NSSegmentedControl`, the hosted view the same object and the width
+    /// the same, so this test stayed green.
     func testALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControlAndTheCentreTabsFollowIt() throws {
+        for look in [HelmBarAppearance.flat, .liquidGlass] {
+            try assertALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControl(under: look)
+        }
+    }
+
+    private func assertALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControl(under look: HelmBarAppearance) throws {
+        AppSettings.toolbarSwitcherStyle = .text
+        AppSettings.barAppearance = look
         let hosts = try XCTUnwrap(mountHostsOnSSH())
-        let control = try XCTUnwrap(switcher(hosts), "no view-mode switcher on the SSH tab")
-        let hosting = try XCTUnwrap(zoneView(.actions, of: hosts))
+        let window = hosts.mount.window
+        let control = try XCTUnwrap(switcher(in: window), "\(look): no view-mode switcher on the SSH tab")
+        let cell = try XCTUnwrap(control.cell, "\(look): the view-mode switcher has no cell")
+        XCTAssertTrue(type(of: cell) == (look == .flat ? HelmFlatSegmentedCell.self : NSSegmentedCell.self), """
+            \(look): precondition — the bar was built under \(look) and the view-mode switcher wears \(type(of: cell))
+            """)
+        let hosting = try XCTUnwrap(item("helm.actions", in: window)?.view)
         let width = hosting.frame.width
+        print("[view-mode switcher] \(look): cell \(type(of: cell)), host \(type(of: hosting)), width \(width) pt")
 
         for style in ToolbarSwitcherStyle.allCases {
             AppSettings.toolbarSwitcherStyle = style
             hosts.settle(30)
 
             // The subject: the change reached the bar at all.
-            let tabs = try XCTUnwrap(centreTabs(hosts), "\(style): no centre tabs")
+            let tabs = try XCTUnwrap(item("helm.tabs", in: window)?.view?
+                .everyView(ofType: NSSegmentedControl.self).first, "\(style): no centre tabs")
             let tabsWords = (0..<tabs.segmentCount).map { tabs.label(forSegment: $0) ?? "" }
             XCTAssertEqual(tabsWords.allSatisfy { !$0.isEmpty }, style != .icons, """
                 \(style): the centre tabs read \(tabsWords) — they no longer follow the label style, so \
                 nothing below says anything about the view-mode switcher
                 """)
 
-            let now = try XCTUnwrap(switcher(hosts), "\(style): the view-mode switcher is gone")
+            let now = try XCTUnwrap(switcher(in: window), "\(style): the view-mode switcher is gone")
             XCTAssertIdentical(now, control, "\(style): the view-mode switcher was rebuilt for a label style")
-            XCTAssertIdentical(zoneView(.actions, of: hosts), hosting,
-                               "\(style): the actions zone's hosted view was replaced for a label style")
+            XCTAssertIdentical(item("helm.actions", in: window)?.view, hosting,
+                               "\(style): helm.actions' hosted view was replaced for a label style")
             for index in 0..<now.segmentCount {
                 XCTAssertEqual(now.label(forSegment: index), "", """
                     \(style): view-mode segment \(index) draws a word — it follows the tabs' label style
@@ -378,12 +382,30 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
                 XCTAssertNotNil(now.image(forSegment: index), "\(style): view-mode segment \(index) lost its glyph")
             }
             XCTAssertEqual(hosting.frame.width, width, accuracy: 0.5, """
-                \(style): the actions zone changed width for a label style it does not draw in
+                \(style): helm.actions changed width for a label style it does not draw in
                 """)
         }
     }
 
     // MARK: - Not interactive
+
+    private struct Bare {
+        let toolbar: SettingsToolbar
+        let model: SettingsModel
+        let channel: HelmWindowToolbarChannel
+        let window: NSWindow
+    }
+
+    private func bareToolbar() -> Bare {
+        let model = SettingsModel(host: ModuleHost.shared)
+        let channel = HelmWindowToolbarChannel()
+        let toolbar = SettingsToolbar(model: model, channel: channel)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
+                              styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        toolbar.window = window
+        return Bare(toolbar: toolbar, model: model, channel: channel, window: window)
+    }
 
     /// The page's own declaration of the switcher (`HostsSettingsPage
     /// .toolbarContent`), group name included — it was the centre tabs'
@@ -398,37 +420,37 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         ])
     }
 
-    /// A page that declares only the view-mode switcher, on a bar of its own.
-    private func bare(_ token: String) -> LivePageToolbarFixture {
-        let fx = LivePageToolbarFixture(Color.clear, selection: .module(token), width: 1060, height: 700)
-        fixtures.append(fx)
-        return fx
+    private func settle(_ window: NSWindow) {
+        for _ in 0..<10 {
+            window.layoutIfNeeded()
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
     }
 
     func testTheSwitcherIsDimmedOnAFrozenBarAndWhenThePageDisablesIt() throws {
-        let live = bare("test.viewModeFrozen")
+        let live = bareToolbar()
+        live.model.selection = .module("test.viewModeFrozen")
         let generation = live.channel.nextGeneration()
         live.channel.declare(viewMode(isEnabled: true), token: "test.viewModeFrozen", generation: generation)
-        live.settle(3)
-        XCTAssertEqual(live.bar.presentation, .page(key: "test.viewModeFrozen", isLive: true, isDimmed: false),
-                       "precondition: the bar does not show the live page")
-        let control = try XCTUnwrap(switcher(live), "no view-mode switcher on the bar")
+        settle(live.window)
+        let control = try XCTUnwrap(switcher(in: live.window), "no view-mode switcher on the bar")
         XCTAssertTrue(control.isEnabled, "precondition: the switcher is dimmed on a live bar that enables it")
 
         live.channel.withdraw(token: "test.viewModeFrozen", generation: generation)
-        live.settle(3)
-        XCTAssertEqual(live.bar.presentation, .page(key: "test.viewModeFrozen", isLive: false, isDimmed: true),
-                       "precondition: the bar does not show the frozen copy of the page")
-        let frozen = try XCTUnwrap(switcher(live), "the view-mode switcher is gone from the frozen bar")
-        XCTAssertFalse(frozen.isEnabled, "the view-mode switcher still takes presses on a frozen bar")
+        settle(live.window)
+        XCTAssertFalse(control.isEnabled, "the view-mode switcher still takes presses on a frozen bar")
+        let frozenForm = item("helm.actions", in: live.window)?.menuFormRepresentation
+        XCTAssertEqual(frozenForm?.submenu?.items.map(\.isEnabled), [false, false],
+                       "the overflow menu still offers the view modes on a frozen bar")
+        _ = live.toolbar
 
-        let dimmed = bare("test.viewModeDisabled")
+        let dimmed = bareToolbar()
+        dimmed.model.selection = .module("test.viewModeDisabled")
         dimmed.channel.declare(viewMode(isEnabled: false), token: "test.viewModeDisabled",
                                generation: dimmed.channel.nextGeneration())
-        dimmed.settle(3)
-        XCTAssertEqual(dimmed.bar.presentation, .page(key: "test.viewModeDisabled", isLive: true, isDimmed: false),
-                       "precondition: the second bar does not show a live page, so the freeze would be what dims")
-        let disabled = try XCTUnwrap(switcher(dimmed), "no view-mode switcher on the second bar")
+        settle(dimmed.window)
+        let disabled = try XCTUnwrap(switcher(in: dimmed.window), "no view-mode switcher on the second bar")
         XCTAssertFalse(disabled.isEnabled, "the page disabled the view-mode switcher and it still takes presses")
+        _ = dimmed.toolbar
     }
 }

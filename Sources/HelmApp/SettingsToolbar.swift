@@ -3516,8 +3516,9 @@ import HelmUI
     /// all of them (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`).
     /// **The dated readings in this doc and in `oneOptionCapsuleMargin`'s are of AppKit's cell**
     /// (the switcher's, before the look reached the measuring views); under
-    /// Flat the reserve is measured wearing Helm's cell, and none of those
-    /// numbers was read again with it.
+    /// Flat the reserve is measured wearing Helm's cell, and the three reserve
+    /// families print what it reserves and draws under each look; those are
+    /// not these numbers.
     /// Measured non-compact and in `.icons` — the one form
     /// `HelmToolbarActionsCapsule.entryContent(_:)` ever draws a `.segmented`
     /// entry in (`HelmToolbarActions.swift`, `HelmUI`, which may not reach
