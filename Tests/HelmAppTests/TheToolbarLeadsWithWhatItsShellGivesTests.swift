@@ -13,7 +13,7 @@ import XCTest
 /// The tests above the mark "a toolbar told where the pane is" need no window, no `NSWindow`, no screen:
 /// `SettingsToolbar.identifiers` and `SettingsToolbar.nameInset` are pure, and
 /// the content shapes are plain values. Those between it and the mark "what only a visible window can run, read from the source" build a `SettingsToolbar`
-/// with no window and tell it where the pane is through `paneMoved(leading:width:)`;
+/// with no window and tell it where the pane is through `paneMoved(leading:width:rail:)`, its `rail` left at the default;
 /// they read its lists and numbers (`barIdentifiers`, `currentNameInset`,
 /// `itemsStart`, `offeredRoom`), and still no window exists. Those below that mark read `SettingsToolbar.swift` as text.
 ///
@@ -24,7 +24,8 @@ import XCTest
 /// `flexibleSpace, status` (`.moduleName` only); otherwise `flexibleSpace`,
 /// `tabs, flexibleSpace` when there are tabs, `actions`, `search`. The `.spacer` lists are pinned
 /// literally beside them: the same list without its first item under `.moduleName`, and under
-/// `.windowTitle` the name in front of that list, the status staying out. They are not
+/// `.windowTitle` the name in front of that list, the status staying out; in both, where the bar has tabs, the
+/// flexible space in front of the tabs is the tabs' lead item `helm.tabsLead`. They are not
 /// computed through the function under test, so a lead that is ignored or a
 /// list that moved goes red here (a moved tail also in
 /// `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests`, which compares the tail
@@ -45,6 +46,7 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
     private static let name = ID("helm.name")
     private static let status = ID("helm.status")
     private static let tabs = ID("helm.tabs")
+    private static let tabsLead = ID("helm.tabsLead")
     private static let actions = ID("helm.actions")
     private static let search = ID("helm.search")
 
@@ -67,34 +69,47 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         let windowTitle: [ID]
         /// The `.spacer` lead's list under `.windowTitle`: the name opens it, the status stays out.
         let spacerWindowTitle: [ID]
+        /// The `.spacer` lead's list under `.moduleName`: the `.sidebarSeparator` list without its separator, the
+        /// flexible space in front of the tabs standing as the tabs' lead item where the bar has tabs.
+        let spacerModuleName: [ID]
     }
 
-    /// Pinned from the c753c864 source, one row per reachable content shape.
+    /// The `.sidebarSeparator` columns are pinned from the c753c864 source and the `.spacer` columns as this file's header
+    /// states them, one row per reachable content shape.
     private static let shapes: [Shape] = [
         Shape(label: "nothing declared (nil)", content: nil,
-              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name]),
+              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name],
+              spacerModuleName: [name, flex, status]),
         Shape(label: "declared but empty", content: HelmPageToolbarContent(),
-              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name]),
+              moduleName: [sep, name, flex, status], windowTitle: [sep], spacerWindowTitle: [name],
+              spacerModuleName: [name, flex, status]),
         Shape(label: "tabs", content: content(tabs: true, actions: false, search: false),
               moduleName: [sep, name, flex, tabs, flex], windowTitle: [sep, flex, tabs, flex],
-              spacerWindowTitle: [name, flex, tabs, flex]),
+              spacerWindowTitle: [name, tabsLead, tabs, flex],
+              spacerModuleName: [name, tabsLead, tabs, flex]),
         Shape(label: "actions", content: content(tabs: false, actions: true, search: false),
-              moduleName: [sep, name, flex, actions], windowTitle: [sep, flex, actions], spacerWindowTitle: [name, flex, actions]),
+              moduleName: [sep, name, flex, actions], windowTitle: [sep, flex, actions], spacerWindowTitle: [name, flex, actions],
+              spacerModuleName: [name, flex, actions]),
         Shape(label: "search", content: content(tabs: false, actions: false, search: true),
-              moduleName: [sep, name, flex, search], windowTitle: [sep, flex, search], spacerWindowTitle: [name, flex, search]),
+              moduleName: [sep, name, flex, search], windowTitle: [sep, flex, search], spacerWindowTitle: [name, flex, search],
+              spacerModuleName: [name, flex, search]),
         Shape(label: "tabs + actions", content: content(tabs: true, actions: true, search: false),
               moduleName: [sep, name, flex, tabs, flex, actions], windowTitle: [sep, flex, tabs, flex, actions],
-              spacerWindowTitle: [name, flex, tabs, flex, actions]),
+              spacerWindowTitle: [name, tabsLead, tabs, flex, actions],
+              spacerModuleName: [name, tabsLead, tabs, flex, actions]),
         Shape(label: "tabs + search", content: content(tabs: true, actions: false, search: true),
               moduleName: [sep, name, flex, tabs, flex, search], windowTitle: [sep, flex, tabs, flex, search],
-              spacerWindowTitle: [name, flex, tabs, flex, search]),
+              spacerWindowTitle: [name, tabsLead, tabs, flex, search],
+              spacerModuleName: [name, tabsLead, tabs, flex, search]),
         Shape(label: "actions + search", content: content(tabs: false, actions: true, search: true),
               moduleName: [sep, name, flex, actions, search], windowTitle: [sep, flex, actions, search],
-              spacerWindowTitle: [name, flex, actions, search]),
+              spacerWindowTitle: [name, flex, actions, search],
+              spacerModuleName: [name, flex, actions, search]),
         Shape(label: "tabs + actions + search", content: content(tabs: true, actions: true, search: true),
               moduleName: [sep, name, flex, tabs, flex, actions, search],
               windowTitle: [sep, flex, tabs, flex, actions, search],
-              spacerWindowTitle: [name, flex, tabs, flex, actions, search]),
+              spacerWindowTitle: [name, tabsLead, tabs, flex, actions, search],
+              spacerModuleName: [name, tabsLead, tabs, flex, actions, search]),
     ]
 
     private func raw(_ list: [ID]) -> [String] { list.map(\.rawValue) }
@@ -137,15 +152,17 @@ final class TheToolbarLeadsWithWhatItsShellGivesTests: XCTestCase {
         }
     }
 
-    /// The `.spacer` lead under `.moduleName` is the `.sidebarSeparator` list with its first item gone — nothing else moves —
-    /// and under `.windowTitle` the name opens the list, pinned literally, the status staying out.
-    /// Total failure prints: "the `.spacer` lead changed more than the first item under <shape> / moduleName: got […]" /
+    /// The `.spacer` lead under `.moduleName` is the `.sidebarSeparator` list with its first item gone and, where the
+    /// bar has tabs, the lead item `helm.tabsLead` in the place of the flexible space in front of the tabs — nothing else
+    /// moves — and under `.windowTitle` the name opens the list, pinned literally, the status staying out. The
+    /// `.sidebarSeparator` lead keeps its lists as they were: its bars are the test rigs', and keep the flexible space.
+    /// Total failure prints: "the `.spacer` lead under <shape> / moduleName is […], not the pinned […]" /
     /// "the `.spacer` lead under <shape> / windowTitle is […], not the pinned […]".
     func testTheSpacerLeadIsTodaysListMinusItsSeparator() {
         for shape in Self.shapes {
             let m = SettingsToolbar.identifiers(content: shape.content, style: .moduleName, lead: .spacer)
-            XCTAssertEqual(raw(m), raw(Array(shape.moduleName.dropFirst())),
-                           "the `.spacer` lead changed more than the first item under \(shape.label) / moduleName: got \(raw(m))")
+            XCTAssertEqual(raw(m), raw(shape.spacerModuleName),
+                           "the `.spacer` lead under \(shape.label) / moduleName is \(raw(m)), not the pinned \(raw(shape.spacerModuleName))")
             let t = SettingsToolbar.identifiers(content: shape.content, style: .windowTitle, lead: .spacer)
             XCTAssertEqual(raw(t), raw(shape.spacerWindowTitle),
                            "the `.spacer` lead under \(shape.label) / windowTitle is \(raw(t)), not the pinned \(raw(shape.spacerWindowTitle))")

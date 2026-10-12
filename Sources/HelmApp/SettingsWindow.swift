@@ -93,8 +93,8 @@ import HelmUI
         case .toolbar:
             let built = SettingsToolbar(model: model, channel: toolbarChannel, lead: .spacer,
                                         barAttached: { [weak shell] in shell?.barWasAttached() })
-            shell.cardMoved = { [weak built] frame in
-                built?.paneMoved(leading: frame.minX, width: frame.width)
+            shell.cardMoved = { [weak built, weak shell] frame in
+                built?.paneMoved(leading: frame.minX, width: frame.width, rail: shell?.shell.buttonsStandInRail ?? false)
             }
             toolbar = built
         case .pageBar:
@@ -344,9 +344,12 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// **The card's place is reported inside the content's layout pass.** `cardMoved` is called from
-/// `ShellContentView.layout()` in its own turn, so what it writes (the toolbar's inset for the name)
-/// is there when the pass ends; nothing it does may assign `window.toolbar`.
+/// **The card's place and the buttons' placement are reported inside the content's layout pass.** `cardMoved` is called from
+/// `ShellContentView.layout()` in its own turn, after the card is placed and before the window's buttons are, each time the card's
+/// frame or `ShellContentView.buttonsStandInRail` differs from what it was last called for; the window's closure hands the toolbar
+/// both (`SettingsToolbar.paneMoved(leading:width:rail:)`). What it writes (the toolbar's inset for the name and the width of the lead that
+/// stands the tabs on the card's middle) is there when the pass ends, and the lead's width is worked out from where the toolbar starts its
+/// items under the placement it was told, not from the name item's frame. Nothing it does may assign `window.toolbar`.
 ///
 /// The page bar's view, in the window's `.pageBar` build, is handed in and placed by the shell's view;
 /// the controller holds no zone and assigns the window no toolbar: that is `SettingsToolbar`'s,

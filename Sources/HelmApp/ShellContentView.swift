@@ -17,8 +17,9 @@ import HelmUI
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
 /// window's corner. The sidebar and the pane are handed in, and so is the page bar when the window has
-/// no toolbar, and so is `cardMoved`, told where the card went each time it moves; this view names no
-/// page and builds no toolbar; of the window's toolbar it asks only whether there is one.
+/// no toolbar, and so is `cardMoved`, called each time the card moves or the buttons change between the rail's
+/// placement and the other (`buttonsStandInRail`); this view names no page and builds no toolbar; of the
+/// window's toolbar it asks only whether there is one.
 ///
 /// **A page bar stands at the top of the clip, full width, `ShellBarLayout.height`
 /// high, and the pane starts under it:** `layout()` adds to the pane's own top
@@ -100,6 +101,11 @@ final class ShellContentView: NSView {
     /// If none of them came, the buttons would stay in the rail's placement at an expanded width.
     var foldTarget: CGFloat? { travel?.fold.to }
 
+    /// Whether `layout()` gives the window's buttons the rail's placement: a fold is travelling (`foldTarget`) or
+    /// the width standing is the rail's (`ShellGeometry.isRail(sidebarWidth:)`). The one expression `layout()`
+    /// places the buttons by and tells `cardMoved` by.
+    var buttonsStandInRail: Bool { foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth) }
+
     /// Carries the fill, the radius and the shadow; never masks.
     let card = NSView()
 
@@ -110,7 +116,14 @@ final class ShellContentView: NSView {
     private let pane: NSView
     private let bar: ShellPageBarView?
     private let cardMoved: (CGRect) -> Void
-    private var lastTold: CGRect?
+
+    /// What `cardMoved` was last called for: the card's frame and the placement of the buttons then.
+    private struct Told: Equatable {
+        let card: CGRect
+        let rail: Bool
+    }
+
+    private var lastTold: Told?
     private let glass = NSGlassEffectView()
     private let buttons = ShellWindowButtons()
     private var applied: WindowCorner?
@@ -133,8 +146,10 @@ final class ShellContentView: NSView {
     override var isFlipped: Bool { true }
 
     /// The views and the closure are held for as long as this view lives: a receiver that owns this
-    /// view captures itself weakly. `cardMoved` is called from `layout()` itself, in the turn that moved the card and before
-    /// the corner of that layout is applied; what it does must not assign `window.toolbar`.
+    /// view captures itself weakly. `cardMoved` is called from `layout()` itself, in the turn that moved the card or
+    /// changed `buttonsStandInRail`, after the card is placed and before the buttons are, so a receiver that
+    /// reads `buttonsStandInRail` reads the placement this layout gives them; what it does must not assign
+    /// `window.toolbar`. A layout in which both stand as they did calls nothing.
     init(sidebar: NSView, pane: NSView, bar: ShellPageBarView?, cardMoved: @escaping (CGRect) -> Void = { _ in }) {
         self.sidebar = sidebar
         self.pane = pane
@@ -339,11 +354,13 @@ final class ShellContentView: NSView {
         clip.frame = card.bounds
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
-        if frame != lastTold {
-            lastTold = frame
+        let rail = buttonsStandInRail
+        let told = Told(card: frame, rail: rail)
+        if told != lastTold {
+            lastTold = told
             cardMoved(frame)
         }
-        let obstacle = buttons.place(rail: foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth))
+        let obstacle = buttons.place(rail: rail)
         let reach = buttons.reach
         if let bar {
             placeBar(bar, buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
