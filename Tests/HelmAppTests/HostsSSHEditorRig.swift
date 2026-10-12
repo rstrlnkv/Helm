@@ -7,10 +7,10 @@ import XCTest
 @testable import HelmUI
 @testable import Module_Hosts_UI
 
-/// **Hosts' page on its SSH tab in the text editor, in a window that holds the Settings window's real page
-/// bar, and a person's keystrokes into that editor.**
+/// **Hosts' page on its SSH tab in the text editor, in a window that holds Helm's own page bar
+/// (`LivePageToolbarFixture`), and a person's keystrokes into that editor.**
 ///
-/// The two keystroke families share it: each builds this, types, and reads a different counter of the bar.
+/// No family builds it: the two keystroke families read the toolbar through `LivePageInTheToolbarFixture`.
 /// `keystroke()` is what the page does for one typed character, `HostsViewModel.setSSHText(_:)`, which
 /// publishes and so makes the page declare its toolbar again. `redeclares` counts the declarations that
 /// reached the bar: the bar installs its handler on the channel's single `onChange` slot, and the count

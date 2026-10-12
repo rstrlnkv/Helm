@@ -37,6 +37,7 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
 
     override func tearDown() {
         window?.orderOut(nil)
+        window?.toolbar = nil
         window = nil
         model = nil
         owner = nil
@@ -46,7 +47,7 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
     }
 
     private func open() throws {
-        let settings = SettingsWindow(host: ModuleHost.shared, bar: .pageBar)
+        let settings = SettingsWindow(host: ModuleHost.shared)
         owner = settings
         let fields = Mirror(reflecting: settings).children
         window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,

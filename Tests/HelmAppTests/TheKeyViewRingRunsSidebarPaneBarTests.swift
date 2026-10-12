@@ -38,7 +38,7 @@ final class TheKeyViewRingRunsSidebarPaneBarTests: XCTestCase {
     }
 
     private func open() -> Opened? {
-        guard let rig = SettingsWindowRig.build(
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "the window has no content view controller of the shell's type: no ring was read")
         else { return nil }
         guard let sidebar = sidebarHost(rig), let bar = rig.pageBar?.view else {

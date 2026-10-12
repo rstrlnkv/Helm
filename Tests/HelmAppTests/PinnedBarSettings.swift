@@ -3,11 +3,14 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **The settings a `MountedPageBar` reads, set the way the rows that count the bar's measurements need
-/// them, and put back when the test ends.**
+/// **The settings the bar a row builds reads, set the way the rows that count the bar's measurements need
+/// them, and put back when the test ends.** The callers build either a `SettingsToolbar` (the toolbar the
+/// Settings window wears) or Helm's page bar through `MountedPageBar`.
 ///
-/// The bar reads `pageBarStyle`, `sidebarStyle`, `alwaysCollapseSearch` and `barAppearance` when it is
-/// built and its tabs zone reads `toolbarSwitcherStyle` on every show (`MountedPageBar`'s own doc). A row
+/// A bar reads `pageBarStyle`, `sidebarStyle`, `alwaysCollapseSearch` and `barAppearance` when it is
+/// built and its tabs read `toolbarSwitcherStyle` (`MountedPageBar`'s own doc says so of the page bar's tabs
+/// zone, and `ShellBarTabs` says its `labelStyle` is read once per show; `SettingsToolbar` reads it in
+/// `wholeTabsWidth(_:_:)` and in the tabs snapshot it keeps). A row
 /// that counts measurements pins the ones that change what is measured: the words-only label style, the
 /// module name in the bar, a search that does not always collapse, the flat look. The stored values are
 /// read raw, so a key the domain did not hold is removed again rather than written back as the typed

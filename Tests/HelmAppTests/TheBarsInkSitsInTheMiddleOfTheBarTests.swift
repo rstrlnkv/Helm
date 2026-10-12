@@ -138,7 +138,7 @@ final class TheBarsInkSitsInTheMiddleOfTheBarTests: XCTestCase {
 
     /// A window of its own for each reading, so one appearance's drawing is never the next one's starting point.
     private func freshRig(_ appearance: NSAppearance.Name, status: Bool) -> SettingsWindowRig? {
-        guard let rig = SettingsWindowRig.build(in: self, failure: "the window has no shell: no bar was read") else { return nil }
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(in: self, failure: "the window has no shell: no bar was read") else { return nil }
         prepare(rig, appearance, status: status)
         return rig
     }

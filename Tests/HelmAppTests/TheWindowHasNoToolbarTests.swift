@@ -7,7 +7,8 @@ import XCTest
 
 /// **The settings window's `.pageBar` build carries Helm's own page bar and, as built, no `NSToolbar`, and says so at every step
 /// of a session; the one file that may name a toolbar type is the settings toolbar's.** The real window is built
-/// and never ordered; the fields are read by `Mirror`, so a field renamed or a bar not held fails by name.
+/// and never ordered; the fields are read by `Mirror`, so a field renamed or a bar not held fails by name. The
+/// title row reads the window the app builds, which wears the toolbar.
 @MainActor
 final class TheWindowHasNoToolbarTests: XCTestCase {
 
@@ -17,7 +18,7 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
         """
 
     func testNoStepEverAssignsAToolbar() throws {
-        guard let rig = SettingsWindowRig.build(in: self, failure: noShell) else { return }
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(in: self, failure: noShell) else { return }
         let window = rig.window
         SettingsWindowRig.pump()
         XCTAssertNil(window.toolbar, "the window already wears a toolbar before the first step")
@@ -95,7 +96,7 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
     }
 
     func testADeclareOnTheWindowsChannelReachesThePageBarAlone() throws {
-        guard let rig = SettingsWindowRig.build(
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "SettingsWindow holds no page bar: a declare was counted on a channel nobody reads")
         else { return }
         guard let bar = rig.pageBar else {
@@ -149,7 +150,7 @@ final class TheWindowHasNoToolbarTests: XCTestCase {
     /// there moves the window. That a real press is delivered where `hitTest` says is not stated here.
     /// The answer's class and its flag are printed for every point (`PRESSUNDERSTRIP`).
     func testAPressOnAControlUnderTheTitlebarsStripAnswersTheControl() throws {
-        guard let rig = SettingsWindowRig.build(in: self, failure: noShell) else { return }
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(in: self, failure: noShell) else { return }
         guard let frameView = rig.window.contentView?.superview else {
             XCTFail("the window has no frame view: nothing was pressed")
             return

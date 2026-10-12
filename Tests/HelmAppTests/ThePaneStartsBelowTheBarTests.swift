@@ -10,7 +10,7 @@ import XCTest
 final class ThePaneStartsBelowTheBarTests: XCTestCase {
 
     func testThePanesTopSafeAreaIsTheBarsHeightAtTwoWindowSizes() throws {
-        guard let rig = SettingsWindowRig.build(
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "the window has no content view controller of the shell's type: no pane was read")
         else { return }
         let clip = rig.shell.shell.clip
@@ -84,7 +84,7 @@ final class ThePaneStartsBelowTheBarTests: XCTestCase {
     /// placement for a bare window's home, converted from the shell to the bar as `ShellContentView.layout()`
     /// converts it, and the name does not start under it.
     func testTheBarIsHandedTheWindowButtonsObstacleAndTheNameClearsItOnTheRail() throws {
-        guard let rig = SettingsWindowRig.build(
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "the window has no content view controller of the shell's type: no buttons were read")
         else { return }
         guard let bar = rig.pageBar?.view else {

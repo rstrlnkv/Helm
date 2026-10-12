@@ -3,10 +3,14 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// **The window's three buttons have one owner that holds them down 6 and right 6 of where AppKit puts them,
+/// **The window's three buttons have one owner that holds them down 6 and right 6 of where AppKit puts them in a window with no toolbar,
 /// and in the rail folds them so the page bar's name starts at the bar's leading.** The real
-/// `SettingsWindow`, built and never ordered; the reference is a bare `NSWindow` of the same style mask, never
-/// shown, so AppKit's own home is read and not written down here.
+/// `SettingsWindow`, built and never ordered; the references are bare `NSWindow`s of the same style mask, never
+/// shown, so AppKit's own home is read and not written down here: one that wears no toolbar, which the 6 and 6
+/// are counted from, and one that wears an empty toolbar, which is where AppKit puts the buttons of the window
+/// the app builds and where they are given back. The two homes differ by `toolbarLift`; rows that compare the
+/// two windows read window coordinates, because the toolbar window's titlebar strip is not as tall as the
+/// reference's.
 @MainActor
 final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
 
@@ -42,9 +46,9 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
                     continue
                 }
                 XCTAssertEqual(now.x - was.x, ShellGeometry.buttonShift, accuracy: 0.5,
-                               "button \(i) \(when): \(now.x - was.x) right of AppKit's home \(was.x), not \(ShellGeometry.buttonShift)")
+                               "button \(i) \(when): \(now.x - was.x) right of the bare window's home \(was.x), not \(ShellGeometry.buttonShift)")
                 XCTAssertEqual(now.y - was.y, ShellGeometry.buttonDrop, accuracy: 0.5,
-                               "button \(i) \(when): \(now.y - was.y) down from AppKit's home \(was.y), not \(ShellGeometry.buttonDrop)")
+                               "button \(i) \(when): \(now.y - was.y) down from the bare window's home \(was.y), not \(ShellGeometry.buttonDrop)")
             }
         }
         settle(rig)
@@ -64,7 +68,7 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
     }
 
     func testInTheRailTheNameStartsAtTheBarsLeading() throws {
-        guard let rig = SettingsWindowRig.build(
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "the window has no content view controller of the shell's type: no name was read")
         else { return }
         guard let bar = rig.pageBar?.view else {
@@ -163,11 +167,54 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         Self.types.compactMap { window.standardWindowButton($0) }
     }
 
+    /// A bare window of the subject's style mask, with no toolbar: the home Helm's 6 and 6 are counted from. The
+    /// buttons of the window the app builds, which wears a toolbar, stand 6 right and 6 down of *this* home
+    /// (window coordinates), not of AppKit's own home under their toolbar, which is `toolbarLift` further in.
     private func reference(like rig: SettingsWindowRig) -> NSWindow {
         let reference = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 760),
                                  styleMask: rig.window.styleMask, backing: .buffered, defer: true)
         reference.isReleasedWhenClosed = false
         return reference
+    }
+
+    /// A window that wears an empty toolbar, of the subject's style mask and size, never shown: where AppKit puts
+    /// the three buttons of a window that wears a toolbar, which is where the subject's buttons are given back.
+    /// Its home is read in window coordinates only: its titlebar strip is taller than the app's, so the same
+    /// place has another origin in the buttons' superview. Fails loudly, once, when the subject wears no
+    /// toolbar or when this window's home is not `toolbarLift` further in than the bare reference's: either would
+    /// make the comparison one of a window with itself.
+    private func appKitsHome(like rig: SettingsWindowRig) -> NSWindow {
+        XCTAssertNotNil(rig.window.toolbar, "the window wears no toolbar: AppKit's home under one was not read")
+        let home = reference(like: rig)
+        home.toolbar = NSToolbar(identifier: NSToolbar.Identifier("TheWindowButtonsStayWhereHelmPutThemTests.home"))
+        home.contentView?.layoutSubtreeIfNeeded()
+        SettingsWindowRig.pump(0.2)
+        let bare = reference(like: rig)
+        bare.contentView?.layoutSubtreeIfNeeded()
+        if let own = home.standardWindowButton(.closeButton), let was = bare.standardWindowButton(.closeButton) {
+            let moved = windowOrigin(of: own), unmoved = windowOrigin(of: was)
+            XCTAssertEqual(moved.x - unmoved.x, ShellGeometry.toolbarLift.width, accuracy: 0.5,
+                           "the toolbar did not move AppKit's home right (\(moved) against \(unmoved)): the reference is the bare window")
+            XCTAssertEqual(unmoved.y - moved.y, ShellGeometry.toolbarLift.height, accuracy: 0.5,
+                           "the toolbar did not move AppKit's home down (\(moved) against \(unmoved)): the reference is the bare window")
+        } else {
+            XCTFail("the reference windows hold no close button: nothing was compared")
+        }
+        return home
+    }
+
+    /// The button's lower-left corner in window coordinates (window y counts up).
+    private func windowOrigin(of button: NSButton) -> CGPoint {
+        button.convert(button.bounds, to: nil).origin
+    }
+
+    /// Writes the button's frame origin so that its lower-left corner stands at `point` in window coordinates.
+    private func put(_ button: NSButton, atWindowOrigin point: CGPoint) {
+        guard let superview = button.superview else {
+            XCTFail("the button has no superview: nothing was written")
+            return
+        }
+        button.setFrameOrigin(superview.convert(point, from: nil))
     }
 
     /// Fails loudly, once, unless the window and the reference each hold all three buttons.
@@ -330,19 +377,22 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing opened"),
               let owner = owner(of: rig) else { return }
         owner.reducesMotion = { true }
-        let reference = reference(like: rig)
+        let reference = appKitsHome(like: rig)
         guard let (own, homeButtons) = threeButtons(rig, reference) else { return }
         let union = homeButtons.reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: nil)) }
         XCTAssertFalse(union.isNull || union.isEmpty, "the reference's union is \(union): the rail's offset was not computed")
-        let railOffset = ShellGeometry.buttonsOffset(home: union, rail: true)
+        // The window wears a toolbar, so the offset is worked out with the lift, from the home AppKit gives such a window.
+        let railOffset = ShellGeometry.buttonsOffset(home: union, rail: true, lift: ShellGeometry.toolbarLift)
         let names = ["close", "miniaturize", "zoom"]
         settle(rig)
         rail(rig)
         func check(_ step: String, alpha: CGFloat) {
             for i in 0..<3 {
-                let want = CGPoint(x: homeButtons[i].frame.origin.x + railOffset.width,
-                                   y: homeButtons[i].frame.origin.y - railOffset.height)
-                let now = own[i].frame.origin
+                // Window coordinates, y counting up: the reference's strip is taller than the app's, so a button
+                // placed alike has another origin in its superview.
+                let home = windowOrigin(of: homeButtons[i])
+                let want = CGPoint(x: home.x + railOffset.width, y: home.y - railOffset.height)
+                let now = windowOrigin(of: own[i])
                 XCTAssertEqual(now.x, want.x, accuracy: 0.5, "\(step): the \(names[i]) button stands at \(now), should be at \(want)")
                 XCTAssertEqual(now.y, want.y, accuracy: 0.5, "\(step): the \(names[i]) button stands at \(now), should be at \(want)")
                 XCTAssertEqual(own[i].alphaValue, alpha, "\(step): the \(names[i]) button's alpha is \(own[i].alphaValue), not \(alpha)")
@@ -364,7 +414,7 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
     /// missing: the zoom button hidden, two buttons of three. That full screen's exit reaches the same
     /// `release()` is read, not run.
     /// AppKit's move of the buttons is made by hand, as the other rows make it: each button is put at the
-    /// reference window's home. Each must still stand there after the completion, on both axes. The plate,
+    /// bare reference window's home. Each must still stand there after the completion, on both axes. The plate,
     /// wider than closed at the end, says only that the hover opened the capsule; that a completion lands and
     /// has something to write is shown by taking `wanted = [:]` out of `release()`: the row goes red.
     func testAnAnimationsEndWritesNoOriginOnceThePlacementIsGivenUp() throws {
@@ -401,9 +451,9 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
                              "the plate stands \(owner.plateFrame.width) wide, as closed (\(closedWidth)): the hover opened nothing, so no animation was started")
         for i in 0..<3 {
             XCTAssertEqual(own[i].frame.origin.x, left[i].x, accuracy: 0.01,
-                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (AppKit's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
+                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (the bare window's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
             XCTAssertEqual(own[i].frame.origin.y, left[i].y, accuracy: 0.01,
-                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (AppKit's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
+                           "the \(names[i]) button stands at \(own[i].frame.origin) after the animation's completion; it was left at \(left[i]) (the bare window's home \(homeButtons[i].frame.origin), the stale placement \(placed[i]))")
         }
     }
 
@@ -425,7 +475,7 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
     }
 
     func testNothingInTheBarMovesWhenTheCapsuleOpens() throws {
-        guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing opened"),
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(in: self, failure: "no shell: nothing opened"),
               let owner = owner(of: rig) else { return }
         guard let bar = rig.pageBar?.view else {
             XCTFail("SettingsWindow holds no page bar: nothing was compared")
@@ -474,7 +524,9 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
               let owner = owner(of: rig) else { return }
         owner.reducesMotion = { true }
         let reference = reference(like: rig)
-        guard let (own, homeButtons) = threeButtons(rig, reference) else { return }
+        guard let (own, _) = threeButtons(rig, reference) else { return }
+        let appKit = appKitsHome(like: rig)
+        guard let (_, homeButtons) = threeButtons(rig, appKit) else { return }
         let home = topLeft(of: reference)
         rail(rig)
         owner.hover(true)
@@ -497,11 +549,13 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         XCTAssertFalse(owner.isOpen, "after attach(to: nil) the capsule is still open")
         XCTAssertTrue(owner.capsule.isHidden, "after attach(to: nil) the capsule is shown")
         XCTAssertEqual(own.map(\.alphaValue), [1, 1, 1], "after attach(to: nil) the buttons are not at alpha 1")
+        // AppKit's home under a toolbar, in window coordinates: the app's strip is shorter than the reference's.
         for i in 0..<3 {
-            XCTAssertEqual(own[i].frame.origin.x, homeButtons[i].frame.origin.x, accuracy: 0.01, "after attach(to: nil) button \(i) is not at AppKit's home (x)")
-            XCTAssertEqual(own[i].frame.origin.y, homeButtons[i].frame.origin.y, accuracy: 0.01, "after attach(to: nil) button \(i) is not at AppKit's home (y)")
+            let at = windowOrigin(of: own[i]), atHome = windowOrigin(of: homeButtons[i])
+            XCTAssertEqual(at.x, atHome.x, accuracy: 0.01, "after attach(to: nil) button \(i) is at \(at), not at AppKit's home \(atHome) (x)")
+            XCTAssertEqual(at.y, atHome.y, accuracy: 0.01, "after attach(to: nil) button \(i) is at \(at), not at AppKit's home \(atHome) (y)")
         }
-        let aside = CGPoint(x: homeButtons[0].frame.origin.x + 31, y: homeButtons[0].frame.origin.y - 3)
+        let aside = CGPoint(x: own[0].frame.origin.x + 31, y: own[0].frame.origin.y - 3)
         own[0].setFrameOrigin(aside)
         settle(rig)
         XCTAssertEqual(own[0].frame.origin.x, aside.x, accuracy: 0.01, "a button knocked aside after attach(to: nil) was moved again (x)")
@@ -509,18 +563,25 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         XCTAssertEqual(own.map(\.alphaValue), [1, 1, 1], "after attach(to: nil) a layout hid the buttons")
     }
 
+    /// **Detached from a closed rail, the three buttons are shown at alpha 1 at AppKit's home under a
+    /// toolbar.** It does not hold the write of the recorded home in `detach()`: with that write taken out
+    /// this row stays green, while `testLeavingTheRailOrTheWindowGivesTheButtonsBack` and
+    /// `testInputsNobodyFedTheOwner` go red.
     func testDetachingFromAClosedRailShowsTheButtonsAtHome() throws {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing was detached"),
               let owner = owner(of: rig) else { return }
         owner.reducesMotion = { true }
-        guard let (own, homeButtons) = threeButtons(rig, reference(like: rig)) else { return }
+        let appKit = appKitsHome(like: rig)
+        guard let (own, homeButtons) = threeButtons(rig, appKit) else { return }
         rail(rig)
         XCTAssertEqual(own.map(\.alphaValue), [0, 0, 0], "the closed rail did not hide the buttons: detaching it was not tested")
         owner.attach(to: nil)
         XCTAssertEqual(own.map(\.alphaValue), [1, 1, 1], "detached from the closed rail the buttons stay invisible")
+        // AppKit's home under a toolbar, in window coordinates: the app's strip is shorter than the reference's.
         for i in 0..<3 {
-            XCTAssertEqual(own[i].frame.origin.x, homeButtons[i].frame.origin.x, accuracy: 0.01, "detached from the rail button \(i) is not home (x)")
-            XCTAssertEqual(own[i].frame.origin.y, homeButtons[i].frame.origin.y, accuracy: 0.01, "detached from the rail button \(i) is not home (y)")
+            let at = windowOrigin(of: own[i]), atHome = windowOrigin(of: homeButtons[i])
+            XCTAssertEqual(at.x, atHome.x, accuracy: 0.01, "detached from the rail button \(i) is at \(at), not home \(atHome) (x)")
+            XCTAssertEqual(at.y, atHome.y, accuracy: 0.01, "detached from the rail button \(i) is at \(at), not home \(atHome) (y)")
         }
     }
 
@@ -528,26 +589,35 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
         guard let rig = SettingsWindowRig.build(in: self, failure: "no shell: nothing was knocked aside"),
               let owner = owner(of: rig) else { return }
         owner.reducesMotion = { true }
-        let reference = reference(like: rig)
+        let reference = appKitsHome(like: rig)
         guard let (own, homeButtons) = threeButtons(rig, reference) else { return }
         settle(rig)
-        let homeMinX = homeButtons.map(\.frame.origin.x).min() ?? 0
+        // Window coordinates throughout, y counting up: the reference's strip is taller than the app's, so one
+        // place has another origin in each window's superview, and the window wears a toolbar, so the offset
+        // is worked out with the lift, as the owner works it out.
+        let homes = homeButtons.map { windowOrigin(of: $0) }
+        let homeMinX = homes.map(\.x).min() ?? 0
+        let union = homeButtons.reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: nil)) }
+        let expandedOffset = ShellGeometry.buttonsOffset(home: union, rail: false, lift: ShellGeometry.toolbarLift)
+        let railOffset = ShellGeometry.buttonsOffset(home: union, rail: true, lift: ShellGeometry.toolbarLift)
         for inRail in [false, true] {
             if inRail { rail(rig) }
-            // The superview is not flipped, so down is minus. The rail's x offset brings the union's left to 19.
-            let shift = inRail ? 19 - homeMinX : ShellGeometry.buttonShift
+            // The rail's x offset brings the union's left to 19, whatever the lift.
+            let shift = inRail ? 19 - homeMinX : expandedOffset.width
+            let drop = inRail ? railOffset.height : expandedOffset.height
             let alpha: CGFloat = inRail ? 0 : 1
             for (round, dy) in [CGFloat(0), -2].enumerated() {
                 // Round 0: the row writes AppKit's home back by hand. Round 1: it writes another origin, 2 lower, as a new home.
                 for (i, button) in own.enumerated() {
-                    let home = CGPoint(x: homeButtons[i].frame.origin.x, y: homeButtons[i].frame.origin.y + dy)
-                    button.setFrameOrigin(home)
+                    let home = CGPoint(x: homes[i].x, y: homes[i].y + dy)
+                    put(button, atWindowOrigin: home)
                     let what = "\(inRail ? "rail" : "expanded"), round \(round), button \(i)"
                     // No layout and no pump between the write and the read: the same turn.
-                    XCTAssertEqual(button.frame.origin.x, home.x + shift, accuracy: 0.5,
-                                   "\(what): after the row wrote \(home) it stands at \(button.frame.origin), not x \(home.x + shift)")
-                    XCTAssertEqual(button.frame.origin.y, home.y - ShellGeometry.buttonDrop, accuracy: 0.5,
-                                   "\(what): after the row wrote \(home) it stands at \(button.frame.origin), not y \(home.y - ShellGeometry.buttonDrop)")
+                    let now = windowOrigin(of: button)
+                    XCTAssertEqual(now.x, home.x + shift, accuracy: 0.5,
+                                   "\(what): after the row wrote \(home) it stands at \(now), not x \(home.x + shift)")
+                    XCTAssertEqual(now.y, home.y - drop, accuracy: 0.5,
+                                   "\(what): after the row wrote \(home) it stands at \(now), not y \(home.y - drop)")
                     XCTAssertEqual(button.alphaValue, alpha, "\(what): alpha is \(button.alphaValue), not \(alpha)")
                 }
             }
@@ -569,7 +639,9 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
               let owner = owner(of: rig) else { return }
         owner.reducesMotion = { true }
         let reference = reference(like: rig)
-        guard let (own, homeButtons) = threeButtons(rig, reference) else { return }
+        guard let (own, _) = threeButtons(rig, reference) else { return }
+        let appKit = appKitsHome(like: rig)
+        guard let (_, homeButtons) = threeButtons(rig, appKit) else { return }
         settle(rig)
         // Attach twice more, to the same window: still held down 6 right 6. How many observers are left is not read.
         owner.attach(to: rig.window)
@@ -582,15 +654,17 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
             XCTAssertEqual((held[i]?.x ?? -999) - (home[i]?.x ?? 0), 6, accuracy: 0.5, "after attaching twice button \(i) is not 6 right of home")
             XCTAssertEqual((held[i]?.y ?? -999) - (home[i]?.y ?? 0), 6, accuracy: 0.5, "after attaching twice button \(i) is not 6 down from home")
         }
-        // Then nil: the buttons are home, and a knock moves nothing any more.
+        // Then nil: the buttons are at AppKit's home under a toolbar (window coordinates: the reference's strip is
+        // taller than the app's), and a knock moves nothing any more.
         owner.attach(to: nil)
         for i in 0..<3 {
-            XCTAssertEqual(own[i].frame.origin.x, homeButtons[i].frame.origin.x, accuracy: 0.01, "after attach twice and nil button \(i) is not home (x)")
-            XCTAssertEqual(own[i].frame.origin.y, homeButtons[i].frame.origin.y, accuracy: 0.01, "after attach twice and nil button \(i) is not home (y)")
+            let at = windowOrigin(of: own[i]), atHome = windowOrigin(of: homeButtons[i])
+            XCTAssertEqual(at.x, atHome.x, accuracy: 0.01, "after attach twice and nil button \(i) is at \(at), not home \(atHome) (x)")
+            XCTAssertEqual(at.y, atHome.y, accuracy: 0.01, "after attach twice and nil button \(i) is at \(at), not home \(atHome) (y)")
             XCTAssertEqual(own[i].postsFrameChangedNotifications, homeButtons[i].postsFrameChangedNotifications,
                            "after attach(to: nil) button \(i) still posts frame changes the reference does not")
         }
-        let aside = CGPoint(x: homeButtons[1].frame.origin.x + 17, y: homeButtons[1].frame.origin.y)
+        let aside = CGPoint(x: own[1].frame.origin.x + 17, y: own[1].frame.origin.y)
         own[1].setFrameOrigin(aside)
         XCTAssertEqual(own[1].frame.origin.x, aside.x, accuracy: 0.01, "a button knocked aside after attach(to: nil) was moved again")
     }
@@ -975,12 +1049,12 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
 
     /// **The three buttons of the window the app builds, which wears a toolbar, stand where the three of the
     /// window that wears the page bar and no toolbar stand, expanded and in the rail.** Two real windows of the
-    /// same size, both built by the rig and never ordered: the rig's own construction, and the one that names
-    /// no bar. The toolbar window's strip is read to be taller, so the row cannot pass by comparing a window
+    /// same size, both built by the rig and never ordered: the one the app builds, and the one that asks for
+    /// the page bar by name. The toolbar window's strip is read to be taller, so the row cannot pass by comparing a window
     /// with itself, and the lift is what makes the two agree: AppKit's home under a toolbar is further in.
     /// That AppKit rewrites the buttons the same way in a shown window, and in a key one, is not stated here.
     func testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem() throws {
-        guard let bare = SettingsWindowRig.build(
+        guard let bare = SettingsWindowRig.buildThePageBarWindow(
             in: self, failure: "the window has no content view controller of the shell's type: no button was read")
         else { return }
         settle(bare)
@@ -1002,7 +1076,7 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
             return
         }
         XCTAssertLessThan(worn.window.contentLayoutRect.height, bareStrip - 10,
-                          "the toolbar did not make the strip taller: both sides of the comparison are the bare window")
+                          "the toolbar did not make the strip taller: both sides of the comparison are the page-bar window")
         func compare(_ held: [Int: CGPoint], with home: [Int: CGPoint], _ when: String) {
             XCTAssertEqual(held.count, 3, "the toolbar window has \(held.count) standard buttons \(when): nothing was compared")
             for i in 0..<3 {

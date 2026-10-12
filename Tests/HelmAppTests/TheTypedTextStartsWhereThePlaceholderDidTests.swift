@@ -137,7 +137,7 @@ final class TheTypedTextStartsWhereThePlaceholderDidTests: XCTestCase {
 
     /// The Settings window with a page that has a search whose text is `text`, in a named appearance.
     private func freshRig(_ appearance: NSAppearance.Name, text: String) -> SettingsWindowRig? {
-        guard let rig = SettingsWindowRig.build(in: self, failure: "the window has no shell: no bar was read") else { return nil }
+        guard let rig = SettingsWindowRig.buildThePageBarWindow(in: self, failure: "the window has no shell: no bar was read") else { return nil }
         AppSettings.pageBarStyle = .moduleName
         rig.window.appearance = NSAppearance(named: appearance)
         rig.window.setContentSize(NSSize(width: 1060, height: 760))

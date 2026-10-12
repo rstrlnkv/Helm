@@ -5,71 +5,117 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **The centre tabs' width is measured again for each thing the switcher draws that moved, once, and not
-/// for anything else** — the label style, the bar's look, the selected tab, the titles and the glyphs of the
-/// shape `ShellBarTabs` compares, each fed alone, on one page bar, through a page's declarations and the
-/// settings the bar hears; a dot is fed only in `TheBarsTabsFoldByTheLayoutsVerdictTests`.
+/// **The centre tabs' width is measured again for each thing the switcher
+/// draws that moved, once, and not for anything else** — five fields of
+/// `SettingsToolbar.TabsWidthKey` (`style`, `language`, `selectedID`,
+/// `titles`, `symbols`) fed alone, one case each, on one bar, through a real
+/// `SettingsToolbar`.
 ///
-/// The zone reads both of its natural widths when a show carries a shape (titles, glyphs, dots, label style,
-/// selected tab, the bar's look) other than the one it drew, and counts it in `measureCount`; it re-roots its
-/// hosts when anything it draws moved, and counts that in `redrawCount`. Each case moves one field with every
-/// other held and reads both counts across the settle that follows: one measurement and one redraw for the
-/// change, none of either for the same state again — the second reading is what fails if the comparison is
-/// gone. The tab ids, the words' language and an action beside the tabs are not in the shape: a declaration
-/// that moves only those redraws or draws nothing, and measures nothing. `TheBarsTabsFoldByTheLayoutsVerdictTests`
-/// holds the same counts on the zone alone, against an oracle's widths; here the change arrives the way a
-/// page's and the settings' do.
+/// `AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests` proves the other
+/// half: a keystroke that moves none of it measures nothing. That file's
+/// control declares new *titles* and sees a measurement, so a key that
+/// ignored the words goes red there. Here each of the five fields is changed
+/// with the fields named in the cases held, and read as a count of
+/// `SwitcherMeasurementRig` mounts (`SettingsToolbar.measurementsTaken`)
+/// across the settle that follows: exactly one for the change, and zero for
+/// the same declaration again, because a key that is never consulted also
+/// measures exactly once per change — the second reading is what fails if the
+/// cache is gone.
 ///
-/// `AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests` is the other half: a keystroke that moves none of
-/// it measures nothing.
+/// **What the rows hold.** The line of `wholeTabsWidth(_:_:)` that returns the
+/// kept width when its key matches. With that line taken out every row of this
+/// file goes red under both looks, each at a count of measurements above what
+/// it expects. `style`, `language`, `selectedID`, `titles` and `symbols` are
+/// each moved by the one case here named for it and by no other here.
+/// **`attention` is moved by no case here.** **`ids` is moved by
+/// `testNewIdsUnderTheSameWordsAreMeasuredOnceOnAFreshBar`, but that case
+/// cannot tell a key with `ids` from one without**: `ShapeSignature` carries
+/// the tab ids, so a declaration whose ids moved gets a fresh `PageBar` with no
+/// width at all, and a key without `ids` measures exactly as often — the case
+/// says so rather than claiming a proof it does not have.
 ///
-/// **Every "again" reading first proves the zone was shown the state.** The page's `selectedTab` binding
-/// counts its reads, and `ShellBarTabs.show` reads it on every show before it compares: a still count on a
-/// bar the change never reached would read as a pass, so each case also requires the reads to have moved.
-/// The counts are the zone's own, per bar: a notification that reaches every bar alive in the process moves
-/// only the counts of the bar that owns them.
+/// **Every settle here is started by a declaration and never by a
+/// notification.** The count is the process's own — one rig for every
+/// `SettingsToolbar` there is — and a language or label-style notification
+/// reaches every toolbar still alive in the process, each of which would
+/// measure its own bar under the new key and land in this count. A page's
+/// declaration reaches only this bar; the label style is written to the
+/// store without the notification for the same reason, and the style and the
+/// language are read by `settle(_:)` itself, not carried by the message.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow`, not the `lead: .spacer` bar the
+/// app's window builds: it has no `helm.tabsLead` and no capped search field.
+/// The count is the toolbar's own (`SettingsToolbar.measurementsTaken`), not
+/// the page bar's `ShellBarTabs.measureCount`.
+///
+/// **The look.** It is read when a bar is built (`AppSettings.barAppearance`)
+/// and sits on the bar's shape (`ShapeSignature.look`), not on `TabsWidthKey`:
+/// a width measured wearing one look's cell lives on a bar that is not given
+/// back under the other. The tabs are measured in the look's own cell, so
+/// every row builds its bars under Flat and again under Liquid Glass
+/// (`underEachLook`; each row is one short loop) and asserts, from the tabs
+/// item's cell, that the look reached it. The other settings the bar reads
+/// are pinned in `setUp` (`PinnedBarSettings`); the label-style row moves the
+/// label style itself.
 @MainActor
 final class TheTabsAreMeasuredAgainOnlyWhenWhatTheyDrawMovesTests: XCTestCase {
 
-    private final class Reads { var count = 0 }
-
     private struct Bare {
-        let fixture: LivePageToolbarFixture
+        let toolbar: SettingsToolbar
+        let model: SettingsModel
+        let channel: HelmWindowToolbarChannel
+        let window: NSWindow
         let token: String
-        let reads: Reads
-        var zone: ShellBarTabs { fixture.pageBar.tabs }
+        let look: HelmBarAppearance
     }
 
     private var bars: [Bare] = []
 
-    override func tearDown() {
-        for bar in bars { bar.fixture.drop() }
-        bars = []
-        super.tearDown()
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+        // A teardown override is nonisolated and warns on every main-actor property it touches.
+        addTeardownBlock { @MainActor [self] in
+            for bar in bars { bar.window.toolbar = nil }
+            bars = []
+        }
     }
 
-    private func bare(_ token: String) -> Bare {
-        if bars.isEmpty { PinnedBarSettings.pin(in: self) }
-        let fixture = LivePageToolbarFixture(EmptyView(), selection: .module(token), width: 1060, height: 700)
-        let made = Bare(fixture: fixture, token: token, reads: Reads())
+    /// Runs `body` once under each look; the bars it builds wear that look. The bars of one look are dropped
+    /// before the next look is written: a look written reaches every toolbar still alive
+    /// (`.helmBarAppearanceChanged`), and each would rebuild under it and land its measurement in the count.
+    private func underEachLook(_ body: (HelmBarAppearance) -> Void) {
+        for look in HelmBarAppearance.allCases {
+            body(look)
+            for bar in bars { bar.window.toolbar = nil }
+            bars = []
+        }
+    }
+
+    private func bare(_ token: String, look: HelmBarAppearance) -> Bare {
+        AppSettings.barAppearance = look
+        let model = SettingsModel(host: ModuleHost.shared)
+        let channel = HelmWindowToolbarChannel()
+        let toolbar = SettingsToolbar(model: model, channel: channel)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 700),
+                              styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        toolbar.window = window
+        model.selection = .module(token)
+        let made = Bare(toolbar: toolbar, model: model, channel: channel, window: window, token: token, look: look)
         bars.append(made)
         return made
     }
 
-    private struct Taken: Equatable {
-        var measured: Int
-        var redrawn: Int
-        var reads: Int
-    }
-
-    /// What the zone did across `body` and the settle that follows it.
-    private func taken(_ bar: Bare, _ body: () -> Void) -> Taken {
-        let before = Taken(measured: bar.zone.measureCount, redrawn: bar.zone.redrawCount, reads: bar.reads.count)
+    /// The measurements taken by the settle `body` leads to — a rest four
+    /// settle intervals long, so the one the declaration armed has fired.
+    private func measured(_ body: () -> Void) -> Int {
+        let before = SettingsToolbar.measurementsTaken
         body()
-        bar.fixture.settle(3)
-        return Taken(measured: bar.zone.measureCount - before.measured,
-                     redrawn: bar.zone.redrawCount - before.redrawn,
-                     reads: bar.reads.count - before.reads)
+        PinnedBarSettings.rest(4 * SettingsToolbar.settleInterval)
+        return SettingsToolbar.measurementsTaken - before
     }
 
     private func tabs(ids: [String] = ["first", "second"], titles: [String] = ["Alpha", "Beta"],
@@ -77,132 +123,171 @@ final class TheTabsAreMeasuredAgainOnlyWhenWhatTheyDrawMovesTests: XCTestCase {
         zip(ids, zip(titles, symbols)).map { HelmToolbarTab(id: $0, title: $1.0, symbol: $1.1) }
     }
 
-    private func declare(_ bar: Bare, _ tabs: [HelmToolbarTab], selected: String = "first",
-                         actions: [HelmToolbarAction] = []) {
-        let reads = bar.reads
-        let selection = Binding<String>(get: { MainActor.assumeIsolated { reads.count += 1 }; return selected },
-                                        set: { _ in })
-        bar.fixture.channel.declare(HelmPageToolbarContent(tabs: tabs, selectedTab: selection, actions: actions),
-                                    token: bar.token, generation: bar.fixture.channel.nextGeneration())
+    /// Tabs only: no `.segmented` action, whose reserve is measured through
+    /// the same rig and would land in the same count.
+    private func declare(_ bar: Bare, _ tabs: [HelmToolbarTab], selected: String = "first") {
+        bar.channel.declare(HelmPageToolbarContent(tabs: tabs, selectedTab: .constant(selected)),
+                            token: bar.token, generation: bar.channel.nextGeneration())
     }
 
-    private func assertOnce(_ got: Taken, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertEqual(got.measured, 1, "\(what): not measured exactly once (\(got.measured))", file: file, line: line)
-        XCTAssertEqual(got.redrawn, 1, "\(what): not redrawn exactly once (\(got.redrawn))", file: file, line: line)
-        XCTAssertGreaterThan(got.reads, 0, "\(what): the zone was never shown the state", file: file, line: line)
+    /// The look the tabs item's switcher is drawn in, read off its cell: Helm's own cell under Flat,
+    /// AppKit's under Liquid Glass; nil when the bar has no tabs control.
+    private func lookDrawn(by bar: Bare) -> HelmBarAppearance? {
+        let item = bar.window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.tabs" }
+        guard let control = item?.view?.everyView(ofType: NSSegmentedControl.self).first else { return nil }
+        return control.cell is HelmFlatSegmentedCell ? .flat : .liquidGlass
     }
 
-    private func assertNothing(_ got: Taken, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertEqual(got.measured, 0, "\(what): measured again (\(got.measured))", file: file, line: line)
-        XCTAssertEqual(got.redrawn, 0, "\(what): redrawn again (\(got.redrawn))", file: file, line: line)
-        XCTAssertGreaterThan(got.reads, 0, "\(what): the zone was never shown the state — a still count means nothing",
-                             file: file, line: line)
-    }
-
-    /// The first declaration measures — the subject: this bar's zone does count — and the same declaration
-    /// again measures and draws nothing.
-    private func establish(_ bar: Bare, _ declared: [HelmToolbarTab], selected: String = "first",
+    /// The first declaration measures — the subject: this bar's settle does
+    /// reach the rig — and the same declaration again measures nothing.
+    private func establish(_ bar: Bare, _ tabs: [HelmToolbarTab], selected: String = "first",
                            file: StaticString = #filePath, line: UInt = #line) {
-        assertOnce(taken(bar) { declare(bar, declared, selected: selected) }, "the first declaration onto a fresh bar",
-                   file: file, line: line)
-        assertNothing(taken(bar) { declare(bar, declared, selected: selected) }, "the same declaration again",
-                      file: file, line: line)
+        XCTAssertEqual(measured { declare(bar, tabs, selected: selected) }, 1, """
+            \(bar.look): precondition: the first declaration of tabs onto a fresh bar did not take exactly \
+            one measurement — nothing below can be read as a count of settles
+            """, file: file, line: line)
+        XCTAssertEqual(lookDrawn(by: bar), bar.look, """
+            \(bar.look): precondition: the tabs item's switcher is drawn in \
+            \(lookDrawn(by: bar).map { String(describing: $0) } ?? "no control at all"), not the look the \
+            bar was built under — the counts below would be read under the wrong cell
+            """, file: file, line: line)
+        XCTAssertEqual(measured { declare(bar, tabs, selected: selected) }, 0, """
+            \(bar.look): the same tabs declared again onto the same bar were measured again — the width is \
+            not kept
+            """, file: file, line: line)
     }
 
     // MARK: - One field at a time
 
     func testALabelStyleChangeAloneIsMeasuredOnce() {
-        let bar = bare("test.tabsWidth.style")
-        establish(bar, tabs())
-        for style in [ToolbarSwitcherStyle.icons, .iconsAndText, .text] {
-            assertOnce(taken(bar) { AppSettings.toolbarSwitcherStyle = style }, "\(style) from another style")
-            XCTAssertEqual(AppSettings.toolbarSwitcherStyle, style, "precondition: the store did not take \(style)")
-            assertNothing(taken(bar) { AppSettings.toolbarSwitcherStyle = style }, "\(style) again")
-        }
-    }
-
-    func testTheBarsLookAloneIsMeasuredOnce() {
-        let bar = bare("test.tabsWidth.look")
-        establish(bar, tabs())
-        for look in [HelmBarAppearance.liquidGlass, .flat] {
-            assertOnce(taken(bar) { AppSettings.barAppearance = look }, "\(look) from the other look")
-            XCTAssertEqual(AppSettings.barAppearance, look, "precondition: the store did not take \(look)")
-            assertNothing(taken(bar) { AppSettings.barAppearance = look }, "\(look) again")
-        }
-    }
-
-    /// The words are the same in every language: only the language moves. A language is not in the shape, so
-    /// nothing is measured; the bar's own name for the control follows it, which is the redraw.
-    func testALanguageChangeAloneIsNeverMeasuredAndReachesTheZone() {
-        AppLanguage.only(.pt) {
-            let bar = bare("test.tabsWidth.language")
+        let store = AppSettings.store
+        underEachLook { look in
+            store.set(ToolbarSwitcherStyle.text.rawValue, for: ToolbarSwitcherStyle.storageKey)
+            let bar = bare("test.tabsWidth.style.\(look.rawValue)", look: look)
             establish(bar, tabs())
-            var redrawnAnywhere = 0
-            AppLanguage.each { language in
-                XCTAssertEqual(AppLanguage.current, language, "precondition: the language did not move")
-                let got = taken(bar) { NotificationCenter.default.post(name: .helmLanguageChanged, object: nil) }
-                XCTAssertEqual(got.measured, 0, "\(language.rawValue): the same words were measured again (\(got.measured))")
-                XCTAssertGreaterThan(got.reads, 0, "\(language.rawValue): the language change never reached the zone")
-                redrawnAnywhere += got.redrawn
+            for style in [ToolbarSwitcherStyle.icons, .iconsAndText, .text] {
+                store.set(style.rawValue, for: ToolbarSwitcherStyle.storageKey)
+                XCTAssertEqual(AppSettings.toolbarSwitcherStyle, style, "precondition: the store did not take \(style)")
+                XCTAssertEqual(measured { declare(bar, tabs()) }, 1, """
+                    \(look), \(style): the tabs were not measured once for a label style they had not been \
+                    measured in
+                    """)
+                XCTAssertEqual(measured { declare(bar, tabs()) }, 0, """
+                    \(look), \(style): the tabs were measured again in a label style they had just been \
+                    measured in
+                    """)
             }
-            XCTAssertGreaterThan(redrawnAnywhere, 0, """
-                no language change redrew the zone: the notification reaches nothing, and the zero measurements \
-                above are about no change
-                """)
+        }
+    }
+
+    func testALanguageChangeAloneIsMeasuredOnceInEveryLanguage() {
+        // Portuguese first so that the loop's first language, English,
+        // differs from it — on a Mac whose own language is English, starting
+        // from the Mac's language would make that first step no change at all.
+        AppLanguage.only(.pt) {
+            underEachLook { look in
+                let bar = bare("test.tabsWidth.language.\(look.rawValue)", look: look)
+                // The same words in every language: only the language moves.
+                establish(bar, tabs())
+                AppLanguage.each { language in
+                    XCTAssertEqual(AppLanguage.current, language, "precondition: the language did not move")
+                    XCTAssertEqual(measured { declare(bar, tabs()) }, 1, """
+                        \(look), \(language.rawValue): the tabs were not measured once in a language they had \
+                        not been measured in
+                        """)
+                    XCTAssertEqual(measured { declare(bar, tabs()) }, 0, """
+                        \(look), \(language.rawValue): the tabs were measured again in the language they had \
+                        just been measured in
+                        """)
+                }
+            }
         }
     }
 
     func testAMovedSelectionAloneIsMeasuredOnce() {
-        let bar = bare("test.tabsWidth.selection")
-        establish(bar, tabs(), selected: "first")
-        for selected in ["second", "first", "nothing-by-this-id"] {
-            assertOnce(taken(bar) { declare(bar, tabs(), selected: selected) }, "selection \(selected)")
-            assertNothing(taken(bar) { declare(bar, tabs(), selected: selected) }, "selection \(selected) again")
+        underEachLook { look in
+            let bar = bare("test.tabsWidth.selection.\(look.rawValue)", look: look)
+            establish(bar, tabs(), selected: "first")
+            for selected in ["second", "first", "nothing-by-this-id"] {
+                XCTAssertEqual(measured { declare(bar, tabs(), selected: selected) }, 1, """
+                    \(look), selection \(selected): the tabs were not measured once for a selection they had \
+                    not been measured with
+                    """)
+                XCTAssertEqual(measured { declare(bar, tabs(), selected: selected) }, 0, """
+                    \(look), selection \(selected): the tabs were measured again with the selection they had \
+                    just been measured with
+                    """)
+            }
         }
     }
 
     func testNewWordsUnderTheSameIdsAndGlyphsAreMeasuredOnce() {
-        let bar = bare("test.tabsWidth.titles")
-        establish(bar, tabs())
-        let plate = bar.zone.view
-        let longer = tabs(titles: ["Alpha and more", "Beta"])
-        assertOnce(taken(bar) { declare(bar, longer) }, "new words")
-        XCTAssertNotNil(plate, "precondition: the zone had no view")
-        XCTAssertIdentical(bar.zone.view, plate, "new words replaced the zone's view")
-        assertNothing(taken(bar) { declare(bar, longer) }, "the same new words")
+        underEachLook { look in
+            let bar = bare("test.tabsWidth.titles.\(look.rawValue)", look: look)
+            establish(bar, tabs())
+            let toolbar = bar.window.toolbar
+            let longer = tabs(titles: ["Alpha and more", "Beta"])
+            XCTAssertEqual(measured { declare(bar, longer) }, 1, "\(look): new words were not measured once")
+            XCTAssertIdentical(bar.window.toolbar, toolbar, "\(look): precondition: new words rebuilt the bar")
+            XCTAssertEqual(measured { declare(bar, longer) }, 0, "\(look): the same new words were measured again")
+        }
     }
 
     func testNewGlyphsUnderTheSameIdsAndWordsAreMeasuredOnce() {
-        let bar = bare("test.tabsWidth.symbols")
-        establish(bar, tabs())
-        let other = tabs(symbols: ["circle", "rectangle.split.3x1"])
-        assertOnce(taken(bar) { declare(bar, other) }, "new glyphs")
-        assertNothing(taken(bar) { declare(bar, other) }, "the same new glyphs")
+        underEachLook { look in
+            let bar = bare("test.tabsWidth.symbols.\(look.rawValue)", look: look)
+            establish(bar, tabs())
+            let toolbar = bar.window.toolbar
+            let other = tabs(symbols: ["circle", "rectangle.split.3x1"])
+            XCTAssertEqual(measured { declare(bar, other) }, 1, "\(look): new glyphs were not measured once")
+            XCTAssertIdentical(bar.window.toolbar, toolbar, "\(look): precondition: new glyphs rebuilt the bar")
+            XCTAssertEqual(measured { declare(bar, other) }, 0, "\(look): the same new glyphs were measured again")
+        }
     }
 
-    // MARK: - What is not in the shape
-
-    /// Ids that moved under the same words, glyphs and selection are redrawn (the controls answer to the
-    /// ids) and not measured: a width is a function of the words, the glyphs, the dots, the label style, the
-    /// selection and the bar's look.
-    func testNewIdsUnderTheSameWordsAreRedrawnAndNotMeasured() {
-        let bar = bare("test.tabsWidth.ids")
-        establish(bar, tabs(), selected: "first")
-        let renamed = tabs(ids: ["one", "two"])
-        let got = taken(bar) { declare(bar, renamed, selected: "first") }
-        XCTAssertEqual(got.measured, 0, "new ids under the same words were measured (\(got.measured))")
-        XCTAssertEqual(got.redrawn, 1, "new ids under the same words were not redrawn once (\(got.redrawn))")
-        XCTAssertGreaterThan(got.reads, 0, "the zone was never shown the new ids")
-        assertNothing(taken(bar) { declare(bar, renamed, selected: "first") }, "the same new ids")
+    /// Ids that moved under the same words, glyphs and selection are measured
+    /// once — **by a fresh bar**, which is what the second assertion pins:
+    /// `ShapeSignature.tabIDs` rebuilds the bar before `TabsWidthKey.ids` is
+    /// ever compared, so this case cannot tell a key with ids from one
+    /// without (see this file's header).
+    func testNewIdsUnderTheSameWordsAreMeasuredOnceOnAFreshBar() {
+        underEachLook { look in
+            let bar = bare("test.tabsWidth.ids.\(look.rawValue)", look: look)
+            establish(bar, tabs(), selected: "first")
+            let toolbar = bar.window.toolbar
+            let renamed = tabs(ids: ["one", "two"])
+            XCTAssertEqual(measured { declare(bar, renamed, selected: "first") }, 1, "\(look): new ids were not measured once")
+            XCTAssertNotIdentical(bar.window.toolbar, toolbar, """
+                \(look): new tab ids kept the same bar — TabsWidthKey.ids is now the only thing that measures \
+                them, and this file's header no longer holds
+                """)
+            XCTAssertEqual(measured { declare(bar, renamed, selected: "first") }, 0, "\(look): the same new ids were measured again")
+        }
     }
 
-    /// An action appearing beside the same tabs changes nothing the tabs zone draws.
-    func testAnActionAppearingBesideTheSameTabsMeasuresAndDrawsNothing() {
-        let bar = bare("test.tabsWidth.action")
-        establish(bar, tabs())
-        let refresh = HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise") {}
-        assertNothing(taken(bar) { declare(bar, tabs(), actions: [refresh]) }, "an action appearing")
-        XCTAssertFalse(bar.fixture.bar.view.reachableZones.filter { $0 == .actions }.isEmpty,
-                       "precondition: the action reached the bar's actions zone")
+    // MARK: - A rebuilt bar
+
+    /// **A bar rebuilt for its shape measures again, with nothing the tabs
+    /// draw having moved** — the width is the bar's and goes with it.
+    /// Rebuilt here by an action appearing beside the same tabs, a plain
+    /// button, whose kind has no reserve to measure.
+    func testARebuiltBarMeasuresTheSameTabsAgain() {
+        underEachLook { look in
+            let bar = bare("test.tabsWidth.rebuilt.\(look.rawValue)", look: look)
+            establish(bar, tabs())
+            let toolbar = bar.window.toolbar
+            let withAction = HelmPageToolbarContent(
+                tabs: tabs(), selectedTab: .constant("first"),
+                actions: [HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise") {}])
+            let count = measured {
+                bar.channel.declare(withAction, token: bar.token, generation: bar.channel.nextGeneration())
+            }
+            XCTAssertNotIdentical(bar.window.toolbar, toolbar, "\(look): precondition: a new action id did not rebuild the bar")
+            XCTAssertEqual(count, 1, "\(look): a rebuilt bar took \(count) measurement(s) of the same tabs, not one")
+            let again = measured {
+                bar.channel.declare(withAction, token: bar.token, generation: bar.channel.nextGeneration())
+            }
+            XCTAssertEqual(again, 0, "\(look): the rebuilt bar measured the same tabs twice")
+        }
     }
 }

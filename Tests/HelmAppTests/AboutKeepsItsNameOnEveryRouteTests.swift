@@ -40,6 +40,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
 
     override func tearDown() {
         window?.orderOut(nil)
+        window?.toolbar = nil
         window = nil
         model = nil
         owner = nil
@@ -55,7 +56,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
             ModuleHost.shared.shutdown()
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
         }
-        let settings = SettingsWindow(host: ModuleHost.shared, bar: .pageBar)
+        let settings = SettingsWindow(host: ModuleHost.shared)
         owner = settings
         let fields = Mirror(reflecting: settings).children
         window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,

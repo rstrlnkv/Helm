@@ -21,11 +21,12 @@ struct SettingsWindowRig {
     let shell: SettingsShellViewController
 
     /// nil when the window holds none of the parts; `failure` is the sentence that case prints. `make` builds
-    /// the window after the protections below are in place; the default builds the `.pageBar` window, Helm's
-    /// own page bar and no toolbar, on macOS 27's band, and a family that needs another builds it in the
-    /// closure and keeps the same protections.
+    /// the window after the protections below are in place; the default builds the window the app builds
+    /// (the initialiser's own defaults: the app's toolbar and no page bar) on macOS 27's band. A family that
+    /// reads Helm's own page bar asks for it by name with `buildThePageBarWindow` until the bar leaves the
+    /// tree, and any other build is made in a `make:` closure that keeps the same protections.
     static func build(in test: XCTestCase, failure: String,
-                      make: @MainActor () -> SettingsWindow = { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar) },
+                      make: @MainActor () -> SettingsWindow = { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27)) },
                       file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
         let found = UserDefaults.standard.string(forKey: frameKey)
@@ -62,12 +63,20 @@ struct SettingsWindowRig {
         return SettingsWindowRig(owner: owner, window: window, model: model, channel: channel, shell: shell)
     }
 
-    /// The window as the app builds it: the initialiser's own defaults, no bar named, on macOS 27's band like
-    /// every other window of this rig.
+    /// The window as the app builds it: `build`'s default, asked for by name by the families that read what the
+    /// app wears (the initialiser's own defaults, no bar named, on macOS 27's band like every other window of
+    /// this rig).
     static func buildAsTheAppDoes(in test: XCTestCase, failure: String,
                                   file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
+        build(in: test, failure: failure, file: file, line: line)
+    }
+
+    /// The window that wears Helm's own page bar and no toolbar, on macOS 27's band like every other window
+    /// of this rig, for the families that read the bar: `pageBar` is nil in any other build.
+    static func buildThePageBarWindow(in test: XCTestCase, failure: String,
+                                      file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
         build(in: test, failure: failure,
-              make: { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27)) },
+              make: { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar) },
               file: file, line: line)
     }
 
@@ -81,7 +90,8 @@ struct SettingsWindowRig {
         while Date() < end { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
     }
 
-    /// The sentence a family prints when `build` or `buildAsTheAppDoes` finds none of the window's parts.
+    /// The sentence a family prints when `build`, `buildAsTheAppDoes` or `buildThePageBarWindow` finds none of
+    /// the window's parts.
     static let noShell = """
         the window has no content view controller of the shell's type: nothing was read from a window \
         nobody built
