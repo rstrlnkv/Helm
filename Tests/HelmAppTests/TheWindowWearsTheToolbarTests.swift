@@ -225,10 +225,11 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
         return host.convert(host.bounds, to: nil).minX
     }
 
-    /// Writes the sidebar's width value after value, the way the fold's animator does: each write is followed
+    /// Writes the sidebar's width value after value, the way the fold's link does: each write is followed
     /// by the layout it asks for, by the turns the main queue and the toolbar's settle take, and by a layout of
-    /// the frame view, and then `visit` reads. The fold itself (`fold(to:animated:)`) is not driven here: in a
-    /// window nobody ordered, the values the animator writes and when are not the row's to choose.
+    /// the frame view, and then `visit` reads. The fold itself (`fold(to:animated:)`) is not driven here: this rig
+    /// leaves the shell the display link it was built with, which no row ticks;
+    /// `TheFoldIsDrivenByTheLinksOwnClockTests` drives a fold through a link ticked by hand.
     private func walk(_ rig: SettingsWindowRig, _ widths: [CGFloat], visit: (CGFloat) -> Void) {
         let shell = rig.shell.shell
         for width in widths {
@@ -611,7 +612,7 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// of the main queue, so that nothing animated has run, the window is given the toolbar of another page and
     /// the claim is read again. A claim that is gone fails the row; `ShellContentView.viewDidMoveToWindow` finishes
     /// a fold in flight, and that this is what would end it here is read from that method and not shown. Not seen
-    /// red: no run made the assignment of a toolbar end a fold. What the animator then does in a window nobody ordered is not read.
+    /// red: no run made the assignment of a toolbar end a fold. What the link then does in a window nobody ordered is not read.
     func testAToolbarAssignedWhileTheFoldTravelsDoesNotEndIt() throws {
         PinnedBarSettings.pin(in: self)
         guard let rig = build() else { return }

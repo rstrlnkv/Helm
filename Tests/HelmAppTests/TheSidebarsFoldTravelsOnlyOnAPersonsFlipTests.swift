@@ -9,7 +9,8 @@ import XCTest
 /// set from code, a flip under Reduce Motion, a flip back to the width already standing and a window that opens
 /// folded ask for none.** The controller is
 /// built over a scratch store, never shown, and no row waits: what was ASKED is read from `onFold`, and the width
-/// and `foldTarget` are read in the same turn. Whether the motion looks right is not asserted here.
+/// and `foldTarget` are read in the same turn. The width is driven by the timestamps of the shell's link, which
+/// `TheFoldIsDrivenByTheLinksOwnClockTests` ticks by hand. Whether the motion looks right is not asserted here.
 ///
 /// A row that says nothing was asked also shows the same controller hearing a flip, before or after, so a seam
 /// nobody calls cannot pass it.
@@ -123,7 +124,7 @@ final class TheSidebarsFoldTravelsOnlyOnAPersonsFlipTests: XCTestCase {
                        "the instrument is dead: \(probe.heard) after a flip")
     }
 
-    /// Writing the width by hand stands for a frame of the run: the layout places the card at it, `foldTarget`
+    /// Writing the width by hand stands for a frame of the travel: the layout places the card at it, `foldTarget`
     /// stands until the target itself is written. Total failure prints: "no fold to <target> was asked: the fixture is
     /// wrong" / "at <w> the card started at <x>" / "the fold target was <t> at <w>, not <target>" / "the fold target
     /// outlived the end".
@@ -243,8 +244,8 @@ final class TheSidebarsFoldTravelsOnlyOnAPersonsFlipTests: XCTestCase {
     }
 
     /// `fold(to:animated:)` called directly with a width that is not finite is refused: after a flip is heard, the
-    /// width and `foldTarget` stand as they were and nothing more is heard; that the run in flight still completes as its own
-    /// (`foldRun` untouched) is read from the code, no row holds it. Total failure prints:
+    /// width and `foldTarget` stand as they were and nothing more is heard; that the travel in flight goes on
+    /// is held by `TheFoldIsDrivenByTheLinksOwnClockTests.testAWidthThatIsNotFiniteHandedToFoldMidWayChangesNothing`. Total failure prints:
     /// "the instrument is dead: <folds> after a flip" / "<case> was travelled to" / "<case> was heard as <folds>" /
     /// "<case> left the width at <w>" / "<case> left a fold target of <t>" / "<case> left the card at <frame>".
     func testAFoldToAWidthThatIsNotFiniteIsRefused() {
@@ -263,5 +264,28 @@ final class TheSidebarsFoldTravelsOnlyOnAPersonsFlipTests: XCTestCase {
             let f = c.shell.card.frame
             XCTAssertTrue(f.minX.isFinite && f.width.isFinite && f.minY.isFinite && f.height.isFinite, "\(name) left the card at \(f)")
         }
+    }
+
+    // MARK: - the width is not handed to AppKit's animation manager
+
+    /// The view offers AppKit's animator nothing to run the sidebar's width with: `defaultAnimation(forKey:)` for
+    /// `sidebarWidth` answers nil. By AppKit's documentation, not run here, a write through `animator()` then
+    /// neither starts an animation of the width nor gives AppKit's animation manager a run of it to stop. The row is
+    /// a ratchet: no code writes the width through `animator()`, and the row goes red if the class ever offers an
+    /// animation for that key. It reads the class's answer and does not run a fold, so it holds what the class
+    /// offers the animator and not what a person sees. The same question is put for the keys
+    /// AppKit animates on any view (`alphaValue`, `frameOrigin`, `frameSize`), and at least one of them must answer
+    /// an animation, so a question that AppKit answers nil for every key cannot pass. Total failure prints: "the
+    /// instrument is dead: the class answered nil for each of <keys>" / "the class offers the animator
+    /// <animation> for sidebarWidth: the width is handed to AppKit's animation manager".
+    func testTheClassOffersAppKitsAnimatorNoAnimationForTheSidebarWidth() {
+        let keys: [NSAnimatablePropertyKey] = ["alphaValue", "frameOrigin", "frameSize"]
+        let answers = keys.map { ($0, ShellContentView.defaultAnimation(forKey: $0)) }
+        let alive = answers.filter { $0.1 != nil }
+        let said = answers.map { "\($0.0) -> \(String(describing: $0.1))" }.joined(separator: "; ")
+        XCTAssertFalse(alive.isEmpty, "the instrument is dead: the class answered nil for each of \(keys): \(said)")
+
+        let offered = ShellContentView.defaultAnimation(forKey: "sidebarWidth")
+        XCTAssertNil(offered, "the class offers the animator \(String(describing: offered)) for sidebarWidth: the width is handed to AppKit's animation manager")
     }
 }

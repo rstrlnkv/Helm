@@ -34,11 +34,13 @@ import HelmUI
 /// `viewDidMoveToWindow`, the window's occlusion notification,
 /// `sidebarWidth`'s setter (every write), `barWasAttached()` and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
-/// **The fold is the width travelling.** `fold(to:animated:)` asks AppKit to run `sidebarWidth` and writes
-/// no frame: besides the width it sets only `foldTarget` and its run counter (`foldRun`), and asks for a layout. AppKit's animator writes the
-/// width while a run lasts, every write asks for a layout, and `layout()` places the card, the bar and the
-/// pane from the width standing then. The rail's placement of the buttons is asked for from the turn of the
-/// flip and given up when the target width is written or the run completes.
+/// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
+/// the fold it was asked for, asks for a layout, starts `foldLink` and then tells `onFold`. The first call of the
+/// link with a finite timestamp only records it; each other one writes `sidebarWidth`, from the time since that
+/// first, or the target itself when the timestamp is not finite, is below the last or reaches the end, and does
+/// nothing else, every write asks for a layout, and `layout()` places the card, the bar and the pane from the
+/// width standing then. The rail's placement of the buttons is asked for
+/// from the turn of the flip and given up when the target width is written, which ends the travel and the link.
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
@@ -52,12 +54,13 @@ final class ShellContentView: NSView {
     /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout, and writing the
     /// width a fold is travelling to ends that fold's claim on the buttons (`foldTarget`).
     ///
-    /// `@objc dynamic` so that `animator()` can run it: AppKit's animator writes it while a fold
-    /// lasts, and `layout()` places everything from the value standing then. `fold(to:animated:)` is the caller that
-    /// asks for a run; every other write is a cut.
+    /// `@objc dynamic` so that a key-value observer sees every write, which is how a row counts the writes of a
+    /// travel: one for each call of the link that moves the width, none for the call that only records the start.
+    /// `layout()` places everything from the value standing. Every write other than the link's moves the width at
+    /// once and ends the travel only when it writes the target or comes through `fold(to:animated:)` as a cut.
     @objc dynamic var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
         didSet {
-            if sidebarWidth == foldTarget { foldTarget = nil }
+            if sidebarWidth == foldTarget { endTravel() }
             needsLayout = true
         }
     }
@@ -72,22 +75,30 @@ final class ShellContentView: NSView {
     /// Whether the system's Reduce Motion is on, asked when a fold would travel; a test hands in its own answer.
     var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
 
-    /// Told each fold the view asks AppKit for, never a cut.
+    /// The fold's source of frames; a test hands in its own and ticks it by hand, before the first fold.
+    var foldLink: any FoldLink = DisplayFoldLink()
+
+    /// Told each fold the view starts a travel for, never a cut, after the link is started: a listener that cuts
+    /// inside its call stops the link it finds running. Rows listen; nothing in the app does.
     var onFold: (Fold) -> Void = { _ in }
+
+    /// A fold in flight: what it was asked for and the link's timestamps. `start` is the timestamp of the first
+    /// call of the link after the flip and `last` the latest one that moved the width; both are nil until that
+    /// first call, which only records them.
+    private struct Travel {
+        let fold: Fold
+        var start: CFTimeInterval?
+        var last: CFTimeInterval?
+    }
+
+    private var travel: Travel?
 
     /// The width a fold in flight is travelling to, nil when none is. While it is set the buttons keep
     /// the rail's placement (`layout()`). It is cleared by the write of the target itself (`sidebarWidth`),
-    /// by a cut (`fold(to:animated:)`), by the run's completion when it is still that run's (`foldRun`),
-    /// and by the view's move to another window (`viewDidMoveToWindow`), which finishes the fold.
+    /// by a cut (`fold(to:animated:)`), and by the view's move to another window (`viewDidMoveToWindow`),
+    /// which finishes the fold; each of them ends the travel and stops the link.
     /// If none of them came, the buttons would stay in the rail's placement at an expanded width.
-    private(set) var foldTarget: CGFloat?
-
-    /// Counts the runs and cuts, so a completion that arrives after a later one is ignored.
-    private var foldRun = 0
-
-    override class func defaultAnimation(forKey key: NSAnimatablePropertyKey) -> Any? {
-        key == "sidebarWidth" ? CABasicAnimation() : super.defaultAnimation(forKey: key)
-    }
+    var foldTarget: CGFloat? { travel?.fold.to }
 
     /// Carries the fill, the radius and the shadow; never masks.
     let card = NSView()
@@ -264,41 +275,55 @@ final class ShellContentView: NSView {
 
     // MARK: - the fold
 
-    /// **Brings the sidebar to `width`: one run of the width on `HelmMotion.interfaceCurve` for
+    /// **Brings the sidebar to `width`: one travel of the width along `HelmMotion.interfaceCurve` for
     /// `HelmMotion.sidebarFoldDuration` when `animated`, the width standing is finite and differs from `width`, and
-    /// Reduce Motion is off; a cut otherwise, except a `width` that is not finite, which is refused (below).** Returns whether a run was asked for. It writes no frame:
+    /// Reduce Motion is off; a cut otherwise, except a `width` that is not finite, which is refused (below).** Returns whether a travel was started. It writes no frame:
     /// `layout()` places the card, the sidebar, the bar and the buttons from the width standing, so there
-    /// is one writer of frames. A cut is a plain write and drops the fold's claim (`foldTarget`); no row
-    /// holds that AppKit's run in flight then stops writing. A `width` that is not finite (not-a-number or an infinity) is a caller's
+    /// is one writer of frames. A cut is a plain write, ends a travel in flight and stops its link, so a call
+    /// of the link that is already on its way finds nothing to move. A `width` that is not finite (not-a-number or an infinity) is a caller's
     /// defect and is refused whole (nothing written, nothing heard, false): the stored width never gets
     /// here unclamped. The fold itself and the lights giving way to the capsule are not seen on a screen.
     @discardableResult
     func fold(to width: CGFloat, animated: Bool) -> Bool {
         guard width.isFinite else { return false }
-        foldRun += 1
         guard animated, sidebarWidth.isFinite, sidebarWidth != width,
               HelmMotion.travels(reduceMotion: reducesMotion()) else {
-            foldTarget = nil
+            endTravel()
             sidebarWidth = width
             return false
         }
-        let run = foldRun
         let fold = Fold(from: sidebarWidth, to: width, duration: HelmMotion.sidebarFoldDuration)
-        foldTarget = width
+        travel = Travel(fold: fold)
         needsLayout = true
+        foldLink.start(on: self) { [weak self] timestamp in self?.tick(timestamp) }
         onFold(fold)
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = fold.duration
-            context.timingFunction = HelmMotion.interfaceCurve
-            animator().sidebarWidth = width
-        }, completionHandler: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.foldRun == run else { return }
-                self.foldTarget = nil
-                self.needsLayout = true
-            }
-        })
         return true
+    }
+
+    /// Clears the travel in flight, if any, and stops the link. A second fold in flight replaces the travel in
+    /// `fold(to:animated:)`, and the link's `start` stops the earlier calls.
+    private func endTravel() {
+        travel = nil
+        foldLink.stop()
+    }
+
+    /// One call of the link: a plain write of `sidebarWidth` and nothing else. The first call only records
+    /// where the clock stands, so the progress is measured from the link's own first timestamp and never from
+    /// a time read before the link ran. A timestamp that is not finite, one below the last, and one that
+    /// carries the time to the end of the fold land on the target by one write, which ends the travel.
+    private func tick(_ timestamp: CFTimeInterval) {
+        guard let travel else { return }
+        let fold = travel.fold
+        guard timestamp.isFinite else { sidebarWidth = fold.to; return }
+        guard let start = travel.start, let last = travel.last else {
+            self.travel?.start = timestamp
+            self.travel?.last = timestamp
+            return
+        }
+        let fraction = (timestamp - start) / fold.duration
+        guard timestamp >= last, fraction < 1 else { sidebarWidth = fold.to; return }
+        self.travel?.last = timestamp
+        sidebarWidth = fold.from + (fold.to - fold.from) * CGFloat(HelmMotion.interfaceProgress(at: fraction))
     }
 
     // MARK: - layout

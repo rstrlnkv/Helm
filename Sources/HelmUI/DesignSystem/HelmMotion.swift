@@ -59,20 +59,53 @@ public enum HelmMotion {
     /// as a snappy spring does. Its length is `interfaceDuration` where the caller runs for that long;
     /// the sidebar's fold runs this curve for `sidebarFoldDuration`, as its SwiftUI half, `sidebarFold`,
     /// is a snappy spring given the same duration. A caller using this is responsible for its own
-    /// `reduceMotion` branch, as with the duration.
+    /// `reduceMotion` branch, as with the duration. A caller that drives a value by its own clock
+    /// reads the curve at a fraction through `interfaceProgress(at:)`.
     public static var interfaceCurve: CAMediaTimingFunction {
         CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
     }
 
+    /// How far `interfaceCurve` has come at `fraction` of its length, 0 to 1: the curve's y where its x is
+    /// `fraction`. The control points are read back from `interfaceCurve` itself, so there is no second copy
+    /// of them; the parameter is found by bisection. A `fraction` below 0 reads 0 and one above 1 reads 1, as
+    /// do the infinities; not-a-number reads 1, so a travel that does not know where it is ends at its target.
+    /// Whether a caller may travel at all is `travels(reduceMotion:)`, which this does not ask.
+    public static func interfaceProgress(at fraction: Double) -> Double {
+        guard !fraction.isNaN else { return 1 }
+        guard fraction > 0 else { return 0 }
+        guard fraction < 1 else { return 1 }
+        let c = interfaceControlPoints
+        func bezier(_ t: Double, _ a: Double, _ b: Double) -> Double {
+            let u = 1 - t
+            return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t
+        }
+        var low = 0.0
+        var high = 1.0
+        for _ in 0..<40 {
+            let mid = (low + high) / 2
+            if bezier(mid, c.x1, c.x2) < fraction { low = mid } else { high = mid }
+        }
+        return bezier((low + high) / 2, c.y1, c.y2)
+    }
+
+    /// `interfaceCurve`'s two inner control points, read once through `getControlPoint(at:values:)`.
+    private static let interfaceControlPoints: (x1: Double, y1: Double, x2: Double, y2: Double) = {
+        var first: [Float] = [0, 0]
+        var second: [Float] = [0, 0]
+        interfaceCurve.getControlPoint(at: 1, values: &first)
+        interfaceCurve.getControlPoint(at: 2, values: &second)
+        return (Double(first[0]), Double(first[1]), Double(second[0]), Double(second[1]))
+    }()
+
     /// The sidebar folding to the rail and unfolding again: the rows' half of the move, written inside
-    /// `withAnimation` where the fold flag lands. The width itself is AppKit's and runs for
-    /// `sidebarFoldDuration` on `interfaceCurve`; the shell asks for this token only when it asked for
+    /// `withAnimation` where the fold flag lands. The width itself is driven by the shell's own clock
+    /// along `interfaceCurve` for `sidebarFoldDuration`; the shell asks for this token only when it starts
     /// that, which is only when `travels` allows it, so both are asked for in the same turn and given the same duration.
     public static var sidebarFold: Animation {
         reduced ? instant : .snappy(duration: sidebarFoldDuration)
     }
 
-    /// `sidebarFold`'s duration alone, in seconds, for the width that AppKit animates. A caller using
+    /// `sidebarFold`'s duration alone, in seconds, for the width the shell drives. A caller using
     /// this is responsible for its own `reduceMotion` branch, as with `interfaceDuration`.
     public static var sidebarFoldDuration: TimeInterval { 0.26 }
 

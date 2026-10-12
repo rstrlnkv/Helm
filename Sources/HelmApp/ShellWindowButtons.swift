@@ -20,7 +20,8 @@ import HelmUI
 /// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens. The bar
 /// is also handed `reach`, the hover zone, and opens no menu inside it.
 /// While the sidebar's width travels to a fold, `ShellContentView` asks for the rail's placement from the turn of the
-/// flip until the target width is written or the run completes, in both directions, so the placement changes once, at the run's start or its end.
+/// flip until the target width is written, or a cut or the view's move to another window ends the travel, in both
+/// directions, so the placement changes once, at the travel's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
 /// Measured in a window never shown, under the toolbar the window the app builds wears
