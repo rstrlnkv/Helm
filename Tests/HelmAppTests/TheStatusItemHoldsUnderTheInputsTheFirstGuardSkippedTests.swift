@@ -402,6 +402,7 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     // MARK: - 4. What only the source can say
 
     private static let toolbarFile = "Sources/HelmApp/SettingsToolbar.swift"
+    private static let zonesFile = "Sources/HelmApp/ShellBarZones.swift"
 
     private func body(of marker: String, until end: String, in file: String) throws -> Substring {
         let source = SwiftSource.uncommented(try RepoSource.text(of: file))
@@ -421,6 +422,26 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
         XCTAssertFalse(maker.contains("visibilityPriority"), """
             makeStatusItem sets a visibility priority on helm.status — the owner's rule is that \
             nothing on this bar is ever offered to the overflow menu
+            """)
+    }
+
+    /// **The empty status view's accessibility gate, held where it is
+    /// written.** On the shared name-only bar the status item stays mounted
+    /// on a page with no status, and its hosted view then has no content. An
+    /// offscreen `NSHostingView` in a test process answers
+    /// `accessibilityChildren()` with nothing (`HelmAccordionTests`'
+    /// `testTheClipCannotShipWithoutTheGate` records that measurement, on
+    /// another view), so this row reads the source and not an accessibility
+    /// tree: the gate is in `StatusZoneView`'s own body, keyed on
+    /// `status == nil`. What VoiceOver reads of the item in a shown window is
+    /// not read here.
+    func testTheStatusViewsBodyCarriesItsEmptyStatusAccessibilityGate() throws {
+        let view = try body(of: "struct StatusZoneView: View", until: "\n}\n", in: Self.zonesFile)
+        XCTAssertTrue(view.contains("var body: some View"), "the scan did not land in StatusZoneView's body: it read \(view.count) characters")
+        XCTAssertTrue(view.contains(".accessibilityHidden(status == nil)"), """
+            StatusZoneView's body does not carry .accessibilityHidden(status == nil) — on the shared \
+            name-only bar the status item stays mounted on a page with no status, and nothing else \
+            marks its empty content hidden from accessibility
             """)
     }
 

@@ -1529,20 +1529,23 @@ import HelmUI
     }
 
     /// **The trailing status item on the shared name-only bar** — the owner,
-    /// 2026-09-28: «Давай вернем его в правую часть». Always present in that
-    /// bar's own identifier list (`identifiers()`'s own header), whether or
-    /// not the page on screen right now has a status at all, so a page
-    /// switch among the pages that declare no toolbar content —
+    /// 2026-09-28: «Давай вернем его в правую часть». Present in that bar's
+    /// own identifier list under the module-name style (`identifiers()`'s own
+    /// header), whether or not the page on screen right now has a status at
+    /// all, so a page switch among the pages that declare no toolbar content —
     /// which all share this one cached bar — never rewrites `itemIdentifiers`
-    /// (this class's own header on why that churns). **Empty and out of
-    /// VoiceOver when there is nothing to say** — `StatusZoneView`'s own
-    /// `accessibilityHidden(status == nil)` — rather than `NSToolbarItem
-    /// .isHidden`: an item this bar's own `identifiers()` always lists but
-    /// sometimes hides would need `watchedItems`/`checkOverflow`'s fold
-    /// machinery to know to ignore it, and that machinery already skips the
-    /// name-only bar entirely (`checkOverflow`'s own `key != Self.nameOnlyKey`
-    /// guard) — an item that occasionally reported `isHidden` would be the
-    /// one case nothing here is built to read.
+    /// (this class's own header on why that churns). **Empty when there is
+    /// nothing to say, its content marked hidden from accessibility** —
+    /// `StatusZoneView`'s own `accessibilityHidden(status == nil)`
+    /// (`StatusZoneView`'s header says what that modifier is on). Nothing in
+    /// this file writes `NSToolbarItem.isHidden` (`watchedItemsAllVisible`'s
+    /// own header), and nothing in it reads this item's: the status item is
+    /// not among `watchedItems`, and `checkOverflow` returns before it reads
+    /// any item of the name-only bar (its own `key != Self.nameOnlyKey`
+    /// guard). The item is empty on the page of a module that declares no
+    /// toolbar content and answers no `ModuleDescriptor.activity` (Autopilot,
+    /// Disk and Duplicates); General, About and Log declare tabs, so their
+    /// bars do not list it.
     private func makeStatusItem(_ bar: PageBar) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.statusID)
         let identity = pageIdentity()

@@ -144,6 +144,15 @@ struct NameZoneView: View {
 /// from the bar's edge, 8 pt: it is 36 pt tall in a 52 pt bar, so its top gap
 /// is that 8 already, and only this view is shorter than the bar by enough to
 /// matter.
+///
+/// **A nil status is passed, and the body marks it hidden from accessibility** —
+/// `SettingsToolbar` makes this view for the shared name-only bar's status
+/// item (`makeStatusItem`) and re-roots it with the status of the page on
+/// screen (`patchName`): nil wherever `pageIdentity()` has none, and then it
+/// draws nothing. `ShellPageBar` mounts it only with a status.
+/// `accessibilityHidden(status == nil)` is on what this body draws; nothing
+/// in `SettingsToolbar` sets accessibility on the hosting view or on the
+/// item, whose `label` is then empty.
 struct StatusZoneView: View {
     let status: (word: String, active: Bool)?
     let appearsActive: Bool
@@ -172,6 +181,7 @@ struct StatusZoneView: View {
         .padding(.trailing, trailingInset)
         .compositingGroup()
         .opacity(appearsActive ? 1 : inactiveOpacity)
+        .accessibilityHidden(status == nil)
     }
 }
 
