@@ -7,7 +7,7 @@ import XCTest
 
 /// **The owner's report (2026-09-27): "the glyph on the Refresh button is very
 /// small."** Every glyph in `HelmToolbarActionsCapsule` is a SwiftUI `Label`
-/// hosted in the zone's own `NSHostingView`, and with no font of its own it
+/// hosted in the item's own `NSHostingView`, and with no font of its own it
 /// took that view's default — body type — where AppKit draws the symbol of a
 /// live toolbar button, a bordered item with a target and an action as
 /// Refresh is, larger.
@@ -15,9 +15,10 @@ import XCTest
 /// **The reference is AppKit's own drawing, read fresh every run, never a
 /// number this file remembers.** A bare `NSToolbar` holding one bordered
 /// `NSToolbarItem` with a target and an action whose image is the same
-/// symbol, and the ink box of the `NSToolbarButton` AppKit draws for
-/// it, against the ink box of the capsule's own glyph in the actions zone of a real
-/// page bar in a window (`LivePageToolbarFixture`).
+/// symbol — the shape `BareToolbarEdgeProbeDelegate` already uses for the
+/// edge margin — and the ink box of the `NSToolbarButton` AppKit draws for
+/// it, against the ink box of the capsule's own glyph on a real, attached
+/// `SettingsToolbar`.
 ///
 /// **It has to be a live button.** An item with no action is drawn through
 /// `NSToolbarImageView` instead, greyed as disabled and larger; this file
@@ -44,30 +45,31 @@ import XCTest
 /// **Every kind that draws through the shared glyph**, button, toggle and
 /// menu, each against AppKit's own drawing of the same symbol; `.segmented` is
 /// AppKit's own `NSSegmentedControl` and draws its glyphs itself.
+///
+/// **The bar.** The capsule is read off a `SettingsToolbar` built with the
+/// default lead `.sidebarSeparator` on a bare `NSWindow`
+/// (`LivePageInTheToolbarFixture`), not the `lead: .spacer` bar the app's window
+/// builds, through `ActionsCapsuleReading`: the item hosts the capsule under the
+/// look's environment writes, so its view is no
+/// `NSHostingView<HelmToolbarActionsCapsule>`. **The look** is read when the bar
+/// is built (`AppSettings.barAppearance`); `setUp` pins the settings
+/// (`PinnedBarSettings`) and each reading stores its look before the bar is
+/// built and asserts from the item's root that the look reached it
+/// (`ActionsCapsuleReading.looks(in:)`). The row runs under both looks. Measured
+/// (2026-10-13, run alone, a window nobody shows, Light and Dark): under Liquid
+/// Glass and under Flat alike the capsule's ink for Refresh, Plain text and
+/// Filter is 14.5 × 17.5, 16.5 × 14.5 and 17.0 × 17.0 pt, AppKit's to the
+/// point, at 0.998 to 1.001 of its weight; the dated figures above were read
+/// under Liquid Glass.
 @MainActor
 final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
 
-    private var savedCollapse: Any?
-    private var savedPageBar: Any?
-    private var savedBarAppearance: Any?
-
-    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
-    override func setUp() {
-        super.setUp()
-        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
-        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
-        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
-        AppSettings.pageBarStyle = .windowTitle
-        AppSettings.barAppearance = .flat
-        AppSettings.alwaysCollapseSearch = false
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
-    override func tearDown() {
-        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
-        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
-        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
-        super.tearDown()
-    }
+    private let looks: [HelmBarAppearance] = [.liquidGlass, .flat]
 
     /// One glyph's ink: where it lies and how much stroke it holds — `ink(_:slot:)`.
     private struct Ink { let box: NSRect; let weight: CGFloat }
@@ -158,8 +160,8 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
     }
 
     /// The three kinds that draw through `HelmToolbarActionsCapsule`'s shared
-    /// glyph, declared through the real channel so the bar's actions zone builds them
-    /// (`ShellBarActions.entries(for:appearance:)`) — one symbol each, so each slot is
+    /// glyph, declared through the real channel so `SettingsToolbar
+    /// .actionEntries(for:)` builds them — one symbol each, so each slot is
     /// compared against AppKit's own drawing of that same symbol.
     private static let declared: [(symbol: String, action: HelmToolbarAction)] = [
         ("arrow.clockwise", HelmToolbarAction(id: "refresh", title: "Refresh", symbol: "arrow.clockwise") {}),
@@ -173,18 +175,22 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
 
     /// Our ink per declared slot, in the capsule's own points: the entries sit
     /// left to right at `HelmToolbarActionsCapsule.side` apiece.
-    private func oursInk(appearance: NSAppearance.Name) throws -> [Ink] {
-        let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.glyphs"),
-                                        width: 1060, height: 700, appearance: appearance)
+    private func oursInk(appearance: NSAppearance.Name, look: HelmBarAppearance) throws -> [Ink] {
+        AppSettings.barAppearance = look
+        let fx = LivePageInTheToolbarFixture(Color.clear, selection: .module("test.glyphs"),
+                                             width: 1060, height: 700, appearance: appearance)
         defer { fx.drop() }
         fx.channel.declare(HelmPageToolbarContent(actions: Self.declared.map(\.action)),
                            token: "test.glyphs", generation: fx.channel.nextGeneration())
         fx.settle(30)
-        // Found from the window, and held to be the fixture's own zone.
-        let found = fx.mount.window?.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first
-        let capsule = try XCTUnwrap(found?.view(for: .actions), "the bar in the window holds no actions zone")
-        XCTAssertTrue(capsule === fx.pageBar.actions.view, "the actions view in the window is not the fixture's")
-        XCTAssertEqual(fx.pageBar.actions.model.visibleIDs, Self.declared.map(\.action.id),
+        let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
+        let read = try ActionsCapsuleReading.read(toolbar, context: "\(look) \(appearance.rawValue)")
+        let capsule = read.host
+        XCTAssertEqual(ActionsCapsuleReading.looks(in: capsule), [look], """
+            \(look) \(appearance.rawValue): precondition — the capsule's root carries \
+            \(ActionsCapsuleReading.looks(in: capsule)), not the look the bar was built under
+            """)
+        XCTAssertEqual(read.capsule.model.visibleIDs, Self.declared.map(\.action.id),
                        "not every declared kind is on the capsule — a slot would read a neighbour's glyph")
         let side = HelmToolbarActionsCapsule.side
         return try Self.declared.indices.map { index in
@@ -195,36 +201,41 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
     }
 
     func testEveryCapsuleGlyphDrawsAtTheSizeAndWeightOfALiveToolbarButtonsGlyph() throws {
+        for look in looks {
         for appearance: NSAppearance.Name in [.aqua, .darkAqua] {
-            let ours = try oursInk(appearance: appearance)
+            let ours = try oursInk(appearance: appearance, look: look)
             for (index, entry) in Self.declared.enumerated() {
                 let reference = try appKitsInk(entry.symbol, appearance: appearance)
                 let id = entry.action.id
                 let mine = ours[index]
+                print("[glyph ink] \(look) \(appearance.rawValue) \(id): ours \(mine.box.width) x \(mine.box.height) pt, "
+                      + "AppKit's \(reference.box.width) x \(reference.box.height) pt, weight ratio \(mine.weight / reference.weight)")
                 XCTAssertEqual(mine.box.width, reference.box.width, accuracy: 0.5, """
-                    \(appearance.rawValue): \(id)'s ink is \(mine.box.width) pt wide, AppKit's own \
+                    \(look) \(appearance.rawValue): \(id)'s ink is \(mine.box.width) pt wide, AppKit's own \
                     live toolbar button draws \(entry.symbol) \(reference.box.width) pt wide \
                     (ours \(mine.box), AppKit's \(reference.box))
                     """)
                 XCTAssertEqual(mine.box.height, reference.box.height, accuracy: 0.5, """
-                    \(appearance.rawValue): \(id)'s ink is \(mine.box.height) pt tall, AppKit's own \
+                    \(look) \(appearance.rawValue): \(id)'s ink is \(mine.box.height) pt tall, AppKit's own \
                     live toolbar button draws \(entry.symbol) \(reference.box.height) pt tall \
                     (ours \(mine.box), AppKit's \(reference.box))
                     """)
                 // Half-way to the nearest wrong weight on either side — see
                 // this file's header for the readings.
                 XCTAssertEqual(mine.weight / reference.weight, 1, accuracy: 0.05, """
-                    \(appearance.rawValue): \(id)'s stroke weighs \(mine.weight / reference.weight) of \
+                    \(look) \(appearance.rawValue): \(id)'s stroke weighs \(mine.weight / reference.weight) of \
                     the one AppKit's own live toolbar button draws for \(entry.symbol) \
                     (ours \(mine.weight) pt², AppKit's \(reference.weight) pt²) — another font \
                     weight, or another size the box assertions above name
                     """)
             }
         }
+        }
     }
 }
 
-/// One bordered image item with a target and an action, nothing else, so
+/// One bordered image item with a target and an action, nothing else —
+/// `BareToolbarEdgeProbeDelegate`'s shape with an image instead of a view, so
 /// AppKit draws the glyph itself, and draws it the way it draws a button a
 /// person can press. The action is the point: without it AppKit draws the
 /// same item through `NSToolbarImageView`, greyed as disabled and larger.

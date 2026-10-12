@@ -15,8 +15,8 @@ import XCTest
 /// `SettingsToolbar` builds the `NSSearchToolbarItem` itself and re-patches its accessibility label on every
 /// refresh. The states worth proving are: empty, holding a value, forced under AppKit's own collapse floor,
 /// and a page change, there and back. A language change is not read here:
-/// `TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests` reads it on the page bar's field
-/// (`MountedPageBar`), and no row reads it on this toolbar's.
+/// `TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests` reads it on this toolbar's field,
+/// on a bare window.
 @MainActor
 final class TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests: XCTestCase {
 

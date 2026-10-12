@@ -36,9 +36,9 @@ import XCTest
 /// Written as a repro (tester, 2026-09-25) against the tree before that
 /// margin existed. The reserve is measured on the switcher alone, in
 /// `SwitcherMeasurementRig`'s toolbar item; the capsule draws it inside its
-/// `GlassEffectContainer`. For two, three and four options the family
-/// `ASegmentedEntrysReserveIsWhatItDrawsTests` holds the reserve equal to the
-/// control's frame within half a point; for one they did not agree. Measured
+/// `GlassEffectContainer`. For two, three and four options, on a fresh bar,
+/// the family `ASegmentedEntrysReserveIsWhatItDrawsTests` holds the reserve
+/// equal to the control's frame within half a point; for one they did not agree. Measured
 /// then on this Mac: `keyboard` reserved 37.0 pt and drawn 40.0,
 /// `rectangle.3.group` 39.0 against 42.0, `tablecells` 36.0 against 38.5 —
 /// and a button beside it that hides shrank the capsule by the difference

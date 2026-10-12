@@ -3485,7 +3485,7 @@ import HelmUI
     /// `AOneOptionSegmentedEntrysReserveCoversItTests` measured the gap on
     /// this Mac at 3.0 pt for `keyboard`, 3.0 pt for `rectangle.3.group` and
     /// 2.5 pt for `tablecells`, against a rig reading of 36.0–39.0 pt. Two
-    /// options or more do not show this gap
+    /// options or more do not show this gap on a fresh bar
     /// (`ASegmentedEntrysReserveIsWhatItDrawsTests`,
     /// `ASegmentedEntrysReserveCoversItsOwnGlyphsTests` hold that case to the
     /// point already), so the margin is added only when `options.count == 1`,

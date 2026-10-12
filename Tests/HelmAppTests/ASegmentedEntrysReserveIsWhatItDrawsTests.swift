@@ -6,8 +6,8 @@ import XCTest
 @testable import HelmUI
 
 /// **A `.segmented` entry reserves what its switcher draws — no less, and no
-/// more — and a page that declares other glyphs on the same bar is measured
-/// again.**
+/// more — under Flat, and on a fresh bar under Liquid Glass; and a page that
+/// declares other glyphs on the same bar is measured again.**
 ///
 /// `ASegmentedEntrysReserveCoversItsOwnGlyphsTests` bounds the reserve from
 /// below only (`reserve + 0.5 >= drawn`), so a reserve measured in the wrong
@@ -41,9 +41,12 @@ import XCTest
 /// with each reading.
 ///
 /// **What "drawn" is in a row:** the frame width of the switcher's control on
-/// the bar as it was built, or as the page re-declared it. Each `[reserve]`
+/// the bar as it was built or as the page re-declared it. Under Liquid Glass
+/// the second row does not compare the reserve with the re-declared control's
+/// frame but with the frame of a switcher on a fresh bar (see its own doc). Each `[reserve]`
 /// line prints beside it the control's own `intrinsicContentSize.width`, the
-/// cell's own size, which no row asserts. Under Flat the two agree on every
+/// cell's own size, which no row asserts. In a window never ordered front,
+/// under Flat the two agree on every
 /// reading (90.0, 94.0, 94.0, 94.0, 140.0 and 186.0 pt for the six sets
 /// below). Under AppKit's cell a fresh control's frame reads 73.0, 73.0, 73.0,
 /// 74.0, 108.0 and 144.0 pt for them where the cell's own size reads 73.0,
@@ -113,7 +116,9 @@ final class ASegmentedEntrysReserveIsWhatItDrawsTests: XCTestCase {
                                       "\(context): no viewMode entry declared")
             let reserve = read.capsule.reserveWidth(entry)
             print("[reserve] \(context): reserve \(reserve) pt, drawn \(control.frame.width) pt, "
-                  + "intrinsic \(control.intrinsicContentSize.width) pt, cell \(type(of: cell))")
+                  + "intrinsic \(control.intrinsicContentSize.width) pt, cell size \(cell.cellSize.width) pt, "
+                  + "host frame \(read.host.frame.width) pt, host fitting \(read.host.fittingSize.width) pt, "
+                  + "cell \(type(of: cell))")
             return (reserve, control.frame.width, control.segmentCount)
         }
     }
@@ -159,23 +164,89 @@ final class ASegmentedEntrysReserveIsWhatItDrawsTests: XCTestCase {
         }
     }
 
+    /// The frame width of the switcher on a bar built fresh and declared once with `glyphs`:
+    /// what a first layout draws for them, with no earlier declaration behind it.
+    private func freshDrawn(_ glyphs: [String], look: HelmBarAppearance) throws -> CGFloat {
+        let bar = mountBar("test.reserveRedeclaredFresh", look: look)
+        bar.declare(glyphs)
+        let drawn = try bar.reading("\(look) fresh " + glyphs.joined(separator: " / ")).drawn
+        bar.window.toolbar = nil
+        _ = bar.toolbar
+        return drawn
+    }
+
+    /// **A page that re-declares its glyphs on the same bar gets the reserve of the new glyphs, not
+    /// the one measured for the old.**
+    ///
+    /// Under Flat the row asks for the strong thing: the reserve equals the width the re-declared
+    /// switcher draws. Under Liquid Glass it asks that the reserve equal the frame of a fresh bar's
+    /// switcher with the same glyphs, and no more, because an unshown window cannot hold more.
+    ///
+    /// Measured (2026-10-13, Liquid Glass, a window never ordered front): under AppKit's cell a
+    /// switcher on a fresh bar draws at the width of its first layout, 74.0 pt for
+    /// `rectangle.3.group` / `keyboard` and 144.0 pt for the four-option set, while its own
+    /// `intrinsicContentSize` and cell size read 85.0 and 162.0, and the reserve is that
+    /// first-layout width (74.0 and 144.0). The same control after the page re-declared it is
+    /// refilled, which invalidates its intrinsic size, and draws at the cell's size: 85.0 and
+    /// 162.0 pt, with the reserve still 74.0 and 144.0 and the capsule host's frame still 113.0 pt
+    /// where its fitting width reads 125.0 and 202.0. The reserve is therefore 11 and 18 pt short
+    /// of the re-declared control in that window, and no row here asserts that gap or its absence.
+    /// The `[reserve]` lines print all of these figures at every reading (the reserve, the
+    /// control's frame, intrinsic size and cell size, the host's frame and fitting width); that a
+    /// second layout and a 0.3 s run-loop turn change nothing was a scratch reading that no row
+    /// repeats.
+    ///
+    /// Read by hand on 2026-10-12, in the real window, shown and not key, under Liquid Glass, on
+    /// Hosts' second tab at its first show, before any page had re-declared its glyphs: the
+    /// `helm.actions` item 113.0 pt wide, its segmented control 77.5 pt with an intrinsic width of
+    /// 77.5. That is the cell's own size, which the unshown window's first layout does not reach
+    /// for the same kind of pair (73.0 there). That reading says nothing about a shown window
+    /// after a re-declaration, nor about the capsule's reserve for the entry in a shown window.
+    ///
+    /// So under Liquid Glass the reserve is compared with the frame of a switcher on a fresh bar
+    /// declared with the same glyphs (74.0 and 144.0 pt in the unshown window), which no cache of
+    /// the reserve can supply. A reserve left over from the earlier declaration (the cache not keyed
+    /// on the glyphs) is the first set's value for every later one (73.0 with the cache keyed on the
+    /// look alone), and it differs from the fresh width at both steps: the pair (74.0, a difference
+    /// of 1.0 against the half point allowed) and the four-option set (144.0).
     func testARedeclaredSetOfGlyphsIsMeasuredAfresh() throws {
         PinnedBarSettings.pin(in: self)
+        let sets: [[String]] = [["minus", "ellipsis"], ["rectangle.3.group", "keyboard"], ["minus", "ellipsis"],
+                                ["rectangle.3.group", "keyboard", "rectangle.split.3x1", "tablecells"]]
         for look in Self.looks {
+            let fresh = look == .liquidGlass ? try sets.map { try freshDrawn($0, look: look) } : []
+            if look == .liquidGlass {
+                XCTAssertGreaterThan(fresh[1] - fresh[0], 0.5, """
+                    precondition: fresh bars draw the two pairs at \(fresh[0]) and \(fresh[1]) pt under \(look) \
+                    — a reserve left over from the first pair cannot be told from the second's
+                    """)
+                XCTAssertGreaterThan(fresh[3] - fresh[2], 4, """
+                    precondition: fresh bars draw the pair and the four-option set at \(fresh[2]) and \(fresh[3]) pt \
+                    under \(look) — a reserve left over from the pair cannot be told from the four-option set's
+                    """)
+            }
             let bar = mountBar("test.reserveRedeclared", look: look)
             var readings: [(reserve: CGFloat, drawn: CGFloat, count: Int)] = []
             // Narrow, wide, narrow again — each declare on the same attached bar.
-            for glyphs in [["minus", "ellipsis"], ["rectangle.3.group", "keyboard"], ["minus", "ellipsis"],
-                           ["rectangle.3.group", "keyboard", "rectangle.split.3x1", "tablecells"]] {
+            for (index, glyphs) in sets.enumerated() {
                 let context = "\(look) redeclared " + glyphs.joined(separator: " / ")
                 bar.declare(glyphs)
                 let reading = try bar.reading(context)
                 XCTAssertEqual(reading.count, glyphs.count, "\(context): precondition — the switcher drew other segments")
                 readings.append(reading)
-                XCTAssertEqual(reading.reserve, reading.drawn, accuracy: 0.5, """
-                    \(context): after the page re-declared its options, the entry reserves \(reading.reserve) pt \
-                    and draws \(reading.drawn) pt — the reserve is left over from an earlier declaration
-                    """)
+                switch look {
+                case .flat:
+                    XCTAssertEqual(reading.reserve, reading.drawn, accuracy: 0.5, """
+                        \(context): after the page re-declared its options, the entry reserves \(reading.reserve) pt \
+                        and draws \(reading.drawn) pt — the reserve is left over from an earlier declaration
+                        """)
+                case .liquidGlass:
+                    XCTAssertEqual(reading.reserve, fresh[index], accuracy: 0.5, """
+                        \(context): after the page re-declared its options, the entry reserves \(reading.reserve) pt \
+                        and a switcher on a fresh bar with these glyphs draws \(fresh[index]) pt — the reserve is \
+                        left over from an earlier declaration
+                        """)
+                }
             }
             // The subject: the redeclares really did change what was drawn — a pair after a pair at all,
             // the four-option set after a pair by more than 4.

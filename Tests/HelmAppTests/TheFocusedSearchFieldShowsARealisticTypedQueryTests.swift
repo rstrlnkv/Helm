@@ -8,9 +8,13 @@ import XCTest
 /// **The one assertion ported from `TheSearchFieldRestsNarrowerAndWidensOnFocusTests`
 /// before that file was deleted along with `ToolbarSearchName`** — every other
 /// case in it measured `ToolbarSearchName.size(_:)`, a method that no longer
-/// exists: the page bar takes the search's widths from `ShellBarLayout`
-/// (`searchWidth`, `searchFloor`, and `magnifierWidth` at rest under
-/// `alwaysCollapseSearch`), so nothing is left of that mechanism to ask about. This one case is different — it is
+/// exists: `SettingsToolbar.makeSearchItem`/`patchSearch` pin no resting width
+/// to a number: the two constraints `makeSearchItem` builds, `searchRestCap`
+/// and `searchOfferCap`, are ceilings, the first switched on by `restSearch(_:)`
+/// only while Always Collapse Search is on and the second by
+/// `writeSearchOffer(_:tabsWidth:)` only on a bar with a tabs lead, and neither
+/// is on in the bar this file builds, so "does it still pin a number" has
+/// nothing left in this mechanism to ask. This one case is different — it is
 /// a claim about what a person can read once focused, not about the pinning
 /// mechanism — and is worth keeping on its own.
 ///
@@ -20,33 +24,35 @@ import XCTest
 /// than against the prompt it replaces, since a value carries a cancel button
 /// a placeholder never draws.
 ///
-/// **The field starts as its magnifier.** With `alwaysCollapseSearch` on, the zone rests as a
-/// magnifier `ShellBarLayout.magnifierWidth` wide and a press on it opens the field and focuses it, so
-/// the width read is the one the bar gave the field after that press, from the real bar the
-/// `LivePageToolbarFixture` put in the window. The field's own width, not the plate's.
+/// **The field is the toolbar's.** The width is read off the field of the
+/// `NSSearchToolbarItem` on the window's own `NSToolbar`
+/// (`LivePageInTheToolbarFixture.searchField`), which `beginSearchInteraction`
+/// below opens; a page bar's field would answer the same question about a
+/// different control, so the row asserts that the field's delegate is the
+/// `SettingsToolbar` the fixture built.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow`, not the `lead: .spacer` bar the
+/// app's window builds, which caps an idle field (`searchOfferCap`) and is not
+/// read here. **What is pinned.** `setUp` pins through `PinnedBarSettings`:
+/// the Flat look, the words-only label style, the module name in the page bar
+/// and a search that does not always collapse (`alwaysCollapseSearch` off), so
+/// the field this row opens is one that rests at its ordinary width and does
+/// not start folded to a magnifier. The field is AppKit's under both looks and
+/// the row reads one width against a bare field's, so it is not run under
+/// Liquid Glass.
+///
+/// **What the row prints.** One `[focused search]` line: the focused field's
+/// width, the width a bare field needs for the query below, and
+/// `window.isKeyWindow` after the interaction began — the row's evidence on
+/// whether beginning it turned the window key. On 2026-10-13, Flat, it printed
+/// 325.0 pt, 217.5 pt and false.
 @MainActor
 final class TheFocusedSearchFieldShowsARealisticTypedQueryTests: XCTestCase {
 
-    private var savedCollapse: Any?
-    private var savedPageBar: Any?
-    private var savedBarAppearance: Any?
-
-    /// The bar reads these when it is built, so they are pinned before a fixture is and put back after.
-    override func setUp() {
-        super.setUp()
-        savedCollapse = AppSettings.store.object("alwaysCollapseSearch")
-        savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
-        savedBarAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
-        AppSettings.pageBarStyle = .windowTitle
-        AppSettings.barAppearance = .flat
-        AppSettings.alwaysCollapseSearch = true
-    }
-
-    override func tearDown() {
-        AppSettings.store.set(savedCollapse, for: "alwaysCollapseSearch")
-        AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
-        AppSettings.store.set(savedBarAppearance, for: HelmBarAppearance.storageKey)
-        super.tearDown()
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     private struct Page: View {
@@ -70,27 +76,30 @@ final class TheFocusedSearchFieldShowsARealisticTypedQueryTests: XCTestCase {
     }
 
     func testTheFocusedWidthShowsARealisticTypedQuery() throws {
-        let fixture = LivePageToolbarFixture(Page(), selection: .module("test.focusedWidth"),
-                                             width: 900, height: 500)
+        let fixture = LivePageInTheToolbarFixture(Page(), selection: .module("test.focusedWidth"),
+                                                  width: 900, height: 500)
         defer { fixture.drop() }
         fixture.settle(20)
-        let field = try XCTUnwrap(fixture.mount.searchField, "no search field in the bar")
-        let zone = fixture.pageBar.search
-        XCTAssertTrue(field === zone.field, "precondition: the field found in the window is not the zone's")
-        XCTAssertTrue(field.isHidden, "precondition: the empty field is not resting as the magnifier")
-        XCTAssertEqual(zone.plate.frame.width, ShellBarLayout.magnifierWidth,
-                       "precondition: the plate is not the magnifier's width before the press")
-        zone.magnifier.performClick(nil)
+        let field = try XCTUnwrap(fixture.searchField, "no search field in the toolbar")
+        XCTAssertTrue(field.delegate === fixture.toolbar, """
+            the field is not the one the window's SettingsToolbar built for its search item — the \
+            width below would be of another control
+            """)
+        guard let item = fixture.mount.window?.toolbar?.items
+            .compactMap({ $0 as? NSSearchToolbarItem }).first else {
+            XCTFail("no search item in the toolbar")
+            return
+        }
+        item.beginSearchInteraction()
         fixture.settle(20)
-        XCTAssertFalse(field.isHidden, "precondition: the magnifier's press did not open the field")
-        XCTAssertNotNil(field.currentEditor(), "precondition: the opened field never took editing")
 
-        // "Microsoft Remote Desktop": measured, a value carries a cancel
-        // button a placeholder never draws — "Search apps" sizes to 108 pt as
-        // a placeholder against 132 pt typed in, a 24 pt difference that is
-        // exactly that button.
+        // "Microsoft Remote Desktop": a value carries a cancel button a
+        // placeholder never draws, which is why the bare field is sized for the
+        // typed query and not for the prompt.
         let query = "Microsoft Remote Desktop"
         let needed = naturalWidth(typed: query)
+        print("[focused search] field \(field.frame.width) pt, needed \(needed) pt, "
+              + "window key: \(fixture.mount.window?.isKeyWindow ?? false)")
         XCTAssertGreaterThanOrEqual(field.frame.width, needed, """
             the field focused to \(field.frame.width) pt, short of the \(needed) pt a bare \
             `NSSearchField` needs to show «\(query)» typed in with its cancel button — a person \
