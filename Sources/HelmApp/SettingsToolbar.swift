@@ -1344,7 +1344,7 @@ import HelmUI
     /// itself: in that same reference app, the capsule's item moved from the
     /// bar's trailing edge to its middle. Listed with the tabs, a flexible
     /// space between the two, it stays where it was — every page, English
-    /// and Russian, at 1060 and 860 pt in `LivePageToolbarFixture` and at
+    /// and Russian, at 1060 and 860 pt in `LivePageInTheToolbarFixture` and at
     /// the real window's default and narrowest panes in the fold tests'
     /// split rig: the frames of `helm.tabs`, `helm.actions` and
     /// `helm.search` read the same to a tenth of a point before and after
@@ -2820,8 +2820,9 @@ import HelmUI
                          language: AppLanguage.current, style: AppSettings.toolbarSwitcherStyle)
     }
 
-    /// Test-only counters for the two gates below — read only by
-    /// `AnUnfoldIsPredictedNeverTrialledTests`, the same widened-for-testing
+    /// Test-only counters for the two gates below — read by
+    /// `AnUnfoldIsPredictedNeverTrialledTests`, and `gateUnfoldFieldWidths` by
+    /// `AlwaysCollapseSearchFirstPressTests` as well, the same widened-for-testing
     /// precedent `tookMagnifierPress` and `settleInterval` already set in
     /// this file. `gateUnfoldFieldWidths` is the search field's own live
     /// width at the exact moment `settle(_:)` decided to unfold, one entry

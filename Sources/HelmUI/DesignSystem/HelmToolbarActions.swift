@@ -264,7 +264,7 @@ public final class HelmToolbarActionsModel {
 /// `testAFlatCapsuleFirstAttachedInAnInactiveWindowIsNotRebuilt` read the first attach. What its glass
 /// draws after a live transition was not seen on a screen.
 public struct HelmToolbarActionsCapsule: View {
-    private let model: HelmToolbarActionsModel
+    let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
     /// Which glyph-dim constant applies — see `inactiveGlyphOpacity`'s and
     /// `disabledGlyphOpacity`'s own headers.
@@ -277,8 +277,10 @@ public struct HelmToolbarActionsCapsule: View {
     /// cannot be measured (`StatusZoneView.trailingInset(for:barHeight:boxMargin:)`), and what
     /// `StatusZoneView.boxMargin` takes from 8. The number is a reading of AppKit's toolbar, kept
     /// as a number: a custom-view item with `isBordered = false`, last in an `NSToolbar`, ended
-    /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt. No row
-    /// measures that now. The capsule carries an inset of its own only where its caller hands one
+    /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt.
+    /// `BareToolbarEdgeIsolationTests` reads both numbers off a bare `NSToolbar`, and
+    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` holds the capsule that ends Hosts' bar to the 8.
+    /// The capsule carries an inset of its own only where its caller hands one
     /// (`trailingInset`, 0 by default): `ShellBarActions` hands none, `ShellBarLayout.trailing`
     /// being what stands between the bar's last control and the bar's edge there, and
     /// `SettingsToolbar.actionsHost(_:for:)` hands this number where no search follows the capsule.
@@ -627,7 +629,7 @@ public struct HelmToolbarActionsCapsule: View {
     /// `HelmUI` (the `HelmApp` target's `dependencies:` in `host`), and the reverse edge would be a cycle — which is
     /// why the number crosses as plain data on the entry rather than being asked for here.
     @MainActor
-    private func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
+    func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
         Self.reserveWidth(for: entry)
     }
 
