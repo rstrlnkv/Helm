@@ -117,7 +117,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
             try publishKeepAwake(active: true)
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.1))
         }
-        let settings = SettingsWindow(host: ModuleHost.shared, band: band)
+        let settings = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
         owner = settings
         let fields = Mirror(reflecting: settings).children
         let real = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,

@@ -972,4 +972,50 @@ final class TheWindowButtonsStayWhereHelmPutThemTests: XCTestCase {
                            "rail \(rail): a zero lift is not the default")
         }
     }
+
+    /// **The three buttons of the window the app builds, which wears a toolbar, stand where the three of the
+    /// window that wears the page bar and no toolbar stand, expanded and in the rail.** Two real windows of the
+    /// same size, both built by the rig and never ordered: the rig's own construction, and the one that names
+    /// no bar. The toolbar window's strip is read to be taller, so the row cannot pass by comparing a window
+    /// with itself, and the lift is what makes the two agree: AppKit's home under a toolbar is further in.
+    /// That AppKit rewrites the buttons the same way in a shown window, and in a key one, is not stated here.
+    func testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem() throws {
+        guard let bare = SettingsWindowRig.build(
+            in: self, failure: "the window has no content view controller of the shell's type: no button was read")
+        else { return }
+        settle(bare)
+        XCTAssertNil(bare.window.toolbar, "the reference window wears a toolbar: both sides of the comparison would be the toolbar window")
+        let bareStrip = bare.window.contentLayoutRect.height
+        let expandedBare = topLeft(of: bare.window)
+        rail(bare)
+        let railBare = topLeft(of: bare.window)
+        XCTAssertEqual(expandedBare.count, 3, "the reference window has \(expandedBare.count) standard buttons: nothing was compared")
+        XCTAssertEqual(railBare.count, 3, "the reference window has \(railBare.count) standard buttons in the rail: nothing was compared")
+
+        guard let worn = SettingsWindowRig.buildAsTheAppDoes(
+            in: self, failure: "the window has no content view controller of the shell's type: no button was read")
+        else { return }
+        defer { worn.window.toolbar = nil }
+        settle(worn)
+        guard worn.window.toolbar != nil else {
+            XCTFail("no toolbar on the window: its buttons were compared with a window that wears none")
+            return
+        }
+        XCTAssertLessThan(worn.window.contentLayoutRect.height, bareStrip - 10,
+                          "the toolbar did not make the strip taller: both sides of the comparison are the bare window")
+        func compare(_ held: [Int: CGPoint], with home: [Int: CGPoint], _ when: String) {
+            XCTAssertEqual(held.count, 3, "the toolbar window has \(held.count) standard buttons \(when): nothing was compared")
+            for i in 0..<3 {
+                guard let was = home[i], let now = held[i] else {
+                    XCTFail("button \(i) is missing \(when): nothing was compared")
+                    continue
+                }
+                XCTAssertEqual(now.x, was.x, accuracy: 0.5, "button \(i) \(when): left edge \(now.x), the page-bar window's is \(was.x)")
+                XCTAssertEqual(now.y, was.y, accuracy: 0.5, "button \(i) \(when): \(now.y) from the top, the page-bar window's is \(was.y)")
+            }
+        }
+        compare(topLeft(of: worn.window), with: expandedBare, "expanded")
+        rail(worn)
+        compare(topLeft(of: worn.window), with: railBare, "in the rail")
+    }
 }

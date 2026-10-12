@@ -227,7 +227,7 @@ import HelmUI
 
     /// **What the bar's first item is: the sidebar's tracking separator
     /// (`.sidebarSeparator`, the default), or no tracking item at all
-    /// (`.spacer`).** Nothing in `Sources/` constructs `.spacer`; the class's own tests do. `.sidebarSeparator`
+    /// (`.spacer`).** The window the app builds constructs `.spacer` (`SettingsWindow`); `.sidebarSeparator`
     /// is for the test rigs that still mount a split view. A `.spacer` bar starts with the spacer
     /// where the pane leaves room for one (`leadingSpacer`, recomputed by
     /// `leadMoved()`), and where it does not, or before the pane has been told,
@@ -410,7 +410,8 @@ import HelmUI
     private func rebuildActionsHost(_ bar: PageBar) {
         guard let model = bar.actionsModel, let item = bar.actionsItem else { return }
         let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset)
+            .environment(\.helmSwitcherCell, .systems))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
     }
@@ -1325,6 +1326,7 @@ import HelmUI
                                 },
                                 compact: bar.tabsFolded, menu: barMenu)
                 .environment(\.helmSwitcherStyle, AppSettings.toolbarSwitcherStyle)
+                .environment(\.helmSwitcherCell, .systems)
                 // A frozen bar's tabs are disabled through `bar.isInteractive`
                 // rather than through `bar.isLive` — see `HelmTabsSnapshot`'s
                 // own header for why the two must not be conflated — since
@@ -1947,6 +1949,7 @@ import HelmUI
                                 },
                                        compact: false)
             .environment(\.helmSwitcherStyle, style)
+            .environment(\.helmSwitcherCell, .systems)
         return Self.measurementRig.measure(AnyView(view))
     }
 
@@ -3070,6 +3073,7 @@ import HelmUI
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(first.id),
                                        segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
             .environment(\.helmSwitcherStyle, .icons)
+            .environment(\.helmSwitcherCell, .systems)
         var width = measurementRig.measure(AnyView(view))
         if options.count == 1 { width += oneOptionCapsuleMargin }
         width = width.rounded(.up)
@@ -3146,7 +3150,8 @@ import HelmUI
         // edge against Uninstaller's 8.0 pt for `helm.search` at the same
         // width.
         let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset)
+            .environment(\.helmSwitcherCell, .systems))
         hosting.sizingOptions = [.intrinsicContentSize]
         item.view = hosting
         // Not a plain image item any more, so no second AppKit glass behind

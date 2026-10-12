@@ -5,7 +5,7 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **The settings window carries Helm's own page bar and, as built, no `NSToolbar`, and says so at every step
+/// **The settings window's `.pageBar` build carries Helm's own page bar and, as built, no `NSToolbar`, and says so at every step
 /// of a session; the one file that may name a toolbar type is the settings toolbar's.** The real window is built
 /// and never ordered; the fields are read by `Mirror`, so a field renamed or a bar not held fails by name.
 @MainActor

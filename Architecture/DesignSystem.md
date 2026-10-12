@@ -74,6 +74,15 @@ case is retired and never removed. A component's contrast is measured against wh
 actually draws on rather than against the page, and a control is checked for being
 photographable before it is chosen for a surface this house verifies by photograph.
 
+A segmented control wears Helm's flat cell (`HelmFlatSegmentedCell`) unless the environment value
+`helmSwitcherCell` asks for AppKit's `NSSegmentedCell`, and only `SettingsToolbar.swift` asks: on the tabs,
+on the actions capsule and on the switchers it measures them by, so the switcher measured wears the cell the switcher drawn wears.
+A control that wears AppKit's cell outside a toolbar selects with the system's accent colour in a key
+window, which no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`, in that family's stand-in for a key window), so the default
+is flat, and `TheWindowWearsTheToolbarTests.testNothingButTheToolbarsFileAsksForTheSystemsCell` reads the
+sources for any other asker. The cell is chosen when the control is made. That AppKit's cell draws no accent
+inside the window's toolbar is not stated here: no one has seen it in a key window.
+
 ## Motion
 
 `Sources/HelmUI/DesignSystem/HelmMotion.swift` holds the tokens, and they are

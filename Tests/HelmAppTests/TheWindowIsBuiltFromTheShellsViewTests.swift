@@ -7,9 +7,9 @@ import Module_KeepAwake_UI
 @testable import HelmUI
 @testable import HelmApp
 
-/// **The settings window wears the shell: a card beside a column of rows and
-/// Helm's own page bar — not a split view with a section of switched off
-/// modules.** That the window has no toolbar is `TheWindowHasNoToolbarTests`'.
+/// **The settings window wears the shell: a card beside a column of rows — not a split view with a section of
+/// switched off modules — and, in its `.pageBar` build, Helm's own page bar.** That the `.pageBar` build has no
+/// toolbar is `TheWindowHasNoToolbarTests`'; that the window the app builds wears one is `TheWindowWearsTheToolbarTests`'.
 ///
 /// Two kinds of check. The first are readings of the source: the old
 /// construction is gone, the new one is called, and the pieces that other guards

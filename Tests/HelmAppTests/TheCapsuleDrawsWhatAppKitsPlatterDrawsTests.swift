@@ -12,11 +12,10 @@ import XCTest
 /// owner's report: the capsule stayed Liquid Glass while the window was not in focus, where
 /// the centre tabs lost their volume.
 ///
-/// **The subject** is the real `SettingsWindow`, its own `ShellPageBar` reached through
+/// **The subject** is the `.pageBar` build of the real `SettingsWindow`, its own `ShellPageBar` reached through
 /// `Mirror`, and the zones read off the bar's view. **The reference** is a window this file
 /// builds with a real `NSToolbar`: AppKit draws its platter, a stock `NSSegmentedControl`
-/// (one with nothing selected, one with a selected segment) and a visible title in it. The
-/// Settings window has no toolbar, so nothing else in the process says what AppKit draws.
+/// (one with nothing selected, one with a selected segment) and a visible title in it. The subject has no toolbar, so nothing else in these rows says what AppKit draws.
 /// Every state step drives both windows. The glass comparisons and the Flat row first assert that the two windows draw active alike and that AppKit's platter reads the state the step meant; the name-zone rows first assert that AppKit's title reads the state the step meant.
 ///
 /// **Compared under Liquid Glass**, in S1 active and key, S2b another of the app's panels
@@ -266,8 +265,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
 
     /// **The reference: a window of this file's own with a real `NSToolbar`** holding two stock
     /// `NSSegmentedControl` items (one with nothing selected, one with a selected segment), a visible title and no other part of Helm. AppKit draws the
-    /// toolbar's platter and the title in it; the Settings window has no toolbar, so nothing else
-    /// in the process can say what AppKit draws in each state.
+    /// toolbar's platter and the title in it; the subject has no toolbar, so nothing else in these rows can say what AppKit draws in each state.
     @MainActor private final class Reference: NSObject, NSToolbarDelegate {
         static let itemID = NSToolbarItem.Identifier("probe.reference.mode")
         static let selectedItemID = NSToolbarItem.Identifier("probe.reference.selected")
@@ -338,7 +336,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
         /// Mac's own: the title bar it sets is what AppKit's title and the
         /// name zone are both drawn under.
         init(appearance: NSAppearance.Name, band: HelmBandChoice) throws {
-            owner = SettingsWindow(host: ModuleHost.shared, band: band)
+            owner = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
             let fields = Mirror(reflecting: owner).children
             func field<T>(_ name: String, as type: T.Type) throws -> T {
                 try XCTUnwrap(fields.first { $0.label == name }?.value as? T,

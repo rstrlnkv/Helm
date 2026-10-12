@@ -270,7 +270,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         AppSettings.pageBarStyle = pageBar
         for (system, band, expected) in [("macOS 26", HelmBandChoice.onMacOS(26), control.soft),
                                          ("macOS 27", HelmBandChoice.onMacOS(27), control.automatic)] {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: band)
+            let owner = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
             let fields = Mirror(reflecting: owner).children
             let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
                                        "SettingsWindow no longer holds `window` — this case reads it by name")

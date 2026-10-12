@@ -42,8 +42,21 @@ public extension Notification.Name {
     static let helmToolbarSwitcherStyleChanged = Notification.Name("helmToolbarSwitcherStyleChanged")
 }
 
+/// **Which cell a switcher wears.** `flat` is Helm's own (`HelmFlatSegmentedCell`), what a switcher nobody
+/// told otherwise wears under every look; `systems` is AppKit's `NSSegmentedCell`, which draws its own
+/// glass and, outside a toolbar in a key window, the accent in the selected segment. Only `SettingsToolbar`
+/// asks for `systems`, for the switchers of the window's toolbar: a control outside a toolbar that wore it
+/// would show the accent no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`).
+/// What AppKit's cell draws inside the toolbar of a key window is not measured.
+public enum HelmSwitcherCell: Sendable {
+    case flat, systems
+}
+
 public extension EnvironmentValues {
     @Entry var helmSwitcherStyle: ToolbarSwitcherStyle = .text
+    /// Read once, when the control is made (`HelmToolbarSwitcher.dress`): a mounted control keeps the cell
+    /// it was dressed with.
+    @Entry var helmSwitcherCell: HelmSwitcherCell = .flat
 }
 
 /// One segment: the value it selects, its word and its glyph.
@@ -64,20 +77,22 @@ public struct HelmSwitcherSegment<Value: Hashable> {
     }
 }
 
-/// **The switcher in the bar: an `NSSegmentedControl` wearing `HelmFlatSegmentedCell`,
-/// sized to what it shows.**
+/// **The switcher in the bar: an `NSSegmentedControl` sized to what it shows, wearing `HelmFlatSegmentedCell`
+/// unless its environment asks for AppKit's cell.**
 ///
-/// Under both looks the strip is the same: the neutral pill of the flat cell.
-/// The system's own cell was worn under Liquid Glass for a while, for the glass
+/// Under both looks the strip is the same: the neutral pill of the flat cell, unless the environment's
+/// `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does).
+/// The system's own cell is what a switcher in the window's toolbar wears, for the glass
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
-/// segment), and in a key window it selected with the accent colour, which no
-/// segmented control in the bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`). The look changes the plate
-/// under the strip (`HelmBarAppearance`), not the strip; the glass swell is
-/// gone with the system's cell. Whether AppKit still draws any of its own under
-/// the cell was not seen on a screen (the cell's header).
-/// A press slides the pick from the old segment to the new one (`HelmFlatSegmentedCell.slide`); the page
-/// under the bar still changes at once.
+/// segment). Outside a toolbar it selected with the accent colour in a key window, which no
+/// segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`), so every other switcher
+/// wears the flat cell: there the look changes the plate under the strip (`HelmBarAppearance`), not the
+/// strip, and there is no glass swell. Whether AppKit still draws any of its own under
+/// the flat cell was not seen on a screen (the cell's header).
+/// Under the flat cell a press slides the pick from the old segment to the new one
+/// (`HelmFlatSegmentedCell.slide`), and AppKit's cell is not asked to; the page under the bar still changes
+/// at once.
 ///
 /// What the system control had to be told: `segmentDistribution = .fit`, which
 /// is what stops every segment taking the longest word's width — 4 × 122 pt for
@@ -104,14 +119,15 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// the strip into the toolbar's «»» menu the moment it stops fitting
     /// beside an opening search field. One `NSSegmentedControl` instance can carry both forms:
     /// `updateNSView` refills the same control when this flips (`TheSwitcherFoldsToOneSegmentTests`).
-    /// Nothing in `Sources` flips it on a mounted control: `ShellBarTabs` mounts two switchers, one of
-    /// each form, and its plate holds whichever the layout says.
+    /// `SettingsToolbar` flips it on a mounted control (`patchTabs` hands the hosted switcher `PageBar.tabsFolded`);
+    /// `ShellBarTabs` flips nothing: it mounts two switchers, one of each form, and its plate holds whichever the layout says.
     private let compact: Bool
     /// The control's own `NSView.menu` — see this type's own header: the
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
     /// something else (the actions capsule's, the measuring rig's).
     private let menu: NSMenu?
     @Environment(\.helmSwitcherStyle) private var style
+    @Environment(\.helmSwitcherCell) private var cell
     @Environment(\.isEnabled) private var isEnabled
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>],
@@ -147,7 +163,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     public func makeNSView(context: Context) -> NSSegmentedControl {
         let control = NSSegmentedControl()
         context.coordinator.watch(control)
-        Self.dress(control, coordinator: context.coordinator)
+        Self.dress(control, cell: cell, coordinator: context.coordinator)
         Self.fill(control, segments: displaySegments, style: style,
                   selected: displaySelectedIndex, compact: compact)
         context.coordinator.lastStyle = style
@@ -341,12 +357,16 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         nsView.fittingSize
     }
 
-    /// **The place the cell is installed** (`fill` and the coordinator's `picked` reach it through `control.cell`, to end
-    /// and to start a slide). A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
+    /// **The place the cell is installed**, Helm's own or, where the environment asks (`helmSwitcherCell`), AppKit's
+    /// (`fill` and the coordinator's `picked` reach it through `control.cell`, to end and to start a slide, and
+    /// do nothing to a cell that is not Helm's). A cell swap wipes what the control held (measured on a bare control: segment count 0, target nil, size regular),
     /// so the control's settings are written here, after the swap, and `makeNSView` fills the segments after it.
     /// Nobody has seen the flat cell drawn in a window.
-    private static func dress(_ control: NSSegmentedControl, coordinator: Coordinator) {
-        control.cell = HelmFlatSegmentedCell()
+    private static func dress(_ control: NSSegmentedControl, cell: HelmSwitcherCell, coordinator: Coordinator) {
+        switch cell {
+        case .flat: control.cell = HelmFlatSegmentedCell()
+        case .systems: control.cell = NSSegmentedCell()
+        }
         control.segmentStyle = .automatic
         control.segmentDistribution = .fit
         control.trackingMode = .selectOne

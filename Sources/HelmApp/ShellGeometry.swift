@@ -57,7 +57,7 @@ enum ShellGeometry {
 
     /// How far right and down AppKit puts the window's three buttons when the window wears a toolbar, against
     /// where it puts them with none (19 against 9 on both axes). One reading in a window never shown; the rows hold
-    /// the lift's arithmetic over a home fed in and pin the constant; none wears a toolbar, and none reads AppKit's 19 or 9.
+    /// the lift's arithmetic over a home fed in and pin the constant, and one row over the real window the app builds, which wears a toolbar, holds that its buttons stand where the `.pageBar` window's do; none reads AppKit's 19 or 9.
     nonisolated static let toolbarLift = CGSize(width: 10, height: 10)
 
     /// Whether a sidebar of `sidebarWidth` is the rail. Not-a-number is not the

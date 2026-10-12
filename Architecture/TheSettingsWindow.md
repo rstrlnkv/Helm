@@ -12,9 +12,12 @@ The sidebar is `ShellSidebar`: a column of rows for the modules that are on, and
 at the foot for General, the Log and About. A module that is switched off has no row, and
 a selection that names one reads as General (`ShellSidebarRows.settled`, applied in
 `SettingsModel` when the live modules move and in `show(selecting:)`, and again where the
-page is chosen). The page's name is in the page bar, not over the sidebar:
-the window has no `NSToolbar`, and the bar (`ShellPageBar`, built by `SettingsWindow`) is a view
-at the top of the card's clip. `ShellContentView` places it there, full width, and adds
+page is chosen). The page's name is in the window's toolbar, not over the sidebar:
+the window wears an app-owned `NSToolbar` built by `SettingsToolbar`, a cached bar for each page that declares toolbar content and one shared by the pages that declare none, whose
+first item, where the card leaves room for one, is a spacer that carries the name over to the card (`ShellContentView` tells the toolbar where the card is, `cardMoved`).
+The pane's safe area is AppKit's strip and the shell adds nothing to it, so a page starts where the strip ends.
+The page bar (`ShellPageBar`) is reached only by the window's `.pageBar` build, which only tests construct:
+there the bar is a view at the top of the card's clip, `ShellContentView` places it there, full width, and adds
 to the pane's top safe-area inset what the bar's height needs beyond the pane's own,
 so a page starts under the bar.
 

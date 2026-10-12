@@ -113,8 +113,8 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
     /// pane hosting a grouped `Form` whose toolbar is bridged into the window,
     /// `.fullSizeContentView`, hidden title. `SettingsWindow` builds a shell with no
     /// split view. The probe sets `detail.sceneBridgingOptions =
-    /// [.toolbars]` itself; `SettingsWindow` sets none and has no `NSToolbar` at
-    /// all — so the bridge here is the probe's own shape and not a copy of what ships. Never
+    /// [.toolbars]` itself; `SettingsWindow` sets none: the toolbar it wears is assigned by `SettingsToolbar`, not bridged from the pane
+    /// — so the bridge here is the probe's own shape and not a copy of what ships. Never
     /// ordered on screen: the probe read the same three states for a window
     /// that was shown and one that was not.
     private func settingsShapedWindow(transparentTitleBar: Bool) -> NSWindow {
@@ -382,7 +382,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
         for (system, band, helms) in [("macOS 26", Self.macOS26, false), ("macOS 27", Self.macOS27, true)] {
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
                 let where_ = "\(system), \(appearance.rawValue)"
-                let owner = SettingsWindow(host: ModuleHost.shared, band: band)
+                let owner = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
                 let fields = Mirror(reflecting: owner).children
                 let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
                                            "SettingsWindow no longer holds `window` — this case reads it by name")

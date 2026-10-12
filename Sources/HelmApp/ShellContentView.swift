@@ -12,25 +12,27 @@ import HelmUI
 /// Subviews, bottom to top: the glass (regular, full bleed, no content view);
 /// on macOS 27 a full-bleed probe whose only job is to report the window's
 /// corner; the sidebar, as wide as the card's x so the two cannot part; the card,
-/// and inside it the clip, and inside that the pane and, above it, the page bar; last, the window
-/// buttons' capsule (`ShellWindowButtons`), above everything and hit by nothing.
+/// and inside it the clip, and inside that the pane and, when a page bar is handed in, above it the page
+/// bar; last, the window buttons' capsule (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
-/// window's corner. The sidebar, the pane and the bar are handed in; this view
-/// names no page and builds no toolbar; of the window's toolbar it asks only
-/// whether there is one.
+/// window's corner. The sidebar and the pane are handed in, and so is the page bar when the window has
+/// no toolbar, and so is `cardMoved`, told where the card went each time it moves; this view names no
+/// page and builds no toolbar; of the window's toolbar it asks only whether there is one.
 ///
-/// **The bar stands at the top of the clip, full width, `ShellBarLayout.height`
+/// **A page bar stands at the top of the clip, full width, `ShellBarLayout.height`
 /// high, and the pane starts under it:** `layout()` adds to the pane's own top
 /// safe-area inset what the bar needs beyond it, so the pane's top inset, which
 /// SwiftUI reads, is the bar's height. It hands the bar the obstacle `ShellWindowButtons` answers (the closed
 /// capsule in the rail, the three buttons otherwise) and its `reach`, both in the bar's coordinates. This
-/// view and the bar neither write the window buttons' frames nor read them; that owner does.
+/// view and the bar neither write the window buttons' frames nor read them; that owner does. With no bar
+/// the clip holds the pane alone and the pane's additional top inset stays 0: under the window's toolbar
+/// the pane starts where AppKit's strip ends.
 ///
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
 /// `viewDidMoveToWindow`, the window's occlusion notification,
-/// `sidebarWidth`'s setter (every write) and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// `sidebarWidth`'s setter (every write), `barWasAttached()` and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **The fold is the width travelling.** `fold(to:animated:)` asks AppKit to run `sidebarWidth` and writes
 /// no frame: besides the width it sets only `foldTarget` and its run counter (`foldRun`), and asks for a layout. AppKit's animator writes the
@@ -90,12 +92,14 @@ final class ShellContentView: NSView {
     /// Carries the fill, the radius and the shadow; never masks.
     let card = NSView()
 
-    /// Masks at the card's radius; holds the pane and, above it, the page bar.
+    /// Masks at the card's radius; holds the pane and, above it, the page bar when there is one.
     let clip = NSView()
 
     private let sidebar: NSView
     private let pane: NSView
-    private let bar: ShellPageBarView
+    private let bar: ShellPageBarView?
+    private let cardMoved: (CGRect) -> Void
+    private var lastTold: CGRect?
     private let glass = NSGlassEffectView()
     private let buttons = ShellWindowButtons()
     private var applied: WindowCorner?
@@ -117,11 +121,13 @@ final class ShellContentView: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// The three views are held for as long as this view lives.
-    init(sidebar: NSView, pane: NSView, bar: ShellPageBarView) {
+    /// The views and the closure are held for as long as this view lives: a receiver that owns this
+    /// view captures itself weakly. `cardMoved` is called before the corner of that layout is applied.
+    init(sidebar: NSView, pane: NSView, bar: ShellPageBarView?, cardMoved: @escaping (CGRect) -> Void = { _ in }) {
         self.sidebar = sidebar
         self.pane = pane
         self.bar = bar
+        self.cardMoved = cardMoved
         super.init(frame: .zero)
 
         glass.style = .regular
@@ -156,7 +162,7 @@ final class ShellContentView: NSView {
         clip.layer?.masksToBounds = true
         card.addSubview(clip)
         clip.addSubview(pane)
-        clip.addSubview(bar)
+        if let bar { clip.addSubview(bar) }
 
         resolveFill()
     }
@@ -206,6 +212,22 @@ final class ShellContentView: NSView {
             journal = WindowCorner.Journal()
             journalWindow = window
         }
+        needsLayout = true
+    }
+
+    /// How many times the window has told this view it took a bar (`barWasAttached()`). `needsLayout` cannot
+    /// tell that call from the other causes that set it, so the count is what shows the call was made;
+    /// `TheWindowWearsTheToolbarTests.testAWindowTakingABarAsksTheShellForALayout` reads it.
+    private(set) var barAttachments = 0
+
+    /// Asks for a layout, so the corner is read again and the buttons are placed again. For whoever gives the
+    /// window a toolbar. Whether the request is needed is not measured: in a window never ordered in, on
+    /// macOS 27.2, this view's `needsLayout` was true right after an assignment with this call left out, and
+    /// what set it is not found. Assumed, not measured: that an assignment moves the window buttons. Below
+    /// macOS 27 there is no probe to notice the corner moved. The calls taken are counted in `barAttachments`,
+    /// which `TheWindowWearsTheToolbarTests.testAWindowTakingABarAsksTheShellForALayout` reads.
+    func barWasAttached() {
+        barAttachments += 1
         needsLayout = true
     }
 
@@ -291,10 +313,16 @@ final class ShellContentView: NSView {
         clip.frame = card.bounds
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
+        if frame != lastTold {
+            lastTold = frame
+            cardMoved(frame)
+        }
         let obstacle = buttons.place(rail: foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth))
         let reach = buttons.reach
-        placeBar(buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
-                 reach: reach.isNull ? .null : convert(reach, to: bar))
+        if let bar {
+            placeBar(bar, buttons: obstacle.isNull ? .null : convert(obstacle, to: bar),
+                     reach: reach.isNull ? .null : convert(reach, to: bar))
+        }
 
         let reading = publicReading
         let chrome = WindowCorner.Chrome(hasToolbar: window?.toolbar != nil, systemMajor: system.majorVersion)
@@ -306,7 +334,7 @@ final class ShellContentView: NSView {
     /// The bar at the clip's top (the clip is not flipped, so its top is `maxY`), full width; the pane's
     /// additional top inset is what the bar's height needs beyond the safe area the pane has of its own,
     /// written only when it differs.
-    private func placeBar(buttons: CGRect, reach: CGRect) {
+    private func placeBar(_ bar: ShellPageBarView, buttons: CGRect, reach: CGRect) {
         let height = min(ShellBarLayout.height, max(clip.bounds.height, 0))
         bar.frame = CGRect(x: 0, y: clip.bounds.maxY - height, width: clip.bounds.width, height: height)
         bar.place = ShellPageBarView.Place(buttons: buttons, reach: reach)

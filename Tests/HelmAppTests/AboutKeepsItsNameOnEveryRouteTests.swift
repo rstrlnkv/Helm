@@ -55,7 +55,7 @@ final class AboutKeepsItsNameOnEveryRouteTests: XCTestCase {
             ModuleHost.shared.shutdown()
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
         }
-        let settings = SettingsWindow(host: ModuleHost.shared)
+        let settings = SettingsWindow(host: ModuleHost.shared, bar: .pageBar)
         owner = settings
         let fields = Mirror(reflecting: settings).children
         window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,

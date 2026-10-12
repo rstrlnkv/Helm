@@ -79,8 +79,8 @@ extension Notification.Name {
         }
     }
 
-    /// The stored look of the settings window's bar (`HelmBarAppearance`):
-    /// flat unless Liquid Glass is stored.
+    /// The stored look of the page bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. The
+    /// toolbar the window wears does not read it.
     /// Nothing unattended reads it, so it is not sealed; the two functions
     /// take the store so a test reads and writes a scratch one.
     static var barAppearance: HelmBarAppearance {

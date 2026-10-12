@@ -46,7 +46,7 @@ final class EveryPageNamesTheWindowAfterItselfTests: XCTestCase {
     }
 
     private func open() throws {
-        let settings = SettingsWindow(host: ModuleHost.shared)
+        let settings = SettingsWindow(host: ModuleHost.shared, bar: .pageBar)
         owner = settings
         let fields = Mirror(reflecting: settings).children
         window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,

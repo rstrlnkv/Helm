@@ -5,10 +5,10 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **What the bar draws through SwiftUI sits in the middle of its zone's frame, in the real Settings window.**
+/// **What the bar draws through SwiftUI sits in the middle of its zone's frame, in the `.pageBar` build of the real Settings window.**
 ///
 /// The frames-only tests pass because the frames are right; the ink was measured 10 pt below them (name 10.0,
-/// tab labels 11.2, action glyph 10.2, status badge 10.0). The window has no toolbar, the 32 pt titlebar lies
+/// tab labels 11.2, action glyph 10.2, status badge 10.0). That build has no toolbar, the 32 pt titlebar lies
 /// over the bar, the bar's top safe area is 28 and each zone's `NSHostingView` reads 20 of it, and SwiftUI
 /// centres its content in what is left. So there are two claims, one per mechanism and one per symptom:
 ///

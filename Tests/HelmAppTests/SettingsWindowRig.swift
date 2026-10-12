@@ -20,8 +20,12 @@ struct SettingsWindowRig {
     let channel: HelmWindowToolbarChannel
     let shell: SettingsShellViewController
 
-    /// nil when the window holds none of the parts; `failure` is the sentence that case prints.
+    /// nil when the window holds none of the parts; `failure` is the sentence that case prints. `make` builds
+    /// the window after the protections below are in place; the default builds the `.pageBar` window, Helm's
+    /// own page bar and no toolbar, on macOS 27's band, and a family that needs another builds it in the
+    /// closure and keeps the same protections.
     static func build(in test: XCTestCase, failure: String,
+                      make: @MainActor () -> SettingsWindow = { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar) },
                       file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
         let found = UserDefaults.standard.string(forKey: frameKey)
@@ -46,7 +50,7 @@ struct SettingsWindowRig {
         let collapse = AppSettings.alwaysCollapseSearch
         test.addTeardownBlock { await MainActor.run { AppSettings.alwaysCollapseSearch = collapse } }
         AppSettings.alwaysCollapseSearch = false
-        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+        let owner = make()
         let fields = Mirror(reflecting: owner).children
         guard let window = fields.first(where: { $0.label == "window" })?.value as? NSWindow,
               let model = fields.first(where: { $0.label == "model" })?.value as? SettingsModel,
@@ -56,6 +60,15 @@ struct SettingsWindowRig {
             return nil
         }
         return SettingsWindowRig(owner: owner, window: window, model: model, channel: channel, shell: shell)
+    }
+
+    /// The window as the app builds it: the initialiser's own defaults, no bar named, on macOS 27's band like
+    /// every other window of this rig.
+    static func buildAsTheAppDoes(in test: XCTestCase, failure: String,
+                                  file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
+        build(in: test, failure: failure,
+              make: { SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27)) },
+              file: file, line: line)
     }
 
     /// The bar the window holds, nil while it holds none.

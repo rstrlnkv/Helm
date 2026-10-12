@@ -36,7 +36,7 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
 
         try withTheLogOn {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
@@ -73,7 +73,7 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
 
         try withTheLogOn {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
@@ -162,7 +162,7 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         let found = UserDefaults.standard.string(forKey: frameKey)
         UserDefaults.standard.removeObject(forKey: frameKey)
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
-        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
         let window = try XCTUnwrap(
             Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
         let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)

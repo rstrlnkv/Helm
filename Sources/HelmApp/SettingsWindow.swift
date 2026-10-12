@@ -9,21 +9,32 @@ import HelmUI
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.
 ///
-/// **The window has no `NSToolbar`.** The page's bar is Helm's own
-/// (`ShellPageBar`), a view at the top of the card's clip that
-/// `ShellContentView` places; the window holds the controller and hands its
-/// view to the shell, and the pane below it starts under the bar. The window
-/// recalculates its key-view loop itself (`autorecalculatesKeyViewLoop`, in
-/// `init`), which is how the bar's views come to be in it.
+/// **The window wears an app-owned `NSToolbar`, built by `SettingsToolbar`** (`Bar.toolbar`, the
+/// default): a cached bar for each page that declares toolbar content and one shared by the pages that
+/// declare none, AppKit's strip over the whole window, and, where the card leaves room for one, a spacer as
+/// the bar's first item that carries the page's name over to the card, told where the card is. The shell's pane starts
+/// where AppKit's strip ends and the shell adds nothing to it. The window's `.pageBar` build is the one
+/// that has no toolbar: the page's bar is Helm's own (`ShellPageBar`), a view at the top of the card's
+/// clip that `ShellContentView` places, and the pane starts under it. Only tests construct that build,
+/// and the window recalculates its key-view loop in it alone (`autorecalculatesKeyViewLoop`, in
+/// `init`), which is how that bar's views come to be in it.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
+    /// Which bar the window is built with: AppKit's toolbar, owned by `SettingsToolbar`, or Helm's own
+    /// page bar, a view of the card. The app takes the default; `.pageBar` is built by the test families
+    /// written against the page bar, and the choice never reads a setting.
+    enum Bar { case toolbar, pageBar }
+
     private let window: NSWindow
     private let model: SettingsModel
     /// What a page's toolbar content crosses into this target by
     /// (`HelmWindowToolbar.swift` in `HelmUI`) — handed to the detail pane's
     /// environment so a page never needs to import `HelmApp` to publish into
-    /// it, and read by `pageBar` on the other side.
+    /// it, and read by the bar the window wears on the other side.
     private let toolbarChannel = HelmWindowToolbarChannel()
-    private let pageBar: ShellPageBar
+    /// Set in the `.pageBar` build, nil in the `.toolbar` one.
+    private let pageBar: ShellPageBar?
+    /// Set in the `.toolbar` build, nil in the `.pageBar` one.
+    private let settingsToolbar: SettingsToolbar?
 
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
@@ -54,22 +65,42 @@ import HelmUI
     /// `band` is whose band lies under the bar — the running system's
     /// decision unless a test builds another system's window on this one; the
     /// same value sets the title bar below, reaches the pane's
-    /// `helmToolbarBackdrop` (`HelmBandChoice`) and tells the bar's zones which
-    /// title bar they sit in.
-    init(host: ModuleHost, band: HelmBandChoice = .running) {
+    /// `helmToolbarBackdrop` (`HelmBandChoice`) and, in the `.pageBar` build,
+    /// tells the bar's zones which title bar they sit in. `bar` says which bar the window wears.
+    init(host: ModuleHost, band: HelmBandChoice = .running, bar: Bar = .toolbar) {
         let model = SettingsModel(host: host)
         self.model = model
         let transparent = band.titlebarAppearsTransparent
-        // The zones are handed to the bar and to nothing else: the window keeps none.
-        let tabs = ShellBarTabs(titlebarIsTransparent: transparent)
-        let bar = ShellPageBar(model: model, channel: toolbarChannel, tabs: tabs,
-                               actions: ShellBarActions(titlebarIsTransparent: transparent),
-                               search: ShellBarSearch(titlebarIsTransparent: transparent),
-                               titlebarIsTransparent: transparent)
-        tabs.barMenu = bar.view.menu
-        pageBar = bar
+        let pageBar: ShellPageBar?
+        switch bar {
+        case .toolbar:
+            pageBar = nil
+        case .pageBar:
+            // The zones are handed to the bar and to nothing else: the window keeps none.
+            let tabs = ShellBarTabs(titlebarIsTransparent: transparent)
+            let built = ShellPageBar(model: model, channel: toolbarChannel, tabs: tabs,
+                                     actions: ShellBarActions(titlebarIsTransparent: transparent),
+                                     search: ShellBarSearch(titlebarIsTransparent: transparent),
+                                     titlebarIsTransparent: transparent)
+            tabs.barMenu = built.view.menu
+            pageBar = built
+        }
+        self.pageBar = pageBar
         let shell = SettingsShellViewController(model: model, toolbarChannel: toolbarChannel,
-                                                band: band, bar: bar.view)
+                                                band: band, bar: pageBar?.view)
+        let toolbar: SettingsToolbar?
+        switch bar {
+        case .toolbar:
+            let built = SettingsToolbar(model: model, channel: toolbarChannel, lead: .spacer,
+                                        barAttached: { [weak shell] in shell?.barWasAttached() })
+            shell.cardMoved = { [weak built] frame in
+                built?.paneMoved(leading: frame.minX, width: frame.width)
+            }
+            toolbar = built
+        case .pageBar:
+            toolbar = nil
+        }
+        settingsToolbar = toolbar
         let window = NSWindow(contentViewController: shell)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
@@ -91,7 +122,7 @@ import HelmUI
         window.contentMinSize = Self.minSize
         window.center()
         window.isReleasedWhenClosed = false
-        // **The window recalculates its key-view loop.** The bar's zones are content views, and the actions
+        // **The `.pageBar` window recalculates its key-view loop.** The bar's zones are content views, and the actions
         // host is built anew when another page's actions arrive. In a window that was never shown, with this
         // line removed every row of `TheKeyViewRingRunsSidebarPaneBarTests` is red: Tab from the
         // sidebar's host leaves the first responder at the window. With it, Tab from there lands in the bar's
@@ -103,12 +134,23 @@ import HelmUI
         // link set on it. Not measured: a key or shown window, Shift-Tab, a pressed key, and anything with
         // keyboard navigation on; the rows do not read that setting and were run with it off, so Tab is shown
         // to reach the search field only, not the tabs, the actions or the sidebar's rows.
-        window.autorecalculatesKeyViewLoop = true
+        window.autorecalculatesKeyViewLoop = pageBar != nil
         // Remember whatever size the user settles on.
         window.setFrameAutosaveName("HelmSettingsWindow.v4")
         self.window = window
         super.init()
         window.delegate = self
+        if let settingsToolbar {
+            // The card's place is known to the bar before the bar is put on the
+            // window: one layout, and the report it queued delivered here rather
+            // than a turn of the main queue later.
+            shell.view.layoutSubtreeIfNeeded()
+            shell.deliverCard()
+            // Assigning this is what puts the first toolbar on the window —
+            // `SettingsToolbar` cannot do it itself at construction, since it is
+            // built before this window exists.
+            settingsToolbar.window = window
+        }
         // Seeds the bar with this window's own, freshly-created state —
         // neither key nor main yet — before the window is shown, rather than
         // leaving it at the bar's default until the first notification below
@@ -136,13 +178,16 @@ import HelmUI
     private var titleWatch: AnyCancellable?
 
     /// Writes what the page published as the window's title, and under `.windowTitle` its subtitle too (empty
-    /// under `.moduleName`). `titleVisibility` is `.hidden` under both styles: the bar's name zone draws the
-    /// name, with the module's plate under `.moduleName` and without it under `.windowTitle`.
+    /// under `.moduleName`). In the `.pageBar` build `titleVisibility` is `.hidden` under both styles: the
+    /// bar's name zone draws the name, with the module's plate under `.moduleName` and without it under
+    /// `.windowTitle`. In the `.toolbar` build the title is drawn by AppKit under `.windowTitle` and hidden
+    /// under `.moduleName`, where the name is a toolbar item that carries the module's plate and the title
+    /// stays the window's (the Window menu and Mission Control name the window by it).
     private func applyTitle(_ title: HelmPageTitle?) {
         let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
         window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
-        window.titleVisibility = .hidden
+        window.titleVisibility = settingsToolbar != nil && style == .windowTitle ? .visible : .hidden
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -209,7 +254,8 @@ import HelmUI
 
     private func updateWindowAppearsActive() {
         let active = window.isKeyWindow || window.isMainWindow
-        pageBar.setWindowAppearsActive(active)
+        pageBar?.setWindowAppearsActive(active)
+        settingsToolbar?.setWindowAppearsActive(active)
         (window.contentViewController as? SettingsShellViewController)?.shell.setWindowAppearsActive(active)
     }
 }
@@ -303,8 +349,15 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// The page bar's view is handed in and placed by the shell's view; the
-/// controller holds no zone and assigns the window no toolbar.
+/// **The card's place is reported outside the content's layout pass.** A flip
+/// of the bar's spacer assigns `window.toolbar`, and that must not happen
+/// inside `ShellContentView.layout()`; `cardWasLaidOut` keeps the newest frame
+/// and `deliverCard()` hands it to `cardMoved` a turn of the main queue later
+/// (the window delivers the first one itself, before the bar has a window).
+///
+/// The page bar's view, in the window's `.pageBar` build, is handed in and placed by the shell's view;
+/// the controller holds no zone and assigns the window no toolbar: that is `SettingsToolbar`'s,
+/// told where the card is through `cardMoved`.
 @MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
     /// Handed to the detail pane's environment so a page can publish its
@@ -315,8 +368,14 @@ enum SettingsSelection: Hashable {
     /// no default, so the pane cannot be built on one system's decision
     /// under a title bar set from another's.
     private let band: HelmBandChoice
-    /// The page bar's view, which the shell places at the top of the card's clip.
-    private let bar: ShellPageBarView
+    /// The page bar's view, which the shell places at the top of the card's clip; nil where the
+    /// window wears a toolbar.
+    private let bar: ShellPageBarView?
+
+    /// Told where the card is; set by the window, which holds the toolbar.
+    var cardMoved: (CGRect) -> Void = { _ in }
+    private var pendingCard: CGRect?
+    private var deliveryScheduled = false
 
     private let fold = SidebarFold()
 
@@ -328,7 +387,7 @@ enum SettingsSelection: Hashable {
     private let expandedWidth: CGFloat
 
     init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice,
-         bar: ShellPageBarView, store: NamespacedStore = AppSettings.store) {
+         bar: ShellPageBarView?, store: NamespacedStore = AppSettings.store) {
         self.model = model
         self.toolbarChannel = toolbarChannel
         self.band = band
@@ -370,6 +429,30 @@ enum SettingsSelection: Hashable {
         } else {
             fold.collapsed = collapsed
         }
+    }
+
+    /// The toolbar assigned a bar to the window: ask the shell for a layout.
+    /// Asks only, never forces one.
+    func barWasAttached() {
+        guard isViewLoaded else { return }
+        shell.barWasAttached()
+    }
+
+    private func cardWasLaidOut(_ frame: CGRect) {
+        pendingCard = frame
+        guard !deliveryScheduled else { return }
+        deliveryScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.deliverCard() }
+        }
+    }
+
+    /// Hands the newest frame laid out, if any is waiting, to `cardMoved`.
+    func deliverCard() {
+        deliveryScheduled = false
+        guard let frame = pendingCard else { return }
+        pendingCard = nil
+        cardMoved(frame)
     }
 
     private func width(collapsed: Bool) -> CGFloat {
@@ -424,19 +507,22 @@ enum SettingsSelection: Hashable {
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.
                 .helmIdlesOffScreen())
-        // **The pane keeps AppKit's safe area.** The inset above the page is
-        // the bar's height: `ShellContentView` adds to the pane's own top safe
-        // area, as an additional safe-area inset, what the bar's height needs
-        // beyond it; the bar is a view of the card's clip, not a toolbar, and
-        // the window has none. No `sceneBridgingOptions` is set
+        // **The pane keeps AppKit's safe area.** Under a toolbar the inset above the
+        // page is AppKit's strip and `ShellContentView` adds nothing to it. In the
+        // `.pageBar` build the inset is the bar's height: the shell adds to the pane's
+        // own top safe area, as an additional safe-area inset, what the bar's height
+        // needs beyond it; that bar is a view of the card's clip, not a toolbar. No `sceneBridgingOptions` is set
         // on this controller, on purpose: every page says what it wants in
-        // its bar through `helmWindowToolbar`, which reaches `ShellPageBar`
+        // its bar through `helmWindowToolbar`, which reaches the bar the window wears
+        // (`SettingsToolbar`, or `ShellPageBar` in the `.pageBar` build)
         // through `HelmWindowToolbarChannel` and needs no bridge from this
         // controller at all.
         detail.sizingOptions = []
         addChild(sidebar)
         addChild(detail)
-        return ShellContentView(sidebar: sidebar.view, pane: detail.view, bar: bar)
+        return ShellContentView(sidebar: sidebar.view, pane: detail.view, bar: bar) { [weak self] frame in
+            self?.cardWasLaidOut(frame)
+        }
     }
 }
 

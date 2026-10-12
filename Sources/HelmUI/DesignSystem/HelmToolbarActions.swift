@@ -483,10 +483,11 @@ public struct HelmToolbarActionsCapsule: View {
                         //
                         // **Why it slides.** A press on this capsule's segmented
                         // action is a press on the same `HelmToolbarSwitcher`
-                        // the tabs use, wearing the same `HelmFlatSegmentedCell`,
-                        // and that cell slides its pick to a pressed segment;
-                        // no row presses the capsule's switcher. The slide was
-                        // not seen on a screen with the flat cell.
+                        // the tabs use. Where it wears `HelmFlatSegmentedCell`,
+                        // which is everywhere but under `SettingsToolbar`, that
+                        // cell slides its pick to a pressed segment; AppKit's
+                        // cell is not asked to. No row presses the capsule's
+                        // switcher. The slide was not seen on a screen with the flat cell.
                         backing(entryContent(entry).disabled(!entry.isEnabled || !model.isInteractive),
                                 for: entry)
                     }
