@@ -81,6 +81,41 @@ struct SettingsWindowRig {
         while Date() < end { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
     }
 
+    /// The sentence a family prints when `build` or `buildAsTheAppDoes` finds none of the window's parts.
+    static let noShell = """
+        the window has no content view controller of the shell's type: nothing was read from a window \
+        nobody built
+        """
+
+    /// A layout of the window's content, a short pump, and a layout again: the turn a declared page or a
+    /// written setting needs to reach the toolbar.
+    func settle() {
+        window.contentView?.layoutSubtreeIfNeeded()
+        Self.pump(0.2)
+        window.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    /// The window's toolbar, or the failure that names what the row could not read.
+    func worn(_ unread: String, file: StaticString = #filePath, line: UInt = #line) -> NSToolbar? {
+        guard let toolbar = window.toolbar else {
+            XCTFail("no toolbar on the window: \(unread)", file: file, line: line)
+            return nil
+        }
+        return toolbar
+    }
+
+    /// The toolbar's item of this identifier, nil when it holds none.
+    static func item(_ identifier: String, in toolbar: NSToolbar) -> NSToolbarItem? {
+        toolbar.items.first { $0.itemIdentifier.rawValue == identifier }
+    }
+
+    /// Declares a page's content (`content(search:selected:)`) on the window's channel under `token`, and
+    /// selects nothing.
+    func declare(_ token: String, search: Bool, selected: String = "installed") {
+        channel.declare(Self.content(search: search, selected: selected), token: token,
+                        generation: channel.nextGeneration())
+    }
+
     /// A page's toolbar content: two tabs, an action and, when asked, a search.
     static func content(search: Bool, selected: String = "installed") -> HelmPageToolbarContent {
         HelmPageToolbarContent(

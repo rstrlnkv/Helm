@@ -45,7 +45,8 @@ public extension Notification.Name {
 /// **Which cell a switcher wears.** `flat` is Helm's own (`HelmFlatSegmentedCell`), what a switcher nobody
 /// told otherwise wears under every look; `systems` is AppKit's `NSSegmentedCell`, which draws its own
 /// glass and, outside a toolbar in a key window, the accent in the selected segment. Only `SettingsToolbar`
-/// asks for `systems`, for the switchers of the window's toolbar: a control outside a toolbar that wore it
+/// asks for `systems`, for the switchers of the window's toolbar under Liquid Glass (under Flat it asks for
+/// `flat` there too): a control outside a toolbar that wore it
 /// would show the accent no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`).
 /// What AppKit's cell draws inside the toolbar of a key window is not measured.
 public enum HelmSwitcherCell: Sendable {
@@ -80,14 +81,16 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// **The switcher in the bar: an `NSSegmentedControl` sized to what it shows, wearing `HelmFlatSegmentedCell`
 /// unless its environment asks for AppKit's cell.**
 ///
-/// Under both looks the strip is the same: the neutral pill of the flat cell, unless the environment's
-/// `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does).
-/// The system's own cell is what a switcher in the window's toolbar wears, for the glass
+/// In the page bar the strip is the same under both looks: the neutral pill of the flat cell, unless the
+/// environment's `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does under Liquid
+/// Glass; under Flat it wears the flat cell there too: the tabs on a plate `SettingsToolbar` puts under them, a
+/// capsule's switcher on the capsule's own flat fill).
+/// The system's own cell is what a switcher in the window's toolbar wears under Liquid Glass, for the glass
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
 /// segment). Outside a toolbar it selected with the accent colour in a key window, which no
-/// segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`), so every other switcher
-/// wears the flat cell: there the look changes the plate under the strip (`HelmBarAppearance`), not the
+/// segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`), so every other switcher,
+/// and the toolbar's under Flat, wears the flat cell: in the page bar the look changes the plate under the strip (`HelmBarAppearance`), not the
 /// strip, and there is no glass swell. Whether AppKit still draws any of its own under
 /// the flat cell was not seen on a screen (the cell's header).
 /// Under the flat cell a press slides the pick from the old segment to the new one

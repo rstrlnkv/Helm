@@ -13,7 +13,7 @@ import XCTest
 /// below only (`reserve + 0.5 >= drawn`), so a reserve measured in the wrong
 /// form passes it as long as the wrong form is the wider one: measured
 /// (tester, 2026-09-25) with the `.icons` style removed from the earlier
-/// toolbar's measurement, `SettingsToolbar.segmentedReserveWidth(_:)`, it
+/// toolbar's measurement, `SettingsToolbar.segmentedReserveWidth(_:look:)`, it
 /// reserved the options' *words*, and that file still stayed green while the
 /// capsule claimed room from the centre tabs that nothing in it draws. The
 /// first case here is the other side of that bound.

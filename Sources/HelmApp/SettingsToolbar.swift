@@ -108,6 +108,7 @@ import HelmUI
     nonisolated(unsafe) private var languageWatch: NSObjectProtocol?
     nonisolated(unsafe) private var pageBarStyleWatch: NSObjectProtocol?
     nonisolated(unsafe) private var switcherStyleWatch: NSObjectProtocol?
+    nonisolated(unsafe) private var barAppearanceWatch: NSObjectProtocol?
     nonisolated(unsafe) private var alwaysCollapseSearchWatch: NSObjectProtocol?
     /// **The status this class copies into `helm.status`/the name zone is a
     /// stored reading (`pageIdentity()`), not a live one** — `refresh()` is
@@ -291,6 +292,16 @@ import HelmUI
             forName: .helmToolbarSwitcherStyleChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAndResettle() }
         }
+        // The look (`AppSettings.barAppearance`) is read when a bar's shape is
+        // read (`ShapeSignature`), so the change of it that matters is the one
+        // that makes the shape differ: the bar of the page on the window is
+        // built afresh, a cached bar of another page when that page is next
+        // shown, and a look written equal to the one worn rebuilds nothing,
+        // though `AppSettings` posts for it as well.
+        barAppearanceWatch = NotificationCenter.default.addObserver(
+            forName: .helmBarAppearanceChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshAndResettle() }
+        }
         alwaysCollapseSearchWatch = NotificationCenter.default.addObserver(
             forName: .helmAlwaysCollapseSearchChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.restEverySearch() }
@@ -335,7 +346,14 @@ import HelmUI
         windowAppearsActive = active
         for bar in pageBars.values {
             bar.actionsModel?.setAppearsActive(active)
-            rebuildActionsHost(bar)
+            // Only the glass needs a new host to follow the window; a flat capsule dims by the model's
+            // `appearsActive`, which it reads where it draws (`HelmToolbarActionsCapsule.glyph(_:)` for a
+            // glyph, `backing(_:for:)` for a segmented entry's plate), so the model told is all it needs —
+            // as `ShellBarActions.show` has it. That a flat plate dimmed this way reads right on a screen
+            // was not seen (`HelmToolbarActionsCapsule.backing(_:for:)`'s header has the caveat).
+            if bar.shape.look == .liquidGlass { rebuildActionsHost(bar) }
+            // The tabs' plate (Flat only) dims and undims by this value, handed in, as the page bar's does.
+            bar.tabsPlate?.isActive = active
         }
         // The name zone's own ink: a plain SwiftUI value, not glass, so the
         // one bar actually on screen redrawing is enough — `patchName`'s own
@@ -344,8 +362,10 @@ import HelmUI
         patchAttachedName()
     }
 
-    /// **A capsule built while the window reads inactive can draw lit glass
-    /// beside flat AppKit items until it is rebuilt a turn later.** Filmed on
+    /// **A capsule built under Liquid Glass while the window reads inactive can
+    /// draw lit glass beside flat AppKit items until it is rebuilt a turn
+    /// later.** A flat capsule draws no glass and is never corrected: it dims
+    /// by the model, which `makeActionsItem` seeds. Filmed on
     /// Helm Dev: a capsule built while the window had never been key drew lit
     /// glass beside flat AppKit items, where a reopened window drew flat.
     ///
@@ -356,16 +376,16 @@ import HelmUI
     /// here explains *why* the extra turn is what closes the gap.
     ///
     /// `PageBar.actionsGlassNeedsFirstAttachCorrection`, set by
-    /// `makeActionsItem` exactly when it builds this bar's capsule while
-    /// `windowAppearsActive` already reads `false`, is spent here, once,
-    /// right after `show(_:key:)` actually attaches the bar it belongs to. A
-    /// bar built while the window already reads active never sets the flag,
-    /// so an ordinary S1 build costs nothing extra; a bar built while the
-    /// window is already inactive sets it regardless of whether it is that
-    /// window's first capsule, and pays for a deferred rebuild even where the
-    /// flat look it confirms needed no correction — cheaper than telling the
-    /// two cases apart, and `rebuildActionsHost(_:)` is already paid for on
-    /// every live signal change regardless.
+    /// `makeActionsItem` exactly when it builds this bar's capsule under
+    /// Liquid Glass while `windowAppearsActive` already reads `false`, is
+    /// spent here, once, right after `show(_:key:)` actually attaches the bar
+    /// it belongs to. A bar built while the window already reads active never
+    /// sets the flag, and neither does a flat bar, so an ordinary build costs nothing extra; a bar
+    /// built under Liquid Glass while the window is already inactive sets it regardless of whether it
+    /// is that window's first capsule, and pays for a deferred rebuild even
+    /// where the flat glass it confirms needed no correction — cheaper than
+    /// telling the two cases apart, and `rebuildActionsHost(_:)` is already
+    /// paid for on every live signal change under Liquid Glass regardless.
     private func correctActionsGlassOnFirstAttach(_ bar: PageBar) {
         guard bar.actionsGlassNeedsFirstAttachCorrection else { return }
         bar.actionsGlassNeedsFirstAttachCorrection = false
@@ -389,7 +409,9 @@ import HelmUI
 
     /// **Mutating `HelmToolbarActionsModel.appearsActive` alone was not
     /// enough on Helm Dev — a live transition had to rebuild the hosting
-    /// view, not only change the value it reads.** Measured there: flipping
+    /// view, not only change the value it reads.** Under Liquid Glass; a flat
+    /// capsule has no glass to follow and is not rebuilt for this
+    /// (`setWindowAppearsActive(_:)`). Measured there: flipping
     /// the model on an *already-rendered* capsule left its glass at the value
     /// it was built with, log not kept. So a live change rebuilds: a fresh
     /// `NSHostingView` over the same model reads the glass correctly, where
@@ -402,18 +424,38 @@ import HelmUI
     /// glass following the window on its own, with no rebuild at all) and
     /// says why the rebuild stays regardless: nothing explaining the
     /// difference from Helm Dev has been found.
-    /// `bar.content?.search == nil` is the same reading `makeActionsItem`
-    /// seeds `trailingInset` from — kept in step here because a bar whose
-    /// shape has not changed keeps the same answer for the life of the bar
-    /// (`ShapeSignature.hasSearch` rebuilds the whole bar, this item
-    /// included, the moment that changes).
+    /// The host is `actionsHost(_:for:)`'s, the one `makeActionsItem` builds
+    /// the item's first view with, so the look the bar was built under and the
+    /// trailing inset are read there the same way for both.
     private func rebuildActionsHost(_ bar: PageBar) {
         guard let model = bar.actionsModel, let item = bar.actionsItem else { return }
+        item.view = actionsHost(model, for: bar)
+    }
+
+    /// **The view of the `helm.actions` item: `HelmToolbarActionsCapsule` in a hosting view, dressed by
+    /// the look the bar was built under (`PageBar.shape`), never by a re-read of the stored value.**
+    /// `\.helmBarAppearance` is the capsule's plate (glass under Liquid Glass, a flat fill under Flat)
+    /// and `flatInactiveInk` the numbers a flat capsule dims by in an inactive window, the name zone's
+    /// (`ShellBarActions` hands the capsule both the same way); `\.helmSwitcherCell` is what a
+    /// `.segmented` entry's switcher wears (`HelmBarAppearance.switcherCell`). The root is no `AnyView`: a
+    /// reader of the root walks value types.
+    ///
+    /// `bar.content?.search == nil` is "the capsule is this bar's own last item" — the answer a bar
+    /// whose shape has not changed keeps for its life (`ShapeSignature.hasSearch` rebuilds the whole
+    /// bar, this item included, the moment that changes). See `HelmToolbarActionsCapsule.edgeMargin`'s
+    /// own header for the measurement the inset closes: Hosts and Leftovers, which end their bar here,
+    /// used to sit 4.0 pt from the window's trailing edge against Uninstaller's 8.0 pt for
+    /// `helm.search` at the same width.
+    private func actionsHost(_ model: HelmToolbarActionsModel, for bar: PageBar) -> NSHostingView<some View> {
         let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset)
-            .environment(\.helmSwitcherCell, .systems))
+        let look = bar.shape.look
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(
+            model, trailingInset: trailingInset,
+            flatInactiveInk: .nameZone(titlebarIsTransparent: titlebarIsTransparent))
+            .environment(\.helmBarAppearance, look)
+            .environment(\.helmSwitcherCell, look.switcherCell))
         hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        return hosting
     }
 
     /// **A language, label-style or page-bar change, or the leading spacer
@@ -571,6 +613,7 @@ import HelmUI
         if let languageWatch { NotificationCenter.default.removeObserver(languageWatch) }
         if let pageBarStyleWatch { NotificationCenter.default.removeObserver(pageBarStyleWatch) }
         if let switcherStyleWatch { NotificationCenter.default.removeObserver(switcherStyleWatch) }
+        if let barAppearanceWatch { NotificationCenter.default.removeObserver(barAppearanceWatch) }
         if let alwaysCollapseSearchWatch { NotificationCenter.default.removeObserver(alwaysCollapseSearchWatch) }
         if let moduleEnabledWatch { NotificationCenter.default.removeObserver(moduleEnabledWatch) }
         if let moduleDisabledWatch { NotificationCenter.default.removeObserver(moduleDisabledWatch) }
@@ -1071,7 +1114,11 @@ import HelmUI
     /// never takes, since it stays `isBordered = false` regardless
     /// (`HelmToolbarActionsCapsule`'s own header). So a capsule holding a
     /// switcher joins the set, which is what makes Hosts' Table / Plain-text
-    /// slide the way the tabs do — the owner's decision, 2026-09-26.
+    /// slide the way the tabs do — the owner's decision, 2026-09-26. **These
+    /// readings are of AppKit's cell.** Under Flat the tabs and the capsule's
+    /// switcher wear Helm's (`makeTabsItem`, `actionsHost(_:for:)`), which
+    /// slides its own pick; the list is the same under both looks, since
+    /// where an item stands does not depend on what it is made of.
     ///
     /// **Only beside the tabs.** Listed alone, the capsule is centred
     /// itself: in that same reference app, the capsule's item moved from the
@@ -1289,12 +1336,47 @@ import HelmUI
     /// used to choose between this and AppKit's own `NSToolbarItemGroup` —
     /// retired 2026-09-23 once the owner had looked at both on a real window
     /// and kept this one.
+    ///
+    /// **What the item is made of depends on the look the bar was built under
+    /// (`PageBar.shape`).** Under Liquid Glass the item's view is the hosting
+    /// view itself, bordered, and the switcher wears AppKit's cell
+    /// (`HelmBarAppearance.switcherCell`), so AppKit draws the platter and the
+    /// selection's motion. Under Flat the item is `isBordered = false`, which
+    /// reads back `false` on this shape and not on a bare control
+    /// (`TheToolbarsItemsFollowTheLookTests`); on a hosting-view item in a key
+    /// window in the dark appearance that took AppKit's platter off, and Light
+    /// and a window that is not key were not seen. Its view is a
+    /// `ShellBarPlate` wearing the flat look with the hosting view inside it,
+    /// pinned edge to edge, so the plate is exactly as large as the strip and
+    /// follows it when the strip is refilled or folded. The strip is Helm's
+    /// cell, whose slide moves the pick. `PageBar.tabsSwitcherHost` is
+    /// the hosting view under both looks; the item's view is `PageBar.tabsItemView`.
+    /// **Not seen on a screen:** the plate under the cell inside a toolbar item, and
+    /// that no platter of AppKit's is behind it, and that the item follows the strip when the
+    /// strip changes size (the plate's constraints hand the strip's size on; no window drew it).
     private func makeTabsItem(_ bar: PageBar) -> NSToolbarItem {
         let tabs = bar.content?.tabs ?? []
         let item = NSToolbarItem(itemIdentifier: Self.tabsID)
         let hosting = NSHostingView(rootView: helmSwitcherView(tabs, bar: bar))
         hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        if bar.shape.look == .flat {
+            let plate = ShellBarPlate(appearance: .flat, isActive: windowAppearsActive,
+                                      titlebarIsTransparent: titlebarIsTransparent)
+            plate.translatesAutoresizingMaskIntoConstraints = false
+            plate.content = hosting
+            hosting.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                hosting.leadingAnchor.constraint(equalTo: plate.leadingAnchor),
+                hosting.trailingAnchor.constraint(equalTo: plate.trailingAnchor),
+                hosting.topAnchor.constraint(equalTo: plate.topAnchor),
+                hosting.bottomAnchor.constraint(equalTo: plate.bottomAnchor)
+            ])
+            item.view = plate
+            item.isBordered = false
+            bar.tabsPlate = plate
+        } else {
+            item.view = hosting
+        }
         item.label = HelmA11y.whatToShow
         bar.tabsSwitcherHost = hosting
         bar.tabsItem = item
@@ -1326,7 +1408,7 @@ import HelmUI
                                 },
                                 compact: bar.tabsFolded, menu: barMenu)
                 .environment(\.helmSwitcherStyle, AppSettings.toolbarSwitcherStyle)
-                .environment(\.helmSwitcherCell, .systems)
+                .environment(\.helmSwitcherCell, bar.shape.look.switcherCell)
                 // A frozen bar's tabs are disabled through `bar.isInteractive`
                 // rather than through `bar.isLive` — see `HelmTabsSnapshot`'s
                 // own header for why the two must not be conflated — since
@@ -1448,7 +1530,9 @@ import HelmUI
     /// 2026-09-26). The field stays on the key regardless — a change to it
     /// alone never reaches this comparison to be the miss. Kept per bar, not
     /// in a static table: a bar is dropped with its shape, and its width
-    /// goes with it.
+    /// goes with it. **That is why the look is not on the key**: it is on the
+    /// bar's shape (`ShapeSignature.look`), so a width measured wearing one
+    /// look's cell lives on a bar that is not given back under the other.
     ///
     /// `fileprivate` for the reason `NameSnapshot` above states.
     fileprivate struct TabsWidthKey: Equatable {
@@ -1561,7 +1645,8 @@ import HelmUI
     /// all call this rather than writing the flag directly.
     ///
     /// - Parameter reseat: whether to detach and reattach the tabs item's
-    ///   view (`item.view = nil`, then the same host) after patching — the
+    ///   view (`item.view = nil`, then the same view, `PageBar.tabsItemView`:
+    ///   the plate under Flat, the host under Liquid Glass) after patching — the
     ///   only way an item AppKit has already moved into its own «»» overflow
     ///   menu comes back once there is room again, measured against leaving
     ///   this out.
@@ -1574,9 +1659,9 @@ import HelmUI
             patchTabs(bar)
             bar.tabsSwitcherHost?.layoutSubtreeIfNeeded()
         }
-        if reseat, let item = bar.tabsItem, let host = bar.tabsSwitcherHost {
+        if reseat, let item = bar.tabsItem, let view = bar.tabsItemView {
             item.view = nil
-            item.view = host
+            item.view = view
         }
         switch layout {
         case .window: window?.layoutIfNeeded()
@@ -1832,13 +1917,17 @@ import HelmUI
     /// **A never-shown `NSToolbarItem`, in a never-shown `NSToolbar`, in a
     /// never-shown `NSWindow` — built once and reused for every off-screen
     /// measurement.** A bare `NSHostingView` asked for its own `fittingSize`
-    /// is not what `switcherWidth(tabs:style:selectedID:)` needs: measured
+    /// is not what `switcherWidth(tabs:style:look:selectedID:)` needs: measured
     /// against the same switcher hosted in a real toolbar item, in a real
     /// (if never-ordered) window, the bare reading overestimates by 3–57.5 pt
     /// depending on label style and tab count — Text style at four tabs the
     /// worst of it — which is more than `unfoldMargin` (engineer, this Mac:
     /// the same `HelmToolbarSwitcher` configuration measured both ways side
-    /// by side).
+    /// by side). **That reading is of AppKit's cell**, the one the toolbar's
+    /// switcher wore before the look reached the measuring views; the rig now
+    /// measures wearing the cell the look puts on the switcher
+    /// (`HelmBarAppearance.switcherCell`), and the gap under Flat was not
+    /// measured.
     /// A toolbar item resolves its content's environment differently from a
     /// bare hosting view with no toolbar or window above it at all — exactly
     /// which environment value accounts for the gap is not something this
@@ -1940,7 +2029,7 @@ import HelmUI
     /// cost the real control. Full only: the compact form's width was
     /// measured beside it until nothing read it (`settle(_:)` bound it to
     /// `_`). Called only from `settle(_:)`, behind `PageBar.tabsWidth`.
-    private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle,
+    private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, look: HelmBarAppearance,
                                selectedID: String?) -> CGFloat {
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(selectedID ?? ""),
                                        segments: tabs.map {
@@ -1949,7 +2038,7 @@ import HelmUI
                                 },
                                        compact: false)
             .environment(\.helmSwitcherStyle, style)
-            .environment(\.helmSwitcherCell, .systems)
+            .environment(\.helmSwitcherCell, look.switcherCell)
         return Self.measurementRig.measure(AnyView(view))
     }
 
@@ -2485,7 +2574,7 @@ import HelmUI
     /// below is what decides whether the full tabs still fit beside that
     /// width, so nothing here has to special-case a non-empty field.
     ///
-    /// **No trial against the live bar any more.** `switcherWidth(tabs:style:
+    /// **No trial against the live bar any more.** `switcherWidth(tabs:style:look:
     /// selectedID:)` and `predictedSlack(bar:tabsWidth:)` answer from an
     /// off-screen switcher and the bar's own siblings, so the decision below
     /// either unfolds once, correctly, or does not unfold at all — never
@@ -2620,7 +2709,8 @@ import HelmUI
             if let measured = bar.tabsWidth, measured.key == key {
                 full = measured.full
             } else {
-                full = switcherWidth(tabs: content.tabs, style: key.style, selectedID: key.selectedID)
+                full = switcherWidth(tabs: content.tabs, style: key.style, look: bar.shape.look,
+                                     selectedID: key.selectedID)
                 bar.tabsWidth = (key, full)
             }
             let slack = predictedSlack(bar: bar, tabsWidth: full)
@@ -2954,7 +3044,8 @@ import HelmUI
     /// **The two identical `Entry` mappings this file used to carry, become
     /// one.** `HelmToolbarAction.Kind`'s closures never survive into
     /// `HelmToolbarActionsModel.EntryKind` — see `Entry`'s own header for why.
-    private static func actionEntries(for content: HelmPageToolbarContent) -> [HelmToolbarActionsModel.Entry] {
+    private static func actionEntries(for content: HelmPageToolbarContent,
+                                      look: HelmBarAppearance) -> [HelmToolbarActionsModel.Entry] {
         content.actions.map { action in
             let kind: HelmToolbarActionsModel.EntryKind
             switch action.kind {
@@ -2970,7 +3061,7 @@ import HelmUI
             case .segmented(let options, let selection):
                 kind = .segmented(options.map {
                     HelmToolbarActionsModel.SegmentEntry(id: $0.id, title: $0.title, symbol: $0.symbol)
-                }, selectedID: selection.wrappedValue, reserveWidth: segmentedReserveWidth(options))
+                }, selectedID: selection.wrappedValue, reserveWidth: segmentedReserveWidth(options, look: look))
             }
             return HelmToolbarActionsModel.Entry(id: action.id, title: action.title, symbol: action.symbol,
                                                  isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind,
@@ -2979,8 +3070,8 @@ import HelmUI
     }
 
     /// **Every `.segmented` reserve this app has ever measured, keyed on the
-    /// options' own glyphs, in order — never re-measured for the life of the
-    /// app.** `actionEntries(for:)` calls `segmentedReserveWidth(_:)` on
+    /// options' own glyphs, in order, and the look — never re-measured for the
+    /// life of the app.** `actionEntries(for:look:)` calls `segmentedReserveWidth(_:look:)` on
     /// every declare, and Hosts republishes its whole toolbar on every
     /// keystroke in the SSH editor (`HostsViewModel.setSSHText(_:)`); without
     /// this cache, that mounts `SwitcherMeasurementRig` — a fresh hosting
@@ -2991,7 +3082,9 @@ import HelmUI
     /// same declares with no `.segmented` entry in them (tester, 2026-09-25,
     /// debug build); with this cache's read taken back out (2026-09-26) it
     /// counted 10 measurements for 10 keystrokes, and measured no time.
-    /// **The key is the ordered `symbol` array and nothing else**,
+    /// **The key is the ordered `symbol` array and the look the bar was built
+    /// under** (`ReserveKey`: the look names the cell the switcher is measured
+    /// wearing, `HelmBarAppearance.switcherCell`), **and nothing else**,
     /// because `HelmToolbarActionsCapsule.entryContent(_:)` fixes a
     /// `.segmented` entry's style to `.icons` unconditionally
     /// (`ASegmentedActionIsAlwaysGlyphsTests`) — no title, no `id`, no
@@ -3004,12 +3097,20 @@ import HelmUI
     /// remove. Not bounded the way `Sources/HelmRuntime/LogTail.swift` or
     /// `Sources/Modules/Autopilot/Engine/Logic/ActionHistory.swift` cap a
     /// record that grows for the life of the app, because nothing a person
-    /// does adds a key: a key is a `.segmented` declaration's own glyphs, and
-    /// a page that spells its options out as a literal
+    /// does adds a key beyond the two looks: a key is a `.segmented`
+    /// declaration's own glyphs and the look its bar was built under, so the
+    /// table holds two entries per declared pair at most, and a page that
+    /// spells its options out as a literal
     /// (`command grep -rn 'options: \[$' Sources/Modules` lists those) fixes
-    /// them at compile time. A page that built its options from data would
-    /// grow this table with that data, and would need the cap.
-    private static var segmentedReserveCache: [[String]: CGFloat] = [:]
+    /// the pairs at compile time. A page that built its options from data
+    /// would grow this table with that data, and would need the cap.
+    private static var segmentedReserveCache: [ReserveKey: CGFloat] = [:]
+
+    /// A reserve is measured with the cell the look puts on the switcher, so the look is part of what it was measured under.
+    private struct ReserveKey: Hashable {
+        let symbols: [String]
+        let look: HelmBarAppearance
+    }
 
     /// **The margin a one-option entry's reserve needs on top of what the rig
     /// measures alone, because the rig is not the capsule.** `SwitcherMeasurementRig`
@@ -3041,7 +3142,7 @@ import HelmUI
     private static let oneOptionCapsuleMargin: CGFloat = 3
 
     /// **A `.segmented` entry's own reserve — measured attached, through
-    /// `SwitcherMeasurementRig`, the same rig `switcherWidth(tabs:style:selectedID:)`
+    /// `SwitcherMeasurementRig`, the same rig `switcherWidth(tabs:style:look:selectedID:)`
     /// above already uses for the centre tabs' fold prediction, cached in
     /// `segmentedReserveCache` and never read as a fraction of a point.**
     /// Attached for the reason the rig's own header gives for the tabs — a
@@ -3049,6 +3150,10 @@ import HelmUI
     /// and per glyph set, because each of four pairs reserves what it draws,
     /// 73.0–85.0 pt across the set, rather than one number standing in for
     /// all of them (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`).
+    /// **The dated readings in this doc and in `oneOptionCapsuleMargin`'s are of AppKit's cell**
+    /// (the switcher's, before the look reached the measuring views); under
+    /// Flat the reserve is measured wearing Helm's cell, and none of those
+    /// numbers was read again with it.
     /// Measured non-compact and in `.icons` — the one form
     /// `HelmToolbarActionsCapsule.entryContent(_:)` ever draws a `.segmented`
     /// entry in (`HelmToolbarActions.swift`, `HelmUI`, which may not reach
@@ -3066,14 +3171,14 @@ import HelmUI
     /// not a located threshold) — rounding down would risk landing short on
     /// some other pair the same way, so the ceiling is the only direction
     /// that never re-introduces the half-point.
-    private static func segmentedReserveWidth(_ options: [HelmToolbarTab]) -> CGFloat {
+    private static func segmentedReserveWidth(_ options: [HelmToolbarTab], look: HelmBarAppearance) -> CGFloat {
         guard let first = options.first else { return 0 }
-        let key = options.map(\.symbol)
+        let key = ReserveKey(symbols: options.map(\.symbol), look: look)
         if let cached = segmentedReserveCache[key] { return cached }
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(first.id),
                                        segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
             .environment(\.helmSwitcherStyle, .icons)
-            .environment(\.helmSwitcherCell, .systems)
+            .environment(\.helmSwitcherCell, look.switcherCell)
         var width = measurementRig.measure(AnyView(view))
         if options.count == 1 { width += oneOptionCapsuleMargin }
         width = width.rounded(.up)
@@ -3123,7 +3228,7 @@ import HelmUI
         // and animated the whole capsule in from nothing — exactly the
         // movement Refresh is meant never to make.
         if let content = bar.content {
-            model.setDeclared(Self.actionEntries(for: content))
+            model.setDeclared(Self.actionEntries(for: content, look: bar.shape.look))
             model.setVisibleIDs(content.actions.filter(\.isVisible).map(\.id))
         }
         // Seeded the same way `isInteractive` is not (it defaults `true` on
@@ -3137,23 +3242,12 @@ import HelmUI
         // at all, and reads whatever this window happened to already carry
         // before this capsule existed. See
         // `correctActionsGlassOnFirstAttach(_:)`'s own header for the reading:
-        // flagged here, spent once this bar is actually attached.
-        if !windowAppearsActive { bar.actionsGlassNeedsFirstAttachCorrection = true }
-        // **`content.search == nil` is "the capsule is this bar's own last
-        // item"** — `identifiers(content:style:lead:hasSpacer:)` never puts anything after
-        // `helm.actions` but `helm.search`, and `ShapeSignature.hasSearch`
-        // rebuilds the whole bar, this item included, the moment that
-        // changes — so this reads once, at construction, rather than on every
-        // `patchActions`. See `HelmToolbarActionsCapsule.edgeMargin`'s own
-        // header for the measurement this closes: Hosts and Leftovers, which
-        // end their bar here, used to sit 4.0 pt from the window's trailing
-        // edge against Uninstaller's 8.0 pt for `helm.search` at the same
-        // width.
-        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset)
-            .environment(\.helmSwitcherCell, .systems))
-        hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        // flagged here, spent once this bar is actually attached. A flat
+        // capsule has no glass, so it is not flagged.
+        if !windowAppearsActive && bar.shape.look == .liquidGlass { bar.actionsGlassNeedsFirstAttachCorrection = true }
+        // The trailing inset is read once, at construction, rather than on every
+        // `patchActions` — `actionsHost(_:for:)` says why that holds.
+        item.view = actionsHost(model, for: bar)
         // Not a plain image item any more, so no second AppKit glass behind
         // the SwiftUI one it now draws for itself (`isBordered = true` wraps
         // the hosted view in AppKit's own bordered chrome — measured).
@@ -3180,7 +3274,7 @@ import HelmUI
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
-            model.setDeclared(Self.actionEntries(for: content))
+            model.setDeclared(Self.actionEntries(for: content, look: bar.shape.look))
         }
         let visible = content.actions.filter(\.isVisible).map(\.id)
         if visible != model.visibleIDs {
@@ -3626,6 +3720,15 @@ extension SettingsToolbar: NSSearchFieldDelegate {
     }
 }
 
+private extension HelmBarAppearance {
+    /// The cell a switcher in the window's toolbar wears under this look: AppKit's under Liquid Glass (its
+    /// motion; its platter behind the tabs, the capsule's glass behind a capsule's switcher), Helm's own
+    /// under Flat (its slide; the tabs on a plate `SettingsToolbar` puts under them, a capsule's switcher
+    /// on the capsule's own flat fill). `SettingsToolbar` is the one place that asks for `systems`, and it
+    /// asks through this.
+    var switcherCell: HelmSwitcherCell { self == .flat ? .flat : .systems }
+}
+
 /// **What decides whether a cached bar can be reused as it stands, or must be
 /// rebuilt as a fresh `NSToolbar`.** Everything here can change without a
 /// page ever redeclaring — `pageBarStyle` from a `defaults write`, and the
@@ -3635,6 +3738,8 @@ extension SettingsToolbar: NSSearchFieldDelegate {
 /// not a separate invalidation call, is what a style change actually
 /// invalidates: the next time any page's bar is obtained, a stale shape
 /// simply fails the comparison and a fresh `NSToolbar` is built in its place.
+/// The look is one of these: `AppSettings.barAppearance` is read here, and a
+/// bar built under the other look is never given back to a page.
 /// `actionIDs` stays even though there is one `NSToolbarItem` for the whole
 /// capsule now, not one per action — `HelmToolbarActionsCapsule`'s reserve is
 /// sized from the *declared* set, so a page whose declared actions change
@@ -3654,9 +3759,15 @@ private struct ShapeSignature: Equatable {
     /// bar changes shape together, and a moved width of the same spacer
     /// changes none.
     let hasSpacer: Bool
+    /// The look (`AppSettings.barAppearance`) the bar's tabs and actions are made of. It is read here and
+    /// nowhere else on the toolbar's side: an item takes the look from the bar it was built for
+    /// (`PageBar.shape`), so a bar of the other look is never reused, and the items never read the
+    /// stored value themselves.
+    let look: HelmBarAppearance
 
     init(content: HelmPageToolbarContent?, hasSpacer: Bool) {
         self.hasSpacer = hasSpacer
+        look = AppSettings.barAppearance
         pageBarStyle = AppSettings.pageBarStyle
         tabIDs = content?.tabs.map(\.id) ?? []
         actionIDs = content?.actions.map(\.id) ?? []
@@ -3717,6 +3828,12 @@ private final class PageBar {
     // before it is hosted (`helmSwitcherView`), which changes the concrete
     // `some View` type without changing what is actually mounted.
     var tabsSwitcherHost: NSHostingView<AnyView>?
+    /// **Only on a bar built under Flat:** the plate the tabs' hosting view stands in, which is then the
+    /// tabs item's view (`SettingsToolbar.makeTabsItem`). `nil` under Liquid Glass.
+    var tabsPlate: ShellBarPlate?
+    /// What the tabs item's view is: the plate under Flat, the hosting view under Liquid Glass. The one
+    /// view a reseat detaches and attaches again.
+    var tabsItemView: NSView? { tabsPlate ?? tabsSwitcherHost }
     /// **Whether the tabs are folded to a one-item capsule with a menu.** The
     /// one field `SettingsToolbar.setTabsFolded(_:bar:layout:reseat:)` writes
     /// — see its own header for the whole mechanism — and the one
@@ -3861,11 +3978,11 @@ private final class PageBar {
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
     /// **Set by `SettingsToolbar.makeActionsItem` the moment it builds this
-    /// bar's capsule while the window already reads inactive, and consumed —
+    /// bar's capsule under Liquid Glass while the window already reads inactive, and consumed —
     /// once — the moment `show(_:key:)` actually attaches this bar.** See
     /// `SettingsToolbar.correctActionsGlassOnFirstAttach(_:)`'s own header for
     /// the reading behind it: the capsule's glass, unlike its glyph, is not
-    /// seeded from `windowAppearsActive` at all, so a capsule built while the
+    /// seeded from `windowAppearsActive` at all, so a glass capsule built while the
     /// window reads inactive can draw lit glass until the deferred rebuild.
     var actionsGlassNeedsFirstAttachCorrection = false
 

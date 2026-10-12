@@ -57,9 +57,7 @@ final class ShellBarActions: ShellBarZone {
     private static let oneOptionCapsuleMargin: CGFloat = 3
 
     init(titlebarIsTransparent: Bool) {
-        flatInactiveInk = .init(
-            dark: helmNameZoneInactiveOpacity(dark: true, titlebarIsTransparent: titlebarIsTransparent),
-            light: helmNameZoneInactiveOpacity(dark: false, titlebarIsTransparent: titlebarIsTransparent))
+        flatInactiveInk = .nameZone(titlebarIsTransparent: titlebarIsTransparent)
         model.press = { [weak self] id in
             guard let self, isLive, let action = actions.first(where: { $0.id == id }) else { return }
             Self.perform(action)

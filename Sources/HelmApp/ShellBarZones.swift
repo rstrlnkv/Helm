@@ -19,6 +19,15 @@ import HelmUI
     }
 }
 
+extension HelmToolbarActionsCapsule.InactiveInk {
+    /// The numbers a flat capsule dims by in an inactive window: the name zone's, for the title bar the
+    /// window wears. `ShellBarActions` and `SettingsToolbar` hand the capsule these.
+    @MainActor static func nameZone(titlebarIsTransparent: Bool) -> Self {
+        Self(dark: helmNameZoneInactiveOpacity(dark: true, titlebarIsTransparent: titlebarIsTransparent),
+             light: helmNameZoneInactiveOpacity(dark: false, titlebarIsTransparent: titlebarIsTransparent))
+    }
+}
+
 /// The name zone's own view: the module's plate and its name, the way
 /// `PageBarStyle`'s `.moduleName` arm drew them before the bridge — reused
 /// here rather than redrawn, to the letter of size and spacing. **The status

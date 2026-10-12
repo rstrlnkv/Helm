@@ -9,7 +9,7 @@ import XCTest
 /// than off the source**, through the bar and the channel rather than by constructing
 /// `HelmToolbarActionsModel.Entry` by hand:
 /// `ShellBarActions.entries(for:appearance:)` is where the page bar turns `HelmToolbarAction.Kind` into
-/// `HelmToolbarActionsModel.EntryKind` (the earlier toolbar's `SettingsToolbar.actionEntries(for:)` is a
+/// `HelmToolbarActionsModel.EntryKind` (the earlier toolbar's `SettingsToolbar.actionEntries(for:look:)` is a
 /// second copy, which this file does not read), and a test that skips it would prove nothing about whether
 /// that translation is actually wired in.
 ///

@@ -10,7 +10,10 @@ import SwiftUI
 ///   is this look.
 ///
 /// Under both, the page bar's strip is `HelmFlatSegmentedCell` drawing the pick,
-/// `HelmSurface.barPick` (`HelmToolbarSwitcher`'s header); the toolbar the window wears does not read the stored value.
+/// `HelmSurface.barPick` (`HelmToolbarSwitcher`'s header). The toolbar the window wears reads the stored
+/// value (`SettingsToolbar`, in the shape of each bar it builds): under `flat` its tabs are that cell on a flat
+/// plate and its actions capsule is the flat one, under `liquidGlass` its tabs wear AppKit's cell and its
+/// capsule is glass.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice
@@ -24,10 +27,12 @@ import SwiftUI
 /// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
-/// nobody having set a look gets. `SettingsToolbar`'s items and the tests
-/// that mount the actions capsule bare build it that way, so for them
-/// `liquidGlass` is the plate that existed before the setting did (`SettingsToolbar`'s strip on it wears AppKit's cell, a bare capsule's the flat one);
-/// `ShellBarActions` is the one builder in `Sources/` that sets a look on it, and `SettingsWindow` hands that zone to the page bar of its `.pageBar` build.
+/// nobody having set a look gets. The tests that mount the actions capsule
+/// bare build it that way, so for them `liquidGlass` is the plate that existed
+/// before the setting did (a bare capsule's strip wears the flat cell);
+/// `ShellBarActions` and `SettingsToolbar` are the builders in `Sources/` that set a look on it, the first from
+/// the zone `SettingsWindow` hands to the page bar of its `.pageBar` build, from the state that bar shows it
+/// (`ShellBarZoneState.appearance`), the second from the look its bar was built under.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {

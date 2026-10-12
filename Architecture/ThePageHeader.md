@@ -63,8 +63,8 @@ its `compact` flag folds it to the current tab. In the toolbar it folds before A
 into its overflow menu, and `SettingsToolbar`'s "Folding the tabs" section decides
 when; in the page bar `ShellBarLayout` decides, and the verdict is one
 threshold in the bar's width. The switcher wears Helm's flat cell (`HelmFlatSegmentedCell`) unless
-the environment's `helmSwitcherCell` asks for AppKit's, and only `SettingsToolbar` asks, on the tabs and on the
-actions capsule, so the toolbar's segmented controls wear AppKit's cell and every other switcher wears Helm's (ARCHITECTURE.md § Ink and contrast). In the page bar, `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A press on a tab of the whole strip asks its cell to slide the pick to it over `HelmMotion.interfaceDuration` (a cut under Reduce Motion, on the first draw, when the page sets the selection, and for a tab chosen from the folded strip's menu; a republication that also renames a tab or moves a dot ends the slide); the page under the bar changes at once. The slide was not seen on a screen, and a cell that is not Helm's is not asked to slide. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
+the environment's `helmSwitcherCell` asks for AppKit's, and only `SettingsToolbar` asks, under Liquid Glass, on the tabs and on the
+actions capsule, so the toolbar's segmented controls wear AppKit's cell under Liquid Glass and every other switcher, and the toolbar's under Flat, wears Helm's (ARCHITECTURE.md § Ink and contrast). In the page bar, `ShellBarTabs` keeps two switchers rooted, the whole strip and the folded one, and its one plate holds whichever `ShellBarLayout` says. A press on a tab of the whole strip asks its cell to slide the pick to it over `HelmMotion.interfaceDuration` (a cut under Reduce Motion, on the first draw, when the page sets the selection, and for a tab chosen from the folded strip's menu; a republication that also renames a tab or moves a dot ends the slide); the page under the bar changes at once. The slide was not seen on a screen, and a cell that is not Helm's is not asked to slide. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
 the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the dot reads over the glass plate on a real screen was not measured. In the toolbar the search field is an `NSSearchToolbarItem` carrying an `NSSearchField`
 `SettingsToolbar` builds itself (`makeSearchItem`): Return, and only Return, runs a
 page's `onSubmit`. With `AppSettings.alwaysCollapseSearch` on, an empty idle field
@@ -77,8 +77,22 @@ rests as AppKit's magnifier at every width, through one rest predicate
 
 The bar has one right-click menu (`ShellBarMenu`), filled the same way for the toolbar and for `ShellPageBar`.
 It has an Appearance section (Flat, Liquid Glass) on every page, and General
-mirrors it in the row "Toolbar style". Only the page bar's zones read that setting (`ShellPageBar` hands it to them, so that bar draws by
-it); the toolbar does not read it: its actions capsule draws by the environment's default look, Liquid Glass, whatever is stored (`HelmBarAppearance`'s header). In the toolbar the menu is answered by
+mirrors it in the row "Toolbar style". Two bars draw by that setting: the page bar's zones (`ShellPageBar` hands it to them) and the toolbar, whose
+`SettingsToolbar` reads it once, when it reads a bar's shape (`ShapeSignature.look`); it hears `.helmBarAppearanceChanged`, as it hears a
+change of page-bar style, and builds the bar of the page on the window afresh; a cached bar of another page is built afresh when that page is next shown, so a change of look puts one
+fresh toolbar on the window and a bar built under the other look is never given back to a page; a look written equal to the one worn posts the same notification and rebuilds nothing. The look is handed down from the bar to its
+items, and no item reads the setting itself. It changes what two items are made of, and only those:
+
+| item | Liquid Glass | Flat |
+|---|---|---|
+| tabs | a bordered item, AppKit's platter behind AppKit's cell | `isBordered = false` (AppKit's platter off), Helm's flat cell on a `ShellBarPlate` wearing the flat look, which follows the window's activity; a press slides the pick |
+| actions | the capsule on glass, `\.helmSwitcherCell` AppKit's for a segmented entry | the capsule on a flat fill (`\.helmBarAppearance`), dimmed in an inactive window by the name zone's numbers through the model's `appearsActive`, which is told the window's activity and rebuilds no host (the glass capsule's host is rebuilt for it), a segmented entry in Helm's cell |
+
+The name and the search field are not made differently under either look. The widths the tabs and a segmented entry are measured at are measured wearing the cell
+the look puts on them, and a measurement is kept with the look it was taken under. **Not seen on a screen:** the plate under the cell inside a toolbar item, that no platter of
+AppKit's is behind it, the slide inside the toolbar, and the capsule drawn flat. `HelmBarAppearance`'s header has the two defaults.
+
+In the toolbar the menu is answered by
 the same local monitor as the magnifier press, so a Control-click on the collapsed
 magnifier has one owner; the same menu is each centre switcher's `NSView.menu`,
 which is what VoiceOver opens. In the page bar `ShellPageBarView` answers the menu anywhere on the bar except over the window buttons' capsule, and a resting search field answers it.

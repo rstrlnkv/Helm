@@ -19,8 +19,9 @@ import XCTest
 /// through the actions capsule on this Mac: `minus` / `ellipsis` re-declared
 /// as `rectangle.3.group` / `keyboard` under the same two names left the
 /// control drawing `minus` / `ellipsis` at 73.0 pt while
-/// `segmentedReserveWidth(_:)` measured the new pair at
-/// 85.0 — the switcher stale and the reserve 12 pt past it. The capsule's
+/// the reserve measured the new pair at 85.0 (`ShellBarActions.segmentedReserveWidth(_:appearance:)` is this
+/// file's page bar's measurer, `SettingsToolbar.segmentedReserveWidth(_:look:)` the window's toolbar's) — the
+/// switcher stale and the reserve 12 pt past it. The capsule's
 /// switcher is always `.icons`, so it is always in the one style where a
 /// glyph is all that is drawn. No page changes an option's glyph today
 /// (Hosts' and Homebrew's are literals); the same cheap path carried this for

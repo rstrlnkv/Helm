@@ -82,7 +82,7 @@ public final class HelmToolbarActionsModel {
         /// the model's owner through `pressItem`, the same route a `.menu`
         /// item's own press already takes. `reserveWidth` is carried rather
         /// than computed here: `HelmApp` measures it, through a measurer of its
-        /// own (`SettingsToolbar.actionEntries(for:)` and
+        /// own (`SettingsToolbar.actionEntries(for:look:)` and
         /// `ShellBarActions.entries(for:appearance:)`), and this module may not
         /// reach across that boundary to ask for one.
         case segmented([SegmentEntry], selectedID: String, reserveWidth: CGFloat)
@@ -250,15 +250,19 @@ public final class HelmToolbarActionsModel {
 /// and correctly returning `.inactive`. No fixture since has reproduced that
 /// reading, and nothing that differs between Helm Dev and every fixture above
 /// has been found. `SettingsToolbar.rebuildActionsHost(_:)` keeps two callers
-/// for two different reasons: `setWindowAppearsActive(_:)` calls it on every
+/// for two different reasons, both under Liquid Glass only (a flat capsule draws no
+/// glass and follows the window by the model's `appearsActive`):
+/// `setWindowAppearsActive(_:)` calls it on every
 /// live transition for the unresolved reason above, and
 /// `correctActionsGlassOnFirstAttach(_:)` calls it at most once, and only for
 /// a bar built while the window reads inactive, for the
-/// separate, confirmed reason its own header gives. No row in `Tests/` holds the
-/// live-transition call: the one row that calls `SettingsToolbar.setWindowAppearsActive(_:)`
-/// (`TheActionsCapsuleFollowsTheWindowsAppearsActiveTests`) calls it before the bar is
-/// built and reads the host only after. That the call can be dropped with every row
-/// green is read, not run.
+/// separate, confirmed reason its own header gives.
+/// `TheToolbarsItemsFollowTheLookTests.testAChangeOfLookHandsTheCapsuleItsLookAndOnlyGlassRebuildsItsHostWhenTheWindowsActivityFlips`
+/// flips the activity on a built bar and reads that under Liquid Glass the host is a new one after each
+/// flip and what the new host is handed, and that under Flat the host stays and the model reads the
+/// activity told; `testAGlassCapsuleFirstAttachedInAnInactiveWindowIsRebuilt` and
+/// `testAFlatCapsuleFirstAttachedInAnInactiveWindowIsNotRebuilt` read the first attach. What its glass
+/// draws after a live transition was not seen on a screen.
 public struct HelmToolbarActionsCapsule: View {
     private let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
@@ -277,7 +281,7 @@ public struct HelmToolbarActionsCapsule: View {
     /// measures that now. The capsule carries an inset of its own only where its caller hands one
     /// (`trailingInset`, 0 by default): `ShellBarActions` hands none, `ShellBarLayout.trailing`
     /// being what stands between the bar's last control and the bar's edge there, and
-    /// `SettingsToolbar.makeActionsItem` hands this number where no search follows the capsule.
+    /// `SettingsToolbar.actionsHost(_:for:)` hands this number where no search follows the capsule.
     public static let edgeMargin: CGFloat = 4
 
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured
@@ -484,8 +488,8 @@ public struct HelmToolbarActionsCapsule: View {
                         // **Why it slides.** A press on this capsule's segmented
                         // action is a press on the same `HelmToolbarSwitcher`
                         // the tabs use. Where it wears `HelmFlatSegmentedCell`,
-                        // which is everywhere but under `SettingsToolbar`, that
-                        // cell slides its pick to a pressed segment; AppKit's
+                        // which is everywhere but under `SettingsToolbar` in
+                        // Liquid Glass, that cell slides its pick to a pressed segment; AppKit's
                         // cell is not asked to. No row presses the capsule's
                         // switcher. The slide was not seen on a screen with the flat cell.
                         backing(entryContent(entry).disabled(!entry.isEnabled || !model.isInteractive),
@@ -498,7 +502,7 @@ public struct HelmToolbarActionsCapsule: View {
         // size rather than reserving room the buttons' trailing alignment
         // would swallow. The hidden reserve row above is unaffected: it is
         // laid out from `model.declared`, and the inset is the caller's,
-        // which `SettingsToolbar.makeActionsItem` decides from `content.search`.
+        // which `SettingsToolbar.actionsHost(_:for:)` decides from `content.search`.
         .padding(.trailing, trailingInset)
     }
 
@@ -610,9 +614,9 @@ public struct HelmToolbarActionsCapsule: View {
     /// **Measured attached, per glyph set** — each pair's own reserve tracks
     /// what it draws rather than one number standing in for all of them
     /// (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`: 73.0–85.0 pt across
-    /// four pairs). `SettingsToolbar.actionEntries(for:)` measures through
+    /// four pairs). `SettingsToolbar.actionEntries(for:look:)` measures through
     /// `SwitcherMeasurementRig` — the same rig the centre tabs' own fold
-    /// prediction uses (`SettingsToolbar.switcherWidth(tabs:style:selectedID:)`),
+    /// prediction uses (`SettingsToolbar.switcherWidth(tabs:style:look:selectedID:)`),
     /// whose own header has what a bare hosting view got wrong for the tabs —
     /// mounting the same segments, non-compact and in `.icons`, the one style
     /// `entryContent(_:)` ever draws a `.segmented` entry in.

@@ -8,7 +8,7 @@ import XCTest
 /// **The settings window the app builds, with no bar named to its initialiser, wears the app-owned toolbar
 /// and mounts no page bar: a page switch assigns it exactly one toolbar and a return reuses the object, the
 /// name starts sixteen points past the pane, the pane starts where AppKit's strip ends and Helm adds nothing
-/// to it, the tabs wear AppKit's own cell, and only the toolbar's file asks for that cell.** The real window
+/// to it, the tabs wear AppKit's own cell under Liquid Glass, and only the toolbar's file asks for that cell.** The real window
 /// is built and never ordered, and nothing in it is key. Every row that builds the window prints «no toolbar
 /// on the window» when the window wears none, so a window that does not is a red row and not a crash on a
 /// nil; `testNothingButTheToolbarsFileAsksForTheSystemsCell` builds no window and reads the sources.
@@ -18,38 +18,8 @@ import XCTest
 @MainActor
 final class TheWindowWearsTheToolbarTests: XCTestCase {
 
-    private let noShell = """
-        the window has no content view controller of the shell's type: nothing was read from a window \
-        nobody built
-        """
-
     private func build(file: StaticString = #filePath, line: UInt = #line) -> SettingsWindowRig? {
-        SettingsWindowRig.buildAsTheAppDoes(in: self, failure: noShell, file: file, line: line)
-    }
-
-    private func settle(_ rig: SettingsWindowRig) {
-        rig.window.contentView?.layoutSubtreeIfNeeded()
-        SettingsWindowRig.pump(0.2)
-        rig.window.contentView?.layoutSubtreeIfNeeded()
-    }
-
-    /// The window's toolbar, or the failure that names what the row could not read.
-    private func worn(by rig: SettingsWindowRig, _ unread: String,
-                      file: StaticString = #filePath, line: UInt = #line) -> NSToolbar? {
-        guard let toolbar = rig.window.toolbar else {
-            XCTFail("no toolbar on the window: \(unread)", file: file, line: line)
-            return nil
-        }
-        return toolbar
-    }
-
-    private func declare(_ rig: SettingsWindowRig, _ token: String, search: Bool, selected: String = "installed") {
-        rig.channel.declare(SettingsWindowRig.content(search: search, selected: selected), token: token,
-                            generation: rig.channel.nextGeneration())
-    }
-
-    private func item(_ identifier: String, in toolbar: NSToolbar) -> NSToolbarItem? {
-        toolbar.items.first { $0.itemIdentifier.rawValue == identifier }
+        SettingsWindowRig.buildAsTheAppDoes(in: self, failure: SettingsWindowRig.noShell, file: file, line: line)
     }
 
     // MARK: - The window wears the toolbar
@@ -59,10 +29,10 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// neither, each fail by their own sentence.
     func testTheWindowTheAppBuildsWearsAToolbarAndMountsNoPageBar() throws {
         guard let rig = build() else { return }
-        settle(rig)
+        rig.settle()
         let bars = rig.shell.shell.clip.subviews.compactMap { $0 as? ShellPageBarView }
         XCTAssertTrue(bars.isEmpty, "the card's clip holds \(bars.count) page bars beside the window's toolbar")
-        guard let toolbar = worn(by: rig, "the window holds \(bars.count) page bars in its clip and nothing in its title bar")
+        guard let toolbar = rig.worn("the window holds \(bars.count) page bars in its clip and nothing in its title bar")
         else { return }
         XCTAssertTrue(toolbar.delegate is SettingsToolbar,
                       "the window's toolbar is not the settings toolbar's: its delegate is \(String(describing: toolbar.delegate))")
@@ -80,11 +50,11 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     func testAPageSwitchAssignsOneToolbarAndAReturnReusesTheObject() throws {
         guard let rig = build() else { return }
         let window = rig.window
-        declare(rig, "probe.a", search: true)
-        declare(rig, "probe.b", search: false)
-        settle(rig)
+        rig.declare("probe.a", search: true)
+        rig.declare("probe.b", search: false)
+        rig.settle()
         SettingsWindowRig.pump()
-        guard let general = worn(by: rig, "no assignment was counted on a window that wore nothing") else { return }
+        guard let general = rig.worn("no assignment was counted on a window that wore nothing") else { return }
 
         var assigned = 0
         let kvo = window.observe(\.toolbar, options: [.new]) { _, _ in MainActor.assumeIsolated { assigned += 1 } }
@@ -114,7 +84,7 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
         XCTAssertTrue(window.toolbar === pageA,
                       "step C put another toolbar on the window than page A's own: \(String(describing: window.toolbar)) is not \(String(describing: pageA))")
 
-        step("D declare on the page on screen", expecting: 0) { declare(rig, "probe.a", search: true, selected: "updates") }
+        step("D declare on the page on screen", expecting: 0) { rig.declare("probe.a", search: true, selected: "updates") }
         XCTAssertTrue(window.toolbar === pageA, "step D replaced the toolbar of the page on screen")
 
         step("E resize", expecting: 0) {
@@ -136,12 +106,12 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// window and nothing reads where the buttons stand.
     func testAWindowTakingABarAsksTheShellForALayout() throws {
         guard let rig = build() else { return }
-        declare(rig, "probe.a", search: true)
-        declare(rig, "probe.b", search: false)
-        settle(rig)
+        rig.declare("probe.a", search: true)
+        rig.declare("probe.b", search: false)
+        rig.settle()
         let shell = rig.shell.shell
-        for _ in 0..<3 where shell.needsLayout { settle(rig) }
-        guard worn(by: rig, "no bar was taken, so no call could be counted") != nil else { return }
+        for _ in 0..<3 where shell.needsLayout { rig.settle() }
+        guard rig.worn("no bar was taken, so no call could be counted") != nil else { return }
         XCTAssertFalse(shell.needsLayout, "the shell was still waiting for a layout before the switch: the row would read an old request")
 
         var assigned = 0
@@ -151,7 +121,7 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
 
         rig.model.selection = .module("probe.a")
         XCTAssertEqual(rig.model.selection, .module("probe.a"), "the switch never moved the selection: no bar was asked for")
-        guard worn(by: rig, "the switch left no toolbar on the window") != nil else { return }
+        guard rig.worn("the switch left no toolbar on the window") != nil else { return }
         XCTAssertGreaterThan(assigned, 0, "the switch assigned the window no toolbar: nothing was taken, so there was no call to count")
         XCTAssertEqual(shell.barAttachments - told, assigned,
                        "the window took \(assigned) toolbars in the switch and told the shell \(shell.barAttachments - told) times, not as many")
@@ -166,15 +136,15 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// the item and not from a frame, which a window nobody ordered does not give.
     func testAtTwoHundredTheNameStartsSixteenPastThePane() throws {
         guard let rig = build() else { return }
-        settle(rig)
-        guard let toolbar = worn(by: rig, "no spacer item was read, so no name start") else { return }
+        rig.settle()
+        guard let toolbar = rig.worn("no spacer item was read, so no name start") else { return }
         let card = rig.shell.shell.card.frame
         XCTAssertEqual(card.minX, 200, accuracy: 0.5, "the card's edge is \(card.minX), not the sidebar's 200: the row stands at another width")
         guard let owner = toolbar.delegate as? SettingsToolbar else {
             XCTFail("the toolbar's delegate is not the settings toolbar's: no item start was read")
             return
         }
-        guard let spacer = item("helm.leadingSpacer", in: toolbar),
+        guard let spacer = SettingsWindowRig.item("helm.leadingSpacer", in: toolbar),
               let width = spacer.view?.constraints.first(where: { $0.firstAttribute == .width && $0.secondItem == nil })?.constant
         else {
             XCTFail("the toolbar's items \(toolbar.items.map(\.itemIdentifier.rawValue)) hold no leading spacer with a width: the name lands where the items start")
@@ -193,8 +163,8 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// at two window sizes.
     func testThePaneStartsWhereTheStripEndsAndHelmAddsNothing() throws {
         guard let rig = build() else { return }
-        settle(rig)
-        guard worn(by: rig, "no strip was read, so no pane start") != nil else { return }
+        rig.settle()
+        guard rig.worn("no strip was read, so no pane start") != nil else { return }
         guard let frameView = rig.window.contentView?.superview else {
             XCTFail("the window has no frame view: no strip was read")
             return
@@ -204,7 +174,7 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
         guard let pane = panes.first else { return }
         for size in [NSSize(width: 1060, height: 760), NSSize(width: 880, height: 620)] {
             rig.window.setContentSize(size)
-            settle(rig)
+            rig.settle()
             let strip = frameView.bounds.height - rig.window.contentLayoutRect.height
             XCTAssertGreaterThan(strip, 40, "the strip is \(strip) pt at \(size): the window's toolbar made it no taller than a bare title bar")
             XCTAssertEqual(pane.additionalSafeAreaInsets.top, 0, accuracy: 0.01,
@@ -224,17 +194,17 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
     /// page is selected: tabs, actions and, when the page has one, search; a page without search carries none.**
     func testADeclareOnTheWindowsChannelReachesTheAttachedToolbarsItems() throws {
         guard let rig = build() else { return }
-        declare(rig, "probe.a", search: true)
-        declare(rig, "probe.b", search: false)
+        rig.declare("probe.a", search: true)
+        rig.declare("probe.b", search: false)
         rig.model.selection = .module("probe.a")
-        settle(rig)
-        guard let withSearch = worn(by: rig, "no item was read for a page that declared tabs, an action and a search") else { return }
+        rig.settle()
+        guard let withSearch = rig.worn("no item was read for a page that declared tabs, an action and a search") else { return }
         let ids = withSearch.items.map(\.itemIdentifier.rawValue)
         for want in ["helm.name", "helm.tabs", "helm.actions", "helm.search"] {
             XCTAssertTrue(ids.contains(want), "the toolbar of a page that declared tabs, an action and a search lacks \(want): it holds \(ids)")
         }
         rig.model.selection = .module("probe.b")
-        settle(rig)
+        rig.settle()
         let without = rig.window.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
         XCTAssertTrue(without.contains("helm.tabs"), "the toolbar of a page that declared tabs lacks helm.tabs: it holds \(without)")
         XCTAssertFalse(without.contains("helm.search"), "the toolbar of a page that declared no search holds one: \(without)")
@@ -242,15 +212,19 @@ final class TheWindowWearsTheToolbarTests: XCTestCase {
 
     // MARK: - The tabs' cell
 
-    /// **The tabs in the toolbar are AppKit's own segmented cell, not Helm's flat one.** The single segmented
-    /// control mounted in the tabs item is read for the exact class of its cell.
+    /// **Under Liquid Glass the tabs in the toolbar are AppKit's own segmented cell, not Helm's flat one.** The
+    /// look is pinned to Liquid Glass (with nothing stored the look reads Flat, `HelmBarAppearance.init(stored:)`,
+    /// and under Flat the tabs wear Helm's cell: `TheToolbarsItemsFollowTheLookTests`). The single segmented control mounted in the
+    /// tabs item is read for the exact class of its cell.
     func testTheTabsWearAppKitsCellInTheToolbar() throws {
+        PinnedBarSettings.pin(in: self)
+        AppSettings.barAppearance = .liquidGlass
         guard let rig = build() else { return }
-        declare(rig, "probe.a", search: true)
+        rig.declare("probe.a", search: true)
         rig.model.selection = .module("probe.a")
-        settle(rig)
-        guard let toolbar = worn(by: rig, "no tabs item was read, so no cell") else { return }
-        guard let tabs = item("helm.tabs", in: toolbar), let host = tabs.view else {
+        rig.settle()
+        guard let toolbar = rig.worn("no tabs item was read, so no cell") else { return }
+        guard let tabs = SettingsWindowRig.item("helm.tabs", in: toolbar), let host = tabs.view else {
             XCTFail("the toolbar's items \(toolbar.items.map(\.itemIdentifier.rawValue)) hold no tabs item with a view: no cell was read")
             return
         }

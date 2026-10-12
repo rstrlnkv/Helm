@@ -12,7 +12,9 @@ import HelmUI
 /// menu hides what cannot act (HIG, context menus). The Appearance section is the mirror of General's
 /// "Toolbar style" row (`BarAppearanceRow`); `ShellPageBar` hands `AppSettings.barAppearance` to its zones
 /// (`ShellBarZoneState.appearance`), which `ShellBarTabs`, `ShellBarActions` and `ShellBarSearch` conform to
-/// `ShellBarZone` to receive; `SettingsWindow` builds the bar, so the window draws by it.
+/// `ShellBarZone` to receive; the window the app builds makes no page bar and draws by the look through
+/// `SettingsToolbar` (its `ShapeSignature` reads `AppSettings.barAppearance`), the `.pageBar` build of
+/// `SettingsWindow` through `ShellPageBar`.
 ///
 /// **Every item's target is `actions`**, for either bar: `NSMenuItem.target` is weak, so the one object is a
 /// `static let`. Each action only writes the setting; the setting's own notification is what reaches a bar and
