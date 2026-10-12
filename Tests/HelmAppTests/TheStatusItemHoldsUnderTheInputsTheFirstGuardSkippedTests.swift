@@ -9,47 +9,37 @@ import Module_VPN_UI
 @testable import HelmUI
 
 /// **The inputs `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests` never fed
-/// the bar's status zone** — tester's pass on the owner's 2026-09-28
+/// the trailing `helm.status` item** — the owner's 2026-09-28
 /// «Давай вернем его в правую часть».
 ///
-/// That file mounts a fresh window per status page, so the bar is always
-/// *built* on a page that has a status. In the app one bar is built on
-/// whichever page is opened first — General, as often as not — and then kept
-/// while the selection moves. Every case here reads what the bar laid out and
-/// what the hosted view actually drew: the badge's ink is read off a
-/// `cacheDisplay` of the hosted view, and its gaps are measured from the bar's
-/// own edges. The one layout constant read is in the first case, which holds
-/// the status zone's box to `ShellBarLayout.controlTop` and `controlHeight`
-/// before reading the ink inside it.
+/// That file mounts a fresh window per page, so no bar is carried from one
+/// page to the next. In the app the shared name-only bar is built on whichever
+/// name-only page is opened first and then reused; this fixture mounts an
+/// empty page, so General, which carries tabs in the app, is name-only here.
+/// Every case here reads what AppKit actually laid out
+/// and what the hosted view actually drew, never the constant the fix itself
+/// introduced: the badge's ink is read off a `cacheDisplay` of the hosted
+/// view, not derived from `HelmToolbarActionsCapsule.edgeMargin`.
 ///
-/// **The machine's settings the bar reads when it is built** — the page bar
-/// style, the sidebar style, the search's collapse and the bar's appearance —
-/// are pinned in `setUp` and put back in `tearDown`; with the page bar style
-/// on the window title the bar draws no status at all. Every fixture is dropped
-/// in `tearDown`: its search zone holds a process-wide event monitor until then.
+/// **The bar read here** is the `SettingsToolbar` of `LivePageInTheToolbarFixture`, built with the
+/// `.sidebarSeparator` lead. The status item is made by `makeStatusItem`, the name item by `makeNameItem`, and
+/// both are patched by `patchName` whichever lead the toolbar wears; the lead enters the list of identifiers ahead of the status
+/// and the name item's container, and neither changes what these rows read. What does depend on the lead is
+/// whether the name is listed at all under "Without Icon" (`identifiers(content:style:lead:)`), which the last
+/// two rows read on the window the app builds.
 @MainActor
 final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCase {
 
     /// `SettingsWindow.minSize.width` (860) minus the widest of `ShellGeometry.sidebarRange` (320): narrower than the window reaches, where the sidebar is 200 or the rail.
-    /// `LivePageToolbarFixture`'s own `width:` sets the window's content width, which is the bar's width.
     private static let minPaneWidth: CGFloat = 860 - 320
 
-    private var fixtures: [LivePageToolbarFixture] = []
-    private var savedStyle: PageBarStyle = .moduleName
-    private var savedSidebarStyle: SidebarStyle = .colour
-    private var savedCollapse = false
-    private var savedBarAppearance: HelmBarAppearance = .flat
+    private var fixtures: [LivePageInTheToolbarFixture] = []
 
-    override func setUp() {
-        super.setUp()
-        savedStyle = AppSettings.pageBarStyle
-        savedSidebarStyle = AppSettings.sidebarStyle
-        savedCollapse = AppSettings.alwaysCollapseSearch
-        savedBarAppearance = AppSettings.barAppearance
-        AppSettings.pageBarStyle = .moduleName
-        AppSettings.sidebarStyle = .colour
-        AppSettings.alwaysCollapseSearch = false
-        AppSettings.barAppearance = .flat
+    /// The toolbar reads the page bar style when it is built and the pin puts every setting back after the
+    /// test; with the style on the window title the toolbar lists no `helm.status`.
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
@@ -59,10 +49,6 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
         for id in Self.moduleIDs {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        AppSettings.pageBarStyle = savedStyle
-        AppSettings.sidebarStyle = savedSidebarStyle
-        AppSettings.alwaysCollapseSearch = savedCollapse
-        AppSettings.barAppearance = savedBarAppearance
         super.tearDown()
     }
 
@@ -78,26 +64,25 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     }
 
     private func mount(_ selection: SettingsSelection, width: CGFloat,
-                       appearance: NSAppearance.Name = .aqua,
-                       titlebarIsTransparent: Bool = true) -> LivePageToolbarFixture {
-        let fx = LivePageToolbarFixture(EmptyView(), selection: selection, width: width, height: 700,
-                                        appearance: appearance, titlebarIsTransparent: titlebarIsTransparent)
+                       appearance: NSAppearance.Name = .aqua) -> LivePageInTheToolbarFixture {
+        let fx = LivePageInTheToolbarFixture(EmptyView(), selection: selection, width: width, height: 700,
+                                        appearance: appearance)
         fx.settle(30)
         fixtures.append(fx)
         return fx
     }
 
-    private func statusHost(_ fx: LivePageToolbarFixture) -> NSHostingView<StatusZoneView>? {
-        fx.bar.view.view(for: .status) as? NSHostingView<StatusZoneView>
+    private func item(_ toolbar: NSToolbar, _ rawID: String) -> NSToolbarItem? {
+        toolbar.items.first { $0.itemIdentifier.rawValue == rawID }
     }
 
-    private func nameHost(_ fx: LivePageToolbarFixture) -> NSHostingView<NameZoneView>? {
-        fx.bar.view.view(for: .name) as? NSHostingView<NameZoneView>
+    private func statusHost(_ toolbar: NSToolbar) -> NSHostingView<StatusZoneView>? {
+        item(toolbar, "helm.status")?.view as? NSHostingView<StatusZoneView>
     }
 
-    /// What `ShellPageBar.status` must answer for `id` right now, read the
-    /// way `ModuleDetailView` reads it — the page's own truth, not the bar's
-    /// copy of it.
+    /// What `SettingsToolbar.moduleStatus` must answer for `id` right now,
+    /// read the same way `ModuleDetailView` reads it — the page's own truth,
+    /// not the toolbar's copy of it.
     private func expectedWord(_ id: String) -> String? {
         guard let live = ModuleHost.shared.liveModule(id),
               let activity = ModuleRegistry.descriptor(id)?.activity(live.vm) else { return nil }
@@ -147,68 +132,71 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
                    top: CGFloat(minRow) / scale, peakAlpha: peak)
     }
 
+    private func windowX(_ view: NSView, _ x: CGFloat) -> CGFloat {
+        view.convert(NSPoint(x: x, y: 0), to: nil).x
+    }
+
     // MARK: - 1. The ink's right gap is its top gap
 
     /// **The owner, 2026-09-29: «Бейдж "Активно" / "Не активно" слишком
     /// близко находится к правому краю экрана. Отступ сверху и справа должны
     /// быть одинаковые»** — read off the status's own ink on each status page,
-    /// Keep Awake's and VPN's. Both gaps are measured from the bar's own edges
-    /// (the fixture's window carries an ordinary title above the bar, so the
-    /// window's edge is not the bar's). The zone's box ends where the layout
-    /// puts it whatever the view pads its content by; only the ink says where
-    /// the drawing ends, and only its top row says where the gap it has to
-    /// match begins. `TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests`
-    /// holds the same rule on the real `SettingsWindow` in every language and
-    /// state.
+    /// Keep Awake's and VPN's, in the fixture window this file mounts. The
+    /// first guard reads the *box* at 4 pt — AppKit's unbordered last-item
+    /// margin — which is 4 pt whatever the view pads its content by; only the
+    /// ink says where the drawing ends, and only its top row says where the
+    /// gap it has to match begins. The gap from the window edge is not a
+    /// fixed 8 pt like the actions capsule's, by the owner's rule: the
+    /// capsule is as tall as the bar leaves room for, so its 8 pt is its top
+    /// gap too, and a shorter status sits further in.
+    /// `TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests` holds the
+    /// same rule on the real `SettingsWindow` in every language and state.
     func testTheStatusInkEndsAsFarFromTheRightEdgeAsItStartsUnderTheTop() throws {
         enableTheStatusModules()
+        let width: CGFloat = 1060
         for (name, id) in [("Keep Awake", Self.keepAwake), ("VPN", Self.vpn)] {
-            let fx = mount(.module(id), width: 1060)
-            let bar = fx.bar.view
-            let host = try XCTUnwrap(statusHost(fx), "\(name): no status zone")
+            let fx = mount(.module(id), width: width)
+            let window = try XCTUnwrap(fx.mount.window, "\(name): no window")
+            let toolbar = try XCTUnwrap(window.toolbar, "\(name): no toolbar on the fixture's window")
+            let host = try XCTUnwrap(statusHost(toolbar), "\(name): no helm.status host")
             let expected = expectedWord(id)
             XCTAssertNotNil(expected, "\(name): the module reports no activity to draw")
             XCTAssertEqual(host.rootView.status?.word, expected,
-                           "\(name): the status zone does not carry the page's own status")
+                           "\(name): the status item does not carry the page's own status")
             let drawn = try XCTUnwrap(ink(host), "\(name): the status host could not be photographed")
             XCTAssertGreaterThan(drawn.maxX, 0, "\(name): the status host drew nothing at all")
-            let box = host.convert(host.bounds, to: bar)
-            let rightGap = bar.bounds.maxX - host.convert(NSPoint(x: drawn.maxX, y: 0), to: bar).x
-            let topGap = box.minY - bar.bounds.minY + drawn.top
-            // The zone was placed by the layout: its box starts at the layout's top and is the layout's
-            // height, so what is left of `topGap` is the ink's own distance from the box's top.
-            XCTAssertEqual(box.minY, ShellBarLayout.controlTop, accuracy: 0.01,
-                           "\(name): the status zone's box starts \(box.minY) pt under the bar's top")
-            XCTAssertEqual(box.height, ShellBarLayout.controlHeight, accuracy: 0.01,
-                           "\(name): the status zone's box is \(box.height) pt high")
-            // Ink that stood in the box's top row would not clear this: `topGap` is the box's top plus the
-            // ink's distance from it, so the floor is "the ink starts below the box's top". The reading is
-            // of the host's own bounds, so ink outside the box is not something it can see.
-            XCTAssertGreaterThan(drawn.top, 0, "\(name): the ink starts in the zone's top row")
+            let rightGap = window.frame.width - windowX(host, drawn.maxX)
+            let topGap = window.frame.height - host.convert(host.bounds, to: nil).maxY + drawn.top
+            XCTAssertGreaterThan(topGap, 15, "\(name): top gap \(topGap) pt — not a reading of the bar")
             XCTAssertEqual(rightGap, topGap, accuracy: 0.5, """
-                \(name): «\(host.rootView.status?.word ?? "")» ends \(rightGap) pt from the bar's \
+                \(name): «\(host.rootView.status?.word ?? "")» ends \(rightGap) pt from the window's \
                 trailing edge and starts \(topGap) pt under its top edge — the two gaps must be one
                 """)
         }
     }
 
-    // MARK: - 2. One bar, built on a page with nothing to say
+    // MARK: - 2. One shared bar, built on a page with nothing to say
 
-    /// **The bar built on General, then carried through Keep Awake → General →
-    /// VPN → About on the same fixture.** The status follows the page on every
-    /// stop; on a status page the zone is laid out at least as wide as what it
-    /// draws, trailing inset included, and no more than a point wider — a width
-    /// the bar never re-read after General would clip the badge while the zone
-    /// still reads as reachable. "What it draws" is the content's own fitting
-    /// width in this same window (see the reading's own comment below). An empty page is read after a status page
-    /// on the same fixture, so the absence is the bar having let go of a
-    /// status it held.
+    /// **The shared bar built on General, then carried through Keep Awake →
+    /// General → VPN → About.** Nothing is rebuilt (same `NSToolbar`, same
+    /// identifier list), the status follows the page on every stop, and on a
+    /// status page the item is laid out exactly as wide as what it draws,
+    /// trailing inset included — the item was first sized for an empty view,
+    /// and a width AppKit never re-reads would clip the badge while
+    /// `isVisible` still answers true. "Exactly" is the content's own fitting
+    /// width in this same window, since the inset now follows the bar and is
+    /// seldom a whole number (see the reading's own comment below). An empty page is read after a status page
+    /// on the same fixture, so the absence is the bar having let go of a status it held.
     func testTheSharedBarBuiltOnGeneralCarriesEachPagesOwnStatusUnclipped() throws {
         enableTheStatusModules()
         AppLanguage.each { language in
             let fx = mount(.general, width: Self.minPaneWidth)
-            let bar = fx.bar.view
-            XCTAssertTrue(bar.reachableZones.contains(.name), "\(language): General's bar has no name")
+            guard let window = fx.mount.window, let firstBar = window.toolbar else {
+                return XCTFail("\(language): no toolbar on the fixture's window on General")
+            }
+            let firstIDs = firstBar.itemIdentifiers
+            XCTAssertEqual(firstIDs.last?.rawValue, "helm.status",
+                           "\(language): General's bar does not end on helm.status — \(firstIDs)")
 
             let route: [(String, SettingsSelection, String?)] = [
                 ("Keep Awake", .module(Self.keepAwake), Self.keepAwake),
@@ -220,113 +208,142 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
             for (name, selection, moduleID) in route {
                 fx.model.selection = selection
                 fx.settle(30)
-                XCTAssertTrue(bar.reachableZones.contains(.name), "\(language) — \(name): the bar lost its name")
+                guard let toolbar = window.toolbar else {
+                    XCTFail("\(language) — \(name): no toolbar on the fixture's window any more"); continue
+                }
+                XCTAssertTrue(toolbar === firstBar,
+                              "\(language) — \(name): the shared name-only bar was replaced on a page switch")
+                XCTAssertEqual(toolbar.itemIdentifiers, firstIDs,
+                               "\(language) — \(name): the identifier list churned on a page switch")
+                guard let host = statusHost(toolbar), let statusItem = item(toolbar, "helm.status") else {
+                    XCTFail("\(language) — \(name): no helm.status host"); continue
+                }
                 let expected = moduleID.flatMap(expectedWord)
-                guard moduleID != nil else {
-                    XCTAssertTrue(shownAStatus, "\(language) — \(name): no status page came first on this bar")
-                    XCTAssertNil(bar.view(for: .status), """
-                        \(language) — \(name): the bar still holds a status zone, «\
-                        \(statusHost(fx)?.rootView.status?.word ?? "")» from the previous page
-                        """)
-                    continue
-                }
-                XCTAssertNotNil(expected, "\(language) — \(name): the module reports no activity to draw")
-                guard let host = statusHost(fx) else {
-                    XCTFail("\(language) — \(name): no status zone"); continue
-                }
-                shownAStatus = true
                 XCTAssertEqual(host.rootView.status?.word, expected, """
-                    \(language) — \(name): the status draws «\(host.rootView.status?.word ?? "nothing")» \
+                    \(language) — \(name): helm.status draws «\(host.rootView.status?.word ?? "nothing")» \
                     where the page's own reading is «\(expected ?? "nothing")» — a stale status from the \
                     previous page
                     """)
-                XCTAssertEqual(host.accessibilityLabel(), expected,
-                               "\(language) — \(name): the status zone's accessibility label is stale")
-                XCTAssertTrue(bar.reachableZones.contains(.status), "\(language) — \(name): the status is not reachable")
+                XCTAssertEqual(statusItem.label, expected ?? "",
+                               "\(language) — \(name): the item's label is stale")
+                guard moduleID != nil else {
+                    XCTAssertTrue(shownAStatus, "\(language) — \(name): no status page came first on this bar")
+                    // An empty status takes no height: read on General and About in all eight languages,
+                    // the host is 4 pt wide (the trailing inset) and 0 pt tall, so there is nothing to
+                    // photograph and the height is what is asserted. `ink` answers nil for a view of no
+                    // size and for a bitmap it could not take: a host that does have a size is
+                    // photographed, or the row fails, so "no ink" is never an unread picture.
+                    XCTAssertEqual(host.bounds.height, 0, accuracy: 0.01, """
+                        \(language) — \(name): an empty status page leaves helm.status \(host.bounds.height) pt \
+                        tall — a status it still holds, or a host that takes room for nothing
+                        """)
+                    if host.bounds.width > 0, host.bounds.height > 0 {
+                        guard let empty = ink(host) else {
+                            XCTFail("\(language) — \(name): the empty status host could not be photographed")
+                            continue
+                        }
+                        XCTAssertEqual(empty.maxX, 0,
+                                       "\(language) — \(name): an empty status page drew ink in helm.status")
+                    }
+                    continue
+                }
+                shownAStatus = true
+                XCTAssertNotNil(expected, "\(language) — \(name): the module reports no activity to draw")
+                XCTAssertTrue(statusItem.isVisible, "\(language) — \(name): helm.status is not visible")
                 // What the same content needs on its own, in a host nobody
-                // has constrained. The loose host sits in the same
-                // window for the reading; see the comment above the width assertion
-                // below for how far the zone was measured from it.
+                // has constrained — the placed host's own `fittingSize`
+                // already folds in whatever width AppKit pinned it to, so it
+                // cannot be the other side. The loose host sits in the same
+                // window for the reading: a host with no window rounds its
+                // fitting width up to a whole point (Spanish «Detenido»
+                // 48.0 against 47.5 in the window, as an earlier tester read it), which read a
+                // correctly sized item as a point short once its trailing
+                // inset stopped being a whole number.
                 let loose = NSHostingView(rootView: host.rootView)
-                loose.appearance = fx.mount.window?.appearance
-                fx.mount.window?.contentView?.addSubview(loose)
+                loose.appearance = window.appearance
+                window.contentView?.addSubview(loose)
                 let needed = loose.fittingSize.width
                 loose.removeFromSuperview()
                 XCTAssertGreaterThan(needed, 1, "\(language) — \(name): the loose host measured nothing")
-                // The zone was measured up to a point wider than a loose host in the window needs (83.0
-                // against 82.5, 53.0 against 52.0); the first is a window-less host rounding up to a whole
-                // point, the second is not explained. Never narrower.
-                XCTAssertGreaterThanOrEqual(host.frame.width, needed - 0.01, """
-                    \(language) — \(name): the status zone is laid out \(host.frame.width) pt wide and its \
-                    content needs \(needed) pt — the badge is clipped
-                    """)
-                XCTAssertLessThanOrEqual(host.frame.width, needed + 1.01, """
-                    \(language) — \(name): the status zone is laid out \(host.frame.width) pt wide and its \
-                    content needs \(needed) pt — wider than the one point measured
+                XCTAssertEqual(host.frame.width, needed, accuracy: 0.01, """
+                    \(language) — \(name): helm.status is laid out \(host.frame.width) pt wide and its \
+                    content needs \(needed) pt — narrower is the badge clipped (the item kept the width of \
+                    the empty view it was built with on General), wider is a trailing gap the status's own \
+                    inset does not account for
                     """)
                 guard let drawn = ink(host) else {
-                    XCTFail("\(language) — \(name): the status could not be photographed"); continue
+                    XCTFail("\(language) — \(name): the status host could not be photographed"); continue
                 }
-                XCTAssertGreaterThan(drawn.maxX, 0, "\(language) — \(name): the status drew no ink")
-                let right = host.convert(NSPoint(x: drawn.maxX, y: 0), to: bar).x
-                let left = host.convert(NSPoint(x: drawn.minX, y: 0), to: bar).x
-                XCTAssertLessThanOrEqual(right, bar.bounds.maxX,
-                                         "\(language) — \(name): the badge's ink runs past the bar's edge")
-                if let nameView = bar.view(for: .name) {
-                    XCTAssertGreaterThanOrEqual(left, nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: bar).x, """
-                        \(language) — \(name): the badge's ink starts under the module's name
-                        """)
-                } else {
-                    XCTFail("\(language) — \(name): no name zone to hold the badge against")
+                XCTAssertGreaterThan(drawn.maxX, 0, "\(language) — \(name): the status host drew nothing at all")
+                guard let nameView = item(toolbar, "helm.name")?.view else {
+                    XCTFail("\(language) — \(name): no helm.name view to measure the badge against"); continue
                 }
+                let right = windowX(host, drawn.maxX)
+                let left = windowX(host, drawn.minX)
+                XCTAssertLessThanOrEqual(right, Self.minPaneWidth,
+                                         "\(language) — \(name): the badge's ink runs past the window edge")
+                XCTAssertGreaterThanOrEqual(left, windowX(nameView, nameView.bounds.width), """
+                    \(language) — \(name): the badge's ink starts under the module's name
+                    """)
             }
         }
     }
 
     /// **The module switched off while its own page is the one on screen** —
     /// the sidebar's own arrangement toggle (`SidebarComposerList`) reaches
-    /// `ModuleHost.setEnabled` with no page switch and no declaration. A module
-    /// that is not running at all has no "Not running" to report, so the status
-    /// zone goes. Whether the selection stays on the page or the model moves it
-    /// to General is not this row's question: either way the bar holds no
-    /// status, after it held one on the same fixture.
+    /// `ModuleHost.setEnabled` with no page switch and no declaration. The
+    /// page reads as General (`ShellSidebarRows.settled`), so the status must go with it: a module that is not running
+    /// at all has no "Not running" to report.
+    ///
+    /// `SettingsToolbar` re-reads the status on `.helmModuleDisabled`
+    /// (`moduleEnabledWatch`'s header).
     func testTheStatusClearsWhenTheModuleIsSwitchedOffUnderItsOwnPage() {
         enableTheStatusModules()
         AppLanguage.only(.en) {
             let fx = mount(.module(Self.keepAwake), width: 1060)
-            XCTAssertNotNil(statusHost(fx)?.rootView.status, "Keep Awake: no status to begin with")
+            guard fx.mount.window?.toolbar != nil else { return XCTFail("no toolbar on the fixture's window") }
+            guard let before = fx.mount.window?.toolbar.flatMap(statusHost) else {
+                return XCTFail("no helm.status host")
+            }
+            XCTAssertNotNil(before.rootView.status, "Keep Awake: no status to begin with")
 
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), false)
             fx.settle(30)
             XCTAssertNil(expectedWord(Self.keepAwake), "Keep Awake still reads live after being switched off")
-            XCTAssertTrue(fx.bar.view.reachableZones.contains(.name), "switched off: the bar lost its name")
-            XCTAssertNil(fx.bar.view.view(for: .status), """
-                Keep Awake switched off under its own page: the bar still holds a status zone, \
-                «\(statusHost(fx)?.rootView.status?.word ?? "")», for a module that is not running at all
+            guard let off = fx.mount.window?.toolbar.flatMap(statusHost) else {
+                return XCTFail("switched off: no helm.status host")
+            }
+            XCTAssertNil(off.rootView.status, """
+                Keep Awake switched off under its own page: helm.status still draws \
+                «\(off.rootView.status?.word ?? "")» for a module that is not running at all
                 """)
         }
     }
 
-    /// **The other direction: "Turn On" pressed on the module's own empty
-    /// page** (`SettingsWindow`'s own `page`) — no status zone to a word, so a
-    /// stale reading cannot pass for a fresh one the way it can between two
-    /// readings that happen to spell the same. The selection is not set again
-    /// after the switch: with the re-selection taken out the status still
-    /// arrived, so the bar hears the module being switched on by itself.
+    /// **The other direction: the module switched on while its own page is
+    /// selected** (`ModuleHost.setEnabled`, no page switch) — nil to a word, so a stale
+    /// reading cannot pass for a fresh one the way it can between two
+    /// readings that happen to spell the same.
     func testTheStatusArrivesWhenTheModuleIsTurnedOnUnderItsOwnPage() {
         ModuleHost.shared.shutdown()
         AppLanguage.only(.en) {
             let fx = mount(.module(Self.keepAwake), width: 1060)
-            XCTAssertTrue(fx.bar.view.reachableZones.contains(.name), "Keep Awake off: the bar has no name")
-            XCTAssertNil(fx.bar.view.view(for: .status), "Keep Awake off: the bar holds a status zone")
+            guard fx.mount.window?.toolbar != nil else { return XCTFail("no toolbar on the fixture's window") }
+            guard let before = fx.mount.window?.toolbar.flatMap(statusHost) else {
+                return XCTFail("no helm.status host")
+            }
+            XCTAssertNil(before.rootView.status, "Keep Awake off: helm.status draws a status")
 
             ModuleHost.shared.setEnabled(KeepAwakeDescriptor(), true)
             fx.settle(30)
             let expected = expectedWord(Self.keepAwake)
             XCTAssertNotNil(expected, "Keep Awake turned on reports no activity")
-            XCTAssertEqual(statusHost(fx)?.rootView.status?.word, expected, """
-                Keep Awake turned on under its own page: the status draws \
-                «\(statusHost(fx)?.rootView.status?.word ?? "nothing")» where the page reads «\(expected ?? "nothing")»
+            guard let on = fx.mount.window?.toolbar.flatMap(statusHost) else {
+                return XCTFail("turned on: no helm.status host")
+            }
+            XCTAssertEqual(on.rootView.status?.word, expected, """
+                Keep Awake turned on under its own page: helm.status draws \
+                «\(on.rootView.status?.word ?? "nothing")» where the page reads «\(expected ?? "nothing")»
                 """)
         }
     }
@@ -337,31 +354,33 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
     /// their ink**, under the transparent bar (`HelmBandChoice.onMacOS(27)`)
     /// and the opaque one (`.onMacOS(26)`), light and dark — read off the
     /// photographed peak alpha of each hosted view, active against inactive,
-    /// and held against the one opacity `helmNameZoneInactiveOpacity` names.
-    /// The title bar is the bar's own constructor argument, not a property of
-    /// the fixture's window.
+    /// and held against the one opacity `helmNameZoneInactiveOpacity` names. The title bar is the fixture
+    /// window's `titlebarAppearsTransparent`, which the toolbar reads off the window.
     func testTheStatusAndTheNameDimByOneOpacityOnBothTitleBars() throws {
         enableTheStatusModules()
         for band in [HelmBandChoice.onMacOS(27), .onMacOS(26)] {
             for appearance in RenderedInk.bothAppearances {
                 let label = "\(band.titlebarAppearsTransparent ? "transparent" : "opaque") bar, " +
                     RenderedInk.label(of: appearance)
-                let fx = mount(.module(Self.keepAwake), width: 1060, appearance: appearance,
-                               titlebarIsTransparent: band.titlebarAppearsTransparent)
-                fx.bar.setWindowAppearsActive(false)
+                let fx = mount(.module(Self.keepAwake), width: 1060, appearance: appearance)
+                let window = try XCTUnwrap(fx.mount.window, label)
+                window.titlebarAppearsTransparent = band.titlebarAppearsTransparent
+                fx.toolbar.setWindowAppearsActive(false)
                 fx.settle(10)
-                let status = try XCTUnwrap(statusHost(fx), "\(label): no status host")
-                let name = try XCTUnwrap(nameHost(fx), "\(label): no name host")
+                let toolbar = try XCTUnwrap(window.toolbar, "\(label): no toolbar on the fixture's window")
+                let status = try XCTUnwrap(statusHost(toolbar), "\(label): no status host")
+                let nameView = try XCTUnwrap(item(toolbar, "helm.name")?.view, "\(label): no name view")
                 XCTAssertEqual(status.rootView.titlebarIsTransparent, band.titlebarAppearsTransparent,
                                "\(label): the status host read the wrong title bar")
-                XCTAssertEqual(name.rootView.titlebarIsTransparent, band.titlebarAppearsTransparent,
+                let nameHost = nameView.everyView(ofType: NSHostingView<NameZoneView>.self).first
+                XCTAssertEqual(nameHost?.rootView.titlebarIsTransparent, band.titlebarAppearsTransparent,
                                "\(label): the name host read the wrong title bar")
                 let dimStatus = try XCTUnwrap(ink(status)).peakAlpha
-                let dimName = try XCTUnwrap(ink(name)).peakAlpha
-                fx.bar.setWindowAppearsActive(true)
+                let dimName = try XCTUnwrap(ink(nameView)).peakAlpha
+                fx.toolbar.setWindowAppearsActive(true)
                 fx.settle(10)
-                let litStatus = try XCTUnwrap(ink(try XCTUnwrap(statusHost(fx)))).peakAlpha
-                let litName = try XCTUnwrap(ink(try XCTUnwrap(nameHost(fx)))).peakAlpha
+                let litStatus = try XCTUnwrap(ink(statusHost(toolbar) ?? status)).peakAlpha
+                let litName = try XCTUnwrap(ink(item(toolbar, "helm.name")?.view ?? nameView)).peakAlpha
                 XCTAssertGreaterThan(litStatus, 0, "\(label): the status drew nothing while active")
                 XCTAssertGreaterThan(litName, 0, "\(label): the name drew nothing while active")
                 let statusRatio = Double(dimStatus) / Double(max(1, litStatus))
@@ -380,46 +399,103 @@ final class TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests: XCTestCas
         }
     }
 
-    // MARK: - 4. "Without Icon", and switching style while the window is up
+    // MARK: - 4. What only the source can say
 
-    /// **`.windowTitle` ("Without Icon") keeps the name zone and drops the
-    /// status zone, and a style switch at runtime changes both ways, on the
-    /// page that is on screen, without a remount.** The name zone stays in
-    /// both styles but without the plate in one: it is narrower without the
-    /// icon, which is what tells the two styles apart on a name that did not
-    /// change. The absence of the status is read after the name was there on
-    /// the same fixture, and the status arrives on the switch to
-    /// `.moduleName` and goes on the switch back.
-    func testWithoutIconKeepsTheNameDropsTheStatusAndAStyleSwitchBothWaysFollows() throws {
+    private static let toolbarFile = "Sources/HelmApp/SettingsToolbar.swift"
+
+    private func body(of marker: String, until end: String, in file: String) throws -> Substring {
+        let source = SwiftSource.uncommented(try RepoSource.text(of: file))
+        let start = try XCTUnwrap(source.range(of: marker), "\(marker) is gone from \(file)")
+        let rest = source[start.upperBound...]
+        let stop = rest.range(of: end)?.lowerBound ?? rest.endIndex
+        return rest[..<stop]
+    }
+
+    /// **The owner's "nothing falls into »", on the status item** — a
+    /// visibility priority does nothing observable while the name-only bar
+    /// has room (measured: `.low` left `isVisible` true at the narrowest pane
+    /// in all eight languages), so the rule is held where it is written.
+    func testTheStatusItemCarriesNoVisibilityPriority() throws {
+        let maker = try body(of: "private func makeStatusItem(", until: "\n    }\n", in: Self.toolbarFile)
+        XCTAssertTrue(maker.contains("Self.statusID"), "the scan did not land in makeStatusItem's body: it read \(maker.count) characters")
+        XCTAssertFalse(maker.contains("visibilityPriority"), """
+            makeStatusItem sets a visibility priority on helm.status — the owner's rule is that \
+            nothing on this bar is ever offered to the overflow menu
+            """)
+    }
+
+    // MARK: - 5. "Without Icon", and switching style while the window is up
+
+    /// **`.windowTitle` ("Without Icon") carries no `helm.status` at all, and a style switch at runtime adds
+    /// and removes it** — both ways, on the page that is on screen, without a remount. Read on the fixture's
+    /// `.sidebarSeparator` toolbar; that lead drops the name as well under this style, which the window the
+    /// app builds does not (it lists the name without its icon: see
+    /// `TheWindowWearsTheToolbarTests.testWithoutIconTheNameIsDrawnWithoutItsIconAndTheTitleStaysHidden`),
+    /// so the name is not asserted here. The sidebar's separator is listed first, so a toolbar that never
+    /// listed anything cannot pass the status's absence.
+    func testWithoutIconHasNoStatusItemAndAStyleSwitchBothWaysFollows() throws {
         enableTheStatusModules()
         AppSettings.pageBarStyle = .windowTitle
         let fx = mount(.module(Self.keepAwake), width: 1060)
-        let bar = fx.bar.view
-        XCTAssertNotNil(expectedWord(Self.keepAwake), "Keep Awake reports no activity: nothing for the style to drop")
-        XCTAssertTrue(bar.reachableZones.contains(.name), "Without Icon: the bar has no name zone")
-        let bare = try XCTUnwrap(nameHost(fx), "Without Icon: no name host").frame.width
-        XCTAssertGreaterThan(bare, 0, "Without Icon: the name was given no room")
-        XCTAssertFalse(nameHost(fx)?.rootView.showsIcon ?? true, "Without Icon: the name zone draws the plate")
-        XCTAssertNil(bar.view(for: .status), "Without Icon: the bar holds a status zone")
+        let window = try XCTUnwrap(fx.mount.window)
+        let first = try XCTUnwrap(window.toolbar, "Without Icon: no toolbar on the fixture's window")
+        // The sidebar's tracking separator is what this lead lists whatever the style, so a toolbar that
+        // listed nothing cannot pass the absence of the status.
+        let separator = NSToolbarItem.Identifier.sidebarTrackingSeparator.rawValue
+        var ids = first.itemIdentifiers.map(\.rawValue)
+        XCTAssertTrue(ids.contains(separator), "Without Icon: the toolbar lists no sidebar separator — \(ids)")
+        XCTAssertFalse(ids.contains("helm.status"), "Without Icon: the bar carries helm.status — \(ids)")
 
         AppSettings.pageBarStyle = .moduleName
         fx.settle(30)
-        // `reachableZones` is filtered from `Zone.allCases`, so this says the status is reachable, not that it
-        // stands last.
-        XCTAssertTrue(bar.reachableZones.contains(.status), "Without → With Icon: the status did not arrive")
-        XCTAssertEqual(statusHost(fx)?.rootView.status?.word, expectedWord(Self.keepAwake),
-                       "Without → With Icon: the status draws a word the page does not have")
-        XCTAssertTrue(nameHost(fx)?.rootView.showsIcon ?? false, "Without → With Icon: the name zone has no plate")
-        XCTAssertGreaterThan(nameHost(fx)?.frame.width ?? 0, bare + 20,
-                             "Without → With Icon: the name zone is no wider with the plate")
+        ids = (window.toolbar?.itemIdentifiers ?? []).map(\.rawValue)
+        XCTAssertEqual(ids.last, "helm.status", "Without → With Icon: helm.status did not arrive — \(ids)")
+        if let toolbar = window.toolbar, let host = statusHost(toolbar) {
+            XCTAssertEqual(host.rootView.status?.word, expectedWord(Self.keepAwake),
+                           "Without → With Icon: helm.status draws a status the page does not have")
+            XCTAssertTrue(item(toolbar, "helm.status")?.isVisible ?? false,
+                          "Without → With Icon: helm.status is not visible")
+        } else {
+            XCTFail("Without → With Icon: no helm.status host")
+        }
 
         AppSettings.pageBarStyle = .windowTitle
         fx.settle(30)
-        XCTAssertTrue(bar.reachableZones.contains(.name), "With → Without Icon: the name zone went")
-        XCTAssertNil(bar.view(for: .status), "With → Without Icon: the status zone stayed")
-        XCTAssertFalse(nameHost(fx)?.rootView.showsIcon ?? true, "With → Without Icon: the plate stayed")
-        // Within a point; see the comment above the status zone's width assertion in the status-page test for what is known of why.
-        XCTAssertEqual(nameHost(fx)?.frame.width ?? 0, bare, accuracy: 1,
-                       "With → Without Icon: the name zone is not as wide as it was without the plate")
+        let last = try XCTUnwrap(window.toolbar, "With → Without Icon: the window lost its toolbar")
+        ids = last.itemIdentifiers.map(\.rawValue)
+        XCTAssertTrue(ids.contains(separator), "With → Without Icon: the toolbar lists no sidebar separator — \(ids)")
+        XCTAssertFalse(ids.contains("helm.status"), "With → Without Icon: helm.status stayed — \(ids)")
+    }
+
+    /// The window the app builds, on Keep Awake's page (a name-only page with a status) with the style stored
+    /// before the window is built, and its toolbar's identifiers. The name must be listed under either style,
+    /// or the status's absence or place proves nothing about a toolbar that was built.
+    private func appsToolbarIdentifiers(style: PageBarStyle) -> [String]? {
+        enableTheStatusModules()
+        AppSettings.pageBarStyle = style
+        guard let rig = SettingsWindowRig.buildAsTheAppDoes(in: self, failure: SettingsWindowRig.noShell) else {
+            return nil
+        }
+        rig.model.selection = .module(Self.keepAwake)
+        rig.settle()
+        guard let toolbar = rig.worn("Keep Awake's identifiers were not read") else { return nil }
+        let ids = toolbar.itemIdentifiers.map(\.rawValue)
+        XCTAssertTrue(ids.contains("helm.name"), "the app's window lists no helm.name under \(style): \(ids)")
+        return ids
+    }
+
+    /// **On the window the app builds, a name-only page with a status lists no `helm.status` under "Without
+    /// Icon"**: the name is listed, drawn without its icon, and the status stays out, because the title that
+    /// would carry it is hidden.
+    func testOnTheAppsOwnWindowWithoutIconListsNoStatusOnAStatusPage() {
+        guard let ids = appsToolbarIdentifiers(style: .windowTitle) else { return }
+        XCTAssertFalse(ids.contains("helm.status"), "Without Icon: the app's window lists helm.status — \(ids)")
+    }
+
+    /// **On the window the app builds, the same page lists `helm.status` last under the module's name**, right
+    /// after a flexible space — the control half of the row above.
+    func testOnTheAppsOwnWindowTheModuleNameListsTheStatusLastOnAStatusPage() {
+        guard let ids = appsToolbarIdentifiers(style: .moduleName) else { return }
+        XCTAssertEqual(ids.last, "helm.status", "the module's name: the app's window does not end on helm.status — \(ids)")
     }
 }

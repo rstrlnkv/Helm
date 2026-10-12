@@ -9,10 +9,15 @@ import Module_VPN_UI
 @testable import HelmUI
 
 /// **The owner, 2026-09-28: «Давай вернем его в правую часть».** The
-/// Active/Inactive status badge stands at the page bar's trailing edge, right of
-/// the module's name: the bar's `.status` zone, present only under
-/// `PageBarStyle.moduleName` and only on a page with no tabs, no actions and no
-/// search (`ShellPageBar.Snapshot.statusWord`).
+/// Active/Inactive status badge stands at the window's trailing edge, right of
+/// the module's name — `SettingsToolbar`'s own `helm.status` item, always
+/// present on the shared name-only bar and only under `PageBarStyle.moduleName`.
+///
+/// **The bar read here** is the `SettingsToolbar` of `LivePageInTheToolbarFixture`, built with the
+/// `.sidebarSeparator` lead. The status item is made by `makeStatusItem` and patched by `patchName` whichever
+/// lead the toolbar wears; the lead enters the list only before the status (`identifiers(content:style:lead:)`
+/// puts the tracking separator or the name ahead of it), and the tail `[.flexibleSpace, helm.status]` the
+/// name-only bar ends on is the same under both.
 ///
 /// **Real modules, not a recorder** — unlike `TheHostPutsAModulesOwnItemIn-
 /// TheMenuBarTests`'s own `Recorder`, which exists precisely because a real
@@ -23,38 +28,23 @@ import Module_VPN_UI
 /// store beyond the "enabled" flag — so enabling `LayoutDescriptor` for real
 /// here builds no status item on this Mac, the same care `ModulePageFixtures
 /// .swift`'s own header takes with *seeding* that module's store.
-///
-/// **The machine's settings the bar reads when it is built** — the page bar
-/// style, the sidebar style, the search's collapse and the bar's appearance —
-/// are pinned in `setUp` and put back in `tearDown`; with the page bar style on
-/// the window title the bar draws no status at all. Every fixture is dropped in
-/// `tearDown`: its search zone holds a process-wide event monitor until then.
 @MainActor
 final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
 
     /// `SettingsWindow.minSize.width` (860) minus the widest of `ShellGeometry.sidebarRange` (320): narrower than the window reaches, where the sidebar is 200 or the rail.
-    /// `LivePageToolbarFixture`'s own `width:` sets the window's content width, which is the bar's width.
+    /// `LivePageInTheToolbarFixture`'s own `width:` sets the window's content width directly, which is what
+    /// `offeredRoom()` reads back when there is no split view to ask — the same convention
+    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` uses.
     private static let minPaneWidth: CGFloat = 860 - 320
 
-    private var fixtures: [LivePageToolbarFixture] = []
-    private var savedStyle: PageBarStyle = .moduleName
-    private var savedSidebarStyle: SidebarStyle = .colour
-    private var savedCollapse = false
-    private var savedBarAppearance: HelmBarAppearance = .flat
+    private var fixtures: [LivePageInTheToolbarFixture] = []
 
-    /// **Forced, not assumed** — these are real, persisted settings several other files in this target
-    /// also drive, so a bare `swift test` process finds whatever the last one left. With
-    /// `AppSettings.pageBarStyle` on `.windowTitle` the bar carries no status zone at all.
-    override func setUp() {
-        super.setUp()
-        savedStyle = AppSettings.pageBarStyle
-        savedSidebarStyle = AppSettings.sidebarStyle
-        savedCollapse = AppSettings.alwaysCollapseSearch
-        savedBarAppearance = AppSettings.barAppearance
-        AppSettings.pageBarStyle = .moduleName
-        AppSettings.sidebarStyle = .colour
-        AppSettings.alwaysCollapseSearch = false
-        AppSettings.barAppearance = .flat
+    /// **Forced, not assumed** — `pageBarStyle` is a real, persisted setting several other files in this
+    /// target also drive, so a bare `swift test` process finds whatever the last one left; on
+    /// `.windowTitle` the bar carries no `helm.status` at all. The pin puts every setting back after the test.
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
@@ -64,10 +54,6 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         for id in Self.moduleIDs {
             UserDefaults.standard.removeObject(forKey: "module.\(id).enabled")
         }
-        AppSettings.pageBarStyle = savedStyle
-        AppSettings.sidebarStyle = savedSidebarStyle
-        AppSettings.alwaysCollapseSearch = savedCollapse
-        AppSettings.barAppearance = savedBarAppearance
         super.tearDown()
     }
 
@@ -88,115 +74,140 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         ModuleHost.shared.setEnabled(LayoutDescriptor(), true)
     }
 
-    private func mount(_ selection: SettingsSelection, width: CGFloat) -> LivePageToolbarFixture {
-        let fx = LivePageToolbarFixture(EmptyView(), selection: selection, width: width, height: 700)
+    private func mount(_ selection: SettingsSelection, width: CGFloat) -> LivePageInTheToolbarFixture {
+        let fx = LivePageInTheToolbarFixture(EmptyView(), selection: selection, width: width, height: 700)
         fx.settle(30)
         fixtures.append(fx)
         return fx
     }
 
-    // MARK: - Present, and with room for its word, at the narrowest pane
+    private func item(_ toolbar: NSToolbar, _ rawID: String) -> NSToolbarItem? {
+        toolbar.items.first { $0.itemIdentifier.rawValue == rawID }
+    }
 
-    /// With the status word left out of the snapshot the bar has no `.status` zone for any of the three
-    /// modules, in any of the eight languages, and the `.status` half of the two `reachableZones`
-    /// assertions fails first.
-    func testTheStatusZoneIsReachableAndHasRoomForItsWordAtTheMinimumPaneWidthInEveryLanguageOnAllThreeModules() {
+    // MARK: - Visible, and nothing in the overflow menu
+
+    /// **Puts the defect back to watch this go red**: reading it against the
+    /// pre-fix `identifiers()` (no `helm.status` appended at all) leaves
+    /// `item(toolbar, "helm.status")` `nil` for all three modules, in all
+    /// eight languages — the `guard` below fails first ("no helm.status item
+    /// in …"), before the `isVisible` assertion is ever reached.
+    func testTheStatusItemIsVisibleAtTheMinimumPaneWidthInEveryLanguageOnAllThreeModules() {
         enableTheThreeStatusModules()
         AppLanguage.each { language in
             for module in Self.modules {
-                let label = "\(language) — \(module.name)"
                 let fx = mount(module.selection, width: Self.minPaneWidth)
-                let view = fx.bar.view
-                XCTAssertTrue(view.reachableZones.contains(.name), "\(label): the name zone is not reachable")
-                XCTAssertTrue(view.reachableZones.contains(.status), """
-                    \(label): the bar has no reachable status zone at \(Self.minPaneWidth) pt — \
-                    the badge never reached the trailing edge
-                    """)
-                guard let status = view.view(for: .status), let name = view.view(for: .name) else {
-                    XCTFail("\(label): missing name or status view"); continue
+                guard let toolbar = fx.mount.window?.toolbar else {
+                    XCTFail("\(language) — \(module.name): no toolbar on the fixture's window at \(Self.minPaneWidth) pt")
+                    continue
                 }
-                XCTAssertGreaterThan(name.frame.width, 0, "\(label): the name was given no room")
-                // The placed host's `fittingSize` is the content's own width: it read the same as a host
-                // nobody had constrained in all 24 combinations of language and module, so this is not a
-                // width compared with itself. The zone may be wider by up to a point, never narrower.
-                XCTAssertGreaterThanOrEqual(status.frame.width, status.fittingSize.width, """
-                    \(label): the status zone is \(status.frame.width) pt wide, its word needs \
-                    \(status.fittingSize.width) pt
+                guard let status = item(toolbar, "helm.status") else {
+                    XCTFail("""
+                        \(language) — \(module.name): no helm.status item in \
+                        \(toolbar.itemIdentifiers.map(\.rawValue)) — the badge never moved to the \
+                        trailing edge
+                        """)
+                    continue
+                }
+                XCTAssertTrue(status.isVisible, """
+                    \(language) — \(module.name): helm.status is not isVisible at \
+                    \(Self.minPaneWidth) pt — AppKit folded it into the »» overflow menu, which \
+                    the owner's 2026-09-23 "nothing into »" rule forbids
                     """)
-                XCTAssertGreaterThanOrEqual(status.frame.minX, name.frame.maxX, """
-                    \(label): the status (from \(status.frame.minX)) overlaps the name (to \
-                    \(name.frame.maxX))
-                    """)
+                // Nothing this bar carries may sit in the overflow menu either
+                // — the name-only bar's other watched item, same rule.
+                guard let name = item(toolbar, "helm.name") else {
+                    XCTFail("\(language) — \(module.name): no helm.name item in \(toolbar.itemIdentifiers.map(\.rawValue))")
+                    continue
+                }
+                XCTAssertTrue(name.isVisible, "\(language) — \(module.name): helm.name evicted")
             }
         }
     }
 
-    // MARK: - Order: the status is the last zone, at the trailing edge
+    // MARK: - Order: right after the flexible space, at the trailing end
 
-    /// A status zone laid out next to the name instead of at the end (its frame computed from the name's
-    /// trailing edge) leaves `statusLeading` close to the name's trailing edge and `content - statusTrailing`
-    /// at the window's width minus that, so the 100 pt assertion and the edge assertion both fail; a status
-    /// that is absent fails the first assertion.
-    func testTheStatusZoneIsTheLastOneAndEndsAtTheBarsTrailingEdgeRightOfTheName() {
+    /// **Puts the defect back**: the pre-fix `identifiers()` never appends
+    /// `.flexibleSpace, statusID` on the no-content `.moduleName` shape, so
+    /// `toolbar.itemIdentifiers` for these three modules ends on `helm.name`
+    /// — `suffix(2)` below reads `[.sidebarTrackingSeparator, helm.name]`
+    /// rather than `[.flexibleSpace, helm.status]`, and the first assertion
+    /// fails.
+    func testTheStatusItemFollowsTheFlexibleSpaceAtTheTrailingEndOfTheNameOnlyBar() {
         enableTheThreeStatusModules()
         for module in Self.modules {
             let fx = mount(module.selection, width: 1060)
-            let view = fx.bar.view
-            // `reachableZones` is filtered from `Zone.allCases`, where `.status` is the last case, so this
-            // says the status is reachable; that it stands last is carried by the geometry below.
-            XCTAssertTrue(view.reachableZones.contains(.status), """
-                \(module.name): the bar's reachable zones are \(view.reachableZones) — the status \
-                is not reachable
-                """)
-            guard let nameView = view.view(for: .name), let statusView = view.view(for: .status) else {
-                XCTFail("\(module.name): missing name or status view"); continue
+            guard let toolbar = fx.mount.window?.toolbar else {
+                XCTFail("\(module.name): no toolbar on the fixture's window"); continue
             }
+            let ids = toolbar.itemIdentifiers.map(\.rawValue)
+            XCTAssertEqual(ids.suffix(2), ["NSToolbarFlexibleSpaceItem", "helm.status"], """
+                \(module.name): the bar's own tail is \(ids) — the status item must be the very \
+                last identifier, right after a flexible space, on the shared name-only bar
+                """)
+
+            guard let nameView = item(toolbar, "helm.name")?.view,
+                  let statusView = item(toolbar, "helm.status")?.view
+            else { return XCTFail("\(module.name): missing name or status view") }
             let nameTrailing = nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: nil).x
             let statusLeading = statusView.convert(.zero, to: nil).x
+            XCTAssertGreaterThanOrEqual(statusLeading, nameTrailing, """
+                \(module.name): helm.status's own leading edge (\(statusLeading)) sits ahead of \
+                helm.name's trailing edge (\(nameTrailing)) — the badge is still beside the name \
+                rather than pushed to the far end by the flexible space between them
+                """)
+
+            // The same 4 pt `isBordered = false` outer margin the capsule's
+            // own last-item measurement pins (`HelmToolbarActionsCapsule.edgeMargin`) — proof this
+            // item really is the bar's own last one, not merely last in the identifier list.
             let statusTrailing = statusView.convert(NSPoint(x: statusView.bounds.width, y: 0), to: nil).x
-            XCTAssertGreaterThan(statusLeading, nameTrailing, """
-                \(module.name): the status's leading edge (\(statusLeading)) is not right of the \
-                name's trailing edge (\(nameTrailing))
-                """)
-            // The room between the two is the bar's own: the badge is at the end, not beside the name.
-            XCTAssertGreaterThan(statusLeading - nameTrailing, 100, """
-                \(module.name): only \(statusLeading - nameTrailing) pt between the name and the \
-                status in a 1060 pt bar — the badge is beside the name, not at the far end
-                """)
-            let content = fx.mount.window?.contentView?.frame.width ?? 0
-            XCTAssertEqual(content, 1060, accuracy: 0.5, "\(module.name): the window is not 1060 pt wide")
-            XCTAssertEqual(content - statusTrailing, ShellBarLayout.statusTrailing, accuracy: 0.5, """
-                \(module.name): the status's box ends \(content - statusTrailing) pt from the window's \
-                trailing edge, the layout gives it \(ShellBarLayout.statusTrailing)
+            let boxMargin = 1060 - statusTrailing
+            XCTAssertEqual(boxMargin, 4, accuracy: 0.5, """
+                \(module.name): helm.status's own box sits \(boxMargin) pt from the window's \
+                trailing edge — AppKit's own unbordered, last-item margin is 4 pt; a different \
+                reading means either another item follows it or it is bordered
                 """)
         }
     }
 
-    // MARK: - Absent where there is no status
+    // MARK: - No status where there is no notion of running
 
-    /// **General has no notion of running**, so `ShellPageBar.identity(for:host:)` answers a nil status
-    /// there (General never reaches the module arm that asks for one) and the bar holds no status zone —
-    /// it is not an empty one, which would still take its trailing padding. The absence is read in a mount whose name zone is there, so a
-    /// bar that was never built or never laid out cannot pass it.
-    func testTheBarCarriesNoStatusZoneWhereThereIsNoNotionOfRunning() {
-        enableTheThreeStatusModules()
+    /// **General has no notion of running**, so `pageIdentity().status` is
+    /// nil there (`moduleStatus` is never called for General; the `nil` is
+    /// `settings`' own, which `pageIdentity`'s `.none, .general` case returns) — on this fixture the item is
+    /// still in the bar. Reads only `rootView.status == nil`: what the item draws from it, and that the
+    /// bar is not rebuilt across General → Keep Awake → General, are not read here — they are
+    /// `TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests`'s own reach
+    /// (`testTheSharedBarBuiltOnGeneralCarriesEachPagesOwnStatusUnclipped`: on an empty page the host is
+    /// asserted 0 pt tall, which is what an empty status measures there, and photographed for ink only
+    /// if it were to have a size; and its same-toolbar and same-identifiers checks). The name item is read as present first, so a bar that was
+    /// never built or never listed its items cannot pass the absence.
+    func testTheStatusItemCarriesNoStatusWhereThereIsNoNotionOfRunning() {
         let fx = mount(.general, width: 1060)
-        let view = fx.bar.view
-        XCTAssertTrue(view.reachableZones.contains(.name), "General: the name zone is not there — the bar is empty")
-        XCTAssertGreaterThan(view.view(for: .name)?.frame.width ?? 0, 0, "General: the name has no room")
-        XCTAssertNil(view.view(for: .status), "General: the bar holds a status zone where there is nothing to say")
+        guard let toolbar = fx.mount.window?.toolbar else {
+            return XCTFail("General: no toolbar on the fixture's window")
+        }
+        XCTAssertNotNil(item(toolbar, "helm.name"), """
+            General: the toolbar lists no helm.name (it lists \(toolbar.itemIdentifiers.map(\.rawValue))) — \
+            the bar was not built under `.moduleName`, so an absent status proves nothing
+            """)
+        guard let hosting = item(toolbar, "helm.status")?.view as? NSHostingView<StatusZoneView>
+        else { return XCTFail("no helm.status item on General") }
+        XCTAssertNil(hosting.rootView.status, "General: helm.status carries a status where there is none")
     }
 
     // MARK: - Guard: the one combination that would silently lose the badge
 
-    /// **The guard for the one combination the bar cannot show.** `ShellPageBar.Snapshot` gives a page a
-    /// status word only when it declares no tabs, no actions and no search, so a page that also declares
-    /// `.helmWindowToolbar` content has no trailing status zone at all. No module does both today
-    /// (`ModuleDescriptor.activity`'s default is nil, in the extension of `ModuleDescriptor.swift`,
+    /// **The guard for the one combination `SettingsToolbar.identifiers(content:style:lead:)` cannot handle.**
+    /// It only ever appends `helm.status` on the shared no-content
+    /// `.moduleName` shape — a page that also declares `.helmWindowToolbar`
+    /// content gets tabs, actions or search instead, and that bar has no
+    /// trailing status item at all (the `.moduleName`-gated `.flexibleSpace, statusID` pair). No module
+    /// does both today (`ModuleDescriptor.activity`'s default is nil, in the extension of `ModuleDescriptor.swift`,
     /// and only `KeepAwakeDescriptor`, `VPNDescriptor` and `LayoutDescriptor`
-    /// override it; the modules that call `.helmWindowToolbar` are what
-    /// `command grep -rl '\.helmWindowToolbar(' Sources/Modules` lists), so this
-    /// reads the source rather than mounting a combination the app cannot produce.
+    /// override it; which modules call `.helmWindowToolbar` is what the scan
+    /// below finds), so this reads the source rather than mounting a
+    /// combination the app cannot produce.
     func testNoModuleBothReportsActivityAndDeclaresToolbarContent() throws {
         let files = try RepoSource.swiftFiles(under: "Sources/Modules")
         var reportsActivity: Set<String> = []
@@ -220,8 +231,8 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         let both = reportsActivity.intersection(declaresToolbar)
         XCTAssertTrue(both.isEmpty, """
             \(both.sorted()) both override activity(_:) and call .helmWindowToolbar — \
-            the bar gives no status zone to a page with tabs, actions or search, so the status \
-            badge would silently vanish on that page
+            identifiers() never appends helm.status on a bar with tabs, actions or search, so \
+            the status badge would silently vanish on that page
             """)
     }
 }

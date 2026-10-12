@@ -293,6 +293,15 @@ public final class MountedRender {
         return root.everyView(ofType: NSSearchField.self).first { !$0.isDescendant(of: host) }
     }
 
+    /// The field of the search item on the window's own `NSToolbar` — the first `NSSearchToolbarItem` among
+    /// its items — for a window that wears a toolbar and not a bar of Helm's own in its frame view.
+    ///
+    /// Nil when the window has no toolbar, or its toolbar lists no search item; a caller that means «a field
+    /// must be here» says so itself and tells the two apart by reading `window?.toolbar` first.
+    public var toolbarSearchField: NSSearchField? {
+        (window?.toolbar?.items ?? []).compactMap { $0 as? NSSearchToolbarItem }.first?.searchField
+    }
+
     /// Type `text` into the bar's search field the way AppKit delivers a
     /// keystroke — the value on the control, then the notification the bar's
     /// search zone listens for. Assigning `stringValue` alone moves the

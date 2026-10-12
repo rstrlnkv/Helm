@@ -25,8 +25,8 @@ import HelmUI
 /// `selection` is set before the toolbar is even constructed — `SettingsToolbar`
 /// refreshes from `model.selection` the moment its `window` is assigned
 /// (`didSet`) — so the very first `refresh()` already reads the page this
-/// fixture was built for, with whatever content the mount's own `settle()`
-/// call below has by then let the page declare.
+/// fixture was built for; a caller settles (`settle(_:)`) before it reads what
+/// the page declared.
 @MainActor
 struct LivePageInTheToolbarFixture {
     let mount: MountedRender
@@ -56,5 +56,14 @@ struct LivePageInTheToolbarFixture {
 
     func drop() {
         mount.drop()
+    }
+}
+
+extension LivePageInTheToolbarFixture {
+
+    /// The field of the search item on the window's toolbar (`MountedRender.toolbarSearchField`); nil when
+    /// the fixture's window has no toolbar or the toolbar lists no search item.
+    var searchField: NSSearchField? {
+        mount.toolbarSearchField
     }
 }
