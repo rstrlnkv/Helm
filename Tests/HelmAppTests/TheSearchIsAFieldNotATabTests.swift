@@ -14,6 +14,17 @@ import HelmUI
 /// remaining tabs. `HelmWindowToolbarChannel` is what `SettingsToolbar`
 /// actually reads to build the bar, so what the page declared there — rather
 /// than anything rendered from it — is the fact this file holds.
+///
+/// **The bar.** `LivePageInTheToolbarFixture` attaches a real `SettingsToolbar`
+/// (default lead `.sidebarSeparator`, not the app's `.spacer` build) to the
+/// mount's window, but the rows do not read it: they read the page's declaration
+/// off the channel (`HelmWindowToolbarChannel.content(for:)`) and the
+/// `Segment` enum. Read, not run: the channel stores a page's declaration
+/// before it tells a listener (`HelmWindowToolbarChannel.declare`,
+/// `HelmWindowToolbar.swift:347-348`) and `content(for:)` reads what is stored
+/// (`:333-335`), so a page's declaration stays whether or not a bar listens;
+/// no row was run without a bar. The look is therefore not pinned, nothing
+/// here reads it.
 @MainActor
 final class TheSearchIsAFieldNotATabTests: XCTestCase {
 
@@ -37,9 +48,9 @@ final class TheSearchIsAFieldNotATabTests: XCTestCase {
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
         await hb.loadIfNeeded()
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: 984, height: 520)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: 984, height: 520)
         defer { fixture.drop() }
         fixture.settle(25)
 

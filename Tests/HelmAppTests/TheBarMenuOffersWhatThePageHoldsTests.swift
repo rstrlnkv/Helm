@@ -6,15 +6,15 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **The page bar's own right-click menu, read the way AppKit reads it
+/// **The settings toolbar's own right-click menu, read the way AppKit reads it
 /// — through the bar on screen, not through the builder.**
 ///
 /// `ShellBarMenu.items` is a static a test could call with any
 /// arguments it liked; what a person gets is whatever `menuNeedsUpdate(_:)`
 /// hands it from the bar that is attached at the moment the menu opens. So
 /// every case here mounts a real bar, reaches the one menu instance through
-/// the centre switcher's own `NSView.menu` (the VoiceOver path; the first case
-/// holds that it is the bar view's own menu), asks the menu's own
+/// the centre switcher's own `NSView.menu` (the VoiceOver path, and the only
+/// handle on the private instance a test can reach), asks the menu's own
 /// delegate to fill it, and reads
 /// what came out — after a page switch too, because one instance serves every
 /// page and a menu filled once would go on offering the last page's sections.
@@ -23,6 +23,13 @@ import XCTest
 /// disk (`Localized.stringsFile(for:)`), never against `L(_:)` — the menu calls
 /// `L(_:)` itself, and an assertion reading the same lookup on both sides
 /// passes over a key nobody translated.
+///
+/// **The bar.** A bare `SettingsToolbar(model:channel:)`, built with the default
+/// lead `.sidebarSeparator`, not the app's `.spacer` build, in a split-view
+/// rig whose window is ordered to the back (`mount(pane:)`). **The look.** The
+/// settings are pinned in `setUp` (`PinnedBarSettings`: Flat, the module name,
+/// text tabs, a search that does not always collapse); the rows that move a
+/// setting put it back with the pin.
 @MainActor
 final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
 
@@ -73,7 +80,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
 
     private struct Rig {
         let window: NSWindow
-        let pageBar: MountedPageBar
+        let toolbar: SettingsToolbar
         let model: SettingsModel
         let channel: HelmWindowToolbarChannel
     }
@@ -84,6 +91,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     private func mount(pane: CGFloat = 1060) -> Rig {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
+        let toolbar = SettingsToolbar(model: model, channel: channel)
         let detail = NSViewController()
         detail.view = NSView(frame: NSRect(x: 0, y: 0, width: pane, height: 700))
         let detailItem = NSSplitViewItem(viewController: detail)
@@ -105,14 +113,14 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         window.setContentSize(NSSize(width: pane + Self.sidebarWidth, height: 700))
         window.orderBack(nil)
         window.layoutIfNeeded()
-        let pageBar = MountedPageBar(model: model, channel: channel, in: window)
-        let rig = Rig(window: window, pageBar: pageBar, model: model, channel: channel)
+        toolbar.window = window
+        let rig = Rig(window: window, toolbar: toolbar, model: model, channel: channel)
         show(.tabsAndSearch, on: rig, token: "test.barMenu.first")
         return rig
     }
 
     private func close(_ rig: Rig) {
-        rig.pageBar.remove()
+        rig.window.toolbar = nil
         rig.window.close()
     }
 
@@ -125,23 +133,20 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         } else {
             rig.model.selection = .general
         }
-        pump(rig)
+        pump(rig.window)
     }
 
-    private func pump(_ rig: Rig, turns: Int = 10) {
-        let window = rig.window
+    private func pump(_ window: NSWindow, turns: Int = 10) {
         for _ in 0..<turns {
             window.layoutIfNeeded()
-            rig.pageBar.layout()
             CATransaction.flush()
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
         }
     }
 
-    /// The centre switcher, found from the window down to the bar's tabs zone and not asked of the fixture.
-    private func switcher(_ rig: Rig) -> NSSegmentedControl? {
-        rig.window.contentView?.superview?.everyView(ofType: ShellPageBarView.self).first?
-            .view(for: .tabs)?.everyView(ofType: NSSegmentedControl.self).first
+    private func switcher(_ window: NSWindow) -> NSSegmentedControl? {
+        window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.tabs" }?
+            .view?.everyView(ofType: NSSegmentedControl.self).first
     }
 
     /// The menu as AppKit fills it just before drawing it.
@@ -183,22 +188,20 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     // MARK: - The switcher carries the bar's menu
 
     /// **The centre switcher's own menu is the bar's one menu**, the same
-    /// instance on every page, answering to the bar — VoiceOver's "show
+    /// instance on every page, answering to the toolbar — VoiceOver's "show
     /// menu" on a focused switcher opens this and nothing else.
     func testTheCentreSwitcherCarriesTheBarsOneMenu() {
         let rig = mount()
         defer { close(rig) }
-        guard let first = switcher(rig)?.menu else {
+        guard let first = switcher(rig.window)?.menu else {
             return XCTFail("the centre switcher carries no menu — VoiceOver's show-menu opens nothing")
         }
-        XCTAssertTrue(first.delegate === rig.pageBar.bar,
-                      "the switcher's menu is not filled by the page bar — it is not the bar's menu")
-        XCTAssertTrue(first === rig.pageBar.bar.view.menu,
-                      "the switcher's menu is not the menu of the bar's view")
+        XCTAssertTrue(first.delegate === rig.toolbar,
+                      "the switcher's menu is not filled by the toolbar — it is not the bar's menu")
         XCTAssertFalse(opened(first).isEmpty, "the switcher's menu opened empty")
 
         show(.tabsOnly, on: rig, token: "test.barMenu.second")
-        guard let second = switcher(rig)?.menu else {
+        guard let second = switcher(rig.window)?.menu else {
             return XCTFail("the second page's switcher carries no menu")
         }
         XCTAssertTrue(first === second,
@@ -214,7 +217,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     func testEachKindOfPageIsOfferedWhatItHoldsAndNothingElse() {
         let rig = mount()
         defer { close(rig) }
-        guard let menu = switcher(rig)?.menu else {
+        guard let menu = switcher(rig.window)?.menu else {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
         // Twice round, so every kind is also reached *from* every other kind
@@ -240,7 +243,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     func testTheTicksAreTheSettingsOfTheMomentTheMenuOpens() {
         let rig = mount()
         defer { close(rig) }
-        guard let menu = switcher(rig)?.menu else {
+        guard let menu = switcher(rig.window)?.menu else {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
         _ = opened(menu)
@@ -251,13 +254,12 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
                     AppSettings.toolbarSwitcherStyle = labels
                     AppSettings.alwaysCollapseSearch = collapse
                     AppSettings.barAppearance = appearance
-                    pump(rig, turns: 3)
-                    guard let fresh = switcher(rig)?.menu else {
+                    pump(rig.window, turns: 3)
+                    guard let fresh = switcher(rig.window)?.menu else {
                         XCTFail("\(pageBar)/\(labels)/\(collapse): the switcher lost its menu")
                         continue
                     }
-                    XCTAssertTrue(fresh === menu, "\(pageBar)/\(labels): the bar carries another menu "
-                                  + "after the settings moved")
+                    XCTAssertTrue(fresh === menu, "\(pageBar)/\(labels): a rebuilt bar carries another menu")
                     let got = shape(opened(fresh))
                     XCTAssertEqual(got, expectedShape(.tabsAndSearch, pageBar: pageBar, labels: labels,
                                                       appearance: appearance, collapse: collapse), """
@@ -287,7 +289,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     func testEachItemWritesItsOwnSettingAndOnlyThat() {
         let rig = mount()
         defer { close(rig) }
-        guard let menu = switcher(rig)?.menu else {
+        guard let menu = switcher(rig.window)?.menu else {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
 
@@ -295,36 +297,36 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
         XCTAssertEqual(AppSettings.pageBarStyle, .windowTitle, "Without Icon did not choose the window title")
         XCTAssertEqual(AppSettings.toolbarSwitcherStyle, .text, "Without Icon moved the tab labels")
         XCTAssertFalse(AppSettings.alwaysCollapseSearch, "Without Icon moved Always Collapse Search")
-        pump(rig)
-        guard let menu = switcher(rig)?.menu else {
-            return XCTFail("after Without Icon the bar's switcher carries no menu")
+        pump(rig.window)
+        guard let menu = switcher(rig.window)?.menu else {
+            return XCTFail("after Without Icon the rebuilt bar's switcher carries no menu")
         }
         choose(L("Without Icon"), in: menu, "Without Icon again")
         XCTAssertEqual(AppSettings.pageBarStyle, .windowTitle, "Without Icon chosen twice left the window title")
         choose(L("With Icon"), in: menu, "With Icon")
         XCTAssertEqual(AppSettings.pageBarStyle, .moduleName, "With Icon did not bring the name back")
-        pump(rig)
+        pump(rig.window)
 
         for style in ToolbarSwitcherStyle.allCases.reversed() {
-            guard let menu = switcher(rig)?.menu else { return XCTFail("no switcher menu") }
+            guard let menu = switcher(rig.window)?.menu else { return XCTFail("no switcher menu") }
             choose(style.label, in: menu, "\(style)")
             XCTAssertEqual(AppSettings.toolbarSwitcherStyle, style, "«\(style.label)» chose something else")
             XCTAssertEqual(AppSettings.pageBarStyle, .moduleName, "«\(style.label)» moved the page header")
-            pump(rig, turns: 3)
+            pump(rig.window, turns: 3)
         }
 
         let labelsBefore = AppSettings.toolbarSwitcherStyle
         for (title, choice) in [(L("Liquid Glass"), HelmBarAppearance.liquidGlass), (L("Liquid Glass"), .liquidGlass),
                                 (L("Flat"), .flat)] {
-            guard let menu = switcher(rig)?.menu else { return XCTFail("no switcher menu") }
+            guard let menu = switcher(rig.window)?.menu else { return XCTFail("no switcher menu") }
             choose(title, in: menu, "Appearance \(title)")
             XCTAssertEqual(AppSettings.barAppearance, choice, "«\(title)» chose something else")
             XCTAssertEqual(AppSettings.pageBarStyle, .moduleName, "«\(title)» moved the page header")
             XCTAssertEqual(AppSettings.toolbarSwitcherStyle, labelsBefore, "«\(title)» moved the tab labels")
-            pump(rig, turns: 3)
+            pump(rig.window, turns: 3)
         }
 
-        guard let menu = switcher(rig)?.menu else { return XCTFail("no switcher menu") }
+        guard let menu = switcher(rig.window)?.menu else { return XCTFail("no switcher menu") }
         choose(L("Always Collapse Search"), in: menu, "Always Collapse Search")
         XCTAssertTrue(AppSettings.alwaysCollapseSearch, "Always Collapse Search did not turn on")
         XCTAssertEqual(AppSettings.store.object(Self.collapseKey) as? Bool, true,
@@ -352,7 +354,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     func testTheMenusWordsAreEachLanguagesOwn() {
         let rig = mount()
         defer { close(rig) }
-        guard let menu = switcher(rig)?.menu else {
+        guard let menu = switcher(rig.window)?.menu else {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
         let keys = ["Page header", "With Icon", "Without Icon", "Tab labels"]
@@ -390,7 +392,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
     func testAPlantedValueReadsAsOffOnTheMenuAndTheBarAlike() {
         let rig = mount()
         defer { close(rig) }
-        guard let menu = switcher(rig)?.menu else {
+        guard let menu = switcher(rig.window)?.menu else {
             return XCTFail("no switcher menu to open — nothing below is read")
         }
         let planted: [(String, Any)] = [("the string YES", "YES"), ("the string 1", "1"),
@@ -399,14 +401,14 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
             UserDefaults.standard.set(value, forKey: "module.app.\(Self.collapseKey)")
             // What a real write would have announced — the bar re-reads on it.
             NotificationCenter.default.post(name: .helmAlwaysCollapseSearchChanged, object: nil)
-            pump(rig, turns: 20)
+            pump(rig.window, turns: 20)
             XCTAssertFalse(AppSettings.alwaysCollapseSearch, "\(name) reads as on")
             let toggle = opened(menu).last
             XCTAssertEqual(toggle?.title, L("Always Collapse Search"), "\(name): no toggle last in the menu")
             XCTAssertEqual(toggle?.state, .off, "\(name): the menu ticks Always Collapse Search")
-            let field = rig.pageBar.search.field
-            XCTAssertNotNil(field.window, "\(name): the search field is on no window")
-            XCTAssertEqual(field.isHidden, false, """
+            let field = rig.window.toolbar?.items.compactMap { $0 as? NSSearchToolbarItem }.first?.searchField
+            XCTAssertNotNil(field, "\(name): no search field on the bar")
+            XCTAssertEqual(field?.isHidden, false, """
                 \(name): the bar rests the search as its magnifier at 1060 pt while the menu says \
                 the setting is off — two readers of one value disagree
                 """)
@@ -415,7 +417,7 @@ final class TheBarMenuOffersWhatThePageHoldsTests: XCTestCase {
             XCTAssertEqual(AppSettings.store.object(Self.collapseKey) as? Bool, true,
                            "\(name): the toggle over it did not store a real true")
             AppSettings.alwaysCollapseSearch = false
-            pump(rig, turns: 10)
+            pump(rig.window, turns: 10)
         }
     }
 }

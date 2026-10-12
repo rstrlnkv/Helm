@@ -94,8 +94,9 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = false
-        // Hidden unless a title is named — the two shapes `SettingsWindow`
-        // wears: `PageBarStyle.moduleName` hides it, `.windowTitle` shows it.
+        // Hidden unless a title is named. `SettingsWindow` keeps its title
+        // hidden under both page-bar styles (`applyTitle`); the titled shape is
+        // this probe's own.
         window.title = title ?? ""
         window.titleVisibility = title == nil ? .hidden : .visible
         window.setContentSize(SettingsWindow.defaultSize)
@@ -270,7 +271,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         AppSettings.pageBarStyle = pageBar
         for (system, band, expected) in [("macOS 26", HelmBandChoice.onMacOS(26), control.soft),
                                          ("macOS 27", HelmBandChoice.onMacOS(27), control.automatic)] {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
+            let owner = SettingsWindow(host: ModuleHost.shared, band: band)
             let fields = Mirror(reflecting: owner).children
             let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
                                        "SettingsWindow no longer holds `window` — this case reads it by name")
@@ -279,6 +280,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
             window.appearance = NSAppearance(named: .darkAqua)
             window.orderBack(nil)
             defer {
+                window.toolbar = nil
                 window.close()
             }
             let pane = { SettingsWindowParts.pane(of: window) }
@@ -352,9 +354,9 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
     /// `ThinFilmContentBlurFill` (a variable blur) at 1 and `Separator` at 1,
     /// while `.hard` carries `HardPocketContentBlur`, `HardPocketBackgroundReplay`
     /// at 0.8245 and `Separator` (read 2026-09-29). The same holds with the
-    /// window's title shown, the shape `PageBarStyle.windowTitle` gives the
-    /// window — 27's automatic style did not turn hard for a visible title
-    /// here. So on this Mac the 26 arm's request changes the pocket's `style`
+    /// window's title shown, a shape this probe gives its own window
+    /// (`SettingsWindow` never shows its title) — 27's automatic style did not
+    /// turn hard for a visible title here. So on this Mac the 26 arm's request changes the pocket's `style`
     /// and not one layer it draws.
     ///
     /// **This proves nothing about macOS 26's look.** Whether 26 resolves no
@@ -406,7 +408,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
             27 is out of date; it still says nothing about 26
             """)
         XCTAssertEqual(parts["soft, title shown"], parts["no modifier, title shown"], """
-            with the window's title shown — `PageBarStyle.windowTitle` — macOS 27 now draws .soft \
+            with the window's title shown — this probe's own shape — macOS 27 now draws .soft \
             differently from no modifier (soft \(parts["soft, title shown"] ?? []), none \
             \(parts["no modifier, title shown"] ?? [])); the request is no longer invisible on 27 in \
             that shape. It still says nothing about 26

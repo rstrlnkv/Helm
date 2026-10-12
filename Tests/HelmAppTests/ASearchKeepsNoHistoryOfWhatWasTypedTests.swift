@@ -43,8 +43,24 @@ import XCTest
 /// is the canary that shows the other half of the mechanism working end to
 /// end on this very control, so the guard above it is standing in front of
 /// something measured rather than something quoted from documentation.
+///
+/// **The bar.** Every row reads a real `SettingsToolbar` that
+/// `LivePageInTheToolbarFixture` attaches to the mount's window, built with the
+/// default lead `.sidebarSeparator`, not the app's `.spacer` build. The field is
+/// the one of the toolbar's search item (`LivePageInTheToolbarFixture.searchField`),
+/// and each row asserts that `MountedRender.type` and `.pressReturn`, which act
+/// on the field the frame-view walk meets first, act on that very field before
+/// it types. **The look.** Nothing here reads a width or a cell, so the settings
+/// are pinned in `setUp` (`PinnedBarSettings`: Flat, text tabs, a search that
+/// does not always collapse) to make the run the same each time, not because the
+/// subject is the look.
 @MainActor
 final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     /// The page's side: the binding that moves per keystroke and the press
     /// that is the search, counted so that "the word landed" and "the commit
@@ -77,17 +93,22 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// history.
     func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
         let page = Page()
-        let fixture = LivePageToolbarFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
-                                             width: 1060, height: 400)
+        let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
+                                                  width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
 
         // The subject, before any absence is read off it. A walk that found no
         // control would satisfy every assertion below by never running, and an
         // empty history is exactly what "there was no field" looks like.
-        let field = try XCTUnwrap(fixture.mount.searchField, """
+        let field = try XCTUnwrap(fixture.searchField, """
             the window's toolbar holds no search field at all, so there is nothing here whose \
             history could be read and every reading below would be of nothing
+            """)
+        XCTAssertTrue(fixture.mount.searchField === field, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
             """)
         XCTAssertNil(field.recentsAutosaveName, """
             the field arrived already carrying the autosave name \
@@ -166,12 +187,17 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
         let page = Page()
-        let fixture = LivePageToolbarFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
-                                             width: 1060, height: 400)
+        let fixture = LivePageInTheToolbarFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
+                                                  width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
-        let field = try XCTUnwrap(fixture.mount.searchField, """
+        let field = try XCTUnwrap(fixture.searchField, """
             no search field in the toolbar, so the guard beside this one has no subject either
+            """)
+        XCTAssertTrue(fixture.mount.searchField === field, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
             """)
 
         // Registered before the key can exist, and as a teardown block rather

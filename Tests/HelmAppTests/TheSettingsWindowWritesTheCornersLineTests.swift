@@ -16,8 +16,35 @@ import XCTest
 /// is in no window, or has no card, so what follows it proves nothing. In
 /// `testTheWindowTheAppBuildsWritesALineUnderWindow` a log that is off prints
 /// the control's message.
+///
+/// **Which window.** The one the app builds: `SettingsWindow(host:band:)` with
+/// its default `bar`, the old system toolbar (`SettingsToolbar`) built with the
+/// lead `.spacer`, not the page bar. The initialiser lays the shell out before
+/// it assigns the toolbar to the window, so the window has no toolbar in any
+/// layout that runs then (more than one may run, and each writes a line when the
+/// corner or its rung changed), and the `toolbar yes|no` token of a line is the
+/// token of the layout that wrote it: a later layout writes a line only when the
+/// corner or its rung changed. No row asserts that token. Each of the three
+/// places that builds the window and lays it out prints a `[corners]` block
+/// (`printTheCorners`) after the layout and before its first assertion: whether
+/// the window has a toolbar, whether it is visible, how many times the shell was
+/// told it took a bar, the lines under `[window]` with their index, and the
+/// card's corner radius.
 @MainActor
 final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
+
+    /// Prints what the window and the log hold right after the layout and before
+    /// any assertion reads them, so a red row carries the state it was read in.
+    private func printTheCorners(_ window: NSWindow, _ shell: SettingsShellViewController) {
+        let lines = HelmLog.shared.recentEntries().filter { $0.category == WindowCorner.logCategory }
+        var block = """
+            [corners] window.toolbar != nil: \(window.toolbar != nil), window.isVisible: \(window.isVisible), \
+            barAttachments: \(shell.shell.barAttachments), lines under [\(WindowCorner.logCategory)]: \(lines.count), \
+            card corner radius: \(shell.shell.card.layer?.cornerRadius.description ?? "no layer")
+            """
+        for (index, line) in lines.enumerated() { block += "\n[corners] line \(index): \(line.message)" }
+        print(block)
+    }
 
     private func withTheLogOn(_ body: @MainActor () throws -> Void) rethrows {
         HelmLog.shared.setEnabled(true)
@@ -36,12 +63,14 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
 
         try withTheLogOn {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
+            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+            defer { withExtendedLifetime(owner) {} }
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
             let view = shell.shell
             view.layoutSubtreeIfNeeded()
+            printTheCorners(window, shell)
 
             XCTAssertTrue(view.window === window, "the shell's view is in no window: the silence below proves nothing")
             XCTAssertGreaterThan(view.card.frame.width, 0, "the card was never laid out: the silence below proves nothing")
@@ -73,11 +102,13 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
 
         try withTheLogOn {
-            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
+            let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
+            defer { withExtendedLifetime(owner) {} }
             let window = try XCTUnwrap(
                 Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
             let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
             shell.shell.layoutSubtreeIfNeeded()
+            printTheCorners(window, shell)
             XCTAssertTrue(shell.shell.window === window, "the shell's view is in no window: the check below proves nothing")
 
             let lines = HelmLog.shared.recentEntries().filter { $0.category == WindowCorner.logCategory }.map(\.message)
@@ -155,18 +186,19 @@ final class TheSettingsWindowWritesTheCornersLineTests: XCTestCase {
     // MARK: - the window as built
 
     /// Builds the Settings window through `SettingsWindow`'s own initialiser with
-    /// the macOS 27 band and lays it out, never ordering it in; returns the owner
-    /// too, which holds the window.
+    /// the macOS 27 band and its default toolbar build, and lays it out, never
+    /// ordering it in; returns the owner too, which holds the window.
     private func builtWindow() throws -> (owner: SettingsWindow, window: NSWindow, shell: SettingsShellViewController) {
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
         let found = UserDefaults.standard.string(forKey: frameKey)
         UserDefaults.standard.removeObject(forKey: frameKey)
         addTeardownBlock { UserDefaults.standard.set(found, forKey: frameKey) }
-        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27), bar: .pageBar)
+        let owner = SettingsWindow(host: ModuleHost.shared, band: .onMacOS(27))
         let window = try XCTUnwrap(
             Mirror(reflecting: owner).children.first { $0.label == "window" }?.value as? NSWindow)
         let shell = try XCTUnwrap(window.contentViewController as? SettingsShellViewController)
         shell.shell.layoutSubtreeIfNeeded()
+        printTheCorners(window, shell)
         XCTAssertTrue(shell.shell.window === window, "the shell's view is in no window: what follows proves nothing")
         XCTAssertFalse(window.isVisible, "the window was ordered in: this test is meant to be window-free")
         return (owner, window, shell)

@@ -44,7 +44,7 @@ import HelmUI
 /// `HomebrewViewModel.query` is `@Published`, not a page-local `@State`, but it
 /// still has to arrive the way a person types it — so the mounted
 /// `NSSearchField` is typed into and its change notification posted, which is
-/// what the bridge behind `.helmWindowToolbar` listens for. A test that only
+/// what `SettingsToolbar`'s search delegate listens for. A test that only
 /// filled `searchHits` would sit on an unmatched `searchedQuery` and read no
 /// section at all (`AvailableSection.of`), which is an absence that passes for
 /// the wrong reason; the row count is asserted before any action is counted
@@ -52,9 +52,10 @@ import HelmUI
 ///
 /// **And the typing must be a failure when it cannot happen.** The field is on
 /// the window's toolbar (`.helmWindowToolbar`), so the typing goes through
-/// `MountedRender.type`, which reads the control off the window. This used to
-/// be an `if let ... .first` over `mount.host`, which is precisely the shape
-/// that goes quiet: with the field gone from the toolbar the binding would
+/// `MountedRender.type`, which acts on the field the frame-view walk meets
+/// first, and the cell asserts that this is the field of the window's toolbar
+/// item before it types. This used to be an `if let ... .first` over
+/// `mount.host`, which is precisely the shape that goes quiet: with the field gone from the toolbar the binding would
 /// stay empty, `AvailableSection.of` would keep answering nil, and three
 /// readings would be compared on a page nobody had typed into — all of it
 /// green. So «a field was expected and there is none» is an `XCTFail` naming
@@ -69,10 +70,25 @@ import HelmUI
 ///
 /// **Moved here from `Tests/Modules/Homebrew/UITests`** — the search field
 /// `draw()` types into is now the real `NSSearchField` a live `SettingsToolbar`
-/// builds, and only `HelmAppTests` can attach one (`LivePageToolbarFixture`'s
+/// builds, and only `HelmAppTests` can attach one (`LivePageInTheToolbarFixture`'s
 /// own header says why a module's `UITests` cannot).
+///
+/// **The bar.** A real `SettingsToolbar` that `LivePageInTheToolbarFixture`
+/// attaches to the mount's window, built with the default lead
+/// `.sidebarSeparator`, not the app's `.spacer` build. The windows here are as
+/// narrow as 536 pt, and AppKit may put a toolbar item into its overflow at a
+/// width like that, so a failing precondition before the typing names the pane
+/// width and whether the search item is visible. **The look.** The cells count focus
+/// rings and lists and read no width or cell of the bar, so the settings are
+/// pinned in `setUp` (`PinnedBarSettings`: Flat, text tabs, a search that does
+/// not always collapse) to make the run the same each time.
 @MainActor
 final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     // MARK: - The fixture
 
@@ -196,7 +212,7 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     /// **A live `SettingsToolbar` per call**, not a bare `MountedRender` — the
     /// search field this reads is the real `NSSearchField`
     /// `SettingsToolbar.makeSearchItem` builds, and only `HelmAppTests` can
-    /// attach one (`LivePageToolbarFixture`'s own header). Moved here from
+    /// attach one (`LivePageInTheToolbarFixture`'s own header). Moved here from
     /// `Tests/Modules/Homebrew/UITests` for exactly that reason.
     private func draw(_ hb: HomebrewViewModel, _ mvm: ModuleViewModel,
                       at width: CGFloat, segment: HomebrewViewModel.Segment,
@@ -204,9 +220,9 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
                       file: StaticString = #filePath, line: UInt = #line) -> Reading {
         hb.segment = segment
         hb.select(id)
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: width, height: 700)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: width, height: 700)
         let mount = fixture.mount
         fixture.settle(25)
         if let query, expectsSearchField(typing: query, selecting: id) {
@@ -215,6 +231,20 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
             // not the binding, so `hb.query` would stay empty, `AvailableSection.of`
             // would keep answering nil, and the section below would never
             // appear at all.
+            let item = mount.window?.toolbar?.items.compactMap { $0 as? NSSearchToolbarItem }.first
+            let seen = item.map { "the search item isVisible: \($0.isVisible)" }
+                ?? "the toolbar lists no search item"
+            XCTAssertNotNil(fixture.searchField, """
+                \(segment) at \(width) pt (pane width) with nothing selected: the fixture's window \
+                wears no toolbar that lists a search item, so there is no field of the toolbar to \
+                type into — \(seen)
+                """, file: file, line: line)
+            XCTAssertTrue(mount.searchField === fixture.searchField, """
+                \(segment) at \(width) pt (pane width): the frame-view walk behind \
+                `MountedRender.type` does not meet the toolbar's field — it would type into \
+                another control and every reading below would be of a page the toolbar's field \
+                never reached; \(seen)
+                """, file: file, line: line)
             XCTAssertTrue(mount.type(query, turns: 25), """
                 \(segment) at \(width) pt with nothing selected put no search field in the \
                 window's toolbar, so «\(query)» was never typed and every reading taken from \

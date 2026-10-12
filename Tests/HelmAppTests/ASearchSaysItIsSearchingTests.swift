@@ -26,10 +26,18 @@ import HelmUI
 ///
 /// **That field is the window's now** (`.helmWindowToolbar`, through
 /// `SettingsToolbar`), so the typing goes through `MountedRender.type`, which
-/// reads the control off the window's toolbar — attached here by
-/// `LivePageToolbarFixture`, since only `HelmAppTests` can build one
-/// (`SettingsToolbar` is `HelmApp`-only). Moved here from
-/// `Tests/Modules/Homebrew/UITests` for exactly that reason.
+/// acts on the field the frame-view walk meets first; each mount asserts that
+/// this is the field of the window's toolbar item before it types. The toolbar
+/// is attached here by `LivePageInTheToolbarFixture`, since only
+/// `HelmAppTests` can build one (`SettingsToolbar` is `HelmApp`-only). Moved
+/// here from `Tests/Modules/Homebrew/UITests` for exactly that reason.
+///
+/// **The bar.** A real `SettingsToolbar` that `LivePageInTheToolbarFixture`
+/// attaches to the mount's window, built with the default lead
+/// `.sidebarSeparator`, not the app's `.spacer` build. **The look.** No row
+/// reads a width or a cell of the bar, so the settings are pinned in `setUp`
+/// (`PinnedBarSettings`: Flat, text tabs, a search that does not always
+/// collapse) to make the run the same each time.
 ///
 /// **The band moved up with the row that is gone.** It was 110…420, named as
 /// «below the search field and above the status line»; the field's 32 pt row
@@ -40,6 +48,11 @@ import HelmUI
 /// three different things in these three runs.
 @MainActor
 final class ASearchSaysItIsSearchingTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     private final class Catalogue: EngineTransport, @unchecked Sendable {
         private let stream = AsyncStream<EngineEvent>.makeStream()
@@ -79,9 +92,9 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         let transport = Catalogue(answer)
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: 984, height: 520)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: 984, height: 520)
         let mount = fixture.mount
         await hb.loadIfNeeded()
         func turn(_ times: Int) async {
@@ -96,6 +109,15 @@ final class ASearchSaysItIsSearchingTests: XCTestCase {
         // page asked the window for. Return is the deterministic door — it
         // asks unconditionally and does not wait on the pause, which a bare
         // typed word would race on a real clock.
+        XCTAssertNotNil(fixture.searchField, """
+            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            of the toolbar to type into
+            """)
+        XCTAssertTrue(mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
+            """)
         XCTAssertTrue(mount.type("cad"), """
             Установленные put no field in the window's toolbar, so nothing below is \
             measured — every reading after this would be taken from a page nobody typed into

@@ -382,7 +382,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
         for (system, band, helms) in [("macOS 26", Self.macOS26, false), ("macOS 27", Self.macOS27, true)] {
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
                 let where_ = "\(system), \(appearance.rawValue)"
-                let owner = SettingsWindow(host: ModuleHost.shared, band: band, bar: .pageBar)
+                let owner = SettingsWindow(host: ModuleHost.shared, band: band)
                 let fields = Mirror(reflecting: owner).children
                 let window = try XCTUnwrap(fields.first { $0.label == "window" }?.value as? NSWindow,
                                            "SettingsWindow no longer holds `window` — this case reads it by name")
@@ -391,6 +391,7 @@ final class TheSystemsScrollEdgeEffectAttachesTests: XCTestCase {
                 window.appearance = NSAppearance(named: appearance)
                 window.orderBack(nil)
                 defer {
+                    window.toolbar = nil
                     window.close()
                 }
 
