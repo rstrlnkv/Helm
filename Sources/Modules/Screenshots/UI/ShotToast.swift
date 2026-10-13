@@ -27,9 +27,10 @@ import Module_Screenshots_Engine
         /// What a screen reader reads of it; nil while the shot is still being written.
         var caption: String?
         var file: URL?
-        /// The full picture of a shot that was only copied: a thumbnail is a reduced copy, and a drag or a share of it
-        /// would hand over `ShotThumbnail.longestEdge` pixels. A shot with a file holds none, and is read back from
-        /// the file when asked. It leaves memory with the shot: pushed out, closed, or gone with the window.
+        /// The full picture of a shot that has no file, only copied or kept by a refused delivery: a thumbnail is a reduced
+        /// copy, and a drag or a share of it would hand over `ShotThumbnail.longestEdge` pixels. A shot with a file holds
+        /// none, and is read back from the file when asked. It leaves memory with the shot: pushed out, closed, or gone
+        /// with the window.
         var full: CGImage?
         /// What the shot's file was when it was written: what «Edit» and the replacement that follows ask the file
         /// against. Nil for a shot with no file.
@@ -162,7 +163,7 @@ import Module_Screenshots_Engine
     // MARK: - What a shot offers
 
     /// What «Edit» opens on, nil while there is nothing it could: the written file with its reading, or the held
-    /// picture of a shot that was only copied. A file with no reading is not offered, since nothing could say
+    /// picture of a shot that has no file. A file with no reading is not offered, since nothing could say
     /// later that it is still that file.
     func editSource(of shot: Shot) -> (shot: WrittenShot?, held: CGImage?)? {
         guard shot.caption != nil else { return nil }
@@ -366,7 +367,7 @@ final class ShotPanel: NSPanel {
     private var sinceScroll: Double?
     /// Seconds until the panel takes the folded pile's size: the fold is drawn inside the row's.
     private var shrinkIn: Double?
-    /// The shot whose write is not done: its result fills it, and a refusal takes it away.
+    /// The shot whose write is not done: its result fills it, and so does the refusal of its own write (`showRefusal`).
     private var pending: ShotToastModel.Shot.ID?
     /// The shot the editor was opened on, held while the editor is open, and the place it stood at in its group. It
     /// leaves with the editor (`editorClosed`) or with the window (`dismiss`).
@@ -426,51 +427,69 @@ final class ShotPanel: NSPanel {
     /// as it wrote it, which is what makes the shot one «Edit» can open.
     func showDone(_ image: CGImage, caption: String, file: URL?, share: Bool = false, reading: ShotReading? = nil) {
         show(lasting: Self.life) {
-            let reduced = Self.thumbnail(of: image)
             model.say(nil)
-            let full = file == nil ? image : nil, reading = file == nil ? nil : reading
-            let filled = pending.map { id in
-                model.update(id) {
-                    $0.image = reduced
-                    $0.caption = caption
-                    $0.file = file
-                    $0.full = full
-                    $0.reading = reading
-                }
-            } ?? false
-            if !filled { model.add(reduced, caption: caption, file: file, full: full, reading: reading) }
-            pending = nil
+            finish(image, caption: caption, file: file, reading: reading)
         }
         if share { requestShare() }
     }
 
-    /// The plaque, in the shots' place for its nine seconds. **Only the refusal of the still-writing shot's own write
-    /// (`ofItsWrite`) takes that shot away**; a refusal of a Copy, an Edit or a capture the shot has no part in leaves
-    /// it, and its result still lands on it. The other shots are kept under the plaque, folded, and are back when it
-    /// goes (`advance`, `close`).
-    func showRefusal(_ reason: CaptureRefusal, ofItsWrite: Bool = false) {
-        show(lasting: 9) {
-            if ofItsWrite {
-                if let pending { model.remove(pending) }
-                pending = nil
+    /// The still-writing shot becomes the finished one, or a finished shot is added when none is writing.
+    private func finish(_ image: CGImage, caption: String, file: URL?, reading: ShotReading?) {
+        let reduced = Self.thumbnail(of: image)
+        let full = file == nil ? image : nil, reading = file == nil ? nil : reading
+        let filled = pending.map { id in
+            model.update(id) {
+                $0.image = reduced
+                $0.caption = caption
+                $0.file = file
+                $0.full = full
+                $0.reading = reading
             }
+        } ?? false
+        if !filled { model.add(reduced, caption: caption, file: file, full: full, reading: reading) }
+        pending = nil
+    }
+
+    /// What a refused delivery leaves of its picture: the picture, the caption that is true of it (what was done with
+    /// it, or the refusal's sentence when nothing was), and the file when one was written.
+    struct Kept {
+        let image: CGImage
+        let caption: String
+        let file: URL?
+        let reading: ShotReading?
+    }
+
+    /// The plaque, in the shots' place for its nine seconds. **With `kept` the refused delivery's picture stays as a
+    /// finished shot under it**, the still-writing shot finished or, when none is writing, a new one, so that
+    /// the marks drawn on it are not lost with the write; it is the window again when the plaque goes (`advance`, `close`).
+    /// Without, a refusal of a Copy, an Edit or a capture the still-writing shot has no part in leaves that shot as it is,
+    /// and its result still lands on it. The other shots are kept under the plaque, folded, and are back when it goes.
+    /// `aboutAShot` is for a refusal about a shot that was taken though none is kept here, the one an editor was opened
+    /// on, and only its uncomposed picture passes it: a refused Copy passes nothing and is titled as a capture that failed;
+    /// a kept shot is one anyway.
+    func showRefusal(_ reason: CaptureRefusal, keeping kept: Kept? = nil, aboutAShot: Bool = false) {
+        show(lasting: 9) {
+            if let kept { finish(kept.image, caption: kept.caption, file: kept.file, reading: kept.reading) }
             fold()
-            model.say(Self.refusalContent(reason))
+            model.say(Self.refusalContent(reason, aboutAShot: aboutAShot || kept != nil))
         }
     }
 
     /// What a refusal says, and whether it offers «Open Settings» — **only for
     /// the grant**. A button that cannot do what it says is worse than none: a
     /// full disk is not mended in the Privacy pane. Its own function so the
-    /// decision is one a test can ask without a window.
-    static func refusalContent(_ reason: CaptureRefusal) -> ShotToastModel.Content {
+    /// decision is one a test can ask without a window. `aboutAShot`: the refusal is about a shot that was taken, one kept
+    /// under the plaque or the one an editor was opened on.
+    static func refusalContent(_ reason: CaptureRefusal, aboutAShot: Bool) -> ShotToastModel.Content {
         let permission = reason == .noPermission
         let title: String
         switch reason {
         case .noPermission: title = ScStr.noPermissionTitle
         // A shot that was taken and could not be opened or replaced: «not taken» would be untrue of it.
         case .notEditable, .notReplaced: title = ScStr.thumbnailLabel
-        case .captureFailed, .displayGone, .windowGone, .write, .pasteboard, .encoding: title = ScStr.failedTitle
+        // «Not taken» is as untrue of a shot kept under the plaque or one an editor was opened on; about none it is what these say.
+        case .captureFailed, .displayGone, .windowGone, .write, .pasteboard, .encoding:
+            title = aboutAShot ? ScStr.thumbnailLabel : ScStr.failedTitle
         }
         return .refusal(title: title, body: ScStr.refusal(reason), offersSettings: permission)
     }
@@ -738,7 +757,7 @@ final class ShotPanel: NSPanel {
 
     // MARK: - What the capsule does
 
-    /// The full picture of the shot an action is about: held for a shot that was only copied, read back from its
+    /// The full picture of the shot an action is about: held for a shot that has no file, read back from its
     /// file for a saved one.
     func fullPicture() -> CGImage? {
         guard model.refusal == nil, let shot = model.current else { return nil }

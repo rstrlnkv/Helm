@@ -23,7 +23,7 @@ final class TheRefusalToastOffersSettingsOnlyForAMissingGrantTests: XCTestCase {
     private func buttons(for reason: CaptureRefusal, language: AppLanguage) -> Int {
         AppLanguage.override = language
         let model = ShotToastModel()
-        model.content = ShotToast.refusalContent(reason)
+        model.content = ShotToast.refusalContent(reason, aboutAShot: false)
         model.shown = true
         let mount = MountedRender(ShotToastView(model: model), width: ShotToast.width, height: 300, appearance: .aqua)
         mount.settle(20)

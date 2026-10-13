@@ -22,8 +22,8 @@ final class TheRefusalToastCanBeSentAwayTests: XCTestCase {
     }
 
     func testARefusalToastHasAWayAway() {
-        let withGrant = controls(ShotToast.refusalContent(.noPermission))
-        let without = controls(ShotToast.refusalContent(.captureFailed))
+        let withGrant = controls(ShotToast.refusalContent(.noPermission, aboutAShot: false))
+        let without = controls(ShotToast.refusalContent(.captureFailed, aboutAShot: false))
         XCTAssertEqual(withGrant - without, 1, "the subject: the settings button is the one control the grant adds")
         XCTAssertEqual(without, 1, "a refusal toast with no settings button has exactly the close control")
     }
@@ -40,7 +40,7 @@ final class TheRefusalToastCanBeSentAwayTests: XCTestCase {
     /// The control's existence is counted above; its wiring is open.
     func testDismissingTheModelTakesTheRefusalDown() {
         let toast = ShotToast()
-        toast.model.content = ShotToast.refusalContent(.captureFailed)
+        toast.model.content = ShotToast.refusalContent(.captureFailed, aboutAShot: false)
         toast.model.shown = true
         toast.model.dismiss()
         XCTAssertNil(toast.model.content, "dismiss() left the refusal up")

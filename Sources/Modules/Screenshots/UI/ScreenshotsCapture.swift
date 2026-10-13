@@ -245,7 +245,7 @@ struct CapturedShot {
     private func fullScreen() async {
         let delivery = await session.captureScreens()
         // The session itself stops before it writes; this keeps the toast back.
-        if !Task.isCancelled { present(delivery) }
+        if !Task.isCancelled { present(delivery, showing: nil) }
         busy = false
     }
 
@@ -309,7 +309,7 @@ struct CapturedShot {
     // MARK: - «Edit» on the thumbnail
 
     /// What an editor opened from the thumbnail was opened on: the picture over its freeze, and the shot whose file
-    /// a save replaces. `original` is nil for a shot that was only copied, which has nothing to replace.
+    /// a save replaces. `original` is nil for a shot that has no file, which has nothing to replace.
     struct ShotEdit {
         let shown: PictureOnScreen
         let original: WrittenShot?
@@ -319,7 +319,7 @@ struct CapturedShot {
         /// window as it was (`ShotToast.editorClosed`). **`copied`**: ⌘C of a shot that has a file, which copies the edit and
         /// replaces nothing (`CaptureSession.deliver`): the shot goes back as it was, and the copy is all that is done.
         /// **`replaced`**: every other exit. The shot is let go, and what the exit makes of it arrives as a new shot, a pin
-        /// and a refused write making none.
+        /// making none, a refused write one that has no file and a picture that could not be composed none.
         enum End { case unchanged, copied, replaced }
 
         func end(of result: OverlayResult) -> End {
@@ -454,6 +454,12 @@ struct CapturedShot {
                     case .pin:
                         pin(image, display: display, local: local, in: freeze)
                     }
+                } else if !Task.isCancelled {
+                    // An exit that asked for a picture and got none says so. «The picture could not be made» is true of a fresh
+                    // area and of an edit of a shot alike, and the line names no path; the title is «not taken» for the area
+                    // only, since an edit was opened on a shot that was taken.
+                    HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the editor's picture could not be composed")
+                    toast.showRefusal(.encoding, aboutAShot: editing != nil)
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
@@ -591,21 +597,30 @@ struct CapturedShot {
 
     // MARK: - What the person is told
 
-    /// `showing` is nil for a delivery that asks the setting itself, which is the full-screen shortcut's.
-    private func present(_ delivery: Delivery, showing: Bool? = nil, sharing: Bool = false) {
-        if let refusal = delivery.refusals.first {
-            toast.showRefusal(refusal, ofItsWrite: true)
-            return
-        }
-        guard showing ?? ScreenshotsSettings.read(store).thumbnail, let image = delivery.image else { return }
+    /// `showing` is nil for a delivery that asks the setting itself, which is the whole screen's, by the shortcut or the
+    /// panel. **A refusal of any other delivery keeps its picture** as a finished shot under the plaque, shown or not: the
+    /// marks drawn on it would be lost with the write. The caption says what was done, and of a shot with nothing saved
+    /// and nothing copied the sentence of the refusal that kept it; a share is not opened over it.
+    private func present(_ delivery: Delivery, showing: Bool?, sharing: Bool = false) {
+        let refusal = delivery.refusals.first
         let caption: String
         switch (delivery.files.isEmpty, delivery.copied) {
         case (false, _) where delivery.replaced: caption = ScStr.replaced
         case (false, true): caption = ScStr.savedAndCopied
         case (false, false): caption = ScStr.saved
-        default: caption = ScStr.copied
+        case (true, true): caption = ScStr.copied
+        // Nothing saved and nothing copied: the shot a refusal kept says that refusal, as the plaque does; with none, its own name.
+        case (true, false): caption = refusal.map(ScStr.refusal) ?? ScStr.thumbnailLabel
         }
         let shot = delivery.written.first
+        if let refusal {
+            let kept = showing == nil ? nil : delivery.image.map {
+                ShotToast.Kept(image: $0, caption: caption, file: shot?.url, reading: shot?.reading)
+            }
+            toast.showRefusal(refusal, keeping: kept)
+            return
+        }
+        guard showing ?? ScreenshotsSettings.read(store).thumbnail, let image = delivery.image else { return }
         toast.showDone(image, caption: caption, file: shot?.url, share: sharing, reading: shot?.reading)
     }
 }

@@ -365,19 +365,19 @@ late, and any other input withdraws the question; no clock is read.
 
 The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
 first except that a shot the editor gives back stands at the index it left, whatever has left the list since, and never more than
-`ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
-only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
+`ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it had
+no file. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
 on whole shots, with «N more» on the farthest shot seen whole. Where each sheet of the pile and each slot of the row stands, what
 the label counts and where a scroll rests are `ShotShelf`'s (`Sources/Modules/Screenshots/Engine/Logic/ShotShelf.swift`), pure
 functions the view and the clock both ask. Over the pile the capsule acts on the group: Copy All puts every finished shot on the
 clipboard in one write (`CaptureSession.copyAll`, `ShotPasteboard.copy(pngs:)`), all of them or none, one pass at a time (a press while one reads, or the module going off, stops it at its next picture), Show in Finder selects every
-file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. In the row each shot is a single shot again, with its own capsule, click and
+file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a held picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. In the row each shot is a single shot again, with its own capsule, click and
 drag, and ✕ closes that shot alone. The row folds back on Esc and once the pointer has been away from it for
 `ShotShelf.foldDelay`, asked of the pointer's place at every step of the clock and not of an exit; Esc reaches it because the
 click that unfolds the pile makes the panel key (`ShotPanel.takesKey`: only a click on the panel itself, only while the row is
 unfolded, Helm not activated), and folding gives the keys back. A refusal is drawn in the shots' place and does not end the list:
-the shot whose own write it refuses goes (a refusal of a Copy or an Edit leaves the shot that is still writing), the others are back when the plaque goes. Edit takes its shot out of the window, alone or
+the shot whose own write it refuses stays under it as a finished shot, holding its picture in memory when no file was written, whatever the thumbnail setting says, except a capture of the whole screen by the shortcut or the panel, whose refusal keeps no shot (a refusal of a Copy or an Edit leaves the shot that is still writing as it is), and the shots are back when the plaque goes. Edit takes its shot out of the window, alone or
 out of its group, and what is left of a group does not spend its life under the overlay. Each shot shows as a bare picture
 in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/Engine/Logic/ShotThumbnail.swift`) from the
 reduced copy's pixels, so the view that takes the hover, the click and the drag, and the drag's frame

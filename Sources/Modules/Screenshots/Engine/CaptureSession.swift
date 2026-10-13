@@ -61,7 +61,7 @@ public struct Delivery: @unchecked Sendable {
     public init() {}
 }
 
-/// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its
+/// Where a shot's full picture is, for a copy of several at once: in memory for a shot that has no file, in its
 /// file for a saved one.
 public enum ShotSource: @unchecked Sendable {
     case picture(CGImage)
