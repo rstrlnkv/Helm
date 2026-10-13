@@ -11,10 +11,10 @@ public enum UserFileScope {
 
     private static let homePath = FileManager.default.homeDirectoryForCurrentUser.path
 
-    /// Folded once, not per row: `isRemovable` runs on every frame the disk
+    /// Split once, not per row: `isRemovable` runs on every frame the disk
     /// list redraws.
-    private static let loweredPrefixes = protectedPrefixes.map { $0.lowercased() }
-    private static let loweredHome = homePath.lowercased()
+    private static let protectedFolders = protectedPrefixes.map { $0.split(separator: "/") }
+    private static let homeFolder = homePath.split(separator: "/")
 
     public static func isRemovable(_ rawPath: String) -> Bool {
         // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
@@ -38,6 +38,11 @@ public enum UserFileScope {
         // allowed to remove the alias (PathCanonical says why).
         let path = PathCanonical.resolvingAncestors(standardized)
         guard path.hasPrefix("/"), path != "/" else { return false }
+        // A path that begins with a prefix the kernel answers itself has no name
+        // for the tests below to judge — the home directory spelled that way
+        // would pass them all — so it is refused as spelled and as resolved
+        // (PathCanonical says why).
+        guard !PathCanonical.beginsWithAKernelPrefix(rawPath, resolved: path) else { return false }
         // **The bucket is a flag, never a name.** This used to refuse any path
         // ending in `/…`, because that was once the only way to recognise the
         // disk module's folded aggregate — and `…` is a name a person can type
@@ -58,25 +63,34 @@ public enum UserFileScope {
         // device, so a scan of the volume walks it and the row reaches the
         // basket. This is the disk module's last word on deletion.
         //
-        // Folded, too: the boot volume is case-insensitive and
+        // Compared without regard to case, too, by component and not on a
+        // lowered string: the boot volume is case-insensitive and
         // `standardizingPath` resolves `..`, `~` and `/private` but never case,
         // so `/USR/bin` and `/system/Library/CoreServices` are those
-        // directories to the filesystem and strangers to a prefix test.
-        let lowered = path.lowercased()
-        let bare = PathCanonical.withoutPrivate(lowered)
-        let spellings = [bare, "/private" + bare]
-        guard !loweredPrefixes.contains(where: { prefix in
-            spellings.contains { $0 == prefix || $0.hasPrefix(prefix + "/") }
+        // directories to the filesystem and strangers to a prefix test, and
+        // `lowercased()` leaves a long s, U+017F, alone, which the volume reads
+        // as `s` (`PathCanonical.isAtOrBelow` says what is compared).
+        let parts = path.split(separator: "/")
+        // `withoutPrivate` looks for `/private/` in that exact case, and that is
+        // enough: `resolvingAncestors` has given every existing folder above the
+        // last component the case the disk holds, so where the volume reads
+        // `/PRIVATE` as `/private`, `/PRIVATE/usr/bin` arrives here as
+        // `/private/usr/bin`; a bare `/PRIVATE` has no component after it to
+        // strip.
+        let bare = PathCanonical.withoutPrivate(path)
+        let spellings = [bare, "/private" + bare].map { $0.split(separator: "/") }
+        guard !protectedFolders.contains(where: { folder in
+            spellings.contains { PathCanonical.isAtOrBelow($0, folder) }
         }) else { return false }
         // Never the user's whole home or a volume root.
-        guard lowered != loweredHome,
-              !lowered.hasPrefix("/volumes/") || path.split(separator: "/").count > 2
+        guard !(parts.count == homeFolder.count && PathCanonical.isAtOrBelow(parts, homeFolder)),
+              !(parts.count == 2 && PathCanonical.isAtOrBelow(parts, ["Volumes"]))
         else { return false }
         // Never a top-level directory of the boot volume either. The named list
         // above cannot keep up: scan `/`, click the second-largest arc, and
         // `/Users` went into the basket. Nothing at the root of a volume is a
         // file someone means to delete — their contents still are.
-        guard path.split(separator: "/").count > 1 else { return false }
+        guard parts.count > 1 else { return false }
         return true
     }
 
