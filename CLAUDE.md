@@ -4,10 +4,10 @@
 
 ## Commands
 
-- `bash Scripts/test.sh` runs the suite, `--filter '<Name>|<Other>'` a family; read a run by the script's last line; "Test Suite 'All tests' passed" is the last bundle, "✔ Test run with 0 tests in 0 suites passed" the empty Swift Testing run; the runner fails a `--filter` alternative that ran none, naming it, a bare `swift test` partial filter exits 0 → `test.sh` header.
+- `bash Scripts/test.sh` runs the suite, `--filter '<Name>|<Other>'` a family, `--tier <name>` a target's or module's families by its directory's name, `docs`, `strings`, and `windows`, which the rest leave out; read a run by the script's last line; "Test Suite 'All tests' passed" is the last bundle, "✔ Test run with 0 tests in 0 suites passed" the empty Swift Testing run; the runner fails a `--filter` alternative that ran none, naming it, a bare `swift test` partial filter exits 0 → `test.sh` header.
 - `swift build --target <Name>` for one target, a release only as `swift build -c release --product HelmApp`; package with `bash Scripts/package-app.sh`, install only its signed `$TMPDIR` copy; `bash Scripts/package-dev.sh` to click through; version from `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist` → § Targets, § Release.
 - After a token moves, `HELM_WRITE_DESIGN_TOKENS=1 bash Scripts/test.sh --filter PublishedTokensAreTheTrees` regenerates `Resources/DesignSystem/design-tokens.json`; never passes, record republished outside → § Design system.
-- After a hand edit `plutil -lint Sources/HelmUI/Resources/*.lproj/Localizable.strings`; after touching a `.strings` file, before the suite, `bash Scripts/test.sh --filter 'PunctuationIsTerminologyTests|StringsCoverageTests|NoOrphanTranslationsTests'` → § Tests and measurement.
+- After a hand edit `plutil -lint Sources/HelmUI/Resources/*.lproj/Localizable.strings`; after touching a `.strings` file, before the suite, `bash Scripts/test.sh --tier strings` → § Tests and measurement.
 - "Who uses this" from an index, never `grep`: `swift build --build-tests`, then `periphery scan --skip-build --index-store-path "$PWD/.build/out" --format csv`; its report is no to-do list; keep `command grep -rn HELM_DEBUG Sources/` empty before every commit; before cleanup `du -sh "$TMPDIR"`, then what is not `helm-*`; `--scratch-path` only if another run is up, one per session → § Tests and measurement.
 - Read `~/Library/Logs/Helm/helm.log`, its `[permissions]` line, not assumptions → § Diagnostics log.
 

@@ -96,6 +96,22 @@ anywhere, which is why `plutil -lint` follows any hand edit, and the three strin
 are cheap to run first. The visual harness is env-gated and belongs in the working tree only while it is
 being used, so `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
 
+A tier is a named set of families, so that a change in one place is proved by that place and
+not by the whole suite. `--tier <name>` takes the test classes of a test target, or of a
+module (its engine tests and its UI tests together), by the name of their directory; `docs`,
+`strings` and `windows` lie over those directories. The runner reads the tree at every run and
+hands `swift test` one `--filter` of class addresses, so there is no list of a directory's
+classes to fall behind it; the few names written by hand are in the header of
+`Scripts/test.sh`, and one that no file under `Tests/` declares is refused before `swift
+test` starts. The families that order a window are apart from every other tier, because a run
+of one puts a window on the screen of whoever runs it. A class is placed there by the words
+its file holds, so a class added later is placed by its text and not by a name someone must
+remember to type; a class that reaches a window through the product by none of those words is
+not found. Before the run the runner prints `==> tier '<name>': <N> families` (`1 family` for
+one) and, when it left classes out, how many are left to `--tier windows`; after it, a tier
+family none of whose cases started fails the run and is named, so a tier cannot pass by running
+less than it names.
+
 "Who uses this" is answered from an index and never from `grep`: the tree writes backticked
 names inside doc comments deliberately and at volume, so a grep counts prose as a caller.
 The `periphery` report is not a to-do list either: its "unused" covers dead code, a marker a

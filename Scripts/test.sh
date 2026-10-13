@@ -49,7 +49,75 @@ set -euo pipefail
 #   command grep -c 'warning: No matching test cases were run' log
 # A filter that matches in part is invisible to both counts.
 #
-# Usage: Scripts/test.sh [swift test arguments...]
+# A tier: `--tier <name>` (or `--tier=<name>`; more than one is their union)
+# runs a named set of families, so a change that touches one place is not
+# proved by the whole suite. The families are read off the tree at every run
+# and handed to `swift test` as ONE `--filter` of `Target\.Class/` addresses;
+# no list of a directory's classes is kept here. A test class is a line
+# `class Name: XCTestCase` at the head of a line, with `final` and attributes
+# before it allowed. The tiers are
+#   - a directory of Tests/ that holds test classes, or a module's directory
+#     under Tests/Modules/, which is its EngineTests and its UITests together.
+#     `Support` and `Modules` hold no test class of their own and are no tier.
+#     A name is compared as spelled: the volume is case-insensitive and `disk`
+#     is not `Disk`. An unknown name is refused with the tiers the tree has.
+#   - `docs`: every class whose file names `StandingDocuments`, and by hand
+#     ListsAgreeWithTheTreeTests and NoDocCommentIsDetachedTests.
+#   - `strings`: by hand PunctuationIsTerminologyTests, StringsCoverageTests
+#     and NoOrphanTranslationsTests.
+#   - `windows`: the classes that put a window on the screen of whoever runs
+#     them, which every other tier leaves out before its filter is built. A
+#     class is one when its file's text, comments included, holds a word of
+#     two lists, or names a rig, or names a member of a class so found. The
+#     first list is the five calls that order a window or make it key or
+#     main: `orderFront`, `orderBack`, `makeKey`, `makeMain`,
+#     `NSApp.activate`. The second is the four spellings through which a
+#     test puts a window of the product on the screen: `.show()` (the
+#     capture bar's and the overlay's `show()` order their panels in front),
+#     `.openMenu()` (the editor palette's `openMenu` pops the overlay's
+#     menu), `windowed: true` (a `ShotToast` built so orders its panel in
+#     front when it shows) and `PanelRig.rig` (the rig builds a capture
+#     controller with the default toast, which is windowed, and a refusal
+#     shows it). A rig is a file that holds a word of the first list and
+#     declares no test class; a class that names, as a whole word, something
+#     a rig declares at the head of a line is a window class too. The third
+#     mark is one step deep: once the classes of the files found by the two
+#     lists and the rig are known, a file that names a member of one of them,
+#     the class declared in another file, is a window file, and its test
+#     classes are window classes. A member is named by the class's name as a
+#     whole word, a dot, then a letter or an underscore. The step is taken
+#     once, so a class found by it marks no further file. It reads one line
+#     at a time and the class's own name: a member named on the line after
+#     the name, through an alias of the class, or on an instance of it
+#     (`Class().member`) is not found, and such a class stays in its
+#     directory's tier. It is what finds
+#     TheLogHoldsAReaderThroughWhatNobodyTriedTests, which borrows the
+#     `Window` that TheLogKeepsAReaderWhereTheyWereTests orders in front.
+#     The two known false marks are `.show()` in
+#     TheBarsTabsFoldByTheLayoutsVerdictTests, whose `rig.show()` is its own
+#     `Rig` and orders nothing, and the third mark in
+#     HostsTabsUnfoldWithoutABlinkTests, whose doc comment names another
+#     class's test method: both lie in `windows` all the same. Whether a
+#     class that takes the rig and asks for no refusal shows the toast is
+#     not measured: `PanelRig.rig` marks it all the same. A class that
+#     reaches a window through the product by none of these words is not
+#     found, and lies in its directory's tier.
+# A tier is refused, before `swift test` starts and with the one last line
+# every refusal here prints, when its name is not one of these, when a name
+# listed by hand is no class under Tests/, when it is left with no family, or
+# when the tree cannot be read; so is a `--tier` value carrying a newline
+# byte, as a `--filter` one is. Before the run, `==> tier '<name>': <N>
+# families` (`1 family` for one) says how many addresses the tier handed
+# over, and, when classes were left out, `; <K> that order a window are left
+# to --tier windows`.
+# After it, a tier family none of whose cases started fails the run on a line
+# `!! tier family(ies) ran no test case:` that names each as Target.Class; a
+# family whose cases were all skipped did start, and SKIPPED is judged as
+# ever. `--tier` beside `--filter` is their union, as `swift test` ORs a
+# repeated `--filter`: the alternatives of `--filter` are counted one by one
+# as below, the families of a tier by the set they were expected to be.
+#
+# Usage: Scripts/test.sh [--tier <name>]... [swift test arguments...]
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under
 # ${TMPDIR:-/tmp}; the summary line always prints where it went.
 #
@@ -109,6 +177,13 @@ set -euo pipefail
 # that may not be written would say "nothing was skipped" on nobody's
 # evidence. Run a family without `--parallel` to have its skips counted and
 # an all-skipped run refused.
+#
+# LIMIT: a tier is read from the Tests/ beside the Scripts/ this script lies
+# in, wherever it is started from, while `swift test` runs in the directory
+# the caller is in; nothing compares the two. A runner started by its path
+# from another tree applies its own tree's tiers and window marks to that
+# tree's tests: a family the other tree lacks fails the run as one that ran
+# none, a window class the other tree marks differently does not.
 
 # --filter can arrive as `--filter X` or `--filter=X`, and more than once;
 # swift test ORs every occurrence, so every one is read here too and joined
@@ -126,6 +201,14 @@ for ((i = 0; i < ${#ARGS[@]}; i++)); do
   esac
 done
 
+# A refusal before swift test runs: its reason on standard error, then the one
+# last line every such refusal ends on, and exit 1.
+refuse() {
+  echo "!! $1" >&2
+  echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
+  exit 1
+}
+
 # A test name holds no newline byte. `grep -E` below reads a pattern that
 # carries one as two patterns split on that byte, and the empty side of
 # such a split matches every line it is asked about, so a misspelled
@@ -138,13 +221,257 @@ done
 if [ "${#FILTER_VALUES[@]}" -gt 0 ]; then
   for ALT in "${FILTER_VALUES[@]}"; do
     case "$ALT" in
-      *$'\n'*)
-        echo "!! --filter value contains a newline byte, refused before swift test runs: $(printf '%q' "$ALT")" >&2
-        echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
-        exit 1
-        ;;
+      *$'\n'*) refuse "--filter value contains a newline byte, refused before swift test runs: $(printf '%q' "$ALT")" ;;
     esac
   done
+fi
+
+# `grep` over the tests, its output left in TIER_OUT. Status 0 and 1 are
+# answers (matched, matched nothing); anything else is a reading this script
+# could not make, and a tier built from it would be a guess.
+tier_grep() {
+  local status
+  set +e
+  TIER_OUT="$(command grep "$@")"
+  status=$?
+  set -e
+  case "$status" in
+    0|1) ;;
+    *) refuse "cannot read the tests for a tier (grep exited $status) — refusing to expand a tier from a reading this script cannot make" ;;
+  esac
+}
+
+NL=$'\n'
+TAB=$'\t'
+CALLED_AS="$*"
+TIER_NAMES=()
+TIER_REST=()
+TIER_LINES=()
+TIER_ADDRESSES=""
+# Read --tier out of the arguments, leaving every other one where it was. The
+# value of --filter is skipped over whole, so a filter spelled `--tier` is not
+# taken for the flag.
+for ((i = 0; i < ${#ARGS[@]}; i++)); do
+  case "${ARGS[$i]}" in
+    --tier=*)
+      TIER_NAMES+=("${ARGS[$i]#--tier=}")
+      ;;
+    --tier)
+      TIER_NAMES+=("${ARGS[$((i + 1))]:-}")
+      i=$((i + 1))
+      ;;
+    --filter)
+      TIER_REST+=("${ARGS[$i]}")
+      if [ $((i + 1)) -lt "${#ARGS[@]}" ]; then
+        TIER_REST+=("${ARGS[$((i + 1))]}")
+        i=$((i + 1))
+      fi
+      ;;
+    *)
+      TIER_REST+=("${ARGS[$i]}")
+      ;;
+  esac
+done
+
+# A tier name is compared below with a newline-joined list of the tiers, so a
+# name carrying a newline could pass for two of them; it is refused whole, as
+# a --filter value is.
+if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
+  for NAME in "${TIER_NAMES[@]}"; do
+    case "$NAME" in
+      *$'\n'*) refuse "--tier value contains a newline byte, refused before swift test runs: $(printf '%q' "$NAME")" ;;
+    esac
+  done
+fi
+
+if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
+  # The tree this script lies in, whatever the directory it is started from.
+  case "${BASH_SOURCE[0]}" in
+    */*) TESTS="${BASH_SOURCE[0]%/*}/../Tests" ;;
+    *) TESTS="../Tests" ;;
+  esac
+  DOCS_BY_HAND="ListsAgreeWithTheTreeTests${NL}NoDocCommentIsDetachedTests"
+  STRINGS_BY_HAND="PunctuationIsTerminologyTests${NL}StringsCoverageTests${NL}NoOrphanTranslationsTests"
+
+  # What the files say, each read once over the whole of Tests/: a window
+  # word anywhere in a file's raw text, the standing documents, and the
+  # classes. A rig is a file with a word of the first list and no class.
+  ORDERING='orderFront|orderBack|makeKey|makeMain|NSApp\.activate'
+  tier_grep -rlE --include='*.swift' -e "$ORDERING"'|\.show\(\)|\.openMenu\(\)|windowed: true|PanelRig\.rig' "$TESTS"
+  WORD_FILES="$TIER_OUT"
+  tier_grep -rlE --include='*.swift' -e "$ORDERING" "$TESTS"
+  ORDERING_FILES="$TIER_OUT"
+  tier_grep -rl --include='*.swift' -e 'StandingDocuments' "$TESTS"
+  DOCS_FILES="$TIER_OUT"
+  tier_grep -rEoH --include='*.swift' -e '^(@[A-Za-z]+ )*(final )?class [A-Za-z0-9_]+ *: *XCTestCase' "$TESTS"
+  CLASS_LINES="$TIER_OUT"
+
+  RIG_ALTERNATIVES=""
+  while IFS= read -r RIG; do
+    [ -n "$RIG" ] || continue
+    case "$NL$CLASS_LINES" in *"$NL$RIG:"*) continue ;; esac
+    tier_grep -hoE -e '^((public|private|fileprivate|internal|final|nonisolated|@[A-Za-z]+)[[:space:]]+)*(func|let|var|struct|enum|class|actor|protocol|typealias)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' "$RIG"
+    while IFS= read -r DECLARATION; do
+      [ -n "$DECLARATION" ] || continue
+      RIG_ALTERNATIVES="${RIG_ALTERNATIVES:+$RIG_ALTERNATIVES|}${DECLARATION##*[[:space:]]}"
+    done <<< "$TIER_OUT"
+  done <<< "$ORDERING_FILES"
+  RIG_USERS=""
+  if [ -n "$RIG_ALTERNATIVES" ]; then
+    tier_grep -rlwE --include='*.swift' -e "$RIG_ALTERNATIVES" "$TESTS"
+    RIG_USERS="$TIER_OUT"
+  fi
+  WINDOW_FILES="$WORD_FILES$NL$RIG_USERS"
+
+  set +e
+  CLASS_ROWS="$(sed -E "s/^([^:]+):(@[A-Za-z]+ )*(final )?class ([A-Za-z0-9_]+).*/\\1${TAB}\\4/" <<< "$CLASS_LINES")"
+  CLASS_ROWS_STATUS=$?
+  set -e
+  [ "$CLASS_ROWS_STATUS" -eq 0 ] || refuse "cannot read the test classes under $TESTS (sed exited $CLASS_ROWS_STATUS)"
+
+  # The third mark, once: a file that names a member of a class of the files
+  # found so far (`Class.member`, the name a whole word) is a window file. A
+  # class named there is declared in a file already found, so a file the
+  # step adds is another than the one that declares it — a found file that
+  # names its own class matches too and was a window file already; classes
+  # found here are not asked about again. The names are first read as fixed
+  # strings with their dot, which finds a few files in two seconds where the
+  # one pattern over every name took twenty-two (measured on this tree with
+  # BSD grep); the pattern is then asked of those files alone.
+  WINDOW_CLASSES=""
+  NAMED=()
+  while IFS=$'\t' read -r FILE CLASS; do
+    [ -n "$CLASS" ] || continue
+    case "$NL$WINDOW_FILES$NL" in
+      *"$NL$FILE$NL"*)
+        WINDOW_CLASSES="${WINDOW_CLASSES:+$WINDOW_CLASSES|}$CLASS"
+        NAMED+=(-e "$CLASS.")
+        ;;
+    esac
+  done <<< "$CLASS_ROWS"
+  if [ -n "$WINDOW_CLASSES" ]; then
+    tier_grep -rlF --include='*.swift' "${NAMED[@]}" "$TESTS"
+    NAMING=()
+    while IFS= read -r NAMING_FILE; do
+      [ -n "$NAMING_FILE" ] || continue
+      NAMING+=("$NAMING_FILE")
+    done <<< "$TIER_OUT"
+    if [ "${#NAMING[@]}" -gt 0 ]; then
+      tier_grep -lE -e "(^|[^A-Za-z0-9_])($WINDOW_CLASSES)\\.[A-Za-z_]" "${NAMING[@]}"
+      WINDOW_FILES="$WINDOW_FILES$NL$TIER_OUT"
+    fi
+  fi
+
+  # One row a class: where it lies, what swift test calls it, and whether its
+  # file orders a window or names the standing documents.
+  ROW_ADDRESS=()
+  ROW_TARGET=()
+  ROW_CLASS=()
+  ROW_PLACE=()
+  ROW_WINDOW=()
+  ROW_DOCS=()
+  PLACES="$NL"
+  while IFS=$'\t' read -r FILE CLASS; do
+    [ -n "$CLASS" ] || continue
+    REL="${FILE#"$TESTS"/}"
+    case "$REL" in
+      Modules/*/*/*)
+        PLACE="${REL#Modules/}"
+        PLACE="${PLACE%%/*}"
+        TARGET="${REL#Modules/*/}"
+        TARGET="Module_${PLACE}_${TARGET%%/*}"
+        ;;
+      Modules/*) refuse "$FILE holds a test class and lies in no target's directory" ;;
+      */*)
+        PLACE="${REL%%/*}"
+        TARGET="$PLACE"
+        ;;
+      *) refuse "$FILE holds a test class and lies in no target's directory" ;;
+    esac
+    ROW_ADDRESS+=("$TARGET.$CLASS")
+    ROW_TARGET+=("$TARGET")
+    ROW_CLASS+=("$CLASS")
+    ROW_PLACE+=("$PLACE")
+    case "$NL$WINDOW_FILES$NL" in *"$NL$FILE$NL"*) ROW_WINDOW+=(1) ;; *) ROW_WINDOW+=(0) ;; esac
+    case "$NL$DOCS_FILES$NL" in *"$NL$FILE$NL"*) ROW_DOCS+=(1) ;; *) ROW_DOCS+=(0) ;; esac
+    case "$PLACES" in *"$NL$PLACE$NL"*) ;; *) PLACES="$PLACES$PLACE$NL" ;; esac
+  done <<< "$CLASS_ROWS"
+  if [ "${#ROW_ADDRESS[@]}" -eq 0 ]; then
+    refuse "no test class found under $TESTS — refusing to expand a tier from a reading that found nothing"
+  fi
+
+  TIER_ALTERNATIVES=()
+  TIER_FAMILIES=()
+  for NAME in "${TIER_NAMES[@]}"; do
+    BY_HAND=""
+    case "$NAME" in
+      docs) BY_HAND="$DOCS_BY_HAND" ;;
+      strings) BY_HAND="$STRINGS_BY_HAND" ;;
+      windows) ;;
+      *)
+        if [ -z "$NAME" ] || [[ "$PLACES" != *"$NL$NAME$NL"* ]]; then
+          refuse "unknown tier '$NAME' — the tiers are:$(printf ' %s' ${PLACES} docs strings windows)"
+        fi
+        ;;
+    esac
+    # A name listed by hand that no file declares would leave its tier one
+    # family short without a word.
+    for HAND in $BY_HAND; do
+      FOUND=0
+      for ((k = 0; k < ${#ROW_CLASS[@]}; k++)); do
+        if [ "${ROW_CLASS[$k]}" = "$HAND" ]; then FOUND=1; fi
+      done
+      [ "$FOUND" -eq 1 ] || refuse "$HAND is listed by hand for tier '$NAME' in Scripts/test.sh and no file under Tests/ declares it"
+    done
+    PICKED=0
+    LEFT=0
+    for ((k = 0; k < ${#ROW_ADDRESS[@]}; k++)); do
+      IN=0
+      case "$NAME" in
+        windows) IN="${ROW_WINDOW[$k]}" ;;
+        docs|strings)
+          case "$NL$BY_HAND$NL" in *"$NL${ROW_CLASS[$k]}$NL"*) IN=1 ;; esac
+          if [ "$NAME" = docs ] && [ "${ROW_DOCS[$k]}" -eq 1 ]; then IN=1; fi
+          ;;
+        *)
+          if [ "${ROW_PLACE[$k]}" = "$NAME" ]; then IN=1; fi
+          ;;
+      esac
+      [ "$IN" -eq 1 ] || continue
+      if [ "$NAME" != windows ] && [ "${ROW_WINDOW[$k]}" -eq 1 ]; then
+        LEFT=$((LEFT + 1))
+        continue
+      fi
+      PICKED=$((PICKED + 1))
+      TIER_FAMILIES+=("${ROW_ADDRESS[$k]}")
+      TIER_ALTERNATIVES+=("${ROW_TARGET[$k]}\\.${ROW_CLASS[$k]}/")
+    done
+    LEFT_SAID=""
+    if [ "$LEFT" -gt 0 ]; then LEFT_SAID="; $LEFT that order a window are left to --tier windows"; fi
+    if [ "$PICKED" -eq 0 ]; then
+      refuse "tier '$NAME' holds no family to run${LEFT_SAID}"
+    fi
+    NOUN=families
+    if [ "$PICKED" -eq 1 ]; then NOUN=family; fi
+    TIER_LINES+=("==> tier '$NAME': $PICKED $NOUN$LEFT_SAID")
+  done
+
+  # One family once, in an order that does not depend on the directory's.
+  set +e
+  TIER_ADDRESSES="$(printf '%s\n' "${TIER_FAMILIES[@]}" | sort -u)"
+  TIER_ADDRESSES_STATUS=$?
+  TIER_FILTER="$(printf '%s\n' "${TIER_ALTERNATIVES[@]}" | sort -u)"
+  TIER_FILTER_STATUS=$?
+  set -e
+  if [ "$TIER_ADDRESSES_STATUS" -ne 0 ] || [ "$TIER_FILTER_STATUS" -ne 0 ]; then
+    refuse "cannot order the families of a tier (sort exited $TIER_ADDRESSES_STATUS and $TIER_FILTER_STATUS)"
+  fi
+  TIER_FILTER="${TIER_FILTER//$NL/|}"
+  if [ "${#TIER_REST[@]}" -gt 0 ]; then
+    set -- "${TIER_REST[@]}" --filter "$TIER_FILTER"
+  else
+    set -- --filter "$TIER_FILTER"
+  fi
 fi
 
 FILTER_VALUE=""
@@ -163,9 +490,7 @@ else
   # the very end for mktemp to substitute, and `.log` is appended by a
   # rename afterwards, once mktemp has reserved a unique name.
   if ! RAW="$(mktemp "${TMPDIR:-/tmp}/helm-test.XXXXXX")"; then
-    echo "!! mktemp failed to reserve a log path under ${TMPDIR:-/tmp} — refusing before swift test runs" >&2
-    echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
-    exit 1
+    refuse "mktemp failed to reserve a log path under ${TMPDIR:-/tmp} — refusing before swift test runs"
   fi
   LOG="${RAW}.log"
   mv "$RAW" "$LOG"
@@ -195,12 +520,17 @@ esac
 # expected" while the summary blames "swift test itself" for a status that
 # was really the shell failing to open the redirect.
 if ! { : > "$LOG"; } 2>/dev/null; then
-  echo "!! cannot write the log at $LOG — refusing before swift test runs" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
-  exit 1
+  refuse "cannot write the log at $LOG — refusing before swift test runs"
 fi
 
-echo "==> swift test $* (log: $LOG)"
+if [ "${#TIER_LINES[@]}" -gt 0 ]; then
+  printf '%s\n' "${TIER_LINES[@]}"
+fi
+if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
+  echo "==> swift test with the tier's families as its --filter, for: Scripts/test.sh $CALLED_AS (log: $LOG)"
+else
+  echo "==> swift test $CALLED_AS (log: $LOG)"
+fi
 set +e
 swift test "$@" > "$LOG" 2>&1
 STATUS=$?
@@ -452,6 +782,30 @@ elif [ -n "$FILTER_VALUE" ]; then
   done
 fi
 
+# The families a tier handed over are held to the run as one set: the
+# families that ran are those with a case in SELECTED (a skipped case did
+# start), and what was expected and is not among them is named. One set
+# difference rather than one read of the log a family: a tier can hold
+# hundreds, and the status of each read would have to be judged.
+TIER_MISSING=()
+if [ -n "$TIER_ADDRESSES" ]; then
+  set +e
+  TIER_RAN="$(printf '%s\n' "$SELECTED" | sed -E 's|/[^/]*$||' | sort -u)"
+  TIER_RAN_STATUS=$?
+  set -e
+  if [ "$TIER_RAN_STATUS" -ne 0 ]; then
+    echo "!! cannot read which families of the tier ran from the selected test case(s) (a read's exit status was $TIER_RAN_STATUS) — refusing to judge a run from a log this script cannot read" >&2
+    echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (unreadable)"
+    exit 1
+  fi
+  while IFS= read -r FAMILY; do
+    case "$NL$TIER_RAN$NL" in
+      *"$NL$FAMILY$NL"*) ;;
+      *) TIER_MISSING+=("$FAMILY") ;;
+    esac
+  done <<< "$TIER_ADDRESSES"
+fi
+
 FAIL=0
 if [ "$STATUS" -ne 0 ]; then
   echo "!! swift test itself exited $STATUS" >&2
@@ -489,6 +843,12 @@ if [ "${#UNREADABLE[@]}" -gt 0 ]; then
   # this is not "ran no test case" — say only that it went unchecked, and
   # fail closed rather than pass an alternative nothing here verified.
   echo "!! filter alternative(s) could not be checked (unreadable by grep -E): ${UNREADABLE[*]}" >&2
+  [ "$FAIL" -eq 0 ] && FAIL=1
+fi
+if [ "${#TIER_MISSING[@]}" -gt 0 ]; then
+  # A tier family none of whose cases started: a --skip over it is one cause,
+  # an address `swift test` did not read as the runner spelled it is another.
+  echo "!! tier family(ies) ran no test case: ${TIER_MISSING[*]}" >&2
   [ "$FAIL" -eq 0 ] && FAIL=1
 fi
 if [ "$ZERO_RAN" -eq 1 ]; then

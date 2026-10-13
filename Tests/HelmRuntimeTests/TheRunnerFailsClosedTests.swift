@@ -12,11 +12,11 @@ import XCTest
 /// only ever found inside another family's name — is a green nobody can see
 /// through, and nothing ran the runner itself to find out.
 ///
-/// **How.** Each case starts the tree's own script with a `swift` that is a
-/// stub: it records the arguments it was started with, prints a canned log and
-/// exits with a canned status. The logs are spelled here, in the lines `swift
-/// test` writes, so a row says in one place what the runner was shown and what
-/// it must answer.
+/// **How.** Each case starts the tree's own script, or a copy of it beside a
+/// `Tests/` of the row's making, with a `swift` that is a stub: it records the
+/// arguments it was started with, prints a canned log and exits with a canned
+/// status. The logs are spelled here, in the lines `swift test` writes, so a
+/// row says in one place what the runner was shown and what it must answer.
 ///
 /// **The stub is the only `swift` the child can reach.** `/usr/bin/swift`
 /// exists on every Mac, so a `PATH` that kept `/usr/bin` behind the stub would
@@ -32,7 +32,9 @@ import XCTest
 /// reads the last line as a verdict and fails when there is none, and each
 /// names whether `swift` ran and with what — all but
 /// `testEveryLastLineCarriesTheSameFieldsInTheSameOrder`, which reads the
-/// line's shape and never the stub's record.
+/// line's shape and never the stub's record, and the two rows that read a
+/// tier's expansion, which read the stub's record and the tier's own line and
+/// not the verdict.
 ///
 /// **A failure message never quotes a canned log.** This file's own run is
 /// read by the same runner, which counts a `Test Case … started` line wherever
@@ -226,6 +228,11 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         /// call it matches is killed, the way a read of the log dies under a
         /// machine out of memory; every other call reaches the real `grep`.
         var grepDiesOn: String?
+        /// Files of a `Tests/` of the child's own, by path under it. With
+        /// some, the child runs a copy of the runner that lies beside that
+        /// `Tests/` in scratch, so a tier is read off these files and not off
+        /// the tree.
+        var tree: [String: String]?
     }
 
     private static var clean: Setup {
@@ -436,6 +443,19 @@ final class TheRunnerFailsClosedTests: XCTestCase {
                 """, at: bin.appendingPathComponent("swift"))
         }
 
+        var script = Self.script
+        if let tree = setup.tree {
+            let scripts = scratch.appendingPathComponent("Scripts")
+            try fm.createDirectory(at: scripts, withIntermediateDirectories: true)
+            script = scripts.appendingPathComponent("test.sh")
+            try fm.copyItem(at: Self.script, to: script)
+            for (relative, text) in tree {
+                let file = scratch.appendingPathComponent("Tests").appendingPathComponent(relative)
+                try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try text.write(to: file, atomically: true, encoding: .utf8)
+            }
+        }
+
         let died = scratch.appendingPathComponent("grep-died")
         if let pattern = setup.grepDiesOn {
             let grep = bin.appendingPathComponent("grep")
@@ -479,7 +499,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [Self.script.path] + setup.arguments
+        proc.arguments = [script.path] + setup.arguments
         proc.currentDirectoryURL = scratch
         proc.environment = environment
         let pipe = Pipe()
@@ -538,10 +558,14 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// verdict, its word and its exit status are the expected ones, the status
     /// the line names is the one the runner exited with, and `swift` was
     /// started with exactly what the runner was given — or, for a refusal, was
-    /// never started. Two rows do not come through here:
+    /// never started. Rows that do not come through here:
     /// `testEveryLastLineCarriesTheSameFieldsInTheSameOrder` reads the line's
-    /// shape alone, and `testWithNoStubTheChildReachesNoSwift` asks its own
-    /// version of this of a child with no stub to start.
+    /// shape alone, `testWithNoStubTheChildReachesNoSwift` asks its own
+    /// version of this of a child with no stub to start, and the rows of a
+    /// named tier ask theirs — `swift` is handed a rewritten `--filter` where a
+    /// tier starts it (`assertJudgedTier`) — all but
+    /// `testANewlineInATierValueIsRefusedBeforeSwiftRuns`, a refusal that never
+    /// starts `swift` and comes through here.
     @discardableResult
     private func assertJudged(_ run: Run, _ word: String, exit status: Int32, swiftRan: Bool = true,
                               file: StaticString = #filePath, line: UInt = #line) -> Verdict? {
@@ -761,6 +785,9 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             Shape(label: "a parallel run", setup: Self.parallel, skipped: "unknown"),
             Shape(label: "a newline in the filter", setup: Self.aNewlineInTheFilter,
                   ending: "not written", skipped: "0"),
+            Shape(label: "a tier nobody named", setup: Setup(arguments: ["--tier", "NoSuchTier"],
+                                                             swiftPrints: Self.sequentialLog(Self.removable)),
+                  ending: "not written", skipped: "0"),
             Shape(label: "no folder to reserve a log in", setup: Self.keepingItsLog(.reservedUnderAMissingFolder),
                   ending: "not written"),
             Shape(label: "a log path that takes no write", setup: Self.keepingItsLog(.underAMissingFolder),
@@ -934,6 +961,585 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         let unwritable = try runner(Self.keepingItsLog(.underAMissingFolder))
         assertJudged(unwritable, "FAIL", exit: 1, swiftRan: false)
         assertComplains(unwritable, "!! cannot write the log at ")
+    }
+
+    // MARK: - A named tier
+
+    /// `--tier <name>` asks for a set of families by where they lie, and the
+    /// runner turns it into one `--filter` of `Target\.Class/` addresses for
+    /// `swift test`. The rows below hold it, and none of them keeps a list of
+    /// a directory's classes: `testEveryNameATierHandsSwiftIsATestClassUnderTests`
+    /// and `testEveryTestClassIsInExactlyTheTiersItsPlaceSays` read the tree
+    /// itself, through `SwiftSource`, and hold what the runner handed the stub
+    /// against that reading; the others hold the runner to the families it
+    /// handed over, to its refusals, and to a `Tests/` of the row's own making
+    /// for the tiers the tree has none of.
+    ///
+    /// **The window words are spelled in pieces.** A family whose file holds
+    /// one of the words that order a window is left out of every tier but
+    /// `windows`, and the runner reads the raw text of the file, comments
+    /// included. This file computes the same rule, so a word spelled whole here
+    /// would take this class into `windows` and out of `HelmRuntimeTests`; so
+    /// would the name of a class that orders a window, written with a dot and a
+    /// letter behind it. `testEveryTestClassIsInExactlyTheTiersItsPlaceSays`
+    /// says where this class lies.
+    ///
+    /// The five calls that order a window or make it key or main. A file
+    /// holding one of them and no test class is a window rig.
+    private static let windowWords = [
+        "order" + "Front", "order" + "Back", "make" + "Key", "make" + "Main", "NSApp" + #"\."# + "activate",
+    ].joined(separator: "|")
+
+    /// The four spellings through which a test puts a window of the product on
+    /// the screen. They mark a class, and make no rig.
+    private static let productWindowWords = [
+        #"\."# + "show" + #"\(\)"#, #"\."# + "openMenu" + #"\(\)"#, "windowed" + ": " + "true", "PanelRig" + #"\."# + "rig",
+    ].joined(separator: "|")
+
+    /// What a file says when it reads the standing documents, spelled in two
+    /// pieces for the reason above.
+    private static let documentsWord = "Standing" + "Documents"
+
+    /// The tiers that lie over the directories rather than being one.
+    private static let laidOverTiers = ["docs", "strings", "windows"]
+
+    /// Fewer classes than this under `Tests/` means the reader read nothing.
+    private static let censusFloor = 500
+
+    /// One test class of the tree and where its file lies.
+    private struct Family {
+        /// What `swift test` calls the bundle: a directory of `Tests/`, or
+        /// `Module_<Name>_<EngineTests|UITests>`.
+        let target: String
+        let name: String
+        /// The tier the file's place names: its directory of `Tests/`, or the module's.
+        let place: String
+        /// The file holds one of the nine window words.
+        let hasWindowWord: Bool
+        /// The file names something a window rig declares.
+        let usesWindowRig: Bool
+        /// The file names a member of a class that the nine words or a rig
+        /// found, one step deep.
+        let namesAWindowMember: Bool
+        /// The file names the standing documents.
+        let readsTheDocuments: Bool
+
+        var address: String { "\(target).\(name)" }
+        var ordersAWindow: Bool { hasWindowWord || usesWindowRig || namesAWindowMember }
+    }
+
+    /// Every test class under `Tests/`, by its address.
+    private struct Census {
+        let families: [String: Family]
+
+        var places: [String] { Set(families.values.map(\.place)).sorted() }
+    }
+
+    /// The census, read once a process.
+    ///
+    /// A class is `final class X: XCTestCase` with any attributes before it,
+    /// read off the file with comments and string bodies blanked. A window
+    /// word and the standing documents are read off the raw text: a window
+    /// word is any of the nine, the five calls and the four spellings. A rig
+    /// is a file with one of the five and no test class, and a class names it
+    /// when it uses, as a whole word, anything the rig declares at column one.
+    /// A class found by a window word or a rig is a seed, and a file that names
+    /// a member of a seed (the seed's name as a whole word, a dot, a letter or
+    /// an underscore) marks its classes too. The step is taken once: a class it
+    /// marks is no seed.
+    private static let census = Result { try readCensus() }
+
+    private static func readCensus() throws -> Census {
+        let classLine = try NSRegularExpression(
+            pattern: #"^(@[A-Za-z]+ )*(final )?class ([A-Za-z0-9_]+) *: *XCTestCase"#,
+            options: [.anchorsMatchLines])
+        let orderingWord = try NSRegularExpression(pattern: windowWords)
+        let windowWord = try NSRegularExpression(pattern: windowWords + "|" + productWindowWords)
+        let declaration = try NSRegularExpression(
+            pattern: #"^(?:(?:public|private|fileprivate|internal|final|nonisolated|@[A-Za-z]+)[ \t]+)*(?:func|let|var|struct|enum|class|actor|protocol|typealias)[ \t]+([A-Za-z_][A-Za-z0-9_]*)"#,
+            options: [.anchorsMatchLines])
+        func matches(_ regex: NSRegularExpression, in text: String) -> [NSTextCheckingResult] {
+            regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        }
+        func group(_ index: Int, of match: NSTextCheckingResult, in text: String) -> String? {
+            Range(match.range(at: index), in: text).map { String(text[$0]) }
+        }
+
+        struct Reading {
+            let path: String
+            let raw: String
+            let classes: [String]
+            /// One of the five calls: what makes a file with no class a rig.
+            let hasOrderingWord: Bool
+            /// One of the nine: a mark of its own, beside naming a rig and
+            /// naming a member of a class so marked.
+            let hasWindowWord: Bool
+        }
+        var readings: [Reading] = []
+        for file in try SwiftSource.code(under: "Tests") {
+            let classes = matches(classLine, in: file.text).compactMap { group(3, of: $0, in: file.text) }
+            let raw = try RepoSource.text(of: file.path)
+            readings.append(Reading(path: file.path, raw: raw, classes: classes,
+                                    hasOrderingWord: !matches(orderingWord, in: raw).isEmpty,
+                                    hasWindowWord: !matches(windowWord, in: raw).isEmpty))
+        }
+
+        var rigNames: Set<String> = []
+        for rig in readings where rig.hasOrderingWord && rig.classes.isEmpty {
+            for match in matches(declaration, in: rig.raw) {
+                if let name = group(1, of: match, in: rig.raw) { rigNames.insert(name) }
+            }
+        }
+        let rigUse = rigNames.isEmpty ? nil : try NSRegularExpression(
+            pattern: #"\b(?:"# + rigNames.sorted().map(NSRegularExpression.escapedPattern(for:))
+                .joined(separator: "|") + #")\b"#)
+
+        func usesRig(_ reading: Reading) -> Bool {
+            rigUse.map { !matches($0, in: reading.raw).isEmpty } ?? false
+        }
+        var seeds: [String] = []
+        for reading in readings where reading.hasWindowWord || usesRig(reading) {
+            seeds += reading.classes
+        }
+        let memberOfASeed = seeds.isEmpty ? nil : try NSRegularExpression(
+            pattern: #"(^|[^A-Za-z0-9_])("# + Set(seeds).sorted().map(NSRegularExpression.escapedPattern(for:))
+                .joined(separator: "|") + #")\.[A-Za-z_]"#,
+            options: [.anchorsMatchLines])
+
+        var families: [String: Family] = [:]
+        for reading in readings where !reading.classes.isEmpty {
+            let parts = reading.path.split(separator: "/").map(String.init)
+            var place = "", target = ""
+            if parts.count >= 5, parts[0] == "Tests", parts[1] == "Modules" {
+                place = parts[2]
+                target = "Module_\(parts[2])_\(parts[3])"
+            } else if parts.count >= 3, parts[0] == "Tests", parts[1] != "Modules" {
+                place = parts[1]
+                target = parts[1]
+            } else {
+                throw SetupFailure(description: "\(reading.path) holds a test class and lies in no target's directory")
+            }
+            let namesAMember = memberOfASeed.map { !matches($0, in: reading.raw).isEmpty } ?? false
+            for name in reading.classes {
+                let family = Family(target: target, name: name, place: place,
+                                    hasWindowWord: reading.hasWindowWord, usesWindowRig: usesRig(reading),
+                                    namesAWindowMember: namesAMember,
+                                    readsTheDocuments: reading.raw.contains(documentsWord))
+                families[family.address] = family
+            }
+        }
+        return Census(families: families)
+    }
+
+    /// The census, or a failure that says the reader read nothing.
+    private func censusOrFail(file: StaticString = #filePath, line: UInt = #line) throws -> Census? {
+        let census = try Self.census.get()
+        guard census.families.count >= Self.censusFloor else {
+            XCTFail("the census read \(census.families.count) classes under Tests/ \u{2014} the reader read nothing",
+                    file: file, line: line)
+            return nil
+        }
+        return census
+    }
+
+    /// Names for a failure message, as many as one line can carry.
+    private static func listed(_ names: [String], limit: Int = 8) -> String {
+        let shown = names.sorted().prefix(limit).joined(separator: ", ")
+        return names.count > limit ? "\(shown) and \(names.count - limit) more" : shown
+    }
+
+    private static let tierRanNothing = "!! tier family(ies) ran no test case: "
+
+    /// The line a refusal before the run ends on, the same whatever it refused.
+    private static let refusedLastLine =
+        "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
+
+    /// The `--filter` values among arguments, in either spelling.
+    private static func filterValues(in arguments: [String]) -> [String] {
+        var found: [String] = []
+        for (index, argument) in arguments.enumerated() {
+            if argument == "--filter" {
+                found.append(index + 1 < arguments.count ? arguments[index + 1] : "")
+            } else if argument.hasPrefix("--filter=") {
+                found.append(String(argument.dropFirst("--filter=".count)))
+            }
+        }
+        return found
+    }
+
+    /// One passing case of a family, by its address.
+    private static func oneCase(_ address: String) -> Case {
+        let parts = address.components(separatedBy: ".")
+        return Case(target: parts[0], type: parts.dropFirst().joined(separator: "."), method: "testOne")
+    }
+
+    /// What the runner handed `swift` for one tier.
+    private struct Expansion {
+        let run: Run
+        /// The alternatives of the one `--filter`, as handed.
+        let alternatives: [String]
+        /// `Target.Class` of each alternative that has the shape `Target\.Class/`.
+        let addresses: [String]
+        /// The alternatives that do not have it.
+        let malformed: [String]
+        /// The tier's own line on standard output, before the run.
+        let announcement: String?
+    }
+
+    /// Starts the runner with `--tier <name>` over a stub and reads what the
+    /// stub was given. Every way the subject can be wholly absent fails here
+    /// in words of its own: `swift` never ran, it was handed `--tier`, no
+    /// `--filter` reached it, the tier handed it nothing, the tier did not say
+    /// how many families it holds.
+    private func expand(_ tier: String, file: StaticString = #filePath, line: UInt = #line) throws -> Expansion? {
+        let run = try runner(Setup(arguments: ["--tier", tier], swiftPrints: Self.sequentialLog([Self.removable[0]])))
+        guard let started = run.swiftArguments else {
+            XCTFail("swift never ran for --tier \(tier); \(run.said)", file: file, line: line)
+            return nil
+        }
+        if started.contains(where: { $0 == "--tier" || $0.hasPrefix("--tier=") }) {
+            XCTFail("swift was started with --tier (arguments: \(started.dropFirst().joined(separator: " "))); \(run.said)",
+                    file: file, line: line)
+            return nil
+        }
+        let filters = Self.filterValues(in: started)
+        guard filters.count == 1 else {
+            XCTFail(filters.isEmpty ? "no --filter reached swift for --tier \(tier); \(run.said)"
+                                    : "\(filters.count) --filter arguments reached swift for --tier \(tier), one is the rule; \(run.said)",
+                    file: file, line: line)
+            return nil
+        }
+        let shape = try NSRegularExpression(pattern: #"^([A-Za-z0-9_]+)\\\.([A-Za-z0-9_]+)/$"#)
+        var addresses: [String] = [], malformed: [String] = []
+        let alternatives = filters[0].components(separatedBy: "|")
+        for alternative in alternatives {
+            if let match = shape.firstMatch(in: alternative, range: NSRange(alternative.startIndex..., in: alternative)),
+               let target = Range(match.range(at: 1), in: alternative),
+               let name = Range(match.range(at: 2), in: alternative) {
+                addresses.append("\(alternative[target]).\(alternative[name])")
+            } else {
+                malformed.append(alternative)
+            }
+        }
+        XCTAssertFalse(addresses.isEmpty, "tier \(tier) handed swift 0 names; \(run.said)", file: file, line: line)
+
+        let prefix = "==> tier '\(tier)': "
+        let announced = run.stdout.first { $0.hasPrefix(prefix) }
+        if let announced {
+            let rest = announced.dropFirst(prefix.count)
+            let digits = rest.prefix { $0.isNumber }
+            let leftOut = announced.contains("left to --tier windows")
+            if let count = Int(digits), rest.dropFirst(digits.count).hasPrefix(" famil") {
+                XCTAssertTrue(leftOut ? count >= addresses.count : count == addresses.count,
+                              "tier \(tier) says [\(announced)] and handed swift \(addresses.count) names; \(run.said)",
+                              file: file, line: line)
+            } else {
+                XCTFail("tier \(tier) says [\(announced)], not \"==> tier '<name>': <N> families\" (\"1 family\" for one); \(run.said)",
+                        file: file, line: line)
+            }
+        } else {
+            XCTFail("tier \(tier) did not say, before the run, \"==> tier '\(tier)': <N> families\" (\"1 family\" for one); \(run.said)",
+                    file: file, line: line)
+        }
+        return Expansion(run: run, alternatives: alternatives, addresses: addresses,
+                         malformed: malformed, announcement: announced)
+    }
+
+    /// What a row asks of a tier's run: a verdict with the expected word and
+    /// status, the status the line names, and a `swift` that exited 0. The
+    /// arguments `swift` got are the row's own business, since a tier is
+    /// rewritten into a `--filter` before it gets there.
+    @discardableResult
+    private func assertJudgedTier(_ run: Run, _ word: String, exit status: Int32,
+                                  file: StaticString = #filePath, line: UInt = #line) -> Verdict? {
+        guard let verdict = judgement(of: run, file: file, line: line) else { return nil }
+        XCTAssertEqual(verdict.word, word, "the last line's word; \(run.said)", file: file, line: line)
+        XCTAssertEqual(run.status, status, "the runner's exit status; \(run.said)", file: file, line: line)
+        XCTAssertEqual(verdict.runnerExit, String(run.status),
+                       "the last line names a status the runner did not exit with; \(run.said)", file: file, line: line)
+        XCTAssertEqual(verdict.swiftExit, "0", "the status the last line reports for swift; \(run.said)",
+                       file: file, line: line)
+        return verdict
+    }
+
+    /// A tier expands into the families it names, and the runner holds the
+    /// run to them: a family none of whose cases started fails the run and is
+    /// named on a line of its own. Two tiers are taken, one of them
+    /// hand-listed and one of them a whole target.
+    func testATierRunsItsFamiliesAndOneThatRanNothingFailsTheRun() throws {
+        for tier in ["strings", "HelmContractTests"] {
+            // Start 1: what the runner expands the tier into.
+            guard let found = try expand(tier) else { continue }
+            let families = found.addresses
+            guard families.count > 1, let last = families.last else {
+                XCTFail("tier \(tier) handed swift \(families.count) names, too few to leave one out")
+                continue
+            }
+
+            // Start 2: every family has a case that started.
+            let all = try runner(Setup(arguments: ["--tier", tier],
+                                       swiftPrints: Self.sequentialLog(families.map(Self.oneCase))))
+            if let verdict = assertJudgedTier(all, "PASS", exit: 0) {
+                XCTAssertEqual(verdict.value("selected"), String(families.count),
+                               "tier \(tier): one case a family; \(all.said)")
+                XCTAssertEqual(verdict.value("skipped"), "0", "tier \(tier): the cases that were skipped; \(all.said)")
+            }
+            assertSilent(all)
+            let again = Self.filterValues(in: all.swiftArguments ?? [])
+            XCTAssertEqual(again, [found.alternatives.joined(separator: "|")],
+                           "tier \(tier) expanded into another filter the second time; \(all.said)")
+            XCTAssertFalse((all.swiftArguments ?? []).contains { $0 == "--tier" || $0.hasPrefix("--tier=") },
+                           "swift was started with --tier; \(all.said)")
+
+            // Start 3: the last family has no case in the log.
+            let short = try runner(Setup(arguments: ["--tier", tier],
+                                         swiftPrints: Self.sequentialLog(families.dropLast().map(Self.oneCase))))
+            if let verdict = assertJudgedTier(short, "FAIL", exit: 1) {
+                XCTAssertEqual(verdict.value("selected"), String(families.count - 1),
+                               "tier \(tier): the cases that started; \(short.said)")
+            }
+            XCTAssertEqual(names(after: Self.tierRanNothing, in: short), [last],
+                           "tier \(tier): the !! line that names the family that ran nothing; \(short.said)")
+            XCTAssertNil(names(after: Self.ranNothing, in: short),
+                         "tier \(tier): a tier family is not a filter alternative; \(short.said)")
+
+            // A family whose only case was skipped did run.
+            var skipping = families.map(Self.oneCase)
+            skipping[skipping.count - 1] = skipping[skipping.count - 1].ended(.skipped)
+            let skipped = try runner(Setup(arguments: ["--tier", tier], swiftPrints: Self.sequentialLog(skipping)))
+            if let verdict = assertJudgedTier(skipped, "PASS", exit: 0) {
+                XCTAssertEqual(verdict.value("skipped"), "1", "tier \(tier): the one case that was skipped; \(skipped.said)")
+                XCTAssertEqual(verdict.value("selected"), String(families.count),
+                               "tier \(tier): the cases that started; \(skipped.said)")
+            }
+            XCTAssertNil(names(after: Self.tierRanNothing, in: skipped),
+                         "tier \(tier): a family with a skipped case is named as one that ran nothing; \(skipped.said)")
+        }
+    }
+
+    /// A tier that is not a directory of `Tests/` or of `Tests/Modules/`, or
+    /// one of the three laid over them, is refused before anything runs. The
+    /// name is compared as the exact string: the volume is case-insensitive,
+    /// so `disk` finds the folder of `Disk`, and two of the folders named
+    /// here hold no test class of their own.
+    func testAnUnknownTierIsRefusedBeforeSwiftRuns() throws {
+        let refused: [(arguments: [String], name: String)] = [
+            (["--tier", "NoSuchTier"], "NoSuchTier"),
+            (["--tier=NoSuchTier"], "NoSuchTier"),
+            (["--tier", "Support"], "Support"),
+            (["--tier", "Modules"], "Modules"),
+            (["--tier", "disk"], "disk"),
+            (["--tier", "Modules/Disk"], "Modules/Disk"),
+            (["--tier"], ""),
+            (["--tier", ""], ""),
+        ]
+        for (arguments, name) in refused {
+            let run = try runner(Setup(arguments: arguments, swiftPrints: Self.sequentialLog(Self.removable)))
+            if let started = run.swiftArguments {
+                XCTFail("swift ran with [\(started.dropFirst().joined(separator: ", "))] after \(arguments); \(run.said)")
+            }
+            XCTAssertEqual(run.lastLine, Self.refusedLastLine, "\(arguments): the last line of a refusal; \(run.said)")
+            XCTAssertEqual(run.status, 1, "\(arguments): the runner's exit status; \(run.said)")
+            assertComplains(run, "!! unknown tier '\(name)'")
+        }
+
+        // The control: a tier that exists starts swift, and is not refused.
+        let known = try runner(Setup(arguments: ["--tier", "strings"], swiftPrints: Self.sequentialLog(Self.removable)))
+        XCTAssertNotNil(known.swiftArguments, "swift never ran for a tier that exists; \(known.said)")
+        XCTAssertNotEqual(known.lastLine, Self.refusedLastLine, "a tier that exists was refused; \(known.said)")
+        XCTAssertFalse(known.complaints.contains { $0.hasPrefix("!! unknown tier") },
+                       "a tier that exists was called unknown; \(known.said)")
+    }
+
+    /// A tier is looked up in a list of the tiers joined by newlines, so the
+    /// names of two neighbouring tiers with a newline between them pass for
+    /// one name that is in the list. A `--tier` value carrying a newline is
+    /// refused whole, as a `--filter` one is, before the tree is read and
+    /// before `swift` could start: in the `--tier X` form, in the `--tier=X`
+    /// form, and as the second of two tiers whose first is good. The control
+    /// asks for the same two tiers one at a time, so the lookup alone would
+    /// have let the value through and `swift` starts.
+    func testANewlineInATierValueIsRefusedBeforeSwiftRuns() throws {
+        let joined = "Disk\nHosts"
+        let refusal = "!! --tier value contains a newline byte, refused before swift test runs: $'Disk\\nHosts'"
+        for arguments in [["--tier", joined], ["--tier=\(joined)"], ["--tier", "strings", "--tier", joined]] {
+            let run = try runner(Setup(arguments: arguments, swiftPrints: Self.sequentialLog(Self.removable)))
+            if let verdict = assertJudged(run, "FAIL", exit: 1, swiftRan: false) {
+                XCTAssertEqual(verdict.value("log"), "not written", "\(arguments): where it says it left; \(run.said)")
+            }
+            XCTAssertEqual(run.lastLine, Self.refusedLastLine, "\(arguments): the last line of a refusal; \(run.said)")
+            XCTAssertEqual(run.complaints, [refusal], "\(arguments): the !! lines of a refusal; \(run.said)")
+        }
+
+        let control = try runner(Setup(arguments: ["--tier", "Disk", "--tier", "Hosts"],
+                                       swiftPrints: Self.sequentialLog(Self.removable)))
+        XCTAssertNotNil(control.swiftArguments, "swift never ran for two tiers that exist; \(control.said)")
+        XCTAssertFalse(control.complaints.contains { $0.hasPrefix("!! --tier value") || $0.hasPrefix("!! unknown tier") },
+                       "two tiers that exist were refused as one with a newline or as unknown; \(control.said)")
+    }
+
+    /// A file of a `Tests/` of the child's own: one test class, with the
+    /// given text in its one method.
+    private static func classFile(_ name: String, saying body: String = "") -> [String: String] {
+        ["HelmRuntimeTests/\(name).swift":
+            "import XCTest\nfinal class \(name): XCTestCase {\n    func testOne() { \(body) }\n}\n"]
+    }
+
+    /// A tier that would hand `swift` nothing, or one family short of what it
+    /// is listed to hold, is refused before anything runs. The tree today has
+    /// no such tier, so each is made in a `Tests/` of the child's own, beside a
+    /// copy of the runner. Where a refusal has a control it stands on the line
+    /// after it: the other tier over the same tree, or the same tier with the
+    /// class it lacked added, and that one starts `swift`.
+    func testATierThatWouldBeEmptyOrShortIsRefusedBeforeSwiftRuns() throws {
+        func refused(_ run: Run, _ beginning: String, _ what: String) {
+            if let started = run.swiftArguments {
+                XCTFail("\(what): swift ran with [\(started.dropFirst().joined(separator: ", "))]; \(run.said)")
+            }
+            XCTAssertEqual(run.lastLine, Self.refusedLastLine, "\(what): the last line of a refusal; \(run.said)")
+            XCTAssertEqual(run.status, 1, "\(what): the runner's exit status; \(run.said)")
+            assertComplains(run, beginning)
+        }
+        func started(_ run: Run, _ filter: String, _ what: String) {
+            XCTAssertEqual(Self.filterValues(in: run.swiftArguments ?? []), [filter],
+                           "\(what): the control did not start swift with the tier's family (nil: never started); \(run.said)")
+            XCTAssertEqual(run.status, 0, "\(what): the control's exit status; \(run.said)")
+        }
+        /// `ran` are the families the stub reports a case for.
+        func tier(_ name: String, over tree: [String: String], ran: [String] = []) throws -> Run {
+            var setup = Setup(arguments: ["--tier", name], swiftPrints: Self.sequentialLog(ran.map(Self.oneCase)))
+            setup.tree = tree
+            return try runner(setup)
+        }
+
+        // Every class of the place orders a window, so nothing is left to run.
+        let ordering = Self.classFile("AWindowTests", saying: "window." + "order" + "Front(nil)")
+        refused(try tier("HelmRuntimeTests", over: ordering),
+                "!! tier 'HelmRuntimeTests' holds no family to run; 1 that order a window are left to --tier windows",
+                "a place whose only class orders a window")
+        started(try tier("windows", over: ordering, ran: ["HelmRuntimeTests.AWindowTests"]),
+                "HelmRuntimeTests\\.AWindowTests/", "windows over that tree")
+
+        // No class orders a window, so `windows` is empty.
+        let plain = Self.classFile("APlainTests")
+        refused(try tier("windows", over: plain), "!! tier 'windows' holds no family to run",
+                "windows over a tree with no window class")
+        started(try tier("HelmRuntimeTests", over: plain, ran: ["HelmRuntimeTests.APlainTests"]),
+                "HelmRuntimeTests\\.APlainTests/", "a place over that tree")
+
+        // A class listed by hand that no file declares leaves its tier short.
+        let docs = Self.classFile("ListsAgreeWithTheTreeTests")
+        refused(try tier("docs", over: docs),
+                "!! NoDocCommentIsDetachedTests is listed by hand for tier 'docs'", "docs short of one class")
+        started(try tier("docs", over: docs.merging(Self.classFile("NoDocCommentIsDetachedTests")) { $1 },
+                         ran: ["HelmRuntimeTests.ListsAgreeWithTheTreeTests", "HelmRuntimeTests.NoDocCommentIsDetachedTests"]),
+                "HelmRuntimeTests\\.ListsAgreeWithTheTreeTests/|HelmRuntimeTests\\.NoDocCommentIsDetachedTests/",
+                "docs with both classes")
+        let strings = Self.classFile("PunctuationIsTerminologyTests")
+            .merging(Self.classFile("StringsCoverageTests")) { $1 }
+        refused(try tier("strings", over: strings),
+                "!! NoOrphanTranslationsTests is listed by hand for tier 'strings'", "strings short of one class")
+
+        // A tree with no class in it is no tree to expand a tier from.
+        refused(try tier("HelmRuntimeTests", over: ["HelmRuntimeTests/Notes.swift": "import XCTest\n"]),
+                "!! no test class found under ", "a tree with no test class")
+    }
+
+    /// Whatever a tier hands `swift` is a test class the tree has: the
+    /// address has the shape `Target\.Class/`, the pair is in the census, a
+    /// tier hands at least one, and none hands the same twice. The tiers are
+    /// the census's own places and the three laid over them.
+    func testEveryNameATierHandsSwiftIsATestClassUnderTests() throws {
+        guard let census = try censusOrFail() else { return }
+        for tier in census.places + Self.laidOverTiers {
+            guard let found = try expand(tier) else { continue }
+            XCTAssertEqual(found.malformed, [],
+                           "tier \(tier) handed swift names that are not Target\\.Class/: \(Self.listed(found.malformed))")
+            let unknown = found.addresses.filter { census.families[$0] == nil }
+            XCTAssertEqual(unknown, [],
+                           "tier \(tier) handed swift names that are no test class under Tests/: \(Self.listed(unknown))")
+            XCTAssertEqual(Set(found.addresses).count, found.addresses.count,
+                           "tier \(tier) handed swift a name twice; \(found.run.said)")
+        }
+    }
+
+    /// The owner's row: every test class lies in the tier of its directory,
+    /// or in `windows` when it orders a window, and nowhere else. A class is a
+    /// window class here when its file holds one of the nine window words, or
+    /// names what a rig declares, or names a member of a class so found (the
+    /// class's name as a whole word, a dot, then a letter or an underscore),
+    /// one step deep. The runner may hold more in `windows`, and asked is
+    /// only that none of them is also a class of its directory's tier.
+    func testEveryTestClassIsInExactlyTheTiersItsPlaceSays() throws {
+        guard let census = try censusOrFail() else { return }
+        var tiers: [String: Set<String>] = [:]
+        var announcements: [String: String] = [:]
+        for tier in census.places + Self.laidOverTiers {
+            guard let found = try expand(tier) else { return }
+            tiers[tier] = Set(found.addresses)
+            announcements[tier] = found.announcement
+        }
+        let windows = tiers["windows"] ?? []
+
+        var inBoth: [String] = [], inNone: [String] = []
+        for (address, family) in census.families {
+            let inPlace = tiers[family.place]?.contains(address) == true
+            let inWindows = windows.contains(address)
+            if inPlace && inWindows { inBoth.append(address) }
+            if !inPlace && !inWindows { inNone.append(address) }
+        }
+        XCTAssertEqual(inNone, [],
+                       "\(inNone.count) classes are in no tier: \(Self.listed(inNone))")
+        XCTAssertEqual(inBoth, [],
+                       "\(inBoth.count) classes lie in both their directory's tier and windows: \(Self.listed(inBoth))")
+
+        for place in census.places {
+            let foreign = (tiers[place] ?? []).filter { census.families[$0]?.place != place }
+            XCTAssertEqual(foreign.sorted(), [],
+                           "tier \(place) holds classes of another directory: \(Self.listed(Array(foreign)))")
+        }
+
+        let byWord = census.families.values.filter { $0.hasWindowWord && !windows.contains($0.address) }
+        XCTAssertEqual(byWord.map(\.address), [],
+                       "\(byWord.count) classes whose file holds one of the nine window words are not in windows: "
+                       + Self.listed(byWord.map(\.address)))
+        let byRig = census.families.values.filter { $0.usesWindowRig && !windows.contains($0.address) }
+        XCTAssertEqual(byRig.map(\.address), [],
+                       "\(byRig.count) classes whose file names what a window rig declares are not in windows: "
+                       + Self.listed(byRig.map(\.address)))
+        let byMember = census.families.values.filter { $0.namesAWindowMember && !windows.contains($0.address) }
+        XCTAssertEqual(byMember.map(\.address), [],
+                       "\(byMember.count) classes whose file names a member of a window class are not in windows: "
+                       + Self.listed(byMember.map(\.address)))
+
+        for (tier, addresses) in tiers.sorted(by: { $0.key < $1.key }) where tier != "windows" {
+            let shared = addresses.intersection(windows)
+            XCTAssertEqual(shared.sorted(), [],
+                           "windows meets tier \(tier): \(Self.listed(Array(shared)))")
+        }
+
+        let unread = census.families.values.filter {
+            $0.readsTheDocuments && tiers["docs"]?.contains($0.address) != true && !windows.contains($0.address)
+        }
+        XCTAssertEqual(unread.map(\.address), [],
+                       "\(unread.count) classes whose file reads the standing documents are not in docs: "
+                       + Self.listed(unread.map(\.address)))
+
+        for place in census.places {
+            let left = census.families.values.filter { $0.place == place && $0.ordersAWindow }
+            if !left.isEmpty {
+                XCTAssertTrue(announcements[place]?.contains("left to --tier windows") == true,
+                              "tier \(place) leaves \(left.count) window classes out and does not say so: "
+                              + Self.listed(left.map(\.address)))
+            }
+        }
+
+        // This class is read by the rule it holds, so it is asked about by name.
+        let own = String(reflecting: type(of: self))
+        XCTAssertEqual(census.families[own]?.ordersAWindow, false,
+                       "\(own) is a window class by its own file, or is not in the census: window words belong spelled in pieces, and no seed class is named with a dot behind it")
+        XCTAssertTrue(tiers[census.families[own]?.place ?? ""]?.contains(own) == true,
+                      "\(own) is not in the tier of its directory")
     }
 
     // MARK: - Controls
