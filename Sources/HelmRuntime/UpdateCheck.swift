@@ -36,8 +36,11 @@ public enum UpdateCheck {
     public enum Channel: String, Sendable, CaseIterable {
         case beta, dev
 
-        /// Beta reads the single "latest" release (GitHub already excludes
-        /// prereleases there); dev reads the list so prereleases are visible.
+        /// Beta reads the single "latest" release; dev reads the list so
+        /// prereleases are visible. GitHub leaves a flagged prerelease out of
+        /// "latest", but a release published without its flag gets through, so
+        /// `evaluate` and `evaluateList` refuse a prerelease for beta
+        /// themselves, by the flag and by the tag's suffix.
         public func endpoint(repo: String) -> String {
             switch self {
             case .beta: return "https://api.github.com/repos/\(repo)/releases/latest"
@@ -87,10 +90,22 @@ public enum UpdateCheck {
         let draft: Bool?
     }
 
-    public static func evaluate(statusCode: Int, data: Data, currentVersion: String) -> Outcome {
+    /// Whether `channel` is offered `gh`. Dev takes every release; beta only a
+    /// final one, and a release says it is not final in two places, its flag
+    /// and its tag's suffix, so either is enough to refuse it.
+    private static func isOffered(_ gh: GHRelease, on channel: Channel) -> Bool {
+        channel == .dev
+            || (gh.prerelease != true && UpdateVersion.prereleaseOrdinal(gh.tag_name) == nil)
+    }
+
+    /// Evaluates the single release a channel's endpoint returned. A release
+    /// the channel does not offer reads as up to date.
+    public static func evaluate(statusCode: Int, data: Data, currentVersion: String,
+                                channel: Channel = .beta) -> Outcome {
         if statusCode == 404 { return .upToDate }   // no releases published yet
         guard statusCode == 200 else { return .error }
         guard let gh = try? JSONDecoder().decode(GHRelease.self, from: data) else { return .error }
+        guard isOffered(gh, on: channel) else { return .upToDate }
         return outcome(for: gh, currentVersion: currentVersion)
     }
 
@@ -101,10 +116,7 @@ public enum UpdateCheck {
         if statusCode == 404 { return .upToDate }
         guard statusCode == 200 else { return .error }
         guard let all = try? JSONDecoder().decode([GHRelease].self, from: data) else { return .error }
-        let eligible = all.filter { r in
-            guard r.draft != true else { return false }
-            return channel == .dev || r.prerelease != true
-        }
+        let eligible = all.filter { $0.draft != true && isOffered($0, on: channel) }
         guard let newest = eligible.max(by: { UpdateVersion.isNewer($1.tag_name, than: $0.tag_name) })
         else { return .upToDate }
         return outcome(for: newest, currentVersion: currentVersion)
@@ -120,7 +132,22 @@ public enum UpdateCheck {
         return raw
     }
 
+    /// The release script names the app's zip `Helm-<version>.zip`, and the tag
+    /// is that version behind a `v`. The updater installs whatever zip is
+    /// answered, so a second zip must not take its place by being listed first.
+    /// A release with one zip answers it whatever it is called; several zips,
+    /// none of them the app's, answer none, which sends the person to the
+    /// release page.
+    private static func appZip(in assets: [GHAsset], tag: String) -> GHAsset? {
+        let zips = assets.filter { $0.name.hasSuffix(".zip") }
+        let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        return zips.first { $0.name == "Helm-\(version).zip" } ?? (zips.count == 1 ? zips[0] : nil)
+    }
+
     private static func outcome(for gh: GHRelease, currentVersion: String) -> Outcome {
+        // A tag `parse` reads nothing in is neither an update nor something to
+        // be ahead of, whatever the running build is.
+        guard !UpdateVersion.parse(gh.tag_name).isEmpty else { return .upToDate }
         guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else {
             // Only a prerelease reports being ahead. A *final* release ahead of
             // its own channel is a state the release flow does not produce
@@ -136,7 +163,7 @@ public enum UpdateCheck {
         // opens something else is worse than no offer.
         guard let page = https(gh.html_url) else { return .error }
         let assets = gh.assets ?? []
-        let zip = https(assets.first { $0.name.hasSuffix(".zip") }?.browser_download_url)
+        let zip = https(appZip(in: assets, tag: gh.tag_name)?.browser_download_url)
         let dmg = https(assets.first { $0.name.hasSuffix(".dmg") }?.browser_download_url)
         return .available(Release(version: gh.tag_name,
                                   pageURL: page,

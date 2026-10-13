@@ -121,9 +121,10 @@ final class UpdateListOrderTests: XCTestCase {
         XCTAssertEqual(outcome, .ahead(newest: "v0.7.0"))
     }
 
-    /// …and the stable channel, reading the same list, must not be offered the
-    /// prerelease even when it is the highest version present.
-    func testStableIsNotOfferedThePrereleaseEvenWhenItIsHighest() {
+    /// The app's Beta does not read the list, but `evaluateList` takes a
+    /// channel, and for a channel that is not dev the prerelease is dropped
+    /// from it even when it is the highest version present.
+    func testTheListReadingForBetaSkipsAHigherPrerelease() {
         let json = "[" + release("v0.8.0-dev.1") + "," + release("v0.7.0", prerelease: false) + "]"
         let outcome = UpdateCheck.evaluateList(statusCode: 200, data: Data(json.utf8),
                                                currentVersion: "0.6.1", channel: .beta)

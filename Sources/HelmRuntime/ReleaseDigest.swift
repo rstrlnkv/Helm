@@ -27,7 +27,9 @@ public enum ReleaseDigest {
     /// exact on the file name — a digest for a different asset is not a digest
     /// for this one.
     public static func parse(notes: String, asset: String) -> String? {
-        for raw in notes.split(separator: "\n") {
+        // Not a split on "\n": Swift reads CR LF as one Character that is not
+        // "\n", so notes written that way would hold no line break at all.
+        for raw in notes.split(whereSeparator: \.isNewline) {
             let fields = raw.split(whereSeparator: \.isWhitespace).map(String.init)
             guard fields.count >= 3,
                   fields[0].lowercased() == "sha256",
@@ -45,8 +47,8 @@ public enum ReleaseDigest {
         value.count == 64 && value.allSatisfy { $0.isHexDigit && !$0.isUppercase }
     }
 
-    /// Streams the file rather than reading it whole: a release zip is tens of
-    /// megabytes and this runs while the app is up.
+    /// Streams the file rather than reading it whole: a release zip is a whole
+    /// application and this runs while the app is up.
     ///
     /// The pool goes **inside** the loop, not around it. `FileHandle.read`
     /// returns an autoreleased `Data`, so without one every slice ever read
