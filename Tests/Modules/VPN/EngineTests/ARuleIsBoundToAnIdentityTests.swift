@@ -36,8 +36,8 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(real), running: forged), .mismatch)
     }
 
-    /// The team identifier is half the answer and cannot be claimed by somebody
-    /// else's build: same signing identifier, different team, is not the same app.
+    /// The team identifier is half the answer: same signing identifier, different
+    /// team, is not the same app.
     func testTheTeamIdentifierIsPartOfTheIdentity() {
         let sameNameOtherTeam = CodeIdentity(signingID: "com.example.app", teamID: "ZZZZZ99999")
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(real), running: sameNameOtherTeam), .mismatch)

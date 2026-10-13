@@ -46,7 +46,7 @@ public enum AppBuild {
     /// **A read, not a verification.** It says which build this is, not whether
     /// the signature is any good; `codesign --verify` answers that, and
     /// ARCHITECTURE.md § Signing and grants records that passing it does not save a
-    /// grant. Measured on the installed bundle at 0.409 ms, worst of five.
+    /// grant.
     ///
     /// Nil under anything that is not signed code — a test host is a plain
     /// directory, which `SecStaticCodeCreateWithPath` refuses. Nil is «cannot

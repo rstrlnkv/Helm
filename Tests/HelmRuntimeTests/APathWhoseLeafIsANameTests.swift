@@ -4,9 +4,10 @@ import XCTest
 
 /// `Redact.path` hides the account name and nothing else, which is right for a
 /// module whose paths name the person's folders and wrong for one whose leaf **is**
-/// the name of software. These are the promises the second reading makes, and the
-/// call sites that rely on them are in another target
-/// (`TheLogDoesNotNameTheSoftwareTests` drives the removal that writes the line).
+/// the name of software. These are the promises the second reading makes. The
+/// removal loop (`HelmTrash`) spells the path of a refusal line through it
+/// (`TheLogDoesNotNameTheSoftwareTests`, in another target, drives the removal
+/// that writes the line); `Redact.naming`, held here too, is on no such line.
 final class APathWhoseLeafIsANameTests: XCTestCase {
     private let home = "/Users/x"
 
@@ -42,8 +43,10 @@ final class APathWhoseLeafIsANameTests: XCTestCase {
         XCTAssertEqual(shown, "~/Library/Application Support/" + Redact.app("AcmeTool"))
     }
 
-    /// The other half of the line: macOS composes its refusal out of the file name,
-    /// so the message names the software even after the path has been redacted.
+    /// A sentence that quotes the file: macOS composes its refusal out of the file
+    /// name, so such a message names the software even after the path has been
+    /// redacted. The removal line does not carry that sentence for a software
+    /// leaf; this is what `Redact.naming` does with one.
     func testAMessageQuotingTheFileIsRedactedToo() {
         let message = "NSCocoaErrorDomain 4 “The file “com.acme.tool.plist” doesn’t exist.”"
         let shown = Redact.naming(message, software: "/Users/x/Library/Preferences/com.acme.tool.plist",

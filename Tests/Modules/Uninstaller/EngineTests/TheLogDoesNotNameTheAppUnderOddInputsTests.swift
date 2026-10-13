@@ -17,9 +17,8 @@ import XCTest
 /// nothing about a line that was never there.
 final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
 
-    /// The part of the name the tests look for; long enough that `Redact.naming`
-    /// does not skip it for being short, unique so another run's line cannot
-    /// match.
+    /// The part of the name the tests look for; unique so another run's line
+    /// cannot match.
     private let secret = "SecretTool\(UUID().uuidString.prefix(6))"
 
     override func setUp() {
@@ -83,9 +82,9 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         assertLogged("trash refused ", without: [secret])
     }
 
-    /// macOS's own half of the line in Russian, quoting the bundle by its file
-    /// name: `Redact.naming` has to find the name inside somebody else's
-    /// sentence.
+    /// macOS's own sentence in Russian, quoting the bundle by its file name. The
+    /// line does not carry the sentence: it carries the error's domain and code
+    /// and Helm's own reason, none of which can quote the name.
     func testARussianRefusalQuotingTheNameIsRedacted() async {
         let path = "/Applications/\(secret).app"
         let said = "Не удалось переместить объект «\(secret)» в Корзину, "
@@ -150,9 +149,11 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         assertLogged("trash refused ", without: [secret, shown])
     }
 
-    /// **A name under four characters survives in macOS's half of the line.**
-    /// `Redact.naming` skips it on purpose (replacing a short word everywhere
-    /// rewrites the sentence), and `Arc.app` and `Zed.app` are real products.
+    /// **A name under four characters**, which `Redact.naming` leaves alone in a
+    /// sentence on purpose (replacing a short word everywhere rewrites the
+    /// sentence); `Arc.app` and `Zed.app` are real products. The line does not
+    /// carry macOS's sentence, and in the path the leaf is tagged whatever its
+    /// length.
     func testAThreeLetterAppIsRefusedWithoutItsName() async {
         let path = "/Applications/Qzx.app"
         let said = "“Qzx” couldn’t be moved to the trash because you don’t have "

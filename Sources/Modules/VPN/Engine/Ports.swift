@@ -83,14 +83,16 @@ public protocol VPNCredentialsPort: AnyObject {
 /// engine computes launch/quit diffs itself.
 public protocol AppObserverPort: AnyObject {
     func runningBundleIDs() -> Set<String>
-    /// What the instance running under that identifier is **signed** as, or nil
-    /// when nothing could be read.
+    /// What the instance running under that identifier is **signed** as. Nil when
+    /// its bundle could not be found or read, and when its signature does not
+    /// match the code it covers; an instance nobody signed is not nil but an
+    /// identity with no identifiers (`CodeIdentity.of(bundleAt:)`).
     ///
     /// A second question because the first one cannot be trusted: a bundle
     /// identifier is a string in a plist anybody can write, and a rule keyed on it
     /// alone let a bundle nobody signed raise and drop somebody's tunnel by
-    /// launching and quitting (`VPNRuleTrust`). Nil is «could not tell», which is
-    /// treated as no rule rather than as permission.
+    /// launching and quitting (`VPNRuleTrust`). Nil and an identity with no signing
+    /// identifier are both treated as no rule rather than as permission.
     func identity(of bundleID: String) -> CodeIdentity?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
 }

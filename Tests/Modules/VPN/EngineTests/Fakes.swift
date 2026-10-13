@@ -221,9 +221,10 @@ let ruleJSONForA = """
 final class FakeApps: AppObserverPort {
     var bundleIDs: Set<String> = []
     /// What each running identifier is **signed** as, which is the question a
-    /// bundle id cannot answer. An identifier with no entry here stands for an
-    /// instance whose signature could not be read at all — a real state, and the
-    /// one a forged bundle in a place the reader cannot follow would produce.
+    /// bundle id cannot answer. An identifier with no entry here stands for the
+    /// port's nil: an instance whose bundle could not be found or read, or whose
+    /// signature does not match its code — a real state, and the one a forged
+    /// bundle in a place the reader cannot follow would produce.
     var identities: [String: CodeIdentity] = [:]
     private(set) var onChange: (@Sendable () -> Void)?
 

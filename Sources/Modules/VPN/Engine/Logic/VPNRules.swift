@@ -77,12 +77,17 @@ public enum VPNRules {
     ///
     /// **Picking an app that already has a rule is how a rule from before
     /// identities existed is repaired.** It used to be ignored outright (`where
-    /// rules[bundleID] == nil`), so «choose the app again» — which is what the row
-    /// under such a rule now says — was advice the page had no way to carry out.
-    /// The identity is written and every choice the person made is left as it was.
+    /// rules[bundleID] == nil`), so «choose the app again» — the advice
+    /// `VPNStr.ruleTrustNote` holds for such a rule — was advice the page had no
+    /// way to carry out. The identity is written and every choice the person made
+    /// is left as it was.
     ///
-    /// A bundle whose signature could not be read at all gets no rule: a rule that
-    /// can never fire is worse than no rule, because it looks like one that does.
+    /// A bundle `CodeIdentity.of(bundleAt:)` answers nil for gets no rule: nothing
+    /// there, a signature that does not match the code it covers, or any other
+    /// refusal of that check. A rule that can never fire is worse than no rule,
+    /// because it looks like one that does. A bundle nobody signed is not nil: it
+    /// is an identity with no identifiers, and it gets its rule, which
+    /// `VPNRuleTrust.judge` answers `appNotSigned` for.
     public static func adopting(_ picked: [(bundleID: String, identity: CodeIdentity?)],
                                 into rules: [String: VPNAppRule],
                                 defaultVPN: String) -> [String: VPNAppRule] {
