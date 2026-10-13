@@ -91,8 +91,8 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
     /// on «Disconnected» after a connect that worked, which is the same wrong
     /// answer, in the same place, that the watcher was added to fix.
     ///
-    /// Left red for the engineer: the exit condition wants to be «has it settled
-    /// into what was asked for», not «is something moving right now».
+    /// Held by `VPNEngine.settled`: the exit condition is «has it settled into
+    /// what was asked for», not «is something moving right now».
     func testAConnectIsFollowedUpEvenWhenTheToolHasNotCaughtUpYet() {
         let runner = FakeRunner()
         runner.listScript = [list("Disconnected"),   // the tool has not caught up yet

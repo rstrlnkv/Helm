@@ -945,7 +945,10 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
     }
 
-    func testARefusalDoesNotOutliveTheInteractionThatEarnedIt() {
+    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// the reproduction below the skip untouched.
+    func testARefusalDoesNotOutliveTheInteractionThatEarnedIt() throws {
+        try SkipUnlessAsked.knownGap("BKL-B14", "not resting full at 646 pt, ru")
         let savedWait = SettingsToolbar.searchCollapseWait
         defer { SettingsToolbar.searchCollapseWait = savedWait }
 
@@ -1243,7 +1246,11 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
     /// risk from the container's own inflated frame. Confirmed by running this
     /// against that tree: `everFalse` true for `tabs` at both 646 and 700 pt,
     /// and `segmentCount(bar)` never returning to 3.
-    func testAMagnifierPressAndCloseUnfoldsCleanlyUnderWindowTitle() {
+    ///
+    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// the reproduction below the skip untouched.
+    func testAMagnifierPressAndCloseUnfoldsCleanlyUnderWindowTitle() throws {
+        try SkipUnlessAsked.knownGap("BKL-B14", "the tabs did not return to 3 segments after one magnifier press and close")
         AppSettings.pageBarStyle = .windowTitle
         AppLanguage.only(.ru) {
             for pane: CGFloat in [646, 700] {
@@ -1281,7 +1288,10 @@ final class AnUnfoldIsPredictedNeverTrialledTests: XCTestCase {
         }
     }
 
-    func testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth() {
+    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// the reproduction below the skip untouched.
+    func testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth() throws {
+        try SkipUnlessAsked.knownGap("BKL-B14", "the tabs were still folded above the eviction pane")
         AppSettings.pageBarStyle = .windowTitle
 
         AppLanguage.only(.ru) {

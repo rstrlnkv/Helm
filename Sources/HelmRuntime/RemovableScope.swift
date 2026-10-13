@@ -37,23 +37,52 @@ public enum RemovableScope {
 
     /// Inside an allowed root but still off-limits: Apple's own files, which no
     /// third-party uninstall has any business touching.
+    ///
+    /// Compared component by component and without regard to case. The last
+    /// component of a resolved path keeps the case it was typed in, because
+    /// `PathCanonical.resolvingAncestors` restores the case of the folders above
+    /// it and never of the leaf, and the boot volume reads `/Applications/utilities`
+    /// as `/Applications/Utilities`.
     private static let forbidden = [
         "/Library/Apple",
         "/System",
         "/Applications/Utilities",
     ]
 
+    /// Whether `path` may go to the Trash, judged from the path once the disk
+    /// has resolved its ancestors and never from what the object is.
+    ///
+    /// Two spellings are refused before the roots are consulted, because each
+    /// writes a place in a way the tests below cannot read:
+    ///
+    /// - **A path that does not start at `/`.** It leads somewhere only from a
+    ///   working directory this gate is not told, and `resolvingAncestors` hands
+    ///   it back untouched, so no prefix test sees where it goes while the `.app`
+    ///   clause below would take `x/Foo.app` wherever that leads.
+    /// - **A path that begins with a prefix the kernel answers itself**,
+    ///   `PathCanonical.beginsWithAKernelPrefix`: its doc comment says what each
+    ///   prefix is and what the refusal rests on for this gate, which for
+    ///   `/.vol` is policy and not the closing of a measured path to a protected
+    ///   place, and for `/.nofollow` and `/.resolve/<n>` is the closing of one.
     public static func isRemovable(_ path: String,
                                    home: String = NSHomeDirectory()) -> Bool {
-        // Resolve first: `..` is invisible to a prefix test but not to the
-        // filesystem, which is what actually performs the removal — and neither
-        // is a symlinked ancestor, which `standardizedFileURL` alone leaves in
-        // place while `trashItem` follows it (PathCanonical says what that cost).
+        guard path.hasPrefix("/") else { return false }
+        // Resolve before any test below: `..` is invisible to a prefix test but
+        // not to the filesystem, which is what actually performs the removal —
+        // and neither is a symlinked ancestor, which `standardizedFileURL` alone
+        // leaves in place while `trashItem` follows it (PathCanonical says what
+        // that cost).
         let resolved = PathCanonical.resolvingAncestors(path)
         guard !resolved.hasSuffix("/"), resolved != "/" else { return false }
-        for bad in forbidden where resolved == bad || resolved.hasPrefix(bad + "/") {
-            return false
-        }
+        guard !PathCanonical.beginsWithAKernelPrefix(path, resolved: resolved) else { return false }
+        // Components are compared rather than the string lowered: `lowercased()`
+        // is not case folding (it leaves a long s, U+017F, alone, which the boot
+        // volume reads as `s`), it changes the length of some strings, and a
+        // prefix test against a different string is not a prefix test.
+        let parts = resolved.split(separator: "/")
+        guard !forbidden.contains(where: {
+            PathCanonical.isAtOrBelow(parts, $0.split(separator: "/"))
+        }) else { return false }
         // **The positional refusals come first, above the `.app` clause.** That
         // clause returns `true` before any other test can run, so where it sits
         // decides what it exempts a path from: below these two it relaxes the
@@ -64,11 +93,6 @@ public enum RemovableScope {
         // disagreeing about volume roots is the shape that once let Duplicates
         // offer every copy of a file.
         //
-        // The first component is compared rather than the string folded:
-        // `lowercased()` is full Unicode case folding, which changes the length
-        // of some strings, and a prefix test against a different string is not a
-        // prefix test.
-        let parts = resolved.split(separator: "/")
         // Nothing at the top level of the boot volume is a file somebody means
         // to remove — their contents still are.
         guard parts.count > 1 else { return false }

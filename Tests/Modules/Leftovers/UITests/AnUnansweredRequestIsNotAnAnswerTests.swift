@@ -46,9 +46,8 @@ import Module_Leftovers_Engine
 /// tell them apart, which is exactly why a test that tried only one would leave
 /// the other unmeasured.
 ///
-/// These are the tester's tests and they are **expected to fail** until the fold
-/// is refused. What a fix looks like is the engine's own precedent: keep the list,
-/// leave `scanned` alone, and say nothing about the Trash that did not happen.
+/// Both folds are refused in `LeftoversViewModel`: an unanswered scan keeps the
+/// list and sets `scanReplyLost`, an unanswered removal sets `replyLost`.
 @MainActor
 final class AnUnansweredRequestIsNotAnAnswerTests: XCTestCase {
 

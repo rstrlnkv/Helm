@@ -1,6 +1,8 @@
 import Foundation
 
-/// Where a path *leads*, which is the only thing a removal gate may judge.
+/// Where a path *leads*, which is what a removal gate judges, and whether it
+/// begins with a prefix the kernel answers itself instead
+/// (`beginsWithAKernelPrefix`).
 ///
 /// `URL.standardizedFileURL` and `NSString.standardizingPath` collapse `.` and
 /// `..` and stop there — they do not resolve symbolic links. `FileManager`'s
@@ -179,6 +181,92 @@ public enum PathCanonical {
     static func withoutPrivate(_ path: String) -> String {
         path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
     }
+
+    /// Whether the components `parts` of a path are those of `folder`, or begin
+    /// with them, each pair compared without regard to case.
+    ///
+    /// The boot volume reads names that way, so a test on the exact string
+    /// misses `/USR/bin`. Nor is `lowercased()` the fold it reads: it leaves a
+    /// long s, U+017F, alone, which the volume reads as `s`, and
+    /// `.caseInsensitive` folds it.
+    static func isAtOrBelow(_ parts: [Substring], _ folder: [Substring]) -> Bool {
+        parts.count >= folder.count
+            && zip(parts, folder).allSatisfy { $0.compare($1, options: .caseInsensitive) == .orderedSame }
+    }
+
+    /// Whether a path begins with a prefix the kernel answers itself: `/.vol`,
+    /// `/.nofollow` or `/.resolve`.
+    ///
+    /// - `/.vol`: the kernel answers `/.vol/<device>/<inode>` with the object
+    ///   that pair identifies, a place named by number and not by name. Nothing
+    ///   is mounted there; the comments call that prefix the mount.
+    /// - `/.nofollow` and `/.resolve/<n>`: the kernel answers
+    ///   `/.nofollow/<path>` and `/.resolve/<n>/<path>` with the object
+    ///   `/<path>` names, or with an error where the prefix forbids the way
+    ///   there (a link in `<path>`, under `/.nofollow`), and
+    ///   `resolvingAncestors` leaves the prefix in the string unless `..` in
+    ///   `<path>` pop it by the letters.
+    ///
+    /// A removal gate judges by names — a prefix, a depth, a suffix — and the
+    /// first component of such a path is the name of no place the gate's tests
+    /// can read, so both gates refuse it instead of judging what the string does
+    /// not say. `resolvingAncestors` answers only a part of the mount's
+    /// spelling: it turns a folder named this way into its real path when a
+    /// component follows, and never touches the last component, so the object
+    /// itself stays three components of a string.
+    ///
+    /// **The refusals do not rest on the same thing.** Without it,
+    /// `UserFileScope` answers `true` for the home directory spelled with any of
+    /// the three, which it refuses by name: a way round a protected place.
+    /// Without it, `RemovableScope` answers `true` for a bundle in a scratch
+    /// folder spelled with the mount, which is removable under its real name as
+    /// well, and `false` for a bundle under `/System/Applications` or
+    /// `/Applications/Utilities`, because `resolvingAncestors` turns the folder
+    /// into its real path and `forbidden` then refuses it. For `RemovableScope`
+    /// the refusal of the mount is policy — a gate that judges by name does not
+    /// accept a place named by number — and closes no measured path to a
+    /// protected place. Its refusal of `/.nofollow` and `/.resolve/<n>` closes
+    /// one: without it, `RemovableScope` answers `true` for a bundle under
+    /// `/System/Applications` spelled with either.
+    /// `TheGatesRefuseAnObjectsOtherSpellingsTests` holds both gates' refusals.
+    ///
+    /// Both spellings are asked, the one given and the one `resolvingAncestors`
+    /// made of it, because a link to `/` in the middle of a path leaves the
+    /// given one starting anywhere while the resolved one starts in the prefix.
+    /// Each is read left to right as typed: empty parts and `.` are dropped, a
+    /// `..` pops only what stands before it, and the answer is `true` the moment
+    /// the first component left at the root is a prefix, before a `..` that
+    /// follows can pop it, because the kernel climbs a `..` after
+    /// `/.vol/<device>/<inode>` through the real parents of that object and not
+    /// through the components typed before it. The component is compared without
+    /// regard to case rather than the string folded, which can change its
+    /// length. A spelling that does not start at `/` is not read here.
+    /// `RemovableScope` refuses one before it asks. `UserFileScope` refuses one
+    /// that is still relative once `standardizingPath` has been through it, so
+    /// a spelling that begins with `~` is asked here as it came in and only its
+    /// resolved spelling is read.
+    ///
+    /// A spelling with no component that begins with a dot is answered without
+    /// splitting it: each prefix, `.` and `..` begins with one.
+    static func beginsWithAKernelPrefix(_ given: String, resolved: String) -> Bool {
+        [given, resolved].contains { spelling in
+            guard spelling.hasPrefix("/"), spelling.contains("/.") else { return false }
+            var depth = 0
+            for part in spelling.split(separator: "/") where part != "." {
+                if part == ".." { depth = max(depth - 1, 0); continue }
+                if depth == 0, kernelPrefixes.contains(where: {
+                    part.compare($0, options: .caseInsensitive) == .orderedSame
+                }) { return true }
+                depth += 1
+            }
+            return false
+        }
+    }
+
+    /// The first components of a path the kernel answers by device and inode,
+    /// `.vol`, or with the object another path names, `.nofollow` and
+    /// `.resolve`.
+    private static let kernelPrefixes = [".vol", ".nofollow", ".resolve"]
 
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.

@@ -11,7 +11,7 @@ import Module_Screenshots_Engine
 /// or, where the app has no way to reach the state, straight onto the model. The inputs here are the ones nobody
 /// planned a list for: twenty-five and a thousand shots, the pushed-out shot being the one the pointer is on, the one
 /// a drag began on, the one a Share sheet was opened at, the one that is in the editor, the one whose write is not
-/// done, the one whose write was refused after it was gone; the ✕ on the last shot, on a shot that is still being
+/// done, the one that was gone when a refusal that keeps nothing came; the ✕ on the last shot, on a shot that is still being
 /// written, in a row of two; and a refusal over the whole list.
 ///
 /// Time is in binary-exact numbers (a shot lives 5 s, a refusal 9) and the toast's own clock sleeps for good, so that
