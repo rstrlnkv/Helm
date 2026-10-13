@@ -32,35 +32,39 @@ import Module_VPN_UI
 /// session starting would, while no engine starts and no power assertion is
 /// taken. Nothing in this file puts a `StatusZoneView` into the item by hand.
 ///
+/// **The window read here is the one the app builds** — `SettingsWindow(host:band:)` with its default bar,
+/// so the window wears a `SettingsToolbar` built with the `.spacer` lead (`SettingsWindow.init`) and the
+/// status is the toolbar's `helm.status` item, found through `window.toolbar`.
+///
 /// **The inputs the fix did not name** each have a case: the first frame the
 /// window is shown with (no language change to re-patch it first), a page
 /// route that crosses a page with no status and back, the window gone
-/// inactive, the macOS 26 title bar, the app drawn in the other appearance
-/// than the window, and a bar whose height changes under a page that stays.
+/// inactive, a style under which the toolbar lists no status, the macOS 26
+/// title bar, the app drawn in the other appearance than the window, and a
+/// bar whose height changes under a page that stays.
+///
+/// **The machine's settings the toolbar reads when it is built** — the page bar style, the search's
+/// collapse, the bar's appearance and the switcher style — are pinned in `setUp` by `PinnedBarSettings`
+/// and put back when the test ends; a row that flips the page bar style sets it after the pin.
 @MainActor
 final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase {
 
     private static let keepAwake = KeepAwakeDescriptor.id.rawValue
     private static let vpn = VPNDescriptor.id.rawValue
     private static let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-    private static let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
 
     private var owner: SettingsWindow?
     private var window: NSWindow?
     private var model: SettingsModel?
     private var bar: SettingsToolbar?
     private var foundFrame: String?
-    private var foundSplit: [String]?
-    private var savedStyle: PageBarStyle = .moduleName
     private var savedAppAppearance: NSAppearance?
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         foundFrame = UserDefaults.standard.string(forKey: Self.frameKey)
-        foundSplit = UserDefaults.standard.stringArray(forKey: Self.splitKey)
-        savedStyle = AppSettings.pageBarStyle
         savedAppAppearance = NSApplication.shared.appearance
-        AppSettings.pageBarStyle = .moduleName
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
@@ -76,8 +80,6 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
         UserDefaults.standard.removeObject(forKey: "module.\(Self.keepAwake).enabled")
         UserDefaults.standard.removeObject(forKey: "module.\(Self.vpn).enabled")
         UserDefaults.standard.set(foundFrame, forKey: Self.frameKey)
-        UserDefaults.standard.set(foundSplit, forKey: Self.splitKey)
-        AppSettings.pageBarStyle = savedStyle
         super.tearDown()
     }
 
@@ -156,6 +158,13 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
     private func statusHost(_ window: NSWindow) -> NSHostingView<StatusZoneView>? {
         window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.status" }?.view
             as? NSHostingView<StatusZoneView>
+    }
+
+    /// The hosting view of the name zone in the toolbar's name item, wherever the item keeps it: the item's
+    /// own view or a view inside it.
+    private func nameHost(_ window: NSWindow) -> NSHostingView<NameZoneView>? {
+        window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.name" }?.view?
+            .everyView(ofType: NSHostingView<NameZoneView>.self).first
     }
 
     /// **The window as the person sees it while using it — key, so the bar
@@ -358,9 +367,10 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
     // MARK: - A page route
 
-    /// **Keep Awake active → General → VPN → Keep Awake, on one shared bar.**
+    /// **Keep Awake active → General → VPN → Keep Awake, on the name-only bar,
+    /// with General's own tabbed bar between.**
     /// The badge leaves an inset behind for a status with a different box and
-    /// ink; VPN's quiet word has to get its own, General has nothing to draw,
+    /// ink; VPN's quiet word has to get its own, General's bar lists no status,
     /// and the badge on the way back has to get its own again.
     func testAPageRouteReDerivesTheInsetAtEveryStop() throws {
         inEnglish {
@@ -372,9 +382,14 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
 
             model.selection = .general
             settle(window)
-            let empty = try XCTUnwrap(statusHost(window), "General: no helm.status host")
-            XCTAssertNil(empty.rootView.status, "General: helm.status carries a status")
-            XCTAssertNil(gaps(empty, in: window), "General: helm.status drew something")
+            // General carries its three tabs (`SettingsTabs.all`, shown by `SettingsWindow`'s detail content),
+            // and a bar with tabs lists no `helm.status` — the subject first,
+            // then the absence.
+            XCTAssertNotNil(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.tabs" },
+                            "General: its bar with the three tabs is not on the window, so the line below proves nothing")
+            XCTAssertNotNil(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.name" },
+                            "General: the toolbar lists no name item")
+            XCTAssertNil(statusHost(window), "General: a bar that carries tabs lists helm.status")
 
             model.selection = .module(Self.vpn)
             settle(window)
@@ -430,6 +445,44 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                 try publishKeepAwake(active: false)
                 settle(window)
             }
+        }
+    }
+
+    // MARK: - A bar that has no place for a status
+
+    /// **Under "Without Icon" the toolbar lists no status and keeps the name, drawn without its icon; with
+    /// the module name again it lists the status, which sits where the rule says** — the subject first
+    /// (the item is there and measured), then the absence, then the item back at equal gaps. On the `.spacer`
+    /// lead the window wears, the name is listed under both styles and `helm.status` only under the module's
+    /// name (`SettingsToolbar.identifiers(content:style:lead:)`); the window's own title stays hidden under
+    /// both, so the status has nowhere to be drawn.
+    func testAStatusIsOnlyWhereTheBarHasAPlaceForIt() throws {
+        inEnglish {
+            let window = try open(.aqua)
+            try publishKeepAwake(active: true)
+            settle(window)
+            assertGapsAgree(window, active: true, "module name")
+            XCTAssertEqual(window.titleVisibility, .hidden, "module name: the window's title is visible")
+            XCTAssertTrue(nameHost(window)?.rootView.showsIcon ?? false,
+                          "module name: the toolbar holds no name zone, or it is drawn without its icon")
+
+            AppSettings.pageBarStyle = .windowTitle
+            settle(window)
+            let ids = (window.toolbar?.itemIdentifiers ?? []).map(\.rawValue)
+            XCTAssertTrue(ids.contains("helm.name"), "window title: the toolbar lists no name item — \(ids)")
+            XCTAssertFalse(ids.contains("helm.status"), "window title: the toolbar lists helm.status — \(ids)")
+            XCTAssertNil(statusHost(window), "window title: the toolbar holds a status host")
+            XCTAssertEqual(window.titleVisibility, .hidden, "window title: the window's title is visible")
+            XCTAssertFalse(nameHost(window)?.rootView.showsIcon ?? true,
+                           "window title: the toolbar holds no name zone, or it is drawn with its icon")
+
+            AppSettings.pageBarStyle = .moduleName
+            settle(window)
+            assertGapsAgree(window, active: true, "module name again")
+            XCTAssertTrue(nameHost(window)?.rootView.showsIcon ?? false,
+                          "module name again: the toolbar holds no name zone, or it is drawn without its icon")
+            try publishKeepAwake(active: false)
+            settle(window)
         }
     }
 
@@ -640,6 +693,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                 try publishKeepAwake(active: active)
                 settle(window)
                 let before = toolbarIdentity(window)
+                XCTAssertGreaterThan(before.count, 1, "\(active ? "badge" : "word"): the window wears no toolbar with items, so the identity compared below is of nothing")
                 let identifiers = window.toolbar?.itemIdentifiers
                 InkProbes.resizes = 0
                 let watch = NotificationCenter.default.addObserver(
@@ -666,6 +720,7 @@ final class TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests: XCTestCase
                     """)
                 XCTAssertEqual(toolbarIdentity(window), before, "a live resize rebuilt the attached toolbar's items")
                 XCTAssertEqual(window.toolbar?.itemIdentifiers, identifiers, "a live resize rewrote the identifiers")
+                assertGapsAgree(window, active: active, "\(active ? "badge" : "word"), after a live resize")
 
                 let style = window.toolbarStyle
                 window.toolbarStyle = .unifiedCompact

@@ -23,7 +23,7 @@ final class TheLogPageWearsItsControlsInTheWindowsToolbarTests: XCTestCase {
 
     // MARK: - What is declared
 
-    /// Level as the centred tabs, then the capsule — module filter, Follow,
+    /// In a page built with no Settings tabs, level as the centred tabs, then the capsule — module filter, Follow,
     /// Copy and the «more» menu — and the search. In every language, because the
     /// titles are looked up at the page and the toolbar has no language of its own.
     @MainActor

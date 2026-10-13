@@ -5,23 +5,38 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Owner item (3): no text animation in the tabs on an ordinary return
-/// visit.** AppKit's own eviction-and-reinsertion fade is one cause, closed
-/// by keeping the tabs in the bar throughout a return visit rather than
-/// letting them overflow (see `SettingsToolbar`'s folding mechanism); this
-/// file exists for a *second* rebuild that stayed even once the tabs never
-/// left the bar: `freeze(_:)` used to disable every control unconditionally, driving
-/// `HelmTabsSnapshot`'s `isLive` from `true` to `false` and back to `true`
-/// the instant the page redeclared, which is a disabled-then-enabled flip on
-/// the tabs' own text with nothing in between for a person to read as
-/// intentional. `freeze(_:visibly:)` now takes that flip only when the page
-/// is *not* expected back this turn (`SettingsToolbar.swift`'s own header on
-/// `isReturnVisit`); an ordinary return visit — select A, leave for B,
-/// return to A before A has had a chance to redeclare — must show the tabs,
-/// the actions capsule and the search field exactly as interactive as they
-/// were, the whole time.
+/// **No text animation in the tabs on an ordinary return visit.** AppKit's
+/// own eviction-and-reinsertion fade is one cause, closed by keeping the tabs
+/// in the bar throughout a return visit rather than letting them overflow (see
+/// `SettingsToolbar`'s folding mechanism); this file exists for a *second*
+/// rebuild that stayed even once the tabs never left the bar: a freeze that
+/// disabled every control unconditionally drove the tabs' snapshot from
+/// interactive to not and back the instant the page redeclared, which is a
+/// disabled-then-enabled flip on the tabs' own text with nothing in between
+/// for a person to read as intentional. `freeze(_:visibly:)` takes that flip
+/// only when the page is *not* expected back this turn (`SettingsToolbar.swift`'s
+/// own header on `isReturnVisit`); an ordinary return visit — select A, leave
+/// for B, return to A before A has had a chance to redeclare — must show the
+/// tabs, the actions capsule and the search field exactly as interactive as
+/// they were, the whole time.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow`, not the `lead: .spacer` bar the
+/// app's window builds: it has no `helm.tabsLead` and no capped search field.
+/// The capsule is read through `ActionsCapsuleReading`
+/// (the item's view hosts it under the look's environment writes, so a cast to
+/// the bare hosting type answers nil). What the rows read is whether a control
+/// takes presses; the rows are pinned to Flat and not run under Liquid Glass:
+/// the settings are pinned in `setUp` (`PinnedBarSettings`), because another
+/// run shares the test tool's defaults domain and the bar reads its look when
+/// it is built.
 @MainActor
 final class AnOrdinaryReturnVisitKeepsTheBarLitTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     private func content(selected: String) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
@@ -72,10 +87,8 @@ final class AnOrdinaryReturnVisitKeepsTheBarLitTests: XCTestCase {
             visible branch where the grace period already covers this turn
             """)
 
-        let actionsItem = try XCTUnwrap(bar.items.first { $0.itemIdentifier.rawValue == "helm.actions" })
-        let actionsView = try XCTUnwrap(actionsItem.view as? NSHostingView<HelmToolbarActionsCapsule>,
-                                        "the actions item is not hosting HelmToolbarActionsCapsule")
-        XCTAssertTrue(actionsView.rootView.model.isInteractive, """
+        let capsule = try ActionsCapsuleReading.read(bar, context: "ordinary return visit").capsule
+        XCTAssertTrue(capsule.model.isInteractive, """
             the actions capsule reads non-interactive on an ordinary return visit
             """)
 
@@ -134,10 +147,8 @@ final class AnOrdinaryReturnVisitKeepsTheBarLitTests: XCTestCase {
             as an ordinary return visit
             """)
 
-        let actionsItem = try XCTUnwrap(bar.items.first { $0.itemIdentifier.rawValue == "helm.actions" })
-        let actionsView = try XCTUnwrap(actionsItem.view as? NSHostingView<HelmToolbarActionsCapsule>,
-                                        "the actions item is not hosting HelmToolbarActionsCapsule")
-        XCTAssertTrue(actionsView.rootView.model.isInteractive, """
+        let capsule = try ActionsCapsuleReading.read(bar, context: "language change in the grace").capsule
+        XCTAssertTrue(capsule.model.isInteractive, """
             the actions capsule reads non-interactive after a language change landed inside the \
             same grace window as an ordinary return visit
             """)

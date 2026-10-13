@@ -33,12 +33,11 @@ import SwiftUI
 ///   where the app-owned toolbar's field collapses today — only the
 ///   direction the leading item pushed the reachable range in is carried
 ///   forward here).
-/// - `windowTitle` — the page's name is the window's own title and its status
-///   the subtitle under it: text the system draws, with no glass behind it,
-///   which is where the guidelines put a title. Shown on every page,
-///   including the ones whose toolbar centres a segment switcher. Kept as the
+/// - `windowTitle` — the page's name alone in the bar's name zone, with no
+///   plate and no status; the name is also the window's title, which the
+///   settings window hides (`titleVisibility`). Kept as the
 ///   other drafted shape, reachable from `GeneralSettingsPage`'s Appearance
-///   section and from the toolbar's own right-click menu — not removed,
+///   section and from the bar's own right-click menu (`ShellBarMenu`) — not removed,
 ///   because retiring a case a Mac may already have stored is `CLAUDE.md`'s
 ///   rule and not a preference of this file's.
 ///
@@ -230,7 +229,7 @@ private struct HelmPageBarStyleTracker: ViewModifier {
             // from `AppSettings.pageBarStyle` at its own init:
             // `GeneralSettingsPage`'s picker (`pageBarStyle`) reads the
             // setting that way, so a style chosen through the bar's own
-            // right-click menu (`SettingsToolbar.barMenuChosePageBar`) left
+            // right-click menu (`ShellBarMenu.Actions.chosePageBar`) left
             // that picker showing the old choice until the page was left and
             // reopened. Measured (engineer, 2026-09-28): dropping this `.id`
             // fails `TheGeneralPickerFollowsTheBarMenuTests

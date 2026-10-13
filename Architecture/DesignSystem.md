@@ -74,6 +74,16 @@ case is retired and never removed. A component's contrast is measured against wh
 actually draws on rather than against the page, and a control is checked for being
 photographable before it is chosen for a surface this house verifies by photograph.
 
+A segmented control wears Helm's flat cell (`HelmFlatSegmentedCell`) unless the environment value
+`helmSwitcherCell` asks for AppKit's `NSSegmentedCell`, and only `SettingsToolbar.swift` asks, and only under Liquid Glass: on the tabs,
+on the actions capsule and on the switchers it measures them by, so the switcher measured wears the cell the switcher drawn wears. Under Flat it sets
+the same four to Helm's cell, so the toolbar's switchers wear it too.
+A control that wears AppKit's cell outside a toolbar selects with the system's accent colour in a key
+window, which no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`, in that family's stand-in for a key window), so the default
+is flat, and `TheWindowWearsTheToolbarTests.testNothingButTheToolbarsFileAsksForTheSystemsCell` reads the
+sources for any other asker. The cell is chosen when the control is made. That AppKit's cell draws no accent
+inside the window's toolbar is not stated here: no one has seen it in a key window.
+
 ## Motion
 
 `Sources/HelmUI/DesignSystem/HelmMotion.swift` holds the tokens, and they are
@@ -87,7 +97,9 @@ command grep -c 'public static let'          Sources/HelmUI/DesignSystem/HelmMot
 is the list, and the second line prints zero. Springs rather than ease curves, because an
 eased move reads as "smoothed" and a spring reads as physical; a spring also cannot be
 handed to a `CAMediaTimingFunction`, and the eased tokens are named exceptions;
-`panelEntrance`'s doc comment says why it is eased. `disclosure` is for anything whose height is
+`panelEntrance`'s doc comment says why it is eased. The capsule's opening and the switcher's slide take `interfaceCurve` and a duration
+token (`interfaceDuration`), each with its own `reduceMotion` branch; the switcher's fill group takes
+`interfaceDuration` alone. The sidebar's fold reads `interfaceCurve` at a fraction (`interfaceProgress(at:)`) from the timestamps of a display link of its own, for `sidebarFoldDuration`, and its rows run through `sidebarFold`, one length for both. `disclosure` is for anything whose height is
 measured and clipped, and it has zero bounce, because an overshooting height clips its own
 content for a frame. There is no token for turning forever, and that is the finding: a
 `repeatForever` linear rotation leaves the model at its end value while the dial is

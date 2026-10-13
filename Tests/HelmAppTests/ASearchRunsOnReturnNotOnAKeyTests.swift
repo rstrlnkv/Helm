@@ -8,9 +8,9 @@ import XCTest
 /// **Typing is not asking.**
 ///
 /// **Moved here from `Tests/HelmUITests` with the control it watches.** This
-/// file used to mount `.helmSearchable`, SwiftUI's toolbar bridge, deleted in
-/// this pass along with `HelmSearchable.swift` once `SettingsToolbar` started
-/// building the search item itself. `HelmToolbarSearch.onSubmit` is the same
+/// file used to mount `.helmSearchable`, SwiftUI's toolbar bridge, which is
+/// gone from the tree together with `HelmSearchable.swift` now that
+/// `SettingsToolbar` builds the search item itself. `HelmToolbarSearch.onSubmit` is the same
 /// contract stated as data rather than as a modifier: the binding, which
 /// moves on every keystroke because the results on screen are filtered from
 /// it, and `onSubmit`, which is the press. The one caller that passes an
@@ -21,11 +21,50 @@ import XCTest
 ///
 /// **Return is a key event and nothing else.** `SettingsToolbar.makeSearchItem`
 /// wires `field.target`/`field.action` to `searchSubmitted(_:)` and turns off
-/// `sendsActionOnEndEditing`, so a Return in the field editor is the one route
-/// there — `MountedRender.pressReturn` drives exactly that, spelled once and
+/// `sendsActionOnEndEditing`, so the routes there are a Return in the field
+/// editor and the field's clear button, which no row here presses —
+/// `MountedRender.pressReturn` drives the Return, spelled once and
 /// shared with the bridge-era tests this one is a twin of.
+///
+/// **The field is the toolbar's.** Every row reads the field of the
+/// `NSSearchToolbarItem` on the window's own `NSToolbar`
+/// (`LivePageInTheToolbarFixture.searchField`) and types into it and presses
+/// Return in it through `MountedRender.type` and `.pressReturn`, which act on
+/// the field the frame-view walk behind `MountedRender.searchField` meets
+/// first. On this fixture that walk answers the toolbar's field: measured
+/// 2026-10-13, Flat, once, `fixture.mount.searchField === fixture.searchField`
+/// read true. Each row asserts that identity before it counts anything, so a
+/// window that came to wear another search field the walk meets first fails
+/// the row in its own words and does not pass it for the wrong control. The
+/// rows also assert that the field's delegate is the `SettingsToolbar` the
+/// fixture built, which `makeSearchItem` sets on the field it assigns to its
+/// item.
+///
+/// **What these rows hold, and what they do not.** They hold the delegate's
+/// route: typing writes the binding and asks nothing (`controlTextDidChange`
+/// calls no `onSubmit`; a mutant that calls it there turns the first row red
+/// at its typing count and at its Return count), Return asks once, and
+/// ending editing asks nothing. They do not hold
+/// `sendsWholeSearchString`, the flag that governs AppKit's own per-keystroke
+/// action: the rows type by setting the field's value and posting the
+/// notification a keystroke posts, no field editor edits, so AppKit never
+/// has a keystroke to send an action for, and with the flag set to false in
+/// `makeSearchItem` both rows stay green. No row here holds that flag.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow` (`LivePageInTheToolbarFixture`),
+/// not the `lead: .spacer` bar the app's window builds. **The look.** The
+/// field is AppKit's under both looks and nothing here reads a width or a
+/// cell, so the settings are pinned in `setUp` (`PinnedBarSettings`, Flat, a
+/// search that does not always collapse) and the rows are not run under
+/// Liquid Glass.
 @MainActor
 final class ASearchRunsOnReturnNotOnAKeyTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     /// The counters, on a class so the page can write to them without being
     /// rebuilt into a new copy of itself between keystrokes.
@@ -56,12 +95,21 @@ final class ASearchRunsOnReturnNotOnAKeyTests: XCTestCase {
 
     func testFourKeystrokesMoveTheBindingAndAskNothing() throws {
         let tally = Tally()
-        let fixture = LivePageToolbarFixture(Page(tally: tally), selection: .module("test.searchReturn"),
-                                             width: 1060, height: 400)
+        let fixture = LivePageInTheToolbarFixture(Page(tally: tally), selection: .module("test.searchReturn"),
+                                                  width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
-        XCTAssertNotNil(fixture.mount.searchField, """
+        let field = try XCTUnwrap(fixture.searchField, """
             nothing reached the window's toolbar, so neither count below is about a control
+            """)
+        XCTAssertTrue(field.delegate === fixture.toolbar, """
+            the field is not the one the window's SettingsToolbar built for its search item — \
+            neither count below is about the control this app wears
+            """)
+        XCTAssertTrue(fixture.mount.searchField === field, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and neither count below is \
+            about the toolbar's
             """)
 
         for word in ["w", "wg", "wge", "wget"] {
@@ -94,6 +142,11 @@ final class ASearchRunsOnReturnNotOnAKeyTests: XCTestCase {
     /// ending an editing session that never began proves nothing about the
     /// flag `makeSearchItem` sets.
     ///
+    /// The `[search]` line each path prints is `window.isKeyWindow` after the
+    /// field took focus, the row's evidence that the window did not turn key
+    /// (false on all three paths, 2026-10-13): the editing these paths end
+    /// took place in a window that was not key.
+    ///
     /// Measured directly, this Mac: a bare `NSSearchField()` — what
     /// `makeSearchItem` builds — already answers `sendsActionOnEndEditing ==
     /// false`, so this guards the field `SettingsToolbar` actually assigns
@@ -107,16 +160,25 @@ final class ASearchRunsOnReturnNotOnAKeyTests: XCTestCase {
     func testEndingEditingSubmitsNothing() throws {
         for path in EndPath.allCases {
             let tally = Tally()
-            let fixture = LivePageToolbarFixture(Page(tally: tally), selection: .module("test.searchReturn"),
-                                                 width: 1060, height: 400)
+            let fixture = LivePageInTheToolbarFixture(Page(tally: tally), selection: .module("test.searchReturn"),
+                                                      width: 1060, height: 400)
             defer { fixture.drop() }
             fixture.settle(20)
-            guard let field = fixture.mount.searchField, let window = fixture.mount.window else {
+            guard let field = fixture.searchField, let window = fixture.mount.window else {
                 XCTFail("\(path): nothing reached the window's toolbar")
                 continue
             }
+            XCTAssertTrue(field.delegate === fixture.toolbar, """
+                \(path) precondition: the field is not the one the window's SettingsToolbar built \
+                for its search item
+                """)
+            XCTAssertTrue(fixture.mount.searchField === field, """
+                \(path) precondition: the frame-view walk behind `MountedRender.type` does not meet \
+                the toolbar's field — it would type into another control
+                """)
             XCTAssertTrue(fixture.mount.type("wget"), "\(path): the field went away mid-word")
             XCTAssertTrue(window.makeFirstResponder(field), "\(path): could not focus the field")
+            print("[search] \(path): window key after focusing the field: \(window.isKeyWindow)")
             XCTAssertNotNil(field.currentEditor(), """
                 \(path) precondition: the field never actually took editing — ending it below \
                 would prove nothing
@@ -126,7 +188,7 @@ final class ASearchRunsOnReturnNotOnAKeyTests: XCTestCase {
             case .resigningFirstResponder:
                 _ = window.makeFirstResponder(nil)
             case .endingTheSearchInteraction:
-                guard let item = fixture.mount.window?.toolbar?.items
+                guard let item = window.toolbar?.items
                     .compactMap({ $0 as? NSSearchToolbarItem }).first
                 else {
                     XCTFail("\(path): no search item to end an interaction on")

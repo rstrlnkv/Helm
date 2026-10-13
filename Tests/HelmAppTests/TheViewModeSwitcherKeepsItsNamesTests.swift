@@ -32,6 +32,23 @@ import XCTest
 /// made on another page while Hosts' bar waits in the toolbar's cache: the
 /// group's own name (`HostsStr.viewGroup`) and the overflow form's title
 /// have to follow it, and were only ever read at rest (tester, 2026-09-26).
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` — through `LivePageInTheToolbarFixture` for the rows
+/// that mount the real page, bare on an `NSWindow` for the frozen-bar row — not
+/// the `lead: .spacer` bar the app's window builds: it has no `helm.tabsLead`
+/// and no capped search field.
+///
+/// **The look.** The bar's look is read when the bar is built
+/// (`AppSettings.barAppearance`) and names the cell the switcher wears:
+/// Helm's `HelmFlatSegmentedCell` under Flat, AppKit's own under Liquid Glass
+/// (`HelmBarAppearance.switcherCell`). The names, the overflow form and the
+/// frozen bar are read under Flat only: the settings are pinned in `setUp`
+/// (`PinnedBarSettings`), because another run shares the test tool's defaults
+/// domain, and those rows are not run under Liquid Glass. The one row that
+/// holds a control, its host and a width across a change runs under both
+/// looks, asserts from the switcher's cell that the look reached the bar, and
+/// prints the look with its reading.
 @MainActor
 final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
 
@@ -40,7 +57,12 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         func send(_ command: EngineCommand) async throws -> Data { Data() }
     }
 
-    private var fixtures: [LivePageToolbarFixture] = []
+    private var fixtures: [LivePageInTheToolbarFixture] = []
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     override func tearDown() {
         fixtures.forEach { $0.drop() }
@@ -49,8 +71,8 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
     }
 
     /// The real page, on its SSH tab — the one tab the switcher shows on.
-    private func mountHostsOnSSH() -> LivePageToolbarFixture? {
-        let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
+    private func mountHostsOnSSH() -> LivePageInTheToolbarFixture? {
+        let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
                                            selection: .module(HostsDescriptor.id.rawValue),
                                            width: 1060, height: 700)
         fixtures.append(hosts)
@@ -207,7 +229,7 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
 
     /// Puts the page on its SSH tab through its own declared binding and
     /// waits for the bar to follow.
-    private func selectSSH(_ hosts: LivePageToolbarFixture, _ label: String) -> Bool {
+    private func selectSSH(_ hosts: LivePageInTheToolbarFixture, _ label: String) -> Bool {
         guard let selected = hosts.channel.content(for: HostsDescriptor.id.rawValue)?.selectedTab else {
             XCTFail("\(label): Hosts declared no tabs onto the channel")
             return false
@@ -233,7 +255,7 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         AppLanguage.only(.pt) {
             let model = SettingsModel(host: ModuleHost.shared)
             let route = Route()
-            let hosts = LivePageToolbarFixture(
+            let hosts = LivePageInTheToolbarFixture(
                 MountedAsTheWindowMountsIt(model: model, route: route, vm: ModuleViewModel(transport: Mute())),
                 selection: .module(HostsDescriptor.id.rawValue), width: 1060, height: 700)
             fixtures.append(hosts)
@@ -271,7 +293,7 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
         AppLanguage.only(.pt) {
             let model = SettingsModel(host: ModuleHost.shared)
             let route = Route()
-            let hosts = LivePageToolbarFixture(
+            let hosts = LivePageInTheToolbarFixture(
                 MountedAsTheWindowMountsIt(model: model, route: route, vm: ModuleViewModel(transport: Mute())),
                 selection: .module(HostsDescriptor.id.rawValue), width: 1060, height: 700)
             fixtures.append(hosts)
@@ -317,17 +339,24 @@ final class TheViewModeSwitcherKeepsItsNamesTests: XCTestCase {
     /// `NSSegmentedControl`, the hosted view the same object and the width
     /// the same, so this test stayed green.
     func testALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControlAndTheCentreTabsFollowIt() throws {
-        let store = AppSettings.store
-        let saved = store.object(ToolbarSwitcherStyle.storageKey)
-        addTeardownBlock { @MainActor in
-            store.set(saved, for: ToolbarSwitcherStyle.storageKey)
-            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
+        for look in [HelmBarAppearance.flat, .liquidGlass] {
+            try assertALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControl(under: look)
         }
+    }
+
+    private func assertALabelStyleChangeLeavesTheSwitcherGlyphsOnTheSameControl(under look: HelmBarAppearance) throws {
+        AppSettings.toolbarSwitcherStyle = .text
+        AppSettings.barAppearance = look
         let hosts = try XCTUnwrap(mountHostsOnSSH())
         let window = hosts.mount.window
-        let control = try XCTUnwrap(switcher(in: window), "no view-mode switcher on the SSH tab")
+        let control = try XCTUnwrap(switcher(in: window), "\(look): no view-mode switcher on the SSH tab")
+        let cell = try XCTUnwrap(control.cell, "\(look): the view-mode switcher has no cell")
+        XCTAssertTrue(type(of: cell) == (look == .flat ? HelmFlatSegmentedCell.self : NSSegmentedCell.self), """
+            \(look): precondition — the bar was built under \(look) and the view-mode switcher wears \(type(of: cell))
+            """)
         let hosting = try XCTUnwrap(item("helm.actions", in: window)?.view)
         let width = hosting.frame.width
+        print("[view-mode switcher] \(look): cell \(type(of: cell)), host \(type(of: hosting)), width \(width) pt")
 
         for style in ToolbarSwitcherStyle.allCases {
             AppSettings.toolbarSwitcherStyle = style

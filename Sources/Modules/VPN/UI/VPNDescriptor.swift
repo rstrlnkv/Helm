@@ -12,6 +12,7 @@ import Module_VPN_Engine
         sfSymbol: "lock.shield", permissions: []) }
     public static let category: ModuleCategory = .network
     public static let tint: ModuleTint = .vpn
+    public static let glyph: ShellGlyph = .vpn
 
     private var store: NamespacedStore?
     private var cached: (vm: ModuleViewModel, model: VPNViewModel)?

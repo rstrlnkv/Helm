@@ -92,6 +92,8 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
         add("surface-panel-card", HelmSurface.panelCardFill)
         add("hairline", HelmSurface.hairline)
         add("panel-selection", HelmSurface.panelSelection)
+        add("bar-plate", HelmSurface.barPlate)
+        add("bar-pick", HelmSurface.barPick)
 
         add("text-quiet", HelmText.quiet)
         add("text-faint", HelmText.faint)
@@ -156,7 +158,7 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
     /// The opacities this tree chose, beside the colours they produce. This is
     /// the half a person edits, and it is the half that says whose edit it was.
     ///
-    /// **Read back, not restated.** These nine numbers were a literal table here
+    /// **Read back, not restated.** These numbers were a literal table here
     /// first, and the mutation that proved this guard showed what that is worth:
     /// `cardFill` moved from 0.035 to 0.04, the check went red on the right
     /// token — and told the reader macOS had done it, because a hand-written
@@ -180,6 +182,8 @@ final class PublishedTokensAreTheTreesTests: XCTestCase {
             "surface-on-panel": read(HelmSurface.onPanelFill),
             "hairline": read(HelmSurface.hairline),
             "panel-selection": read(HelmSurface.panelSelection),
+            "bar-plate": read(HelmSurface.barPlate),
+            "bar-pick": read(HelmSurface.barPick),
             "text-quiet": read(HelmText.quiet),
             "text-faint": read(HelmText.faint),
             "mark-separator": read(HelmText.separator),

@@ -5,8 +5,8 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Defect found while adding `HelmToolbarAction.Kind`, and fixed in this
-/// pass**: `makeSearchItem` set the search field's accessibility label once,
+/// **Defect found while adding `HelmToolbarAction.Kind`, and fixed with
+/// it**: `makeSearchItem` set the search field's accessibility label once,
 /// at construction, and `patchSearch` — the method every later refresh calls,
 /// a language change among them — never set it again. Nothing about the
 /// field's shape moves on a language change, so nothing else would have
@@ -68,7 +68,7 @@ final class TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests: 
     }
 
     /// **Every language answers**, not only the one this machine happens to
-    /// be set to (CLAUDE.md's own rule on `AppLanguage.each`) — one
+    /// be set to (CLAUDE.md's rule on `EachLanguage.swift`) — one
     /// `.helmLanguageChanged` notice per language, the same route the case
     /// above already proved wired to `patchSearch`, so this one only has to
     /// show the re-read is not a fluke of whichever language the notice
@@ -96,7 +96,7 @@ final class TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests: 
     }
 
     /// **Ported from the deleted `ASearchFieldSaysWhatItIsTests
-    /// .testTheNameIsAWordAndNotTheRole`**, which this pass's own removal of
+    /// .testTheNameIsAWordAndNotTheRole`**, which the removal of
     /// `ToolbarSearchName` left with no home: `HelmA11y.searchField` is not
     /// wired to `ToolbarSearchName` at all, so the case is pure string logic
     /// and needs no fixture. VoiceOver already announces the role — "search

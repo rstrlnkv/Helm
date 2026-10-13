@@ -10,7 +10,7 @@ depends on and no product lists.
 
 Each target and what it holds:
 
-- `HelmLaunch` — the package's only non-Swift target: the Objective-C `@try` around an `NSTask` launch, which a Swift `catch` cannot be.
+- `HelmLaunch` — the package's only non-Swift target: the Objective-C `@try` around an `NSTask` launch, which a Swift `catch` cannot be, and, inside `HelmReadNumber`, around the call `WindowCorner` makes of a window's own number.
 - `HelmContract` — protocols and wire types.
 - `HelmRuntime` — shared plumbing without UI.
 - `HelmUI` — the design system, `L()`, `ModuleViewModel`, `TransportClient`, the `ModuleDescriptor` protocol; carries `Resources`.

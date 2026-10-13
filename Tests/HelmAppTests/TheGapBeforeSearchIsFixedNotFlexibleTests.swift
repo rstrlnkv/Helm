@@ -19,12 +19,14 @@ import Module_Uninstaller_Engine
 /// after the fact on every `willAddItem` and every `nameWhatIsThere()` —
 /// this file mounted that bridge by hand and read the correction. Uninstaller
 /// was the last page still calling `.helmSearchable`
-/// (`command grep -rn 'helmSearchable\|\.searchable(' Sources/Modules/Uninstaller/UI/UninstallerSettingsPage.swift`
-/// finds nothing now); `SettingsToolbar.identifiers` (`SettingsToolbar.swift`)
-/// never puts a spacer of any kind next to `helm.search` in the first place —
+/// (every line `command grep -n 'helmSearchable\|\.searchable(' Sources/Modules/Uninstaller/UI/UninstallerSettingsPage.swift`
+/// prints now is a comment); `SettingsToolbar.identifiers` (`SettingsToolbar.swift`)
+/// lists `helm.search` straight after `helm.actions` wherever a page declares
+/// actions, as Uninstaller does, and a flexible space stands ahead of the field
+/// only on a bar that declares none —
 /// there is no after-the-fact correction left to guard, only the ordering
 /// itself, read off a real, attached `NSToolbar` through
-/// `LivePageToolbarFixture` (its own header explains why only
+/// `LivePageInTheToolbarFixture` (its own header explains why only
 /// `Tests/HelmAppTests` can build one).
 @MainActor
 final class TheGapBeforeSearchIsFixedNotFlexibleTests: XCTestCase {
@@ -40,7 +42,7 @@ final class TheGapBeforeSearchIsFixedNotFlexibleTests: XCTestCase {
         }
     }
 
-    private var fixture: LivePageToolbarFixture?
+    private var fixture: LivePageInTheToolbarFixture?
 
     override func tearDown() {
         fixture?.drop()
@@ -73,7 +75,7 @@ final class TheGapBeforeSearchIsFixedNotFlexibleTests: XCTestCase {
         await uvm.loadAppsIfNeeded()
 
         for width: CGFloat in [860, 1060, 1400] {
-            let fixture = LivePageToolbarFixture(UninstallerSettingsPage(vm: vm),
+            let fixture = LivePageInTheToolbarFixture(UninstallerSettingsPage(vm: vm),
                                                  selection: .module(UninstallerDescriptor.id.rawValue),
                                                  width: width, height: 700)
             fixture.settle(30)

@@ -11,26 +11,61 @@ import XCTest
 /// with no face drawn beside a plain button.
 ///
 /// The Log page is mounted with a real `SettingsToolbar`
-/// (`LivePageToolbarFixture`), so a press goes down the wire a click does:
+/// (`LivePageInTheToolbarFixture`), so a press goes down the wire a click does:
 /// the capsule's own `press`, or the menu item AppKit shows when the capsule
 /// no longer fits.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow`, not the `lead: .spacer` bar the
+/// app's window builds; the capsule is read through `ActionsCapsuleReading`,
+/// because the item hosts it under the look's environment writes and its view
+/// is no `NSHostingView<HelmToolbarActionsCapsule>`. **The look** is read when
+/// the bar is built (`AppSettings.barAppearance`): `setUp` pins the settings
+/// (`PinnedBarSettings`, Flat), the overflow-menu row and the return-visit row
+/// read names, checks and a model and stay at that Flat, and the two rows that
+/// read pixels run each look in `looks`; every capsule read off a fixture here
+/// asserts from the item's root that the look reached the bar
+/// (`ActionsCapsuleReading.looks(in:)`).
 @MainActor
 final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
 
-    private func logPage(_ appearance: NSAppearance.Name) -> LivePageToolbarFixture {
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
+
+    private let looks: [HelmBarAppearance] = [.liquidGlass, .flat]
+
+    /// Every look in `looks` under both appearances.
+    private var screens: [(look: HelmBarAppearance, appearance: NSAppearance.Name)] {
+        looks.flatMap { look in RenderedInk.bothAppearances.map { (look, $0) } }
+    }
+
+    private func logPage(_ appearance: NSAppearance.Name,
+                         look: HelmBarAppearance = .flat) -> LivePageInTheToolbarFixture {
+        AppSettings.barAppearance = look
         let source = LogPageUnderHand.log(40)
-        let fx = LivePageToolbarFixture(LogView(source: { source.lines }, storedLog: { false }),
-                                        selection: .log, width: 1060, height: 700, appearance: appearance)
+        let fx = LivePageInTheToolbarFixture(LogView(source: { source.lines }, storedLog: { false }),
+                                             selection: .log, width: 1060, height: 700, appearance: appearance)
         fx.settle(40)
         return fx
     }
 
-    private func actionsItem(_ fx: LivePageToolbarFixture) -> NSToolbarItem? {
+    private func actionsItem(_ fx: LivePageInTheToolbarFixture) -> NSToolbarItem? {
         fx.mount.window?.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" }
     }
 
-    private func capsule(_ fx: LivePageToolbarFixture) -> NSHostingView<HelmToolbarActionsCapsule>? {
-        actionsItem(fx)?.view as? NSHostingView<HelmToolbarActionsCapsule>
+    /// The capsule of `fx`'s toolbar, after asserting that the look it was built under reached it.
+    private func capsule(_ fx: LivePageInTheToolbarFixture, _ context: String,
+                         look: HelmBarAppearance = .flat) throws -> ActionsCapsuleReading.Read {
+        let read = try ActionsCapsuleReading.read(try XCTUnwrap(fx.mount.window?.toolbar,
+                                                                "\(context): the window wears no toolbar"),
+                                                  context: context)
+        XCTAssertEqual(ActionsCapsuleReading.looks(in: read.host), [look], """
+            \(context): precondition — the capsule's root carries \(ActionsCapsuleReading.looks(in: read.host)), \
+            not the look the bar was built under
+            """)
+        return read
     }
 
     private func followIsOn(_ model: HelmToolbarActionsModel) -> Bool? {
@@ -68,7 +103,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     /// graph as last laid out — an animation running on the model reads as a
     /// step. With them, a swap the harness animated itself over 500 ms read
     /// as 50 frames easing from the open eye's ink to the slashed eye's, and a
-    /// dim as 50 frames of falling ink (probe, X-C tester).
+    /// dim as 50 frames of falling ink.
     private func ink(_ view: NSView, slot: Int) -> Ink? {
         view.layoutSubtreeIfNeeded()
         view.window?.displayIfNeeded()
@@ -102,7 +137,7 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     func testTheOverflowMenusFollowIsCheckedExactlyWhileFollowing() throws {
         let fx = logPage(.aqua)
         defer { fx.drop() }
-        let model = try XCTUnwrap(capsule(fx)?.rootView.model, "no capsule")
+        let model = try capsule(fx, "overflow menu").capsule.model
         XCTAssertEqual(followIsOn(model), true, "the Log does not open following")
         var states: [String] = []
         for press in 0..<3 {
@@ -143,12 +178,13 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     /// fail here. What it cannot see is the glass: it does not composite
     /// offscreen, so a flash of the glass itself on the press is not read.
     func testAPressSwapsTheEyeInOneStepWithNoAccentInBetween() throws {
-        for appearance in RenderedInk.bothAppearances {
-            let screen = RenderedInk.label(of: appearance)
-            let fx = logPage(appearance)
+        for (look, appearance) in screens {
+            let screen = "\(look) \(RenderedInk.label(of: appearance))"
+            let fx = logPage(appearance, look: look)
             defer { fx.drop() }
-            let view = try XCTUnwrap(capsule(fx), "\(screen): no capsule")
-            let model = view.rootView.model
+            let read = try capsule(fx, screen, look: look)
+            let view = read.host
+            let model = read.capsule.model
             let slot = try XCTUnwrap(model.declared.filter { model.visibleIDs.contains($0.id) }
                 .firstIndex { $0.id == "follow" }, "\(screen): Follow is not in the capsule")
             XCTAssertEqual(followIsOn(model), true, "\(screen): the Log does not open following")
@@ -190,24 +226,27 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
     /// **A toggle with no face is drawn as it was: off, it is the plain button
     /// to the pixel; on, it is the accent.** No page but the Log declares a
     /// toggle today, so the page a face could have changed is the next one
-    /// that does; this draws that one. With `HELM_FRAMES_DIR` set the four
-    /// states are written for a person to look at, in both appearances.
+    /// that does; this draws that one. With `HELM_FRAMES_DIR` set the five
+    /// pictures are written for a person to look at, under each look and in
+    /// both appearances.
     func testAToggleWithNoFaceIsThePlainButtonWhenOffAndTheAccentWhenOn() throws {
-        for appearance in RenderedInk.bothAppearances {
-            let screen = RenderedInk.label(of: appearance)
+        for (look, appearance) in screens {
+            let screen = "\(look) \(RenderedInk.label(of: appearance))"
             func draw(_ action: HelmToolbarAction, _ name: String) throws -> (Ink, NSBitmapImageRep) {
-                let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.toggle"),
-                                                width: 1060, height: 700, appearance: appearance)
+                AppSettings.barAppearance = look
+                let fx = LivePageInTheToolbarFixture(Color.clear, selection: .module("test.toggle"),
+                                                     width: 1060, height: 700, appearance: appearance)
                 defer { fx.drop() }
                 fx.channel.declare(HelmPageToolbarContent(actions: [action]), token: "test.toggle",
                                    generation: fx.channel.nextGeneration())
                 fx.settle(30)
-                let view = try XCTUnwrap(capsule(fx), "\(screen): no capsule")
-                XCTAssertEqual(view.rootView.model.visibleIDs, [action.id])
+                let read = try capsule(fx, "\(screen) \(name)", look: look)
+                let view = read.host
+                XCTAssertEqual(read.capsule.model.visibleIDs, [action.id])
                 let reading = try XCTUnwrap(ink(view, slot: 0), "\(screen): \(name) drew nothing")
                 let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
                 view.cacheDisplay(in: view.bounds, to: rep)
-                write(rep, appearance: appearance, name: name)
+                write(rep, appearance: appearance, name: "\(look)-\(name)")
                 return (reading, rep)
             }
             let (plain, plainRep) = try draw(HelmToolbarAction(id: "mode", title: "Mode",
@@ -258,10 +297,9 @@ final class TheFollowEyeUnderInputsNobodyFedTests: XCTestCase {
                               backing: .buffered, defer: false)
         toolbar.window = window
         func capsuleEntry() throws -> HelmToolbarActionsModel.Entry {
-            let item = try XCTUnwrap(window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                     "no actions item")
-            let view = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>, "no capsule")
-            return try XCTUnwrap(view.rootView.model.declared.first { $0.id == "follow" }, "no Follow entry")
+            let read = try ActionsCapsuleReading.read(try XCTUnwrap(window.toolbar, "the window wears no toolbar"),
+                                                      context: "return visit")
+            return try XCTUnwrap(read.capsule.model.declared.first { $0.id == "follow" }, "no Follow entry")
         }
         for isOn in [true, false] {
             model.selection = .module("test.followA")

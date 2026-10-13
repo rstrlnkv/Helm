@@ -26,8 +26,30 @@ import XCTest
 ///
 /// With `HELM_FRAMES_DIR` set, each state in each appearance is also written as
 /// a PNG over the window's own background, for a person to look at.
+///
+/// **The bar.** The capsule is read off a `SettingsToolbar` built with the
+/// default lead `.sidebarSeparator` on a bare `NSWindow`
+/// (`LivePageInTheToolbarFixture`), not the `lead: .spacer` bar the app's window
+/// builds, through `ActionsCapsuleReading`. **The look** is read when the bar is
+/// built (`AppSettings.barAppearance`): `setUp` pins the settings
+/// (`PinnedBarSettings`), the two drawing rows store each look in `looks`
+/// before their bars are built, and every reading asserts from the item's root
+/// that the look reached the bar (`ActionsCapsuleReading.looks(in:)`). The row
+/// that reads the model holds under both and stays at the pinned Flat.
 @MainActor
 final class TheFollowGlyphIsAnEyeTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
+
+    private let looks: [HelmBarAppearance] = [.liquidGlass, .flat]
+
+    /// Every look in `looks` under both appearances.
+    private var screens: [(look: HelmBarAppearance, appearance: NSAppearance.Name)] {
+        looks.flatMap { look in RenderedInk.bothAppearances.map { (look, $0) } }
+    }
 
     override func tearDown() {
         AppLanguage.override = nil
@@ -51,22 +73,26 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
     /// (every alpha summed, in pixels) and its alpha-weighted mean colour in
     /// sRGB. Nil when nothing was drawn — a reading of a blank is a guess.
     private func reading(of action: HelmToolbarAction, appearance: NSAppearance.Name,
-                         name: String) throws -> Reading? {
-        let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.follow"),
-                                        width: 1060, height: 700, appearance: appearance)
+                         look: HelmBarAppearance, name: String) throws -> Reading? {
+        AppSettings.barAppearance = look
+        let fx = LivePageInTheToolbarFixture(Color.clear, selection: .module("test.follow"),
+                                             width: 1060, height: 700, appearance: appearance)
         defer { fx.drop() }
         fx.channel.declare(HelmPageToolbarContent(actions: [action]), token: "test.follow",
                            generation: fx.channel.nextGeneration())
         fx.settle(30)
         let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
-        let item = try XCTUnwrap(toolbar.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                 "no helm.actions item")
-        let capsule = try XCTUnwrap(item.view, "no capsule")
-        XCTAssertEqual((item.view as? NSHostingView<HelmToolbarActionsCapsule>)?.rootView.model.visibleIDs,
+        let read = try ActionsCapsuleReading.read(toolbar, context: "\(look) \(name)")
+        let capsule = read.host
+        XCTAssertEqual(ActionsCapsuleReading.looks(in: capsule), [look], """
+            \(look) \(name): precondition — the capsule's root carries \(ActionsCapsuleReading.looks(in: capsule)), \
+            not the look the bar was built under
+            """)
+        XCTAssertEqual(read.capsule.model.visibleIDs,
                        [action.id], "the capsule does not hold exactly the action under test")
         guard let rep = capsule.bitmapImageRepForCachingDisplay(in: capsule.bounds) else { return nil }
         capsule.cacheDisplay(in: capsule.bounds, to: rep)
-        picture(rep, appearance: appearance, name: name)
+        picture(rep, appearance: appearance, name: "\(look)-\(name)")
 
         let side = HelmToolbarActionsCapsule.side
         let scale = CGFloat(rep.pixelsWide) / max(capsule.bounds.width, 1)
@@ -135,15 +161,15 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
     // MARK: - What is drawn
 
     func testFollowDrawsAnOpenEyeWhenOnAndASlashedEyeWhenOffWithNoAccent() throws {
-        for appearance in RenderedInk.bothAppearances {
-            let screen = RenderedInk.label(of: appearance)
+        for (look, appearance) in screens {
+            let screen = "\(look) \(RenderedInk.label(of: appearance))"
             let plainEye = try XCTUnwrap(reading(of: HelmToolbarAction(id: "follow", title: "Follow",
                                                                        symbol: "eye") {},
-                                                 appearance: appearance, name: "reference-eye"),
+                                                 appearance: appearance, look: look, name: "reference-eye"),
                                          "\(screen): the reference eye drew nothing")
             let plainSlash = try XCTUnwrap(reading(of: HelmToolbarAction(id: "follow", title: "Follow",
                                                                          symbol: "eye.slash") {},
-                                                   appearance: appearance, name: "reference-slash"),
+                                                   appearance: appearance, look: look, name: "reference-slash"),
                                            "\(screen): the reference slashed eye drew nothing")
             XCTAssertGreaterThan(abs(plainSlash.coverage - plainEye.coverage) / plainEye.coverage, 0.05, """
                 \(screen): the open and the slashed eye draw the same amount of ink, so matching \
@@ -152,11 +178,11 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
 
             let on = try XCTUnwrap(reading(of: HelmToolbarAction(id: "follow", title: "Follow",
                                                                  symbol: "eye", isOn: true, face: face) {},
-                                           appearance: appearance, name: "on"),
+                                           appearance: appearance, look: look, name: "on"),
                                    "\(screen): Follow drew nothing when on")
             let off = try XCTUnwrap(reading(of: HelmToolbarAction(id: "follow", title: "Follow",
                                                                   symbol: "eye", isOn: false, face: face) {},
-                                            appearance: appearance, name: "off"),
+                                            appearance: appearance, look: look, name: "off"),
                                     "\(screen): Follow drew nothing when off")
 
             XCTAssertEqual(on.coverage / plainEye.coverage, 1, accuracy: 0.02, """
@@ -180,14 +206,14 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
     /// reading that could not tell that from the plain ink would pass the
     /// assertion above on any colour.
     func testAToggleWithNoFaceIsStillDrawnInTheAccent() throws {
-        for appearance in RenderedInk.bothAppearances {
-            let screen = RenderedInk.label(of: appearance)
+        for (look, appearance) in screens {
+            let screen = "\(look) \(RenderedInk.label(of: appearance))"
             let plain = try XCTUnwrap(reading(of: HelmToolbarAction(id: "mode", title: "Mode",
                                                                     symbol: "text.alignleft") {},
-                                              appearance: appearance, name: "control-plain"))
+                                              appearance: appearance, look: look, name: "control-plain"))
             let lit = try XCTUnwrap(reading(of: HelmToolbarAction(id: "mode", title: "Mode",
                                                                   symbol: "text.alignleft", isOn: true) {},
-                                            appearance: appearance, name: "control-lit"))
+                                            appearance: appearance, look: look, name: "control-lit"))
             XCTAssertGreaterThan(lit.colourDistance(to: plain), 0.15, """
                 \(screen): a lit toggle with no face reads as the plain ink — either the accent is \
                 gone from every other toggle or this reading cannot see one
@@ -226,23 +252,23 @@ final class TheFollowGlyphIsAnEyeTests: XCTestCase {
     /// closure-free model, so what the capsule draws from is what the page
     /// declared.
     func testTheFaceReachesTheCapsulesModel() throws {
-        let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.follow"),
-                                        width: 1060, height: 700)
+        let fx = LivePageInTheToolbarFixture(Color.clear, selection: .module("test.follow"),
+                                             width: 1060, height: 700)
         defer { fx.drop() }
         fx.channel.declare(HelmPageToolbarContent(actions: [
             HelmToolbarAction(id: "follow", title: "Follow", symbol: "eye", isOn: true, face: face) {}
         ]), token: "test.follow", generation: fx.channel.nextGeneration())
         fx.settle(30)
-        let item = try XCTUnwrap(fx.mount.window?.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" })
-        let capsule = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>)
-        let entry = try XCTUnwrap(capsule.rootView.model.declared.first { $0.id == "follow" })
+        let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
+        let capsule = try ActionsCapsuleReading.read(toolbar, context: "the face").capsule
+        let entry = try XCTUnwrap(capsule.model.declared.first { $0.id == "follow" })
         XCTAssertEqual(entry.toggleFace, face)
         XCTAssertEqual(entry.kind, .toggle(isOn: true))
     }
 
     /// **The value VoiceOver reads is the state, in words.** The accessibility
     /// tree of a hosted view is empty under the suite (`HelmAccordionTests`'
-    /// own header), so the value cannot be read back from the drawn control;
+    /// note beside its collapsed-rows row), so the value cannot be read back from the drawn control;
     /// what can be held is the two halves of the wire. The face answers the word
     /// for each state, and the capsule's toggle reads it from the face — with
     /// its own `.isSelected` trait left to the toggles that have no face, since

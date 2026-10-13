@@ -34,19 +34,20 @@ import XCTest
 ///
 ///     bash Scripts/test.sh --filter TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests
 ///
-/// - Pinned where `HelmToolbarSwitcher` writes it — in `updateNSView`, behind
-///   `Coordinator.hasPinnedMetric` — the switcher logged **one** frame,
-///   (272.0, 36.0), and this file passed.
+/// - Pinned in `updateNSView`, once — where `HelmToolbarSwitcher` wrote it then; it writes it
+///   on every pass now — the switcher logged **one** frame,
+///   (272.0, 36.0), and this file passed. These readings were taken with the
+///   system's own cell. The switcher wears `HelmFlatSegmentedCell` now, whose
+///   size does not read the metric, and this family has not been run since.
 /// - Pinned in `makeNSView` instead, the switcher logged (252.0, 24.0) and then
 ///   (272.0, 36.0) — the canary's own two readings — and the second assertion
 ///   below went red at exactly those numbers. Twice, in two runs of that
 ///   variant.
 ///
-/// So a metric written in `makeNSView` does not survive to the first
-/// measurement, and `updateNSView` is where it has to be written. What
-/// overwrites it in between was not established; that it is overwritten was.
-/// Filling the segments in `makeNSView` does not settle it either, for the
-/// reason in the first bullet above, so the pin is what this file is guarding.
+/// So, with the system's cell, a metric written in `makeNSView` did not survive
+/// to the first measurement. What overwrote it in between was not established;
+/// that it was overwritten was. Filling the segments in `makeNSView` does not
+/// settle it either, for the reason in the first bullet above.
 ///
 /// # Why there is not a single size literal below
 ///
@@ -134,10 +135,9 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
 
         XCTAssertEqual(switcherFrames.last!.height, canaryFrames.last!.height, accuracy: 0.01, """
             the switcher settles \(switcherFrames.last!.height) pt tall where a control the bar \
-            sized itself settles \(canaryFrames.last!.height): the metric HelmToolbarSwitcher pins \
-            in updateNSView, behind Coordinator.hasPinnedMetric, is not the one the toolbar \
-            promotes to, so the switcher draws at its own height beside every other control on the \
-            same glass.
+            sized itself settles \(canaryFrames.last!.height): the switcher's height is not the one \
+            the toolbar promotes a stock control to, so the switcher draws at \
+            its own height beside every other control on the same glass.
             """)
     }
 
@@ -147,8 +147,8 @@ final class TheToolbarSwitcherIsLaidOutOnceInTheBarsMetricTests: XCTestCase {
     /// chosen by right-click has to change the item's width.
     ///
     /// It is a live change on **one** control, not two mounts compared — the
-    /// pin is written once, on `Coordinator.hasPinnedMetric`, which is already
-    /// behind us here, and the
+    /// control size is checked on every pass of `updateNSView`, so a style that
+    /// arrives later meets the same size, and the
     /// same `NSView` survives the change, since the style reaches it here as
     /// an environment value and not as a new identity. So this reads the one
     /// path where

@@ -20,10 +20,24 @@ import HelmUI
 /// **Moved here from `Tests/Modules/Homebrew/UITests`** — the page's search
 /// field is the real `NSSearchField` `SettingsToolbar` builds
 /// (`SettingsToolbar.makeSearchItem`), which only `HelmAppTests` can attach
-/// (`LivePageToolbarFixture`'s own header says why a module's `UITests`
+/// (`LivePageInTheToolbarFixture`'s own header says why a module's `UITests`
 /// cannot).
+///
+/// **The bar.** A real `SettingsToolbar` that `LivePageInTheToolbarFixture`
+/// attaches to the mount's window, built with the default lead
+/// `.sidebarSeparator`, not the app's `.spacer` build. Each mount asserts
+/// that `MountedRender.type` and `.pressReturn` act on the field of that
+/// toolbar's search item before it types. **The look.** No row reads a width
+/// or a cell of the bar, so the settings are pinned in `setUp`
+/// (`PinnedBarSettings`: Flat, text tabs, a search that does not always
+/// collapse) to make the run the same each time.
 @MainActor
 final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     /// Counts what was asked and answers from a table. Named at construction;
     /// no default port here could reach this Mac's own brew.
@@ -97,13 +111,23 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
         hb.searchPause = Self.pause
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: 984, height: 520)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: 984, height: 520)
         let mount = fixture.mount
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+
+        XCTAssertNotNil(fixture.searchField, """
+            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            of the toolbar to type into
+            """)
+        XCTAssertTrue(mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
+            """)
 
         // `turns: 0` on every keystroke but the last — `MountedRender.type`'s
         // own default settle is five turns of twenty milliseconds each, a
@@ -137,13 +161,23 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
         hb.searchPause = .seconds(10)
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: 984, height: 520)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: 984, height: 520)
         let mount = fixture.mount
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+
+        XCTAssertNotNil(fixture.searchField, """
+            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            of the toolbar to type into
+            """)
+        XCTAssertTrue(mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
+            """)
 
         XCTAssertTrue(mount.type("wget"), "the field never took the word")
         XCTAssertTrue(mount.pressReturn(), "Return never reached the field")
@@ -164,13 +198,23 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         let mvm = ModuleViewModel(transport: transport)
         let hb = HomebrewViewModel.shared(vm: mvm)
         hb.searchPause = Self.pause
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: 984, height: 520)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: 984, height: 520)
         let mount = fixture.mount
         defer { fixture.drop() }
         await hb.loadIfNeeded()
         await turn(mount, 25)
+
+        XCTAssertNotNil(fixture.searchField, """
+            the fixture's window wears no toolbar that lists a search item, so there is no field \
+            of the toolbar to type into
+            """)
+        XCTAssertTrue(mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` and `.pressReturn` does not meet the \
+            toolbar's field — they would type into another control and nothing below would be \
+            about the toolbar's
+            """)
 
         XCTAssertTrue(mount.type("wget"), "the field never took the word")
         await turn(mount, 80)   // several multiples of the pause

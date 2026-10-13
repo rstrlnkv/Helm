@@ -20,7 +20,13 @@ import Module_Homebrew_Engine
 ///   `withAnimation` anywhere on that path animates every page at once while
 ///   the guard stays green. Here the press is the control's own action, sent
 ///   to the real toolbar, and what is read is the transaction the page's
-///   update arrived in.
+///   update arrived in. The rule is about the page: under the flat look the
+///   toolbar's switcher slides its pick to the pressed tab
+///   (`HelmFlatSegmentedCell.slide`), which the coordinator asks for before it
+///   writes the binding; no row here sees the order. The toolbar is a
+///   `SettingsToolbar` built with the default lead `.sidebarSeparator` on a bare
+///   `NSWindow`, not the `lead: .spacer` bar the app's window builds: it has no
+///   `helm.tabsLead` and no capped search field.
 /// - **What the switch asked for.** The shared guard parks the wire for the
 ///   length of its photograph, so the answer a shown tab asks its engine for
 ///   lands after it; here that landing is photographed too.
@@ -62,6 +68,9 @@ final class ATabSwitchIsACutEndToEndTests: XCTestCase {
     /// click ends in — so every layer between the press and the page's binding
     /// is the shipping one.
     func testAPressOnTheToolbarReachesThePageWithoutACurve() throws {
+        // The row is pinned to Flat and not run under Liquid Glass: the toolbar reads its look when it
+        // is built, and the test tool's defaults domain is shared with other runs.
+        PinnedBarSettings.pin(in: self)
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
         let toolbar = SettingsToolbar(model: model, channel: channel)

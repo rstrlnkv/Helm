@@ -67,6 +67,7 @@
 "BETA" = "BETA";
 "BUILD" = "ビルド";
 "Back" = "戻る";
+"Basics" = "基本";
 "Opens its own screen" = "専用の画面を開きます";
 "Beta" = "Beta";
 "Blue" = "青";
@@ -234,6 +235,7 @@
 "Fix with" = "修正するキー";
 "Fixes words typed in the wrong keyboard layout" = "誤った配列で入力した単語を修正します";
 "Flag" = "旗";
+"Flat" = "フラット";
 "Folder" = "フォルダ";
 "Folders that keep themselves in order" = "自分で整った状態を保つフォルダ";
 "Follow" = "追従";
@@ -315,6 +317,8 @@
 "Letters in a frame" = "文字（枠のみ）";
 "Letters on a filled badge" = "文字（背景あり）";
 "Light" = "ライト";
+"Liquid Glass" = "Liquid Glass";
+"Toolbar style" = "ツールバーのスタイル";
 "Log" = "ログ";
 "Login Items" = "ログイン項目";
 "Login Items & Extensions" = "ログイン項目と機能拡張";
@@ -492,6 +496,8 @@
 "Keyboard shortcuts" = "キーボードショートカット";
 "Show" = "表示";
 "Show in Finder" = "Finderに表示";
+"Hide Sidebar" = "サイドバーを非表示";
+"Show Sidebar" = "サイドバーを表示";
 "Show it in the menu bar" = "メニューバーに表示";
 "Show remaining time in the menu bar" = "残り時間をメニューバーに表示";
 "Show what is marked for removal" = "削除予定の項目を表示";
@@ -522,6 +528,7 @@
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "ディスクスキャンを停止しても、それまでに計測した内容が残ります。以前はリングが消えてボリューム選択に戻り、1 分かけて育つのを見ていた結果が失われていました。いまはツリーが“停止”の表示とともに残ります。未完了のスキャンではフォルダが表示より大きい場合があるため、次回のために保存はされません。";
 "Style" = "スタイル";
 "Switched on, but macOS is withholding what it needs" = "オンですが、必要な権限を macOS が与えていません";
+"macOS is withholding a needed permission" = "macOS が必要な権限を与えていません";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "VPN をオフにしてから再度オンにすると、Helm を再起動するまでタイルと設定ページが何も応答しないまま固まってしまうことがありました。";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "別のモジュールに切り替えてから戻っても、作業内容が失われなくなりました。アンインストーラは以前、ページを離れた瞬間にすべてのチェック、確認ステップ全体、macOS が拒否した内容の記録を失っていました。ログイン項目と機能拡張も、アプリの中で最も時間がかかるスキャンを同じように最初からやり直していました。今はどちらも記憶しています。";
 "System" = "システム";
@@ -865,7 +872,6 @@
 "Waiting for you to allow Helm in System Settings." = "システム設定で許可されるのを待っています。";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS が Helm をログイン項目に追加しませんでした。Helm は自動的には開きません。";
 "Open Login Items & Extensions…" = "ログイン項目と機能拡張を開く…";
-"Switched off" = "オフのモジュール";
 "Put back" = "元に戻す";
 "back where it was" = "元の場所に戻り済み";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "ルールが二度目に働くのを止める印を書き込めませんでした。1 時間以内にルールがこのファイルをまた動かす可能性があります。";

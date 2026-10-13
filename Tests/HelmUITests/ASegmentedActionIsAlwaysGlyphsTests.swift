@@ -23,7 +23,7 @@ final class ASegmentedActionIsAlwaysGlyphsTests: XCTestCase {
         super.tearDown()
     }
 
-    /// `reserveWidth: 0` — nothing here reads it. `SettingsToolbar.actionEntries(for:)`
+    /// `reserveWidth: 0` — nothing here reads it. `SettingsToolbar.actionEntries(for:look:)`
     /// is what measures the real number, on a live bar
     /// (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`); this fixture is
     /// only about what a `.segmented` entry draws, never about its reserve.

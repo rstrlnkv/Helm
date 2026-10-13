@@ -45,8 +45,31 @@ import XCTest
 /// **Every kind that draws through the shared glyph**, button, toggle and
 /// menu, each against AppKit's own drawing of the same symbol; `.segmented` is
 /// AppKit's own `NSSegmentedControl` and draws its glyphs itself.
+///
+/// **The bar.** The capsule is read off a `SettingsToolbar` built with the
+/// default lead `.sidebarSeparator` on a bare `NSWindow`
+/// (`LivePageInTheToolbarFixture`), not the `lead: .spacer` bar the app's window
+/// builds, through `ActionsCapsuleReading`: the item hosts the capsule under the
+/// look's environment writes, so its view is no
+/// `NSHostingView<HelmToolbarActionsCapsule>`. **The look** is read when the bar
+/// is built (`AppSettings.barAppearance`); `setUp` pins the settings
+/// (`PinnedBarSettings`) and each reading stores its look before the bar is
+/// built and asserts from the item's root that the look reached it
+/// (`ActionsCapsuleReading.looks(in:)`). The row runs under both looks. Measured
+/// (2026-10-13, run alone, a window nobody shows, Light and Dark): under Liquid
+/// Glass and under Flat alike the capsule's ink for Refresh, Plain text and
+/// Filter is 14.5 × 17.5, 16.5 × 14.5 and 17.0 × 17.0 pt, AppKit's to the
+/// point, at 0.998 to 1.001 of its weight; the dated figures above were read
+/// under Liquid Glass.
 @MainActor
 final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
+
+    private let looks: [HelmBarAppearance] = [.liquidGlass, .flat]
 
     /// One glyph's ink: where it lies and how much stroke it holds — `ink(_:slot:)`.
     private struct Ink { let box: NSRect; let weight: CGFloat }
@@ -152,18 +175,22 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
 
     /// Our ink per declared slot, in the capsule's own points: the entries sit
     /// left to right at `HelmToolbarActionsCapsule.side` apiece.
-    private func oursInk(appearance: NSAppearance.Name) throws -> [Ink] {
-        let fx = LivePageToolbarFixture(Color.clear, selection: .module("test.glyphs"),
-                                        width: 1060, height: 700, appearance: appearance)
+    private func oursInk(appearance: NSAppearance.Name, look: HelmBarAppearance) throws -> [Ink] {
+        AppSettings.barAppearance = look
+        let fx = LivePageInTheToolbarFixture(Color.clear, selection: .module("test.glyphs"),
+                                             width: 1060, height: 700, appearance: appearance)
         defer { fx.drop() }
         fx.channel.declare(HelmPageToolbarContent(actions: Self.declared.map(\.action)),
                            token: "test.glyphs", generation: fx.channel.nextGeneration())
         fx.settle(30)
         let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
-        let item = try XCTUnwrap(toolbar.items.first { $0.itemIdentifier.rawValue == "helm.actions" },
-                                 "no helm.actions item")
-        let capsule = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>, "no capsule")
-        XCTAssertEqual(capsule.rootView.model.visibleIDs, Self.declared.map(\.action.id),
+        let read = try ActionsCapsuleReading.read(toolbar, context: "\(look) \(appearance.rawValue)")
+        let capsule = read.host
+        XCTAssertEqual(ActionsCapsuleReading.looks(in: capsule), [look], """
+            \(look) \(appearance.rawValue): precondition — the capsule's root carries \
+            \(ActionsCapsuleReading.looks(in: capsule)), not the look the bar was built under
+            """)
+        XCTAssertEqual(read.capsule.model.visibleIDs, Self.declared.map(\.action.id),
                        "not every declared kind is on the capsule — a slot would read a neighbour's glyph")
         let side = HelmToolbarActionsCapsule.side
         return try Self.declared.indices.map { index in
@@ -174,31 +201,35 @@ final class TheActionsGlyphIsAppKitsOwnSizeTests: XCTestCase {
     }
 
     func testEveryCapsuleGlyphDrawsAtTheSizeAndWeightOfALiveToolbarButtonsGlyph() throws {
+        for look in looks {
         for appearance: NSAppearance.Name in [.aqua, .darkAqua] {
-            let ours = try oursInk(appearance: appearance)
+            let ours = try oursInk(appearance: appearance, look: look)
             for (index, entry) in Self.declared.enumerated() {
                 let reference = try appKitsInk(entry.symbol, appearance: appearance)
                 let id = entry.action.id
                 let mine = ours[index]
+                print("[glyph ink] \(look) \(appearance.rawValue) \(id): ours \(mine.box.width) x \(mine.box.height) pt, "
+                      + "AppKit's \(reference.box.width) x \(reference.box.height) pt, weight ratio \(mine.weight / reference.weight)")
                 XCTAssertEqual(mine.box.width, reference.box.width, accuracy: 0.5, """
-                    \(appearance.rawValue): \(id)'s ink is \(mine.box.width) pt wide, AppKit's own \
+                    \(look) \(appearance.rawValue): \(id)'s ink is \(mine.box.width) pt wide, AppKit's own \
                     live toolbar button draws \(entry.symbol) \(reference.box.width) pt wide \
                     (ours \(mine.box), AppKit's \(reference.box))
                     """)
                 XCTAssertEqual(mine.box.height, reference.box.height, accuracy: 0.5, """
-                    \(appearance.rawValue): \(id)'s ink is \(mine.box.height) pt tall, AppKit's own \
+                    \(look) \(appearance.rawValue): \(id)'s ink is \(mine.box.height) pt tall, AppKit's own \
                     live toolbar button draws \(entry.symbol) \(reference.box.height) pt tall \
                     (ours \(mine.box), AppKit's \(reference.box))
                     """)
                 // Half-way to the nearest wrong weight on either side — see
                 // this file's header for the readings.
                 XCTAssertEqual(mine.weight / reference.weight, 1, accuracy: 0.05, """
-                    \(appearance.rawValue): \(id)'s stroke weighs \(mine.weight / reference.weight) of \
+                    \(look) \(appearance.rawValue): \(id)'s stroke weighs \(mine.weight / reference.weight) of \
                     the one AppKit's own live toolbar button draws for \(entry.symbol) \
                     (ours \(mine.weight) pt², AppKit's \(reference.weight) pt²) — another font \
                     weight, or another size the box assertions above name
                     """)
             }
+        }
         }
     }
 }

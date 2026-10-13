@@ -33,9 +33,10 @@ import HelmUI
 /// every segment, and what varies is only whether a second one joined it.
 ///
 /// **The band is the same arithmetic and it is read out of the same file.**
-/// 860 − 320 = 540 is the narrowest pane the settings window can be dragged to,
-/// the detail item's own 420 pt is the floor under that, and `HomebrewSplit`
-/// answers the top. Read rather than copied, so the day the band closes this
+/// 860 − 320 − 4 = 536 is the narrowest pane the shell's geometry allows (the
+/// window's minimum, the widest of `ShellGeometry.sidebarRange`, the card's gap to
+/// the trailing edge); the window is at that width only with a stored sidebar
+/// width, which nothing in the window writes, and nothing drags it. `HomebrewSplit` answers the top. Read rather than copied, so the day the band closes this
 /// fails and says the file is about a state nobody can reach instead of passing
 /// over a page that no longer has the problem.
 ///
@@ -43,7 +44,7 @@ import HelmUI
 /// `HomebrewViewModel.query` is `@Published`, not a page-local `@State`, but it
 /// still has to arrive the way a person types it — so the mounted
 /// `NSSearchField` is typed into and its change notification posted, which is
-/// what the bridge behind `.helmWindowToolbar` listens for. A test that only
+/// what `SettingsToolbar`'s search delegate listens for. A test that only
 /// filled `searchHits` would sit on an unmatched `searchedQuery` and read no
 /// section at all (`AvailableSection.of`), which is an absence that passes for
 /// the wrong reason; the row count is asserted before any action is counted
@@ -51,9 +52,10 @@ import HelmUI
 ///
 /// **And the typing must be a failure when it cannot happen.** The field is on
 /// the window's toolbar (`.helmWindowToolbar`), so the typing goes through
-/// `MountedRender.type`, which reads the control off the window. This used to
-/// be an `if let ... .first` over `mount.host`, which is precisely the shape
-/// that goes quiet: with the field gone from the toolbar the binding would
+/// `MountedRender.type`, which acts on the field the frame-view walk meets
+/// first, and the cell asserts that this is the field of the window's toolbar
+/// item before it types. This used to be an `if let ... .first` over
+/// `mount.host`, which is precisely the shape that goes quiet: with the field gone from the toolbar the binding would
 /// stay empty, `AvailableSection.of` would keep answering nil, and three
 /// readings would be compared on a page nobody had typed into — all of it
 /// green. So «a field was expected and there is none» is an `XCTFail` naming
@@ -68,10 +70,25 @@ import HelmUI
 ///
 /// **Moved here from `Tests/Modules/Homebrew/UITests`** — the search field
 /// `draw()` types into is now the real `NSSearchField` a live `SettingsToolbar`
-/// builds, and only `HelmAppTests` can attach one (`LivePageToolbarFixture`'s
+/// builds, and only `HelmAppTests` can attach one (`LivePageInTheToolbarFixture`'s
 /// own header says why a module's `UITests` cannot).
+///
+/// **The bar.** A real `SettingsToolbar` that `LivePageInTheToolbarFixture`
+/// attaches to the mount's window, built with the default lead
+/// `.sidebarSeparator`, not the app's `.spacer` build. The windows here are as
+/// narrow as 536 pt, and AppKit may put a toolbar item into its overflow at a
+/// width like that, so a failing precondition before the typing names the pane
+/// width and whether the search item is visible. **The look.** The cells count focus
+/// rings and lists and read no width or cell of the bar, so the settings are
+/// pinned in `setUp` (`PinnedBarSettings`: Flat, text tabs, a search that does
+/// not always collapse) to make the run the same each time.
 @MainActor
 final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     // MARK: - The fixture
 
@@ -117,11 +134,11 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
 
     // MARK: - The band
 
-    /// One integer assigned in `SettingsWindow.swift`, and a failure naming the
+    /// One integer assigned in `SettingsWindow.swift` (or the file named), and a failure naming the
     /// file when the pattern does not find exactly one.
     private func windowNumber(_ pattern: String, _ what: String,
+                              in path: String = "Sources/HelmApp/SettingsWindow.swift",
                               file: StaticString = #filePath, line: UInt = #line) -> CGFloat? {
-        let path = "Sources/HelmApp/SettingsWindow.swift"
         guard let text = try? RepoSource.text(of: path) else {
             XCTFail("\(path) could not be read", file: file, line: line)
             return nil
@@ -153,17 +170,18 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     /// Fails rather than skips when the band is empty: a skip reads as a pass in
     /// a failures-only summary.
     private func narrowBand(file: StaticString = #filePath, line: UInt = #line) -> [CGFloat] {
+        let geometry = "Sources/HelmApp/ShellGeometry.swift"
         guard let contentMin = windowNumber(#"minSize = NSSize\(width: ([0-9.]+)"#,
                                             "the window's minimum content width"),
-              let sidebarMax = windowNumber(#"sidebarMaximum: CGFloat = ([0-9.]+)"#,
-                                            "the sidebar's maximum thickness"),
-              let detailMin = windowNumber(#"detailItem\.minimumThickness = ([0-9.]+)"#,
-                                           "the detail pane's minimum thickness")
+              let sidebarMax = windowNumber(#"sidebarRange: ClosedRange<CGFloat> = [0-9.]+\.\.\.([0-9.]+)"#,
+                                            "the sidebar's widest width", in: geometry),
+              let inset = windowNumber(#"inset: CGFloat = ([0-9.]+)"#,
+                                       "the card's gap to the window's trailing edge", in: geometry)
         else { return [] }
         let split = threshold
         XCTAssertGreaterThan(split, 0, "no width in 200…1400 shows the inspector",
                              file: file, line: line)
-        let floor = max(detailMin, contentMin - sidebarMax)
+        let floor = contentMin - sidebarMax - inset
         guard floor < split else {
             XCTFail("""
                 the narrowest pane a person can reach is \(floor) pt and `HomebrewSplit` shows the \
@@ -194,7 +212,7 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
     /// **A live `SettingsToolbar` per call**, not a bare `MountedRender` — the
     /// search field this reads is the real `NSSearchField`
     /// `SettingsToolbar.makeSearchItem` builds, and only `HelmAppTests` can
-    /// attach one (`LivePageToolbarFixture`'s own header). Moved here from
+    /// attach one (`LivePageInTheToolbarFixture`'s own header). Moved here from
     /// `Tests/Modules/Homebrew/UITests` for exactly that reason.
     private func draw(_ hb: HomebrewViewModel, _ mvm: ModuleViewModel,
                       at width: CGFloat, segment: HomebrewViewModel.Segment,
@@ -202,9 +220,9 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
                       file: StaticString = #filePath, line: UInt = #line) -> Reading {
         hb.segment = segment
         hb.select(id)
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
-                                             selection: .module(HomebrewDescriptor.id.rawValue),
-                                             width: width, height: 700)
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
+                                                  selection: .module(HomebrewDescriptor.id.rawValue),
+                                                  width: width, height: 700)
         let mount = fixture.mount
         fixture.settle(25)
         if let query, expectsSearchField(typing: query, selecting: id) {
@@ -213,6 +231,20 @@ final class TheNarrowBandActsInEverySegmentTests: XCTestCase {
             // not the binding, so `hb.query` would stay empty, `AvailableSection.of`
             // would keep answering nil, and the section below would never
             // appear at all.
+            let item = mount.window?.toolbar?.items.compactMap { $0 as? NSSearchToolbarItem }.first
+            let seen = item.map { "the search item isVisible: \($0.isVisible)" }
+                ?? "the toolbar lists no search item"
+            XCTAssertNotNil(fixture.searchField, """
+                \(segment) at \(width) pt (pane width) with nothing selected: the fixture's window \
+                wears no toolbar that lists a search item, so there is no field of the toolbar to \
+                type into — \(seen)
+                """, file: file, line: line)
+            XCTAssertTrue(mount.searchField === fixture.searchField, """
+                \(segment) at \(width) pt (pane width): the frame-view walk behind \
+                `MountedRender.type` does not meet the toolbar's field — it would type into \
+                another control and every reading below would be of a page the toolbar's field \
+                never reached; \(seen)
+                """, file: file, line: line)
             XCTAssertTrue(mount.type(query, turns: 25), """
                 \(segment) at \(width) pt with nothing selected put no search field in the \
                 window's toolbar, so «\(query)» was never typed and every reading taken from \

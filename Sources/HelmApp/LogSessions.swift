@@ -7,11 +7,11 @@ import HelmUI
 
 // **What the Log page draws, derived from the lines and from nothing else.**
 //
-// The page shows one card per launch of the app. Nothing in the log file says
-// "launch" except the line `HelmLog.start` writes first, so a launch is read
-// out of the lines themselves — here, in pure functions, and not in the view:
-// a view cannot be handed a fixture, and a rule about where one launch ends and
-// the next begins is exactly what a fixture is for.
+// The page has a card for each launch of the app, and draws the newest of them
+// first. Nothing in the log file says "launch" except the line `HelmLog.start`
+// writes first, so a launch is read out of the lines themselves — here, in pure
+// functions, and not in the view: a view cannot be handed a fixture, and a rule
+// about where one launch ends and the next begins is exactly what a fixture is for.
 //
 // **Nothing here drops a line or moves one.** Every function below takes the
 // lines in the order they arrived and hands back the same lines in the same
@@ -419,8 +419,11 @@ enum LogSearch {
     }
 }
 
-/// Everything the page draws, computed once per read from the lines and the
-/// three things a person chose: how bad, which module, and what word.
+/// Everything the page has to draw, computed once per read from the lines and the
+/// three things a person chose: how bad, which module, and what word. The page
+/// draws the newest launches of it and the earlier ones on request
+/// (`drawn(rowsBefore:)`); the copy, the footer and the count of launches are
+/// over all of it.
 struct LogPresentation {
 
     /// A line, or a run of identical ones, as one row.
@@ -458,22 +461,50 @@ struct LogPresentation {
     let cards: [Card]
     /// **What «Copy log» puts on the pasteboard:** the lines the cards stand for, expanded — every folded repeat and every
     /// start-up line that passed the filters, in the order they arrived, and the
-    /// start line of every card drawn, because it is the card's own header and a
-    /// pasted launch without its version is not a report.
+    /// start line of every card in `cards`, drawn yet or not, because it is the
+    /// card's own header and a pasted launch without its version is not a report.
     let lines: [LogEntry]
     /// Launches in the tail, drawn or not.
     let launchCount: Int
-    /// **What the footer counts:** the lines on the page that passed the
-    /// filters — the rows, the start-up fold, and a start line only where it
-    /// passed them itself. Not `lines`: that is the copy set, which carries the
-    /// header of every drawn card whether or not it passed, and under
-    /// «Warnings» one more line per card than anything on the page. Not what the
-    /// badges count either: a badge counts **all** of its launch's lines
-    /// (`Card.warnings`), so with a filter on the two differ by design.
+    /// **What the footer counts:** the lines of every card in `cards`, drawn yet
+    /// or not, that passed the filters — the rows, the start-up fold, and a start
+    /// line only where it passed them itself. Not `lines`: that is the copy set,
+    /// which carries the header of every card in `cards` whether or not it
+    /// passed, and under «Warnings» one more line per card than the footer
+    /// counts. Not what the badges count either: a badge counts **all** of its
+    /// launch's lines (`Card.warnings`), so with a filter on the two differ by design.
     let shown: Int
 
     var isEmpty: Bool { cards.isEmpty }
     var newestID: LogEntry.ID? { cards.last?.newestID }
+
+    /// **The launches the page draws: the newest, whole, and before it the
+    /// nearest older ones, whole, until those older ones hold at least
+    /// `rowsBefore` rows between them** (a card counts its rows and its start-up
+    /// rows). Every card when they hold fewer, and only the newest when
+    /// `rowsBefore` is 0 or below. A card is never split, which would put a
+    /// header and its fold over rows that begin mid-launch, and a launch not drawn
+    /// takes no height and is no estimate (a drawn card of more than
+    /// `LogView.lazyAbove` rows is lazy, and its height is one).
+    ///
+    /// **The newest card is outside the count** because it is the only one that
+    /// grows. Counted from the end, the cut would move down as lines arrive and
+    /// take a whole card away from under a reader standing in it; counted over
+    /// the older cards alone, which never grow, a line that enters the newest
+    /// launch cannot move the cut, and the oldest card shrinking can only widen
+    /// it. A line that opens a new launch can: the launch that was the newest is
+    /// counted from then on, and the oldest launches drawn may leave the page
+    /// from above.
+    func drawn(rowsBefore: Int) -> ArraySlice<Card> {
+        guard !cards.isEmpty else { return cards[...] }
+        var first = cards.count - 1
+        var held = 0
+        while first > 0, held < rowsBefore {
+            first -= 1
+            held += cards[first].rows.count + cards[first].startup.count
+        }
+        return cards[first...]
+    }
 
     static func build(_ entries: [LogEntry], minimumLevel: LogLevel, categories: Set<String>,
                       query: String, language: String = AppLanguage.current.rawValue,
@@ -490,11 +521,11 @@ struct LogPresentation {
             let passingIDs = Set(passing.map(\.id))
             let burst = session.startup.filter { passingIDs.contains($0.id) }
             let rest = session.rest.filter { passingIDs.contains($0.id) }
-            // A launch with nothing to show under the filters is not drawn — the
+            // A launch with nothing to show under the filters gets no card — the
             // start line alone never earns a card while a filter is on, since
             // it is the header and not a finding — unless the search names what
             // the header says: its version, its day. With no filter every launch
-            // is drawn, even one that has only just said it started.
+            // gets a card, even one that has only just said it started.
             let named = LogSearch.isActive(query)
                 && LogSearch.matches(header: session, query, drawnTime: { HelmDates.dayAndMinute($0) })
             guard !filtering || !burst.isEmpty || !rest.isEmpty || named else { continue }

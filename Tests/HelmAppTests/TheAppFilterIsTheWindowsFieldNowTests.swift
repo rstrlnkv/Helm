@@ -13,7 +13,7 @@ import Module_Uninstaller_Engine
 /// **Moved here 2026-09-24, from `Tests/Modules/Uninstaller/UITests`, when
 /// `UninstallerSettingsPage` moved off `.helmSearchable` onto
 /// `.helmWindowToolbar`.** The field lives in the window's own `NSToolbar`
-/// now (`SettingsToolbar`, `HelmApp`-only — `LivePageToolbarFixture`'s own
+/// now (`SettingsToolbar`, `HelmApp`-only — `LivePageInTheToolbarFixture`'s own
 /// header says why a module's own `UITests` target has no way to build one),
 /// so a check that types into it has to live where that toolbar can be built:
 /// `Tests/HelmAppTests`, per `CLAUDE.md`'s "app-layer checks in
@@ -38,8 +38,22 @@ import Module_Uninstaller_Engine
 /// structures rather than three different drawings — a pixel comparison of the
 /// same three states would also pass over a list that redrew for any other
 /// reason, and over one that drew the same rows in a different order.
+///
+/// **The bar.** A real `SettingsToolbar` that `LivePageInTheToolbarFixture`
+/// attaches to the mount's window, built with the default lead
+/// `.sidebarSeparator`, not the app's `.spacer` build. Each row asserts that
+/// `MountedRender.type`, which acts on the field the frame-view walk meets
+/// first, acts on the field of that toolbar's search item before it types.
+/// **The look.** The rows count list rows and read no width or cell of the bar,
+/// so the settings are pinned in `setUp` (`PinnedBarSettings`: Flat, text tabs,
+/// a search that does not always collapse) to make the run the same each time.
 @MainActor
 final class TheAppFilterIsTheWindowsFieldNowTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     /// Three names with nothing in common, so a filter that matches one cannot
     /// be a filter that matched a shared substring.
@@ -66,7 +80,7 @@ final class TheAppFilterIsTheWindowsFieldNowTests: XCTestCase {
         }
     }
 
-    private var fixture: LivePageToolbarFixture?
+    private var fixture: LivePageInTheToolbarFixture?
 
     override func tearDown() {
         fixture?.drop()
@@ -78,23 +92,23 @@ final class TheAppFilterIsTheWindowsFieldNowTests: XCTestCase {
     /// already answered — an unanswered list draws a statement and no rows at
     /// all, and every count below would be zero for a reason that has nothing
     /// to do with the filter.
-    private func page() async -> LivePageToolbarFixture {
+    private func page() async -> LivePageInTheToolbarFixture {
         let transport = AppsStub(apps: Self.apps)
         let vm = ModuleViewModel(transport: transport)
         let uvm = UninstallerViewModel.shared(vm: vm)
         await uvm.loadAppsIfNeeded()
         XCTAssertEqual(uvm.apps.count, Self.apps.count,
                        "precondition: the fixture's apps never reached the view model")
-        let fixture = LivePageToolbarFixture(UninstallerSettingsPage(vm: vm),
-                                             selection: .module(UninstallerDescriptor.id.rawValue),
-                                             width: 845, height: 700)
+        let fixture = LivePageInTheToolbarFixture(UninstallerSettingsPage(vm: vm),
+                                                  selection: .module(UninstallerDescriptor.id.rawValue),
+                                                  width: 845, height: 700)
         fixture.settle(30)
         self.fixture = fixture
         return fixture
     }
 
     /// One row of the Apps tab's `List`, whatever is drawn inside it.
-    private func rows(_ fixture: LivePageToolbarFixture) -> Int {
+    private func rows(_ fixture: LivePageInTheToolbarFixture) -> Int {
         fixture.mount.host.everyView.filter { $0.appKitClassName == "ListTableRowView" }.count
     }
 
@@ -102,11 +116,16 @@ final class TheAppFilterIsTheWindowsFieldNowTests: XCTestCase {
     func testTypingInTheWindowsFieldNarrowsThePagesList() async {
         let fixture = await page()
 
-        XCTAssertNotNil(fixture.mount.searchField, """
+        XCTAssertNotNil(fixture.searchField, """
             the Apps tab put no search field in the window's toolbar, so nothing below is typed \
             into anything and every count is of a page nobody touched. That is the quiet way \
             this check dies: `toolbarContent`'s `search:` not reaching the window at all is the \
             whole wiring
+            """)
+        XCTAssertTrue(fixture.mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` does not meet the toolbar's field — \
+            it would type into another control and every count below would be of a page the \
+            toolbar's field never reached
             """)
         XCTAssertEqual(rows(fixture), Self.apps.count, """
             precondition: the unfiltered list draws \(rows(fixture)) rows for \
@@ -146,7 +165,12 @@ final class TheAppFilterIsTheWindowsFieldNowTests: XCTestCase {
     /// straight into Foundation.
     func testTheFilterSurvivesAnEmptyAHugeAndARepeatedTerm() async {
         let fixture = await page()
-        XCTAssertNotNil(fixture.mount.searchField, "the Apps tab put no search field in the toolbar")
+        XCTAssertNotNil(fixture.searchField, "the Apps tab put no search field in the toolbar")
+        XCTAssertTrue(fixture.mount.searchField === fixture.searchField, """
+            the frame-view walk behind `MountedRender.type` does not meet the toolbar's field — \
+            it would type into another control and every count below would be of a page the \
+            toolbar's field never reached
+            """)
 
         XCTAssertTrue(fixture.mount.type(String(repeating: "a", count: 10_000), turns: 20),
                       "the field went away under a 10 000-character term")

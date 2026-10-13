@@ -24,12 +24,13 @@ import HelmContract
 /// order (2026-09-22) hid the button off Обновления rather than mounting it
 /// disabled everywhere, through one `NSToolbarItem` per action and
 /// `NSToolbarItem.isHidden` — which this file rewrote against 2026-09-23,
-/// when the morph pass (owner item 1) replaced every per-action item with a
+/// when the morph pass replaced every per-action item with a
 /// single `helm.actions` item hosting `HelmToolbarActionsCapsule`
 /// (`Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`): there is no
 /// longer an `NSToolbarItem` of upgrade all's own to read `isHidden` off, so
-/// this file now reads the AX tree the capsule actually draws, and the
-/// overflow menu form that item answers for when it does not fit — the
+/// this file now reads the capsule's own model (`capsuleShows`' header says
+/// why not its AX tree), and the overflow menu form that item answers for when
+/// it does not fit — the
 /// `SettingsToolbar`, live, is still the only place that can be built at all
 /// (`CLAUDE.md`'s "app-layer checks in `Tests/HelmAppTests`").
 @MainActor
@@ -59,7 +60,7 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
         }
     }
 
-    private var fixture: LivePageToolbarFixture?
+    private var fixture: LivePageInTheToolbarFixture?
 
     override func tearDown() {
         fixture?.drop()
@@ -91,9 +92,14 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
     /// screen (measured: `accessibilityChildren()` answered empty all the way
     /// down), so this reads the capsule's own model directly, through
     /// `@testable import HelmUI`.
-    private func capsuleShows(_ label: String, in view: NSView) -> Bool {
-        guard let hosting = view as? NSHostingView<HelmToolbarActionsCapsule> else { return false }
-        let model = hosting.rootView.model
+    ///
+    /// **The capsule is read from the view's root through `ActionsCapsuleReading`**, which walks the
+    /// environment writes `SettingsToolbar.actionsHost(_:for:)` puts around it. A view with no capsule in
+    /// it throws, so it is never read as a button that is not shown: `false` here means a capsule that was
+    /// read and has no such entry visible.
+    private func capsuleShows(_ label: String, in view: NSView,
+                              file: StaticString = #filePath, line: UInt = #line) throws -> Bool {
+        let model = try ActionsCapsuleReading.capsule(inHost: view, context: "Upgrade All", file: file, line: line).model
         guard let entry = model.declared.first(where: { $0.title == label }) else { return false }
         return model.visibleIDs.contains(entry.id)
     }
@@ -102,9 +108,13 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
     /// own `isEnabled`, not its visibility: Homebrew shows Upgrade All on
     /// every visit to Обновления and dims it until something is outdated,
     /// rather than hiding it in between.
-    private func capsuleEnabled(_ label: String, in view: NSView) -> Bool? {
-        guard let hosting = view as? NSHostingView<HelmToolbarActionsCapsule> else { return nil }
-        return hosting.rootView.model.declared.first(where: { $0.title == label })?.isEnabled
+    ///
+    /// A view with no capsule throws; `nil` means a capsule that was read and declares no entry of this
+    /// title.
+    private func capsuleEnabled(_ label: String, in view: NSView,
+                                file: StaticString = #filePath, line: UInt = #line) throws -> Bool? {
+        try ActionsCapsuleReading.capsule(inHost: view, context: "Upgrade All", file: file, line: line).model.declared
+            .first(where: { $0.title == label })?.isEnabled
     }
 
     func testTheItemCountIsTheSameOnEveryReasonTheButtonWouldOtherwiseHaveLeft() async throws {
@@ -115,7 +125,7 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
 
         // Installed: the button never applied here even before this change.
         hb.segment = .installed
-        let fixture = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
+        let fixture = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
                                              selection: .module(HomebrewDescriptor.id.rawValue),
                                              width: 1060, height: 700)
         fixture.settle(25)
@@ -123,7 +133,8 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
         let installedCount = try XCTUnwrap(toolbarItemCount(), "no toolbar to read a count off")
         let installedActions = try XCTUnwrap(actionsItem(), "no single actions item on the toolbar")
         let installedView = try XCTUnwrap(installedActions.view, "the actions item has no hosted view")
-        XCTAssertFalse(capsuleShows(HbStr.upgradeAll, in: installedView),
+        let installedShows = try capsuleShows(HbStr.upgradeAll, in: installedView)
+        XCTAssertFalse(installedShows,
                        "Установленные is not Обновления — Upgrade All must not be in the capsule here")
         XCTAssertNotEqual(installedActions.menuFormRepresentation?.title, HbStr.upgradeAll, """
             the overflow menu form still names Upgrade All on Установленные — \
@@ -139,9 +150,11 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
         await hb.refreshOutdated()
         fixture.settle(25)
         let updatesEmptyCount = try XCTUnwrap(toolbarItemCount())
-        XCTAssertTrue(capsuleShows(HbStr.upgradeAll, in: installedView),
+        let emptyShows = try capsuleShows(HbStr.upgradeAll, in: installedView)
+        let emptyEnabled = try capsuleEnabled(HbStr.upgradeAll, in: installedView)
+        XCTAssertTrue(emptyShows,
                       "Обновления must show Upgrade All whether or not anything is outdated")
-        XCTAssertEqual(capsuleEnabled(HbStr.upgradeAll, in: installedView), false, """
+        XCTAssertEqual(emptyEnabled, false, """
             Upgrade All is enabled with nothing outdated to upgrade
             """)
 
@@ -168,9 +181,11 @@ final class TheUpgradeAllButtonDoesNotChangeTheToolbarsItemCountTests: XCTestCas
 
         let updatesActions = try XCTUnwrap(actionsItem())
         let updatesView = try XCTUnwrap(updatesActions.view)
-        XCTAssertTrue(capsuleShows(HbStr.upgradeAll, in: updatesView),
+        let outdatedShows = try capsuleShows(HbStr.upgradeAll, in: updatesView)
+        let outdatedEnabled = try capsuleEnabled(HbStr.upgradeAll, in: updatesView)
+        XCTAssertTrue(outdatedShows,
                       "Обновления with something outdated is exactly where Upgrade All must show")
-        XCTAssertEqual(capsuleEnabled(HbStr.upgradeAll, in: updatesView), true,
+        XCTAssertEqual(outdatedEnabled, true,
                       "something is outdated and nothing is running — Upgrade All must be enabled")
         XCTAssertTrue(installedActions === updatesActions, """
             a different NSToolbarItem answers for the actions capsule after the segment moved — \

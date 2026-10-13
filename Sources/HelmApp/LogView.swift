@@ -5,7 +5,7 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-/// The log, while it is being written — one card per launch of the app.
+/// The log, while it is being written — a card for each launch of the app.
 ///
 /// Not a diagnostics dashboard: it invents no figure and computes nothing it
 /// cannot say how. It shows the lines the app already writes — the same `write`,
@@ -16,10 +16,14 @@ import HelmUI
 /// **Folded, never edited.** A launch is a card (`LogSessions`), the burst of
 /// lines a launch writes while it switches its modules on is one fold, and a line
 /// written again and again in a row is one row with a count. Every one of those
-/// is drawn from the lines in the order they arrived, none is dropped, and
-/// «Copy log» hands back the lines expanded, in the file's own format
-/// (`LogPresentation.lines`). What the page decides is what to show first; what
-/// it says is what the file holds.
+/// is made from the lines in the order they arrived and none is dropped from the
+/// presentation, the footer's counts or «Copy log», which hands back the lines
+/// expanded, in the file's own format (`LogPresentation.lines`). What is *drawn*
+/// of it is the newest launches, whole, and the earlier ones as the reader comes
+/// up to them (`drawnAtOpen`, `LogReaderPlace.drawEarlier`): a stack lays out every
+/// row it is given, so the rows laid out at open are those of the newest launches
+/// and not of the whole tail. What the page decides is what to show first; what it
+/// says is what the file holds.
 ///
 /// Shown on every build, because this is also where the log is switched on. It
 /// used to be dev-only, and the switch lived in Settings under "Diagnostics" —
@@ -47,6 +51,22 @@ struct LogView: View {
     var source: () -> [LogEntry] = { HelmLog.shared.recentEntries() }
     var storedLog: () -> Bool = { HelmLog.anyFileExists() }
 
+    /// Where the reader is, when the caller holds it: a measurement of this page
+    /// reads how many rows stand drawn (`LogReaderPlace.drawnRows`) from the one
+    /// object every row reports to, and the page's own `@State` is out of its
+    /// reach. Nil — what the app passes — is the page's own place, made with the
+    /// page and gone with it. A place handed in belongs to the caller: the page
+    /// forgets and seeks through it as through its own, its rows leave it as they
+    /// are unmounted, and what the caller keeps after the page is gone is the
+    /// closures the page set on it.
+    var readerPlace: LogReaderPlace?
+
+    /// The Settings page's tabs, when the page is shown as one of them. They
+    /// take the bar's one switcher slot, and the level filter that stands there
+    /// when none are handed becomes the first action, before the module filter.
+    /// Nil leaves the bar as it is.
+    var settingsTabs: HelmPageToolbarContent?
+
     /// Polled rather than subscribed. A log has no interesting event to observe
     /// — it has a tail — and one timer that exists while the page is on screen
     /// is cheaper to reason about than a stream that has to be finished.
@@ -59,8 +79,17 @@ struct LogView: View {
     @State private var chosen: Set<String> = []
     @State private var query = ""
     @State private var following = true
-    /// Where the reader is, by the line (`LogReaderPlace`).
-    @State private var place = LogReaderPlace()
+    /// Where the reader is, by the line (`LogReaderPlace`), when the caller holds
+    /// none (`readerPlace`).
+    @State private var ownPlace = LogReaderPlace()
+    private var place: LogReaderPlace { readerPlace ?? ownPlace }
+    /// How many times `drawnAtOpen` is doubled to give the figure that the launches
+    /// before the newest are drawn to hold (`drawn(rowsBefore:)`). Raised by
+    /// `LogReaderPlace.drawEarlier` alone, to the nearest count at which a launch
+    /// more is drawn (`earlierAfterAsk`) and not at all when none is left, never
+    /// lowered; a filter changing does not clear it. It lasts as long as the page's
+    /// `@State` does, and stays 0 while nobody rests near the top of what is drawn.
+    @State private var earlier = 0
     /// The launches whose start-up fold is open, by the id of their first line.
     @State private var openStartups: Set<LogEntry.ID> = []
     @State private var tick: RepeatingTick?
@@ -119,11 +148,9 @@ struct LogView: View {
         // the header in the window's toolbar is drawn by `helmToolbarBackdrop`
         // a window away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
-        .helmPageBar(title: AppStr.logPane)
-        // The token is the page's own key, the one `SettingsToolbar.pageKey`
-        // answers for `.log`. Declared unconditionally: the toolbar swaps a
-        // whole bar when the *shape* of what a page declares changes, and this
-        // page's shape never does.
+        .helmPageBar(title: AppStr.settingsPane)
+        // The token is the page's own key, the one `ShellPageBar.pageKey(for:)`
+        // answers for `.log`. Declared unconditionally: this page's shape never changes.
         .helmWindowToolbar(toolbarContent(page), token: "log")
         .onAppear {
             refresh()
@@ -142,15 +169,47 @@ struct LogView: View {
 
     // MARK: - The window's toolbar
 
-    /// The three tabs and the level each one means. One declaration, so the
-    /// toolbar's segments and the filter they set cannot disagree.
-    private static let levelTabs: [(id: String, level: LogLevel)] = [
-        ("all", .info), ("warn", .warn), ("error", .error),
-    ]
+    /// The three levels by id. One declaration, so the toolbar's segments, the
+    /// level menu's items and the filter they set cannot disagree.
+    private static var levelTabs: [(id: String, level: LogLevel, title: String, symbol: String)] {
+        [("all", .info, AppStr.logLevelAll, "list.bullet"),
+         ("warn", .warn, AppStr.logLevelWarnings, "exclamationmark.triangle"),
+         ("error", .error, AppStr.logLevelErrors, "xmark.octagon")]
+    }
 
-    /// **What the page asks of the window's toolbar**, in one place: the level
-    /// as the centred tabs, then the capsule — module filter, Follow, Copy and
-    /// the «More actions» menu — and the search.
+    /// The level in force, as one of the three.
+    private var levelInForce: (id: String, level: LogLevel, title: String, symbol: String) {
+        Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
+    }
+
+    /// **What the page asks of the window's toolbar**, in one place:
+    /// `levelToolbarContent` as it stands when no tabs were handed; with
+    /// `settingsTabs`, those tabs centred and the level as the first action of
+    /// the capsule.
+    private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
+        var content = levelToolbarContent(page)
+        guard let settingsTabs else { return content }
+        content.tabs = settingsTabs.tabs
+        content.selectedTab = settingsTabs.selectedTab
+        content.actions.insert(levelAction, at: 0)
+        return content
+    }
+
+    /// The level filter as an action: its title is the level in force, its
+    /// items are the three levels, the same words the tabs say.
+    private var levelAction: HelmToolbarAction {
+        HelmToolbarAction(
+            id: "level",
+            title: levelInForce.title,
+            symbol: "list.bullet",
+            menu: Self.levelTabs.map { tab in
+                HelmToolbarMenuItem(id: tab.id, title: tab.title,
+                                    isOn: tab.level == minimumLevel) { minimumLevel = tab.level }
+            })
+    }
+
+    /// The level as the centred tabs, then the capsule — module filter, Follow,
+    /// Copy and the «More actions» menu — and the search.
     ///
     /// Follow is a toggle with a face: its state is its glyph (an open eye when
     /// following, a slashed one when not) and never a tint. The old glyph button
@@ -158,15 +217,11 @@ struct LogView: View {
     /// state carried by colour alone is not read by everyone. Its word is in the
     /// tooltip and the accessibility label, as it always was, and what it is
     /// doing is the accessibility value.
-    private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
+    private func levelToolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: "all", title: AppStr.logLevelAll, symbol: "list.bullet"),
-                   HelmToolbarTab(id: "warn", title: AppStr.logLevelWarnings,
-                                  symbol: "exclamationmark.triangle"),
-                   HelmToolbarTab(id: "error", title: AppStr.logLevelErrors,
-                                  symbol: "xmark.octagon")],
+            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
             selectedTab: Binding(
-                get: { Self.levelTabs.first { $0.level == minimumLevel }?.id ?? "all" },
+                get: { levelInForce.id },
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),
             actions: [
                 // Built from what has arrived, so it names the modules that
@@ -272,7 +327,7 @@ struct LogView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                        ForEach(page.cards) { card in
+                        ForEach(page.drawn(rowsBefore: Self.drawnAtOpen << earlier)) { card in
                             cardView(card)
                         }
                         Color.clear.frame(height: 0).id(Self.endMarker)
@@ -347,6 +402,14 @@ struct LogView: View {
                     place.following = { following }
                     place.scrollToLine = { proxy.scrollTo($0, anchor: UnitPoint(x: 0, y: $1)) }
                     place.scrollToEnd = { proxy.scrollTo(Self.endMarker, anchor: .bottom) }
+                    // Read when it is asked, not when it is set: the count and the
+                    // lines are the page's now, and a closure that held the values
+                    // of this `onAppear` would answer from them for ever. The
+                    // presentation is built here, once per ask: an ask happens at
+                    // rest, and a body or a scroll event never builds a second one.
+                    place.drawEarlier = {
+                        if let next = Self.earlierAfterAsk(earlier, in: presented) { earlier = next }
+                    }
                     guard following, !page.isEmpty else { return }
                     place.seekTheEnd()
                     proxy.scrollTo(Self.endMarker, anchor: .bottom)
@@ -412,10 +475,64 @@ struct LogView: View {
     /// estimates the height of everything the view has scrolled past, and the
     /// estimate is re-made on every arrival and fold. Lazy is what makes a
     /// thousand rows cheap, so it stays for the card too large to draw whole. The
-    /// figure is a ceiling chosen, not measured here: what mounting that many plain
-    /// rows costs is what `testTheMainThreadCostOfOneArrivingLineOnScreen`
+    /// figure is chosen, not measured here: what mounting that many plain rows
+    /// costs is what `testTheMainThreadCostOfOneArrivingLineOnScreen`
     /// (`HELM_BENCH=1`, in `TheLogHoldsAReaderThroughWhatNobodyTriedTests`) reads.
+    /// It counts the rows of one card that is drawn: the launches not drawn
+    /// (`drawnAtOpen`) are not counted and are not in the page. At open a log of
+    /// many launches, each of at most this many rows, draws fewer than `drawnAtOpen`
+    /// plus twice this many: the newest, the older ones that hold fewer than
+    /// `drawnAtOpen` between them, and the one that takes them past it. The bound
+    /// depends on both figures, and a log can come within a row of it: launches of
+    /// 400, 400, 99 and 400 rows, oldest first, draw 899 at open, by hand over
+    /// `drawn(rowsBefore:)`, not by a run.
     static let lazyAbove = 400
+
+    /// **How many rows the launches before the newest hold, at least, when the page
+    /// opens** (`LogPresentation.drawn(rowsBefore:)`): whole launches are added,
+    /// nearest first, while those added hold fewer than this, so the figure is a
+    /// threshold reached or passed, and the last launch added may take them well
+    /// past it. The newest launch is outside the count and is drawn whole whatever
+    /// its size. Chosen, not measured here: what it keeps from growing with the log
+    /// is the number of rows laid out at open, which
+    /// `TheLogDrawsTheNewestLaunchesFirstTests` counts, in rows and never in time.
+    /// Each doubling of it (`earlier`) is a step of an ask for earlier launches.
+    static let drawnAtOpen = 100
+
+    /// The count of doublings of `drawnAtOpen` at which a tail of `HelmLog.tailLimit`
+    /// lines is wholly drawn: the first one that reaches that figure. A tail at its
+    /// cap therefore takes at most this many asks that write anything, each raising
+    /// `earlier` by one or more, and the next one finds every launch drawn. Nothing
+    /// in the page reads it; the bound is a consequence of the figures, and
+    /// `TheLogDrawsTheNewestLaunchesFirstTests` reads it.
+    static let earlierCeiling: Int = {
+        var asks = 0
+        while drawnAtOpen << asks < HelmLog.tailLimit { asks += 1 }
+        return asks
+    }()
+
+    /// **What `earlier` becomes when the reader asks for earlier launches.** The
+    /// nearest count above it at which `page` draws a launch more than it does now;
+    /// nil when every launch is drawn already, and then nothing is written, so the
+    /// page is not redrawn and its toolbar not declared again by an ask that has
+    /// nothing to give. A doubling that adds no launch is stepped over, never
+    /// written: a page that drew nothing new would not move, nothing would rest,
+    /// and nothing would ask again, which leaves a reader at a top that is not the
+    /// log's. The loop ends because `drawn(rowsBefore:)` never draws fewer with a
+    /// larger figure and draws every launch once the figure passes the rows the
+    /// page holds, and because `drawnAtOpen << next` grows with `next`. The shift
+    /// grows only while it does not overflow, and the function is not defined to
+    /// answer for a count past that: `earlier` starts at zero and is written only
+    /// with this function's answer, each answer the nearest count that adds a
+    /// launch, so the page never hands it such a count. By the shift's semantics,
+    /// not by a run in Swift, the shift of 100 is positive and growing up to 56.
+    static func earlierAfterAsk(_ earlier: Int, in page: LogPresentation) -> Int? {
+        let now = page.drawn(rowsBefore: drawnAtOpen << earlier).count
+        guard now < page.cards.count else { return nil }
+        var next = earlier + 1
+        while page.drawn(rowsBefore: drawnAtOpen << next).count == now { next += 1 }
+        return next
+    }
 
     /// The content's own coordinates, which the rows report their place in.
     private static let contentSpace = "helm.log.content"
@@ -581,9 +698,9 @@ struct LogView: View {
     }
 
     /// Whether the file can hold lines the page does not: the tail is full, so
-    /// the oldest went to make room, and there is a file. A short log shows
-    /// everything it has, and saying «older lines are in the file» over it
-    /// would be a sentence about lines that do not exist.
+    /// the oldest went to make room, and there is a file. A tail that is not full
+    /// holds everything the file has, and saying «older lines are in the file» over
+    /// it would be a sentence about lines that do not exist.
     static func olderLinesExist(entryCount: Int, storedLog: Bool) -> Bool {
         storedLog && entryCount >= HelmLog.tailLimit
     }

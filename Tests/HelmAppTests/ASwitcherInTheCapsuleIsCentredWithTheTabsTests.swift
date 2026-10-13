@@ -73,7 +73,7 @@ final class ASwitcherInTheCapsuleIsCentredWithTheTabsTests: XCTestCase {
     private static let tabsID = NSToolbarItem.Identifier("helm.tabs")
     private static let actionsID = NSToolbarItem.Identifier("helm.actions")
 
-    private var fixtures: [LivePageToolbarFixture] = []
+    private var fixtures: [LivePageInTheToolbarFixture] = []
     private var windows: [NSWindow] = []
     private var toolbars: [SettingsToolbar] = []
 
@@ -95,7 +95,7 @@ final class ASwitcherInTheCapsuleIsCentredWithTheTabsTests: XCTestCase {
     /// Hosts declares the switcher on both tabs — shown on SSH, out of the
     /// capsule's visible set on Keys — so the capsule is centred on both.
     func testHostsCentresTheCapsuleBesideTheTabsOnBothOfItsTabs() throws {
-        let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
+        let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
                                            selection: .module(HostsDescriptor.id.rawValue),
                                            width: 1060, height: 700)
         fixtures.append(hosts)
@@ -125,7 +125,7 @@ final class ASwitcherInTheCapsuleIsCentredWithTheTabsTests: XCTestCase {
     func testHomebrewCentresItsTabsAlone() async throws {
         let mvm = ModuleViewModel(transport: InstalledBrew())
         await HomebrewViewModel.shared(vm: mvm).loadIfNeeded()
-        let homebrew = LivePageToolbarFixture(HomebrewSettingsPage(vm: mvm),
+        let homebrew = LivePageInTheToolbarFixture(HomebrewSettingsPage(vm: mvm),
                                               selection: .module(HomebrewDescriptor.id.rawValue),
                                               width: 1060, height: 700)
         fixtures.append(homebrew)

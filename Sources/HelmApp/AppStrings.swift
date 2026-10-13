@@ -22,13 +22,20 @@ enum AppStr {
     }
     /// The Appearance row choosing how a page's header sits in the window's
     /// toolbar, and its two answers (`PageBarStyle`) — the same three words
-    /// head the toolbar's own right-click menu (`SettingsToolbar.barMenuItems`).
+    /// head the toolbar's own right-click menu (`ShellBarMenu.items`).
     /// The owner's own words for the two shapes: the module's plate and name,
     /// or AppKit's plain window title — with its icon or without it. Title
     /// case, like AppKit's own items beside them ("Icon Only").
     static var pageBar: String { L("Page header") }
     static var pageBarWithIcon: String { L("With Icon") }
     static var pageBarWithoutIcon: String { L("Without Icon") }
+    /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
+    /// macOS's own name for its material, spelled as System Settings spells it.
+    static var barAppearanceFlat: String { L("Flat") }
+    static var barAppearanceLiquidGlass: String { L("Liquid Glass") }
+    /// The General row choosing between them (`BarAppearanceRow`); the bar's menu heads the same two
+    /// answers with `appearance`.
+    static var barAppearanceTitle: String { L("Toolbar style") }
     /// The toolbar menu's switch for resting the search as its magnifier at
     /// every width (`AppSettings.alwaysCollapseSearch`) — shaped like Music's
     /// own "Always Show Artwork"; "Search" is AppKit's own word for the field.
@@ -61,6 +68,9 @@ enum AppStr {
     }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings") }
+    /// The first of the Settings page's three tabs. Not "General": that word is
+    /// a glyph category's name, another meaning, and the table is keyed by English.
+    static var settingsTabGeneral: String { L("Basics") }
     /// The light/dark control, which macOS itself calls «Appearance» — the same
     /// word as the section it now sits in. A section and its first row reading
     /// identically is how a person stops seeing the heading at all, so the row
@@ -459,6 +469,18 @@ enum AppStr {
     static var moduleBlockedByPermission: String {
         L("Switched on, but macOS is withholding what it needs")
     }
+
+    /// The value a blocked module's row carries after its name, so it names no
+    /// subject of its own.
+    static var moduleRowBlockedByPermission: String {
+        L("macOS is withholding a needed permission")
+    }
+
+    /// The chevron beside the sidebar's foot row, and the row that takes its
+    /// place when the sidebar is narrowed to its glyphs.
+    static var hideSidebar: String { L("Hide Sidebar") }
+    static var showSidebar: String { L("Show Sidebar") }
+
     // MARK: - The live log
 
     static var logPane: String { L("Log") }
@@ -692,16 +714,6 @@ enum AppStr {
     static var menuBarNote: String {
         L("The icon is white when idle and takes on the colour of whichever module is active.")
     }
-
-    /// The sidebar's last group of modules: the ones somebody switched off.
-    ///
-    /// Not `L("Off")`, which Layout's sound setting already owns and which
-    /// seven languages have translated as the state of *that* — one English key
-    /// means one thing.
-    static func switchedOffSection(language: AppLanguage = AppLanguage.current) -> String {
-        L("Switched off", language: language)
-    }
-    static var switchedOffSection: String { switchedOffSection() }
 
     /// A section's heading: the name somebody typed, or its seed translated.
     ///

@@ -28,7 +28,7 @@ import XCTest
 ///
 /// `NSHostingController` with `sceneBridgingOptions = [.toolbars]`, a
 /// `.fullSizeContentView` mask and `titlebarAppearsTransparent` — the three
-/// things `SettingsWindow` and `SettingsSplitViewController` set. The last one
+/// things `SettingsWindow` and `SettingsShellViewController` set. The last one
 /// is load-bearing twice over: it is what withholds the system's own scroll
 /// edge effect (`TheSystemsScrollEdgeEffectAttachesTests`), which is why Helm
 /// draws this band at all, and it is what gives the pane a 52 pt top safe area
@@ -73,7 +73,7 @@ final class TheWindowsBandReadsTheDeclarationTests: XCTestCase {
                 }
             }
             // Applied here, outside the page and inside the window, exactly
-            // where `SettingsSplitViewController` applies it.
+            // where `SettingsShellViewController.makeShell` applies it.
             .helmToolbarBackdrop()
             // macOS 27's band, named rather than read off this Mac: on 26 the
             // band is the system's and there is nothing of Helm's to read

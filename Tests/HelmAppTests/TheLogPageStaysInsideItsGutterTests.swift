@@ -25,11 +25,10 @@ import XCTest
 @MainActor
 final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
 
-    /// The pane at `contentMinSize` with the default sidebar — the narrowest the
-    /// window can be made without also dragging the divider.
+    /// A pane of 645 pt: under the narrowest the window reaches with no stored width (`contentMinSize` less
+    /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`); a stored sidebar width, which nothing in the window writes, is what reaches the narrower.
     private let narrowest: CGFloat = 645
-    /// And with the divider dragged to its stop: `contentMinSize` 860 less the
-    /// sidebar at `sidebarMaximum` (320) and the split view's own rule.
+    /// And 539 pt, narrower still: what a 320 pt sidebar would leave.
     private let narrowestWithWidestSidebar: CGFloat = 539
 
     override func tearDown() {

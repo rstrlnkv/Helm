@@ -50,7 +50,6 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // the checkout, the accident ended, and the guard said what had always
         // been true — the tree does not own this name.
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
-        "NSVisualEffectView": "AppKit's material view, named where the documents say the settings sidebar deliberately draws none — `NSSplitViewController` supplies the glass and one of these would block it",
         // Lowercase, and only visible to this check since it stopped skipping
         // that half of the namespace. A program the documents name because a
         // script runs it, and a SwiftUI member named in a passage

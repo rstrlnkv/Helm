@@ -10,8 +10,8 @@ import Module_Uninstaller_Engine
 
 /// **Switching a page's tab changes its content at once, on every module page
 /// that has a tab.** The owner's decision, 2026-09-30: «вкладки везде
-/// переключаются резко». The toolbar switcher's own selection slide is AppKit's
-/// and is not content; what is held here is the page under it.
+/// переключаются резко». The toolbar switcher's pick slides to the pressed tab
+/// (`HelmFlatSegmentedCell.slide`) and is not content; what is held here is the page under it.
 ///
 /// **The pages are found, not listed.** Every module in `ModuleRegistry.all` is
 /// mounted with a `HelmWindowToolbarChannel`, and what it declares there —

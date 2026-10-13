@@ -12,6 +12,7 @@ import Module_Hosts_Engine
         sfSymbol: "network", permissions: []) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .hosts
+    public static let glyph: ShellGlyph = .hosts
 
     /// **The page draws across the whole pane, so its header must not centre
     /// itself.** Two tab strips, a table and an unsaved bar, each at

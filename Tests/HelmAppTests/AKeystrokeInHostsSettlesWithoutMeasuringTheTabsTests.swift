@@ -7,13 +7,8 @@ import XCTest
 @testable import HelmUI
 @testable import Module_Hosts_UI
 
-/// REPRO (tester, 2026-09-26) — red on the working tree it was written
-/// against; green since `PageBar.tabsWidth` keeps the centre tabs' width
-/// under `SettingsToolbar.TabsWidthKey` (engineer, 2026-09-26), and kept as
-/// the guard on it.
-///
-/// **A pause after a keystroke in Hosts' SSH text editor measured the centre
-/// tabs again, although nothing a keystroke can move had moved.** The
+/// **A pause after a keystroke in Hosts' SSH text editor measures the centre
+/// tabs no more than before, since nothing a keystroke can move has moved.** The
 /// brother of `AKeystrokeInHostsMountsNoMeasuringSwitcherTests`, one step
 /// later: that file counts what a keystroke measures synchronously, inside
 /// the declare, and says outright that the fold prediction's own one
@@ -22,33 +17,43 @@ import XCTest
 /// counts it. Every declare reaches
 /// `SettingsToolbar.show(_:key:)`, which re-arms `scheduleSettle(_:)`
 /// "whether or not the bar actually changed", and `settleInterval` (0.1 s)
-/// after the last keystroke `settle(_:)` runs. When this was written it
-/// asked a `switcherWidths` method for two widths, compact and full — two
-/// `SwitcherMeasurementRig` mounts, each a hosting view, a toolbar and a
-/// layout, for Keys / SSH hosts, whose titles, glyphs, style, language and
-/// selection a keystroke cannot move. Measured on this Mac, debug build, ten
-/// keystrokes 0.2 s apart (a person typing at five characters a second): 20
-/// measurements, two per keystroke, in two runs out of two; the run-loop
-/// turn that carried each settle took 66–79 ms against at most 12 ms for
-/// every other turn in the same loop. Typed 0.05 s apart the timer is
-/// re-armed before it fires and the burst costs 2. Present at HEAD then —
-/// it is the same input, a keystroke on Hosts, reaching the other
-/// measurement. Now `settle(_:)` asks `switcherWidth(tabs:style:selectedID:)`
-/// for the full width alone, and only when `TabsWidthKey` misses: 10 for 10
-/// keystrokes with the key's read taken out (engineer), 0 with it.
+/// after the last keystroke `settle(_:)` runs. It asks
+/// `wholeTabsWidth(_:_:)` for the tabs' full width, and that calls
+/// `switcherWidth(tabs:style:look:selectedID:)` — a `SwitcherMeasurementRig`
+/// mount, a hosting view, a toolbar and a layout — only when
+/// `PageBar.tabsWidth` does not hold a width under the same `TabsWidthKey`.
+/// The tabs of Keys / SSH hosts have titles, glyphs, style, language and
+/// selection that a keystroke cannot move.
+///
+/// **What the row holds.** The line of `wholeTabsWidth(_:_:)` that returns the
+/// kept width when its key matches. With that line taken out the count below
+/// prints 10 measuring switchers for the 10 keystrokes, under both looks.
 ///
 /// This file proves the miss that must *not* happen; which misses must, one
 /// field of the key at a time, is
 /// `TheTabsAreMeasuredAgainOnlyWhenWhatTheyDrawMovesTests`.
 ///
 /// The subject before the absence, twice: the keystrokes are first shown to
-/// reach the toolbar as declarations, each followed by a rest longer than
+/// reach the toolbar as declarations and the page (the editor holds what was
+/// typed), each followed by a rest longer than
 /// `SettingsToolbar.settleInterval` by the clock, so a settle was due after
 /// every one; and after the keystrokes, tabs this process has never drawn —
 /// Hosts' own titles with a fresh suffix, which no cache of widths however
 /// keyed can already hold — are declared onto the same bar and the settle
 /// that follows is shown to reach the counter, so a zero below is not an
 /// instrument that cannot see a settle's measurement.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` in a `MountedRender` window
+/// (`LivePageInTheToolbarFixture`), not the `lead: .spacer` bar the app's
+/// window builds. The count is the toolbar's own
+/// (`SettingsToolbar.measurementsTaken`), not Helm's page bar's
+/// `ShellBarTabs.measureCount`.
+///
+/// **The look.** The tabs are measured in the look's cell, and the look is
+/// read when a bar is built (`AppSettings.barAppearance`), so the row is one
+/// test per look, with the settings the bar reads pinned first
+/// (`PinnedBarSettings`).
 @MainActor
 final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
 
@@ -59,28 +64,21 @@ final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
 
     private final class Count { var value = 0 }
 
-    /// Turns the run loop for `seconds` by the clock — `settle(_:)` runs from
-    /// a timer, and a turn that returns on the first source it serves buys no
-    /// time.
-    private func rest(_ seconds: TimeInterval) {
-        let until = Date().addingTimeInterval(seconds)
-        while Date() < until { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+    func testAPauseAfterTypingIntoTheSSHConfigMeasuresNoTabsUnderFlat() throws {
+        try pauseAfterTyping(under: .flat)
     }
 
-    func testAPauseAfterTypingIntoTheSSHConfigMeasuresNoTabs() throws {
-        // Raw, so a key the domain did not hold is removed again rather than
-        // written back as the typed getter's default.
-        let store = AppSettings.store
-        let found = store.object(ToolbarSwitcherStyle.storageKey)
-        addTeardownBlock { @MainActor in
-            store.set(found, for: ToolbarSwitcherStyle.storageKey)
-            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
-        }
-        AppSettings.toolbarSwitcherStyle = .text
+    func testAPauseAfterTypingIntoTheSSHConfigMeasuresNoTabsUnderLiquidGlass() throws {
+        try pauseAfterTyping(under: .liquidGlass)
+    }
+
+    private func pauseAfterTyping(under look: HelmBarAppearance) throws {
+        PinnedBarSettings.pin(in: self)
+        AppSettings.barAppearance = look
         let vm = ModuleViewModel(transport: Mute())
-        let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: vm),
-                                           selection: .module(HostsDescriptor.id.rawValue),
-                                           width: 1060, height: 700)
+        let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: vm),
+                                                selection: .module(HostsDescriptor.id.rawValue),
+                                                width: 1060, height: 700)
         defer { hosts.drop() }
         hosts.settle(30)
         let onKeys = try XCTUnwrap(hosts.channel.content(for: HostsDescriptor.id.rawValue),
@@ -98,7 +96,7 @@ final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
         XCTAssertFalse(hosts.mount.host.everyView(ofType: NSTextView.self).isEmpty,
                        "precondition: the SSH tab shows no text editor to type into")
         // Whatever the tab and mode changes above scheduled has run.
-        rest(4 * SettingsToolbar.settleInterval)
+        PinnedBarSettings.rest(4 * SettingsToolbar.settleInterval)
 
         let redeclares = Count()
         let forward = hosts.channel.onChange
@@ -112,15 +110,17 @@ final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
             typed += "\(index % 10)"
             hvm.setSSHText(typed + "\n")
             hosts.mount.host.layoutSubtreeIfNeeded()
-            rest(pause)
+            PinnedBarSettings.rest(pause)
         }
-        rest(2 * SettingsToolbar.settleInterval)
+        PinnedBarSettings.rest(2 * SettingsToolbar.settleInterval)
         let measured = SettingsToolbar.measurementsTaken - before
 
         XCTAssertGreaterThanOrEqual(redeclares.value, keystrokes, """
-            precondition: \(redeclares.value) declaration(s) reached the toolbar for \(keystrokes) keystrokes — \
-            nothing below is about typing
+            \(look): precondition: \(redeclares.value) declaration(s) reached the toolbar for \(keystrokes) \
+            keystrokes — nothing below is about typing
             """)
+        XCTAssertTrue(hosts.mount.host.everyView(ofType: NSTextView.self).contains { $0.string.contains(typed) },
+                      "\(look): precondition: the editor does not hold what was typed")
 
         // The instrument: tabs this process has never drawn — titles no
         // cache, however keyed, can already hold — declared onto the same
@@ -131,14 +131,14 @@ final class AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests: XCTestCase {
             tabs: onSSH.tabs.map { HelmToolbarTab(id: $0.id, title: "\($0.title) \(unseen)", symbol: $0.symbol) },
             selectedTab: onSSH.selectedTab, actions: onSSH.actions),
             token: HostsDescriptor.id.rawValue, generation: hosts.channel.nextGeneration())
-        rest(4 * SettingsToolbar.settleInterval)
+        PinnedBarSettings.rest(4 * SettingsToolbar.settleInterval)
         XCTAssertGreaterThan(SettingsToolbar.measurementsTaken - beforeControl, 0, """
-            precondition: tabs never drawn before, declared onto the same bar, took no measurement either — \
-            the count below cannot see a settle's measurement at all
+            \(look): precondition: tabs never drawn before, declared onto the same bar, took no measurement \
+            either — the count below cannot see a settle's measurement at all
             """)
 
         XCTAssertEqual(measured, 0, """
-            \(keystrokes) keystrokes in Hosts' SSH text editor, each followed by \(pause) s, mounted \
+            \(look): \(keystrokes) keystrokes in Hosts' SSH text editor, each followed by \(pause) s, mounted \
             \(measured) measuring switcher(s) through SwitcherMeasurementRig from the settle that follows \
             each one — the centre tabs' widths, for tabs a keystroke cannot change
             """)

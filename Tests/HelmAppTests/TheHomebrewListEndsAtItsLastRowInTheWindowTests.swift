@@ -16,10 +16,11 @@ import XCTest
 /// window itself — full-size content under an app-owned `NSToolbar`, the page
 /// bleeding under the band (`HomebrewDescriptor.pageBleeds`), the page header
 /// placed by `helmPageHeader`, the backdrop and the band choice — so this
-/// reads the same list inside that shape, built the way
-/// `SettingsSplitViewController` builds its detail pane, with the toolbar
-/// attached as `LivePageToolbarFixture` attaches it. Scrolled to the furthest
-/// offset the clip view allows (`StripedListEnd`), judged against the list's
+/// reads the same list inside a split-view rig whose detail pane carries the
+/// modifiers `SettingsShellViewController.makeShell` puts on the pane, with the toolbar
+/// attached as `LivePageInTheToolbarFixture` attaches it: a `SettingsToolbar` of the
+/// default lead `.sidebarSeparator`, not the app's `.spacer` build. Scrolled to the
+/// furthest offset the clip view allows (`StripedListEnd`), judged against the list's
 /// own row step. Console absent and present, Light and Dark.
 @MainActor
 final class TheHomebrewListEndsAtItsLastRowInTheWindowTests: XCTestCase {

@@ -108,6 +108,7 @@ import HelmUI
     nonisolated(unsafe) private var languageWatch: NSObjectProtocol?
     nonisolated(unsafe) private var pageBarStyleWatch: NSObjectProtocol?
     nonisolated(unsafe) private var switcherStyleWatch: NSObjectProtocol?
+    nonisolated(unsafe) private var barAppearanceWatch: NSObjectProtocol?
     nonisolated(unsafe) private var alwaysCollapseSearchWatch: NSObjectProtocol?
     /// **The status this class copies into `helm.status`/the name zone is a
     /// stored reading (`pageIdentity()`), not a live one** — `refresh()` is
@@ -225,6 +226,23 @@ import HelmUI
     /// fallen back from it a single time.
     private var fellBackToNameOnly: Set<String> = []
 
+    /// **What the bar's first item is: the sidebar's tracking separator
+    /// (`.sidebarSeparator`, the default), or no tracking item at all
+    /// (`.spacer`).** The window the app builds constructs `.spacer` (`SettingsWindow`); `.sidebarSeparator`
+    /// is for the test rigs that still mount a split view. A `.spacer` bar starts with its name, under both
+    /// page-bar styles, held off the item's leading edge by `nameInset` so that it starts sixteen points
+    /// past the pane's edge and never left of where AppKit starts the items; a `.sidebarSeparator` bar
+    /// lists its name under `.moduleName` alone and holds it at 0. A `.spacer` bar with tabs also lists
+    /// `helm.tabsLead` in front of them, where a `.sidebarSeparator` bar lists a flexible space (`identifiers`).
+    enum Lead { case sidebarSeparator, spacer }
+    private let lead: Lead
+    /// Called each time `show(_:key:)` assigns a bar to a window that was not
+    /// showing that bar, never from `init` and never without a window. Held
+    /// for the toolbar's life: capture the receiver weakly. Called after the
+    /// bar is the attached one. A receiver is to ask for a layout, not force
+    /// one.
+    private let barAttached: () -> Void
+
     private static let nameID = NSToolbarItem.Identifier("helm.name")
     /// **The module's status, at the bar's trailing edge — the owner,
     /// 2026-09-28: «Давай вернем его в правую часть».** Only ever appended
@@ -237,6 +255,11 @@ import HelmUI
     /// this bar's identifier list from ever churning.
     private static let statusID = NSToolbarItem.Identifier("helm.status")
     private static let tabsID = NSToolbarItem.Identifier("helm.tabs")
+    /// **The item that stands the tabs on the card's middle: an empty view of one computed width, listed in
+    /// place of the flexible space in front of the tabs** wherever a bar has tabs and the lead is `.spacer`
+    /// (`identifiers`). The tabs stay in AppKit's centred set; the lead only pushes them past the place that set
+    /// would give them (`tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)` says by how much).
+    private static let tabsLeadID = NSToolbarItem.Identifier("helm.tabsLead")
     private static let searchID = NSToolbarItem.Identifier("helm.search")
     /// **One item for the whole capsule**, not one per action — see
     /// `HelmToolbarActionsCapsule`'s own header for why the morph needs a
@@ -244,8 +267,11 @@ import HelmUI
     /// merely draws adjacent to one another.
     private static let actionsID = NSToolbarItem.Identifier("helm.actions")
 
-    init(model: SettingsModel, channel: HelmWindowToolbarChannel) {
+    init(model: SettingsModel, channel: HelmWindowToolbarChannel, lead: Lead = .sidebarSeparator,
+         barAttached: @escaping () -> Void = {}) {
         self.model = model
+        self.lead = lead
+        self.barAttached = barAttached
         self.channel = channel
         super.init()
         channel.onChange = { [weak self] in self?.refresh() }
@@ -267,6 +293,16 @@ import HelmUI
         // right-click's choice reach it at all.
         switcherStyleWatch = NotificationCenter.default.addObserver(
             forName: .helmToolbarSwitcherStyleChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshAndResettle() }
+        }
+        // The look (`AppSettings.barAppearance`) is read when a bar's shape is
+        // read (`ShapeSignature`), so the change of it that matters is the one
+        // that makes the shape differ: the bar of the page on the window is
+        // built afresh, a cached bar of another page when that page is next
+        // shown, and a look written equal to the one worn rebuilds nothing,
+        // though `AppSettings` posts for it as well.
+        barAppearanceWatch = NotificationCenter.default.addObserver(
+            forName: .helmBarAppearanceChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAndResettle() }
         }
         alwaysCollapseSearchWatch = NotificationCenter.default.addObserver(
@@ -313,7 +349,14 @@ import HelmUI
         windowAppearsActive = active
         for bar in pageBars.values {
             bar.actionsModel?.setAppearsActive(active)
-            rebuildActionsHost(bar)
+            // Only the glass needs a new host to follow the window; a flat capsule dims by the model's
+            // `appearsActive`, which it reads where it draws (`HelmToolbarActionsCapsule.glyph(_:)` for a
+            // glyph, `backing(_:for:)` for a segmented entry's plate), so the model told is all it needs —
+            // as `ShellBarActions.show` has it. That a flat plate dimmed this way reads right on a screen
+            // was not seen (`HelmToolbarActionsCapsule.backing(_:for:)`'s header has the caveat).
+            if bar.shape.look == .liquidGlass { rebuildActionsHost(bar) }
+            // The tabs' plate (Flat only) dims and undims by this value, handed in, as the page bar's does.
+            bar.tabsPlate?.isActive = active
         }
         // The name zone's own ink: a plain SwiftUI value, not glass, so the
         // one bar actually on screen redrawing is enough — `patchName`'s own
@@ -322,8 +365,10 @@ import HelmUI
         patchAttachedName()
     }
 
-    /// **A capsule built while the window reads inactive can draw lit glass
-    /// beside flat AppKit items until it is rebuilt a turn later.** Filmed on
+    /// **A capsule built under Liquid Glass while the window reads inactive can
+    /// draw lit glass beside flat AppKit items until it is rebuilt a turn
+    /// later.** A flat capsule draws no glass and is never corrected: it dims
+    /// by the model, which `makeActionsItem` seeds. Filmed on
     /// Helm Dev: a capsule built while the window had never been key drew lit
     /// glass beside flat AppKit items, where a reopened window drew flat.
     ///
@@ -334,16 +379,16 @@ import HelmUI
     /// here explains *why* the extra turn is what closes the gap.
     ///
     /// `PageBar.actionsGlassNeedsFirstAttachCorrection`, set by
-    /// `makeActionsItem` exactly when it builds this bar's capsule while
-    /// `windowAppearsActive` already reads `false`, is spent here, once,
-    /// right after `show(_:key:)` actually attaches the bar it belongs to. A
-    /// bar built while the window already reads active never sets the flag,
-    /// so an ordinary S1 build costs nothing extra; a bar built while the
-    /// window is already inactive sets it regardless of whether it is that
-    /// window's first capsule, and pays for a deferred rebuild even where the
-    /// flat look it confirms needed no correction — cheaper than telling the
-    /// two cases apart, and `rebuildActionsHost(_:)` is already paid for on
-    /// every live signal change regardless.
+    /// `makeActionsItem` exactly when it builds this bar's capsule under
+    /// Liquid Glass while `windowAppearsActive` already reads `false`, is
+    /// spent here, once, right after `show(_:key:)` actually attaches the bar
+    /// it belongs to. A bar built while the window already reads active never
+    /// sets the flag, and neither does a flat bar, so an ordinary build costs nothing extra; a bar
+    /// built under Liquid Glass while the window is already inactive sets it regardless of whether it
+    /// is that window's first capsule, and pays for a deferred rebuild even
+    /// where the flat glass it confirms needed no correction — cheaper than
+    /// telling the two cases apart, and `rebuildActionsHost(_:)` is already
+    /// paid for on every live signal change under Liquid Glass regardless.
     private func correctActionsGlassOnFirstAttach(_ bar: PageBar) {
         guard bar.actionsGlassNeedsFirstAttachCorrection else { return }
         bar.actionsGlassNeedsFirstAttachCorrection = false
@@ -367,7 +412,9 @@ import HelmUI
 
     /// **Mutating `HelmToolbarActionsModel.appearsActive` alone was not
     /// enough on Helm Dev — a live transition had to rebuild the hosting
-    /// view, not only change the value it reads.** Measured there: flipping
+    /// view, not only change the value it reads.** Under Liquid Glass; a flat
+    /// capsule has no glass to follow and is not rebuilt for this
+    /// (`setWindowAppearsActive(_:)`). Measured there: flipping
     /// the model on an *already-rendered* capsule left its glass at the value
     /// it was built with, log not kept. So a live change rebuilds: a fresh
     /// `NSHostingView` over the same model reads the glass correctly, where
@@ -380,20 +427,41 @@ import HelmUI
     /// glass following the window on its own, with no rebuild at all) and
     /// says why the rebuild stays regardless: nothing explaining the
     /// difference from Helm Dev has been found.
-    /// `bar.content?.search == nil` is the same reading `makeActionsItem`
-    /// seeds `trailingInset` from — kept in step here because a bar whose
-    /// shape has not changed keeps the same answer for the life of the bar
-    /// (`ShapeSignature.hasSearch` rebuilds the whole bar, this item
-    /// included, the moment that changes).
+    /// The host is `actionsHost(_:for:)`'s, the one `makeActionsItem` builds
+    /// the item's first view with, so the look the bar was built under and the
+    /// trailing inset are read there the same way for both.
     private func rebuildActionsHost(_ bar: PageBar) {
         guard let model = bar.actionsModel, let item = bar.actionsItem else { return }
-        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
-        hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        item.view = actionsHost(model, for: bar)
     }
 
-    /// **A language, label-style or page-bar change** — every one of them can
+    /// **The view of the `helm.actions` item: `HelmToolbarActionsCapsule` in a hosting view, dressed by
+    /// the look the bar was built under (`PageBar.shape`), never by a re-read of the stored value.**
+    /// `\.helmBarAppearance` is the capsule's plate (glass under Liquid Glass, a flat fill under Flat)
+    /// and `flatInactiveInk` the numbers a flat capsule dims by in an inactive window, the name zone's
+    /// (`ShellBarActions` hands the capsule both the same way); `\.helmSwitcherCell` is what a
+    /// `.segmented` entry's switcher wears (`HelmBarAppearance.switcherCell`). The root is no `AnyView`: a
+    /// reader of the root walks value types.
+    ///
+    /// `bar.content?.search == nil` is "the capsule is this bar's own last item" — the answer a bar
+    /// whose shape has not changed keeps for its life (`ShapeSignature.hasSearch` rebuilds the whole
+    /// bar, this item included, the moment that changes). See `HelmToolbarActionsCapsule.edgeMargin`'s
+    /// own header for the measurement the inset closes: Hosts and Leftovers, which end their bar here,
+    /// used to sit 4.0 pt from the window's trailing edge against Uninstaller's 8.0 pt for
+    /// `helm.search` at the same width.
+    private func actionsHost(_ model: HelmToolbarActionsModel, for bar: PageBar) -> NSHostingView<some View> {
+        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
+        let look = bar.shape.look
+        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(
+            model, trailingInset: trailingInset,
+            flatInactiveInk: .nameZone(titlebarIsTransparent: titlebarIsTransparent))
+            .environment(\.helmBarAppearance, look)
+            .environment(\.helmSwitcherCell, look.switcherCell))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        return hosting
+    }
+
+    /// **A language, label-style, page-bar or look change** — every one of them can
     /// move the room the tabs need (a longer word, a name zone that appears
     /// or disappears) without the selection itself moving, so the attached
     /// bar's own settle has to run again. Nothing here invalidates the tabs'
@@ -405,16 +473,392 @@ import HelmUI
     /// call.
     private func refreshAndResettle() {
         refresh()
-        if let key = attachedPageKey {
-            let bar = key == Self.nameOnlyKey ? nameOnlyBar : pageBars[key]
-            if let bar { scheduleSettle(bar) }
+        if let bar = attachedBar { scheduleSettle(bar) }
+    }
+
+    // MARK: - Where the pane is
+
+    /// Where the pane stands, as this class takes it: both numbers finite and
+    /// not below zero, and whether the window's buttons stand in the rail's placement. The card's frame and
+    /// that placement, as `paneMoved(leading:width:rail:)` is handed them.
+    private struct Pane: Equatable {
+        let leading: CGFloat
+        let width: CGFloat
+        let rail: Bool
+    }
+
+    /// `nil` until the first `paneMoved`. Nothing clears it: it is the last
+    /// position told, not a value of one visit.
+    private var pane: Pane?
+
+    /// How many reads have moved the start of items held for a placement since the pane was last told. A stored
+    /// `paneMoved` clears it; once it reaches the ceiling `learnStartOfItems(_:)` reads nothing, so the start held
+    /// stays and the inset is written from it until the pane moves again.
+    ///
+    /// What ends a read, a write and a read again is `itemsStartTolerance`, not this count: the name item's left edge
+    /// moves with the inset it is written (read in a window never shown, 92.0 at an inset of 123.5, 92.5 at 124.0,
+    /// 92.0 at 124.5 and 92.5 at 125.0, its right edge on a whole point each time), so a start taken from it and
+    /// written back as an inset is never read back as the same number, and only a read a point or more from the
+    /// start held (`itemsStartTolerance`) is a move. The count is a bound on a loop the tolerance should already
+    /// end: where the edge goes on following the inset by a point or more, the reads stop at it, one warn line is
+    /// logged, and the name keeps the inset of the last read. No loop that only the count ends has been read: in a
+    /// toolbar nothing has laid out the edge follows the inset one for one (756.0 at an inset of 123.5 and 879.5
+    /// at 0, read in a window of `TheBarTellsItsShellWhenItIsAttachedTests` that claims to be shown), and there the
+    /// inset reached its floor of 0 and the reads ended after two moves, under the count.
+    ///
+    /// Why 4: chosen, measured by nobody.
+    private(set) var itemsStartMoves = 0
+    nonisolated static let itemsStartMoveCeiling = 4
+
+    /// **How far a start read off the name item must lie from the one held to count as a move: 1 point.** The item's
+    /// left edge stands on one of two neighbouring half points for the same placement (see `itemsStartMoves`); a
+    /// read within a point of the held start, the seed included, is that start again and is refused. A start that
+    /// differs by a point or more (70 points between the two placements of the window's buttons) is a move.
+    /// Compared as `abs(read - held) >= itemsStartTolerance` over a finite read; a read that is not a number is
+    /// refused before it is compared.
+    nonisolated static let itemsStartTolerance: CGFloat = 1
+
+    /// Where the toolbar starts its items before any bar has been read: 92.5,
+    /// measured at a 200 pt sidebar on macOS 27.2 only, on no other width and
+    /// no other system.
+    nonisolated static let itemsStartSeed: CGFloat = 92.5
+
+    /// Where the toolbar starts its items when the window's buttons stand in the rail's placement: 22.5, read as
+    /// the name item's left edge in a window never shown on macOS 27.2 (22.0 to 22.5 there), on no other
+    /// system. The seed of `startOfItems(rail:)` until `learnStartOfItems(_:)` has read one.
+    nonisolated static let railItemsStartSeed: CGFloat = 22.5
+
+    /// Where the toolbar starts its items under each placement of the window's buttons (the key is whether they
+    /// stand in the rail's), as `learnStartOfItems(_:)` read them off the name item's frame at a settle or on a
+    /// resize and found them a point or more from what was held. The one start the name's inset
+    /// (`currentNameInset`), the lead (`nameMaxX(_:)`) and the search field's offer all work from: none of them can
+    /// read the item's frame in the layout that tells the placement, the toolbar has not laid out under that
+    /// placement yet.
+    private var learntItemsStarts: [Bool: CGFloat] = [:]
+
+    /// Where the toolbar starts its items under a placement: the one learnt, else its seed
+    /// (`itemsStartSeed` expanded, `railItemsStartSeed` in the rail).
+    private func startOfItems(rail: Bool) -> CGFloat {
+        learntItemsStarts[rail] ?? (rail ? Self.railItemsStartSeed : Self.itemsStartSeed)
+    }
+
+    /// **Learns where the toolbar starts its items under the placement the pane was last told**, from the left
+    /// edge of the attached bar's name item, and returns whether the start held for that placement moved (the
+    /// callers write the inset again then). Called by the settle and by a resize; the settle runs
+    /// `settleInterval` after the last report or write that armed it, which is assumed to come after the toolbar's own
+    /// layout under that placement (no command shows it, in a shown window or in one never shown). Reads nothing where
+    /// the lead is not `.spacer` (under `.sidebarSeparator` the start stays the seed), the window is not visible, no
+    /// pane was told, the bar has no name item, the item's view is not in a window or has no width, or
+    /// `itemsStartMoves` is at its ceiling; refuses an edge that is not finite, below zero or past the window's width
+    /// (with no window there is no ceiling), and one within `itemsStartTolerance` of the start held. Assumed, not
+    /// tried: that `isVisible` is the gate that tells a toolbar AppKit has laid out from one it has not; a window never
+    /// ordered in held the item at 756 and at 879.5 on a toolbar nothing had laid out (read in a window of
+    /// `TheBarTellsItsShellWhenItIsAttachedTests`), and no start taken from it may reach the inset.
+    private func learnStartOfItems(_ bar: PageBar) -> Bool {
+        guard lead == .spacer, itemsStartMoves < Self.itemsStartMoveCeiling, window?.isVisible == true,
+              let pane, let view = bar.nameItem?.view,
+              view.window != nil, view.frame.width > 0 else { return false }
+        let start = view.convert(view.bounds, to: nil).minX
+        guard start.isFinite, start >= 0, start <= (window?.frame.width ?? .greatestFiniteMagnitude),
+              abs(start - startOfItems(rail: pane.rail)) >= Self.itemsStartTolerance else { return false }
+        learntItemsStarts[pane.rail] = start
+        itemsStartMoves += 1
+        if itemsStartMoves == Self.itemsStartMoveCeiling {
+            HelmLog.shared.warn("toolbar", "the bar's items start moved \(Self.itemsStartMoveCeiling) times since the pane last moved; "
+                + "no more reads until it moves again (pane leading \(pane.leading), items start \(start))")
         }
+        return true
+    }
+
+    /// Where the toolbar starts its items under the placement the pane was last told: `startOfItems(rail:)`, the
+    /// seed before a pane is told. The start `currentNameInset` and `nameMaxX(_:)` both work from.
+    var itemsStart: CGFloat { startOfItems(rail: pane?.rail ?? false) }
+
+    /// How far the name's view is held off its item's leading edge now: the
+    /// arithmetic of `nameInset(paneLeading:itemsStart:)` over the pane as told and
+    /// the start of items under the placement it was told (`itemsStart`), 0 before the pane is told and always 0 under
+    /// `.sidebarSeparator`, where the tracking separator places the name. Internal so a test reads it without a window.
+    var currentNameInset: CGFloat {
+        guard lead == .spacer, let pane else { return 0 }
+        return Self.nameInset(paneLeading: pane.leading, itemsStart: itemsStart)
+    }
+
+    /// What stands between the name's end and the tabs' start besides the lead's own width — AppKit's spacing
+    /// around the lead item and, under Liquid Glass, the tabs' own platter (assumed: 4.0 to 4.5 points were read
+    /// there in a window never shown, against 0 under Flat, and no command shows that it is the platter) — in points,
+    /// per look, since the tabs' item is made of another thing under each. A look not yet read answers
+    /// `tabsGapPrior(of:)`, so the first bar a look puts on the window is given a lead worked out for the gap it
+    /// will rest at, not for a guess above it. The first read of a look is held to `tabsGapReadCeiling`, not to its
+    /// prior, and after it `readTabsGap(_:)` only lowers the look's gap to one read off the attached bar's frames, so
+    /// a read, a write and a read again stand still: the tabs cannot stand nearer the lead
+    /// than AppKit's spacing, so a read is never below the true gap; a read at or above the gap held is refused, and
+    /// one between the true gap and the held one (the tabs not yet pushed all the way) is kept until a lower one is
+    /// read.
+    private var tabsGaps: [HelmBarAppearance: CGFloat] = [:]
+
+    private func tabsGap(of bar: PageBar) -> CGFloat { tabsGaps[bar.shape.look] ?? Self.tabsGapPrior(of: bar.shape.look) }
+
+    /// Where a look's gap starts before any bar of it has been read: the figure read in a window never shown on
+    /// macOS 27.2 and on no other system, 0 under Flat and 4.0 under Liquid Glass (the lower end of the 4.0 to 4.5
+    /// read there; with 4.5 the tabs stood 1.0 to 1.4 points left of the card's middle at 7 of the 42 readings of
+    /// `testAcrossAFoldTheTabsMiddleFollowsTheCardsMiddle` (`TheWindowWearsTheToolbarTests`), with 4.0 at none).
+    /// Both are constants: no input of theirs can be not-a-number.
+    nonisolated static func tabsGapPrior(of look: HelmBarAppearance) -> CGFloat {
+        switch look {
+        case .flat: return 0
+        case .liquidGlass: return 4
+        }
+    }
+
+    /// What the first gap read for a look must lie under: 16, chosen above the 0 to 4.5 points read in a window never
+    /// shown between the name's end and the tabs past the lead, and the 8.0 to 8.5 seen in a window never shown between
+    /// the name and the tabs on the bar as it was before the lead item, with a flexible space on either side of the
+    /// tabs. A system whose gap lies above the prior is read once, up to this, then only lowered.
+    nonisolated static let tabsGapReadCeiling: CGFloat = 16
+
+    /// Told where the pane is and whether the window's buttons stand in the rail's placement, by `SettingsWindow`
+    /// from the card's frame and `ShellContentView.buttonsStandInRail`, inside the layout that moved either.
+    /// `rail` defaults to the expanded placement, for a caller with no shell.
+    /// Returns whether anything was stored: the same triple as the last
+    /// one is refused, so a layout that moved none of them (a height-only
+    /// change) arms no settle. Stores, writes the attached bar's inset and tabs' lead (`insetMoved()`) and assigns no
+    /// toolbar, so it may be called from a layout pass. The inset and the lead are worked out from
+    /// `startOfItems(rail:)` of the placement told here and read no item's place off the toolbar (the widths of the
+    /// name's host and of the tabs' view are read), which in this turn has not laid out under that placement (the name
+    /// item's edge is still the other placement's); read in a window never shown, that puts the name on the card's edge
+    /// plus sixteen and the tabs within a point of the card's middle in the turn that moves the buttons.
+    ///
+    /// Both numbers are normalised before the comparison, so a NaN does not
+    /// differ from itself. Not-a-number, infinite or below zero means for
+    /// `width` no room (the tabs fold; +inf is not sent to the upper bound,
+    /// where a huge room would unfold them into overflow), and for `leading`
+    /// 0, for which `nameInset(paneLeading:itemsStart:)` answers 0 while the items start at or past
+    /// `nameGap`. A `leading` past the window's own width is held at it, so
+    /// the inset is never wider than the window; with no window there is no
+    /// ceiling to hold it to.
+    @discardableResult
+    func paneMoved(leading: CGFloat, width: CGFloat, rail: Bool = false) -> Bool {
+        let ceiling = window?.frame.width ?? CGFloat.greatestFiniteMagnitude
+        let next = Pane(leading: leading.clampedIfFinite(to: 0...max(ceiling, 0)) ?? 0,
+                        width: width.clampedIfFinite(to: 0...CGFloat.greatestFiniteMagnitude) ?? 0,
+                        rail: rail)
+        guard next != pane else { return false }
+        pane = next
+        itemsStartMoves = 0
+        insetMoved()
+        return true
+    }
+
+    /// Writes the inset of now to the attached bar's constraint, and the tabs' lead of now beside it
+    /// (`writeTabsLead(_:)`: the lead reads where the name ends, which that inset moves), and arms the
+    /// settle: a moved pane or a learnt items start moves the room around the
+    /// tabs, and under `.sidebarSeparator` nothing of the bar moved but the
+    /// settle is armed all the same. No bar is replaced and the window is assigned nothing.
+    private func insetMoved() {
+        if let bar = attachedBar {
+            bar.nameInset?.constant = currentNameInset
+            writeTabsLead(bar)
+        }
+        scheduleSettleForAttachedBar()
+    }
+
+    /// **The width the lead item holds: the card's middle less half the tabs, less `gap`, less where the name
+    /// ends, in window x, held to `1...1_000_000`.** Read in a window never shown: AppKit puts the lead's left edge at
+    /// the name's end or half a point past it, under either look, and the tabs' left edge one `gap` past the lead's
+    /// right edge, so a lead of this width puts the tabs' middle within a point of the card's. The tabs stay in AppKit's centred set, whose place is the window's middle; the card's middle is
+    /// always right of that (the sidebar is wider than the card's gap at the window's edge), so it is the
+    /// lead that decides where they stand. Where the name reaches the place the tabs would take centred on the card
+    /// the result is under 1 and reads 1: the tabs then stand after the name, not centred, 36.0 points right of its
+    /// end under Flat and 40.0 to 40.5 under Liquid Glass (read in a window never shown). Assumed from that distance,
+    /// no viewer's frame was read: that the lead's viewer is 36 wide there.
+    ///
+    /// Not-a-number or infinite in any of the five parameters, or in the result, reads 1: a width worked out of
+    /// a number that is not one is a guess, and 1 is the lead nearest to none: the tabs stand after the name at
+    /// the distance `tabsLeadFloor` gives, not at its end. The
+    /// result is held at 1 below and at 1 000 000 above, the bound of a width no window has. Internal so a test
+    /// reads it without a window.
+    nonisolated static func tabsLead(paneLeading: CGFloat, paneWidth: CGFloat, tabsWidth: CGFloat,
+                                     gap: CGFloat, nameMaxX: CGFloat) -> CGFloat {
+        guard [paneLeading, paneWidth, tabsWidth, gap, nameMaxX].allSatisfy(\.isFinite) else { return 1 }
+        let width = paneLeading + paneWidth / 2 - tabsWidth / 2 - gap - nameMaxX
+        return width.clampedIfFinite(to: 1...1_000_000) ?? 1
+    }
+
+    /// **Where the attached bar's name ends in window x, with the inset of now**: where the toolbar starts its
+    /// items under the placement the pane was told (`startOfItems(rail:)`) plus `currentNameInset` plus the
+    /// hosting view's width, which the inset does not change. Not the item's frame: in the layout that tells
+    /// the placement the item still stands where it stood under the other one. Read in a window never
+    /// shown, the item starts at 22.0 to 22.5 in the rail and at 92.0 to 92.5 at a 200-point sidebar. The start is
+    /// `itemsStart`, the one `currentNameInset` is worked out from, so the inset and the name's end cannot be read
+    /// from two placements. `nil` where the bar has no name or no pane was told.
+    private func nameMaxX(_ bar: PageBar) -> CGFloat? {
+        guard pane != nil, bar.nameItem?.view != nil, let host = bar.nameHost else { return nil }
+        let width = host.frame.width > 0 ? host.frame.width : host.fittingSize.width
+        return itemsStart + currentNameInset + width
+    }
+
+    /// The tabs' width as laid out, else what they ask for; where the bar has no tabs item yet (its lead item is
+    /// made first, inside the assignment of the bar to the window) the whole tabs' width as the settle measures it
+    /// (`wholeTabsWidth(_:_:)`), so that the lead made with the bar is the lead the bar rests at; 0 where the bar
+    /// declares no tabs.
+    private func tabsWidth(_ bar: PageBar) -> CGFloat {
+        guard let view = bar.tabsItem?.view else {
+            guard let content = bar.content, !content.tabs.isEmpty else { return 0 }
+            return wholeTabsWidth(bar, content)
+        }
+        return view.frame.width > 0 ? view.frame.width : view.fittingSize.width
+    }
+
+    /// **The centre tabs' whole width, measured once per `TabsWidthKey` and kept on the bar** (`PageBar.tabsWidth`):
+    /// the settle's reading and the first lead's, so a measurement is one mount of the rig however many ask. A key
+    /// that no longer matches (a word, the label style, the language or the selection moved) measures again.
+    private func wholeTabsWidth(_ bar: PageBar, _ content: HelmPageToolbarContent) -> CGFloat {
+        let key = TabsWidthKey(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
+                               language: AppLanguage.current, selectedID: content.selectedTab?.wrappedValue)
+        if let measured = bar.tabsWidth, measured.key == key { return measured.full }
+        let full = switcherWidth(tabs: content.tabs, style: key.style, look: bar.shape.look, selectedID: key.selectedID)
+        bar.tabsWidth = (key, full)
+        return full
+    }
+
+    /// The lead of now for `bar`: `tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)` over the pane as
+    /// told, the tabs as laid out, `tabsGap` and where the name ends (`nameMaxX(_:)`, from the start of items
+    /// of the placement told). 1 where no pane was told or the bar has no
+    /// name: nothing to centre on, so the lead is the least there is and the tabs stand where AppKit's centred set
+    /// puts them, no nearer the name than `tabsLeadFloor` points where there is one.
+    private func currentTabsLead(_ bar: PageBar) -> CGFloat {
+        guard let pane, let nameMaxX = nameMaxX(bar) else { return 1 }
+        return Self.tabsLead(paneLeading: pane.leading, paneWidth: pane.width, tabsWidth: tabsWidth(bar),
+                             gap: tabsGap(of: bar), nameMaxX: nameMaxX)
+    }
+
+    /// **What a lead item takes however narrow its constant: 36 points.** Read in a window never shown: with the
+    /// constant at 1 and the tabs whole, the tabs start 36.0 points (Flat) and 40.0 to 40.5 (Liquid Glass) right of
+    /// the name's end, and the lead's view stands 1 point wide, 17.5 points right of the name's end; that it stands in
+    /// the middle of a viewer 36 wide is assumed from those two numbers. Chosen: 36, the figure under Flat, which
+    /// leaves out the 4.0 to 4.5 of Liquid Glass's gap: the fallback of `predictedSlack(bar:tabsWidth:)` charges a
+    /// lead item no less and that spacing to no item, and the idle field's offer starts the tabs no nearer the name
+    /// than this and adds the gap (`tabsGap`) to it (`searchOffer(_:tabsWidth:)`).
+    nonisolated static let tabsLeadFloor: CGFloat = 36
+
+    /// Writes the lead of now to `bar`'s constraint and returns whether the constant moved; a constant within
+    /// a hundredth of a point is left alone, so a layout that moved nothing invalidates nothing.
+    @discardableResult
+    private func writeTabsLead(_ bar: PageBar) -> Bool {
+        guard let constraint = bar.tabsLead else { return false }
+        let next = currentTabsLead(bar)
+        guard abs(next - constraint.constant) > 0.01 else { return false }
+        constraint.constant = next
+        return true
+    }
+
+    /// **What the idle search field is offered, and whether whole tabs on the card's middle leave it that much.**
+    /// `width` is the field's offered width, `searchFloor...searchWidth`; `slack` is the room the whole tabs
+    /// leave it less `searchFloor`, so the tabs fit whole while `slack` is not below 0 and `width` is that room held
+    /// between the floor and the usual width. One value, so the width written to the field and the room the fold
+    /// prediction charges for it cannot differ.
+    struct SearchOffer: Equatable {
+        let width: CGFloat
+        let slack: CGFloat
+        var wholeTabsFit: Bool { slack >= 0 }
+    }
+
+    /// **The spacing between the tabs' item and the actions' item: 8.** Read in a window never shown, 8.0 under both
+    /// looks, with the actions' item next to the search's.
+    nonisolated static let tabsToActions: CGFloat = 8
+
+    /// **Where the whole tabs on the card's middle end, and what is left of the bar's right end beyond them,
+    /// the actions and the spacing, as the search field's width.** The tabs stand on the card's middle
+    /// (`paneLeading + paneWidth / 2`) unless the name holds them right of it: they start no earlier than
+    /// `tabsEarliest`. The room is `barEnd` less the tabs' end, `tabsToActions`, the actions and
+    /// `ShellBarLayout.actionsToSearch` (no actions: the spacing alone). The floor and the usual width are
+    /// `ShellBarLayout.searchFloor` and `ShellBarLayout.searchWidth`.
+    ///
+    /// Not-a-number or infinite in any input reads a room under the floor by the bound, so the tabs do not fit
+    /// whole and the field is offered the floor: folded tabs cost nothing further and a floor-wide field claims the
+    /// least, the safe direction for an input that is a guess. The slack is held to `-1_000_000...1_000_000`, the
+    /// bound of a width no window has: a room that overflows downwards, or whose sum is not a number, reads the
+    /// same as such an input (slack `-1_000_000`, the floor, the tabs not fitting); one that overflows upwards
+    /// reads slack `1_000_000`, the usual width and the tabs fitting. The tabs' width is kept at 0
+    /// or above before anything is worked out from it (`Clamped.swift`): a width below 0 offers what a width of 0
+    /// offers, and its upper end is the slack's bound. The rows exercise the width below the bound, and the
+    /// slack's bound from both sides. Internal so a test reads it without a window.
+    nonisolated static func searchOffer(barEnd: CGFloat, paneLeading: CGFloat, paneWidth: CGFloat, tabsWidth: CGFloat,
+                                        tabsEarliest: CGFloat, actionsWidth: CGFloat) -> SearchOffer {
+        let bound: CGFloat = 1_000_000
+        let floor = ShellBarLayout.searchFloor
+        guard [barEnd, paneLeading, paneWidth, tabsWidth, tabsEarliest, actionsWidth].allSatisfy(\.isFinite) else {
+            return SearchOffer(width: floor, slack: -bound)
+        }
+        let tabsWidth = tabsWidth.clamped(to: 0...CGFloat.greatestFiniteMagnitude)
+        let tabsMinX = max(paneLeading + paneWidth / 2 - tabsWidth / 2, tabsEarliest)
+        let beyond = tabsToActions + (actionsWidth > 0 ? actionsWidth + ShellBarLayout.actionsToSearch : 0)
+        let slack = (barEnd - (tabsMinX + tabsWidth + beyond) - floor).clamped(to: -bound...bound, whenNotANumber: -bound)
+        return SearchOffer(width: (floor + slack).clamped(to: floor...ShellBarLayout.searchWidth), slack: slack)
+    }
+
+    /// The offer of now for `bar`'s search field with the tabs `tabsWidth` wide, from the pane as told, where the
+    /// name ends (`nameMaxX(_:)`), the tabs' earliest start (the name's end, `tabsLeadFloor` and `tabsGap`), the
+    /// actions as laid out and the bar's right end. The end is the trailing edge of the field's superview's
+    /// superview (the field's superview itself where that has none), assumed to be the search item's slot in the bar
+    /// and not read as such. Read in a window never shown, that end stood 4 points right of the field's right edge:
+    /// at a window of 951 the offer written to the cap read 154.000 where the field's right edge leaves 150 of room,
+    /// and at 1060 a temporary print, since removed, showed an offer of 172.5 where the same arithmetic from the
+    /// field's right edge gives 168.5 and the field then stood 168.0 wide, so the offer and the slack were read
+    /// 4 points over what the field's right edge leaves; not corrected. `nil` where the field is not an idle
+    /// one (it is being edited, is opening, holds text or is held at rest by the cap), or where the bar has no
+    /// lead item, no pane was told or the search is not in a window: the field is then charged what it claims.
+    private func searchOffer(_ bar: PageBar, tabsWidth: CGFloat) -> SearchOffer? {
+        guard bar.tabsLead != nil, let pane, let nameMaxX = nameMaxX(bar), let field = bar.searchItem?.searchField,
+              bar.searchRestCap?.isActive != true, !bar.searchOpening, field.currentEditor() == nil,
+              field.stringValue.isEmpty, let viewer = field.superview, viewer.window != nil else { return nil }
+        let slot = viewer.superview ?? viewer
+        return Self.searchOffer(barEnd: slot.convert(NSPoint(x: slot.bounds.width, y: 0), to: nil).x,
+                                paneLeading: pane.leading, paneWidth: pane.width, tabsWidth: tabsWidth,
+                                tabsEarliest: nameMaxX + Self.tabsLeadFloor + tabsGap(of: bar),
+                                actionsWidth: bar.actionsItem?.view?.frame.width ?? 0)
+    }
+
+    /// Writes the offer of now, for the tabs as they stand, to the cap on the field's width (`PageBar.searchOfferCap`),
+    /// which is active only while the field is idle, and returns whether the cap moved; a constant within a
+    /// hundredth of a point is left alone. `tabsWidth` is the tabs' width to work out from, else the width they have.
+    /// The cap is a ceiling: it does not move AppKit's own collapse of the field to the magnifier, read in a window
+    /// never shown under both looks: the field shown at a room of 160 and the magnifier at a room of 150.
+    @discardableResult
+    private func writeSearchOffer(_ bar: PageBar, tabsWidth width: CGFloat? = nil) -> Bool {
+        guard let cap = bar.searchOfferCap else { return false }
+        let offer = searchOffer(bar, tabsWidth: width ?? tabsWidth(bar))
+        var moved = cap.isActive != (offer != nil)
+        if let offer, abs(offer.width - cap.constant) > 0.01 {
+            cap.constant = offer.width
+            moved = true
+        }
+        cap.isActive = offer != nil
+        return moved
+    }
+
+    /// **Takes the gap this layout shows where it lies below the gap held for the look or, for a look with none
+    /// held, below `tabsGapReadCeiling`**: the tabs' left edge less the name's end less the lead's own width, all
+    /// three as laid out together. Read from frames (`isFinite`, not below 0, below the gap held or, with none held,
+    /// below the ceiling), so after a look's first read it only descends; the first read may lie above the look's
+    /// prior (`tabsGapPrior(of:)`): the tabs cannot stand nearer the lead
+    /// than AppKit's spacing, so a smaller gap is the truer, and a larger one is a layout in which the tabs had
+    /// not yet been pushed. Reads nothing where the bar has no lead item, where one of the three views is not in a window, or where the lead or the tabs has no width.
+    private func readTabsGap(_ bar: PageBar) {
+        guard let name = bar.nameItem?.view, let lead = bar.tabsLeadItem?.view, let tabs = bar.tabsItem?.view,
+              name.window != nil, lead.window != nil, tabs.window != nil,
+              lead.frame.width > 0, tabs.frame.width > 0 else { return }
+        let gap = tabs.convert(.zero, to: nil).x - lead.frame.width
+            - name.convert(NSPoint(x: name.bounds.width, y: 0), to: nil).x
+        guard gap.isFinite, gap >= 0, gap < (tabsGaps[bar.shape.look] ?? Self.tabsGapReadCeiling) else { return }
+        tabsGaps[bar.shape.look] = gap
     }
 
     deinit {
         if let languageWatch { NotificationCenter.default.removeObserver(languageWatch) }
         if let pageBarStyleWatch { NotificationCenter.default.removeObserver(pageBarStyleWatch) }
         if let switcherStyleWatch { NotificationCenter.default.removeObserver(switcherStyleWatch) }
+        if let barAppearanceWatch { NotificationCenter.default.removeObserver(barAppearanceWatch) }
         if let alwaysCollapseSearchWatch { NotificationCenter.default.removeObserver(alwaysCollapseSearchWatch) }
         if let moduleEnabledWatch { NotificationCenter.default.removeObserver(moduleEnabledWatch) }
         if let moduleDisabledWatch { NotificationCenter.default.removeObserver(moduleDisabledWatch) }
@@ -444,24 +888,24 @@ import HelmUI
         let status: (word: String, active: Bool)?
     }
 
-    /// The same symbol, tint and name the sidebar draws for this row
-    /// (`SettingsWindow.SettingsSidebar`) — read off `currentSelection` and
+    /// The symbol, tint and name of the page on screen: a module's are the ones
+    /// the sidebar draws for its row (`ShellSidebar`), and
+    /// General, Log and About share Settings' — read off `currentSelection` and
     /// `ModuleRegistry` rather than off `model.pageTitle`, which the
     /// `.moduleName` bar style deliberately carries with no subtitle and no
     /// symbol (`PageBarStyle.swift`'s own `PageBarContent`): that preference
     /// is what sets the *window's* title for `.windowTitle` style, and this
     /// is a second, independent reading for the toolbar's own name item.
     private func pageIdentity() -> PageIdentity {
+        // One name over the three tabs, so the bar's plate stays put under them.
+        let settings = PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
         switch currentSelection {
-        case .none, .general:
-            return PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
-        case .about:
-            return PageIdentity(symbol: "info.circle", tint: .gray, title: AppStr.aboutHelm, status: nil)
-        case .log:
-            return PageIdentity(symbol: "text.alignleft", tint: .gray, title: AppStr.logPane, status: nil)
+        case .none, .general: return settings
+        case .about: return settings
+        case .log: return settings
         case .module(let id):
             guard let descriptor = ModuleRegistry.descriptor(id) else {
-                return PageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
+                return settings
             }
             return PageIdentity(symbol: descriptor.moduleMetadata.sfSymbol,
                                 tint: descriptor.moduleTint.colour,
@@ -682,7 +1126,7 @@ import HelmUI
         toolbar.autosavesConfiguration = false
         toolbar.displayMode = .iconOnly
         toolbar.allowsDisplayModeCustomization = false
-        let list = Self.identifiers(content: content, style: shape.pageBarStyle)
+        let list = barIdentifiers(content: content, style: shape.pageBarStyle)
         bar.identifiers = list
         toolbar.itemIdentifiers = list
         toolbar.centeredItemIdentifiers = Self.centredIdentifiers(shape)
@@ -703,7 +1147,11 @@ import HelmUI
     private func show(_ bar: PageBar, key: String) -> Bool {
         let alreadyShowing = attachedPageKey == key && window?.toolbar === bar.toolbar
         if !alreadyShowing {
-            window?.toolbar = bar.toolbar
+            // A cached bar's inset and tabs' lead may be stale: the pane moved while another
+            // bar was on the window, and the cache key knows nothing of the pane.
+            bar.nameInset?.constant = currentNameInset
+            writeTabsLead(bar)
+            if let window { window.toolbar = bar.toolbar }
             attachedPageKey = key
             // M3's own net watches whichever bar is now on screen — only that
             // one can overflow at all.
@@ -714,6 +1162,10 @@ import HelmUI
         // republish on the same bar can still move the room the tabs need
         // (an action's own visibility flipping the capsule's width).
         scheduleSettle(bar)
+        // Last, once the bar is the attached one in every respect: a receiver
+        // that reaches `paneMoved` synchronously finds this bar attached, its
+        // watch and its settle armed. Only when a window took the bar.
+        if !alreadyShowing, window != nil { barAttached() }
         return !alreadyShowing
     }
 
@@ -794,17 +1246,23 @@ import HelmUI
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.graceInterval, execute: work)
     }
 
-    /// `[.sidebarTrackingSeparator?, name, .flexibleSpace, tabs,
+    /// `[first, name, tabsLeadID, tabs,
     /// .flexibleSpace, action…, search]` — the owner's own zones, left to
-    /// right. The tracking separator is always first: this window's
-    /// `.fullSizeContentView` style mask plus its real sidebar item are
-    /// exactly the shape `NSToolbarSidebarTrackingSeparatorItemIdentifier`'s
+    /// right, where `tabsLeadID` (`helm.tabsLead`, the item that stands the tabs on the card's middle) is listed
+    /// under `.spacer`, and a `.flexibleSpace` stands in its place under `.sidebarSeparator` and on a bar without
+    /// tabs. Under `.sidebarSeparator` the list opens with the
+    /// tracking separator and lists the name under `.moduleName` alone; under `.spacer`
+    /// it opens with the name under both page-bar styles, where the name is
+    /// the module's under `.moduleName` and the name alone under `.windowTitle`
+    /// (`makeNameItem`). A window with a
+    /// `.fullSizeContentView` style mask and a split view's sidebar item (a test rig's; the settings window has none) is
+    /// the shape `NSToolbarSidebarTrackingSeparatorItemIdentifier`'s
     /// own header names ("automatically configures it to track the divider
     /// of the sidebar if one is discovered … windows with
-    /// `NSWindowStyleMaskFullSizeContentView`"), so it is never conditional
-    /// here — only the name item, and the name-only bar's own trailing status
-    /// zone, are, on the page-bar style (`style == .moduleName` gates both,
-    /// below). A hidden action
+    /// `NSWindowStyleMaskFullSizeContentView`"). The name item, and the
+    /// name-only bar's own trailing status zone, are conditional on the
+    /// page-bar style (`style == .moduleName` gates the status always, and the name under
+    /// `.sidebarSeparator`, below). A hidden action
     /// never removes this list's one `helm.actions` entry — which declared
     /// actions actually draw is the capsule's own model
     /// (`HelmToolbarAction.isVisible`), not `NSToolbarItem.isHidden`, which
@@ -817,10 +1275,19 @@ import HelmUI
     /// (Keep Awake, VPN, Keyboard) draws the name-only bar and its status
     /// rides the trailing edge (`makeStatusItem`'s header says why the item is
     /// always listed there and what it draws when there is nothing to say).
-    private static func identifiers(content: HelmPageToolbarContent?,
-                                    style: PageBarStyle) -> [NSToolbarItem.Identifier] {
-        var list: [NSToolbarItem.Identifier] = [.sidebarTrackingSeparator]
-        if style == .moduleName { list.append(nameID) }
+    ///
+    /// The rest of the list is the same under either lead. Internal, not
+    /// private, so a test reads the list without a window.
+    static func identifiers(content: HelmPageToolbarContent?, style: PageBarStyle,
+                            lead: Lead) -> [NSToolbarItem.Identifier] {
+        var list: [NSToolbarItem.Identifier] = []
+        switch lead {
+        case .sidebarSeparator:
+            list.append(.sidebarTrackingSeparator)
+            if style == .moduleName { list.append(nameID) }
+        case .spacer:
+            list.append(nameID)
+        }
         guard let content, !content.tabs.isEmpty || !content.actions.isEmpty || content.search != nil
         else {
             // **The shared name-only bar's own trailing zone** — `helm.status`
@@ -832,15 +1299,16 @@ import HelmUI
             // cached `PageBar` (`obtainNameOnlyBar`) and a
             // list that changed shape between them would be exactly the
             // per-visit churn this class exists to rule out. Never under
-            // `.windowTitle`, where the status stays the window's own
-            // subtitle (`PageBarStyle`'s own header).
+            // `.windowTitle`, where the status is only the subtitle `SettingsWindow.applyTitle` writes to a window whose `titleVisibility` is `.hidden` (`PageBarStyle`'s own header: no plate and no status).
             if style == .moduleName {
                 list.append(.flexibleSpace)
                 list.append(statusID)
             }
             return list
         }
-        list.append(.flexibleSpace)
+        // The tabs' lead, where there are tabs, in place of the flexible space in front of them; the tracking
+        // separator's bars (a test rig's) keep the space.
+        list.append(lead == .spacer && !content.tabs.isEmpty ? tabsLeadID : .flexibleSpace)
         if !content.tabs.isEmpty {
             list.append(tabsID)
             list.append(.flexibleSpace)
@@ -852,6 +1320,30 @@ import HelmUI
         if !content.actions.isEmpty { list.append(actionsID) }
         if content.search != nil { list.append(searchID) }
         return list
+    }
+
+    /// This bar's list: `identifiers` with this toolbar's lead. Internal so a test reads it without a window.
+    func barIdentifiers(content: HelmPageToolbarContent?, style: PageBarStyle) -> [NSToolbarItem.Identifier] {
+        Self.identifiers(content: content, style: style, lead: lead)
+    }
+
+    /// How far past the pane's leading edge the name starts: the
+    /// distance the name keeps from it. This function's own number.
+    nonisolated private static let nameGap: CGFloat = 16
+
+    /// **How far the name's view is held off its item's leading edge so that it starts `nameGap`
+    /// past the pane's leading edge, given where the toolbar starts its items** — 0 where the items
+    /// already start at or past that point, which is AppKit's to decide and not this class's: the
+    /// name then starts where the items do. Continuous in the pane's edge down to that point.
+    /// Not-a-number or infinite on either side, or a pane leading below zero, answers 0, never
+    /// a wide inset: a width computed from them would be a guess, and 0 is the name where the items
+    /// start. A result that overflows reads 0 for the same reason. When it answers above zero the
+    /// width is finite. No ceiling here: `paneMoved` holds `leading` to the window's width before it
+    /// gets here. `currentNameInset` calls it.
+    nonisolated static func nameInset(paneLeading: CGFloat, itemsStart: CGFloat) -> CGFloat {
+        guard paneLeading.isFinite, paneLeading >= 0, itemsStart.isFinite else { return 0 }
+        let width = paneLeading + nameGap - itemsStart
+        return width.isFinite && width > 0 ? width : 0
     }
 
     /// **What AppKit centres: the tabs, and the actions capsule with them
@@ -872,13 +1364,17 @@ import HelmUI
     /// never takes, since it stays `isBordered = false` regardless
     /// (`HelmToolbarActionsCapsule`'s own header). So a capsule holding a
     /// switcher joins the set, which is what makes Hosts' Table / Plain-text
-    /// slide the way the tabs do — the owner's decision, 2026-09-26.
+    /// slide the way the tabs do — the owner's decision, 2026-09-26. **These
+    /// readings are of AppKit's cell.** Under Flat the tabs and the capsule's
+    /// switcher wear Helm's (`makeTabsItem`, `actionsHost(_:for:)`), which
+    /// slides its own pick; the list is the same under both looks, since
+    /// where an item stands does not depend on what it is made of.
     ///
     /// **Only beside the tabs.** Listed alone, the capsule is centred
     /// itself: in that same reference app, the capsule's item moved from the
     /// bar's trailing edge to its middle. Listed with the tabs, a flexible
     /// space between the two, it stays where it was — every page, English
-    /// and Russian, at 1060 and 860 pt in `LivePageToolbarFixture` and at
+    /// and Russian, at 1060 and 860 pt in `LivePageInTheToolbarFixture` and at
     /// the real window's default and narrowest panes in the fold tests'
     /// split rig: the frames of `helm.tabs`, `helm.actions` and
     /// `helm.search` read the same to a tenth of a point before and after
@@ -889,6 +1385,12 @@ import HelmUI
     /// the capsule has a selection to slide, so no other page's bar is asked
     /// to change. `ShapeSignature.hasSegmentedAction` is what builds a fresh
     /// bar if that answer moves.
+    ///
+    /// **Under `.spacer` the tabs are in the set too, and AppKit's place for them is the window's middle,
+    /// where they do not stand: they stand on the card's.** `helm.tabsLead` in front of them is wider than that
+    /// place needs, so AppKit puts the tabs one gap past its right edge instead
+    /// (`tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)`); they stay members of the set, which is what the
+    /// lift-and-slide above is tied to. That an item pushed off the set's place keeps that tracking is not seen on a screen.
     private static func centredIdentifiers(_ shape: ShapeSignature) -> Set<NSToolbarItem.Identifier> {
         guard !shape.tabIDs.isEmpty else { return [] }
         return shape.hasSegmentedAction ? [tabsID, actionsID] : [tabsID]
@@ -902,6 +1404,7 @@ import HelmUI
         switch identifier {
         case Self.nameID: return makeNameItem(bar)
         case Self.statusID: return makeStatusItem(bar)
+        case Self.tabsLeadID: return makeTabsLeadItem(bar)
         case Self.tabsID: return makeTabsItem(bar)
         case Self.searchID: return makeSearchItem(bar)
         case Self.actionsID: return makeActionsItem(bar)
@@ -976,16 +1479,36 @@ import HelmUI
     /// sets it by hand; macOS 27's until there is a window.
     private var titlebarIsTransparent: Bool { window?.titlebarAppearsTransparent ?? true }
 
+    /// **The name's item: a container whose one leading constraint holds the hosting view off the
+    /// item's edge by the inset of now** (`currentNameInset`), so that the name starts where the pane
+    /// says and the fold moves it by writing a constant, the bar staying the window's. The container's
+    /// leading edge is read as where the item starts (`learnStartOfItems(_:)` reads it; `itemsStartMoves` says how
+    /// that edge moves with the inset) and its trailing edge is pinned to the hosting view's. Under
+    /// `.windowTitle` the zone is drawn without its icon (`showsIcon`). Not seen on a shown
+    /// window: that AppKit lays the item out at the width this constraint gives it, in the display pass
+    /// that writes it.
     private func makeNameItem(_ bar: PageBar) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.nameID)
         let identity = pageIdentity()
         let hosting = NSHostingView(rootView: NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                                            title: identity.title,
+                                                           showsIcon: bar.shape.pageBarStyle == .moduleName,
                                                            iconStyle: AppSettings.sidebarStyle,
                                                            appearsActive: windowAppearsActive,
                                                            titlebarIsTransparent: titlebarIsTransparent))
         hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(hosting)
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+        let inset = hosting.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: currentNameInset)
+        NSLayoutConstraint.activate([
+            inset,
+            hosting.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hosting.topAnchor.constraint(equalTo: container.topAnchor),
+            hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        item.view = container
         // A title is not a control: no glass behind it — the same call
         // `PageBarStyle`'s SwiftUI `.moduleName` arm made with
         // `.sharedBackgroundVisibility(.hidden)`, said here in the term a
@@ -994,6 +1517,7 @@ import HelmUI
         item.label = identity.title
         bar.nameItem = item
         bar.nameHost = hosting
+        bar.nameInset = inset
         bar.lastNameSnapshot = NameSnapshot(symbol: identity.symbol, title: identity.title,
                                             statusWord: identity.status?.word,
                                             statusActive: identity.status?.active ?? false,
@@ -1005,20 +1529,23 @@ import HelmUI
     }
 
     /// **The trailing status item on the shared name-only bar** — the owner,
-    /// 2026-09-28: «Давай вернем его в правую часть». Always present in that
-    /// bar's own identifier list (`identifiers()`'s own header), whether or
-    /// not the page on screen right now has a status at all, so a page
-    /// switch among the pages that declare no toolbar content —
+    /// 2026-09-28: «Давай вернем его в правую часть». Present in that bar's
+    /// own identifier list under the module-name style (`identifiers()`'s own
+    /// header), whether or not the page on screen right now has a status at
+    /// all, so a page switch among the pages that declare no toolbar content —
     /// which all share this one cached bar — never rewrites `itemIdentifiers`
-    /// (this class's own header on why that churns). **Empty and out of
-    /// VoiceOver when there is nothing to say** — `StatusZoneView`'s own
-    /// `accessibilityHidden(status == nil)` — rather than `NSToolbarItem
-    /// .isHidden`: an item this bar's own `identifiers()` always lists but
-    /// sometimes hides would need `watchedItems`/`checkOverflow`'s fold
-    /// machinery to know to ignore it, and that machinery already skips the
-    /// name-only bar entirely (`checkOverflow`'s own `key != Self.nameOnlyKey`
-    /// guard) — an item that occasionally reported `isHidden` would be the
-    /// one case nothing here is built to read.
+    /// (this class's own header on why that churns). **Empty when there is
+    /// nothing to say, its content marked hidden from accessibility** —
+    /// `StatusZoneView`'s own `accessibilityHidden(status == nil)`
+    /// (`StatusZoneView`'s header says what that modifier is on). Nothing in
+    /// this file writes `NSToolbarItem.isHidden` (`watchedItemsAllVisible`'s
+    /// own header), and nothing in it reads this item's: the status item is
+    /// not among `watchedItems`, and `checkOverflow` returns before it reads
+    /// any item of the name-only bar (its own `key != Self.nameOnlyKey`
+    /// guard). The item is empty on the page of a module that declares no
+    /// toolbar content and answers no `ModuleDescriptor.activity` (Autopilot,
+    /// Disk and Duplicates); General, About and Log declare tabs, so their
+    /// bars do not list it.
     private func makeStatusItem(_ bar: PageBar) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.statusID)
         let identity = pageIdentity()
@@ -1058,6 +1585,7 @@ import HelmUI
         if let nameHost = bar.nameHost {
             nameHost.rootView = NameZoneView(symbol: identity.symbol, tint: identity.tint,
                                              title: identity.title,
+                                             showsIcon: bar.shape.pageBarStyle == .moduleName,
                                              iconStyle: AppSettings.sidebarStyle,
                                              appearsActive: windowAppearsActive,
                                              titlebarIsTransparent: titlebarIsTransparent)
@@ -1089,12 +1617,47 @@ import HelmUI
     /// used to choose between this and AppKit's own `NSToolbarItemGroup` —
     /// retired 2026-09-23 once the owner had looked at both on a real window
     /// and kept this one.
+    ///
+    /// **What the item is made of depends on the look the bar was built under
+    /// (`PageBar.shape`).** Under Liquid Glass the item's view is the hosting
+    /// view itself, bordered, and the switcher wears AppKit's cell
+    /// (`HelmBarAppearance.switcherCell`), so AppKit draws the platter and the
+    /// selection's motion. Under Flat the item is `isBordered = false`, which
+    /// reads back `false` on this shape and not on a bare control
+    /// (`TheToolbarsItemsFollowTheLookTests`); on a hosting-view item in a key
+    /// window in the dark appearance that took AppKit's platter off, and Light
+    /// and a window that is not key were not seen. Its view is a
+    /// `ShellBarPlate` wearing the flat look with the hosting view inside it,
+    /// pinned edge to edge, so the plate is exactly as large as the strip and
+    /// follows it when the strip is refilled or folded. The strip is Helm's
+    /// cell, whose slide moves the pick. `PageBar.tabsSwitcherHost` is
+    /// the hosting view under both looks; the item's view is `PageBar.tabsItemView`.
+    /// **Not seen on a screen:** the plate under the cell inside a toolbar item, and
+    /// that no platter of AppKit's is behind it, and that the item follows the strip when the
+    /// strip changes size (the plate's constraints hand the strip's size on; no window drew it).
     private func makeTabsItem(_ bar: PageBar) -> NSToolbarItem {
         let tabs = bar.content?.tabs ?? []
         let item = NSToolbarItem(itemIdentifier: Self.tabsID)
         let hosting = NSHostingView(rootView: helmSwitcherView(tabs, bar: bar))
         hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        if bar.shape.look == .flat {
+            let plate = ShellBarPlate(appearance: .flat, isActive: windowAppearsActive,
+                                      titlebarIsTransparent: titlebarIsTransparent)
+            plate.translatesAutoresizingMaskIntoConstraints = false
+            plate.content = hosting
+            hosting.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                hosting.leadingAnchor.constraint(equalTo: plate.leadingAnchor),
+                hosting.trailingAnchor.constraint(equalTo: plate.trailingAnchor),
+                hosting.topAnchor.constraint(equalTo: plate.topAnchor),
+                hosting.bottomAnchor.constraint(equalTo: plate.bottomAnchor)
+            ])
+            item.view = plate
+            item.isBordered = false
+            bar.tabsPlate = plate
+        } else {
+            item.view = hosting
+        }
         item.label = HelmA11y.whatToShow
         bar.tabsSwitcherHost = hosting
         bar.tabsItem = item
@@ -1104,6 +1667,24 @@ import HelmUI
                                                 compact: bar.tabsFolded,
                                                 selectedID: bar.content?.selectedTab?.wrappedValue)
         patchTabsMenu(bar)
+        return item
+    }
+
+    /// **The tabs' lead: an empty view of the width `currentTabsLead(_:)` gives it.** One width constraint is
+    /// all the view holds on its width (the constant `writeTabsLead(_:)` rewrites), and a height, which is assumed, not tried:
+    /// that an item with no height collapses.
+    private func makeTabsLeadItem(_ bar: PageBar) -> NSToolbarItem {
+        let item = NSToolbarItem(itemIdentifier: Self.tabsLeadID)
+        let view = NSView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        let width = view.widthAnchor.constraint(equalToConstant: currentTabsLead(bar))
+        width.isActive = true
+        view.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        view.setAccessibilityElement(false)
+        item.view = view
+        item.isBordered = false
+        bar.tabsLeadItem = item
+        bar.tabsLead = width
         return item
     }
 
@@ -1126,6 +1707,7 @@ import HelmUI
                                 },
                                 compact: bar.tabsFolded, menu: barMenu)
                 .environment(\.helmSwitcherStyle, AppSettings.toolbarSwitcherStyle)
+                .environment(\.helmSwitcherCell, bar.shape.look.switcherCell)
                 // A frozen bar's tabs are disabled through `bar.isInteractive`
                 // rather than through `bar.isLive` — see `HelmTabsSnapshot`'s
                 // own header for why the two must not be conflated — since
@@ -1215,7 +1797,8 @@ import HelmUI
     }
 
     /// **What the centre tabs' full width was measured under** — the one
-    /// reading `settle(_:)` keeps on the bar (`PageBar.tabsWidth`) rather than
+    /// reading `wholeTabsWidth(_:_:)` keeps on the bar (`PageBar.tabsWidth`), for the settle and for the lead made
+    /// with a fresh bar, rather than
     /// taking again. A measurement is a `SwitcherMeasurementRig` mount — a
     /// hosting view, a toolbar and a layout — and every declare re-arms a
     /// settle, so a page that republishes on every keystroke (Hosts' SSH
@@ -1247,7 +1830,9 @@ import HelmUI
     /// 2026-09-26). The field stays on the key regardless — a change to it
     /// alone never reaches this comparison to be the miss. Kept per bar, not
     /// in a static table: a bar is dropped with its shape, and its width
-    /// goes with it.
+    /// goes with it. **That is why the look is not on the key**: it is on the
+    /// bar's shape (`ShapeSignature.look`), so a width measured wearing one
+    /// look's cell lives on a bar that is not given back under the other.
     ///
     /// `fileprivate` for the reason `NameSnapshot` above states.
     fileprivate struct TabsWidthKey: Equatable {
@@ -1360,22 +1945,26 @@ import HelmUI
     /// all call this rather than writing the flag directly.
     ///
     /// - Parameter reseat: whether to detach and reattach the tabs item's
-    ///   view (`item.view = nil`, then the same host) after patching — the
+    ///   view (`item.view = nil`, then the same view, `PageBar.tabsItemView`:
+    ///   the plate under Flat, the host under Liquid Glass) after patching — the
     ///   only way an item AppKit has already moved into its own «»» overflow
     ///   menu comes back once there is room again, measured against leaving
     ///   this out.
     private func setTabsFolded(_ folded: Bool, bar: PageBar, layout: FoldLayout, reseat: Bool = false) {
         guard bar.tabsFolded != folded else { return }
         bar.tabsFolded = folded
+        // The cap follows the tabs in the layout that moves them: for tabs about to be whole, the offer
+        // they leave; for tabs about to fold, the offer of tabs of no width, which is the most they can leave.
+        writeSearchOffer(bar, tabsWidth: folded ? 0 : bar.tabsWidth?.full ?? tabsWidth(bar))
         NSAnimationContext.runAnimationGroup { animation in
             animation.duration = 0
             animation.allowsImplicitAnimation = false
             patchTabs(bar)
             bar.tabsSwitcherHost?.layoutSubtreeIfNeeded()
         }
-        if reseat, let item = bar.tabsItem, let host = bar.tabsSwitcherHost {
+        if reseat, let item = bar.tabsItem, let view = bar.tabsItemView {
             item.view = nil
-            item.view = host
+            item.view = view
         }
         switch layout {
         case .window: window?.layoutIfNeeded()
@@ -1384,14 +1973,21 @@ import HelmUI
                 bar?.tabsSwitcherHost?.invalidateIntrinsicContentSize()
             }
         }
+        // The tabs' width moved, and the lead stands them on the card's middle by it; the settle reads the width
+        // the layout settles on where this one has not yet.
+        writeTabsLead(bar)
+        scheduleSettle(bar)
     }
 
     /// **A sibling with no size of its own, never the view being measured**
-    /// (`CLAUDE.md`'s own rule for a geometry reading): the detail pane's own
-    /// width when this window's content is the split view it always is
-    /// (`SettingsSplitViewController`), or the window's whole content layout
-    /// rect for a window under test that mounts the toolbar without one.
-    private func offeredRoom() -> CGFloat {
+    /// (`CLAUDE.md`'s own rule for a geometry reading): the pane's width once
+    /// `paneMoved(leading:width:rail:)` has told it, else the detail pane's own
+    /// width when this window's content is a split view (a test rig's; the
+    /// window itself reports the pane), or the window's whole content layout
+    /// rect for a window that mounts the toolbar without either.
+    /// Internal so a test reads it without a window.
+    func offeredRoom() -> CGFloat {
+        if let pane { return pane.width }
         guard let window else { return 0 }
         if let split = window.contentViewController as? NSSplitViewController,
            let detail = split.splitViewItems.last {
@@ -1400,14 +1996,16 @@ import HelmUI
         return window.contentLayoutRect.width
     }
 
+    /// The lead item is not watched: it stands before the tabs in the list, so an eviction that reaches it has
+    /// reached the tabs and the actions first (assumed: in runs that folded the tabs through `checkOverflow()` with
+    /// the lead listed, a temporary print, since removed, showed the actions' item answering `isVisible` false; the lead's own answer
+    /// was never read), and a lead
+    /// that is not shown puts no room back by folding the tabs.
     private func watchedItems(_ bar: PageBar) -> [NSToolbarItem] {
         [bar.nameItem, bar.tabsItem, bar.actionsItem].compactMap { $0 }
     }
 
-    /// Every watched item that this bar actually wants shown (`!isHidden`) is
-    /// reported by AppKit as actually showing (`isVisible`) — an item this
-    /// bar hides on purpose (the name item under `.windowTitle`) does not
-    /// count either way.
+    /// Every watched item is reported by AppKit as showing (`isVisible`) or is hidden (`isHidden`), which nothing in this file writes.
     private func watchedItemsAllVisible(_ bar: PageBar) -> Bool {
         watchedItems(bar).allSatisfy { $0.isHidden || $0.isVisible }
     }
@@ -1584,20 +2182,22 @@ import HelmUI
     /// snapshot gate keeps the offscreen ink measurement to the resizes that
     /// moved something it reads.
     private func windowDidResize() {
+        if let bar = attachedBar, learnStartOfItems(bar) { insetMoved() }
         patchAttachedName()
         scheduleSettleForAttachedBar()
     }
 
     private func scheduleSettleForAttachedBar() {
-        guard let key = attachedPageKey else { return }
-        let bar = key == Self.nameOnlyKey ? nameOnlyBar : pageBars[key]
-        if let bar { scheduleSettle(bar) }
+        if let bar = attachedBar { scheduleSettle(bar) }
     }
 
     /// Re-arms the one settle timer for `bar` — called from M2, from the
     /// search field ending its own editing, from a window or split-view
     /// resize, after every `show()` and after a language, label-style or
-    /// page-bar change (`refreshAndResettle()`).
+    /// page-bar change (`refreshAndResettle()`) and after every stored pane report and every moved items start (`insetMoved()`),
+    /// after a fold or unfold of the tabs (`setTabsFolded`) and by the settle itself when its pass moved the lead or the
+    /// search field's offer, when a search field's closing deadline, still ahead, holds an unfold back, and when
+    /// the title's growth leaves the open-fit verdict stale under an active cap.
     private func scheduleSettle(_ bar: PageBar) {
         settleWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self, weak bar] in
@@ -1628,13 +2228,17 @@ import HelmUI
     /// **A never-shown `NSToolbarItem`, in a never-shown `NSToolbar`, in a
     /// never-shown `NSWindow` — built once and reused for every off-screen
     /// measurement.** A bare `NSHostingView` asked for its own `fittingSize`
-    /// is not what `switcherWidth(tabs:style:selectedID:)` needs: measured
+    /// is not what `switcherWidth(tabs:style:look:selectedID:)` needs: measured
     /// against the same switcher hosted in a real toolbar item, in a real
     /// (if never-ordered) window, the bare reading overestimates by 3–57.5 pt
     /// depending on label style and tab count — Text style at four tabs the
     /// worst of it — which is more than `unfoldMargin` (engineer, this Mac:
     /// the same `HelmToolbarSwitcher` configuration measured both ways side
-    /// by side).
+    /// by side). **That reading is of AppKit's cell**, the one the toolbar's
+    /// switcher wore before the look reached the measuring views; the rig now
+    /// measures wearing the cell the look puts on the switcher
+    /// (`HelmBarAppearance.switcherCell`), and the gap under Flat was not
+    /// measured.
     /// A toolbar item resolves its content's environment differently from a
     /// bare hosting view with no toolbar or window above it at all — exactly
     /// which environment value accounts for the gap is not something this
@@ -1735,8 +2339,8 @@ import HelmUI
     /// drawing, so a longer word in the running language costs what it would
     /// cost the real control. Full only: the compact form's width was
     /// measured beside it until nothing read it (`settle(_:)` bound it to
-    /// `_`). Called only from `settle(_:)`, behind `PageBar.tabsWidth`.
-    private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle,
+    /// `_`). Called only from `wholeTabsWidth(_:_:)`, behind `PageBar.tabsWidth`.
+    private func switcherWidth(tabs: [HelmToolbarTab], style: ToolbarSwitcherStyle, look: HelmBarAppearance,
                                selectedID: String?) -> CGFloat {
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(selectedID ?? ""),
                                        segments: tabs.map {
@@ -1745,6 +2349,7 @@ import HelmUI
                                 },
                                        compact: false)
             .environment(\.helmSwitcherStyle, style)
+            .environment(\.helmSwitcherCell, look.switcherCell)
         return Self.measurementRig.measure(AnyView(view))
     }
 
@@ -1792,8 +2397,9 @@ import HelmUI
     }
 
     /// **The window's own inline title, when the page-bar style draws one
-    /// instead of a name item** (`PageBarStyle.windowTitle`,
-    /// `SettingsWindow.applyTitle(_:)`) — `NSToolbarTitleView`, AppKit's own
+    /// instead of a name item** (`PageBarStyle.windowTitle` under `.sidebarSeparator`, the test
+    /// rigs' lead; a `.spacer` bar lists its name item under both styles and the window's
+    /// title stays hidden, written once by `SettingsWindow`'s initialiser) — `NSToolbarTitleView`, AppKit's own
     /// container for the title and subtitle text it draws inside the
     /// toolbar, found by class name rather than by type (it carries no
     /// public header, the same necessity every AppKit-private view in this
@@ -1863,7 +2469,7 @@ import HelmUI
     }
 
     /// **AppKit's own currently free room around the tabs — the combined
-    /// width of the two flexible spaces either side of them, read from where
+    /// width of what stands before them past the leading edge and of the flexible space after them, read from where
     /// AppKit actually put the leading edge, the tabs and the actions items,
     /// not derived by subtracting item widths from `offeredRoom()`.** That
     /// subtraction undercounts by 32–42 pt against a real, live window
@@ -1882,9 +2488,11 @@ import HelmUI
     /// edge, the tabs and the actions items' positions comparable at all
     /// without knowing that hierarchy by name.
     ///
-    /// **The leading edge is the name item's own trailing edge under
-    /// `.moduleName`, and the window's own drawn title under `.windowTitle`
-    /// (`windowTitleMaxX(_:)`).** Before this pass, a page-bar style with no
+    /// **The leading edge is the tabs' lead item's trailing edge where the bar has one (`.spacer`): the lead
+    /// is a width the tabs are stood on the card's middle by, so counting it as room would count the push
+    /// as room the tabs could grow into. Otherwise it is the name item's own trailing edge, which is the name
+    /// hosting view's, and where the bar has no name item (`.windowTitle` under
+    /// `.sidebarSeparator`) the window's own drawn title (`windowTitleMaxX(_:)`).** Before this pass, a page-bar style with no
     /// name item read `nil` unconditionally here and fell straight through to
     /// the `offeredRoom()` arithmetic below, which has no notion of the title
     /// AppKit was actually drawing in that same leading zone: against
@@ -1911,7 +2519,7 @@ import HelmUI
     /// repairs a fold this method should have predicted and did not) but must
     /// never invent the room to unfold into. The second is `PageBar
     /// .titleGrowth`, set here whenever `windowTitleMaxX(_:)` finds a title:
-    /// a `.windowTitle` container that has not yet given back a fold's own
+    /// a `.windowTitle` container on a `.sidebarSeparator` bar that has not yet given back a fold's own
     /// growth (that method's own header) makes this method's return value
     /// alone still too optimistic right at AppKit's own threshold — measured
     /// directly against this fixture, crediting that growth in full unfolded
@@ -1925,7 +2533,14 @@ import HelmUI
         else { return nil }
         let leadingMaxX: CGFloat
         if let nameView = bar.nameItem?.view {
-            leadingMaxX = nameView.convert(NSPoint(x: nameView.bounds.width, y: 0), to: nil).x
+            // The lead item's right edge where the bar has one, the name's otherwise: the lead is a fixed width
+            // the tabs stand on the card's middle by, not room the tabs can take, so the room before the tabs
+            // starts where it ends. The view is assumed to stand in the middle of a viewer no narrower than
+            // `tabsLeadFloor` (read in a window never shown with the constant at 1: the view 1 point wide, 17.5
+            // points short of the tabs under Flat), so under the floor those 17.5 points are counted as room here.
+            // Not corrected.
+            let leadingView = bar.tabsLeadItem?.view ?? nameView
+            leadingMaxX = leadingView.convert(NSPoint(x: leadingView.bounds.width, y: 0), to: nil).x
             bar.titleGrowth = 0
             bar.titleOpenFloorCharge = 0
         } else if let title = windowTitleMaxX(window) {
@@ -1965,8 +2580,10 @@ import HelmUI
         return gapBefore + gapAfter
     }
 
-    /// **The predicted slack left for the two flexible spaces if the tabs
-    /// took `tabsWidth`** — positive is room to spare, negative is eviction.
+    /// **The predicted slack left around the tabs, past the lead and before the actions, if the tabs
+    /// took `tabsWidth`** — positive is room to spare, negative is eviction. Where the bar has a lead item the
+    /// fallback below charges it too, its constant and no less than `tabsLeadFloor`; the anchored reading does not,
+    /// and under the floor counts the room right of the lead's view as room (`currentToolbarSlack(_:)`).
     ///
     /// Anchored on `currentToolbarSlack(_:)` — AppKit's own, currently
     /// correct reading — and adjusted by how much the tabs and the search
@@ -1975,7 +2592,7 @@ import HelmUI
     /// sibling's width at once. That anchoring is what keeps a wrong decision
     /// from ever being permanent: `NSSearchToolbarItem` grows an idle, empty
     /// field into whatever room a fold frees, which shrinks the flexible
-    /// spaces down toward AppKit's own per-gap minimum (measured ~8 pt on
+    /// space after the tabs (and the one before them, where the bar has no lead item) down toward AppKit's own per-gap minimum (measured ~8 pt on
     /// this Mac) — a live reading taken *after* that growth already reflects
     /// it, so subtracting the field's predicted budget from its own current,
     /// already-grown width (rather than from a fresh `offeredRoom()`
@@ -1983,7 +2600,15 @@ import HelmUI
     /// predicts the field shrinking back the moment the tabs take the room
     /// back, instead of reading that growth as permanent demand.
     ///
+    /// **Where the bar has a lead item and an idle search field, the slack is the room the whole tabs on the
+    /// card's middle leave the field less its floor, and the room around the tabs is not read from the layout of
+    /// now** (`currentToolbarSlack(_:)` is not asked): the offer is worked out from the pane as told, where the name
+    /// ends, the actions' width and the bar's right end (`searchOffer(_:tabsWidth:)`). The field is charged the width
+    /// it is offered, so the settle folds the tabs only where that room is under `ShellBarLayout.searchFloor`, and
+    /// the margins below apply to that room. The tabs are still folded elsewhere: by `checkOverflow()` when AppKit
+    /// evicts a watched item, by a press on the magnifier, and by a growth of the field beyond its offer.
     private func predictedSlack(bar: PageBar, tabsWidth: CGFloat) -> CGFloat {
+        if let offer = searchOffer(bar, tabsWidth: tabsWidth) { return offer.slack }
         let searchBudget = searchRoomBudget(bar)
         if let slackNow = currentToolbarSlack(bar), let tabsView = bar.tabsItem?.view {
             let tabsLive = tabsView.frame.width
@@ -2003,9 +2628,17 @@ import HelmUI
             let searchLive = bar.searchItem?.searchField.frame.width ?? 0
             return slackNow - (tabsWidth - tabsLive) - (searchBudget - searchLive)
         }
-        let nameWidth = bar.nameItem?.view?.frame.width ?? 0
+        // The hosting view's width, not the item's: the item's is wider by the inset, which is
+        // room the pane does not offer.
+        let nameWidth = bar.nameHost?.frame.width ?? 0
+        // Not-a-number is a lead of no known width: charged the floor, the least the item was read to take, which
+        // leaves the most room and folds nothing. Every writer of the constant holds it to `1...1_000_000`
+        // (`tabsLead(paneLeading:paneWidth:tabsWidth:gap:nameMaxX:)`), so none is expected here.
+        let leadWidth = bar.tabsLead.map {
+            $0.constant.clampedIfFinite(to: Self.tabsLeadFloor...CGFloat.greatestFiniteMagnitude) ?? Self.tabsLeadFloor
+        } ?? 0
         let actionsWidth = bar.actionsItem?.view?.frame.width ?? 0
-        return offeredRoom() - (nameWidth + tabsWidth + actionsWidth + searchBudget)
+        return offeredRoom() - (nameWidth + leadWidth + tabsWidth + actionsWidth + searchBudget)
     }
 
     /// **Hysteresis on the predicted slack, not on the room itself** — a
@@ -2025,7 +2658,7 @@ import HelmUI
 
     /// **The margin `settle(_:)` requires of the *worst case* — crediting
     /// none of `PageBar.titleGrowth` back — before it will unfold a
-    /// `.windowTitle` bar.** `unfoldMargin` alone is not enough here: right
+    /// `.windowTitle` on a `.sidebarSeparator` bar.** `unfoldMargin` alone is not enough here: right
     /// at AppKit's own fold threshold, `predictedSlack(bar:tabsWidth:)`
     /// already counts the title container's currently-unreturned growth as
     /// reclaimed, and that growth does not visibly reverse in the same pass
@@ -2222,8 +2855,9 @@ import HelmUI
                          language: AppLanguage.current, style: AppSettings.toolbarSwitcherStyle)
     }
 
-    /// Test-only counters for the two gates below — read only by
-    /// `AnUnfoldIsPredictedNeverTrialledTests`, the same widened-for-testing
+    /// Test-only counters for the two gates below — read by
+    /// `AnUnfoldIsPredictedNeverTrialledTests`, and `gateUnfoldFieldWidths` by
+    /// `AlwaysCollapseSearchFirstPressTests` as well, the same widened-for-testing
     /// precedent `tookMagnifierPress` and `settleInterval` already set in
     /// this file. `gateUnfoldFieldWidths` is the search field's own live
     /// width at the exact moment `settle(_:)` decided to unfold, one entry
@@ -2280,7 +2914,7 @@ import HelmUI
     /// below is what decides whether the full tabs still fit beside that
     /// width, so nothing here has to special-case a non-empty field.
     ///
-    /// **No trial against the live bar any more.** `switcherWidth(tabs:style:
+    /// **No trial against the live bar any more.** `switcherWidth(tabs:style:look:
     /// selectedID:)` and `predictedSlack(bar:tabsWidth:)` answer from an
     /// off-screen switcher and the bar's own siblings, so the decision below
     /// either unfolds once, correctly, or does not unfold at all — never
@@ -2308,7 +2942,7 @@ import HelmUI
     /// retried until the room, the field's width, the language or the
     /// switcher style has actually moved — see `checkOverflow()` for where
     /// that gets recorded. `worstCaseOK` is the fourth, specific to
-    /// `.windowTitle`: `currentToolbarSlack(_:)`'s own "Two gates" paragraph
+    /// `.windowTitle` on a `.sidebarSeparator` bar: `currentToolbarSlack(_:)`'s own "Two gates" paragraph
     /// has why `slack` alone still over-credits a title container's
     /// not-yet-reversed growth right at AppKit's own threshold, and
     /// `SettingsToolbar.unfoldWorstCaseMargin`'s own header has what was
@@ -2329,7 +2963,7 @@ import HelmUI
     /// (`searchRoomBudget(_:)`'s own header) — so a direct read needs no
     /// dependency on which branch that method took. **`bar.titleOpenFloorCharge`
     /// is subtracted from `openSlack` itself, before either margin
-    /// compares against it** — under `.windowTitle`, a growing field does not
+    /// compares against it** — under `.windowTitle` on a `.sidebarSeparator` bar, a growing field does not
     /// let the title container shrink all the way to its own `fittingWidth`
     /// (`SettingsToolbar.windowTitleOpenFloor`'s own header has the reading);
     /// `slack` alone credits that unreachable room as available the same way
@@ -2340,7 +2974,7 @@ import HelmUI
     /// inactive, or a field AppKit itself has already opened — the
     /// unconditional fold in `tookMagnifierPress` and `searchFieldFrameChanged`
     /// already covers both of those. `unfoldWorstCaseMargin`, not
-    /// `unfoldMargin` alone, for the same `.windowTitle` reason `worstCaseOK`
+    /// `unfoldMargin` alone, for the same `.windowTitle`-on-a-`.sidebarSeparator`-bar reason `worstCaseOK`
     /// above needs it: keeping the tabs full is an unfold-grade bet either
     /// way.
     ///
@@ -2350,7 +2984,7 @@ import HelmUI
     /// what this predicate answered, and the next opening asks fresh rather
     /// than reading anything remembered from the one before. The one case
     /// this predicate used to get systematically wrong — a `.windowTitle`
-    /// container not yet giving back the room `windowTitleOpenFloor` claims
+    /// container on a `.sidebarSeparator` bar not yet giving back the room `windowTitleOpenFloor` claims
     /// it can reach — is exactly what `bar.titleOpenFloorCharge`, subtracted
     /// above, now corrects before either margin ever compares against it.
     private func openFitsPrediction(_ bar: PageBar, searchItem: NSSearchToolbarItem?,
@@ -2369,6 +3003,21 @@ import HelmUI
         guard let key = attachedPageKey,
               key == Self.nameOnlyKey ? bar === nameOnlyBar : pageBars[key] === bar
         else { return }
+        // The start of items under the placement last told, read before anything below is written from it. A start
+        // that moved moves the name's inset, and with it every gap the pass reads; `insetMoved()` has armed the pass
+        // again, over the layout that follows. A start within `itemsStartTolerance` of the one held is no move, so
+        // the pass goes on to the lead and the offer without a second pass in between.
+        if learnStartOfItems(bar) { insetMoved(); return }
+        // The lead is written from the tabs' and the gap's frames of this layout and the start of items learnt or
+        // seeded, and the search field's offer beside it; when either constant moves, what the pass reads below moves
+        // with it, so the pass is armed again over the layout that follows and goes on only when a pass moves neither.
+        // Assumed, held by no row and bounded by no count: that they come to stand still, since the gap, once read
+        // for a look, only descends and the lead moves neither the name nor the tabs' width, except through a fold
+        // of the tabs, which writes the lead and the offer and arms the pass itself (`setTabsFolded`).
+        readTabsGap(bar)
+        let leadMoved = writeTabsLead(bar)
+        let offerMoved = writeSearchOffer(bar)
+        if leadMoved || offerMoved { scheduleSettle(bar); return }
         // **A search item is not a precondition for the tabs prediction
         // below — only for the search-specific gates in front of it.**
         // Before this pass, a page whose shape carried tabs but no search
@@ -2406,24 +3055,16 @@ import HelmUI
             // Measured once per `TabsWidthKey` — see its header for why a
             // settle after every keystroke must not measure tabs a keystroke
             // cannot move, and for what makes a key miss.
-            let key = TabsWidthKey(tabs: content.tabs, style: AppSettings.toolbarSwitcherStyle,
-                                   language: AppLanguage.current, selectedID: content.selectedTab?.wrappedValue)
-            let full: CGFloat
-            if let measured = bar.tabsWidth, measured.key == key {
-                full = measured.full
-            } else {
-                full = switcherWidth(tabs: content.tabs, style: key.style, selectedID: key.selectedID)
-                bar.tabsWidth = (key, full)
-            }
+            let full = wholeTabsWidth(bar, content)
             let slack = predictedSlack(bar: bar, tabsWidth: full)
             // **Never unfold from an unanchored prediction** — see this
             // method's own header, "Four gates," for why a `nil` here must
             // still be free to fold on the branch below.
             let anchored = currentToolbarSlack(bar) != nil
-            // **Never unfold on the strength of a `.windowTitle` container's
+            // **Never unfold on the strength of a `.windowTitle`-on-a-`.sidebarSeparator`-bar container's
             // own, not-yet-returned growth alone** — `bar.titleGrowth`, just
             // populated by the `currentToolbarSlack(_:)` call above, is zero
-            // under `.moduleName` and whenever the container has already
+            // wherever the bar has a name item and whenever the container has already
             // settled, so this is a no-op there; `SettingsToolbar
             // .unfoldWorstCaseMargin`'s own header has the measured pane
             // where crediting the growth in full unfolded straight into an
@@ -2466,7 +3107,7 @@ import HelmUI
                         bar.pendingUnfoldFieldWidth = fieldWidth
                         // **`openFits`, just computed above, was measured
                         // with the tabs still folded — a `.windowTitle`
-                        // container does not give a fold's own growth back in
+                        // container on a `.sidebarSeparator` bar does not give a fold's own growth back in
                         // the same pass that hands the tabs their room
                         // (`currentToolbarSlack(_:)`'s "Two gates"
                         // paragraph), so `bar.titleGrowth > 0` here means this
@@ -2520,6 +3161,24 @@ import HelmUI
             }
         }
     }
+
+    /// **Whether a field that grew to `width` stands within what the whole tabs leave it**: the idle field's offer
+    /// (`searchOffer(_:tabsWidth:)`, for the tabs as they were measured whole) is not under the floor and the
+    /// field is no wider than it, to within `offerTolerance`. Such a growth is the field taking the room it was
+    /// offered, which the whole tabs leave, and not an opening that needs the tabs folded: a field AppKit has
+    /// collapsed for a moment while a layout was under way (read after an unfold's own layout, 36 wide and hidden,
+    /// before the next layout gave it 168) and then shows again is exactly that. `false` where there is no offer
+    /// (the field is being edited, is opening, holds text or is held at rest by the cap), which keeps the fold. A
+    /// width that is not a number also answers `false` and is never asked: the caller's condition begins
+    /// `width > bar.lastFieldWidth`, false for such a width, so nothing folds on it.
+    private func growthIsWithinTheOffer(_ bar: PageBar, width: CGFloat) -> Bool {
+        guard let offer = searchOffer(bar, tabsWidth: bar.tabsWidth?.full ?? tabsWidth(bar)) else { return false }
+        return offer.wholeTabsFit && width <= offer.width + Self.offerTolerance
+    }
+
+    /// **Half a point: what a frame may stand over the offer written to the cap.** Chosen, not measured: the
+    /// least step a frame is aligned to on a display of the usual scale (assumed).
+    nonisolated static let offerTolerance: CGFloat = 0.5
 
     private func searchFieldFrameChanged(bar: PageBar, field: NSSearchField) {
         let width = field.frame.width
@@ -2615,10 +3274,16 @@ import HelmUI
         // conditional M1 uses — `openingKeepsTheTabs(_:)` — for the field the
         // cap is holding at rest; a field AppKit itself collapsed keeps its
         // unconditional fold, since `openingKeepsTheTabs(_:)` answers false
-        // whenever the cap is inactive.
+        // whenever the cap is inactive. **Except for a growth within the
+        // offer** (`growthIsWithinTheOffer(_:width:)`): that is the field
+        // taking the room the whole tabs leave it, and folding them for it
+        // would fold tabs the settle keeps whole (it folds them only where the
+        // slack is under 0). It is asked before `searchOpening` is set, which
+        // takes the offer away.
         if width > bar.lastFieldWidth, !bar.tabsFolded, !bar.searchOpening, !closing,
            bar.rest?.collapsed == true, bar.content?.tabs.isEmpty == false,
-           roomKnown || bar.searchRestCap?.isActive == true {
+           roomKnown || bar.searchRestCap?.isActive == true,
+           !growthIsWithinTheOffer(bar, width: width) {
             // Same reason as M1's own fold-and-open branch above: a fresh
             // interaction starting through this path (keyboard, VoiceOver)
             // must not inherit a stale refusal either.
@@ -2746,7 +3411,8 @@ import HelmUI
     /// **The two identical `Entry` mappings this file used to carry, become
     /// one.** `HelmToolbarAction.Kind`'s closures never survive into
     /// `HelmToolbarActionsModel.EntryKind` — see `Entry`'s own header for why.
-    private static func actionEntries(for content: HelmPageToolbarContent) -> [HelmToolbarActionsModel.Entry] {
+    private static func actionEntries(for content: HelmPageToolbarContent,
+                                      look: HelmBarAppearance) -> [HelmToolbarActionsModel.Entry] {
         content.actions.map { action in
             let kind: HelmToolbarActionsModel.EntryKind
             switch action.kind {
@@ -2762,7 +3428,7 @@ import HelmUI
             case .segmented(let options, let selection):
                 kind = .segmented(options.map {
                     HelmToolbarActionsModel.SegmentEntry(id: $0.id, title: $0.title, symbol: $0.symbol)
-                }, selectedID: selection.wrappedValue, reserveWidth: segmentedReserveWidth(options))
+                }, selectedID: selection.wrappedValue, reserveWidth: segmentedReserveWidth(options, look: look))
             }
             return HelmToolbarActionsModel.Entry(id: action.id, title: action.title, symbol: action.symbol,
                                                  isEnabled: action.isEnabled, isBusy: action.isBusy, kind: kind,
@@ -2771,8 +3437,8 @@ import HelmUI
     }
 
     /// **Every `.segmented` reserve this app has ever measured, keyed on the
-    /// options' own glyphs, in order — never re-measured for the life of the
-    /// app.** `actionEntries(for:)` calls `segmentedReserveWidth(_:)` on
+    /// options' own glyphs, in order, and the look — never re-measured for the
+    /// life of the app.** `actionEntries(for:look:)` calls `segmentedReserveWidth(_:look:)` on
     /// every declare, and Hosts republishes its whole toolbar on every
     /// keystroke in the SSH editor (`HostsViewModel.setSSHText(_:)`); without
     /// this cache, that mounts `SwitcherMeasurementRig` — a fresh hosting
@@ -2783,7 +3449,9 @@ import HelmUI
     /// same declares with no `.segmented` entry in them (tester, 2026-09-25,
     /// debug build); with this cache's read taken back out (2026-09-26) it
     /// counted 10 measurements for 10 keystrokes, and measured no time.
-    /// **The key is the ordered `symbol` array and nothing else**,
+    /// **The key is the ordered `symbol` array and the look the bar was built
+    /// under** (`ReserveKey`: the look names the cell the switcher is measured
+    /// wearing, `HelmBarAppearance.switcherCell`), **and nothing else**,
     /// because `HelmToolbarActionsCapsule.entryContent(_:)` fixes a
     /// `.segmented` entry's style to `.icons` unconditionally
     /// (`ASegmentedActionIsAlwaysGlyphsTests`) — no title, no `id`, no
@@ -2796,12 +3464,20 @@ import HelmUI
     /// remove. Not bounded the way `Sources/HelmRuntime/LogTail.swift` or
     /// `Sources/Modules/Autopilot/Engine/Logic/ActionHistory.swift` cap a
     /// record that grows for the life of the app, because nothing a person
-    /// does adds a key: a key is a `.segmented` declaration's own glyphs, and
-    /// a page that spells its options out as a literal
+    /// does adds a key beyond the two looks: a key is a `.segmented`
+    /// declaration's own glyphs and the look its bar was built under, so the
+    /// table holds two entries per declared pair at most, and a page that
+    /// spells its options out as a literal
     /// (`command grep -rn 'options: \[$' Sources/Modules` lists those) fixes
-    /// them at compile time. A page that built its options from data would
-    /// grow this table with that data, and would need the cap.
-    private static var segmentedReserveCache: [[String]: CGFloat] = [:]
+    /// the pairs at compile time. A page that built its options from data
+    /// would grow this table with that data, and would need the cap.
+    private static var segmentedReserveCache: [ReserveKey: CGFloat] = [:]
+
+    /// A reserve is measured with the cell the look puts on the switcher, so the look is part of what it was measured under.
+    private struct ReserveKey: Hashable {
+        let symbols: [String]
+        let look: HelmBarAppearance
+    }
 
     /// **The margin a one-option entry's reserve needs on top of what the rig
     /// measures alone, because the rig is not the capsule.** `SwitcherMeasurementRig`
@@ -2812,7 +3488,7 @@ import HelmUI
     /// `AOneOptionSegmentedEntrysReserveCoversItTests` measured the gap on
     /// this Mac at 3.0 pt for `keyboard`, 3.0 pt for `rectangle.3.group` and
     /// 2.5 pt for `tablecells`, against a rig reading of 36.0–39.0 pt. Two
-    /// options or more do not show this gap
+    /// options or more do not show this gap on a fresh bar
     /// (`ASegmentedEntrysReserveIsWhatItDrawsTests`,
     /// `ASegmentedEntrysReserveCoversItsOwnGlyphsTests` hold that case to the
     /// point already), so the margin is added only when `options.count == 1`,
@@ -2833,7 +3509,7 @@ import HelmUI
     private static let oneOptionCapsuleMargin: CGFloat = 3
 
     /// **A `.segmented` entry's own reserve — measured attached, through
-    /// `SwitcherMeasurementRig`, the same rig `switcherWidth(tabs:style:selectedID:)`
+    /// `SwitcherMeasurementRig`, the same rig `switcherWidth(tabs:style:look:selectedID:)`
     /// above already uses for the centre tabs' fold prediction, cached in
     /// `segmentedReserveCache` and never read as a fraction of a point.**
     /// Attached for the reason the rig's own header gives for the tabs — a
@@ -2841,6 +3517,11 @@ import HelmUI
     /// and per glyph set, because each of four pairs reserves what it draws,
     /// 73.0–85.0 pt across the set, rather than one number standing in for
     /// all of them (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`).
+    /// **The dated readings in this doc and in `oneOptionCapsuleMargin`'s are of AppKit's cell**
+    /// (the switcher's, before the look reached the measuring views); under
+    /// Flat the reserve is measured wearing Helm's cell, and the three reserve
+    /// families print what it reserves and draws under each look; those are
+    /// not these numbers.
     /// Measured non-compact and in `.icons` — the one form
     /// `HelmToolbarActionsCapsule.entryContent(_:)` ever draws a `.segmented`
     /// entry in (`HelmToolbarActions.swift`, `HelmUI`, which may not reach
@@ -2858,13 +3539,14 @@ import HelmUI
     /// not a located threshold) — rounding down would risk landing short on
     /// some other pair the same way, so the ceiling is the only direction
     /// that never re-introduces the half-point.
-    private static func segmentedReserveWidth(_ options: [HelmToolbarTab]) -> CGFloat {
+    private static func segmentedReserveWidth(_ options: [HelmToolbarTab], look: HelmBarAppearance) -> CGFloat {
         guard let first = options.first else { return 0 }
-        let key = options.map(\.symbol)
+        let key = ReserveKey(symbols: options.map(\.symbol), look: look)
         if let cached = segmentedReserveCache[key] { return cached }
         let view = HelmToolbarSwitcher(HelmA11y.whatToShow, selection: .constant(first.id),
                                        segments: options.map { HelmSwitcherSegment($0.id, $0.title, symbol: $0.symbol) })
             .environment(\.helmSwitcherStyle, .icons)
+            .environment(\.helmSwitcherCell, look.switcherCell)
         var width = measurementRig.measure(AnyView(view))
         if options.count == 1 { width += oneOptionCapsuleMargin }
         width = width.rounded(.up)
@@ -2914,7 +3596,7 @@ import HelmUI
         // and animated the whole capsule in from nothing — exactly the
         // movement Refresh is meant never to make.
         if let content = bar.content {
-            model.setDeclared(Self.actionEntries(for: content))
+            model.setDeclared(Self.actionEntries(for: content, look: bar.shape.look))
             model.setVisibleIDs(content.actions.filter(\.isVisible).map(\.id))
         }
         // Seeded the same way `isInteractive` is not (it defaults `true` on
@@ -2928,22 +3610,12 @@ import HelmUI
         // at all, and reads whatever this window happened to already carry
         // before this capsule existed. See
         // `correctActionsGlassOnFirstAttach(_:)`'s own header for the reading:
-        // flagged here, spent once this bar is actually attached.
-        if !windowAppearsActive { bar.actionsGlassNeedsFirstAttachCorrection = true }
-        // **`content.search == nil` is "the capsule is this bar's own last
-        // item"** — `identifiers(content:style:)` never puts anything after
-        // `helm.actions` but `helm.search`, and `ShapeSignature.hasSearch`
-        // rebuilds the whole bar, this item included, the moment that
-        // changes — so this reads once, at construction, rather than on every
-        // `patchActions`. See `HelmToolbarActionsCapsule.edgeMargin`'s own
-        // header for the measurement this closes: Hosts and Leftovers, which
-        // end their bar here, used to sit 4.0 pt from the window's trailing
-        // edge against Uninstaller's 8.0 pt for `helm.search` at the same
-        // width.
-        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
-        let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(model, trailingInset: trailingInset))
-        hosting.sizingOptions = [.intrinsicContentSize]
-        item.view = hosting
+        // flagged here, spent once this bar is actually attached. A flat
+        // capsule has no glass, so it is not flagged.
+        if !windowAppearsActive && bar.shape.look == .liquidGlass { bar.actionsGlassNeedsFirstAttachCorrection = true }
+        // The trailing inset is read once, at construction, rather than on every
+        // `patchActions` — `actionsHost(_:for:)` says why that holds.
+        item.view = actionsHost(model, for: bar)
         // Not a plain image item any more, so no second AppKit glass behind
         // the SwiftUI one it now draws for itself (`isBordered = true` wraps
         // the hosted view in AppKit's own bordered chrome — measured).
@@ -2970,7 +3642,7 @@ import HelmUI
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
-            model.setDeclared(Self.actionEntries(for: content))
+            model.setDeclared(Self.actionEntries(for: content, look: bar.shape.look))
         }
         let visible = content.actions.filter(\.isVisible).map(\.id)
         if visible != model.visibleIDs {
@@ -3153,74 +3825,7 @@ import HelmUI
     /// `NSView.menu` (`helmSwitcherView`), which is what VoiceOver's "show
     /// menu" opens on a focused switcher — one menu whichever way it is
     /// reached.
-    private lazy var barMenu: NSMenu = {
-        let menu = NSMenu(title: AppStr.pageBar)
-        menu.autoenablesItems = false
-        menu.delegate = self
-        return menu
-    }()
-
-    /// **What the bar's menu offers, left to right as the bar reads**: the
-    /// page header on every page; the tabs' label style only where the page
-    /// has tabs; Always Collapse Search only where it has a search field,
-    /// even one disabled right now. Absent rather than dimmed where it does
-    /// not apply — a context menu hides what cannot act (HIG, context menus),
-    /// the same answer the tabs' own row already gave on a page without tabs.
-    /// `tabLabels` and `alwaysCollapseSearch` are nil for a page without that
-    /// part. `static` so a test reads the items without raising a menu.
-    static func barMenuItems(pageBarStyle: PageBarStyle, tabLabels: ToolbarSwitcherStyle?,
-                             alwaysCollapseSearch: Bool?, target: AnyObject?) -> [NSMenuItem] {
-        var items: [NSMenuItem] = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]
-        for (choice, title) in [(PageBarStyle.moduleName, AppStr.pageBarWithIcon),
-                                (PageBarStyle.windowTitle, AppStr.pageBarWithoutIcon)] {
-            let item = NSMenuItem(title: title, action: #selector(barMenuChosePageBar(_:)), keyEquivalent: "")
-            item.target = target
-            item.representedObject = choice.rawValue
-            item.state = choice == pageBarStyle ? .on : .off
-            items.append(item)
-        }
-        if let tabLabels {
-            items.append(.separator())
-            items.append(NSMenuItem.sectionHeader(title: AppStr.tabLabels))
-            for choice in ToolbarSwitcherStyle.allCases {
-                let item = NSMenuItem(title: choice.label, action: #selector(barMenuChoseTabLabels(_:)),
-                                      keyEquivalent: "")
-                item.target = target
-                item.representedObject = choice.rawValue
-                item.state = choice == tabLabels ? .on : .off
-                items.append(item)
-            }
-        }
-        if let alwaysCollapseSearch {
-            items.append(.separator())
-            let item = NSMenuItem(title: AppStr.alwaysCollapseSearch,
-                                  action: #selector(barMenuToggledCollapseSearch(_:)), keyEquivalent: "")
-            item.target = target
-            item.state = alwaysCollapseSearch ? .on : .off
-            items.append(item)
-        }
-        for item in items where !item.isSeparatorItem { item.isEnabled = true }
-        return items
-    }
-
-    // Each only writes the setting; the setting's own notification is what
-    // reaches the bar, the same path General's Appearance row takes.
-    @objc private func barMenuChosePageBar(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let choice = PageBarStyle(rawValue: raw),
-              choice != AppSettings.pageBarStyle else { return }
-        AppSettings.pageBarStyle = choice
-    }
-
-    @objc private func barMenuChoseTabLabels(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String else { return }
-        let choice = ToolbarSwitcherStyle(stored: raw)
-        guard choice != AppSettings.toolbarSwitcherStyle else { return }
-        AppSettings.toolbarSwitcherStyle = choice
-    }
-
-    @objc private func barMenuToggledCollapseSearch(_ sender: NSMenuItem) {
-        AppSettings.alwaysCollapseSearch.toggle()
-    }
+    private lazy var barMenu: NSMenu = ShellBarMenu.menu(delegate: self)
 
     // MARK: - Search
 
@@ -3263,6 +3868,12 @@ import HelmUI
         cap.priority = .defaultLow
         cap.identifier = "helm.search.restCap"
         bar.searchRestCap = cap
+        // Built inactive and written by `writeSearchOffer(_:tabsWidth:)` alone.
+        let offerCap = field.widthAnchor.constraint(lessThanOrEqualToConstant: ShellBarLayout.searchWidth)
+        offerCap.priority = .defaultLow
+        offerCap.identifier = "helm.search.offerCap"
+        offerCap.isActive = false
+        bar.searchOfferCap = offerCap
         item.searchField = field
         // AppKit's own default reads "Search" in its own language, never
         // this app's — said in this app's words, and kept current on a
@@ -3418,21 +4029,10 @@ import HelmUI
 }
 
 extension SettingsToolbar: NSMenuDelegate {
-    /// The bar's menu, filled for the bar on screen at the moment it opens —
-    /// a page switch, a setting changed in General or a language change
-    /// since the last time has nothing else to rebuild it by.
+    /// The bar's menu, filled for the bar on screen at the moment it opens (`ShellBarMenu.fill(_:showing:)`).
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu === barMenu else { return }
-        let content = attachedBar?.content
-        let hasTabs = !(content?.tabs.isEmpty ?? true)
-        let hasSearch = content?.search != nil
-        menu.removeAllItems()
-        for item in Self.barMenuItems(pageBarStyle: AppSettings.pageBarStyle,
-                                      tabLabels: hasTabs ? AppSettings.toolbarSwitcherStyle : nil,
-                                      alwaysCollapseSearch: hasSearch ? AppSettings.alwaysCollapseSearch : nil,
-                                      target: self) {
-            menu.addItem(item)
-        }
+        ShellBarMenu.fill(menu, showing: attachedBar?.content)
     }
 }
 
@@ -3494,6 +4094,15 @@ extension SettingsToolbar: NSSearchFieldDelegate {
     }
 }
 
+private extension HelmBarAppearance {
+    /// The cell a switcher in the window's toolbar wears under this look: AppKit's under Liquid Glass (its
+    /// motion; its platter behind the tabs, the capsule's glass behind a capsule's switcher), Helm's own
+    /// under Flat (its slide; the tabs on a plate `SettingsToolbar` puts under them, a capsule's switcher
+    /// on the capsule's own flat fill). `SettingsToolbar` is the one place that asks for `systems`, and it
+    /// asks through this.
+    var switcherCell: HelmSwitcherCell { self == .flat ? .flat : .systems }
+}
+
 /// **What decides whether a cached bar can be reused as it stands, or must be
 /// rebuilt as a fresh `NSToolbar`.** Everything here can change without a
 /// page ever redeclaring — `pageBarStyle` from a `defaults write`, and the
@@ -3503,6 +4112,8 @@ extension SettingsToolbar: NSSearchFieldDelegate {
 /// not a separate invalidation call, is what a style change actually
 /// invalidates: the next time any page's bar is obtained, a stale shape
 /// simply fails the comparison and a fresh `NSToolbar` is built in its place.
+/// The look is one of these: `AppSettings.barAppearance` is read here, and a
+/// bar built under the other look is never given back to a page.
 /// `actionIDs` stays even though there is one `NSToolbarItem` for the whole
 /// capsule now, not one per action — `HelmToolbarActionsCapsule`'s reserve is
 /// sized from the *declared* set, so a page whose declared actions change
@@ -3518,8 +4129,14 @@ private struct ShapeSignature: Equatable {
     /// Read by `SettingsToolbar.centredIdentifiers(_:)` — the actions id list
     /// above cannot say it, since an entry keeps its id whatever its kind.
     let hasSegmentedAction: Bool
+    /// The look (`AppSettings.barAppearance`) the bar's tabs and actions are made of. It is read here and
+    /// nowhere else on the toolbar's side: an item takes the look from the bar it was built for
+    /// (`PageBar.shape`), so a bar of the other look is never reused, and the items never read the
+    /// stored value themselves.
+    let look: HelmBarAppearance
 
     init(content: HelmPageToolbarContent?) {
+        look = AppSettings.barAppearance
         pageBarStyle = AppSettings.pageBarStyle
         tabIDs = content?.tabs.map(\.id) ?? []
         actionIDs = content?.actions.map(\.id) ?? []
@@ -3562,9 +4179,15 @@ private final class PageBar {
     /// from the bar.
     var isInteractive = true
     var identifiers: [NSToolbarItem.Identifier] = []
-
     var nameItem: NSToolbarItem?
     var nameHost: NSHostingView<NameZoneView>?
+    /// The one constraint holding `nameHost` off its item's leading edge (`makeNameItem`), once
+    /// AppKit has asked for the item.
+    var nameInset: NSLayoutConstraint?
+    /// The tabs' lead item (`SettingsToolbar.makeTabsLeadItem`) and the one width constraint on its view; `nil` on a
+    /// bar without tabs and on a bar whose lead is the tracking separator, and until AppKit has asked for the item.
+    var tabsLeadItem: NSToolbarItem?
+    var tabsLead: NSLayoutConstraint?
     /// **Only on the shared name-only bar** — `nil` on every bar built for a
     /// page that declares tabs, actions or search, since `identifiers()`
     /// never lists `helm.status` there. See `SettingsToolbar.makeStatusItem`'s
@@ -3576,6 +4199,12 @@ private final class PageBar {
     // before it is hosted (`helmSwitcherView`), which changes the concrete
     // `some View` type without changing what is actually mounted.
     var tabsSwitcherHost: NSHostingView<AnyView>?
+    /// **Only on a bar built under Flat:** the plate the tabs' hosting view stands in, which is then the
+    /// tabs item's view (`SettingsToolbar.makeTabsItem`). `nil` under Liquid Glass.
+    var tabsPlate: ShellBarPlate?
+    /// What the tabs item's view is: the plate under Flat, the hosting view under Liquid Glass. The one
+    /// view a reseat detaches and attaches again.
+    var tabsItemView: NSView? { tabsPlate ?? tabsSwitcherHost }
     /// **Whether the tabs are folded to a one-item capsule with a menu.** The
     /// one field `SettingsToolbar.setTabsFolded(_:bar:layout:reseat:)` writes
     /// — see its own header for the whole mechanism — and the one
@@ -3617,7 +4246,7 @@ private final class PageBar {
     /// first `settle()` this bar ever runs, which always finds the field
     /// collapsed (a fresh bar starts that way).
     var collapsedFieldWidth: CGFloat?
-    /// **The `.windowTitle` title container's own trailing edge, the last
+    /// **The `.windowTitle`-on-a-`.sidebarSeparator`-bar title container's own trailing edge, the last
     /// time this bar's tabs were seen *not* folded** — `currentToolbarSlack(_:)`'s
     /// own memory of where the container rests without anything having
     /// folded, so `titleGrowth` can measure a fold's own growth against the
@@ -3627,9 +4256,9 @@ private final class PageBar {
     /// with the tabs not folded — the same precedent `collapsedFieldWidth`
     /// already sets for the search field's own resting width.
     var restingRawTitleMaxX: CGFloat?
-    /// **The `.windowTitle` title container's own growth beyond its last
-    /// resting edge, as `currentToolbarSlack(_:)` last read it** — zero under
-    /// `.moduleName`, and zero whenever the tabs are not currently folded.
+    /// **The `.windowTitle`-on-a-`.sidebarSeparator`-bar title container's own growth beyond its last
+    /// resting edge, as `currentToolbarSlack(_:)` last read it** — zero wherever
+    /// the bar has a name item, and zero whenever the tabs are not currently folded.
     /// `settle(_:)`'s own worst-case gate reads this right after calling
     /// `predictedSlack(bar:tabsWidth:)`, which is what populates it, the same
     /// "write in one call, read in the next" shape `pendingUnfoldFieldWidth`
@@ -3637,10 +4266,10 @@ private final class PageBar {
     var titleGrowth: CGFloat = 0
     /// **How much of `SettingsToolbar.windowTitleOpenFloor` sits above this
     /// bar's own title `fittingWidth`, read fresh every `currentToolbarSlack(_:)`
-    /// call that finds an anchor** — zero under `.moduleName`, and zero whenever the title's own
+    /// call that finds an anchor** — zero wherever the bar has a name item, and zero whenever the title's own
     /// content already needs more than the floor. Unlike `titleGrowth`, set
     /// regardless of `tabsFolded`: it charges a property of AppKit's own
-    /// layout under `.windowTitle`, not a fold's own not-yet-reversed growth
+    /// layout under `.windowTitle` on a `.sidebarSeparator` bar, not a fold's own not-yet-reversed growth
     /// — see `SettingsToolbar.windowTitleOpenFloor`'s own header for the
     /// reading behind the number and `openFitsPrediction(_:searchItem:slack:
     /// anchored:)` for where it is charged.
@@ -3692,7 +4321,8 @@ private final class PageBar {
     /// keyed on and why equality, not a timeout, is what clears it.
     var refusedUnfold: SettingsToolbar.UnfoldRefusalKey?
     /// **The centre tabs' full width, and what it was measured under** —
-    /// read and written only by `SettingsToolbar.settle(_:)`; see
+    /// written only by `SettingsToolbar.wholeTabsWidth(_:_:)`, for the settle and for the first lead, and read there,
+    /// in `setTabsFolded` and in `growthIsWithinTheOffer(_:width:)`; see
     /// `SettingsToolbar.TabsWidthKey`'s own header for why a settle reuses it
     /// and what makes it measure again.
     var tabsWidth: (key: SettingsToolbar.TabsWidthKey, full: CGFloat)?
@@ -3716,15 +4346,19 @@ private final class PageBar {
     /// hence one rest predicate (`SettingsToolbar.restSearch(_:)`) as the only
     /// writer of `isActive`.
     var searchRestCap: NSLayoutConstraint?
+    /// **A `width <=` cap on the idle search field at the width it is offered** (`SettingsToolbar.SearchOffer`),
+    /// priority `.defaultLow` like `searchRestCap`; active only while `SettingsToolbar.writeSearchOffer(_:tabsWidth:)` finds the
+    /// field idle, its one writer.
+    var searchOfferCap: NSLayoutConstraint?
     var actionsModel: HelmToolbarActionsModel?
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
     /// **Set by `SettingsToolbar.makeActionsItem` the moment it builds this
-    /// bar's capsule while the window already reads inactive, and consumed —
+    /// bar's capsule under Liquid Glass while the window already reads inactive, and consumed —
     /// once — the moment `show(_:key:)` actually attaches this bar.** See
     /// `SettingsToolbar.correctActionsGlassOnFirstAttach(_:)`'s own header for
     /// the reading behind it: the capsule's glass, unlike its glyph, is not
-    /// seeded from `windowAppearsActive` at all, so a capsule built while the
+    /// seeded from `windowAppearsActive` at all, so a glass capsule built while the
     /// window reads inactive can draw lit glass until the deferred rebuild.
     var actionsGlassNeedsFirstAttachCorrection = false
 
@@ -3741,246 +4375,5 @@ private final class PageBar {
         // own header says so — which is what lets a `deinit` Swift 6 treats
         // as nonisolated remove this at all.
         if let fieldFrameWatch { NotificationCenter.default.removeObserver(fieldFrameWatch) }
-    }
-}
-
-/// **The dim shared by every piece of the name zone's own row, and by the
-/// trailing status item beside it** — dimming together, as one unit,
-/// applies across both `NSToolbarItem`s that carry the name's ink now that
-/// the status has moved to the bar's trailing edge (2026-09-28), even though
-/// the two are separate hosted views with nothing to composite together:
-/// each reads the same four numbers, from `SettingsToolbar.patchName`'s one
-/// snapshot, so they move on exactly the same call.
-@MainActor func helmNameZoneInactiveOpacity(dark: Bool, titlebarIsTransparent: Bool) -> Double {
-    switch (dark, titlebarIsTransparent) {
-    case (true, true): NameZoneView.inactiveOpacityDark
-    case (false, true): NameZoneView.inactiveOpacityLight
-    case (true, false): NameZoneView.inactiveOpacityOpaqueDark
-    case (false, false): NameZoneView.inactiveOpacityOpaqueLight
-    }
-}
-
-/// The name zone's own view: the module's plate and its name, the way
-/// `PageBarStyle`'s `.moduleName` arm drew them before the bridge — reused
-/// here rather than redrawn, to the letter of size and spacing. **The status
-/// word or badge that used to sit
-/// beside the name here draws in `StatusZoneView` instead**, at the bar's
-/// trailing edge (the owner, 2026-09-28: «Давай вернем его в правую часть») —
-/// this view no longer knows a module has one.
-struct NameZoneView: View {
-    let symbol: String
-    let tint: Color
-    let title: String
-    let iconStyle: SidebarStyle
-    /// **The same `isKeyWindow || isMainWindow` signal the actions capsule
-    /// reads** (`SettingsToolbar.windowAppearsActive`'s own header has the
-    /// reading), not `\.controlActiveState`: this view is hosted through an
-    /// `NSToolbarItem`'s custom view exactly like the capsule, and that
-    /// environment key is not trusted here, for the capsule's reason
-    /// (`HelmToolbarActionsCapsule`'s own header). `appearsActive` costs no
-    /// rebuild the capsule's own glass needs — every ink below is a plain
-    /// SwiftUI value read at draw time, not Liquid Glass, so reassigning this
-    /// view's `rootView` (`SettingsToolbar.patchName`) is enough to move it.
-    let appearsActive: Bool
-    /// Which title bar the zone sits in — `window.titlebarAppearsTransparent`,
-    /// which the band decision sets (`HelmBandChoice.titlebarAppearsTransparent`).
-    /// AppKit dims its own title by a different amount under each, so the
-    /// zone does too.
-    let titlebarIsTransparent: Bool
-    @Environment(\.colorScheme) private var colorScheme
-
-    /// **Dark 222→92, Light 37→177 — AppKit's own `.windowTitle` layout,
-    /// measured against this same toolbar row under macOS 27's transparent
-    /// title bar**: a window's title text over
-    /// this row's own flat, inactive chrome (bg 37 Dark, 247 Light) lands on
-    /// that target from the zone's own full ink (222 Dark, 38 Light) at the
-    /// opacity `bg·(1−x) + ink·x = target` solves for — the same algebra
-    /// `HelmToolbarActionsCapsule.inactiveGlyphOpacity…` uses for the
-    /// capsule's own glyph, kept as its own pair of constants for the same
-    /// reason that one is two and not one: the two appearances do not agree.
-    /// **The plate dims by the same amount as the title, as one unit.**
-    /// AppKit draws a title as a single readable line and offers no separate
-    /// dimming for an icon beside it — there is no distinct AppKit reading to
-    /// give the plate and the title of their own, and picking one anyway
-    /// would be a difference this zone's own model (a module's name, standing
-    /// in for the window's title) does not have. One `.opacity()` on the
-    /// whole row is that decision. `StatusZoneView` dims by the same two
-    /// numbers, in its own `.opacity()`, so the two read as one row even
-    /// though nothing composites them together — its own header.
-    static let inactiveOpacityDark: Double = 0.30    // (92−37)/(222−37) ≈ 0.2973
-    static let inactiveOpacityLight: Double = 0.33   // (247−177)/(247−38) ≈ 0.3349
-    /// **The same two under the opaque title bar — macOS 26's, by the band
-    /// decision — and AppKit 27.2's answer to that decision, not macOS 26's.**
-    /// Read on this Mac (27.2, engineer, 2026-09-27) off a real
-    /// `SettingsWindow` built with `HelmBandChoice.onMacOS(26)`, AppKit's own
-    /// title drawn beside the zone, as the share of its lit ink the title
-    /// keeps inactive (S3 and S5 alike, through its own `draw(_:)`): Light
-    /// 0.399, Dark 0.279 — against 0.329 and 0.296 under the transparent
-    /// title bar in the same run, which the pair above answers. Whether
-    /// macOS 26 itself dims its title by the same amount is for the owner's
-    /// 26 virtual machine to confirm; `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`
-    /// holds the zone to AppKit's title under both title bars.
-    static let inactiveOpacityOpaqueDark: Double = 0.28
-    static let inactiveOpacityOpaqueLight: Double = 0.40
-
-    private var inactiveOpacity: Double {
-        helmNameZoneInactiveOpacity(dark: colorScheme == .dark, titlebarIsTransparent: titlebarIsTransparent)
-    }
-
-    var body: some View {
-        HStack(spacing: HelmSpace.s5) {
-            HelmIconPlate(symbol: symbol, tint: tint, size: 24)
-            Text(title)
-                .font(.system(size: 16, weight: .semibold))
-                .tracking(-0.2)
-                .lineLimit(1)
-        }
-        .padding(.leading, HelmSpace.s5)
-        // Hosted outside the pane's own view tree, so the style this reads
-        // has to be handed in explicitly rather than inherited.
-        .environment(\.helmModuleIconStyle, iconStyle)
-        // Flattens the row to one layer before dimming it — without this,
-        // `HelmIconPlate`'s own drop shadow keeps its *own* alpha under the
-        // opacity above rather than being scaled down with the plate, so the
-        // two partly-transparent layers can composite to a higher combined
-        // alpha right at the plate's edge than either dims to alone (measured:
-        // the row's peak alpha read 0.54/0.58 instead of the requested
-        // 0.30/0.33 without this line).
-        .compositingGroup()
-        .opacity(appearsActive ? 1 : inactiveOpacity)
-    }
-}
-
-/// **The status word or badge, at the shared name-only bar's trailing
-/// edge** — the owner, 2026-09-28: «Давай вернем его в правую часть». A
-/// sibling of `NameZoneView` rather than a branch inside it, because the two
-/// now live in separate `NSToolbarItem`s (`SettingsToolbar.makeStatusItem`),
-/// drawing the two shapes a status has always had — a badge for active,
-/// quiet text for idle, nothing for a module with no notion of running — and
-/// dimming by the same four numbers (`helmNameZoneInactiveOpacity`) so the
-/// two read as one row even though nothing composites them together.
-///
-/// **The trailing inset is the top gap, not the capsule's 8 pt** — the owner,
-/// 2026-09-29: «Бейдж "Активно" / "Не активно" слишком близко находится к
-/// правому краю экрана. Отступ сверху и справа должны быть одинаковые».
-/// `trailingInset(for:barHeight:)` answers it: the gap from the
-/// window's top edge to the drawn top of the badge's fill (or of the quiet
-/// word's ink) is what AppKit's vertical centring leaves in a bar
-/// `barHeight` tall, and the same distance is put between the drawn right
-/// edge and the window's. The actions capsule keeps AppKit's own 8 pt
-/// (`HelmToolbarActionsCapsule.edgeMargin`): it is 36 pt tall in a 52 pt
-/// bar, so its top gap is that 8 already, and only this item is shorter
-/// than the bar by enough to matter.
-struct StatusZoneView: View {
-    let status: (word: String, active: Bool)?
-    let appearsActive: Bool
-    let titlebarIsTransparent: Bool
-    /// Between the hosted view's own trailing edge and what it draws — see
-    /// `trailingInset(for:barHeight:)`.
-    let trailingInset: CGFloat
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var inactiveOpacity: Double {
-        helmNameZoneInactiveOpacity(dark: colorScheme == .dark, titlebarIsTransparent: titlebarIsTransparent)
-    }
-
-    var body: some View {
-        Group {
-            if let status {
-                if status.active {
-                    HelmBadge(status.word, tint: HelmSignal.success)
-                } else {
-                    Text(status.word)
-                        .font(.system(size: 11))
-                        .foregroundStyle(HelmText.quiet)
-                }
-            }
-        }
-        .padding(.trailing, trailingInset)
-        .compositingGroup()
-        .opacity(appearsActive ? 1 : inactiveOpacity)
-        // **Out of VoiceOver on every page with nothing to say** — every
-        // page that declares no toolbar content, every module with no notion of running — since this
-        // item is always in the bar's own identifier list, empty or not
-        // (`makeStatusItem`'s own header): a placeholder is not a name, and
-        // an unnamed control is worse than one that is simply not there.
-        .accessibilityHidden(status == nil)
-    }
-}
-
-extension StatusZoneView {
-
-    /// **The distance AppKit leaves between an `isBordered = false` last
-    /// item's own box and the window's trailing edge** — measured, and pinned
-    /// by `TheStatusBadgeMovesToTheWindowsTrailingEdgeTests` (box margin 4 pt
-    /// at 1060 pt): the 8 pt of a bordered item less the
-    /// `HelmToolbarActionsCapsule.edgeMargin` an unbordered one is short.
-    private static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
-
-    /// Where the drawing lies inside its own box, in points from the box's
-    /// top and from its trailing edge — read off one offscreen render of the
-    /// content with no inset, since a word's ink is not its box (the badge's
-    /// fill is the whole box; a quiet word's cap line sits some way under the
-    /// box's top and its last letter a fraction short of its right edge, and
-    /// both move with the language).
-    private struct Ink { let boxHeight: CGFloat, top: CGFloat, trailing: CGFloat }
-
-    /// `nil` where the render draws nothing (an empty status, or a view AppKit
-    /// would not photograph): the caller then keeps the capsule's own inset.
-    ///
-    /// **Measured the way the placed item is laid out and drawn** — inside a
-    /// window of its own that is never shown, so `fittingSize` keeps the
-    /// backing scale's half points (a window-less hosting view was read, by an
-    /// earlier tester, rounding a 56.5 pt word up to 57, and the inset came
-    /// out half a point short).
-    private static func ink(of status: (word: String, active: Bool)) -> Ink? {
-        let host = NSHostingView(rootView: StatusZoneView(status: status, appearsActive: true,
-                                                          titlebarIsTransparent: true, trailingInset: 0))
-        host.sizingOptions = [.intrinsicContentSize]
-        let probe = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 100),
-                             styleMask: .borderless, backing: .buffered, defer: true)
-        probe.isReleasedWhenClosed = false
-        probe.contentView = host
-        let size = host.fittingSize
-        probe.setContentSize(size)
-        host.frame = NSRect(origin: .zero, size: size)
-        host.layoutSubtreeIfNeeded()
-        guard size.width > 0, size.height > 0,
-              let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-        host.cacheDisplay(in: host.bounds, to: rep)
-        guard let data = rep.bitmapData, rep.samplesPerPixel == 4, rep.bitsPerSample == 8 else { return nil }
-        let alphaOffset = rep.bitmapFormat.contains(.alphaFirst) ? 0 : 3
-        let scale = CGFloat(rep.pixelsWide) / size.width
-        var top = Int.max, right = -1
-        for y in 0..<rep.pixelsHigh {
-            for x in 0..<rep.pixelsWide where Int(data[y * rep.bytesPerRow + x * 4 + alphaOffset]) > 12 {
-                top = min(top, y)
-                right = max(right, x)
-            }
-        }
-        guard right >= 0 else { return nil }
-        return Ink(boxHeight: size.height, top: CGFloat(top) / scale,
-                   trailing: size.width - CGFloat(right + 1) / scale)
-    }
-
-    /// **The inset that puts the drawn right edge as far from the window's
-    /// right edge as the drawn top is from its top.** The top gap is what
-    /// AppKit's centring leaves: `(barHeight - box) / 2` above the box, plus
-    /// the ink's own offset inside it (`Ink.top`); `barHeight` is the window
-    /// frame less its content layout rect (`SettingsToolbar.barHeight`). The
-    /// right gap is `boxMargin` (AppKit's own margin), this inset and the
-    /// ink's own trailing bearing, so the inset is the top gap less the other
-    /// two.
-    ///
-    /// A not-a-number bar height (no window yet reads as none at all) and an
-    /// unreadable render both keep `HelmToolbarActionsCapsule.edgeMargin`,
-    /// the inset this item had before it followed the top; a result outside
-    /// `0…barHeight` is clamped, a not-a-number to 0 — no inset is the
-    /// nearer of the two wrong answers, an inset that eats the bar is not.
-    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?) -> CGFloat {
-        guard let status, let barHeight, barHeight.isFinite, barHeight > 0,
-              let ink = ink(of: status) else { return HelmToolbarActionsCapsule.edgeMargin }
-        let topGap = (barHeight - ink.boxHeight) / 2 + ink.top
-        return (topGap - boxMargin - ink.trailing).clamped(to: 0...barHeight, whenNotANumber: 0)
     }
 }

@@ -22,7 +22,7 @@ import Module_Uninstaller_Engine
 /// same width — measured 8.0 pt.
 ///
 /// `HelmToolbarActionsCapsule` stays `isBordered = false` regardless — a
-/// bordered item wraps it in a second glass (`makeActionsItem`'s own header)
+/// bordered item wraps it in a second glass (`makeActionsItem`'s own comment on `item.isBordered = false`)
 /// — so the fix is a `trailingInset` on the capsule's own content, spent only
 /// where nothing follows it in the bar (`content.search == nil`): Hosts and
 /// Leftovers. Homebrew and Uninstaller, where search follows the capsule,
@@ -33,8 +33,8 @@ import Module_Uninstaller_Engine
 /// read back off the *live* hosted view's own width against its declared
 /// button count, not derived from `HelmToolbarActionsCapsule.edgeMargin`
 /// itself — a formula that bakes the fix's own constant into its
-/// expectation cannot go red on the code the fix replaces, which is exactly
-/// the kind of check `CLAUDE.md` calls litter.
+/// expectation cannot go red on the code the fix replaces, and `CLAUDE.md`
+/// asks of a check exactly that: "put the defect back, watch it go red".
 @MainActor
 final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
 
@@ -46,7 +46,7 @@ final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
         }
     }
 
-    private var fixture: LivePageToolbarFixture?
+    private var fixture: LivePageInTheToolbarFixture?
 
     override func tearDown() {
         fixture?.drop()
@@ -76,12 +76,17 @@ final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
     /// `viewMode` is `.segmented` and reserves its own measured word width,
     /// not one button's worth, so a sum that assumed the uniform cost would
     /// read that entry's own extra room as if it were `trailingInset`.
-    private func measureActions(_ toolbar: NSToolbar) -> ActionsMeasurement? {
-        guard let item = toolbar.items.first(where: { $0.itemIdentifier.rawValue == "helm.actions" }),
-              let hosting = item.view as? NSHostingView<HelmToolbarActionsCapsule>
-        else { return nil }
-        let declaredWidth = hosting.rootView.model.declared
-            .reduce(CGFloat(0)) { $0 + hosting.rootView.reserveWidth($1) }
+    ///
+    /// **The capsule is read from the hosted view's root through `ActionsCapsuleReading`**, which walks
+    /// the environment writes `SettingsToolbar.actionsHost(_:for:)` puts around it; a toolbar with no
+    /// `helm.actions` item, an item with no view and a view with no capsule in it each throw their own
+    /// sentence, led by `context`.
+    private func measureActions(_ toolbar: NSToolbar, context: String,
+                                file: StaticString = #filePath, line: UInt = #line) throws -> ActionsMeasurement {
+        let read = try ActionsCapsuleReading.read(toolbar, context: context, file: file, line: line)
+        let hosting = read.host
+        let declaredWidth = read.capsule.model.declared
+            .reduce(CGFloat(0)) { $0 + read.capsule.reserveWidth($1) }
         let boxTrailingX = hosting.convert(NSPoint(x: hosting.bounds.width, y: 0), to: nil).x
         return ActionsMeasurement(boxTrailingX: boxTrailingX, insetApplied: hosting.bounds.width - declaredWidth)
     }
@@ -95,14 +100,13 @@ final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
     func testHostsCapsuleGapMatchesAppKitsOwnAtEveryWidth() async throws {
         for width: CGFloat in [860, 1060, 1400] {
             let vm = ModuleViewModel(transport: Mute())
-            let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: vm),
+            let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: vm),
                                                selection: .module(HostsDescriptor.id.rawValue),
                                                width: width, height: 700)
             hosts.settle(30)
             fixture = hosts
             let toolbar = try XCTUnwrap(hosts.mount.window?.toolbar, "\(width) pt: no toolbar")
-            let measured = try XCTUnwrap(measureActions(toolbar),
-                                         "\(width) pt: no hosted view for helm.actions")
+            let measured = try measureActions(toolbar, context: "\(width) pt")
             let boxMargin = width - measured.boxTrailingX
             let glassGap = boxMargin + measured.insetApplied
             XCTAssertEqual(glassGap, 8, accuracy: 0.5, """
@@ -121,13 +125,13 @@ final class TheLastItemsGlassSitsAsFarFromTheEdgeTests: XCTestCase {
     /// where it always has.**
     func testTheCapsuleAheadOfSearchIsUnaffected() async throws {
         let vm = ModuleViewModel(transport: Mute())
-        let fx = LivePageToolbarFixture(UninstallerSettingsPage(vm: vm),
+        let fx = LivePageInTheToolbarFixture(UninstallerSettingsPage(vm: vm),
                                         selection: .module(UninstallerDescriptor.id.rawValue),
                                         width: 1060, height: 700)
         fx.settle(30)
         fixture = fx
         let toolbar = try XCTUnwrap(fx.mount.window?.toolbar, "no toolbar")
-        let measured = try XCTUnwrap(measureActions(toolbar), "no hosted view for helm.actions")
+        let measured = try measureActions(toolbar, context: "1060 pt")
         XCTAssertEqual(measured.insetApplied, 0, accuracy: 0.5, """
             Uninstaller's actions capsule carries a trailing inset of \(measured.insetApplied) pt \
             — search follows it in the bar, so `trailingInset` must read 0 and this capsule's own \

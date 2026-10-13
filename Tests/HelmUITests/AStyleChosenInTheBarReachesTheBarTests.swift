@@ -8,7 +8,7 @@ import HelmTestSupport
 /// itself. What is measured today: `GeneralSettingsPage`'s own picker
 /// (`pageBarStyle`) reads `AppSettings.pageBarStyle` once into a `@State` var
 /// at its own init, so a style chosen through the bar's own right-click menu
-/// (`SettingsToolbar.barMenuChosePageBar`) leaves that picker showing the old
+/// (`ShellBarMenu.Actions.chosePageBar`) leaves that picker showing the old
 /// choice until the page's subtree is torn down and rebuilt — an environment
 /// change alone reaches `PageBarContent`'s own `@Environment` read, which
 /// redraws on its own, but never reaches a `@State` initial value. Removing
@@ -24,7 +24,7 @@ import HelmTestSupport
 /// `TheGeneralPickerFollowsTheBarMenuTests
 /// .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu` does mount that
 /// combination, ordered in behind the other windows, through
-/// `SettingsSplitViewController`, sends the
+/// `SettingsShellViewController`, sends the
 /// bar's own menu action and reads the picker back through Vision — that is
 /// where the staleness above was actually measured. The switcher style had a
 /// tracker of its own under the pane, held here to the opposite; it went on

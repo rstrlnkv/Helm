@@ -11,6 +11,7 @@ import Module_Disk_Engine
         sfSymbol: "chart.pie", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .disk
+    public static let glyph: ShellGlyph = .disk
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 

@@ -5,7 +5,7 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Owner item (2): a chosen tab has to reach the hosted switcher, not only
+/// **A chosen tab has to reach the hosted switcher, not only
 /// the page's own binding.** `HelmToolbarSwitcher.Coordinator.pickedFromMenu`
 /// — the compact capsule's own menu — writes straight through the page's
 /// `selectedTab` binding, the way a plain click on a full-width segment does

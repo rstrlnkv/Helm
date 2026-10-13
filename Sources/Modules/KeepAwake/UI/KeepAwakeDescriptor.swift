@@ -30,6 +30,7 @@ import Module_KeepAwake_Engine
 
     public static let category: ModuleCategory = .power
     public static let tint: ModuleTint = .keepAwake
+    public static let glyph: ShellGlyph = .keepAwake
 
     private var store: NamespacedStore?
     public init() {}

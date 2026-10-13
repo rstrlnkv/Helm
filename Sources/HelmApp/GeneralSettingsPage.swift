@@ -351,7 +351,7 @@ struct MenuBarSettingsView: View {
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
                 // The window toolbar's header: the module's plate and name at
-                // the leading edge, or the window's own title bar — the
+                // the leading edge, or the name alone — the
                 // owner's choice is the first, and this is where a person who
                 // prefers the other drafted shape can still reach it
                 // (`PageBarStyle`).
@@ -360,6 +360,7 @@ struct MenuBarSettingsView: View {
                     Text(AppStr.pageBarWithoutIcon).tag(PageBarStyle.windowTitle)
                 }
                 .onChange(of: pageBarStyle) { _, choice in AppSettings.pageBarStyle = choice }
+                BarAppearanceRow()
                 // No `LabeledContent`: the picker carries its own title now,
                 // and a labelled control inside a labelled row says it twice.
                 // Given the chosen size, so its glyph is the icon as it will
@@ -515,4 +516,26 @@ struct MenuBarSettingsView: View {
 
     /// What the counter line at the top scrolls to.
     private static let permissionsAnchor = "settings.permissions"
+}
+
+/// **General's mirror of the bar menu's Appearance section**: Flat or Liquid Glass, kept in step with the
+/// menu's choice through `.helmBarAppearanceChanged`. Its own `@State`, so the page holds nothing for it. The
+/// `guard` in `onChange` keeps a choice made in the menu from being written a second time.
+struct BarAppearanceRow: View {
+    @State private var choice = AppSettings.barAppearance
+
+    var body: some View {
+        Picker(AppStr.barAppearanceTitle, selection: $choice) {
+            Text(AppStr.barAppearanceFlat).tag(HelmBarAppearance.flat)
+            Text(AppStr.barAppearanceLiquidGlass).tag(HelmBarAppearance.liquidGlass)
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: choice) { _, new in
+            guard new != AppSettings.barAppearance else { return }
+            AppSettings.barAppearance = new
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .helmBarAppearanceChanged)) { _ in
+            choice = AppSettings.barAppearance
+        }
+    }
 }

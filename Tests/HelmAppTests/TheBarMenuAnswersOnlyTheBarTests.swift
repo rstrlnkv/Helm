@@ -20,6 +20,13 @@ import XCTest
 /// in the page, on the window's own buttons, in another window, or inside the
 /// search field while somebody is typing in it — the field's own Cut, Copy
 /// and Paste are what a person reaches for there.
+///
+/// **The bar read** is a `SettingsToolbar` of the default lead
+/// `.sidebarSeparator` on this file's own split-view window, not the app's
+/// `.spacer` build: no row reads the name's inset, `helm.tabsLead` or the idle
+/// search field's cap, and the points pressed are read off whatever items that
+/// lead lists. The look is pinned to Flat, the default, because the compact
+/// row reads how far the tabs fold.
 @MainActor
 final class TheBarMenuAnswersOnlyTheBarTests: XCTestCase {
 
@@ -30,17 +37,21 @@ final class TheBarMenuAnswersOnlyTheBarTests: XCTestCase {
     /// written back as the typed getter's default.
     private var savedPageBar: Any?
     private var savedCollapse: Any?
+    private var savedAppearance: Any?
 
     override func setUp() async throws {
         savedPageBar = AppSettings.store.object(PageBarStyle.storageKey)
         savedCollapse = AppSettings.store.object(Self.collapseKey)
+        savedAppearance = AppSettings.store.object(HelmBarAppearance.storageKey)
         AppSettings.pageBarStyle = .moduleName
         AppSettings.alwaysCollapseSearch = false
+        AppSettings.barAppearance = .flat
     }
 
     override func tearDown() async throws {
         AppSettings.store.set(savedPageBar, for: PageBarStyle.storageKey)
         AppSettings.store.set(savedCollapse, for: Self.collapseKey)
+        AppSettings.store.set(savedAppearance, for: HelmBarAppearance.storageKey)
     }
 
     // MARK: - Rig
@@ -249,7 +260,7 @@ final class TheBarMenuAnswersOnlyTheBarTests: XCTestCase {
     /// an open field at (`AlwaysCollapseSearchRestsAsTheMagnifierTests
     /// .testTheFoldPredictionChargesTheMagnifierAtTheNarrowestPanes`'s own
     /// reading), so the magnifier press folding here is a real need and not
-    /// M1's old, unconditional fold.
+    /// the unconditional fold of AppKit's own collapse path.
     func testTheCompactSwitcherGivesTheGestureToTheBar() {
         AppSettings.alwaysCollapseSearch = true
         let rig = mount(pane: 646)

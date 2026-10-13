@@ -29,8 +29,9 @@ import HelmUI
 /// with layout forced between turns alike. So the pump the earlier guards used
 /// is not what hid it: the rows' heights are. Here the lines are every height a
 /// real log has — one row to a dozen wrapped ones, a heading where a day turns,
-/// a site line under a warning — in nine cards, in a window that is ordered in,
-/// and nothing but the run loop turns.
+/// a site line under a warning — in nine launches, of which the page draws the
+/// newest at open and the earlier ones when it is asked (`LogView.drawnAtOpen`),
+/// in a window that is ordered in, and nothing but the run loop turns.
 ///
 /// `HELM_LOG_SAMPLE=<folder>` (a copy of `helm.previous.log` and `helm.log`, as
 /// in `TheLogCardsHoldOnARealLogTests`) puts the same question to a real tail.
@@ -146,7 +147,8 @@ final class TheLogOpensOnItsNewestLineInARealWindowTests: XCTestCase {
         for (name, lines) in [("with days", owner), ("one day", oneDay)] {
             for width in [760, 848, 880, 1_000] as [CGFloat] {
                 let got = try measure(lines, width: width)
-                // The subject first: nine-odd cards, a list many windows tall.
+                // The subject first: nine-odd launches in the presentation, of which the
+                // page draws the newest at open, a list many windows tall.
                 XCTAssertGreaterThanOrEqual(got.cards, 9, "the fixture is not nine launches")
                 XCTAssertGreaterThan(got.document, got.visible * 6,
                                      "the log did not outgrow the window, so the position proves nothing")

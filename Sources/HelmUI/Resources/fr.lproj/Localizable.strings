@@ -67,6 +67,7 @@
 "BETA" = "BETA";
 "BUILD" = "BUILD";
 "Back" = "Retour";
+"Basics" = "Essentiel";
 "Opens its own screen" = "Ouvre son propre écran";
 "Beta" = "Beta";
 "Blue" = "Bleu";
@@ -234,6 +235,7 @@
 "Fix with" = "Corriger avec";
 "Fixes words typed in the wrong keyboard layout" = "Corrige les mots tapés dans la mauvaise disposition";
 "Flag" = "Drapeau";
+"Flat" = "Plat";
 "Folder" = "Dossier";
 "Folders that keep themselves in order" = "Des dossiers qui se tiennent en ordre";
 "Follow" = "Suivre";
@@ -315,6 +317,8 @@
 "Letters in a frame" = "Lettres dans un cadre";
 "Letters on a filled badge" = "Lettres sur un fond";
 "Light" = "Clair";
+"Liquid Glass" = "Liquid Glass";
+"Toolbar style" = "Style de la barre d’outils";
 "Log" = "Journal";
 "Login Items" = "Ouverture";
 "Login Items & Extensions" = "Ouverture et extensions";
@@ -492,6 +496,8 @@
 "Keyboard shortcuts" = "Raccourcis clavier";
 "Show" = "Afficher";
 "Show in Finder" = "Afficher dans le Finder";
+"Hide Sidebar" = "Masquer la barre latérale";
+"Show Sidebar" = "Afficher la barre latérale";
 "Show it in the menu bar" = "L’afficher dans la barre des menus";
 "Show remaining time in the menu bar" = "Afficher le temps restant dans la barre des menus";
 "Show what is marked for removal" = "Voir ce qui est marqué pour suppression";
@@ -522,6 +528,7 @@
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "Arrêter une analyse de disque conserve ce qu’elle avait mesuré. L’anneau disparaissait et vous revenait le sélecteur de volumes, après une minute à le regarder grandir. L’arbre reste désormais, marqué comme arrêté — et il n’est pas conservé pour la prochaine fois, car dans une analyse inachevée un dossier peut contenir plus que ce qu’il affiche.";
 "Style" = "Style";
 "Switched on, but macOS is withholding what it needs" = "Activé, mais macOS lui refuse ce dont il a besoin";
+"macOS is withholding a needed permission" = "macOS refuse une autorisation nécessaire";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "Éteindre puis rallumer VPN pouvait laisser la vignette et la page de réglages silencieusement figées, sans réponse, jusqu’au redémarrage de Helm.";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Passer à un autre module puis revenir ne jette plus ce que vous étiez en train de faire. La désinstallation perdait auparavant chaque coche, toute l’étape de révision et la trace de ce que macOS avait refusé, dès que vous quittiez sa page ; Ouverture et extensions relançait son analyse — la plus lente de l’app — de la même façon. Les deux s’en souviennent maintenant.";
 "System" = "Système";
@@ -865,7 +872,6 @@
 "Waiting for you to allow Helm in System Settings." = "En attente de votre autorisation dans Réglages Système.";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS n’a pas ajouté Helm à l’ouverture de session, il ne s’ouvrira donc pas tout seul.";
 "Open Login Items & Extensions…" = "Ouvrir Ouverture et extensions…";
-"Switched off" = "Désactivés";
 "Put back" = "Restaurer";
 "back where it was" = "remis en place";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "La marque qui empêche une règle d’agir deux fois n’a pas pu être écrite : la règle peut reprendre ce fichier dans l’heure.";

@@ -37,15 +37,37 @@ import XCTest
 ///
 /// And one question about the reserve: the capsule is the same width on both
 /// tabs, which is the whole of what the reserve exists for.
+///
+/// **The bar.** The rows read the item of a `SettingsToolbar` built with the
+/// default lead `.sidebarSeparator` on a bare `NSWindow`
+/// (`LivePageInTheToolbarFixture`, or a bare window in the one row that
+/// declares its own page), not the `lead: .spacer` bar the app's window builds.
+/// The capsule is read through `ActionsCapsuleReading`: the item hosts it under
+/// the look's environment writes, so its view is no
+/// `NSHostingView<HelmToolbarActionsCapsule>`.
+///
+/// **The look is Liquid Glass and only that**: the glass walks below read the
+/// capsule's SwiftUI glass and AppKit's platter classes, and under Flat the
+/// capsule draws a flat fill and no glass at all. `setUp` pins the settings
+/// (`PinnedBarSettings`) and then stores Liquid Glass before any bar is built;
+/// the reach is asserted from the switcher's cell, which is AppKit's
+/// `NSSegmentedCell` itself under Liquid Glass and `HelmFlatSegmentedCell`
+/// under Flat.
 @MainActor
 final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+        AppSettings.barAppearance = .liquidGlass
+    }
 
     private final class Mute: EngineTransport, @unchecked Sendable {
         var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
         func send(_ command: EngineCommand) async throws -> Data { Data() }
     }
 
-    private var fixture: LivePageToolbarFixture?
+    private var fixture: LivePageInTheToolbarFixture?
 
     override func tearDown() {
         fixture?.drop()
@@ -53,10 +75,10 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
         super.tearDown()
     }
 
-    private func mountHosts(width: CGFloat) -> LivePageToolbarFixture {
-        let hosts = LivePageToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
-                                           selection: .module(HostsDescriptor.id.rawValue),
-                                           width: width, height: 700)
+    private func mountHosts(width: CGFloat) -> LivePageInTheToolbarFixture {
+        let hosts = LivePageInTheToolbarFixture(HostsSettingsPage(vm: ModuleViewModel(transport: Mute())),
+                                                selection: .module(HostsDescriptor.id.rawValue),
+                                                width: width, height: 700)
         hosts.settle(30)
         fixture = hosts
         return hosts
@@ -67,18 +89,22 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
     /// A tab switch on a live bar morphs the glass from the entry leaving to
     /// the one arriving (`HelmToolbarActionsCapsule`'s own
     /// `.glassEffectTransition`), and `settle(_:)`'s turns can all return on
-    /// an event long before that morph ends: measured, the glass's trailing
-    /// edge read -19.9 pt from the window's edge straight after `settle(30)`
-    /// at 1400 pt and 8.0 pt from 0.3 s on. So the reading waits until the
+    /// an event before that morph ends: the `[one glass]` lines print the edge
+    /// straight after `settle(30)` and again once it held still; on 2026-10-13,
+    /// Liquid Glass, the second read 8.0 pt at 860, 1060 and 1400 pt, and the
+    /// first is not the same from run to run. So the reading waits until the
     /// glass has held still for several samples in a row — and fails rather
     /// than measuring if it never does.
-    private func pickTab(_ id: String, on hosts: LivePageToolbarFixture) throws {
+    private func pickTab(_ id: String, on hosts: LivePageInTheToolbarFixture) throws {
         let declared = try XCTUnwrap(hosts.channel.content(for: HostsDescriptor.id.rawValue),
                                      "Hosts declared nothing onto the channel")
         let selectedTab = try XCTUnwrap(declared.selectedTab, "Hosts declared no tabs")
         selectedTab.wrappedValue = id
         hosts.settle(30)
         let hosting = try actionsHost(hosts)
+        let windowWidth = hosts.mount.window?.frame.width ?? 0
+        print("[one glass] \(id): the glass ends \(glassTrailingEdge(in: hosting).map { "\(windowWidth - $0)" } ?? "no glass shape") pt "
+              + "from a window \(windowWidth) pt wide straight after settle(30)")
         var last: NSRect?
         var still = 0
         let deadline = Date().addingTimeInterval(3)
@@ -96,13 +122,25 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
         window?.toolbar?.items.first { $0.itemIdentifier.rawValue == id }
     }
 
-    private func actionsHost(_ hosts: LivePageToolbarFixture) throws -> NSHostingView<HelmToolbarActionsCapsule> {
+    private func actionsHost(_ hosts: LivePageInTheToolbarFixture) throws -> NSView {
         try actionsHost(hosts.mount.window)
     }
 
-    private func actionsHost(_ window: NSWindow?) throws -> NSHostingView<HelmToolbarActionsCapsule> {
-        try XCTUnwrap(item("helm.actions", in: window)?.view as? NSHostingView<HelmToolbarActionsCapsule>,
-                      "no hosted capsule for helm.actions")
+    private func actionsHost(_ window: NSWindow?) throws -> NSView {
+        try ActionsCapsuleReading.read(try XCTUnwrap(window?.toolbar, "the window wears no toolbar"),
+                                       context: "helm.actions").host
+    }
+
+    /// The view-mode switcher in `hosting`, after asserting that the look reached it: AppKit's own cell,
+    /// which is what Liquid Glass gives it and Flat does not.
+    private func switcher(in hosting: NSView, _ context: String) throws -> NSSegmentedControl {
+        let switcher = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
+                                     "\(context): precondition — no view-mode switcher in helm.actions")
+        XCTAssertTrue(switcher.cell.map { type(of: $0) == NSSegmentedCell.self } == true, """
+            \(context): precondition — the switcher's cell is \(String(describing: switcher.cell.map { type(of: $0) })), \
+            not AppKit's NSSegmentedCell: the look did not reach the bar, and the glass walks below read another bar
+            """)
+        return switcher
     }
 
     /// Every view under `root` whose backing layer is SwiftUI's glass — one
@@ -122,6 +160,11 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
             .map { $0.convert($0.bounds, to: rootLayer) }
     }
 
+    /// The x, in window coordinates, of the trailing edge of the rightmost glass shape under `hosting`.
+    private func glassTrailingEdge(in hosting: NSView) -> CGFloat? {
+        glassShapes(under: hosting).map(\.maxX).max().map { hosting.convert(NSPoint(x: $0, y: 0), to: nil).x }
+    }
+
     private static let appKitGlass = ["NSGlassEffectView", "NSToolbarPlatterView"]
 
     /// Every AppKit glass class name above `view` (to the window's frame) and
@@ -139,8 +182,7 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
 
     /// Whether some glass shape under `hosting` covers the switcher's frame.
     private func assertAGlassShapeCoversTheSwitcher(in hosting: NSView, _ context: String) throws {
-        let switcher = try XCTUnwrap(hosting.everyView(ofType: NSSegmentedControl.self).first,
-                                     "\(context): precondition — no view-mode switcher in helm.actions")
+        let switcher = try switcher(in: hosting, context)
         let switcherFrame = switcher.convert(switcher.bounds, to: hosting)
         let shapes = glassShapes(under: hosting)
         XCTAssertTrue(shapes.contains { $0.insetBy(dx: -0.5, dy: -0.5).contains(switcherFrame) }, """
@@ -182,12 +224,14 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
     /// sit as two independent shapes the union failed to merge. **Counts the
     /// shapes, not the containers**: `glassViews` (`SDFLayer`) answers one
     /// per `GlassEffectContainer` regardless of how many `CASDFElementLayer`
-    /// shapes it holds, so it cannot see a union that failed — measured
-    /// (engineer, pass 3, this Mac): mutating `glass(for:)` to return
-    /// `.clear` for `.segmented` left the switcher and the button as two
-    /// separate shapes, `[(0.5, 0.0, 77.5, 36.0), (78.0, 0.0, 36.0, 36.0)]`,
-    /// where the tree merges them into one, `[(0.5, 0.0, 113.5, 36.0)]`; a
-    /// container count alone stays 1 in both.
+    /// shapes it holds, so it cannot see a union that failed. The tree merges
+    /// the switcher and the button into one shape: on 2026-10-13, Liquid
+    /// Glass, the `[one glass]` line of this row printed
+    /// `[(0.0, 0.0, 109.0, 36.0)]`. An earlier reading on an earlier tree,
+    /// undated and not repeated by any row, had `glass(for:)` mutated to
+    /// return `.clear` for `.segmented` leave the two as separate shapes,
+    /// `[(0.5, 0.0, 77.5, 36.0), (78.0, 0.0, 36.0, 36.0)]`; a container
+    /// count alone stays 1 in both.
     func testTheSwitcherHasItsOwnGlassBesideAGlassyButton() throws {
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
@@ -208,6 +252,7 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
 
         let hosting = try actionsHost(window)
         let shapes = glassShapes(under: hosting)
+        print("[one glass] beside a button: glass shapes \(shapes)")
         XCTAssertFalse(shapes.isEmpty,
                        "precondition: the button beside the switcher carries no glass shape either")
         try assertAGlassShapeCoversTheSwitcher(in: hosting, "beside a button")
@@ -227,9 +272,9 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
             try pickTab("ssh", on: hosts)
             let hosting = try actionsHost(hosts)
             try assertAGlassShapeCoversTheSwitcher(in: hosting, "\(width) pt")
-            let shapes = glassShapes(under: hosting)
-            let edge = try XCTUnwrap(shapes.map(\.maxX).max(), "\(width) pt: no glass shape under helm.actions")
-            let glassMaxX = hosting.convert(NSPoint(x: edge, y: 0), to: nil).x
+            let glassMaxX = try XCTUnwrap(glassTrailingEdge(in: hosting),
+                                          "\(width) pt: no glass shape under helm.actions")
+            print("[one glass] \(width) pt: the glass ends \(width - glassMaxX) pt from the window's trailing edge once it held still")
             XCTAssertEqual(width - glassMaxX, 8, accuracy: 0.5, """
                 \(width) pt: the view-mode switcher's glass ends \(width - glassMaxX) pt from the \
                 window's trailing edge — AppKit's own last item sits 8 pt from it
@@ -251,8 +296,10 @@ final class TheViewModeSwitcherSitsOnOneGlassTests: XCTestCase {
         let onKeys = hosting.frame.width
 
         try pickTab("ssh", on: hosts)
-        XCTAssertNotNil(hosting.everyView(ofType: NSSegmentedControl.self).first,
-                        "precondition: the SSH tab shows no view-mode switcher")
+        _ = try switcher(in: hosting, "Hosts' SSH tab")
+        XCTAssertTrue(try actionsHost(hosts) === hosting, """
+            precondition: the tab switch rebuilt the capsule's host, so the widths below are of two different views
+            """)
         let onSSH = hosting.frame.width
         XCTAssertEqual(onSSH, onKeys, accuracy: 0.5, """
             helm.actions is \(onKeys) pt wide on Keys and \(onSSH) pt on SSH — the reserve no longer \

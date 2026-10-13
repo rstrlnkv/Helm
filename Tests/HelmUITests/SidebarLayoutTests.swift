@@ -134,6 +134,23 @@ final class SidebarLayoutTests: XCTestCase {
         XCTAssertEqual(Set(placed).count, placed.count)
     }
 
+    // MARK: - What the sidebar lists
+
+    func testASectionListsOnlyWhatIsOnAndKeepsItsOrder() {
+        let layout = SidebarLayout(sections: [
+            .init(id: "seed.files", seed: "files", name: nil,
+                  modules: ["duplicates", "disk", "leftovers"]),
+            .init(id: "seed.utilities", seed: "utilities", name: nil,
+                  modules: ["vpn", "keepawake"]),
+        ])
+        let section = layout.sections[0]
+        XCTAssertEqual(layout.live(in: section, enabled: ["duplicates", "leftovers", "vpn"]),
+                       ["duplicates", "leftovers"])
+        // The order is the section's, not the alphabet's: "vpn" comes first here.
+        XCTAssertEqual(layout.live(in: layout.sections[1], enabled: ["keepawake", "vpn"]),
+                       ["vpn", "keepawake"], "a section's live modules came back in another order than the section's")
+    }
+
     // MARK: - Moving
 
     /// The move this whole plan exists for: out of one section and into

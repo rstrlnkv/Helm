@@ -9,11 +9,15 @@ import Module_VPN_UI
 @testable import HelmUI
 
 /// **The owner, 2026-09-28: «Давай вернем его в правую часть».** The
-/// Active/Inactive status badge moved from beside the module's name back to
-/// the window's trailing edge — `SettingsToolbar`'s own `helm.status` item,
-/// always present on the shared name-only bar and only under
-/// `PageBarStyle.moduleName`, the shape this round's item 1 settled on after
-/// its skeptic pass.
+/// Active/Inactive status badge stands at the window's trailing edge, right of
+/// the module's name — `SettingsToolbar`'s own `helm.status` item, always
+/// present on the shared name-only bar and only under `PageBarStyle.moduleName`.
+///
+/// **The bar read here** is the `SettingsToolbar` of `LivePageInTheToolbarFixture`, built with the
+/// `.sidebarSeparator` lead. The status item is made by `makeStatusItem` and patched by `patchName` whichever
+/// lead the toolbar wears; the lead enters the list only before the status (`identifiers(content:style:lead:)`
+/// puts the tracking separator or the name ahead of it), and the tail `[.flexibleSpace, helm.status]` the
+/// name-only bar ends on is the same under both.
 ///
 /// **Real modules, not a recorder** — unlike `TheHostPutsAModulesOwnItemIn-
 /// TheMenuBarTests`'s own `Recorder`, which exists precisely because a real
@@ -27,29 +31,20 @@ import Module_VPN_UI
 @MainActor
 final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
 
-    /// `SettingsWindow.minSize.width` (860) minus `SettingsWindow
-    /// .sidebarMaximum` (320) — the narrowest a page's own pane is ever asked
-    /// to draw at: the window at its minimum width, with the sidebar pulled
-    /// out to its own maximum thickness. `LivePageToolbarFixture`'s own
-    /// `width:` sets the window's content width directly, which is what
-    /// `offeredRoom()` reads back when there is no split view to ask (its own
-    /// header) — the same convention `TheLastItemsGlassSitsAsFarFromTheEdge-
-    /// Tests` uses.
+    /// `SettingsWindow.minSize.width` (860) minus the widest of `ShellGeometry.sidebarRange` (320): narrower than the window reaches, where the sidebar is 200 or the rail.
+    /// `LivePageInTheToolbarFixture`'s own `width:` sets the window's content width directly, which is what
+    /// `offeredRoom()` reads back when there is no split view to ask — the same convention
+    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` uses.
     private static let minPaneWidth: CGFloat = 860 - 320
 
-    private var fixtures: [LivePageToolbarFixture] = []
+    private var fixtures: [LivePageInTheToolbarFixture] = []
 
-    /// **Forced, not assumed** — `AppSettings.pageBarStyle` is a real,
-    /// persisted setting several other files in this target also drive
-    /// (`TheBarMenuAnswersOnlyTheBarTests`, `AlwaysCollapseSearchFirstPress-
-    /// Tests`, …), none of them restoring it afterwards, so a bare `swift
-    /// test` process finds whatever the last one left. Read on this Mac: the
-    /// xctest tool's own domain already carried `windowTitle`, which made
-    /// every guard here read a bar with no `helm.name` and no `helm.status`
-    /// at all — this file's own defect, not the fix's.
-    override func setUp() {
-        super.setUp()
-        AppSettings.pageBarStyle = .moduleName
+    /// **Forced, not assumed** — `pageBarStyle` is a real, persisted setting several other files in this
+    /// target also drive, so a bare `swift test` process finds whatever the last one left; on
+    /// `.windowTitle` the bar carries no `helm.status` at all. The pin puts every setting back after the test.
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
     }
 
     override func tearDown() {
@@ -79,8 +74,8 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         ModuleHost.shared.setEnabled(LayoutDescriptor(), true)
     }
 
-    private func mount(_ selection: SettingsSelection, width: CGFloat) -> LivePageToolbarFixture {
-        let fx = LivePageToolbarFixture(EmptyView(), selection: selection, width: width, height: 700)
+    private func mount(_ selection: SettingsSelection, width: CGFloat) -> LivePageInTheToolbarFixture {
+        let fx = LivePageInTheToolbarFixture(EmptyView(), selection: selection, width: width, height: 700)
         fx.settle(30)
         fixtures.append(fx)
         return fx
@@ -95,15 +90,15 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
     /// **Puts the defect back to watch this go red**: reading it against the
     /// pre-fix `identifiers()` (no `helm.status` appended at all) leaves
     /// `item(toolbar, "helm.status")` `nil` for all three modules, in all
-    /// eight languages — `XCTUnwrap` below fails first, before the
-    /// `isVisible` assertion is ever reached.
+    /// eight languages — the `guard` below fails first ("no helm.status item
+    /// in …"), before the `isVisible` assertion is ever reached.
     func testTheStatusItemIsVisibleAtTheMinimumPaneWidthInEveryLanguageOnAllThreeModules() {
         enableTheThreeStatusModules()
         AppLanguage.each { language in
             for module in Self.modules {
                 let fx = mount(module.selection, width: Self.minPaneWidth)
                 guard let toolbar = fx.mount.window?.toolbar else {
-                    XCTFail("\(language) — \(module.name): no toolbar at \(Self.minPaneWidth) pt")
+                    XCTFail("\(language) — \(module.name): no toolbar on the fixture's window at \(Self.minPaneWidth) pt")
                     continue
                 }
                 guard let status = item(toolbar, "helm.status") else {
@@ -121,9 +116,11 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
                     """)
                 // Nothing this bar carries may sit in the overflow menu either
                 // — the name-only bar's other watched item, same rule.
-                if let name = item(toolbar, "helm.name") {
-                    XCTAssertTrue(name.isVisible, "\(language) — \(module.name): helm.name evicted")
+                guard let name = item(toolbar, "helm.name") else {
+                    XCTFail("\(language) — \(module.name): no helm.name item in \(toolbar.itemIdentifiers.map(\.rawValue))")
+                    continue
                 }
+                XCTAssertTrue(name.isVisible, "\(language) — \(module.name): helm.name evicted")
             }
         }
     }
@@ -141,7 +138,7 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         for module in Self.modules {
             let fx = mount(module.selection, width: 1060)
             guard let toolbar = fx.mount.window?.toolbar else {
-                XCTFail("\(module.name): no toolbar"); continue
+                XCTFail("\(module.name): no toolbar on the fixture's window"); continue
             }
             let ids = toolbar.itemIdentifiers.map(\.rawValue)
             XCTAssertEqual(ids.suffix(2), ["NSToolbarFlexibleSpaceItem", "helm.status"], """
@@ -161,10 +158,8 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
                 """)
 
             // The same 4 pt `isBordered = false` outer margin the capsule's
-            // own last-item measurement pins (`BareToolbarEdgeIsolationTests`,
-            // `HelmToolbarActionsCapsule.edgeMargin`'s own header) — proof
-            // this item really is the bar's own last one, not merely last in
-            // the identifier list.
+            // own last-item measurement pins (`HelmToolbarActionsCapsule.edgeMargin`) — proof this
+            // item really is the bar's own last one, not merely last in the identifier list.
             let statusTrailing = statusView.convert(NSPoint(x: statusView.bounds.width, y: 0), to: nil).x
             let boxMargin = 1060 - statusTrailing
             XCTAssertEqual(boxMargin, 4, accuracy: 0.5, """
@@ -175,43 +170,43 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
         }
     }
 
-    // MARK: - Empty and out of VoiceOver where there is no status
+    // MARK: - No status where there is no notion of running
 
     /// **General has no notion of running**, so `pageIdentity().status` is
-    /// nil there (`moduleStatus` is never called for General; the `nil` sits in
-    /// `pageIdentity`'s own `.none, .general` case) — the item is still in the bar
-    /// (never a churn across General → Keep Awake → General). Reads only
-    /// `rootView.status == nil`: `StatusZoneView.body` computes both "draws
-    /// nothing" and `.accessibilityHidden(status == nil)` straight off that
-    /// same value, and neither is read behaviourally here. The ink is
+    /// nil there (`moduleStatus` is never called for General; the `nil` is
+    /// `settings`' own, which `pageIdentity`'s `.none, .general` case returns) — on this fixture the item is
+    /// still in the bar. Reads only `rootView.status == nil`: what the item draws from it, and that the
+    /// bar is not rebuilt across General → Keep Awake → General, are not read here — they are
     /// `TheStatusItemHoldsUnderTheInputsTheFirstGuardSkippedTests`'s own reach
-    /// (`testTheSharedBarBuiltOnGeneralCarriesEachPagesOwnStatusUnclipped`'s
-    /// `ink(host)` check on an empty page). This item's VoiceOver gate has
-    /// no behavioural reading — it sits in an `NSHostingView`, which answers
-    /// nothing in a test process —
-    /// `testTheEmptyStatusIsKeptOutOfVoiceOverInTheOnlyPlaceItCanBeRead`
-    /// reads the modifier straight off the source instead, which is what its
-    /// own doc comment says a behavioural reading cannot do.
+    /// (`testTheSharedBarBuiltOnGeneralCarriesEachPagesOwnStatusUnclipped`: on an empty page the host is
+    /// asserted 0 pt tall, which is what an empty status measures there, and photographed for ink only
+    /// if it were to have a size; and its same-toolbar and same-identifiers checks). The name item is read as present first, so a bar that was
+    /// never built or never listed its items cannot pass the absence.
     func testTheStatusItemCarriesNoStatusWhereThereIsNoNotionOfRunning() {
         let fx = mount(.general, width: 1060)
-        guard let toolbar = fx.mount.window?.toolbar,
-              let hosting = item(toolbar, "helm.status")?.view as? NSHostingView<StatusZoneView>
+        guard let toolbar = fx.mount.window?.toolbar else {
+            return XCTFail("General: no toolbar on the fixture's window")
+        }
+        XCTAssertNotNil(item(toolbar, "helm.name"), """
+            General: the toolbar lists no helm.name (it lists \(toolbar.itemIdentifiers.map(\.rawValue))) — \
+            the bar was not built under `.moduleName`, so an absent status proves nothing
+            """)
+        guard let hosting = item(toolbar, "helm.status")?.view as? NSHostingView<StatusZoneView>
         else { return XCTFail("no helm.status item on General") }
         XCTAssertNil(hosting.rootView.status, "General: helm.status carries a status where there is none")
     }
 
     // MARK: - Guard: the one combination that would silently lose the badge
 
-    /// **The guard for the one combination `identifiers()` cannot handle.**
+    /// **The guard for the one combination `SettingsToolbar.identifiers(content:style:lead:)` cannot handle.**
     /// It only ever appends `helm.status` on the shared no-content
     /// `.moduleName` shape — a page that also declares `.helmWindowToolbar`
     /// content gets tabs, actions or search instead, and that bar has no
-    /// trailing status item at all (`SettingsToolbar.identifiers()`, the
-    /// `.moduleName`-gated `.flexibleSpace, statusID` pair). No module does both today
-    /// (`ModuleDescriptor.activity`'s default is nil, `ModuleDescriptor.swift:100`,
+    /// trailing status item at all (the `.moduleName`-gated `.flexibleSpace, statusID` pair). No module
+    /// does both today (`ModuleDescriptor.activity`'s default is nil, in the extension of `ModuleDescriptor.swift`,
     /// and only `KeepAwakeDescriptor`, `VPNDescriptor` and `LayoutDescriptor`
-    /// override it; only Uninstaller, Homebrew, Hosts and Leftovers call
-    /// `.helmWindowToolbar`), so this reads the source rather than mounting a
+    /// override it; which modules call `.helmWindowToolbar` is what the scan
+    /// below finds), so this reads the source rather than mounting a
     /// combination the app cannot produce.
     func testNoModuleBothReportsActivityAndDeclaresToolbarContent() throws {
         let files = try RepoSource.swiftFiles(under: "Sources/Modules")
@@ -230,6 +225,9 @@ final class TheStatusBadgeMovesToTheWindowsTrailingEdgeTests: XCTestCase {
                 declaresToolbar.insert(module)
             }
         }
+        // The scan found its subjects on both sides, or an empty intersection proves nothing.
+        XCTAssertFalse(reportsActivity.isEmpty, "the scan found no module that reports activity")
+        XCTAssertFalse(declaresToolbar.isEmpty, "the scan found no module that declares toolbar content")
         let both = reportsActivity.intersection(declaresToolbar)
         XCTAssertTrue(both.isEmpty, """
             \(both.sorted()) both override activity(_:) and call .helmWindowToolbar — \

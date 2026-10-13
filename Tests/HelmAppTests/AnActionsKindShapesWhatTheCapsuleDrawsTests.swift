@@ -1,20 +1,40 @@
 import AppKit
-import SwiftUI
-import HelmTestSupport
 import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// **Three shapes an action can take beyond a plain button, read off the real
-/// window rather than off the source** — the same reason
+/// **Three shapes an action can take beyond a plain button, read off a window
+/// wearing a `SettingsToolbar` rather than off the source** — the same reason
 /// `TheAttachedToolbarNeverChurnsOnAPageSwitchTests` gives for going through
 /// `SettingsToolbar` and the channel rather than constructing
-/// `HelmToolbarActionsModel.Entry` by hand: `SettingsToolbar.actionEntries(for:)`
+/// `HelmToolbarActionsModel.Entry` by hand: `SettingsToolbar.actionEntries(for:look:)`
 /// is the one place `HelmToolbarAction.Kind` is turned into
 /// `HelmToolbarActionsModel.EntryKind`, and a test that skips it would prove
 /// nothing about whether that translation is actually wired in.
+///
+/// **The bar.** A `SettingsToolbar` built with the default lead
+/// `.sidebarSeparator` on a bare `NSWindow`, not the `lead: .spacer` bar the
+/// app's window builds: it has no `helm.tabsLead` and no capped search field.
+///
+/// **The capsule is read through `ActionsCapsuleReading`**, which walks the
+/// root of the item's view: the item hosts the capsule under the look's
+/// environment writes, so the view is no `NSHostingView<HelmToolbarActionsCapsule>`
+/// and a cast to that type answers nil whatever the bar holds.
+///
+/// **The look.** The bar's look is read when the bar is built
+/// (`AppSettings.barAppearance`). The settings are pinned in `setUp`
+/// (`PinnedBarSettings`, Flat), so the rows about a model's content and a
+/// closure's run are pinned to Flat and not run under Liquid Glass; the one
+/// row that reads a `fittingSize` builds a bar under each look, asserts from
+/// the item's root that the look reached it, and prints the look with each
+/// reading.
 @MainActor
 final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
+
+    override func setUp() async throws {
+        try await super.setUp()
+        PinnedBarSettings.pin(in: self)
+    }
 
     private struct Fixture {
         let toolbar: SettingsToolbar
@@ -23,7 +43,8 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         let window: NSWindow
     }
 
-    private func makeToolbar() -> Fixture {
+    private func makeToolbar(_ look: HelmBarAppearance = .flat) -> Fixture {
+        AppSettings.barAppearance = look
         let model = SettingsModel(host: ModuleHost.shared)
         let channel = HelmWindowToolbarChannel()
         let toolbar = SettingsToolbar(model: model, channel: channel)
@@ -38,9 +59,27 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         window.toolbar?.items.first { $0.itemIdentifier.rawValue == "helm.actions" }
     }
 
-    private func declaredEntry(_ id: String, in item: NSToolbarItem?) -> HelmToolbarActionsModel.Entry? {
-        (item?.view as? NSHostingView<HelmToolbarActionsCapsule>)?.rootView.model.declared
-            .first { $0.id == id }
+    private func actionsReading(_ window: NSWindow, context: String) throws -> ActionsCapsuleReading.Read {
+        try ActionsCapsuleReading.read(try XCTUnwrap(window.toolbar, "\(context): the window wears no toolbar"),
+                                       context: context)
+    }
+
+    private func declaredEntry(_ id: String, in window: NSWindow, context: String) throws -> HelmToolbarActionsModel.Entry? {
+        try actionsReading(window, context: context).capsule.model.declared.first { $0.id == id }
+    }
+
+    /// Every look the item's hosted root carries, read through the root's value types (the walk stops at
+    /// a reference type, whose fields are somebody's state and not a view's description).
+    private func looks(in host: NSView) -> [HelmBarAppearance] {
+        func walk(_ value: Any, _ depth: Int) -> [HelmBarAppearance] {
+            guard depth < 12 else { return [] }
+            if let look = value as? HelmBarAppearance { return [look] }
+            let mirror = Mirror(reflecting: value)
+            guard mirror.displayStyle != .class else { return [] }
+            return mirror.children.flatMap { walk($0.value, depth + 1) }
+        }
+        guard let root = Mirror(reflecting: host).children.first(where: { $0.label == "_rootView" })?.value else { return [] }
+        return walk(root, 0)
     }
 
     // MARK: - Toggle
@@ -50,7 +89,7 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
     /// -A3 'HelmToolbarAction(' Sources/Modules | command grep -c 'isOn:'`;
     /// Hosts' Table/Plain-text pair moved to `.segmented`, the owner's
     /// report, 2026-09-25), so this proves the wiring itself:
-    /// `SettingsToolbar.actionEntries(for:)` still has to carry `isOn`
+    /// `SettingsToolbar.actionEntries(for:look:)` still has to carry `isOn`
     /// through and the overflow floor still has to read it, for whichever
     /// page reaches for a toggle next.
     func testAToggleActionsEntryCarriesIsOnAndTheOverflowFormsStateFollowsIt() throws {
@@ -63,7 +102,7 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         fixture.window.layoutIfNeeded()
 
         let item = try XCTUnwrap(actionsItem(fixture.window), "no single actions item on the toolbar")
-        let entry = try XCTUnwrap(declaredEntry("mode", in: item), "the toggle action never reached the capsule")
+        let entry = try XCTUnwrap(declaredEntry("mode", in: fixture.window, context: "toggle"), "the toggle action never reached the capsule")
         XCTAssertEqual(entry.kind, .toggle(isOn: true), """
             a toggle action's own kind lost isOn on the way into the capsule's model — read \
             \(entry.kind) instead
@@ -98,7 +137,7 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         fixture.window.layoutIfNeeded()
 
         let item = try XCTUnwrap(actionsItem(fixture.window), "no single actions item on the toolbar")
-        let entry = try XCTUnwrap(declaredEntry("kinds", in: item), "the menu action never reached the capsule")
+        let entry = try XCTUnwrap(declaredEntry("kinds", in: fixture.window, context: "menu"), "the menu action never reached the capsule")
         XCTAssertEqual(entry.kind, .menu([
             .init(id: "cache", title: "Cache", isOn: true, isEnabled: true),
             .init(id: "log", title: "Log", isOn: false, isEnabled: true)
@@ -136,10 +175,8 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         ]), token: "test.pressItem", generation: generation)
         fixture.window.layoutIfNeeded()
 
-        let item = try XCTUnwrap(actionsItem(fixture.window), "no single actions item on the toolbar")
-        let hosting = try XCTUnwrap(item.view as? NSHostingView<HelmToolbarActionsCapsule>,
-                                    "the actions item has no hosted capsule")
-        hosting.rootView.model.pressItem("kinds", "log")
+        let model = try actionsReading(fixture.window, context: "pressItem").capsule.model
+        model.pressItem("kinds", "log")
         XCTAssertEqual(pressed.ids, ["log"], """
             model.pressItem did not run the item's own closure on a live bar — the capsule's \
             own route into a menu item, distinct from the overflow submenu, is untested without \
@@ -147,7 +184,7 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
             """)
 
         fixture.channel.withdraw(token: "test.pressItem", generation: generation)
-        hosting.rootView.model.pressItem("kinds", "log")
+        model.pressItem("kinds", "log")
         XCTAssertEqual(pressed.ids, ["log"], """
             model.pressItem ran an item's closure after its bar was withdrawn — a frozen bar's \
             capsule must refuse a press the same way its overflow submenu already does
@@ -168,8 +205,7 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         ]), token: "test.busy", generation: fixture.channel.nextGeneration())
         fixture.window.layoutIfNeeded()
 
-        let item = try XCTUnwrap(actionsItem(fixture.window), "no single actions item on the toolbar")
-        let entry = try XCTUnwrap(declaredEntry("refresh", in: item), "the busy action never reached the capsule")
+        let entry = try XCTUnwrap(declaredEntry("refresh", in: fixture.window, context: "busy"), "the busy action never reached the capsule")
         XCTAssertTrue(entry.isBusy, "isBusy: true at declaration did not reach the capsule's own entry")
         _ = fixture.toolbar
     }
@@ -186,9 +222,17 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
     /// exactly the way the whole capsule exists to prevent. Mutation: drop
     /// `.menuStyle(.button)` (and `.buttonStyle(.plain)`) from the `.menu`
     /// case in `HelmToolbarActionsCapsule.entryControl(_:)`, and this test
-    /// goes red — confirmed by running that mutant.
+    /// goes red under both looks, confirmed by running that mutant: the
+    /// `[menu size]` lines read 91.0 × 44.0 pt where they read 76.0 × 36.0 pt
+    /// with the two modifiers in place.
     func testAMenuEntryCostsTheSameReserveAsEveryOtherKindAcrossVisibility() throws {
-        let fixture = makeToolbar()
+        for look in [HelmBarAppearance.flat, .liquidGlass] {
+            try assertAMenuEntryCostsTheSameReserve(under: look)
+        }
+    }
+
+    private func assertAMenuEntryCostsTheSameReserve(under look: HelmBarAppearance) throws {
+        let fixture = makeToolbar(look)
         fixture.model.selection = .module("test.menuSize")
         let token = "test.menuSize"
 
@@ -205,10 +249,13 @@ final class AnActionsKindShapesWhatTheCapsuleDrawsTests: XCTestCase {
         }
 
         declare(menuVisible: true, buttonVisible: true)
-        let hosting = try XCTUnwrap(
-            actionsItem(fixture.window)?.view as? NSHostingView<HelmToolbarActionsCapsule>,
-            "no hosted capsule on the toolbar")
+        let hosting = try actionsReading(fixture.window, context: "\(look)").host
+        XCTAssertEqual(looks(in: hosting), [look], """
+            \(look): precondition — the capsule's root carries \(looks(in: hosting)), not the look the bar was \
+            built under
+            """)
         let bothVisible = hosting.fittingSize
+        print("[menu size] \(look): capsule \(bothVisible.width) x \(bothVisible.height) pt")
 
         declare(menuVisible: false, buttonVisible: true)
         let onlyButtonVisible = hosting.fittingSize

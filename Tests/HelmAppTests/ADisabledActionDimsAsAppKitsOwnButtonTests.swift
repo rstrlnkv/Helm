@@ -52,7 +52,7 @@ import XCTest
 /// what it draws. The capsule's `appearsActive` is set the way
 /// `SettingsToolbar.setWindowAppearsActive(_:)` sets it, `isKeyWindow ||
 /// isMainWindow`, and the host is rebuilt as it rebuilds it;
-/// `TheActionsCapsuleFollowsTheWindowsAppearsActiveTests` holds that feed.
+/// `TheBarsActionsKeepTheirReserveTests` holds that feed.
 ///
 /// **Red from every side** (tester, 2026-09-28, three displays): the Dark and
 /// Light constants swapped, 54 failures; key and not key swapped, 54; the four

@@ -23,6 +23,12 @@ import HelmRuntime
     /// replaces, where `ModuleCategory.tint` gave four «files» modules one
     /// blue. The compiler asking is better than a test noticing.
     static var tint: ModuleTint { get }
+    /// The shape this module is known by, beside its colour.
+    ///
+    /// Deliberately not defaulted, for the reason `tint` is not: a default would
+    /// let a module ship without a shape of its own and share another's, and the
+    /// compiler asking is better than a test noticing.
+    static var glyph: ShellGlyph { get }
     /// Build the engine for this module (host owns lifecycle). `store` is the module's namespaced store.
     ///
     /// **And nothing else.** It builds an object; it does not start anything and

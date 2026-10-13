@@ -30,9 +30,10 @@ import XCTest
 ///
 /// # What this proves, and what it does not
 ///
-/// It proves that the 26 arm's request reaches the pocket over the pane in the
-/// shipping construction — split view, app-owned `NSToolbar`, no
-/// `sceneBridgingOptions` — and that the 27 arm's does not. **It proves
+/// It proves that the 26 arm's request reaches the pocket over the pane in a
+/// split-view rig with an app-owned `NSToolbar` and no
+/// `sceneBridgingOptions`, and, in the second case, over the pane of the real
+/// `SettingsWindow` — and that the 27 arm's does not. **It proves
 /// nothing about how macOS 26 draws that request.** Every reading here is
 /// macOS 27.2's AppKit answering; what soft looks like on 26, and whether 26's
 /// automatic would have looked any different, is the owner's to see in a 26
@@ -40,7 +41,7 @@ import XCTest
 @MainActor
 final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
 
-    // MARK: - The window: the shipping construction, built by hand
+    // MARK: - The window: a split-view rig, built by hand
 
     /// Hands the probe window's toolbar one item, so the toolbar is a real
     /// 52 pt bar the way `SettingsToolbar`'s is, and nothing else.
@@ -64,7 +65,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
     /// The toolbar's delegate is weak, so the case keeps it.
     private var toolbarDelegates: [OneItemToolbar] = []
 
-    /// `SettingsWindow`'s shape — sidebar and detail in a split, an
+    /// A split-view rig — sidebar and detail in a split, an
     /// app-owned `NSToolbar`, **no** `sceneBridgingOptions` on the detail,
     /// `.fullSizeContentView`, hidden title — with an **opaque** title bar,
     /// which is 26's (`HelmBandChoice.titlebarAppearsTransparent`) and the one
@@ -93,8 +94,9 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = false
-        // Hidden unless a title is named — the two shapes `SettingsWindow`
-        // wears: `PageBarStyle.moduleName` hides it, `.windowTitle` shows it.
+        // Hidden unless a title is named. `SettingsWindow` keeps its title
+        // hidden under both page-bar styles (`applyTitle`); the titled shape is
+        // this probe's own.
         window.title = title ?? ""
         window.titleVisibility = title == nil ? .hidden : .visible
         window.setContentSize(SettingsWindow.defaultSize)
@@ -111,7 +113,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
     }
 
     private func detailPane(of window: NSWindow) -> NSView? {
-        (window.contentViewController as? NSSplitViewController)?.splitViewItems.last?.viewController.view
+        SettingsWindowParts.pane(of: window)
     }
 
     // MARK: - Reading the pocket
@@ -135,8 +137,8 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
     /// Every pocket over a SwiftUI scroll view under `pane` whose top edge is
     /// the pane's top — the one under the toolbar, whatever page is showing.
     private func topPockets(under pane: NSView?) -> (walked: Int, pockets: [Pocket]) {
-        guard let pane, let window = pane.window else { return (0, []) }
-        let top = window.contentView?.frame.maxY ?? 0
+        guard let pane, pane.window != nil else { return (0, []) }
+        let top = pane.convert(pane.bounds, to: nil).maxY
         let tree = pane.everyViewWithAncestry
         let pockets = tree.compactMap { entry -> Pocket? in
             guard entry.view.appKitClassName.hasSuffix("NSScrollPocket"),
@@ -255,12 +257,9 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
         let control = try controlStyles()
 
         let frameKey = "NSWindow Frame HelmSettingsWindow.v4"
-        let splitKey = "NSSplitView Subview Frames HelmSettingsSidebar.v1"
         let foundFrame = UserDefaults.standard.string(forKey: frameKey)
-        let foundSplit = UserDefaults.standard.stringArray(forKey: splitKey)
         addTeardownBlock {
             UserDefaults.standard.set(foundFrame, forKey: frameKey)
-            UserDefaults.standard.set(foundSplit, forKey: splitKey)
         }
 
         let foundStyle = AppSettings.store.object(PageBarStyle.storageKey)
@@ -284,8 +283,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
                 window.toolbar = nil
                 window.close()
             }
-            let pane = { (window.contentViewController as? NSSplitViewController)?
-                .splitViewItems.last?.viewController.view }
+            let pane = { SettingsWindowParts.pane(of: window) }
 
             let steps: [(String, () -> Void)] = [
                 ("General", { model.selection = .general }),
@@ -350,15 +348,15 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
 
     // MARK: - 3. What 27.2 draws for each — a reading, not a verdict about 26
 
-    /// **On macOS 27.2, in the shipping construction with the opaque title bar,
+    /// **On macOS 27.2, in the split-view rig with the opaque title bar,
     /// `.soft` and no modifier draw the same effect**: at rest and after
     /// 300 pt of scroll both pockets carry `ThinFilmBackgroundReplay` at 0.6,
     /// `ThinFilmContentBlurFill` (a variable blur) at 1 and `Separator` at 1,
     /// while `.hard` carries `HardPocketContentBlur`, `HardPocketBackgroundReplay`
     /// at 0.8245 and `Separator` (read 2026-09-29). The same holds with the
-    /// window's title shown, the shape `PageBarStyle.windowTitle` gives the
-    /// window — 27's automatic style did not turn hard for a visible title
-    /// here. So on this Mac the 26 arm's request changes the pocket's `style`
+    /// window's title shown, a shape this probe gives its own window
+    /// (`SettingsWindow` never shows its title) — 27's automatic style did not
+    /// turn hard for a visible title here. So on this Mac the 26 arm's request changes the pocket's `style`
     /// and not one layer it draws.
     ///
     /// **This proves nothing about macOS 26's look.** Whether 26 resolves no
@@ -410,7 +408,7 @@ final class On26TheBandAsksTheSystemForASoftEdgeTests: XCTestCase {
             27 is out of date; it still says nothing about 26
             """)
         XCTAssertEqual(parts["soft, title shown"], parts["no modifier, title shown"], """
-            with the window's title shown — `PageBarStyle.windowTitle` — macOS 27 now draws .soft \
+            with the window's title shown — this probe's own shape — macOS 27 now draws .soft \
             differently from no modifier (soft \(parts["soft, title shown"] ?? []), none \
             \(parts["no modifier, title shown"] ?? [])); the request is no longer invisible on 27 in \
             that shape. It still says nothing about 26
@@ -439,7 +437,7 @@ private struct SoftEdgeProbeForm: View {
     }
 }
 
-/// The split is part of the construction: the pane's pocket is sized from the
+/// The split is part of the rig: the pane's pocket is sized from the
 /// divider.
 private struct SoftEdgeProbeSidebar: View {
     var body: some View {

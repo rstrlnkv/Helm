@@ -15,8 +15,8 @@ import XCTest
 /// it. That stand never mounted anything in `.navigation`, so it says nothing
 /// about the shape the owner has since chosen — a real leading item, on every
 /// page (`PageBarStyle.moduleName`). This file mounts one: `HelmIconPlate`
-/// plus a name, the same construction `PageBarStyle.swift`'s `.moduleName` arm
-/// builds, beside a fixed-width marker standing in for the `.principal` item
+/// plus a name, the construction `NameZoneView` (`ShellBarZones.swift`)
+/// builds for the toolbar's name item, beside a fixed-width marker standing in for the `.principal` item
 /// so its frame can be read without depending on `HelmToolbarSwitcher`'s own
 /// layout timing.
 ///

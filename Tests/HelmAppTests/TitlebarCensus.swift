@@ -44,7 +44,8 @@ enum TitlebarCensus {
         /// AppKit made one.
         let sidebarWideViews: [String]
         /// `NSTitlebarContainerBlockingView`, which is the only view under the
-        /// bar whose position comes from the split's divider.
+        /// bar whose position comes from a split view's divider (a test rig's; the
+        /// settings window has none).
         let blockingFrames: [NSRect]
 
         var readable: Bool { reach == .read }
@@ -103,8 +104,7 @@ enum TitlebarCensus {
         }
 
         let under = container.everyView
-        let sidebarWidth = (window.contentViewController as? NSSplitViewController)?
-            .splitViewItems.first?.viewController.view.frame.width ?? 0
+        let sidebarWidth = SettingsWindowParts.sidebarWidth(of: window)
         let census = container.layer.map { lines($0, depth: 0) } ?? []
         return Reading(
             reach: .read,

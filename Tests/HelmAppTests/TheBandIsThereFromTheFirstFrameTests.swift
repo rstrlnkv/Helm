@@ -94,7 +94,7 @@ final class TheBandIsThereFromTheFirstFrameTests: XCTestCase {
     }
 
     /// The subject and the silent pane: the band applied from outside the page,
-    /// exactly where `SettingsSplitViewController` applies it, over a page that
+    /// exactly where `SettingsShellViewController.makeShell` applies it, over a page that
     /// declares or does not.
     private struct Page: View {
         let declares: Bool

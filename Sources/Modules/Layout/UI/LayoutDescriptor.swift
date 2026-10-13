@@ -15,6 +15,7 @@ import Module_Layout_Engine
         inertWithout: [.accessibility]) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .keyboard
+    public static let glyph: ShellGlyph = .layout
 
     private var store: NamespacedStore?
     /// Readable so a test can tell «attached» from «not attached» without the

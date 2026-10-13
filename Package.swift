@@ -91,13 +91,15 @@ extension Module {
 /// The three every module is built on, and the one Objective-C target under
 /// them.
 ///
-/// **`HelmLaunch` is the package's only non-Swift target, and it exists for one
-/// call.** `NSTask` raises an Objective-C exception on some launch paths, and
+/// **`HelmLaunch` is the package's only non-Swift target, and it exists for
+/// the calls `HelmLaunch.h` declares.** `NSTask` raises an Objective-C exception on some launch paths, and
 /// such an exception goes straight past a Swift `catch` into `std::terminate` —
 /// so the guard that was written around `process.run()` could not work, whatever
 /// it said, and a shipped build died with SIGABRT. The `@try` has to sit in
-/// Objective-C with no Swift frame between it and the raise; that is the whole
-/// target, and `HelmLaunch.h` carries the measurement.
+/// Objective-C with no Swift frame between it and the raise; that is
+/// the launch. `HelmReadNumber` calls an object's own floating-point getter
+/// by name, where a raise would be just as fatal. `HelmLaunch.h` carries the
+/// measurement of the first and says what the second rests on.
 let foundation: [Target] = [
     .target(name: "HelmLaunch"),
     .target(name: "HelmContract"),
@@ -144,7 +146,7 @@ let host: [Target] = [
         // and the transport, and each descriptor already depends on its own
         // engine. A direct edge here is a door past the transport into an
         // engine's internals.
-        dependencies: ["HelmContract", "HelmRuntime", "HelmUI"]
+        dependencies: ["HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
     ),
     .testTarget(name: "HelmContractTests",

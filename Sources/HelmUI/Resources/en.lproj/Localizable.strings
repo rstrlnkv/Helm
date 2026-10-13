@@ -67,6 +67,7 @@
 "BETA" = "BETA";
 "BUILD" = "BUILD";
 "Back" = "Back";
+"Basics" = "Basics";
 "Opens its own screen" = "Opens its own screen";
 "Beta" = "Beta";
 "Blue" = "Blue";
@@ -234,6 +235,7 @@
 "Fix with" = "Fix with";
 "Fixes words typed in the wrong keyboard layout" = "Fixes words typed in the wrong keyboard layout";
 "Flag" = "Flag";
+"Flat" = "Flat";
 "Folder" = "Folder";
 "Folders that keep themselves in order" = "Folders that keep themselves in order";
 "Follow" = "Follow";
@@ -315,6 +317,8 @@
 "Letters in a frame" = "Letters in a frame";
 "Letters on a filled badge" = "Letters on a filled badge";
 "Light" = "Light";
+"Liquid Glass" = "Liquid Glass";
+"Toolbar style" = "Toolbar style";
 "Log" = "Log";
 "Login Items" = "Login Items";
 "Login Items & Extensions" = "Login Items & Extensions";
@@ -492,6 +496,8 @@
 "Keyboard shortcuts" = "Keyboard shortcuts";
 "Show" = "Show";
 "Show in Finder" = "Show in Finder";
+"Hide Sidebar" = "Hide Sidebar";
+"Show Sidebar" = "Show Sidebar";
 "Show it in the menu bar" = "Show it in the menu bar";
 "Show remaining time in the menu bar" = "Show remaining time in the menu bar";
 "Show what is marked for removal" = "Show what is marked for removal";
@@ -522,6 +528,7 @@
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time.";
 "Style" = "Style";
 "Switched on, but macOS is withholding what it needs" = "Switched on, but macOS is withholding what it needs";
+"macOS is withholding a needed permission" = "macOS is withholding a needed permission";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched.";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now.";
 "System" = "System";
@@ -865,7 +872,6 @@
 "Waiting for you to allow Helm in System Settings." = "Waiting for you to allow Helm in System Settings.";
 "macOS would not add Helm to your login items, so it will not open by itself." = "macOS would not add Helm to your login items, so it will not open by itself.";
 "Open Login Items & Extensions…" = "Open Login Items & Extensions…";
-"Switched off" = "Switched off";
 "Put back" = "Put back";
 "back where it was" = "back where it was";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour.";

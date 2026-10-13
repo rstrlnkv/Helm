@@ -22,8 +22,8 @@ on the doc comment of `Sources/HelmUI/DesignSystem/OffScreenIdle.swift`: it unmo
 subtree while its window is out of sight and rebuilds it from the view model's current
 state; the model keeps its subscription throughout, so nothing is missed. It reaches a
 module page from the window and not from the page: both hosting controllers that
-`SettingsSplitViewController.viewDidLoad` (`Sources/HelmApp/SettingsWindow.swift`)
-builds end on `helmIdlesOffScreen()` — the one hosting `SettingsSidebar`, and the one
+`SettingsShellViewController.makeShell` (`Sources/HelmApp/SettingsWindow.swift`)
+builds end on `helmIdlesOffScreen()` — the one hosting `ShellSidebar`, and the one
 hosting `SettingsDetail`, the pane that holds whichever module page is open, so a page
 inherits the idling without asking for it. `helmSettingsColumn()` ends on the same
 modifier, so a block that takes the column takes the idling with it; a page whose root
@@ -41,7 +41,9 @@ either where the thing observed keeps its own reference — the run loop holds a
 repeating `Timer` for as long as it is armed, so the timer outlives whatever created it
 until something calls `invalidate()`, `deinit` included. `RepeatingTick.set(active:)`
 (`Sources/HelmRuntime/RepeatingTick.swift`) has the timer's own callback find its owner
-already gone and invalidate itself.
+already gone and invalidate itself. The sidebar's fold takes its display link down twice too, and its callback invalidates nothing: `DisplayFoldLink`
+(`Sources/HelmApp/FoldLink.swift`) gives the system's link a target that holds only the tick closure, never the view,
+and invalidates the link in `stop()` and in its own `deinit`. A shell that leaves its window ends a fold in flight and stops the link, the wrapper released while it runs invalidates in `deinit`, and the tick closure holds the view weakly; the rows that hold each are named in the doc comment of that file.
 
 `VPNEngine` stops its network observer from both `deactivate()` and `deinit`, because a
 host that calls `deactivate()` and then drops the engine leaves a callback still

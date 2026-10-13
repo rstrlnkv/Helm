@@ -50,7 +50,7 @@ extension Notification.Name {
 
     /// How the switchers in the settings window's toolbar label their segments
     /// (`ToolbarSwitcherStyle`), chosen from the toolbar's own right-click
-    /// menu (`SettingsToolbar.barMenuItems`). One answer for every page: a
+    /// menu (`ShellBarMenu.items`). One answer for every page: a
     /// switcher that read as words on one page and as glyphs on the next
     /// would be two controls.
     static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
@@ -79,10 +79,49 @@ extension Notification.Name {
         }
     }
 
+    /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. The
+    /// page bar and the toolbar both read it (`ShellPageBar`; `SettingsToolbar`'s `ShapeSignature`).
+    /// Nothing unattended reads it, so it is not sealed; the two functions
+    /// take the store so a test reads and writes a scratch one.
+    static var barAppearance: HelmBarAppearance {
+        get { barAppearance(in: store) }
+        set { setBarAppearance(newValue, in: store) }
+    }
+
+    static func barAppearance(in store: NamespacedStore) -> HelmBarAppearance {
+        HelmBarAppearance(stored: store.string(HelmBarAppearance.storageKey, default: ""))
+    }
+
+    static func setBarAppearance(_ value: HelmBarAppearance, in store: NamespacedStore) {
+        store.set(value.rawValue, for: HelmBarAppearance.storageKey)
+        NotificationCenter.default.post(name: .helmBarAppearanceChanged, object: nil)
+    }
+
+    /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
+    /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
+    /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not
+    /// sealed; the two functions take the store so a test reads and writes a scratch one.
+    static func sidebarCollapsed(in store: NamespacedStore) -> Bool {
+        store.bool("sidebarCollapsed", default: false)
+    }
+
+    static func setSidebarCollapsed(_ value: Bool, in store: NamespacedStore) {
+        store.set(value, for: "sidebarCollapsed")
+    }
+
+    /// **The width the sidebar has when it is expanded**, brought into `ShellGeometry.sidebarRange`
+    /// (`ShellGeometry.sidebarWidth(stored:)`). A missing key and a value that is not a number read
+    /// as not-a-number, which that function reads as `ShellGeometry.defaultSidebarWidth`; an
+    /// infinity reads as the bound on its side. Nothing in the window writes it (nothing drags the
+    /// sidebar), and a refused read writes nothing back. Read once, when a window is built; not sealed.
+    static func sidebarWidth(in store: NamespacedStore) -> CGFloat {
+        ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
+    }
+
     /// **Whether the settings window's search rests as AppKit's magnifier at
     /// every width**, rather than as a field wherever the bar has room for
     /// one — chosen from the toolbar's own right-click menu
-    /// (`SettingsToolbar.barMenuItems`). Off unless somebody turns it on, so
+    /// (`ShellBarMenu.items`). Off unless somebody turns it on, so
     /// a Mac that never opens that menu keeps today's bar. A `Bool` is bounded
     /// by its type, and nothing unattended reads it, so it is not sealed.
     /// "Always" means "whenever the field is empty and nobody is editing it":
