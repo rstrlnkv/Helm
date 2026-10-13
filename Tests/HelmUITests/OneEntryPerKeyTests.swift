@@ -1,7 +1,8 @@
 import XCTest
 @testable import HelmUI
 
-/// A key written twice in one `.strings` file, which nothing else can see.
+/// A key written twice in one `.strings` file, which no check that loads the
+/// file can see.
 ///
 /// `NSDictionary(contentsOfFile:)` keeps the **last** entry for a repeated key
 /// and says nothing, so every check the app already had passed over eight of

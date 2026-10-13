@@ -3,10 +3,10 @@ import XCTest
 
 /// **A key written twice is a string nobody can see is wrong.**
 ///
-/// Every other check on these files reads them through
-/// `NSDictionary(contentsOfFile:)`, and so does macOS: a repeated key is
-/// resolved silently, the last one winning, and no count changes. So
-/// `StringsCoverageTests` passes over a duplicate, `plutil -lint` passes over
+/// A check that reads these files through `NSDictionary(contentsOfFile:)`
+/// reads them as macOS does: a repeated key is resolved silently, the last
+/// one winning, and no count changes. So the coverage tests of
+/// `StringsCoverageTests` pass over a duplicate, `plutil -lint` passes over
 /// it, and the app draws the wrong sentence.
 ///
 /// It happened while the tab-label pop-up was being restored: `Names` was given
