@@ -140,7 +140,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
         let s = try scene()
         for i in 0..<3 { try copied(s, width: 200 + i) }
         s.toast.model.copyAll()
-        s.controller.cancel()
+        s.controller.teardown()
         await grace(0.3)
         XCTAssertEqual(s.board.lists.count, 0, "a group was written after the module went off")
         XCTAssertEqual(s.board.singles, 0)

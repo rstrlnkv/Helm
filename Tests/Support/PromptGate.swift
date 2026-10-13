@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 
 /// A system prompt held open until the test lets it answer.
 ///
@@ -35,13 +36,21 @@ public actor PromptGate {
     ///
     /// Bounded, because a red must fail rather than hang: with the channel not
     /// wired the prompt never comes, and a wait with no deadline turns a failing
-    /// test into a run nobody can read. The caller asserts that it arrived —
+    /// test into a run nobody can read. It asserts for the caller, because
     /// silence here would make every later assertion a claim about a system that
-    /// never got there.
-    public func reached(within seconds: TimeInterval = 2) async {
+    /// never got there: when the deadline passes with nobody at the gate it
+    /// records a failure at `file` and `line`, the caller's own, and returns.
+    /// It returns at once when somebody has arrived, and as soon as one who
+    /// comes inside the deadline does.
+    public func reached(within seconds: TimeInterval = 2,
+                        file: StaticString = #filePath, line: UInt = #line) async {
         let deadline = Date().addingTimeInterval(seconds)
         while !arrived, Date() < deadline {
             try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+        if !arrived {
+            XCTFail("nobody arrived at the gate within \(seconds) s: the prompt never came",
+                    file: file, line: line)
         }
     }
 

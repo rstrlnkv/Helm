@@ -110,7 +110,8 @@ final class PileFrames: ScreenCapturing, @unchecked Sendable {
 
 /// A controller as the running app builds it, over real files in a scratch folder, a toast with no window whose clock
 /// never steps by itself, a Trash that is a folder, and an overlay that is built and never ordered in: the group's
-/// controls are pressed through the model, as the views press them.
+/// controls are pressed through the model, as the views press them. The bar is shown as the app shows it unless a
+/// test hands `presentBar`.
 @MainActor
 final class PileScene {
     let controller: CaptureController
@@ -127,7 +128,7 @@ final class PileScene {
     var editors: Int { box.count }
     var overlay: CaptureOverlay? { box.overlay }
 
-    init(_ test: XCTestCase, name: String) throws {
+    init(_ test: XCTestCase, name: String, presentBar: @escaping (CapturePanel) -> Void = { $0.show() }) throws {
         var frames: [FrozenDisplay] = []
         for (index, screen) in NSScreen.screens.enumerated() {
             let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
@@ -159,7 +160,7 @@ final class PileScene {
         let box = box
         controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
                                        presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
-                                       pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
+                                       presentBar: presentBar, pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
     }
 
     func teardown() {

@@ -592,7 +592,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         s.capture.hold()
         s.toast.model.edit()
         await waitUntil("the freeze was reached") { s.capture.isHeld }
-        s.controller.cancel()
+        s.controller.teardown()
         s.capture.release()
         await grace(0.2)
         XCTAssertEqual(s.box.count, 0, "an editor opened for a module that was off")
@@ -605,7 +605,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
-        s.controller.cancel()
+        s.controller.teardown()
         XCTAssertFalse(s.controller.isBusy)
         overlay.perform(.exit(.confirm))
         await grace(0.1)

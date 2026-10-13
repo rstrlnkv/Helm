@@ -40,8 +40,10 @@ public enum VPNRuleTrust {
         /// because they asked for it, and inert, because an unsigned bundle's
         /// identity is one any other unsigned bundle can produce.
         case appNotSigned
-        /// Something is running under that identifier and its signature could not
-        /// be read. An id that cannot be verified is treated as no rule.
+        /// Something is running under that identifier and it has no identity to
+        /// compare: its bundle could not be found or read, its signature does not
+        /// match the code it covers, or nobody signed it. An id that cannot be
+        /// verified is treated as no rule.
         case runningInstanceUnreadable
         /// It is signed, and as something else.
         case mismatch

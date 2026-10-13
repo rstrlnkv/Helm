@@ -732,7 +732,19 @@ public enum SwiftSource {
     }
 
     /// Every `func` body in `source`, by the function's own name. `init` bodies
-    /// come back under the name `init`.
+    /// come back under the name `init`, an operator function's under its
+    /// operator as spelled (`==`, `<`).
+    ///
+    /// In code, a body is the block its own declaration opened. A requirement
+    /// of a protocol has none, and neither has a call: `super.init()`,
+    /// `.init(…)` and `map(Item.init)` name nothing, so a caller asking for
+    /// `init` or for a requirement's name is not handed the `if` block or the
+    /// type that happens to stand next.
+    ///
+    /// The walk does not know a comment or a string from code: a comment that
+    /// spells `init(…)` or `init?(…)` reads as a declaration, and the brace
+    /// after it — a whole type under its doc comment — comes back under `init`.
+    /// `code(_:)` blanks both.
     public static func functionBodies(in source: String) -> [Body] {
         bodies(in: source, after: ["func", "init"])
     }
@@ -759,25 +771,56 @@ public enum SwiftSource {
             .map { String(characters[($0.open + 1)..<$0.close]) }
     }
 
+    /// The two requirements of a protocol that carry a brace of their own
+    /// (`{ get }`). A function's name still waiting when one of them begins
+    /// belongs to a requirement, which opens no body, and that brace is the
+    /// `var`'s or the `subscript`'s.
+    private static let bracedRequirements: Set<String> = ["var", "subscript"]
+
+    /// The characters an operator is spelled from.
+    private static let operatorCharacters = Set("/=-+!*%<>&|^~?.")
+
     /// What a completed word does to the reading: introduce a declaration, name
-    /// one that was introduced, or nothing.
+    /// one that was introduced, end one that opened no body, or nothing.
     ///
     /// Its own function because the walk below is otherwise one loop carrying
     /// every decision in this file, and a reader that has to hold all of them at
     /// once is how the nested-`enum` misreading survived review.
+    ///
+    /// `declaresInit` and `endsUnopened` are the walk's reading of where the
+    /// word stands: whether an `init` is spelled as a declaration there, and
+    /// whether a function's name waiting there can have lost its body.
     private static func introduced(_ word: String, _ keywords: Set<String>,
-                                   _ pending: String?, _ expectingName: Bool)
+                                   _ reading: (pending: String?, expectingName: Bool),
+                                   declaresInit: Bool, endsUnopened: Bool)
     -> (pending: String?, expectingName: Bool) {
-        guard !word.isEmpty else { return (pending, expectingName) }
-        // `init` is its own name rather than a keyword a name follows.
-        if word == "init", keywords.contains("init") { return ("init", false) }
-        if keywords.contains(word) { return (pending, true) }
-        if expectingName { return (word, false) }
-        return (pending, expectingName)
+        guard !word.isEmpty else { return reading }
+        // `init` is its own name rather than a keyword a name follows — where it
+        // declares. In a call or handed on as a value it is a word like any
+        // other: read as a name, `super.init()` gave the `if` block after it to
+        // `init`, and `body(of: "init")` returned that block, which closes first.
+        if word == "init", keywords.contains("init") { return declaresInit ? ("init", false) : reading }
+        if keywords.contains(word) { return (reading.pending, true) }
+        if reading.expectingName { return (word, false) }
+        // After the name, so a function named by one of these words in backticks
+        // keeps its own.
+        if endsUnopened, bracedRequirements.contains(word) { return (nil, false) }
+        return reading
     }
 
     /// The brace-matched bodies of every declaration introduced by one of
     /// `keywords`.
+    ///
+    /// A name waits from its keyword for the first `{` outside a parameter list,
+    /// and that brace comes back under it. For a `func` or an `init` the walk
+    /// also asks whether the brace is the declaration's own: `init` names a
+    /// body only where it is spelled as a declaration; a name that has opened
+    /// nothing dies at a `}` outside a parameter list and at the next braced
+    /// requirement, as any name does at a `;` — never at a line end, because a
+    /// signature runs on over lines (`->`, `where`, `async`, the brace
+    /// itself); an operator function is named by its operator. A type keyword
+    /// is not asked: `class var` and `.class` are read as a type's start, and
+    /// the next brace comes back under the word after them.
     private static func bodies(in source: String, after keywords: Set<String>) -> [Body] {
         var out: [Body] = []
         var stack: [(name: String?, open: Int)] = []
@@ -789,16 +832,49 @@ public enum SwiftSource {
         /// back anonymous — which is `DuplicatesEngine.init` and
         /// `ActionRecord.of`, two of the declarations these scans are about.
         var parens = 0
-        func endWord() {
+        /// Whether the names read here are functions', which can stand without a
+        /// body, be spelled in a call, or be an operator. None of those three
+        /// rules is applied to the type walk.
+        let functions = keywords.contains("func")
+        /// The character in front of the word being read: after a `.`, `init` is
+        /// a call (`super.init()`, `.init(…)`) or a reference (`map(Item.init)`).
+        var before: Character = "\n"
+        /// Whether `character` goes on the word being read. An operator is not a
+        /// word, so the first word after `func` was the first parameter's label
+        /// or name, and the body of `== (_ left: …)` came back named `_`:
+        /// straight after `func` an operator's characters are the name. Under
+        /// its operator the body stays among the function bodies, so an offset
+        /// inside an operator function is still inside a named body.
+        func continuesWord(_ character: Character) -> Bool {
+            if character.isLetter || character.isNumber || character == "_" { return true }
+            return functions && expectingName && operatorCharacters.contains(character)
+                && word.allSatisfy { operatorCharacters.contains($0) }
+        }
+        func endWord(at next: Character) {
             defer { word = "" }
-            (pending, expectingName) = introduced(word, keywords, pending, expectingName)
+            // A declared `init` is followed at once by its parameter list, its
+            // generic clause or its `?` or `!`.
+            (pending, expectingName) = introduced(
+                word, keywords, (pending, expectingName),
+                declaresInit: before != "." && "(?!<".contains(next),
+                endsUnopened: functions && parens == 0)
         }
         for (offset, character) in source.enumerated() {
-            if character.isLetter || character.isNumber || character == "_" {
+            if continuesWord(character) {
                 word.append(character)
                 continue
             }
-            endWord()
+            endWord(at: character)
+            before = character
+            // A declaration that never opened a body — a protocol requirement —
+            // must not leave its name to be claimed by the next brace, which
+            // would be somebody else's. The next `func` or `init` takes the
+            // name's place, and a `var` or a `subscript` ends it (`introduced`);
+            // what is left is the last requirement of a protocol, whose name
+            // ends here, at the brace that closes the protocol: past that brace
+            // the type declared next came back whole as one more body under
+            // the requirement's name. A `;` ends any name, in both walks.
+            if character == ";" || (character == "}" && functions && parens == 0) { pending = nil }
             switch character {
             case "(":
                 parens += 1
@@ -814,11 +890,6 @@ public enum SwiftSource {
                     frame.name.map { Body(name: $0, open: frame.open, close: offset) }
                 }
                 if let closed { out.append(closed) }
-            // A declaration that never opened a body — a protocol requirement, a
-            // `case` on the way to one — must not leave its name to be claimed by
-            // the next brace, which would be somebody else's.
-            case ";":
-                pending = nil
             default:
                 break
             }

@@ -50,7 +50,8 @@ struct CapturedShot {
     private let session: CaptureSession
     /// Not private: a test drives the thumbnail's lifetime and the Share sheet through it.
     let toast: ShotToast
-    /// The capsule's Copy in flight, held so `cancel` can reach it.
+    /// The capsule's Copy in flight, held so the module's end (`teardown`) can reach it. The panel's close control and Esc
+    /// leave it be: the shot it copies is in the after-shot window, which they leave be as well.
     private var copyTask: Task<Void, Never>?
     /// Not private: a test reads what is pinned through it. The pins outlive a capture and
     /// the module's switch ends them (`teardown`); `cancel` leaves them be.
@@ -59,16 +60,17 @@ struct CapturedShot {
     let bar: CapturePanel
     private var overlay: CaptureOverlay?
     /// The overlay that has delivered its result and is in its flash: the panels are up and deaf for up to a
-    /// flash's length, and the module's end closes them at once (`cancel`). Kept after the flash until the next
-    /// result or `cancel`; by then the overlay has closed itself and holds no panels.
+    /// flash's length, and the module's end closes them at once (`teardown`). Kept after the flash until the next
+    /// result or `teardown`; by then the overlay has closed itself and holds no panels. The panel's door leaves them be:
+    /// they are the last press's, which was delivered.
     private var flashing: CaptureOverlay?
     /// One flag for the bar, its countdown and the overlay: they are one
     /// capture in three stages, and a second press at any of them is dropped.
     private var busy = false
-    /// The press in flight, held so `cancel` can reach it: the screen's countdown and its freeze, the one long wait,
-    /// and the module's switch can be turned inside either.
+    /// The press in flight, held so `cancel` can reach it: the screen's countdown and its freeze, the one long wait. The
+    /// module's switch can be turned inside either, the panel's door inside the countdown only: the bar goes before the freeze.
     private var pressTask: Task<Void, Never>?
-    /// The freeze the panel's overlay is waiting on, held so the module's end can cancel it. A mode that puts the overlay
+    /// The freeze the panel's overlay is waiting on, held so `cancel` can cancel it. A mode that puts the overlay
     /// away leaves it be: what the panel shows when the freeze returns says whether an overlay opens (`area`).
     private var selectionTask: Task<Void, Never>?
     /// The freeze for the panel's overlay is being taken: a second mode press is dropped, and the overlay that opens is
@@ -76,8 +78,8 @@ struct CapturedShot {
     private var freezing = false
     /// The overlay now open is the panel's, where the person picks and presses Capture, and not a shortcut's.
     private var picking = false
-    /// The delivery after an exit, held for the same reason: the module's switch can be turned between the exit and the
-    /// file. With a timer, a window or an area picked on the panel is held here from the pick: the countdown, then the shot.
+    /// The delivery after an exit, held for the same reason: the panel's door or the module's switch can be turned between
+    /// the exit and the file. With a timer, a window or an area picked on the panel is held here from the pick: the countdown, then the shot.
     private var deliveryTask: Task<Void, Never>?
     /// Puts the overlay on the screens. A seam for a test, which must see whether
     /// the area shortcut reached it without putting panels on the screen of whoever runs the suite.
@@ -207,10 +209,12 @@ struct CapturedShot {
         bar.model.countdown = nil
     }
 
-    /// The overlay and the work in flight go with the module. The press is
-    /// cancelled and every step after the freeze asks whether it still is: the
+    /// The press ends, and the panel and the overlay with it: the bar's close control and Esc, and the module's end
+    /// through `teardown`. The press is cancelled and every step after the freeze asks whether it still is: the
     /// task that was waiting on the freeze resumes regardless, and what it
-    /// resumes into is a file, the clipboard or panels on every screen.
+    /// resumes into is a file, the clipboard or panels on every screen. **Nothing that was delivered is touched**: the
+    /// after-shot window and a Copy in flight in it are the person's shots, not this press's: the door leaves them, and
+    /// the module's end takes them.
     func cancel() {
         pressTask?.cancel()
         pressTask = nil
@@ -220,23 +224,25 @@ struct CapturedShot {
         selectionTask = nil
         freezing = false
         picking = false
-        copyTask?.cancel()
-        copyTask = nil
         bar.close()
         // A ring that ran out leaves its length for the shot's close; one cut short has no next turn to clear it.
         bar.model.countdownLength = 0
         overlay?.close()
         overlay = nil
-        flashing?.close()
-        flashing = nil
-        toast.dismiss()
         busy = false
     }
 
-    /// The module is going: everything `cancel` ends, and the pins too. A pin is a window the
-    /// person asked to keep, so only the module's own end closes it, never an Esc on the bar.
+    /// The module is going: everything `cancel` ends, and what it leaves — the flash's panels, the Copy in flight, the
+    /// after-shot window with the shots in it — and the pins too. A pin is a window the person asked to keep, and the
+    /// window's shots may exist nowhere else (a clipboard-only shot has no file), so only the module's own end takes
+    /// them, never an Esc on the bar.
     func teardown() {
         cancel()
+        copyTask?.cancel()
+        copyTask = nil
+        flashing?.close()
+        flashing = nil
+        toast.dismiss()
         pins.closeAll()
     }
 
@@ -261,7 +267,7 @@ struct CapturedShot {
         // A cancelled freeze returning is not the one `freezing` stands for now: `cancel` cleared the flag, and a panel
         // opened since may have a freeze of its own out.
         if !Task.isCancelled { freezing = false }
-        // The module went off during the freeze: no overlay for a module that is off.
+        // The press was ended during the freeze, by the panel's door or the module going off: no overlay for a press that is over.
         guard !Task.isCancelled else { return }
         var mode = mode, remembered = remembered
         if panel, bar.model.mode != modeAtPress {

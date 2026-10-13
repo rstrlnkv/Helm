@@ -195,7 +195,7 @@ final class TheRowTakesKeyOnlyFromAClickOnItselfTests: XCTestCase {
         s.toast.unfold()
         s.toast.model.focus = s.toast.model.shot(0)?.id ?? -1
         XCTAssertTrue(s.toast.model.unfolded)
-        s.controller.cancel()
+        s.controller.teardown()
         XCTAssertFalse(s.toast.model.unfolded, "the module is off and its row is open")
         XCTAssertNil(s.toast.model.focus)
         XCTAssertTrue(s.toast.model.shots.isEmpty)

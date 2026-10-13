@@ -242,12 +242,14 @@ public enum HelmTrash {
                     // name, and a name under four characters is never replaced inside
                     // a sentence. The domain, the code and Helm's own classification
                     // say everything the sentence did; the sentence itself reaches the
-                    // screen through the engine's own record of it.
+                    // screen through the engine's own record of it. What the line
+                    // carries instead is Helm's own and cannot quote the software, so it
+                    // is not passed through `Redact.naming`, which would rewrite a word
+                    // of it for an app named like one («Cocoa», «missing»).
                     let said = leaf == .softwareName
                         ? "\((error as NSError).domain) \((error as NSError).code), \(reason.rawValue)"
                         : HelmFailure.describe(error)
-                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
-                        + Redact.naming(said, software: path, leaf: leaf))
+                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): \(said)")
                 }
             }
 

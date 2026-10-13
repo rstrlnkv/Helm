@@ -11,8 +11,9 @@ import Module_Screenshots_Engine
 
 /// What the capture panel's test families share: a controller over fake ports whose freezes can be counted, held,
 /// recoloured and reshaped call by call, a window shot that can answer, and a disk that keeps what it was given.
-/// The overlay is **built and not ordered in** (`CaptureOverlay.build`), the bar seam puts nothing on a screen unless
-/// a test asks for the real one.
+/// The overlay is **built and not ordered in** (`CaptureOverlay.build`), the toast is the window-free one
+/// (`ShotToast(windowed: false)`, its refusals and pictures are a model and no panel), the bar seam puts nothing on a
+/// screen unless a test asks for the real one.
 @MainActor
 enum PanelRig {
 
@@ -151,7 +152,7 @@ enum PanelRig {
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
         let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
                                            presentOverlay: { overlay in held.overlays += 1; held.overlay = overlay; return overlay.build() },
-                                           presentBar: { bar in held.bars += 1; presentBar(bar) }, tick: tick)
+                                           presentBar: { bar in held.bars += 1; presentBar(bar) }, toast: ShotToast(windowed: false), tick: tick)
         return Rig(controller: controller, screen: screen, disk: disk, held: held, store: store,
                    display: try XCTUnwrap(base.first?.id), gate: gate)
     }
@@ -172,7 +173,7 @@ enum PanelRig {
 
     static let area = CGRect(x: 50, y: 60, width: 400, height: 300)
 
-    /// What the controller's toast says now, read through the controller's `toast` (private, and the only place a refusal
+    /// What the controller's toast says now, read through the controller's `toast` (the only place a refusal
     /// is told): the body of a refusal, or nil where the toast shows a picture or nothing. A teardown dismisses it, so a
     /// test reads it before.
     static func refusalBody(of controller: CaptureController) -> String? {

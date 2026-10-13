@@ -71,6 +71,63 @@ final class ReleaseDigestTests: XCTestCase {
         XCTAssertFalse(ReleaseDigest.matches(fileAt: gone, expected: good))
     }
 
+    // MARK: notes written with CR LF line endings
+
+    /// Release notes can arrive with CR LF line endings, and Swift reads
+    /// `"\r\n"` as ONE Character that is not `"\n"`, so a split on `"\n"` finds
+    /// no line break in such notes at all.
+    private func crlf(_ lines: [String], trailing: Bool) -> String {
+        lines.joined(separator: "\r\n") + (trailing ? "\r\n" : "")
+    }
+
+    func testADigestLineOpeningCRLFNotesIsFound() {
+        let notes = crlf(["sha256 \(asset) \(good)", "", "### Fixed", "- things"], trailing: true)
+        XCTAssertEqual(ReleaseDigest.parse(notes: notes, asset: asset), good)
+    }
+
+    func testADigestLineInTheMiddleOfCRLFNotesIsFound() {
+        let notes = crlf(["Some prose about the release.", "", "sha256 \(asset) \(good)",
+                          "sha256 Helm-0.7.1-dev.10.dmg \(String(repeating: "f", count: 64))", "", "More."],
+                         trailing: true)
+        XCTAssertEqual(ReleaseDigest.parse(notes: notes, asset: asset), good)
+    }
+
+    func testADigestLineLastWithATrailingCRLFIsFound() {
+        let notes = crlf(["Some prose about the release.", "", "sha256 \(asset) \(good)"], trailing: true)
+        XCTAssertEqual(ReleaseDigest.parse(notes: notes, asset: asset), good)
+    }
+
+    /// Notes that end on the digest line: CR LF between the lines and nothing
+    /// after the last one.
+    func testADigestLineLastWithNoTerminatorAfterCRLFLinesIsFound() {
+        let notes = crlf(["Some prose about the release.", "", "sha256 \(asset) \(good)"], trailing: false)
+        XCTAssertEqual(ReleaseDigest.parse(notes: notes, asset: asset), good)
+    }
+
+    /// A lone CR ends a line for a reader that obeys it, and `HelmFailure`
+    /// flattens it with the other line breaks for that reason; the digest line
+    /// after one is still a line of its own.
+    func testADigestLineAfterALoneCRIsFound() {
+        let notes = "Some prose about the release.\rsha256 \(asset) \(good)\rMore."
+        XCTAssertEqual(ReleaseDigest.parse(notes: notes, asset: asset), good)
+    }
+
+    /// The refusals hold in CR LF notes as they do in LF ones. A split that
+    /// finds the line breaks must not join what they separate: the digest on the
+    /// line after the asset's name is not the asset's digest.
+    func testALineBreakInsideTheDigestLineIsNotPartOfIt() {
+        for ending in ["\n", "\r\n"] {
+            let notes = "sha256 \(asset)\(ending)\(good)\(ending)"
+            XCTAssertNil(ReleaseDigest.parse(notes: notes, asset: asset),
+                         "line ending \(ending.debugDescription)")
+        }
+    }
+
+    func testADigestForAnotherAssetInCRLFNotesIsNotUsed() {
+        let notes = crlf(["Prose", "sha256 Helm-0.7.1-dev.9.zip \(good)", "More"], trailing: true)
+        XCTAssertNil(ReleaseDigest.parse(notes: notes, asset: asset))
+    }
+
     /// The line the release script writes is the line the parser reads.
     func testTheEmittedLineRoundTrips() {
         let line = ReleaseDigest.line(asset: asset, sha256: good)

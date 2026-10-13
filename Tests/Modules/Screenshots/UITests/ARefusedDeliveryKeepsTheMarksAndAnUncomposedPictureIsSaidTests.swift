@@ -840,7 +840,7 @@ final class ARefusedDeliveryKeepsTheMarksAndAnUncomposedPictureIsSaidTests: XCTe
             try require(rig.toast.model.shots.count == 1 && rig.toast.model.shots[0].caption == nil, "\(what): the working shot is not up")
             if cancelling {
                 delivery.cancel()
-                rig.controller.cancel()
+                rig.controller.teardown()
                 try require(rig.toast.model.shots.isEmpty, "the switch did not empty the window")
             }
 

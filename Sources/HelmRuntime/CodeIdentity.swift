@@ -13,9 +13,10 @@ import Security
 /// tunnel and a quit took one down — so a bundle nobody signed could switch
 /// somebody's VPN off by starting and stopping.
 ///
-/// Here rather than in the module because two targets read it and neither may own
-/// the other's copy: `AppPicker` records the identity of the bundle a person
-/// chose, and VPN's app observer reads the identity of what is actually running.
+/// Here rather than in the module because the module is not its only reader:
+/// VPN's settings page reads the identity of the bundle a person chose in
+/// `AppPicker`, VPN's app observer reads the identity of what is actually
+/// running, and `AppBuild.codeFingerprint`, in this target, reads the cdhash.
 ///
 /// **What this buys and what it does not.** The identifiers come back only for
 /// code that passes `SecStaticCodeCheckValidity`, asked with
@@ -57,13 +58,12 @@ public struct CodeIdentity: Codable, Equatable, Sendable {
     /// A **static** read of the bundle on disk, on purpose, and the same read is
     /// used at both ends: the picker reads the bundle a person chose and the
     /// observer reads the bundle of the instance that is running. A dynamic read
-    /// of a running process (`SecCodeCopyGuestWithAttributes` by pid) answers for
-    /// more processes — measured on this Mac, 127 of 128 running applications
-    /// against 117 — but it answers a *different* question, and the two disagree
-    /// in practice: `com.adobe.CCXProcess` reads `com.adobe.CCXProcess`
-    /// statically and `Creative Cloud Content Manager` dynamically. Comparing a
-    /// static record against a dynamic observation would refuse rules for apps
-    /// like that, so both ends read the same way.
+    /// of a running process (`SecCodeCopyGuestWithAttributes` by pid) answers a
+    /// *different* question, and the two disagree in practice:
+    /// `com.adobe.CCXProcess` reads `com.adobe.CCXProcess` statically and
+    /// `Creative Cloud Content Manager` dynamically. Comparing a static record
+    /// against a dynamic observation would refuse rules for apps like that, so
+    /// both ends read the same way.
     ///
     /// **The check is paid on every call**, by whoever waits for it: the picker's
     /// main thread once for each application chosen, and VPN's work queue for an

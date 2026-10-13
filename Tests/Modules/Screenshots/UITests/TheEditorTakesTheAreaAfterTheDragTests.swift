@@ -380,7 +380,7 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         }
     }
 
-    func testCancelWhileEditingDeliversNothing() async throws {
+    func testTheModuleSwitchedOffWhileEditingDeliversNothing() async throws {
         let (controller, board, disk, opened, first) = try rig(target: .desktop)
         let overlay = try await press(controller, opened)
         drag(overlay, first)
@@ -388,12 +388,12 @@ final class TheEditorTakesTheAreaAfterTheDragTests: XCTestCase {
         overlay.mouseDown(on: first, at: CGPoint(x: 120, y: 120), flags: [])
         overlay.mouseDragged(on: first, at: CGPoint(x: 250, y: 200), flags: [])
         overlay.mouseUp(on: first)
-        controller.cancel()
+        controller.teardown()
         XCTAssertFalse(controller.isBusy)
         // A sleep and not a yield: a yield buys a turn and no time. The control is
         // `testEachExitDeliversWhatItSays`, which sees the same press deliver.
         await grace(0.5)
-        XCTAssertEqual(board.copies + disk.written, 0, "a cancelled editor delivered a picture")
+        XCTAssertEqual(board.copies + disk.written, 0, "an editor closed by the module's switch delivered a picture")
     }
 
     /// ⌘Z, ⇧⌘Z and ⌘C sent to the panel with `sendEvent`, the window's own entry for a key down:

@@ -56,10 +56,12 @@ so the dev round is the only round with evidence in it to triage against `helm.l
 `-dev.N` prerelease leaves the beta numbering alone: the eventual `vX.Y.Z` supersedes
 every `-dev.N` before it. Two consequences of that arrangement look like faults and are
 not. A release published with `--prerelease` is invisible to the Beta channel, because
-`releases/latest` skips every prerelease — so the flag, or its absence, is what decides
-reachability rather than presentation. And in the window between a beta shipping and the
-next `-dev` build being cut, the newest entry in the whole releases list *is* the beta, so
-the Dev channel answers "up to date" and is right.
+`releases/latest` skips every prerelease, and so is one tagged `-dev.N` whose flag was
+forgotten, because `UpdateCheck.evaluate` refuses a suffixed tag for beta — so the flag
+and the tag, not the presentation, are what decide reachability. And in the window
+between a beta shipping and the next `-dev` build being cut, the newest entry in the
+whole releases list *is* the beta: the Dev channel offers it to a `-dev.N` build of that
+version, and to a build that is already that beta it answers "up to date" and is right.
 
 One release is one `CHANGELOG.md` section, one git tag, and both a `.dmg` and a `.zip`
 attached with a `sha256` line for each in the notes, which `Scripts/make-zip.sh` and
@@ -81,9 +83,9 @@ The push comes before the release is created, never after: the release is tagged
 the remote HEAD, so an unpushed commit puts the tag on the wrong one. A bad dev build is
 undone by publishing the next dev number with the reverted code and its digest lines,
 never by deleting or re-tagging a release people may have downloaded. A prerelease user
-who switches to Beta sees "up to date", because Beta reads the last non-prerelease tag,
-which is lower than what they are running, so the switch appears to do nothing until the
-next beta passes them.
+who switches to Beta is offered nothing and is told why: Beta reads the last
+non-prerelease tag, which is lower than what they are running, so the About page says the
+build is newer than the channel and names that tag, until the next beta passes them.
 
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
