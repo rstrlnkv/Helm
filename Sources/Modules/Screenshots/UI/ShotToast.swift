@@ -8,9 +8,11 @@ import Module_Screenshots_Engine
 /// that follows one that did not happen.
 ///
 /// **A list of shots, bounded by `ShotShelf.limit`.** One shot is the bare picture; more are a pile in the corner,
-/// which a click unfolds into a row. The list is kept oldest first and changed through `add`, `update` and `remove`,
-/// and emptied whole by the `content` setter; a shot gets onto it only by `add`, so the bound is `ShotShelf.add`'s. A refusal is drawn in the list's place and does
-/// not end it: the shots are still what they were when the plaque goes.
+/// which a click unfolds into a row. The list is changed through `add`, `restore`, `update` and `remove`, and emptied
+/// whole by the `content` setter. `add` keeps it oldest first; `restore` puts a shot back at the index it left, which
+/// is not its place by age once an older shot has left the list, pushed out by the restore itself included. A shot gets
+/// onto it only by `add` or `restore`, and both go through `ShotShelf.add`, so the bound is its. A refusal is drawn in
+/// the list's place and does not end it: the shots are still what they were when the plaque goes.
 @MainActor final class ShotToastModel: ObservableObject {
     enum Content {
         case picture(CGImage, caption: String?, file: URL?)
@@ -122,10 +124,21 @@ import Module_Screenshots_Engine
     @discardableResult
     func add(_ image: CGImage, caption: String?, file: URL?, full: CGImage? = nil, reading: ShotReading? = nil) -> Shot.ID {
         nextID += 1
-        let out = ShotShelf.add(Shot(id: nextID, image: image, caption: caption, file: file, full: full, reading: reading),
-                                to: &shots)
-        if out.contains(where: { $0.id == focus }) { focus = nil }
+        append(Shot(id: nextID, image: image, caption: caption, file: file, full: full, reading: reading))
         return nextID
+    }
+
+    /// A shot that was taken off the list comes back as it was, with its own id, to the place it stood at: an index
+    /// past the end is the newest. It goes through the same bound as a new shot, so a full list pushes the oldest out.
+    func restore(_ shot: Shot, at index: Int) {
+        append(shot)
+        let newest = shots.removeLast()
+        shots.insert(newest, at: min(index, shots.count))
+    }
+
+    private func append(_ shot: Shot) {
+        let out = ShotShelf.add(shot, to: &shots)
+        if out.contains(where: { $0.id == focus }) { focus = nil }
     }
 
     /// False when no such shot is on the list any more.
@@ -355,6 +368,9 @@ final class ShotPanel: NSPanel {
     private var shrinkIn: Double?
     /// The shot whose write is not done: its result fills it, and a refusal takes it away.
     private var pending: ShotToastModel.Shot.ID?
+    /// The shot the editor was opened on, held while the editor is open, and the place it stood at in its group. It
+    /// leaves with the editor (`editorClosed`) or with the window (`dismiss`).
+    private var aside: (shot: ShotToastModel.Shot, index: Int)?
     private var wantsShare = false
     private var picker: NSSharingServicePicker?
     private var pickerDelegate: PickerDelegate?
@@ -459,13 +475,14 @@ final class ShotPanel: NSPanel {
         return .refusal(title: title, body: ScStr.refusal(reason), offersSettings: permission)
     }
 
-    /// The whole window goes, with every shot on the list and everything they held.
+    /// The whole window goes, with every shot on the list, the one held for the editor, and everything they held.
     func dismiss() {
         dismissal?.cancel()
         dismissal = nil
         // A sheet left open under a window that is gone would sit beside the one the next Share opens.
         if let picker { closePicker(picker) }
         resetHolds()
+        aside = nil
         model.shown = false
         clear()
     }
@@ -588,16 +605,29 @@ final class ShotPanel: NSPanel {
     }
 
     /// The editor opened on this shot: the picture is in the editor now, and its thumbnail leaves the window, alone
-    /// or out of its group. What is left of a group lies under the overlay, folded, and spends none of its life
-    /// there: the hold ends with the editor (`editorClosed`), and with the window (`dismiss`).
+    /// or out of its group. **The shot is held aside with the place it stood at, not thrown away:** the editor's end
+    /// gives it back or lets it go (`editorClosed`), and the window's (`dismiss`) lets it go with everything else. A
+    /// shot that is no longer on the list is held by nobody. What is left of a group lies under the overlay, folded,
+    /// and spends none of its life there: the hold ends with the editor (`editorClosed`), and with the window (`dismiss`).
     func takeForEditing(_ id: ShotToastModel.Shot.ID) {
         fold()
+        let taken = model.shots.firstIndex { $0.id == id }.map { (shot: model.shots[$0], index: $0) }
+        // The last shot of the list takes the window with it (`dismiss`), which lets go of what is held: set after.
         remove(id)
+        aside = taken
         if !model.shots.isEmpty { holds.insert(.editor) }
     }
 
-    func editorClosed() {
+    /// The editor is closed, and its hold with it. **With `givingBack` the shot it was opened on returns: the same
+    /// shot, with its picture, caption, file and reading, at the place it stood at in its group,** and the window
+    /// shows it for a group's life, as it does a new shot. Without, the shot is let go, and whatever the exit made of
+    /// it comes as a new shot of its own.
+    func editorClosed(givingBack: Bool) {
         holds.remove(.editor)
+        guard let kept = aside else { return }
+        aside = nil
+        guard givingBack else { return }
+        show(lasting: Self.life) { model.restore(kept.shot, at: kept.index) }
     }
 
     /// One step of the clock: true when the window's time is up. **The pointer's events are not trusted either way.** A
@@ -717,8 +747,8 @@ final class ShotPanel: NSPanel {
         return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
-    /// Where every finished shot's full picture is, oldest first: what «Copy All» hands to the session, which reads
-    /// the files itself, one at a time.
+    /// Where every finished shot's full picture is, in the list's order: what «Copy All» hands to the session,
+    /// which reads the files itself, one at a time.
     func sources() -> [ShotSource] {
         model.shots.compactMap { shot in
             if let full = shot.full { return .picture(full) }

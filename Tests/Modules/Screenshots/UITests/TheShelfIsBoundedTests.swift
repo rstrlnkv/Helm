@@ -183,7 +183,7 @@ final class TheShelfIsBoundedTests: XCTestCase {
         XCTAssertEqual(toast.model.shots.count, 20)
         XCTAssertTrue(toast.holds.contains(.editor), "a shot that arrived ended the editor's hold")
         XCTAssertFalse(toast.advance(by: 1000), "the group's life ran while the editor was open")
-        toast.editorClosed()
+        toast.editorClosed(givingBack: false)
         XCTAssertFalse(toast.advance(by: 4.5))
         XCTAssertTrue(toast.advance(by: 0.5))
     }

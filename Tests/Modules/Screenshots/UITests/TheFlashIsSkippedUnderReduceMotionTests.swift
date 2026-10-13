@@ -26,8 +26,8 @@ final class TheFlashIsSkippedUnderReduceMotionTests: XCTestCase {
         super.tearDown()
     }
 
-    /// An edited area on the first display; the way the controller takes a result is the way it is taken here: the
-    /// overlay is closed `after` it.
+    /// An edited area on the first display; the way the controller takes a capture's result when no countdown follows
+    /// is the way it is taken here: the overlay is closed `after` it.
     private func editing(reduce: Bool) throws -> (display: DisplayID, view: OverlayView) {
         overlay?.close()
         let rig = try OverlayRig.overlay(scale: 1, area: area) { [weak self] result in

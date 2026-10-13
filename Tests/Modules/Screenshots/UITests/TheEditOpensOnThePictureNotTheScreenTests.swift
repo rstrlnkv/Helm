@@ -11,8 +11,8 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **«Edit» opens the palette on the finished picture, never on the screen under it, and «Done» replaces the file that
-/// shot wrote.** The controller is driven as the running app drives it, with the overlay built and never ordered in:
+/// **«Edit» opens the palette on the finished picture, never on the screen under it, and «Done» on an edit that changed
+/// something replaces the file that shot wrote.** The controller is driven as the running app drives it, with the overlay built and never ordered in:
 /// a shot is handed off through the real session and the real folder writer, the thumbnail's own Edit is pressed, the
 /// overlay is worked by hand, and what is read afterwards is the folder, the Trash (a folder of the test's own), the
 /// board and what the thumbnail says. The ground behind the picture is RED, so that a file that carries any of the
@@ -263,11 +263,13 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertFalse(s.controller.isBusy)
     }
 
-    /// Return with no mark at all is still a replacement, by the same picture.
-    func testDoneWithNoMarkReplacesWithTheSamePictureAndNoGround() async throws {
+    /// Return with a mark replaces the file with the whole picture at its own size, and nothing of the ground in its
+    /// corners. (Return with no mark and the whole area replaces nothing: `AnEditThatLeavesTheShotAsItWasGivesItBackTests`.)
+    func testDoneWithAMarkReplacesASmallPictureAtItsOwnSizeWithNoGroundAtTheCorners() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url])
         let file = try XCTUnwrap(image(original.url))
@@ -277,9 +279,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertTrue(isPicture(rgb(file, 399, 299)))
     }
 
-    /// ⌘C on an edit copies it and replaces nothing, and the thumbnail it leaves is a copy's: the picture held, no file.
-    /// Editing THAT is the edit of a shot with no file, which saves a new one by the settings and moves nothing.
-    func testCopyReplacesNothingAndTheThumbnailItLeavesIsACopysWithNoFileToReplace() async throws {
+    /// ⌘C on an edit of a shot that has a file copies it and replaces nothing, and the thumbnail it leaves is that shot's:
+    /// its file and its reading, not a copy's held picture. Editing THAT is the edit of the saved shot, so a second Done
+    /// with a mark replaces the original's file.
+    func testCopyReplacesNothingAndTheThumbnailItLeavesIsTheSavedShotsSoASecondEditReplacesItsFile() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         XCTAssertEqual(s.board.copies, 1)
@@ -291,14 +294,15 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading, "⌘C touched the file")
         let after = try XCTUnwrap(s.toast.model.editSource, "the thumbnail after a copy offers no Edit: \(String(describing: s.toast.model.content))")
-        XCTAssertNil(after.shot, "a copy's thumbnail holds the file of the shot it was made from")
-        XCTAssertNotNil(after.held)
+        XCTAssertEqual(after.shot, original, "the thumbnail after a copy is not the saved shot's, with its file and its reading")
+        XCTAssertNil(after.held, "the saved shot's thumbnail holds a picture besides its file")
 
         overlay = try await openEditor(s, count: 2)
+        draw(overlay, on: s.display(of: overlay), from: CGPoint(x: 400, y: 300), to: CGPoint(x: 600, y: 400))
         await finish(s, overlay)
-        XCTAssertEqual(s.trash.asked, [], "the edit of a copy replaced a file")
-        XCTAssertEqual(names(s.desktop).count, 2, "a new shot beside the original, which is as it was")
-        XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading)
+        XCTAssertEqual(s.trash.moved, [original.url], "the second edit of the saved shot did not replace its file")
+        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent], "the edit of the saved shot made a file of its own")
+        XCTAssertNotEqual(FileShotWriter().reading(of: original.url)?.identity, original.reading.identity, "the file is the original")
     }
 
     /// ⌘S replaces the file and copies nothing more.
@@ -397,10 +401,12 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(local, shown.rect)
     }
 
-    func testEscapeLeavesTheFileTheThumbnailGoneAndTheControllerFree() async throws {
+    /// Esc leaves the file as it was, drops the marks with the editor, and the thumbnail of the shot comes back.
+    func testEscapeLeavesTheFileAndTheThumbnailComesBackAndTheControllerFree() async throws {
         let s = try scene()
         let original = try await take(s)
         let overlay = try await openEditor(s)
+        XCTAssertTrue(s.toast.model.shots.isEmpty, "the control: the thumbnail left for the editor")
         draw(overlay, on: s.display(of: overlay))
         // Esc drops the drawing, Esc again leaves.
         let esc = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
@@ -412,6 +418,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading, "leaving the editor touched the file")
         XCTAssertNil(refusal(s), "leaving was told as a refusal")
         XCTAssertEqual(s.board.copies, 1)
+        XCTAssertEqual(s.toast.model.shots.count, 1, "the thumbnail did not come back")
+        XCTAssertEqual(s.toast.model.editSource?.shot, original, "the thumbnail that came back is not the shot's, with its file and its reading")
     }
 
     // MARK: Refused at the opening
@@ -466,6 +474,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
         await finish(s, overlay)
         let said = try XCTUnwrap(refusal(s), "no plaque: \(String(describing: s.toast.model.content))")
@@ -481,6 +490,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         s.trash.failure = NSError(domain: NSCocoaErrorDomain, code: 513)
         await finish(s, overlay)
         let said = try XCTUnwrap(refusal(s))
@@ -523,6 +533,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         s.trash.hold()
         overlay.perform(.exit(.confirm))
         await waitUntil("the move to the Trash was reached") { !s.trash.asked.isEmpty }
@@ -568,6 +579,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         await grace(0.1)
         XCTAssertEqual(s.box.count, 1, "two editors opened")
         let overlay = try XCTUnwrap(s.box.overlay)
+        draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url], "one replacement")
         XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
@@ -622,6 +634,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(opened.closed.count, 1, "the sheet stayed open under the editor")
         XCTAssertTrue(opened.closed.first === opened.pickers.first)
         XCTAssertTrue(s.toast.holds.isEmpty)
+        draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)
         XCTAssertEqual(s.trash.moved, [original.url])
     }
@@ -648,12 +661,14 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertNotNil(s.toast.model.editSource, "the held picture could be edited again")
     }
 
-    /// The setting changed to a folder between the shot and Done: the edit is saved as a new shot by the setting, and
-    /// nothing is replaced, since the shot had no file.
+    /// The setting changed to a folder between the shot and Done: the edit, which has a mark on it, is saved as a new
+    /// shot by the setting, and nothing is replaced, since the shot had no file. (Return with no mark and the area still
+    /// the whole picture writes nothing at all: `AnEditThatLeavesTheShotAsItWasGivesItBackTests`.)
     func testAClipboardOnlyShotEditedAfterTheSettingChangedIsSavedAsANewShot() async throws {
         let s = try scene(target: .clipboard)
         await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area))
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         s.store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         await finish(s, overlay)
         XCTAssertEqual(names(s.desktop).count, 1, "a new shot")
@@ -722,6 +737,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         await finish(s, overlay)
         let file = try XCTUnwrap(s.toast.model.editSource?.shot?.url)
         XCTAssertEqual(HelmReveal.target(for: file.path), HelmReveal.Target.select(file), "the replaced file is there and is selected")
