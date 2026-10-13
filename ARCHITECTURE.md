@@ -67,7 +67,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § The closed lid, § Vetoes and the notice, § State a person asked for outlives the process.
 - [Layout](Architecture/Layout.md) — the four limits on a module that reads every keystroke and types into other applications.
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone.
-- [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture.
+- [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture; § Selecting and the capture panel, § Writing and replacing a file, § The editor's layers and stroked tools, § The blur and text tools, § The step and spotlight tools, § The magnifier and emoji tools, § The editor's palette and remembered style, § The Screenshots settings page, § The palette's objects and the eraser, § The ruler and the editor's menu, § The palette's pop-overs, § The edited area and Crop, § Reading the text of an area, § The editor's exits and the hand-off, § The after-shot window, § Pins, § Shortcuts.
 - [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed.
 - [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps, keyed by configuration id or, where `scutil` takes a name, by name.
 

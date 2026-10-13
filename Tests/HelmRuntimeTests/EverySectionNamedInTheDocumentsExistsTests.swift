@@ -411,7 +411,6 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     /// heading inside it, or a page of its own; a span that fell to the aim or under it, or
     /// is gone, is red until it comes off the list.
     private static let spansHeldOverTheAim = [
-        "Screenshots.md \u{A7} Screenshots": 55_701,
         "ThePageHeader.md \u{A7} The tabs and the search field": 13_213,
     ]
 

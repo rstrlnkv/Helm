@@ -32,6 +32,8 @@ own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.s
 and nowhere else. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
+## Selecting and the capture panel
+
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
 has moved over, through the edit — and a window pick is never dimmed: the window, the menu bar or the Dock under the
 pointer is filled with the accent at 28 %, in the outline `WindowShape` gives it. That outline is the window's
@@ -78,6 +80,8 @@ module being switched off end it with nothing taken. The last confirmed area is 
 display's points, read back through the same ceiling (`StoredNumber`), where a value that is not finite makes the whole
 record no record, and only the panel's Area mode opens the overlay on it.
 
+## Writing and replacing a file
+
 A picture is written to a temporary name and moved into place with RENAME_EXCL
 (`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a
 name taken is one more number to try and nothing is ever overwritten. The capture is
@@ -122,6 +126,8 @@ Return that changed nothing write nothing:** Esc, and Return with no layer and t
 the shot back to the after-shot window as it was, at its place in the group (`ShotToast.editorClosed`), and so does
 ⌘C of a shot that has a file, which copies the edit and replaces nothing.
 
+## The editor's layers and stroked tools
+
 After a drag is released the overlay does not finish: it becomes the inline editor of
 that area, a second phase of the same panel, and the picture under the layers is never
 touched. The layers are values in `Sources/Modules/Screenshots/Engine/Logic/Annotation.swift`
@@ -142,6 +148,8 @@ in the file. The pen is solid; the pencil is grainy, and the grain is one mask: 
 point lands on, with no chance and no clock, so the export clips the stroke to it in the picture's own pixels and the
 overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur, the text, an emoji, a lens and a step a layer with a picture as its contents; a spotlight has none, see below), built again only when its
 annotation is no longer equal to the one it was built from, and for a step only while its number is the one it was built with. ⇧ is read from the flags of each event and never kept from the press.
+
+## The blur and text tools
 
 The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
 area (`AnnotationHit.takesByArea`), whose step is the size of its block in points and whose colour is not one of its edits.
@@ -170,6 +178,8 @@ restyle the field), an exit, and the panel ceasing to be key each place a non-em
 ended the input is not the one the Esc rule reads; `close` drops the record of the input without placing the text. When `hasMarkedText()` a
 key is handed to the input context and `onEnd` is not called; a live input method was not tried, the tests mark text by hand.
 
+## The step and spotlight tools
+
 The step (`AnnotationTool.step`) is a numbered circle, placed by a click: the circle is centred where the press was, follows the pointer until the
 release, and one undo step each. A press outside the area places none, and unlike the other tools a click on a layer places one too
 (`AnnotationEditing.press`, `end`). **The number is stored nowhere**: it is the layer's place among the step layers of the list
@@ -185,6 +195,8 @@ spotlight is, as **one** even-odd path, the area and the union of every spotligh
 `Sources/Modules/Screenshots/Engine/Logic/Spotlights.swift`), so two spotlights that meet leave the dim the same between them as everywhere. The export fills it
 before every other layer (`CaptureSession.draw`) and the overlay lays it as one layer, `OverlayView.drawnSpotlightDim`, between the picture and the annotations' layers; a spotlight is in
 no entry of the layer cache. The dim is under every other annotation in the list, a blur's mosaic included, which is made from the display's own pixels and is not dimmed.
+
+## The magnifier and emoji tools
 
 The magnifier (`AnnotationTool.magnifier`) is a circle that shows the picture under it twice as large, with a ring in the layer's ink. It is begun by a drag from one
 corner of the circle's square and is always a circle, ⇧ or not (`Annotation.constrained`), and its four corner handles keep it one (`Annotation.resized`): they move
@@ -203,6 +215,8 @@ sends `EditorAction.pickEmoji`, which the overlay keeps (`CaptureOverlay.perform
 is the editor's own, as for the text tool), and with none picked it only lets go of the selection. The cells are named by the emoji themselves, which is what VoiceOver reads.
 Both tools are items of the ⋯ menu after Select and before Thickness and Opacity…, with a check mark when chosen and their symbol as ⋯'s badge, from `EditorPalette.afterSelect`, a list of their own: they have no
 cell on the palette, no place in `EditorPalette.objects` and no key.
+
+## The editor's palette and remembered style
 
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
 (`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure
@@ -225,6 +239,8 @@ before: `editorInk`, three numbers, or, while `editorInk` is absent, the swatch 
 on one tool never reaches the tools that have no entry yet; an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
 A pick with an object selected is the object's tool's, and with none selected the tool last in hand's.
 
+## The Screenshots settings page
+
 The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
 through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
 The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
@@ -238,6 +254,8 @@ hidden ones when the first area is released (`EditorBarModel.hide`), so the pale
 `EditorChrome` places it by that width; a hidden object stands as an item of the ⋯ menu above the glyph tools with a symbol,
 its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:)`, a fallback symbol for a tool with none), and sends what its object sends: `EditorAction.tool` as the key does, `.erase` for the eraser, `.toggleRuler` for the ruler. With the eraser hidden and raised, ⋯'s badge is the eraser's symbol; the ruler raised changes no badge, hidden or not. `EditorKeys` never reads the list.
 
+## The palette's objects and the eraser
+
 The palette carries the pen, the marker, the pencil, the eraser, the ruler and the spotlight as objects, in that order, each drawn by `PaletteObject`
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
 that is a template layer filled with its own tool's colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
@@ -250,6 +268,8 @@ which repeats the rule a click selects by (`AnnotationHit.hits`) with the radius
 is cut to the area first by a rule of its own, and a circle that reaches only the part outside meets nothing. The copy is held to `hits` by `TheEraserTakesWholeObjectsInOneStepTests.testTheCircleAndAClickAgreeOnWhereAMarkIs`, for layers wholly inside the area and no more. Each layer's frame is read once per call, and a layer that the samples' box misses is not asked about. Those layers are
 drawn at `OverlayView.fadedOpacity` while the drag is open and go at the release in one undo step (`AnnotationEditing.remove(_:)`); Esc in the middle of the drag takes none and records none.
 A second click on the raised eraser opens no pop-over and ⋯'s Thickness and Opacity… is disabled for it.
+
+## The ruler and the editor's menu
 
 The ruler is a switch and neither a tool nor a mode (`EditorAction.toggleRuler`, key U, `EditorKeys.rulerKeyCode`): its object in the row is raised while the strip is on the picture,
 whatever tool is chosen, or with Select, and with the eraser too; a second click on it, or the key again, lowers it, and it has no pop-over. The strip is `Ruler`
@@ -265,6 +285,8 @@ Every other tool, Select, Filled, Save, Share… and, while
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
 carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects` and `EditorPalette.afterSelect`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps, Crop, Magnifier and Emoji show none, none of the five having a key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
+
+## The palette's pop-overs
 
 A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
 (`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands
@@ -294,6 +316,8 @@ The pop-over has a third row of two cells with no text: the wheel (`EditorAction
 while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
 frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click on the picture (not beside it in an Edit, where it does nothing), another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.
 
+## The edited area and Crop
+
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
 read in one order by `CaptureOverlay.mouseDown`: the palette and the pop-over, a press outside them closing an open pop-over and doing nothing else, then the eyedropper, if on (the pick, or nothing, and the mode is over), then an area handle — offered only while the picture has no layer or Crop is on (`AreaFrame.offersHandles`, the one predicate the press and the drawn dots both read), and not where the selected object has a
@@ -316,6 +340,8 @@ stands over the area's top-left corner as it does with Crop off (`LabelLayer.cor
 kept inside the new area. **Esc gives it back** (and so do choosing a tool, the eraser or Select, and Crop again): the area is the one the mode found, and that press does not arm the
 rule, so the next one is its first; Esc while a handle is held still only puts that drag back. The other exits deliver the area as the screen shows it. The layers keep their coordinates, an object left outside
 is let go of at the release (`AnnotationEditing.releaseIfOutside`), and the blur and the spotlights' dim follow the area as they do for any reshape.
+
+## Reading the text of an area
 
 Two items of the ⋯ menu read the text of the area, after a separator behind Save (and Pin): **Copy Text** and **Blur Emails and Phone Numbers**
 (`EditorAction.copyText` and `EditorAction.blurPersonalText`, no keys; `EditorMenuItem.reading` carries their symbols and, for the second, the hint, which is the item's tool tip).
@@ -352,6 +378,8 @@ runs both items are disabled (`EditorBarModel.reading`) and a second choice star
 dropped, with no layer, no copy and no plate, when the editor was closed (`close` cancels the task), when the area has changed under it (any change of the area ends the reading in `render`, since its boxes were for
 the old one) or when another reading has begun since (`serial`). A reading that fails, or a clipboard that refuses the text, says `The text could not be read`.
 
+## The editor's exits and the hand-off
+
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for, except for the exits of an Edit that leave its shot as it was (`ShotToast.editorClosed`): Return
@@ -362,6 +390,8 @@ whole display still arrives at `handOff` directly and does both, and the full-sc
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
+
+## The after-shot window
 
 The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
 first except that a shot the editor gives back stands at the index it left, whatever has left the list since, and never more than
@@ -399,6 +429,8 @@ group everything a real panel would show: the keys taken at the unfolding click 
 row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel
 falls through to what lies under it.
 
+## Pins
+
 A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
 size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
@@ -417,6 +449,8 @@ goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close con
 ends the press and the bar and closes no pin, no after-shot window and no Copy in flight in it; only
 `CaptureController.teardown`, called when the module is switched off or its view model is replaced, does. Nothing
 about a pin is stored.
+
+## Shortcuts
 
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays
