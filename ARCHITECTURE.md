@@ -24,20 +24,27 @@ comment, not on a page.
 
 ## Where things are
 
-| What a change touches | Where it lives |
-|---|---|
-| a module's pure logic | `Sources/Modules/<Module>/Engine/Logic/` |
-| its engine, its command enum, its store | `Sources/Modules/<Module>/Engine/` |
-| its screen | `Sources/Modules/<Module>/UI/` |
-| its tests, both halves | `Tests/Modules/<Module>/EngineTests/`, `Tests/Modules/<Module>/UITests/` |
-| what crosses the engine/host boundary | `Sources/HelmContract/` |
-| plumbing two modules both want | `Sources/HelmRuntime/` |
-| a string or a control two modules both draw | `Sources/HelmUI/` |
-| a token — surface, motion, colour, radius | `Sources/HelmUI/DesignSystem/` |
-| the translations | `Sources/HelmUI/Resources/` |
-| the window, panel, status item, settings, changelog | `Sources/HelmApp/` |
-| plumbing a test target wants | `Tests/Support/` |
-| build, sign, package, disk image | `Scripts/` |
+| What a change touches | Where it lives | Its page |
+|---|---|---|
+| a module's pure logic | `Sources/Modules/<Module>/Engine/Logic/` | § Ports and logic |
+| its engine, its command enum, its store | `Sources/Modules/<Module>/Engine/` | § Module pattern |
+| its screen | `Sources/Modules/<Module>/UI/` | § The boundaries |
+| its tests, both halves | `Tests/Modules/<Module>/EngineTests/`, `Tests/Modules/<Module>/UITests/` | § Module pattern |
+| what crosses the engine/host boundary | `Sources/HelmContract/` | § Targets |
+| plumbing two modules both want | `Sources/HelmRuntime/` | § Targets |
+| a string or a control two modules both draw | `Sources/HelmUI/` | § Targets |
+| a token — surface, motion, colour, radius | `Sources/HelmUI/DesignSystem/` | § Design system |
+| the translations | `Sources/HelmUI/Resources/` | § Localization |
+| the window, panel, status item, settings, changelog | `Sources/HelmApp/` | § Targets |
+| a raise only Objective-C can catch | `Sources/HelmLaunch/` | § Running other programs |
+| plumbing a test target wants | `Tests/Support/` | § Shared test plumbing |
+| a check of a foundation target, or of the app | `Tests/HelmContractTests/`, `Tests/HelmRuntimeTests/`, `Tests/HelmUITests/`, `Tests/HelmAppTests/` | § Targets |
+| build, sign, package, disk image | `Scripts/` | § Release |
+
+The way back up from a Swift file: a module's, source or test, to the page named after
+the module; any other to the heading its doc comment points at, else to what
+`command grep -rlw <Stem> ARCHITECTURE.md Architecture` prints for its name less the
+extension, else to the page of the deepest row its path is under.
 
 ## Shape
 
