@@ -45,7 +45,8 @@ import XCTest
 /// back to the file name the way a blank one does. Either satisfies this file; a
 /// row that offers a switch nothing can throw does not.
 ///
-/// Expected to fail until one of those lands.
+/// The first landed: `LaunchLabel.mayBeSwitched` is the one predicate, read in
+/// `LeftoverActions.swift` and in `LeftoversEngine.swift`.
 final class ASwitchTheSystemWillRefuseTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

@@ -18,9 +18,6 @@ import Module_Screenshots_Engine
 /// seven rendered with it and the three newest alone, which have none. The mask's left edge is where the render
 /// of the row of seven begins to have any pixel at the middle of the rings (a shadow, which the mask cuts).
 ///
-/// **One test here is red on purpose** (`testTheMasksLeftEdgeLeavesTheLabelsCapsuleWhole`): the defect it names is in
-/// the toast's view and is not repaired by a test.
-///
 /// Total failure of the subject prints: a label broken onto two lines or cut to an ellipsis in one language, a ring
 /// column that stands at the mask's edge, a render in which the label is not found at all.
 @MainActor
@@ -219,11 +216,11 @@ final class TheMoreLabelStandsInOneLineAndTheRowsEdgeDrawsNoSliverTests: XCTestC
         XCTAssertTrue(placed.covered.isEmpty, "the next shot stands over the label's text: \(placed.covered)")
     }
 
-    /// **Left red on purpose: a defect in working code, cosmetic.** The label stands `labelOut` (10 pt) out of its
-    /// shot's ring, and the mask, `rowOverhang` (9 pt) out of the row's edge, cuts what stands past it: on a shot as
-    /// wide as the slot (a ring of 206 pt in a slot of 200) at the first rest, the capsule's left end is 6.5 pt
-    /// past the mask's edge and the capsule is cut flat; the text is whole. The capsule's edge is the ink's less the
-    /// label's own padding, not photographed (glass does not composite offscreen).
+    /// The label stands `moreOut` (3 pt) out of its shot's left edge, and the mask, `rowOverhang` (9 pt) out of the
+    /// row's edge, cuts what stands past it: on a shot as wide as the slot (a ring of 206 pt in a slot of 200) at
+    /// the first rest the capsule's left end lies 0.5 pt inside the mask's edge, where at the mockup's 10 pt it lay
+    /// 6.5 pt past it and was cut flat. The capsule's edge is the ink's less the label's own padding, not
+    /// photographed (glass does not composite offscreen).
     func testTheMasksLeftEdgeLeavesTheLabelsCapsuleWhole() throws {
         let placed = try placement()
         XCTAssertTrue(placed.textCut.isEmpty, "the mask cuts the label's text: \(placed.textCut)")

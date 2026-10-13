@@ -31,8 +31,10 @@ import XCTest
 /// offer. «I read it and there is nothing in it» and «I could not read it» are two
 /// facts, and `?? [:]` is where they became one.
 ///
-/// The first test is the tester's and is **expected to fail** until the two are
-/// told apart.
+/// The two tests hold that the two are told apart: the first that a row whose
+/// plist nobody could read is not removable, the second that an empty one still
+/// is. `LeftoversScanner` turns a leftover verdict over such a plist into
+/// `.unreadable`, and only an `.orphaned` row is removable.
 final class APlistNobodyCouldReadTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
