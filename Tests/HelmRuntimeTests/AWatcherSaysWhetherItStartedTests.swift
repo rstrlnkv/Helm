@@ -3,7 +3,7 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// `FolderWatcher.start` threw away `FSEventStreamStart`'s return and returned
+/// `FolderWatcher` threw away `FSEventStreamStart`'s return and returned
 /// silently when `FSEventStreamCreate` answered nil, so two engines logged that
 /// they were watching a folder with nothing to say whether they were.
 ///
