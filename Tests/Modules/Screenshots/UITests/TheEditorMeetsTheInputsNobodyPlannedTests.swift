@@ -396,8 +396,8 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(disk.written, 1, "one Return wrote more than one file")
     }
 
-    /// The module switched off in the same turn as the exit: `cancel` promises that work
-    /// in flight goes with the module, so nothing is written or copied afterwards. The
+    /// The module switched off in the same turn as the exit: `teardown` cancels the delivery in flight
+    /// with everything else `cancel` ends, so nothing is written or copied afterwards. The
     /// control is the same press left alone.
     func testAModuleSwitchedOffRightAfterAnExitDeliversNothing() async throws {
         let (alone, aloneBoard, aloneDisk, aloneOverlay) = try await editedThroughTheController(.desktop)
@@ -408,7 +408,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         let (controller, board, disk, overlay) = try await editedThroughTheController(.desktop)
         overlay.keyDown(key(kReturn, "\r"))
         // What `ModuleUICache.dropWhenDisabled` does when the switch is turned.
-        controller.cancel()
+        controller.teardown()
         await grace(0.5)
         XCTAssertEqual(disk.written, 0, "a module switched off right after Return still wrote the file")
         XCTAssertEqual(board.copies, 0, "a module switched off right after Return still took the clipboard")
@@ -428,7 +428,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         let shutter = Shutter()
         let (controller, _, _, overlay) = try await editedThroughTheController(.desktop, shutter: shutter)
         overlay.keyDown(key(kReturn, "\r"))
-        controller.cancel()
+        controller.teardown()
         await grace(0.5)
         XCTAssertEqual(shutter.plays, 0, "a module switched off right after Return still sounded the shutter")
     }

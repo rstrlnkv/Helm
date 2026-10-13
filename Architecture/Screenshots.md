@@ -414,8 +414,9 @@ window's; it is moved by dragging, scaled about the pointer by the scroll and ma
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
 with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
 goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
-closes no pin; only `CaptureController.teardown`, called when the module is switched off or its view model is
-replaced, does. Nothing about a pin is stored.
+ends the press and the bar and closes no pin, no after-shot window and no Copy in flight in it; only
+`CaptureController.teardown`, called when the module is switched off or its view model is replaced, does. Nothing
+about a pin is stored.
 
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays

@@ -455,7 +455,7 @@ final class AnEditThatLeavesTheShotAsItWasGivesItBackTests: XCTestCase {
         let shots = try await three(s)
         let overlay = try await openEditor(s, on: shots[1], staying: [shots[0].id, shots[2].id])
 
-        s.controller.cancel()
+        s.controller.teardown()
 
         XCTAssertFalse(s.controller.isBusy)
         XCTAssertTrue(s.toast.model.shots.isEmpty, "the window outlived the module")
@@ -769,7 +769,7 @@ final class AnEditThatLeavesTheShotAsItWasGivesItBackTests: XCTestCase {
             try require(s.controller.isBusy, "switched off \(switchedOff): the copy is not pending, the controller is free")
             try require(s.board.singles == before.copies, "switched off \(switchedOff): the copy ran in the turn of the key")
             try require(s.toast.model.shots.map(\.id) == [before.shot.id], "switched off \(switchedOff): the shot did not come back in the turn of the key")
-            if switchedOff { s.controller.cancel() }
+            if switchedOff { s.controller.teardown() }
             await waitUntil("the controller was free") { !s.controller.isBusy }
             await grace(0.2)
 

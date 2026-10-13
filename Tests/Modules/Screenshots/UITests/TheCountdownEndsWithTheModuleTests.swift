@@ -151,7 +151,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
     /// own cancel — each cancel inside a wait that the test then lets **end**.
     func testACancelledCountdownFreezesNothingWhateverEndsIt() async throws {
         let ways: [(String, (CaptureController) -> Void)] = [
-            ("the module switched off", { $0.cancel() }),
+            ("the module switched off", { $0.teardown() }),
             ("the close control or Esc", { $0.bar.model.cancel() }),
         ]
         for (way, cancel) in ways {
@@ -178,7 +178,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         box.controller.begin(.panel)
         box.controller.capture(from: .screen)
         await waitUntil("the countdown started") { box.ticks.count == 1 }
-        box.controller.cancel()
+        box.controller.teardown()
         await grace(0.2)
         XCTAssertEqual(box.capture.freezes, 0)
         // The same machine, pressed again by the shortcut that has no bar.

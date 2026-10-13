@@ -12,8 +12,8 @@ import Module_Screenshots_Engine
 ///
 /// The freeze is the one long wait in a capture — some hundred milliseconds of
 /// ScreenCaptureKit on three displays — and the module's switch can be turned
-/// in it. `ModuleUICache.dropWhenDisabled` then calls `CaptureController.cancel`,
-/// which closes an overlay that does not exist yet and lets the controller go;
+/// in it. The block `ScreenshotsCapture` gave `ModuleUICache.dropWhenDisabled` then calls
+/// `CaptureController.teardown`, which closes an overlay that does not exist yet, and lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
 /// resumes. On the area shortcut what it resumes into is `CaptureOverlay.present` — panels
 /// above the menu bar on every screen, owned by a controller nobody holds, for
@@ -118,7 +118,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             controller.begin(.fullScreen)
             await capture.gate.reached()
             // What `ModuleUICache.dropWhenDisabled` does when the switch is turned.
-            controller.cancel()
+            controller.teardown()
             await capture.gate.open()
             await grace(0.5)
             XCTAssertEqual(disk.written, 0,
@@ -146,7 +146,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         let (controller, capture, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
         controller.begin(.area)
         await capture.gate.reached()
-        controller.cancel()
+        controller.teardown()
         await capture.gate.open()
         await grace(0.5)
         XCTAssertEqual(presented.value, 0,
@@ -157,7 +157,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     /// goes off while the overlay waits for its flash: the panels must be gone at once, not when the timer
     /// finds them. The control is the same shot left alone, which is still open and leaving right after it.
     func testTheModuleGoingOffDuringTheFlashClosesTheOverlayAtOnce() async throws {
-        for cancelled in [false, true] {
+        for switchedOff in [false, true] {
             let held = Held()
             let (controller, capture, _, _) = try rig(.clipboard, realScreens: true, presenting: { overlay in
                 overlay.reducesMotion = { false }
@@ -174,9 +174,9 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             overlay.mouseDragged(on: display, at: CGPoint(x: 400, y: 300), flags: [])
             overlay.mouseUp(on: display)
             overlay.perform(.exit(.confirm))
-            XCTAssertTrue(overlay.isOpen && overlay.leaving, "the subject: the shot is flashing (\(cancelled))")
-            if cancelled {
-                controller.cancel()
+            XCTAssertTrue(overlay.isOpen && overlay.leaving, "the subject: the shot is flashing (\(switchedOff))")
+            if switchedOff {
+                controller.teardown()
                 XCTAssertFalse(overlay.isOpen, "the module went off in the flash and the panels stayed up")
                 XCTAssertFalse(overlay.leaving)
             } else {
